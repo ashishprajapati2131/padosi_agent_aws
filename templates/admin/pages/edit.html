@@ -1,0 +1,284 @@
+{% extends 'admin/base.html' %}
+
+{% if page %}
+{% block title %}Edit Page — {{ page.title }} — PadosiAgent Admin{% endblock %}
+{% block breadcrumb_title %}Pages › Edit{% endblock %}
+{% else %}
+{% block title %}Create Page — PadosiAgent Admin{% endblock %}
+{% block breadcrumb_title %}Pages › Create{% endblock %}
+{% endif %}
+
+{% block extra_css %}
+<style>
+.form-card {
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    overflow: hidden;
+}
+.form-card-header {
+    padding: 14px 20px;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-hover);
+}
+.content-area {
+    min-height: 320px;
+    font-family: monospace;
+    font-size: 13px;
+    resize: vertical;
+}
+.char-counter {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        {% if page %}
+        <h5 class="fw-bold mb-1">✏️ Edit Page</h5>
+        <span style="font-size:13px;color:var(--text-muted);">Editing: <strong>{{ page.title }}</strong></span>
+        {% else %}
+        <h5 class="fw-bold mb-1">➕ Create New Page</h5>
+        <span style="font-size:13px;color:var(--text-muted);">Fill in the details below to create a new CMS page.</span>
+        {% endif %}
+    </div>
+    <a href="{% url 'admin_pages_index' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i> Back to Pages
+    </a>
+</div>
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="POST"
+      action="{% if page %}{% url 'admin_pages_update' page.id %}{% else %}{% url 'admin_pages_store' %}{% endif %}">
+    {% csrf_token %}
+
+    <div class="row g-4">
+        <!-- Left: Main Content -->
+        <div class="col-lg-8">
+
+            <!-- Page Details -->
+            <div class="form-card mb-4">
+                <div class="form-card-header">
+                    <i class="fa-solid fa-file-lines text-primary"></i>
+                    Page Content
+                </div>
+                <div class="p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:13px;">
+                            Page Title <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" name="title" id="pageTitle"
+                               class="form-control form-control-lg"
+                               value="{{ page.title|default:'' }}"
+                               placeholder="e.g. Privacy Policy"
+                               required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:13px;">
+                            URL Slug
+                            <small class="text-muted fw-normal">(auto-generated from title)</small>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="font-size:12px;color:var(--text-muted);">/page/</span>
+                            <input type="text" name="slug" id="pageSlug" class="form-control"
+                                   value="{{ page.slug|default:'' }}"
+                                   placeholder="privacy-policy"
+                                   style="font-family:monospace;">
+                            <span class="input-group-text" style="font-size:12px;color:var(--text-muted);">/</span>
+                        </div>
+                        <small class="text-muted">Only lowercase letters, numbers, and hyphens. Leave blank to auto-generate.</small>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label fw-semibold d-flex justify-content-between" style="font-size:13px;">
+                            <span>Page Content <span class="text-danger">*</span></span>
+                            <span class="char-counter" id="contentCharCount">0 chars</span>
+                        </label>
+                        <textarea name="content" id="pageContent"
+                                  class="form-control content-area"
+                                  placeholder="Enter the full HTML or text content of this page...">{{ page.content|default:'' }}</textarea>
+                        <small class="text-muted" id="rawCodeHint" style="display:none;">
+                            <i class="fa-solid fa-code me-1"></i>Raw HTML mode is <strong>ON</strong> — HTML tags will be rendered as-is.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEO -->
+            <div class="form-card mb-4">
+                <div class="form-card-header">
+                    <i class="fa-solid fa-magnifying-glass text-secondary"></i>
+                    SEO Settings
+                    <span class="badge bg-light text-muted fw-normal ms-1" style="font-size:11px;">Optional</span>
+                </div>
+                <div class="p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:13px;">Meta Title</label>
+                        <input type="text" name="meta_title" class="form-control"
+                               value="{{ page.meta_title|default:'' }}"
+                               maxlength="255"
+                               placeholder="Leave blank to use the page title">
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold d-flex justify-content-between" style="font-size:13px;">
+                            <span>Meta Description</span>
+                            <span class="char-counter" id="metaDescCount">0 / 160 chars</span>
+                        </label>
+                        <textarea name="meta_description" id="metaDesc"
+                                  class="form-control" rows="3"
+                                  maxlength="300"
+                                  placeholder="Brief description for search engine results (recommended: under 160 chars)">{{ page.meta_description|default:'' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right: Settings Sidebar -->
+        <div class="col-lg-4">
+
+            <!-- Publish Settings -->
+            <div class="form-card mb-4">
+                <div class="form-card-header">
+                    <i class="fa-solid fa-gear text-secondary"></i>
+                    Publish Settings
+                </div>
+                <div class="p-4">
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom mb-3">
+                        <div>
+                            <div class="fw-semibold" style="font-size:13px;">Published</div>
+                            <div class="text-muted" style="font-size:11px;">Make this page publicly visible</div>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox"
+                                   name="is_active" id="isActive"
+                                   {% if page == None or page.is_active %}checked{% endif %}>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center py-2">
+                        <div>
+                            <div class="fw-semibold" style="font-size:13px;">Raw HTML Mode</div>
+                            <div class="text-muted" style="font-size:11px;">Render content as raw HTML (no escaping)</div>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox"
+                                   name="is_raw_code" id="isRawCode"
+                                   {% if page and page.is_raw_code %}checked{% endif %}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if page %}
+            <!-- Page Info -->
+            <div class="form-card mb-4">
+                <div class="form-card-header">
+                    <i class="fa-solid fa-circle-info text-secondary"></i>
+                    Page Info
+                </div>
+                <div class="p-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted" style="font-size:12px;">Page ID</span>
+                        <span class="fw-semibold" style="font-size:12px;">#{{ page.id }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted" style="font-size:12px;">Created</span>
+                        <span class="fw-semibold" style="font-size:12px;">{{ page.created_at|date:"d M Y" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="text-muted" style="font-size:12px;">Last Updated</span>
+                        <span class="fw-semibold" style="font-size:12px;">{{ page.updated_at|date:"d M Y, H:i" }}</span>
+                    </div>
+                    <a href="/page/{{ page.slug }}/" target="_blank" class="btn btn-sm btn-outline-secondary w-100">
+                        <i class="fa-solid fa-eye me-1"></i> View on Site
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Save Button -->
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fa-solid fa-save me-2"></i>
+                    {% if page %}Save Changes{% else %}Create Page{% endif %}
+                </button>
+                <a href="{% url 'admin_pages_index' %}" class="btn btn-light border">
+                    Cancel
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-generate slug from title (only if slug is empty or unchanged)
+var titleInput = document.getElementById('pageTitle');
+var slugInput  = document.getElementById('pageSlug');
+var userEditedSlug = slugInput.value.length > 0;
+
+titleInput.addEventListener('input', function() {
+    if (!userEditedSlug) {
+        slugInput.value = this.value
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-');
+    }
+});
+slugInput.addEventListener('input', function() {
+    userEditedSlug = this.value.length > 0;
+});
+
+// Character counters
+var contentArea = document.getElementById('pageContent');
+var contentCount = document.getElementById('contentCharCount');
+function updateContentCount() {
+    contentCount.textContent = contentArea.value.length.toLocaleString() + ' chars';
+}
+contentArea.addEventListener('input', updateContentCount);
+updateContentCount();
+
+var metaDesc  = document.getElementById('metaDesc');
+var metaCount = document.getElementById('metaDescCount');
+function updateMetaCount() {
+    var len = metaDesc.value.length;
+    metaCount.textContent = len + ' / 160 chars';
+    metaCount.style.color = len > 160 ? '#ef4444' : 'var(--text-muted)';
+}
+metaDesc.addEventListener('input', updateMetaCount);
+updateMetaCount();
+
+// Raw HTML hint toggle
+var rawCodeToggle = document.getElementById('isRawCode');
+var rawCodeHint   = document.getElementById('rawCodeHint');
+function updateRawHint() {
+    rawCodeHint.style.display = rawCodeToggle.checked ? '' : 'none';
+}
+rawCodeToggle.addEventListener('change', updateRawHint);
+updateRawHint();
+</script>
+{% endblock %}
