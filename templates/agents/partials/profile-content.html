@@ -421,38 +421,24 @@
                 </div>
             </div>
 
-            <div class="insurance-types" style="display: flex; flex-direction: column; gap: 8px;">
-                {% if agent.ordered_insurance_segments %}
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-                        <span style="font-size: 10px; font-weight: 700; color: #0d9488; letter-spacing: 0.5px; text-transform: uppercase; margin-right: 4px;">Insurance:</span>
-                        {% for type in agent.ordered_insurance_segments %}
-                            <div class="insurance-pill">
-                                {% if 'life' in type %}
-                                    <i class="fas fa-user-shield"></i> Life
-                                {% elif 'health' in type %}
-                                    <i class="fas fa-heartbeat"></i> Health
-                                {% elif 'motor' in type %}
-                                    <i class="fas fa-car"></i> Motor
-                                {% elif 'sme' in type %}
-                                    <i class="fas fa-store"></i> SME
-                                {% else %}
-                                    <i class="fas fa-shield-alt"></i> {{ type|capfirst }}
-                                {% endif %}
-                            </div>
-                        {% endfor %}
+            <div class="insurance-types">
+                {% for type in agent.ordered_insurance_segments %}
+                    <div class="insurance-pill">
+                        {% if 'life' in type %}
+                            <i class="fas fa-user-shield"></i> Life
+                        {% elif 'health' in type %}
+                            <i class="fas fa-heartbeat"></i> Health
+                        {% elif 'motor' in type %}
+                            <i class="fas fa-car"></i> Motor
+                        {% elif 'sme' in type %}
+                            <i class="fas fa-store"></i> SME
+                        {% else %}
+                            <i class="fas fa-shield-alt"></i> {{ type|capfirst }}
+                        {% endif %}
                     </div>
-                {% endif %}
-
-                {% if profile.investment_types %}
-                    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-                        <span style="font-size: 10px; font-weight: 700; color: #2563eb; letter-spacing: 0.5px; text-transform: uppercase; margin-right: 4px;">Investment:</span>
-                        {% for type in profile.investment_types %}
-                            <div class="insurance-pill" style="background: #e0f2fe; color: #0369a1; border-color: #bae6fd;">
-                                <i class="fas fa-chart-line"></i> {{ type|upper }}
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
+                {% empty %}
+                    <div class="text-muted small">No segments listed</div>
+                {% endfor %}
             </div>
 
             <div class="reviews-summary" style="cursor: pointer;" onclick="document.getElementById('reviews-section').scrollIntoView({behavior: 'smooth'})">

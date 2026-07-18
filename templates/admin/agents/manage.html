@@ -456,6 +456,39 @@ function filterLogs(type) {
     document.getElementById('log-total-badge').textContent = visibleCount + ' edit' + (visibleCount !== 1 ? 's' : '');
 }
 
+function toggleStatus(id, newStatus) {
+    if (!confirm(`Are you sure you want to ${newStatus === 'suspended' ? 'deactivate' : 'activate'} this agent?`)) return;
+    fetch("{% url 'admin_agents_toggle_status' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ id: id, status: newStatus })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Status updated successfully',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                window.location.reload();
+            }
+        } else {
+            alert(data.message || 'Error updating status');
+        }
+    })
+    .catch(err => console.error(err));
+}
+
 function saveAgentNotes(id) {
     const notes = document.getElementById('admin_notes_input').value;
     fetch("{% url 'admin_agents_save_notes' %}", {

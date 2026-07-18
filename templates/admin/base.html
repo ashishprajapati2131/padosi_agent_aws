@@ -432,6 +432,11 @@
             <i class="fa-solid fa-user-group"></i> Clients / Users
         </a>
 
+        <a href="{% url 'admin_blacklisted_agents' %}"
+           class="menu-item {% if request.path == '/padosi-admin/blacklisted-agents/' %}active{% endif %}">
+            <i class="fa-solid fa-user-slash"></i> Blacklisted Agents
+        </a>
+
         <a href="{% url 'admin_insurance_index' %}"
            class="menu-item {% if '/admin/insurance/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-shield-halved" style="color:#0f3460;"></i> Insurance Companies
@@ -634,6 +639,11 @@
         <a href="/admin/advanced/analytics/"
            class="menu-item {% if '/admin/advanced/analytics/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-chart-line"></i> Analytics
+        </a>
+
+        <a href="{% url 'admin_error_logs_index' %}"
+           class="menu-item {% if '/admin/advanced/error-logs/' in request.path %}active{% endif %}">
+            <i class="fa-solid fa-triangle-exclamation text-danger"></i> Error Logs
         </a>
 
         <a href="/admin/advanced/activity-logs/"

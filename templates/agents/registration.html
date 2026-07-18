@@ -2,7 +2,8 @@
 {% load static %}
 
 {% block title %}Become a PadosiAgent — Register{% endblock %}
-{% block meta_description %}Register as a PadosiAgent insurance expert. Join India's trusted neighbourhood agent platform.{% endblock %}
+{% block meta_description %}Register as a PadosiAgent insurance expert. Join India's trusted neighbourhood agent
+platform.{% endblock %}
 
 {% block extra_css %}
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,6 +16,7 @@
         display: flex;
         align-items: center;
     }
+
     .registration-card {
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(10px);
@@ -26,20 +28,24 @@
         margin: 0 auto;
         transition: transform 0.3s ease;
     }
+
     .registration-card h2 {
         font-size: 28px;
         font-weight: 700;
         color: #0f172a;
         margin-bottom: 8px;
     }
+
     .registration-card p.subtitle {
         font-size: 15px;
         color: #64748b;
         margin-bottom: 35px;
     }
+
     .form-group {
         margin-bottom: 24px;
     }
+
     .form-group label {
         display: block;
         font-size: 14px;
@@ -47,7 +53,9 @@
         color: #334155;
         margin-bottom: 8px;
     }
-    .form-control-input, .form-control-select {
+
+    .form-control-input,
+    .form-control-select {
         width: 100%;
         padding: 14px 18px;
         border: 1.5px solid #cbd5e1;
@@ -59,11 +67,14 @@
         transition: all 0.3s ease;
         font-family: 'Outfit', sans-serif;
     }
-    .form-control-input:focus, .form-control-select:focus {
+
+    .form-control-input:focus,
+    .form-control-select:focus {
         border-color: #273c8e;
         background: #ffffff;
         box-shadow: 0 0 0 4px rgba(39, 60, 142, 0.1);
     }
+
     .btn-verify {
         background: #273c8e;
         color: #ffffff;
@@ -78,9 +89,11 @@
         height: 52px;
         white-space: nowrap;
     }
+
     .btn-verify:hover {
         background: #1e2e6d;
     }
+
     .btn-submit {
         background: linear-gradient(135deg, #273c8e 0%, #1e2e6d 100%);
         color: #ffffff;
@@ -95,26 +108,32 @@
         transition: all 0.3s ease;
         font-family: 'Outfit', sans-serif;
     }
+
     .btn-submit:hover {
         transform: translateY(-1px);
         box-shadow: 0 15px 25px -5px rgba(39, 60, 142, 0.4);
     }
+
     .btn-submit:disabled {
         opacity: 0.6;
         cursor: not-allowed;
         transform: none;
     }
+
     .segment-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 16px;
     }
+
     .segment-checkbox {
         position: relative;
     }
+
     .segment-checkbox input {
         display: none;
     }
+
     .segment-checkbox label {
         display: flex;
         align-items: center;
@@ -129,18 +148,22 @@
         transition: all 0.3s ease;
         margin-bottom: 0;
     }
+
     .segment-checkbox label i {
         font-size: 20px;
         color: #94a3b8;
     }
-    .segment-checkbox input:checked + label {
+
+    .segment-checkbox input:checked+label {
         border-color: #273c8e;
         background: #f0f4ff;
         color: #273c8e;
     }
-    .segment-checkbox input:checked + label i {
+
+    .segment-checkbox input:checked+label i {
         color: #273c8e;
     }
+
     .custom-alert {
         display: none;
         border-radius: 12px;
@@ -153,11 +176,13 @@
         align-items: center;
         gap: 8px;
     }
+
     .alert-success-custom {
         color: #065f46;
         background: #ecfdf5;
         border-color: #a7f3d0;
     }
+
     .alert-danger-custom {
         color: #991b1b;
         background: #fef2f2;
@@ -168,9 +193,11 @@
         .become-a-padosi-agent-con {
             padding: 40px 12px;
         }
+
         .registration-card {
             padding: 30px 20px;
         }
+
         .segment-grid {
             grid-template-columns: 1fr;
         }
@@ -194,36 +221,47 @@
 
                 <div class="form-group">
                     <label>Full Name *</label>
-                    <input type="text" name="fullname" class="form-control-input" placeholder="Enter your full name" required value="{{ draft.fullname|default:'' }}" maxlength="70" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '');">
+                    <input type="text" name="fullname" class="form-control-input" placeholder="Enter your full name"
+                        required value="{{ draft.fullname|default:'' }}" maxlength="70"
+                        oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '');">
                 </div>
 
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Email Address *</label>
-                            <input type="email" name="email" id="regEmail" class="form-control-input" placeholder="your.email@example.com" required onblur="validateEmailOnBlur(this)" value="{{ verified_email|default:'' }}">
+                            <input type="email" name="email" id="regEmail" class="form-control-input"
+                                placeholder="your.email@example.com" required onblur="validateEmailOnBlur(this)"
+                                value="{{ verified_email|default:'' }}">
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-group">
                             <label>Mobile Number *</label>
-                            <input type="tel" name="mobile" class="form-control-input" placeholder="10-digit mobile number" oninput="this.value = this.value.replace(/[^0-9]/g,'')" maxlength="10" pattern="[0-9]{10}" required value="{{ draft.mobile|default:'' }}">
+                            <input type="tel" name="mobile" class="form-control-input"
+                                placeholder="10-digit mobile number"
+                                oninput="this.value = this.value.replace(/[^0-9]/g,'')" maxlength="10"
+                                pattern="[0-9]{10}" required value="{{ draft.mobile|default:'' }}">
                         </div>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="agent_pincode">Service Pincode *</label>
-                    <input type="text" id="agent_pincode" name="agent_pincode" class="form-control-input" placeholder="Enter 6-digit pincode" maxlength="6" inputmode="numeric" pattern="[1-9][0-9]{5}" value="{{ draft.agent_pincode|default:'' }}" oninput="this.value = this.value.replace(/[^0-9]/g, ''); validateAgentPincode(this);">
+                    <input type="text" id="agent_pincode" name="agent_pincode" class="form-control-input"
+                        placeholder="Enter 6-digit pincode" maxlength="6" inputmode="numeric" pattern="[1-9][0-9]{5}"
+                        value="{{ draft.agent_pincode|default:'' }}"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, ''); validateAgentPincode(this);">
                     <div id="pincode-feedback" style="font-size:13px; margin-top:6px; display:none;"></div>
                 </div>
 
                 <div class="form-group">
                     <label>State *</label>
-                    <select name="state" id="agent_state" class="form-control-select" required onchange="validateStateSelection(this)">
+                    <select name="state" id="agent_state" class="form-control-select" required
+                        onchange="validateStateSelection(this)">
                         <option value="">Select your state</option>
                         {% for s in default_states %}
-                            <option value="{{ s }}" {% if draft.state == s %}selected{% endif %}>{{ s }}</option>
+                        <option value="{{ s }}" {% if draft.state == s %}selected{% endif %}>{{ s }}</option>
                         {% endfor %}
                         <option value="Other">Other</option>
                     </select>
@@ -232,11 +270,14 @@
 
                 <div class="form-group">
                     <label>Years of Experience</label>
-                    <input name="experience_range" type="number" class="form-control-input" placeholder="e.g. 5" min="0" max="60" value="{{ draft.experience_range|default:'' }}" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+                    <input name="experience_range" type="number" class="form-control-input" placeholder="e.g. 5" min="0"
+                        max="60" value="{{ draft.experience_range|default:'' }}"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '');">
                 </div>
 
                 <div class="form-group">
-                    <label>Insurance Segments <span style="font-weight:400;color:#64748b;">(Select if applicable)</span></label>
+                    <label>Insurance Segments <span style="font-weight:400;color:#64748b;">(Select if
+                            applicable)</span></label>
                     <div class="segment-grid">
                         <div class="segment-checkbox">
                             <input type="checkbox" id="segment_health" name="segments[]" value="health" {% if 'health' in agent_segments %}checked{% endif %}>
@@ -270,7 +311,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Investment Types <span style="font-weight:400;color:#64748b;">(Select if applicable)</span></label>
+                    <label>Investment Types <span style="font-weight:400;color:#64748b;">(Select if
+                            applicable)</span></label>
                     <div class="segment-grid">
                         <div class="segment-checkbox">
                             <input type="checkbox" id="inv_sip_stp_swp" name="investment_types[]" value="SIP/STP/SWP" {% if 'sip/stp/swp' in draft.investment_types or 'sip' in draft.investment_types or 'stp' in draft.investment_types or 'swp' in draft.investment_types %}checked{% endif %}>
@@ -320,13 +362,16 @@
                 <input type="hidden" name="insurance_companies" id="insuranceCompaniesInput" value="[]">
 
                 <div class="form-group mb-4">
-                    <a href="javascript:void(0)" id="togglePromoBtn" style="color: #273C8E; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-size: 15px;">
+                    <a href="javascript:void(0)" id="togglePromoBtn"
+                        style="color: #273C8E; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-size: 15px;">
                         <i class="fas fa-tag"></i> I Have a promo code
                     </a>
                     <div id="promoFieldContainer" style="display: none; margin-top: 15px;">
                         <div class="d-flex gap-2">
-                            <input type="text" id="promoCodeInput" class="form-control-input" placeholder="Enter promo code">
-                            <button type="button" id="verifyPromoBtn" class="btn-verify" onclick="verifyPromoCode()">Verify</button>
+                            <input type="text" id="promoCodeInput" class="form-control-input"
+                                placeholder="Enter promo code">
+                            <button type="button" id="verifyPromoBtn" class="btn-verify"
+                                onclick="verifyPromoCode()">Verify</button>
                         </div>
                         <div id="promoMessage" class="mt-2" style="font-weight: 500; font-size: 13px;"></div>
                     </div>
@@ -337,7 +382,8 @@
             </form>
 
             <div class="text-center mt-4 pt-3" style="border-top: 1px solid #e2e8f0;">
-                <p style="color: #64748b; font-size: 15px; margin: 0;">Already have an account? <a href="/agent-login/" style="color: #0d9488; font-weight: 600; text-decoration: none;">Login here</a></p>
+                <p style="color: #64748b; font-size: 15px; margin: 0;">Already have an account? <a href="/agent-login/"
+                        style="color: #0d9488; font-weight: 600; text-decoration: none;">Login here</a></p>
             </div>
         </div>
     </div>
@@ -378,8 +424,8 @@
             feedback.style.display = 'block';
             feedback.innerHTML = '<span style="color:#273c8e;"><i class="fas fa-spinner fa-spin"></i> Checking location...</span>';
             fetch('/api/pincode/fetch/' + val)
-                .then(function(res) { return res.json(); })
-                .then(function(res) {
+                .then(function (res) { return res.json(); })
+                .then(function (res) {
                     if (res.success && res.data && res.data.state) {
                         detectedState = res.data.state;
                         stateWarn.style.display = 'none';
@@ -390,7 +436,7 @@
                         feedback.innerHTML = '<span style="color:#e67e22;"><i class="fas fa-info-circle"></i> Valid pincode format</span>';
                     }
                 })
-                .catch(function() {
+                .catch(function () {
                     feedback.style.display = 'none';
                 });
         } else {
@@ -437,19 +483,19 @@
             } else {
                 messageDiv.innerHTML = '<span style="color:#ef4444;">✗ ' + data.message + '</span>';
             }
-        } catch(e) {
+        } catch (e) {
             messageDiv.innerHTML = '<span style="color:#ef4444;">✗ Error checking promo code.</span>';
         } finally {
             verifyBtn.disabled = false;
         }
     }
 
-    document.getElementById('togglePromoBtn').addEventListener('click', function() {
+    document.getElementById('togglePromoBtn').addEventListener('click', function () {
         document.getElementById('promoFieldContainer').style.display = 'block';
         this.style.display = 'none';
     });
 
-    document.getElementById('agentForm1').addEventListener('submit', async function(e) {
+    document.getElementById('agentForm1').addEventListener('submit', async function (e) {
         e.preventDefault();
 
         var segments = document.querySelectorAll('input[name="segments[]"]:checked');
@@ -488,7 +534,7 @@
             } else {
                 showAlert(data.message || 'Error occurred. Please review inputs.', 'error');
             }
-        } catch(e) {
+        } catch (e) {
             showAlert('Connection error. Please try again.', 'error');
         } finally {
             submitBtn.disabled = false;

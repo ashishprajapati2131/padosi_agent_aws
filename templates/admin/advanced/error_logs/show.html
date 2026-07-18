@@ -1,0 +1,155 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}Error Log #{{ log.id }} — PadosiAgent Admin{% endblock %}
+{% block breadcrumb_title %}Error Logs › Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .traceback-container {
+        background-color: #0f172a;
+        color: #f1f5f9;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 13px;
+        padding: 20px;
+        border-radius: 8px;
+        overflow-x: auto;
+        max-height: 600px;
+    }
+    .badge-critical { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .badge-error { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
+    .badge-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .badge-info { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .badge-debug { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header and Back Button -->
+<div class="mb-4">
+    <a href="{% url 'admin_error_logs_index' %}" class="btn btn-outline-secondary btn-sm mb-3">
+        <i class="fa-solid fa-arrow-left me-1"></i> Back to Error Logs
+    </a>
+    <div class="d-flex align-items-center gap-3">
+        <h4 class="m-0 fw-bold">Error Details (ID #{{ log.id }})</h4>
+        <span class="badge badge-capsule {% if log.level == 'CRITICAL' %}badge-critical{% elif log.level == 'ERROR' %}badge-error{% elif log.level == 'WARNING' %}badge-warning{% elif log.level == 'INFO' %}badge-info{% else %}badge-debug{% endif %}" style="font-size: 12px; padding: 4px 12px;">
+            {{ log.level }}
+        </span>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left column: Main Metadata Card -->
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+            <div class="card-header bg-white py-3 fw-bold"><i class="fa-solid fa-circle-info me-2 text-primary"></i> General Information</div>
+            <div class="card-body p-0">
+                <table class="table mb-0 align-middle">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted fw-bold ps-4" style="width: 140px; font-size: 13px;">Timestamp</td>
+                            <td class="pe-4" style="font-size: 13.5px;">{{ log.timestamp|date:"d M Y, h:i A" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-bold ps-4" style="font-size: 13px;">Exception Type</td>
+                            <td class="pe-4 fw-bold text-danger" style="font-size: 13.5px;">{{ log.exception_type }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-bold ps-4" style="font-size: 13px;">Module</td>
+                            <td class="pe-4" style="font-size: 13.5px;">{{ log.module }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-bold ps-4" style="font-size: 13px;">Message</td>
+                            <td class="pe-4" style="font-size: 13px; word-break: break-all;">{{ log.message }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+            <div class="card-header bg-white py-3 fw-bold"><i class="fa-solid fa-network-wired me-2 text-info"></i> HTTP / Request Context</div>
+            <div class="card-body p-0">
+                <table class="table mb-0 align-middle">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted fw-bold ps-4" style="width: 140px; font-size: 13px;">Request Method</td>
+                            <td class="pe-4" style="font-size: 13.5px;">
+                                <span class="badge bg-light text-dark font-monospace">{{ log.method|default:'N/A' }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-bold ps-4" style="font-size: 13px;">Request URL</td>
+                            <td class="pe-4" style="font-size: 13.5px; word-break: break-all; color: #1d40af;">{{ log.url|default:'—' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-bold ps-4" style="font-size: 13px;">User / Client</td>
+                            <td class="pe-4 fw-semibold" style="font-size: 13.5px;">{{ log.user_info|default:'Guest' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-bold ps-4" style="font-size: 13px;">IP Address</td>
+                            <td class="pe-4" style="font-size: 13.5px;">{{ log.ip_address|default:'—' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted fw-bold ps-4" style="font-size: 13px;">Status Code</td>
+                            <td class="pe-4" style="font-size: 13.5px;">
+                                {% if log.status_code %}
+                                <span class="badge {% if log.status_code >= 500 %}bg-danger{% else %}bg-warning{% endif %}">{{ log.status_code }}</span>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right column: Stack Trace -->
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+            <div class="card-header bg-white py-3 fw-bold d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-code me-2 text-danger"></i> Stack Trace & Traceback</span>
+                <button class="btn btn-outline-secondary btn-sm" onclick="copyTraceback()"><i class="fa-regular fa-copy me-1"></i> Copy</button>
+            </div>
+            <div class="card-body">
+                {% if log.stack_trace %}
+                <pre class="traceback-container" id="tracebackCode"><code>{{ log.stack_trace }}</code></pre>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-triangle-exclamation fa-2x mb-2 text-warning opacity-50"></i>
+                    <p class="mb-0">No stack trace available for this log entry.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function copyTraceback() {
+        const codeElement = document.getElementById('tracebackCode');
+        if (!codeElement) return;
+
+        navigator.clipboard.writeText(codeElement.textContent)
+            .then(() => {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Copied to clipboard!',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                } else {
+                    alert('Copied to clipboard!');
+                }
+            })
+            .catch(err => console.error('Could not copy text: ', err));
+    }
+</script>
+{% endblock %}

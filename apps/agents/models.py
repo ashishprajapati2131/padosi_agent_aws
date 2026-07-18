@@ -196,6 +196,7 @@ class Agent(models.Model):
     event_id = models.IntegerField(null=True, blank=True)
     registration_draft = models.JSONField(null=True, blank=True)
     distributor_id = models.IntegerField(null=True, blank=True)
+    insurance_id = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_approved = models.BooleanField(default=False)
@@ -204,6 +205,11 @@ class Agent(models.Model):
     profession = models.CharField(max_length=255, null=True, blank=True, default='LIC Agent')
 
     serviceableCities = models.ManyToManyField('City', db_table='agent_serviceable_cities', blank=True, related_name='agents')
+
+    is_blacklisted = models.BooleanField(default=False)
+    blacklist_reason = models.TextField(blank=True, null=True)
+    blacklisted_at = models.DateTimeField(blank=True, null=True)
+    blacklist_source = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
         db_table = 'agents'

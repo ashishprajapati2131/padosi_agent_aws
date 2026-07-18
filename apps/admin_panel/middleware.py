@@ -325,6 +325,7 @@ class AdminPermissionMiddleware:
             'admin_pincode': 'pincode',
             'admin_advanced_analytics': 'analytics',
             'admin_advanced_activity_logs': 'analytics',
+            'admin_error_logs': 'analytics',
             'admin_security_threat_logs': 'analytics',
             'admin_security_blocked_ips': 'site_settings',
             'admin_settings_general': 'site_settings',
@@ -374,3 +375,50 @@ class AdminPermissionMiddleware:
             if permission in permissions_list:
                 return route
         return None
+
+
+import traceback
+import sys
+from apps.admin_panel.models.error_log import ErrorLog
+
+class ExceptionLoggerMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_exception(self, request, exception):
+        try:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+            stack_trace = "".join(tb_lines)
+            
+            # Identify user
+            user_info = None
+            if request.session.get('admin_id'):
+                user_info = f"Admin: {request.session.get('admin_name', 'N/A')} ({request.session.get('admin_email', 'N/A')})"
+            elif hasattr(request, 'user') and request.user.is_authenticated:
+                user_info = f"User: {request.user.username}"
+                
+            # Get IP address
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR')
+
+            # Log to Database
+            ErrorLog.objects.create(
+                level='ERROR',
+                module=exception.__class__.__module__,
+                exception_type=exception.__class__.__name__,
+                message=str(exception),
+                stack_trace=stack_trace,
+                url=request.build_absolute_uri(),
+                method=request.method,
+                user_info=user_info,
+                status_code=500,
+                ip_address=ip
+            )
+        except Exception:
+            pass
+        return None
+

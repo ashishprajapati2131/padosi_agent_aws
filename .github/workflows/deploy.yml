@@ -1,0 +1,61 @@
+name: Deploy Django to GoDaddy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Django system check
+        env:
+          DJANGO_SETTINGS_MODULE: padosi_agent.settings
+        run: |
+          python manage.py check
+
+      - name: Deploy to GoDaddy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GODADDY_HOST }}
+          username: ${{ secrets.GODADDY_USERNAME }}
+          key: ${{ secrets.GODADDY_SSH_KEY }}
+          script: |
+            set -e
+
+            cd ${{ secrets.GODADDY_PROJECT_PATH }}
+
+            echo "Pulling latest code..."
+            git pull origin main
+
+            echo "Activating virtual environment..."
+            source /home/m69qf6gyhm3n/virtualenv/padosiagentdjango/src/3.11/bin/activate
+
+            echo "Installing dependencies..."
+            pip install -r requirements.txt
+
+            echo "Running migrations..."
+            python manage.py migrate --noinput
+
+            echo "Collecting static files..."
+            python manage.py collectstatic --noinput
+
+            echo "Restarting Passenger..."
+            touch tmp/restart.txt
+
+            echo "Deployment completed successfully!"

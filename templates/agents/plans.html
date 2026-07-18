@@ -4,7 +4,8 @@
 {% block title %}Choose Your Plan — PadosiAgent{% endblock %}
 
 {% block extra_css %}
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
 <style>
     :root {
         --primary: #273c8e;
@@ -424,11 +425,13 @@
         cursor: pointer;
         user-select: none;
     }
+
     .terms-conditions-label a {
         color: #273c8e;
         font-weight: 600;
         text-decoration: none;
     }
+
     .terms-conditions-label a:hover {
         text-decoration: underline;
     }
@@ -438,52 +441,54 @@
 {% block content %}
 <section class="plans-container position-relative">
     <div class="plans-wrapper">
-        
+
         <!-- Header -->
         <div class="header-section">
             <div class="subtitle">{{ pricing_config.standard_label|default:'Get started with our standard partner plans' }}</div>
             <h1>Choose Your PadosiAgent Plan</h1>
-            <div class="description">Unlock professional features and listing visibility to reach clients instantly in your neighborhood.</div>
+            <div class="description">Unlock professional features and listing visibility to reach clients instantly in
+                your neighborhood.</div>
         </div>
 
         <div class="plans-grid">
-            
+
             {% if has_free_trial_promo and trial_active %}
-                {# TRIAL CARD #}
-                <div class="plan-card recommended-theme" style="border-color: #10b981;">
-                    <span class="recommended-ribbon" style="background: #10b981;">Trial Plan</span>
-                    
-                    <div class="plan-header">
-                        <div class="plan-name" style="color: #10b981;">Trial Plan</div>
-                        <div class="plan-price" style="color: #10b981;">
-                            ₹{{ trial_base_price|floatformat:2 }}/-<span>{{ trial_duration }} Days</span>
-                        </div>
-                        <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+ 18% GST applicable at checkout</div>
-                        <div class="plan-subtitle">{{ trial_config.description }}</div>
-                    </div>
+            {# TRIAL CARD #}
+            <div class="plan-card recommended-theme" style="border-color: #10b981;">
+                <span class="recommended-ribbon" style="background: #10b981;">Trial Plan</span>
 
-                    <div class="plan-features">
-                        <div class="category-block">
-                            <div class="category-header">
-                                <i class="fa-solid fa-briefcase"></i> Starter Access
-                            </div>
-                            <div class="feature-row">
-                                <div class="feature-name">
-                                    <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                    <span>All Standard Features Included</span>
-                                </div>
-                                <span class="badge-capsule badge-filled-green">Full</span>
-                            </div>
-                        </div>
+                <div class="plan-header">
+                    <div class="plan-name" style="color: #10b981;">Trial Plan</div>
+                    <div class="plan-price" style="color: #10b981;">
+                        ₹{{ trial_base_price|floatformat:2 }}/-<span>{{ trial_duration }} Days</span>
                     </div>
+                    <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
+                        18% GST applicable at checkout</div>
+                    <div class="plan-subtitle">{{ trial_config.description }}</div>
+                </div>
 
-                    <div>
-                        <button onclick="selectPlanForPayment('free_trial')" class="btn-select-plan trial-btn">
-                            <i class="fa-solid fa-circle-check"></i> Select Trial Plan
-                        </button>
-                        <div class="footer-note">Try before you commit</div>
+                <div class="plan-features">
+                    <div class="category-block">
+                        <div class="category-header">
+                            <i class="fa-solid fa-briefcase"></i> Starter Access
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name">
+                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                <span>All Standard Features Included</span>
+                            </div>
+                            <span class="badge-capsule badge-filled-green">Full</span>
+                        </div>
                     </div>
                 </div>
+
+                <div>
+                    <button onclick="selectPlanForPayment('free_trial')" class="btn-select-plan trial-btn">
+                        <i class="fa-solid fa-circle-check"></i> Select Trial Plan
+                    </button>
+                    <div class="footer-note">Try before you commit</div>
+                </div>
+            </div>
             {% endif %}
 
             {# STARTER CARD #}
@@ -498,7 +503,8 @@
                     <div class="plan-price">
                         ₹{{ starter_base|floatformat:2 }}/-<span>1st Year Only</span>
                     </div>
-                    <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+ 18% GST applicable at checkout</div>
+                    <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
+                        18% GST applicable at checkout</div>
                     <div class="plan-subtitle">{{ starter_desc }}</div>
                 </div>
 
@@ -514,14 +520,16 @@
                                 <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
                                 <span>Organic Lead Inquiries</span>
                             </div>
-                            <span class="badge-capsule badge-outline-green" style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Standard</span>
+                            <span class="badge-capsule badge-outline-green"
+                                style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Standard</span>
                         </div>
                         <div class="feature-row">
                             <div class="feature-name">
                                 <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
                                 <span>Service Lead Inquiries*</span>
                             </div>
-                            <span class="badge-capsule badge-outline-green" style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Standard</span>
+                            <span class="badge-capsule badge-outline-green"
+                                style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Standard</span>
                         </div>
                         <div class="feature-row">
                             <div class="feature-name">
@@ -584,14 +592,16 @@
                                 <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
                                 <span>Profile Analytics</span>
                             </div>
-                            <span class="badge-capsule badge-outline-green" style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Basic</span>
+                            <span class="badge-capsule badge-outline-green"
+                                style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Basic</span>
                         </div>
                         <div class="feature-row">
                             <div class="feature-name">
                                 <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
                                 <span>Retention Tools</span>
                             </div>
-                            <span class="badge-capsule badge-outline-green" style="border-color: #94a3b8; color: #94a3b8;">Limited Access</span>
+                            <span class="badge-capsule badge-outline-green"
+                                style="border-color: #94a3b8; color: #94a3b8;">Limited Access</span>
                         </div>
                     </div>
                 </div>
@@ -613,193 +623,196 @@
                 <div class="plan-header">
                     <div class="plan-name">{{ prof_name }}</div>
                     <div class="plan-price">
-                        {% if has_prof_promo and prof_final < prof_full %}
-                            <span style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">₹{{ prof_full|floatformat:2 }}</span>
+                        {% if has_prof_promo and prof_final < prof_full %} <span
+                            style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">
+                            ₹{{ prof_full|floatformat:2 }}</span>
                             ₹{{ prof_base|floatformat:2 }}/-<span>1st Year Only</span>
-                        {% else %}
+                            {% else %}
                             ₹{{ prof_base|floatformat:2 }}/-<span>1st Year Only</span>
-                        {% endif %}
+                            {% endif %}
                     </div>
-                    {% if has_prof_promo and prof_final < prof_full %}
-                        <div style="text-align:center; margin-top:6px;">
-                            <span style="background:#d1fae5; color:#059669; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #6ee7b7;">
-                                    <i class="fa-solid fa-tag me-1"></i> {{ pricing_config.promo_discount_label|default:'Promo Applied' }} — You Save ₹{{ prof_save_amount|floatformat:2 }}
-                            </span>
-                        </div>
-                    {% endif %}
-                    <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+ 18% GST applicable at checkout</div>
-                    <div class="plan-subtitle">{{ prof_desc }}</div>
+                    {% if has_prof_promo and prof_final < prof_full %} <div style="text-align:center; margin-top:6px;">
+                        <span
+                            style="background:#d1fae5; color:#059669; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #6ee7b7;">
+                            <i class="fa-solid fa-tag me-1"></i> {{ pricing_config.promo_discount_label|default:'Promo Applied' }} — You Save ₹{{ prof_save_amount|floatformat:2 }}
+                        </span>
                 </div>
+                {% endif %}
+                <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+ 18%
+                    GST applicable at checkout</div>
+                <div class="plan-subtitle">{{ prof_desc }}</div>
+            </div>
 
-                <!-- Categories Checklist -->
-                <div class="plan-features">
-                    <!-- Category 1: Sales Kit -->
-                    <div class="category-block">
-                        <div class="category-header">
-                            <i class="fa-solid fa-briefcase"></i> Sales Kit
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Organic Lead Inquiries</span>
-                            </div>
-                            <span class="badge-capsule badge-filled-green">Priority</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Service Lead Inquiries*</span>
-                            </div>
-                            <span class="badge-capsule badge-filled-green">Priority</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Referral Lead Inquiries</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                        </div>
+            <!-- Categories Checklist -->
+            <div class="plan-features">
+                <!-- Category 1: Sales Kit -->
+                <div class="category-block">
+                    <div class="category-header">
+                        <i class="fa-solid fa-briefcase"></i> Sales Kit
                     </div>
-
-                    <!-- Category 2: Asset & Marketing -->
-                    <div class="category-block">
-                        <div class="category-header">
-                            <i class="fa-solid fa-bullhorn"></i> Asset & Marketing
+                    <div class="feature-row">
+                        <div class="feature-name">
+                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                            <span>Organic Lead Inquiries</span>
                         </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Webpage</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Social Media Integration</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Digital Business Card</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Digital Gallery</span>
-                            </div>
-                            <span class="badge-capsule badge-filled-green">10 Images</span>
-                        </div>
+                        <span class="badge-capsule badge-filled-green">Priority</span>
                     </div>
-
-                    <!-- Category 3: Business Support -->
-                    <div class="category-block">
-                        <div class="category-header">
-                            <i class="fa-solid fa-headset"></i> Business Support
+                    <div class="feature-row">
+                        <div class="feature-name">
+                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                            <span>Service Lead Inquiries*</span>
                         </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Profile Review & Rating</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Trusted Badge</span>
-                            </div>
-                            <span class="badge-capsule badge-filled-green">Yes</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Profile Analytics</span>
-                            </div>
-                            <span class="badge-capsule badge-filled-green">Advanced</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Retention Tools</span>
-                            </div>
-                            <span class="badge-capsule badge-filled-green">Full Access</span>
-                        </div>
+                        <span class="badge-capsule badge-filled-green">Priority</span>
                     </div>
-
-                    <!-- Category 4: Coming Soon -->
-                    <div class="coming-soon-panel">
-                        <div class="coming-soon-title">
-                            <i class="fa-solid fa-bolt"></i> More Features Coming Soon
+                    <div class="feature-row">
+                        <div class="feature-name">
+                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                            <span>Referral Lead Inquiries</span>
                         </div>
-                        <div class="coming-soon-item">
-                            <i class="fa-regular fa-folder-closed"></i>
-                            <span>Business Ops Kit</span>
-                        </div>
-                        <div class="coming-soon-item">
-                            <i class="fa-solid fa-cubes"></i>
-                            <span>Cross Sell Products</span>
-                        </div>
-                        <div class="coming-soon-item">
-                            <i class="fa-solid fa-rocket"></i>
-                            <span>Many More...</span>
-                        </div>
+                        <span class="badge-capsule badge-outline-green">Lifetime*</span>
                     </div>
                 </div>
 
-                <div>
-                    <button onclick="selectPlanForPayment('professional')" class="btn-select-plan">
-                        <i class="fa-solid fa-crown"></i> Select Professional's Plan
-                    </button>
-                    <div class="footer-note">Special Pre-Launch Price</div>
+                <!-- Category 2: Asset & Marketing -->
+                <div class="category-block">
+                    <div class="category-header">
+                        <i class="fa-solid fa-bullhorn"></i> Asset & Marketing
+                    </div>
+                    <div class="feature-row">
+                        <div class="feature-name">
+                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                            <span>Webpage</span>
+                        </div>
+                        <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                    </div>
+                    <div class="feature-row">
+                        <div class="feature-name">
+                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                            <span>Social Media Integration</span>
+                        </div>
+                        <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                    </div>
+                    <div class="feature-row">
+                        <div class="feature-name">
+                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                            <span>Digital Business Card</span>
+                        </div>
+                        <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                    </div>
+                    <div class="feature-row">
+                        <div class="feature-name">
+                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                            <span>Digital Gallery</span>
+                        </div>
+                        <span class="badge-capsule badge-filled-green">10 Images</span>
+                    </div>
+                </div>
+
+                <!-- Category 3: Business Support -->
+                <div class="category-block">
+                    <div class="category-header">
+                        <i class="fa-solid fa-headset"></i> Business Support
+                    </div>
+                    <div class="feature-row">
+                        <div class="feature-name">
+                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                            <span>Profile Review & Rating</span>
+                        </div>
+                        <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                    </div>
+                    <div class="feature-row">
+                        <div class="feature-name">
+                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                            <span>Trusted Badge</span>
+                        </div>
+                        <span class="badge-capsule badge-filled-green">Yes</span>
+                    </div>
+                    <div class="feature-row">
+                        <div class="feature-name">
+                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                            <span>Profile Analytics</span>
+                        </div>
+                        <span class="badge-capsule badge-filled-green">Advanced</span>
+                    </div>
+                    <div class="feature-row">
+                        <div class="feature-name">
+                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                            <span>Retention Tools</span>
+                        </div>
+                        <span class="badge-capsule badge-filled-green">Full Access</span>
+                    </div>
+                </div>
+
+                <!-- Category 4: Coming Soon -->
+                <div class="coming-soon-panel">
+                    <div class="coming-soon-title">
+                        <i class="fa-solid fa-bolt"></i> More Features Coming Soon
+                    </div>
+                    <div class="coming-soon-item">
+                        <i class="fa-regular fa-folder-closed"></i>
+                        <span>Business Ops Kit</span>
+                    </div>
+                    <div class="coming-soon-item">
+                        <i class="fa-solid fa-cubes"></i>
+                        <span>Cross Sell Products</span>
+                    </div>
+                    <div class="coming-soon-item">
+                        <i class="fa-solid fa-rocket"></i>
+                        <span>Many More...</span>
+                    </div>
                 </div>
             </div>
 
+            <div>
+                <button onclick="selectPlanForPayment('professional')" class="btn-select-plan">
+                    <i class="fa-solid fa-crown"></i> Select Professional's Plan
+                </button>
+                <div class="footer-note">Special Pre-Launch Price</div>
+            </div>
         </div>
 
-        {# Dynamic Merged Secure Checkout UI #}
-        <div class="checkout-box" id="selectedPlanSummary" style="display:none;">
-            <div class="brand-header text-center mb-3">
-                <h4 class="fw-bold text-success mb-1"><i class="fa-solid fa-shield-halved"></i> Secure Checkout</h4>
-                <p class="text-muted small">Please review your billing details to complete payment.</p>
-            </div>
+    </div>
 
-            <!-- Order Summary -->
-            <div class="section-title">Order Summary</div>
-            <div class="summary-card">
-                <div class="detail-row">
-                    <span>Selected Plan</span>
-                    <strong id="selectedPlanName"></strong>
-                </div>
-                <div class="detail-row">
-                    <span>Base Registration Fee</span>
-                    <strong id="selectedPlanPrice"></strong>
-                </div>
-                <div class="detail-row">
-                    <span>GST (18%)</span>
-                    <strong id="selectedPlanGST"></strong>
-                </div>
-                <div class="summary-total">
-                    <span>Total Amount Payable</span>
-                    <strong id="selectedPlanTotal" style="color: #273c8e; font-size: 20px;"></strong>
-                </div>
-            </div>
-
-            <div class="form-check mt-3 mb-4">
-                <input class="form-check-input" type="checkbox" id="termsCheckbox">
-                <label class="form-check-label terms-conditions-label" for="termsCheckbox">
-                    I agree to the <a href="/terms/" target="_blank">Terms & Conditions</a> and <a href="/privacy/" target="_blank">Privacy Policy</a>.
-                </label>
-            </div>
-
-            <button id="confirmPaymentBtn" onclick="confirmPayment()" class="btn-pay">
-                <i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>
-            </button>
+    {# Dynamic Merged Secure Checkout UI #}
+    <div class="checkout-box" id="selectedPlanSummary" style="display:none;">
+        <div class="brand-header text-center mb-3">
+            <h4 class="fw-bold text-success mb-1"><i class="fa-solid fa-shield-halved"></i> Secure Checkout</h4>
+            <p class="text-muted small">Please review your billing details to complete payment.</p>
         </div>
+
+        <!-- Order Summary -->
+        <div class="section-title">Order Summary</div>
+        <div class="summary-card">
+            <div class="detail-row">
+                <span>Selected Plan</span>
+                <strong id="selectedPlanName"></strong>
+            </div>
+            <div class="detail-row">
+                <span>Base Registration Fee</span>
+                <strong id="selectedPlanPrice"></strong>
+            </div>
+            <div class="detail-row">
+                <span>GST (18%)</span>
+                <strong id="selectedPlanGST"></strong>
+            </div>
+            <div class="summary-total">
+                <span>Total Amount Payable</span>
+                <strong id="selectedPlanTotal" style="color: #273c8e; font-size: 20px;"></strong>
+            </div>
+        </div>
+
+        <div class="form-check mt-3 mb-4">
+            <input class="form-check-input" type="checkbox" id="termsCheckbox">
+            <label class="form-check-label terms-conditions-label" for="termsCheckbox">
+                I agree to the <a href="/terms/" target="_blank">Terms & Conditions</a> and <a href="/privacy/"
+                    target="_blank">Privacy Policy</a>.
+            </label>
+        </div>
+
+        <button id="confirmPaymentBtn" onclick="confirmPayment()" class="btn-pay">
+            <i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>
+        </button>
+    </div>
 
     </div>
 </section>
@@ -820,13 +833,31 @@
         total: {{ prof_final }}
     };
 
-    window.selectPlanForPayment = function(planType) {
+    window.selectPlanForPayment = function (planType) {
         if (planType === 'free_trial') {
-            selectedPlan = { type: 'free_trial', name: 'Trial Plan ({{ trial_duration }} Days)', price: trialBase, gst: {{ trial_gst }}, total: trialTotal };
+            selectedPlan = {
+                type: 'free_trial',
+                name: 'Trial Plan ({{ trial_duration }} Days)',
+                price: trialBase,
+                gst: {{ trial_gst }},
+                total: trialTotal
+            };
         } else if (planType === 'basic') {
-            selectedPlan = { type: 'basic', name: '{{ starter_name|escapejs }}', price: {{ starter_base }}, gst: {{ starter_gst }}, total: {{ starter_final }} };
+            selectedPlan = {
+                type: 'basic',
+                name: '{{ starter_name|escapejs }}',
+                price: {{ starter_base }},
+                gst: {{ starter_gst }},
+                total: {{ starter_final }}
+            };
         } else {
-            selectedPlan = { type: 'professional', name: '{{ prof_name|escapejs }}', price: {{ prof_base }}, gst: {{ prof_gst }}, total: {{ prof_final }} };
+            selectedPlan = {
+                type: 'professional',
+                name: '{{ prof_name|escapejs }}',
+                price: {{ prof_base }},
+                gst: {{ prof_gst }},
+                total: {{ prof_final }}
+            };
         }
 
         updateSelectedPlanSummary();

@@ -11,7 +11,8 @@
                                     <figure class="mb-0">
                                         <img src="{% if footer_settings.site_logo %}{% if footer_settings.site_logo|slice:':4' == 'http' or footer_settings.site_logo|slice:':1' == '/' %}{{ footer_settings.site_logo }}{% else %}{% static footer_settings.site_logo %}{% endif %}{% else %}{% static 'img/logo.png' %}{% endif %}"
                                             alt="{{ footer_settings.site_name|default:'PadosiAgent' }}"
-                                            style="max-height: 50px;" onerror="this.onerror=null; this.src='{% static 'img/logo.png' %}';">
+                                            style="max-height: 50px;"
+                                            onerror="this.onerror=null; this.src='{% static 'img/logo.png' %}';">
                                     </figure>
                                 </a>
                                 <p class="text-size-14 mb-0">Connecting clients with the right insurance agents in their
@@ -34,12 +35,12 @@
                                             class="text-decoration-none">FAQs</a></li>
                                     <li><i class="fa-solid fa-circle"></i><a href="#"
                                             class="text-decoration-none">Insurance Blog</a></li>
-                                    <li><i class="fa-solid fa-circle"></i><a href="/calculator/"
-                                            class="text-decoration-none">Insurance Calculator</a></li>
                                     <li><i class="fa-solid fa-circle"></i><a href="/agent-login/"
                                             class="text-decoration-none">Agent Login</a></li>
                                     <li><i class="fa-solid fa-circle"></i><a href="/agent-registration/"
                                             class="text-decoration-none">Agent Register</a></li>
+                                    <li><i class="fa-solid fa-circle"></i><a href="{% url 'home:blacklisted_agents' %}"
+                                            class="text-decoration-none">Blacklisted Agents</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -49,8 +50,8 @@
                                 <ul class="list-unstyled mb-0">
                                     <li class="text">
                                         <i class="fa-solid fa-envelope"></i>
-                                        <a href="mailto:{{ footer_settings.contact_email|default:'support@padosiagent.com' }}" id="footer-email-link"
-                                            target="_blank" class="text-decoration-none">{{ footer_settings.contact_email|default:'support@padosiagent.com' }}</a>
+                                        <a href="mailto:{{ footer_settings.contact_email|default:'support@padosiagent.com' }}"
+                                            id="footer-email-link" target="_blank" class="text-decoration-none">{{ footer_settings.contact_email|default:'support@padosiagent.com' }}</a>
                                     </li>
                                     <li class="text">
                                         <i class="fa-solid fa-location-dot"></i>

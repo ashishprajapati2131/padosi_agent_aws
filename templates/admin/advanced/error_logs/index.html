@@ -1,0 +1,285 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}System Error Logs — PadosiAgent Admin{% endblock %}
+{% block breadcrumb_title %}Advanced › Error Logs{% endblock %}
+
+{% block extra_css %}
+<style>
+    .severity-card { border-radius: 12px; transition: transform 0.2s; border: 1px solid var(--border-color); }
+    .severity-card:hover { transform: translateY(-2px); }
+    .badge-critical { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .badge-error { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
+    .badge-warning { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+    .badge-info { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .badge-debug { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="m-0 fw-bold">⚠️ System Error Logs</h4>
+        <span class="text-muted small">Monitor, analyze, and manage system exceptions and request-level errors.</span>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="POST" action="{% url 'admin_error_logs_delete' %}" onsubmit="return confirm('Are you sure you want to clear logs older than 30 days?')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="clear_old">
+            <button type="submit" class="btn btn-outline-secondary btn-sm">
+                <i class="fa-solid fa-broom me-1"></i> Clean >30 Days
+            </button>
+        </form>
+        <form method="POST" action="{% url 'admin_error_logs_delete' %}" onsubmit="return confirm('WARNING: This will permanently delete ALL error logs. Continue?')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="clear_all">
+            <button type="submit" class="btn btn-danger btn-sm shadow-sm">
+                <i class="fa-solid fa-trash-can me-1"></i> Clear All Logs
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card p-3 severity-card bg-white shadow-sm">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted small mb-1 fw-bold">Critical Errors</h6>
+                    <h3 class="m-0 fw-bold text-danger">{{ critical_count }}</h3>
+                </div>
+                <div class="bg-danger-subtle p-2 rounded-3 text-danger"><i class="fa-solid fa-circle-xmark fa-xl"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 severity-card bg-white shadow-sm">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted small mb-1 fw-bold">Standard Errors</h6>
+                    <h3 class="m-0 fw-bold text-warning">{{ error_count }}</h3>
+                </div>
+                <div class="bg-warning-subtle p-2 rounded-3 text-warning"><i class="fa-solid fa-triangle-exclamation fa-xl"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 severity-card bg-white shadow-sm">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted small mb-1 fw-bold">Warnings</h6>
+                    <h3 class="m-0 fw-bold text-info">{{ warning_count }}</h3>
+                </div>
+                <div class="bg-info-subtle p-2 rounded-3 text-info"><i class="fa-solid fa-circle-info fa-xl"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3 severity-card bg-white shadow-sm">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="text-muted small mb-1 fw-bold">Total Logs</h6>
+                    <h3 class="m-0 fw-bold text-dark">{{ total_count }}</h3>
+                </div>
+                <div class="bg-light p-2 rounded-3 text-dark"><i class="fa-solid fa-database fa-xl"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4 border-0 shadow-sm" style="border-radius: 12px;">
+    <div class="card-body p-4">
+        <form method="GET" action="{% url 'admin_error_logs_index' %}" class="row g-3">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0" placeholder="Search message, URL, user..." value="{{ search|default:'' }}">
+                </div>
+            </div>
+            
+            <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6">
+                <select name="level" class="form-select">
+                    <option value="all">All Levels</option>
+                    <option value="DEBUG" {% if selected_level == "DEBUG" %}selected{% endif %}>Debug</option>
+                    <option value="INFO" {% if selected_level == "INFO" %}selected{% endif %}>Info</option>
+                    <option value="WARNING" {% if selected_level == "WARNING" %}selected{% endif %}>Warning</option>
+                    <option value="ERROR" {% if selected_level == "ERROR" %}selected{% endif %}>Error</option>
+                    <option value="CRITICAL" {% if selected_level == "CRITICAL" %}selected{% endif %}>Critical</option>
+                </select>
+            </div>
+
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
+                <select name="module" class="form-select">
+                    <option value="">All Modules</option>
+                    {% for m in modules %}
+                    <option value="{{ m }}" {% if selected_module == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6">
+                <select name="time" class="form-select">
+                    <option value="all">All Time</option>
+                    <option value="24h" {% if selected_time == "24h" %}selected{% endif %}>Last 24 Hours</option>
+                    <option value="7d" {% if selected_time == "7d" %}selected{% endif %}>Last 7 Days</option>
+                    <option value="30d" {% if selected_time == "30d" %}selected{% endif %}>Last 30 Days</option>
+                </select>
+            </div>
+
+            <div class="col-xl-2 col-lg-4 col-md-12 col-sm-12">
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-filter me-1"></i> Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Logs Table -->
+<div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+    <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="selectAll">
+                <label class="form-check-label fw-bold" for="selectAll" style="font-size: 13px;">Select All on Page</label>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-danger" id="bulkDeleteBtn" disabled onclick="bulkDeleteLogs()">
+                <i class="fa-solid fa-trash-can me-1"></i> Delete Selected
+            </button>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 40px;"></th>
+                    <th>Level</th>
+                    <th>Exception / Type</th>
+                    <th>Module</th>
+                    <th>Path / URL</th>
+                    <th>Client / Admin</th>
+                    <th>Timestamp</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj %}
+                <tr>
+                    <td>
+                        <input class="form-check-input row-chk" type="checkbox" name="log_ids[]" value="{{ log.id }}" onchange="updateBulkBtn()">
+                    </td>
+                    <td>
+                        <span class="badge badge-capsule {% if log.level == 'CRITICAL' %}badge-critical{% elif log.level == 'ERROR' %}badge-error{% elif log.level == 'WARNING' %}badge-warning{% elif log.level == 'INFO' %}badge-info{% else %}badge-debug{% endif %}" style="font-size: 11px; padding: 4px 10px;">
+                            {{ log.level }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="fw-bold text-dark" style="font-size: 13.5px;">{{ log.exception_type }}</div>
+                        <div class="text-muted text-truncate" style="font-size: 11px; max-width: 320px;" title="{{ log.message }}">
+                            {{ log.message }}
+                        </div>
+                    </td>
+                    <td style="font-size: 13px;">{{ log.module }}</td>
+                    <td>
+                        <span class="badge bg-light text-dark font-monospace" style="font-size: 11px;">{{ log.method|default:'N/A' }}</span>
+                        <span style="font-size: 12px; color: #5f6b7a;">{{ log.url|default:'N/A' }}</span>
+                    </td>
+                    <td>
+                        <div class="fw-semibold" style="font-size: 13px;">{{ log.user_info|default:'Guest' }}</div>
+                        <div class="text-muted" style="font-size: 11px;">IP: {{ log.ip_address|default:'—' }}</div>
+                    </td>
+                    <td style="font-size: 12px; color: var(--text-muted);">{{ log.timestamp|date:"d M Y, h:i A" }}</td>
+                    <td class="text-end">
+                        <a href="{% url 'admin_error_logs_show' log.id %}" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-eye me-1"></i> Details</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-check-double fa-2x mb-3 text-success opacity-50 d-block"></i>
+                        No error logs found. System looks healthy!
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+        <div class="text-muted small">
+            Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} logs
+        </div>
+        <nav aria-label="Page navigation">
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search|default:'' }}&level={{ selected_level }}&module={{ selected_module }}&time={{ selected_time }}">Previous</a></li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">Previous</span></li>
+                {% endif %}
+
+                {% for i in page_obj.paginator.page_range %}
+                    {% if page_obj.number == i %}
+                        <li class="page-item active"><span class="page-link">{{ i }}</span></li>
+                    {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                        <li class="page-item"><a class="page-link" href="?page={{ i }}&search={{ search|default:'' }}&level={{ selected_level }}&module={{ selected_module }}&time={{ selected_time }}">{{ i }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search|default:'' }}&level={{ selected_level }}&module={{ selected_module }}&time={{ selected_time }}">Next</a></li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">Next</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('selectAll').addEventListener('change', function() {
+        document.querySelectorAll('.row-chk').forEach(chk => {
+            chk.checked = this.checked;
+        });
+        updateBulkBtn();
+    });
+
+    function updateBulkBtn() {
+        const checkedCount = document.querySelectorAll('.row-chk:checked').length;
+        const btn = document.getElementById('bulkDeleteBtn');
+        btn.disabled = checkedCount === 0;
+    }
+
+    function bulkDeleteLogs() {
+        if (!confirm('Are you sure you want to delete the selected error logs?')) return;
+
+        const ids = [];
+        document.querySelectorAll('.row-chk:checked').forEach(chk => {
+            ids.push(chk.value);
+        });
+
+        const formData = new FormData();
+        ids.forEach(id => formData.append('log_ids[]', id));
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch('{% url "admin_error_logs_delete" %}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) location.reload();
+            else alert('Error: ' + d.message);
+        })
+        .catch(() => alert('Network error. Please try again.'));
+    }
+</script>
+{% endblock %}

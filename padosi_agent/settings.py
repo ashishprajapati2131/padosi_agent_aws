@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'apps.agents',
     'rest_framework',
     'django.contrib.humanize',
+    'chatbot',
 ]
 
 MIDDLEWARE = [
@@ -73,11 +74,12 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'apps.admin_panel.middleware.ThreatMonitorMiddleware',
-    'apps.admin_panel.middleware.AdminIpWhitelistMiddleware',
-    'apps.admin_panel.middleware.AdminPermissionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'apps.admin_panel.middleware.ThreatMonitorMiddleware',
+    # 'apps.admin_panel.middleware.AdminIpWhitelistMiddleware',
+    'apps.admin_panel.middleware.AdminPermissionMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.admin_panel.middleware.ExceptionLoggerMiddleware',
 ]
 
 ROOT_URLCONF = 'padosi_agent.urls'

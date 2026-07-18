@@ -15,6 +15,7 @@ from .admin_auth import Admin, SecurityThreatLog
 from .qr_file import QrFile
 from .insurance_approval import AgentApprovalRequest
 from .user_session import UserSession, UserSessionData
+from .error_log import ErrorLog
 
 __all__ = [
     'Agent',
@@ -35,5 +36,6 @@ __all__ = [
     'AgentApprovalRequest',
     'UserSession',
     'UserSessionData',
+    'ErrorLog',
 ]
 

@@ -21,7 +21,7 @@
     <div class="card-body p-4">
         <form method="GET" action="{% url 'admin_agents' %}" class="row g-3">
             <!-- Search -->
-            <div class="col-md-3">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12">
                 <div class="input-group">
                     <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
                     <input type="text" name="search" class="form-control border-start-0" placeholder="Search by name, email..." value="{{ search }}">
@@ -40,7 +40,7 @@
             {% endif %}
 
             <!-- Plan Filter -->
-            <div class="col-md-2">
+            <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6">
                 <select name="plan" class="form-select">
                     <option value="All Plans" {% if plan_filter == "All Plans" %}selected{% endif %}>All Plans</option>
                     <option value="Starter's Plan" {% if plan_filter == "Starter's Plan" %}selected{% endif %}>Starter's Plan</option>
@@ -49,7 +49,7 @@
             </div>
 
             <!-- Status Filter -->
-            <div class="col-md-2">
+            <div class="col-xl-2 col-lg-4 col-md-6 col-sm-6">
                 <select name="status" class="form-select">
                     <option value="All Status" {% if status_filter == "All Status" %}selected{% endif %}>All Status</option>
                     <option value="active" {% if status_filter == "active" %}selected{% endif %}>Active</option>
@@ -63,12 +63,12 @@
             </div>
 
             <!-- City Filter -->
-            <div class="col-md-3">
+            <div class="col-xl-3 col-lg-8 col-md-6 col-sm-12">
                 <input type="text" name="city" class="form-control" placeholder="Filter by city..." value="{{ city_filter }}">
             </div>
 
             <!-- Submit -->
-            <div class="col-md-2">
+            <div class="col-xl-2 col-lg-4 col-md-12 col-sm-12">
                 <button type="submit" class="btn btn-primary w-100">Filter Agents</button>
             </div>
         </form>
