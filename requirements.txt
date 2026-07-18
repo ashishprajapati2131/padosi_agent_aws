@@ -48,7 +48,7 @@ dicttoxml==1.7.16
 dill==0.3.9
 distro==1.9.0
 dj-database-url==3.1.2
-Django==6.0.2
+Django==5.2.16
 django-bootstrap5==26.2
 django-cors-headers==4.9.0
 djangorestframework==3.16.1
