@@ -54,6 +54,10 @@
                                             id="footer-email-link" target="_blank" class="text-decoration-none">{{ footer_settings.contact_email|default:'support@padosiagent.com' }}</a>
                                     </li>
                                     <li class="text">
+                                        <i class="fa-solid fa-phone"></i>
+                                        <a href="tel:{{ footer_settings.contact_phone|default:'+91 80000 00000' }}" class="text-decoration-none">{{ footer_settings.contact_phone|default:'+91 80000 00000' }}</a>
+                                    </li>
+                                    <li class="text">
                                         <i class="fa-solid fa-location-dot"></i>
                                         <a href="#" class="text-decoration-none address mb-0">{{ footer_settings.contact_address|default:'Ahmedabad - 380009 Gujarat, India' }}</a>
                                     </li>

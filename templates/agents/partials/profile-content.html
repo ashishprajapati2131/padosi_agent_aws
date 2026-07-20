@@ -651,14 +651,15 @@
             <div class="reviews-body">
                 <div class="reviews-list">
                     {% for review in reviews %}
-                        {% with reviewerName=review.reviewer_name|default:review.user.username|default:"User" %}
                         <div class="review-item">
                             <div class="review-top">
                                 <div class="reviewer-info">
                                     <div class="reviewer-avatar">
-                                        {{ reviewerName|slice:":1"|upper }}
+                                        {{ review.author_display|slice:":1"|upper }}
                                     </div>
-                                    <div class="reviewer-name">{{ reviewerName }}</div>
+                                    <div class="reviewer-name">
+                                        {{ review.author_display }}
+                                    </div>
                                 </div>
                                 <div class="stars">
                                     {% for i in "12345" %}
@@ -673,7 +674,6 @@
                             <p class="review-text">{{ review.review|striptags }}</p>
                             <div class="review-date">{{ review.created_at|date:"M d, Y"|default:"N/A" }}</div>
                         </div>
-                        {% endwith %}
                     {% empty %}
                         <div class="review-empty">No reviews yet. Be the first to review!</div>
                     {% endfor %}

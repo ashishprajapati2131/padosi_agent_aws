@@ -8,7 +8,7 @@ def footer_settings(request):
     """
     cached_data = cache.get('footer_settings_data')
     if cached_data is None:
-        keys = ['contact_email', 'contact_address', 'social_links', 'site_logo', 'site_name']
+        keys = ['contact_email', 'contact_phone', 'contact_address', 'social_links', 'site_logo', 'site_name']
         settings_qs = SiteSetting.objects.filter(key__in=keys)
         settings_dict = {s.key: s.value for s in settings_qs}
 
@@ -25,6 +25,7 @@ def footer_settings(request):
         # Fill defaults if missing or empty
         cached_data = {
             'contact_email': settings_dict.get('contact_email') or 'support@padosiagent.com',
+            'contact_phone': settings_dict.get('contact_phone') or '+91 80000 00000',
             'contact_address': settings_dict.get('contact_address') or 'Ahmedabad - 380009 Gujarat, India',
             'social_links': {
                 'facebook': social_links.get('facebook') or '',

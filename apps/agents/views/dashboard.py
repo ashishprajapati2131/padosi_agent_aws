@@ -103,9 +103,11 @@ def agent_dashboard(request):
 
     try:
         recent_leads = AgentLead.objects.filter(agent=agent).order_by('-created_at')[:10]
+        all_leads = AgentLead.objects.filter(agent=agent).order_by('-created_at')
     except Exception as e:
         logger.warning(f"Dashboard recent leads unavailable for agent #{agent.id}: {e}")
         recent_leads = []
+        all_leads = []
 
     dashboard_stats = {
         'conversionRate': conversion_rate,
@@ -221,6 +223,7 @@ def agent_dashboard(request):
         'profile': profile,
         'dashboardStats': dashboard_stats,
         'recentLeads': recent_leads,
+        'allLeads': all_leads,
         'showReferral': show_referral,
         'completion': completion,
         'isOnTrial': is_on_trial,
@@ -241,6 +244,35 @@ def agent_dashboard(request):
     }
 
     return render(request, 'agents/dashboard.html', context)
+
+
+@require_POST
+@login_required(login_url='agents:agent_login')
+@csrf_protect
+def update_lead_status(request):
+    """
+    Handle AJAX request to update the status of a lead for an agent.
+    """
+    user = request.user
+    agent = Agent.objects.filter(user=user).first()
+    if not agent:
+        return JsonResponse({'status': 'error', 'message': 'Agent not found'}, status=403)
+        
+    lead_id = request.POST.get('lead_id')
+    new_status = request.POST.get('status')
+    
+    valid_statuses = ['new', 'contacted', 'follow_up', 'closed']
+    if new_status not in valid_statuses:
+        return JsonResponse({'status': 'error', 'message': 'Invalid status provided'}, status=400)
+        
+    lead = AgentLead.objects.filter(id=lead_id, agent=agent).first()
+    if not lead:
+        return JsonResponse({'status': 'error', 'message': 'Lead not found or access denied'}, status=404)
+        
+    lead.lead_status = new_status
+    lead.save()
+    
+    return JsonResponse({'status': 'success', 'message': 'Lead status updated successfully', 'new_status': new_status})
 
 
 @login_required(login_url='agents:agent_login')
@@ -672,7 +704,6 @@ def edit_profile(request):
     return render(request, 'agents/edit_profile.html', context)
 
 
-@login_required(login_url='agents:agent_login')
 @require_POST
 @never_cache
 def update_profile(request):

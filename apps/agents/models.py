@@ -778,9 +778,11 @@ class AgentReview(models.Model):
 
     @property
     def author_display(self):
+        if self.reviewer_name:
+            return self.reviewer_name
         if self.user:
-            return self.user.get_full_name() or self.user.username
-        return self.reviewer_name or 'Anonymous'
+            return getattr(self.user, 'fullname', '') or self.user.get_full_name() or self.user.username
+        return 'User'
 
 
 class AgentFamilyLicense(models.Model):
