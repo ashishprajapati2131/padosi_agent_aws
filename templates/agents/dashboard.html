@@ -307,6 +307,7 @@
                                             <th>Pincode</th>
                                             <th>Requirement</th>
                                             <th>Source</th>
+                                            <th>Status</th>
                                             <th>Time</th>
                                         </tr>
                                     </thead>
@@ -321,6 +322,17 @@
                                                 <td>{{ lead.customer_pincode|default:'-' }}</td>
                                                 <td>{{ lead.enquiry_requirements|default:'-' }}</td>
                                                 <td style="text-transform: capitalize;">{{ lead.interaction_type }}</td>
+                                                <td>
+                                                    <select class="form-select form-select-sm lead-status-dropdown"
+                                                            data-lead-id="{{ lead.id }}"
+                                                            style="font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 8px; width: 130px; cursor: pointer; display: inline-block;
+                                                                   {% if lead.lead_status == 'new' %}background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca;{% elif lead.lead_status == 'contacted' %}background-color: #fefce8; color: #ca8a04; border: 1px solid #fef08a;{% elif lead.lead_status == 'follow_up' %}background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;{% elif lead.lead_status == 'closed' %}background-color: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;{% else %}background-color: #f8fafc; color: #475569; border: 1px solid #cbd5e1;{% endif %}">
+                                                        <option value="new" {% if lead.lead_status == 'new' %}selected{% endif %} style="background: #fff; color: #dc2626; font-weight: 600;">🔴 New</option>
+                                                        <option value="contacted" {% if lead.lead_status == 'contacted' %}selected{% endif %} style="background: #fff; color: #ca8a04; font-weight: 600;">🟡 Contacted</option>
+                                                        <option value="follow_up" {% if lead.lead_status == 'follow_up' %}selected{% endif %} style="background: #fff; color: #2563eb; font-weight: 600;">🔵 Follow-up</option>
+                                                        <option value="closed" {% if lead.lead_status == 'closed' %}selected{% endif %} style="background: #fff; color: #16a34a; font-weight: 600;">🟢 Closed</option>
+                                                    </select>
+                                                </td>
                                                 <td>{{ lead.created_at|timesince }} ago</td>
                                             </tr>
                                         {% endfor %}
@@ -872,5 +884,50 @@
             btn.innerHTML = '<i class="fas fa-lock me-2"></i> Pay Securely & Upgrade';
         });
     }
+
+    // Lead Status AJAX Update Handler
+    $(document).on('change', '.lead-status-dropdown', function() {
+        const $select = $(this);
+        const leadId = $select.data('lead-id');
+        const newStatus = $select.val();
+        const csrfToken = '{{ csrf_token }}';
+
+        $select.prop('disabled', true);
+
+        $.ajax({
+            url: "{% url 'agents:update_lead_status' %}",
+            type: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            data: {
+                'lead_id': leadId,
+                'status': newStatus
+            },
+            success: function(response) {
+                $select.prop('disabled', false);
+                if (response.status === 'success') {
+                    // Update styling of the dropdown box dynamically based on selected status
+                    if (newStatus === 'new') {
+                        $select.css({ 'background-color': '#fef2f2', 'color': '#dc2626', 'border-color': '#fecaca' });
+                    } else if (newStatus === 'contacted') {
+                        $select.css({ 'background-color': '#fefce8', 'color': '#ca8a04', 'border-color': '#fef08a' });
+                    } else if (newStatus === 'follow_up') {
+                        $select.css({ 'background-color': '#eff6ff', 'color': '#2563eb', 'border-color': '#bfdbfe' });
+                    } else if (newStatus === 'closed') {
+                        $select.css({ 'background-color': '#f0fdf4', 'color': '#16a34a', 'border-color': '#bbf7d0' });
+                    }
+                } else {
+                    alert(response.message || 'Could not update status');
+                }
+            },
+            error: function(xhr) {
+                $select.prop('disabled', false);
+                let err = 'An error occurred while updating status. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    err = xhr.responseJSON.message;
+                }
+                alert(err);
+            }
+        });
+    });
 </script>
 {% endblock %}
