@@ -52,49 +52,49 @@
 
         /* Guest Gate Popup Styles */
         .swal2-container .swal2-popup.guest-gate-popup {
-            width: min(430px, 92vw) !important; border-radius: 20px;
-            padding: 28px 24px 20px !important; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
-            border: 1px solid #dbeafe; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); overflow: hidden;
+            width: min(440px, 92vw) !important; border-radius: 28px !important;
+            padding: 28px 26px 24px !important; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25) !important;
+            border: 1px solid #e2e8f0 !important; background: #ffffff !important; overflow: hidden;
         }
         .swal2-container .swal2-popup.guest-gate-popup .swal2-html-container { margin: 0 0 4px; padding: 0 !important; }
-        .swal2-container .swal2-popup.guest-gate-popup .swal2-actions { margin: 12px 0 0 0 !important; padding: 0 !important; width: 100%; }
+        .swal2-container .swal2-popup.guest-gate-popup .swal2-actions { margin: 16px 0 0 0 !important; padding: 0 !important; width: 100%; }
         .swal2-container .swal2-popup.guest-gate-popup .swal2-confirm {
-            width: 100%; border-radius: 12px !important; height: 48px; font-weight: 700 !important;
-            font-size: 16px !important; letter-spacing: 0.3px;
-            background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%) !important;
-            box-shadow: 0 6px 20px rgba(29, 78, 216, 0.3); border: none !important; transition: all 0.3s ease;
+            width: 100%; border-radius: 16px !important; height: 50px; font-weight: 800 !important;
+            font-size: 16px !important; letter-spacing: 0.2px; color: #ffffff !important;
+            background: linear-gradient(90deg, #1d4ed8 0%, #0284c7 100%) !important;
+            box-shadow: 0 8px 20px rgba(2, 132, 199, 0.35) !important; border: none !important; transition: all 0.25s ease;
         }
-        .swal2-container .swal2-popup.guest-gate-popup .swal2-confirm:hover { box-shadow: 0 8px 25px rgba(29, 78, 216, 0.4); transform: translateY(-1px); }
+        .swal2-container .swal2-popup.guest-gate-popup .swal2-confirm:hover {
+            box-shadow: 0 12px 28px rgba(2, 132, 199, 0.45) !important; transform: translateY(-1px);
+        }
         .guest-gate-form { text-align: left; }
-        .guest-gate-brand { display: flex; justify-content: center; margin-bottom: 6px; }
-        .guest-gate-brand img { width: 110px; height: auto; }
-        .guest-gate-heading { font-weight: 800; color: #1e293b; text-align: center; margin: 0 0 4px 0; font-size: 26px; line-height: 1.2; }
-        .guest-gate-subtext { color: #2563eb; font-style: italic; font-weight: 600; font-size: 15px; text-align: center; margin-bottom: 16px; line-height: 1.4; }
-        .guest-gate-group { margin-bottom: 12px; }
-        .guest-gate-label { font-size: 13px; font-weight: 700; color: #334155; display: block; margin-bottom: 5px; }
+        .guest-gate-brand { display: flex; justify-content: center; margin-bottom: 8px; }
+        .guest-gate-brand img { width: 125px; height: auto; }
+        .guest-gate-heading { font-weight: 800; color: #1e3a8a; text-align: center; margin: 0 0 4px 0; font-size: 24px; line-height: 1.2; font-family: 'Urbanist', sans-serif; }
+        .guest-gate-subtext { color: #2563eb; font-style: italic; font-weight: 600; font-size: 14px; text-align: center; margin-bottom: 20px; line-height: 1.4; font-family: 'Urbanist', sans-serif; }
+        .guest-gate-group { margin-bottom: 14px; }
+        .guest-gate-label { font-size: 13px; font-weight: 700; color: #334155; display: block; margin-bottom: 6px; font-family: 'Urbanist', sans-serif; }
         .guest-gate-input, .guest-gate-prefix, .guest-gate-mobile {
-            border: 1.5px solid #e2e8f0 !important; background: #f8fafc !important; min-height: 42px;
+            border: 1.5px solid #e2e8f0 !important; background: #f8fafc !important; min-height: 48px;
             font-size: 14px; transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
         }
         .guest-gate-input:focus, .guest-gate-mobile:focus {
             border-color: #2563eb !important; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important; background: #ffffff !important;
         }
-        .guest-gate-input { border-radius: 10px !important; padding: 10px 14px !important; width: 100%; }
+        .guest-gate-input { border-radius: 12px !important; padding: 10px 14px !important; width: 100%; font-weight: 600; }
         .guest-gate-mobile-wrap { display: flex; gap: 0; }
-        .guest-gate-prefix { border-right: 0 !important; border-radius: 10px 0 0 10px; padding: 10px 12px; color: #64748b; font-weight: 700; display: inline-flex; align-items: center; background: #f1f5f9 !important; }
-        .guest-gate-mobile { border-radius: 0 10px 10px 0 !important; padding: 10px 14px !important; flex: 1; width: 100%; }
+        .guest-gate-prefix { border-right: 0 !important; border-radius: 12px 0 0 12px !important; padding: 10px 14px; color: #475569; font-weight: 700; display: inline-flex; align-items: center; background: #f1f5f9 !important; border-right: 1.5px solid #e2e8f0 !important; }
+        .guest-gate-mobile { border-radius: 0 12px 12px 0 !important; padding: 10px 14px !important; flex: 1; width: 100%; font-weight: 600; }
         @media (max-width: 576px) {
-            .swal2-container .swal2-popup.guest-gate-popup { width: min(360px, 92vw) !important; padding: 22px 18px 16px !important; }
-            .guest-gate-heading { font-size: 20px; }
-            .guest-gate-subtext { font-size: 13px; margin-bottom: 12px; }
-            .guest-gate-group { margin-bottom: 8px !important; }
-            .guest-gate-input, .guest-gate-prefix, .guest-gate-mobile { min-height: 38px !important; font-size: 13px !important; }
-            .guest-gate-prefix { padding: 8px 10px !important; }
+            .swal2-container .swal2-popup.guest-gate-popup { width: min(380px, 92vw) !important; padding: 22px 18px 18px !important; border-radius: 20px !important; }
+            .guest-gate-heading { font-size: 21px; }
+            .guest-gate-subtext { font-size: 13px; margin-bottom: 14px; }
+            .guest-gate-group { margin-bottom: 10px !important; }
+            .guest-gate-input, .guest-gate-prefix, .guest-gate-mobile { min-height: 44px !important; font-size: 13.5px !important; }
+            .guest-gate-prefix { padding: 8px 12px !important; }
             .guest-gate-mobile, .guest-gate-input { padding: 8px 12px !important; }
-            .swal2-container .swal2-popup.guest-gate-popup .swal2-confirm { height: 42px !important; font-size: 15px !important; }
-            .swal2-container .swal2-popup.guest-gate-popup { padding: 20px 16px 16px !important; border-radius: 16px; }
-            .guest-gate-brand img { width: 90px; }
-            .guest-gate-heading { font-size: 22px; margin-bottom: 4px; }
+            .swal2-container .swal2-popup.guest-gate-popup .swal2-confirm { height: 46px !important; font-size: 15px !important; border-radius: 14px !important; }
+            .guest-gate-brand img { width: 105px; }
         }
 
         /* Padosi Guest Popup (Connect with Agent) */

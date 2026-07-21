@@ -176,10 +176,13 @@ def manage_agent(request, id):
     for log in edit_logs_raw:
         parsed_changes = []
         if log.changes:
-            try:
-                parsed_changes = json.loads(log.changes)
-            except json.JSONDecodeError:
-                parsed_changes = []
+            if isinstance(log.changes, (list, dict)):
+                parsed_changes = log.changes
+            elif isinstance(log.changes, (str, bytes, bytearray)):
+                try:
+                    parsed_changes = json.loads(log.changes)
+                except (json.JSONDecodeError, TypeError):
+                    parsed_changes = []
                 
         edit_logs.append({
             'id': log.id,
@@ -803,10 +806,13 @@ def get_edit_logs(request, id):
         for log in query:
             changes = []
             if log.changes:
-                try:
-                    changes = json.loads(log.changes)
-                except json.JSONDecodeError:
-                    pass
+                if isinstance(log.changes, (list, dict)):
+                    changes = log.changes
+                elif isinstance(log.changes, (str, bytes, bytearray)):
+                    try:
+                        changes = json.loads(log.changes)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
 
             diff_for_humans = timesince(log.created_at) + " ago" if log.created_at else ""
             created_at_str = log.created_at.strftime('%d %b %Y, %I:%M %p') if log.created_at else ""

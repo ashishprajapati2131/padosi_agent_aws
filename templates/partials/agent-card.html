@@ -111,7 +111,6 @@
                     <div class="rac-tags" style="margin-top: 10px; flex-wrap: nowrap;">
                         {% for seg in agent.ordered_insurance_segments|slice:":4" %}
                             <span class="rac-tag {% if 'health' in seg %}rac-tag--health{% elif 'life' in seg %}rac-tag--life{% elif 'motor' in seg %}rac-tag--motor{% elif 'sme' in seg %}rac-tag--sme{% else %}rac-tag--default{% endif %}">
-                                <i class="fas {% if 'health' in seg %}fa-heartbeat{% elif 'life' in seg %}fa-user-shield{% elif 'motor' in seg %}fa-car{% elif 'sme' in seg %}fa-store{% else %}fa-shield-alt{% endif %}" style="font-size: 8px; margin-right: 3px;"></i>
                                 {% if seg == 'sme' %}SME{% else %}{{ seg|capfirst }}{% endif %}
                             </span>
                         {% endfor %}
@@ -286,9 +285,6 @@
                     <div class="rac-d-tags">
                         {% for seg in agent.ordered_insurance_segments %}
                             <span class="rac-d-tag {% if 'health' in seg %}rac-tag--health{% elif 'life' in seg %}rac-tag--life{% elif 'motor' in seg %}rac-tag--motor{% elif 'sme' in seg %}rac-tag--sme{% else %}rac-tag--default{% endif %}">
-                                <span class="rac-d-tag-icon">
-                                    <i class="fas {% if 'health' in seg %}fa-heartbeat{% elif 'life' in seg %}fa-user-shield{% elif 'motor' in seg %}fa-car{% elif 'sme' in seg %}fa-store{% else %}fa-shield-alt{% endif %}"></i>
-                                </span>
                                 {% if seg == 'sme' %}SME{% else %}{{ seg|capfirst }}{% endif %}
                             </span>
                         {% endfor %}
@@ -755,11 +751,26 @@
         .rac-match--amber { background: #fffbeb; color: #d97706; border-color: #fde68a; }
         .rac-match--red { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 
-        .rac-dist-pill { display: inline-flex; align-items: center; gap: 4px; background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap; width: auto; }
+        .rac-dist-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            color: #ffffff !important;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 999px;
+            white-space: nowrap;
+            letter-spacing: 0.2px;
+            box-shadow: 0 1px 4px rgba(22, 163, 74, 0.35);
+            width: fit-content;
+        }
 
         .rac-dist-pill svg {
             flex-shrink: 0;
-            opacity: 0.9;
+            opacity: 0.95;
+            color: #ffffff !important;
         }
 
         .rac-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
@@ -1107,8 +1118,8 @@
         .rac-d-tag {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 5px 10px 5px 5px;
+            justify-content: center;
+            padding: 4px 10px;
             border-radius: 999px;
             border: 1px solid;
             font-size: 11px;

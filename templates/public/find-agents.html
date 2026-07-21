@@ -574,42 +574,6 @@
             border-radius: 12px;
         }
 
-        .swal2-container .swal2-popup.guest-gate-popup {
-            width: min(360px, 90vw) !important;
-            padding: 20px 16px 16px !important;
-            border-radius: 16px;
-        }
-
-        .guest-gate-brand img {
-            width: 90px;
-        }
-
-        .guest-gate-heading {
-            font-size: 22px;
-            margin-bottom: 4px;
-        }
-
-        .guest-gate-subtext {
-            font-size: 13px;
-            margin-bottom: 12px;
-        }
-
-        .guest-gate-group {
-            margin-bottom: 10px;
-        }
-
-        .guest-gate-input,
-        .guest-gate-mobile,
-        .guest-gate-prefix {
-            min-height: 40px;
-            font-size: 13px;
-        }
-
-        .swal2-container .swal2-popup.guest-gate-popup .swal2-confirm {
-            font-size: 15px !important;
-            height: 44px;
-            border-radius: 10px !important;
-        }
     }
 
     /* Comparison Table in Modal */
@@ -2191,6 +2155,20 @@
 
             if (insuranceTypes.length > 0) {
                 $('.circle-tile').removeClass('active');
+                insuranceTypes.forEach(insType => {
+                    let categoryName = categoryNames[insType] || insType;
+                    if (insType === 'Vehicle Insurance' || insType === 'Vehicle') categoryName = 'Motor Insurance';
+                    if (insType === 'Business Insurance' || insType === 'Business') categoryName = 'SME Insurance';
+                    if (insType === 'Health Insurance' || insType === 'Health') categoryName = 'Health Insurance';
+                    if (insType === 'Life Insurance' || insType === 'Life') categoryName = 'Life Insurance';
+
+                    const $section = $(`.product-category-section[data-category="${categoryName}"]`);
+                    if ($section.length > 0) {
+                        if (!($section.attr('id') === 'life-insurance-section' && $section.hasClass('collapsed'))) {
+                            $section.find('.circle-tile').addClass('active');
+                        }
+                    }
+                });
             }
 
             // ─── 3. Restore InsuranceCompany sub-products (non-claim mode) ───
@@ -3015,12 +2993,12 @@
             const isMobilePopup = window.matchMedia('(max-width: 576px)').matches;
 
             let welcomeHtml = `
-                <div class="swal-welcome-content" style="font-family: 'Urbanist', sans-serif; text-align: left;">
-                    <div class="guest-gate-brand" style="text-align: center;">
-                        <img src="{% static 'img/logo.png' %}" alt="PadosiAgent" style="width: 120px; display: block; margin: 0 auto 10px;">
+                <div class="swal-welcome-content" style="font-family: 'Urbanist', sans-serif;">
+                    <div class="guest-gate-brand">
+                        <img src="{% static 'img/logo.png' %}" alt="PadosiAgent">
                     </div>
-                    <h3 class="guest-gate-heading" style="font-size: 22px; font-weight: 800; color: #1e3a8a; text-align: center; margin-top: 15px; margin-bottom: 5px;">Welcome to PadosiAgent! 👋</h3>
-                    <p class="guest-gate-subtext" style="color: #64748b; font-size: 13px; text-align: center; margin-bottom: 20px;">
+                    <h3 class="guest-gate-heading">Welcome to PadosiAgent! 👋</h3>
+                    <p class="guest-gate-subtext">
                         "Agents can serve you better when they are your Padosi"
                     </p>
 
@@ -3029,20 +3007,20 @@
                     </div>
 
                     <div class="guest-gate-form">
-                        <div class="guest-gate-group" style="margin-bottom: 15px;">
-                            <label class="guest-gate-label" style="font-weight: 700; font-size: 12px; color: #475569; display: block; margin-bottom: 5px;">
+                        <div class="guest-gate-group">
+                            <label class="guest-gate-label">
                                 <i class="far fa-user mr-2"></i> Name *
                             </label>
-                            <input type="text" id="swal-fullname" class="form-control guest-gate-input" placeholder="Enter your full name" style="height: 48px; border-radius: 12px; border: 1.5px solid #cbd5e1; outline: none; padding: 10px 14px; font-size: 14px; font-weight: 600; width: 100%;">
+                            <input type="text" id="swal-fullname" class="form-control guest-gate-input" placeholder="Enter your full name">
                         </div>
                         
-                        <div class="guest-gate-group" style="margin-bottom: 20px;">
-                            <label class="guest-gate-label" style="font-weight: 700; font-size: 12px; color: #475569; display: block; margin-bottom: 5px;">
+                        <div class="guest-gate-group">
+                            <label class="guest-gate-label">
                                 <i class="fas fa-phone-volume mr-2"></i> Mobile Number *
                             </label>
-                            <div class="guest-gate-mobile-wrap" style="position: relative; display: flex; align-items: center; border: 1.5px solid #cbd5e1; border-radius: 12px; height: 48px; overflow: hidden; background: #fff; width: 100%;">
-                                <span class="guest-gate-prefix" style="padding: 0 14px; background: #f1f5f9; border-right: 1.5px solid #cbd5e1; font-weight: 700; color: #475569; font-size: 14px; height: 100%; display: flex; align-items: center;">+91</span>
-                                <input type="tel" id="swal-mobile" class="form-control guest-gate-mobile" placeholder="98765 43210" maxlength="10" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="flex: 1; border: none; outline: none; padding: 0 14px; font-size: 14px; font-weight: 600; background: transparent; height: 100%;">
+                            <div class="guest-gate-mobile-wrap">
+                                <span class="guest-gate-prefix">+91</span>
+                                <input type="tel" id="swal-mobile" class="form-control guest-gate-mobile" placeholder="98765 43210" maxlength="10" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                             </div>
                         </div>
                         
