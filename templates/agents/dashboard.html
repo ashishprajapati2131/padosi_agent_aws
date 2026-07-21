@@ -325,12 +325,12 @@
                                                 <td>
                                                     <select class="form-select form-select-sm lead-status-dropdown"
                                                             data-lead-id="{{ lead.id }}"
-                                                            style="font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 8px; width: 130px; cursor: pointer; display: inline-block;
-                                                                   {% if lead.lead_status == 'new' %}background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca;{% elif lead.lead_status == 'contacted' %}background-color: #fefce8; color: #ca8a04; border: 1px solid #fef08a;{% elif lead.lead_status == 'follow_up' %}background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;{% elif lead.lead_status == 'closed' %}background-color: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;{% else %}background-color: #f8fafc; color: #475569; border: 1px solid #cbd5e1;{% endif %}">
-                                                        <option value="new" {% if lead.lead_status == 'new' %}selected{% endif %} style="background: #fff; color: #dc2626; font-weight: 600;">🔴 New</option>
-                                                        <option value="contacted" {% if lead.lead_status == 'contacted' %}selected{% endif %} style="background: #fff; color: #ca8a04; font-weight: 600;">🟡 Contacted</option>
-                                                        <option value="follow_up" {% if lead.lead_status == 'follow_up' %}selected{% endif %} style="background: #fff; color: #2563eb; font-weight: 600;">🔵 Follow-up</option>
-                                                        <option value="closed" {% if lead.lead_status == 'closed' %}selected{% endif %} style="background: #fff; color: #16a34a; font-weight: 600;">🟢 Closed</option>
+                                                            style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; width: 120px; cursor: pointer; display: inline-block;
+                                                                   {% if lead.lead_status == 'new' %}background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca;{% elif lead.lead_status == 'contacted' %}background-color: #fffbeb; color: #d97706; border: 1px solid #fde68a;{% elif lead.lead_status == 'follow_up' %}background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;{% elif lead.lead_status == 'closed' %}background-color: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;{% else %}background-color: #f8fafc; color: #475569; border: 1px solid #cbd5e1;{% endif %}">
+                                                        <option value="new" {% if lead.lead_status == 'new' %}selected{% endif %} style="background: #fff; color: #1e293b;">New</option>
+                                                        <option value="contacted" {% if lead.lead_status == 'contacted' %}selected{% endif %} style="background: #fff; color: #1e293b;">Contacted</option>
+                                                        <option value="follow_up" {% if lead.lead_status == 'follow_up' %}selected{% endif %} style="background: #fff; color: #1e293b;">Follow-up</option>
+                                                        <option value="closed" {% if lead.lead_status == 'closed' %}selected{% endif %} style="background: #fff; color: #1e293b;">Closed</option>
                                                     </select>
                                                 </td>
                                                 <td>{{ lead.created_at|timesince }} ago</td>
@@ -909,7 +909,7 @@
                     if (newStatus === 'new') {
                         $select.css({ 'background-color': '#fef2f2', 'color': '#dc2626', 'border-color': '#fecaca' });
                     } else if (newStatus === 'contacted') {
-                        $select.css({ 'background-color': '#fefce8', 'color': '#ca8a04', 'border-color': '#fef08a' });
+                        $select.css({ 'background-color': '#fffbeb', 'color': '#d97706', 'border-color': '#fde68a' });
                     } else if (newStatus === 'follow_up') {
                         $select.css({ 'background-color': '#eff6ff', 'color': '#2563eb', 'border-color': '#bfdbfe' });
                     } else if (newStatus === 'closed') {
