@@ -26,8 +26,8 @@ urlpatterns = [
     path('django-admin/', admin.site.urls),
     path('', include('apps.admin_panel.urls')),
     path('', include('apps.agents.urls')),
-    path('', include('apps.home.urls')),
     path('chatbot/', include('chatbot.urls', namespace='chatbot')),
+    path('', include('apps.home.urls')),
 ]
 
 # Serve media files in development
