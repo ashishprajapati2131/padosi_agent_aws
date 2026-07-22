@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'apps.admin_panel',
     'apps.agents',
     'rest_framework',
+    'drf_yasg',
     'django.contrib.humanize',
     'chatbot',
 ]
