@@ -46,6 +46,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:1234',
     'http://localhost:1234',
+    'https://aciaindia.org',
+    'https://www.aciaindia.org',
 ]
 
 
