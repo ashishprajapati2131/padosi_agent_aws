@@ -84,11 +84,15 @@ class ThreatMonitorMiddleware:
             hacker_mobile = None
 
             # Get admin credentials from session if present
-            if request.session.get('admin_id'):
-                hacker_name = f"Admin: {request.session.get('admin_name', 'N/A')}"
-                hacker_email = request.session.get('admin_email')
+            try:
+                if hasattr(request, 'session') and request.session and request.session.get('admin_id'):
+                    hacker_name = f"Admin: {request.session.get('admin_name', 'N/A')}"
+                    hacker_email = request.session.get('admin_email')
+            except Exception:
+                pass
+
             # Fallback to general django auth user if present
-            elif hasattr(request, 'user') and request.user.is_authenticated:
+            if hacker_name == 'GUEST / ANONYMOUS' and hasattr(request, 'user') and request.user.is_authenticated:
                 hacker_name = request.user.get_full_name() or request.user.username
                 hacker_email = request.user.email
                 # Try to fetch mobile from Client profile if it exists
@@ -396,10 +400,14 @@ class ExceptionLoggerMiddleware:
             
             # Identify user
             user_info = None
-            if request.session.get('admin_id'):
-                user_info = f"Admin: {request.session.get('admin_name', 'N/A')} ({request.session.get('admin_email', 'N/A')})"
-            elif hasattr(request, 'user') and request.user.is_authenticated:
-                user_info = f"User: {request.user.username}"
+            try:
+                if hasattr(request, 'session') and request.session and request.session.get('admin_id'):
+                    user_info = f"Admin: {request.session.get('admin_name', 'N/A')} ({request.session.get('admin_email', 'N/A')})"
+                elif hasattr(request, 'user') and request.user.is_authenticated:
+                    user_info = f"User: {request.user.username}"
+            except Exception:
+                pass
+
                 
             # Get IP address
             x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')

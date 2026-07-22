@@ -235,21 +235,36 @@ def admin_login(request):
 
     try:
         with connection.cursor() as cursor:
-            # Insert into user_sessions
-            cursor.execute(
-                """
-                INSERT INTO user_sessions
-                    (session_token, admin_id, agent_id, distributor_id,
-                     ip_address, user_agent, last_activity,
-                     expires_at, created_at, updated_at)
-                VALUES
-                    (%s, %s, NULL, NULL, %s, %s, %s, %s, %s, %s)
-                """,
-                [
-                    token, admin_db_id, ip_address, user_agent,
-                    now_utc, expires_at, now_utc, now_utc,
-                ],
-            )
+            # Insert into user_sessions with fallback for schema variations
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO user_sessions
+                        (session_token, admin_id, agent_id, distributor_id,
+                         ip_address, user_agent, last_activity,
+                         expires_at, created_at, updated_at)
+                    VALUES
+                        (%s, %s, NULL, NULL, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        token, admin_db_id, ip_address, user_agent,
+                        now_utc, expires_at, now_utc, now_utc,
+                    ],
+                )
+            except Exception:
+                cursor.execute(
+                    """
+                    INSERT INTO user_sessions
+                        (session_token, ip_address, user_agent, last_activity,
+                         expires_at, created_at, updated_at)
+                    VALUES
+                        (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        token, ip_address, user_agent,
+                        now_utc, expires_at, now_utc, now_utc,
+                    ],
+                )
             session_id = cursor.lastrowid
 
             # Insert admin_id into user_session_data
@@ -268,6 +283,7 @@ def admin_login(request):
             "error":     "Could not create session. Please try again.",
             "old_email": email,
         })
+
 
     # --- 5. Set cookie and redirect ---
     response = redirect("admin_dashboard")
