@@ -54,7 +54,8 @@ def _get_admin_from_session(request):
     if not token:
         return None
 
-    now_utc = datetime.now(timezone.utc)
+    now_utc = datetime.utcnow()
+
 
     try:
         with connection.cursor() as cursor:
@@ -226,7 +227,8 @@ def admin_login(request):
 
     # --- 4. Create session ---
     token      = secrets.token_hex(32)                        # 64-char hex string
-    now_utc    = datetime.now(timezone.utc)
+    now_utc    = datetime.utcnow()
+
     expires_at = now_utc + timedelta(days=30)
     ip_address = request.META.get("REMOTE_ADDR", "")[:45]
     user_agent = request.META.get("HTTP_USER_AGENT", "")[:255]
