@@ -633,8 +633,17 @@
             {% endif %}
         </a>
 
+        <!-- Developer & API -->
+        <div class="menu-label">Developer &amp; API</div>
+
+        <a href="/api/docs" target="_blank"
+           class="menu-item {% if '/api/' in request.path %}active{% endif %}">
+            <i class="fa-solid fa-code" style="color:#6366f1;"></i> FastAPI Services (Docs)
+        </a>
+
         <!-- Advanced -->
         <div class="menu-label">Advanced</div>
+
 
         <a href="/admin/advanced/analytics/"
            class="menu-item {% if '/admin/advanced/analytics/' in request.path %}active{% endif %}">

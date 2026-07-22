@@ -7,7 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.threat_monitor import ThreatMonitorMiddleware
 from app.middleware.rate_limiter import RateLimitMiddleware
+from app.middleware.admin_auth import AdminAuthMiddleware
 import os
+
 
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates"))
 import logging
@@ -56,6 +58,8 @@ app.add_middleware(
 )
 app.add_middleware(RateLimitMiddleware, requests_limit=100, window_seconds=60)
 app.add_middleware(ThreatMonitorMiddleware)
+app.add_middleware(AdminAuthMiddleware)
+
 
 # Include all consolidated routers
 app.include_router(registration.router)
