@@ -57,11 +57,18 @@ try:
 except ImportError:
     pass
 
-# Django Settings સેટ કરો
+# Set Django Settings module
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "padosi_agent.settings")
 
-from django.core.wsgi import get_wsgi_application
-application = get_wsgi_application()
+# Try loading combined ASGI app via a2wsgi for cPanel Passenger
+try:
+    from a2wsgi import ASGIMiddleware
+    from padosi_agent.asgi import application as asgi_app
+    application = ASGIMiddleware(asgi_app)
+except Exception as e:
+    from django.core.wsgi import get_wsgi_application
+    application = get_wsgi_application()
+
 
 
 
