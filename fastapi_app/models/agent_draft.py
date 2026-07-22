@@ -1,0 +1,42 @@
+from sqlalchemy import Column, BigInteger, String, Boolean, JSON, Text, Integer, DateTime, Date
+from sqlalchemy.sql import func
+from app.database import Base
+
+class AgentDraft(Base):
+    __tablename__ = 'agent_drafts'
+
+    id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
+    session_key = Column(String(40), nullable=True)
+    email = Column(String(254), nullable=True)
+    email_verified = Column(Boolean, default=False)
+    fullname = Column(String(255), nullable=True)
+    mobile = Column(String(15), nullable=True)
+    agent_pincode = Column(String(10), nullable=True)
+    state = Column(String(100), nullable=True)
+    experience_range = Column(String(50), nullable=True)
+    segments = Column(JSON, nullable=True)
+    promo_code = Column(String(50), nullable=True)
+    insurance_companies = Column(JSON, nullable=True)
+    address = Column(String(255), nullable=True)
+    client_base = Column(String(100), nullable=True)
+    photo = Column(String(100), nullable=True)
+    about = Column(Text, nullable=True)
+    languages = Column(JSON, nullable=True)
+    certifications = Column(String(255), nullable=True)
+    license_number = Column(String(100), nullable=True)
+    license_valid_till = Column(Date, nullable=True)
+    arn_number = Column(String(255), nullable=True)
+    euin_number = Column(String(255), nullable=True)
+    investment_valid_till = Column(Date, nullable=True)
+    investment_types = Column(JSON, nullable=True)
+    pan_number = Column(String(20), nullable=True)
+    life_insurance = Column(Integer, nullable=True)
+    health_insurance = Column(Integer, nullable=True)
+    general_insurance = Column(Integer, nullable=True)
+    motor = Column(Integer, nullable=True)
+    desired_services = Column(JSON, nullable=True)
+    software_services = Column(JSON, nullable=True)
+    software_name = Column(String(255), nullable=True)
+    registration_step = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
