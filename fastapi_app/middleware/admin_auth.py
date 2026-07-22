@@ -36,11 +36,18 @@ class AdminAuthMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         
         # Completely ignore non-API / Django / Admin routes
-        if not path.startswith("/api") and path not in ["/docs", "/redoc", "/openapi.json"]:
+        protected_paths = [
+            "/docs", "/redoc", "/openapi.json", 
+            "/docs/", "/redoc/", "/openapi.json/",
+            "/api/docs", "/api/redoc", "/api/openapi.json",
+            "/api/docs/", "/api/redoc/", "/api/openapi.json/"
+        ]
+        
+        if not path.startswith("/api") and path not in protected_paths:
             return await call_next(request)
         
         # Only check admin session for docs / openapi
-        if path in ["/docs", "/redoc", "/openapi.json"]:
+        if path in protected_paths:
             session_token = request.cookies.get("session_token")
             if not is_valid_admin_session(session_token):
                 return RedirectResponse(url="/admin/login/", status_code=303)

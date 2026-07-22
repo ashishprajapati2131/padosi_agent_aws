@@ -52,6 +52,7 @@ CSRF_TRUSTED_ORIGINS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -102,6 +103,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'padosi_agent.wsgi.application'
+ASGI_APPLICATION = 'padosi_agent.asgi.application'
 
 
 DATABASES = {
@@ -165,6 +167,8 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Media files (user uploads)
 MEDIA_URL = '/media/'

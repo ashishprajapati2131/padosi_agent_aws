@@ -131,8 +131,8 @@
         <div class="d-flex flex-wrap gap-2">
             <a href="/admin/approvals/" class="btn btn-sm btn-outline-warning">
                 <i class="fa-solid fa-user-clock me-1"></i> Review Approvals
-                {% if pending_approvals > 0 %}
-                    <span class="badge bg-warning text-dark ms-1">{{ pending_approvals }}</span>
+                {% if pending_agents_count > 0 %}
+                    <span class="badge bg-warning text-dark ms-1">{{ pending_agents_count }}</span>
                 {% endif %}
             </a>
             <a href="/admin/reviews/?status=pending" class="btn btn-sm btn-outline-secondary"
