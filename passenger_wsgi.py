@@ -57,6 +57,14 @@ try:
 except ImportError:
     pass
 
+# Add cPanel virtualenv site-packages to sys.path
+VENV_PATH = '/home/m69qf6gyhm3n/virtualenv/padosiagentdjango/src/3.11/lib/python3.11/site-packages'
+VENV_PATH_64 = '/home/m69qf6gyhm3n/virtualenv/padosiagentdjango/src/3.11/lib64/python3.11/site-packages'
+if os.path.exists(VENV_PATH) and VENV_PATH not in sys.path:
+    sys.path.insert(0, VENV_PATH)
+if os.path.exists(VENV_PATH_64) and VENV_PATH_64 not in sys.path:
+    sys.path.insert(0, VENV_PATH_64)
+
 # Set Django Settings module
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "padosi_agent.settings")
 
@@ -66,8 +74,12 @@ try:
     from padosi_agent.asgi import application as asgi_app
     application = ASGIMiddleware(asgi_app)
 except Exception as e:
+    import traceback
+    print(f"Error loading ASGI app in passenger_wsgi.py: {e}")
+    traceback.print_exc()
     from django.core.wsgi import get_wsgi_application
     application = get_wsgi_application()
+
 
 
 
