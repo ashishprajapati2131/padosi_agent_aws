@@ -68,6 +68,17 @@ if os.path.exists(VENV_PATH_64) and VENV_PATH_64 not in sys.path:
 # Set Django Settings module
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "padosi_agent.settings")
 
+# Auto-install a2wsgi if missing (for users without SSH access)
+try:
+    import a2wsgi
+except ImportError:
+    import subprocess
+    import sys
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "a2wsgi"])
+    except Exception as e:
+        print(f"Failed to auto-install a2wsgi: {e}")
+
 # Try loading combined ASGI app via a2wsgi for cPanel Passenger
 try:
     from a2wsgi import ASGIMiddleware
