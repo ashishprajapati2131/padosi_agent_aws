@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import registration, auth, dashboard
+from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator
 
 app_name = 'agents'
 
@@ -42,4 +42,14 @@ urlpatterns = [
     path('agent/leads/update-status/', dashboard.update_lead_status, name='update_lead_status'),
     path('client/quick-register/', registration.client_quick_register, name='client_quick_register'),
     path('og-image/<int:agent_id>/preview.jpg', dashboard.agent_og_image, name='agent_og_image'),
+
+    # ── Google Business Profile OAuth & API ──────────────────────────────────
+    path('agent/gbp/auth/',     gbp_views.agent_gbp_auth,     name='agent_gbp_auth'),
+    path('agent/gbp/callback/', gbp_views.agent_gbp_callback, name='agent_gbp_callback'),
+    path('agent/gbp/status/',   gbp_views.agent_gbp_status,   name='agent_gbp_status'),
+    path('agent/gbp/save-url/', gbp_views.agent_gbp_save_url, name='agent_gbp_save_url'),
+
+    # ── AI Bio Generator ─────────────────────────────────────────────────────
+    path('agent/generate-bio/', bio_generator.generate_professional_bio, name='agent_generate_bio'),
 ]
+

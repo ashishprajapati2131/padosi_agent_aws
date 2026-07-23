@@ -231,6 +231,9 @@ FCM_SERVICE_ACCOUNT_JSON = os.environ.get('FCM_SERVICE_ACCOUNT_JSON', '')
 GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
 GOOGLE_REDIRECT_URI  = os.environ.get('GOOGLE_REDIRECT_URI', '')
+# Separate redirect URI for Google Business Profile OAuth flow (must be
+# registered in Google Cloud Console alongside GOOGLE_REDIRECT_URI)
+GBP_REDIRECT_URI     = os.environ.get('GBP_REDIRECT_URI', '')
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
 LOGGING = {

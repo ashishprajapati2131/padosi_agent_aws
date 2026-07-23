@@ -2394,13 +2394,22 @@
                     type: 'POST',
                     headers: { 'X-CSRFToken': csrfToken },
                     data: postData,
+                    success: function(resp) {
+                        var targetUrl = (resp && resp.success && resp.url && resp.url !== '#') ? resp.url : destination;
+                        if (interactionType === 'call') {
+                            window.location.href = targetUrl;
+                        } else {
+                            window.open(targetUrl, '_blank', 'noopener');
+                        }
+                    },
+                    error: function() {
+                        if (interactionType === 'call') {
+                            window.location.href = destination;
+                        } else {
+                            window.open(destination, '_blank', 'noopener');
+                        }
+                    }
                 });
-                
-                if (interactionType === 'call') {
-                    window.location.href = destination;
-                } else {
-                    window.open(destination, '_blank', 'noopener');
-                }
             };
 
             if (!isAuth) {
@@ -3108,20 +3117,21 @@
                                 }),
                                 success: function(response) {
                                     if (response.status === 'success' || response.success) {
-                                        Swal.fire({
-                                            icon: 'success',
-                                            title: 'Welcome!',
-                                            text: 'We found matching agents for you.',
-                                            timer: 2500,
-                                            showConfirmButton: false,
-                                            padding: '2rem'
-                                        }).then(() => {
-                                            if (typeof onSuccessCallback === 'function') {
-                                                onSuccessCallback(response);
-                                            } else {
+                                        if (typeof onSuccessCallback === 'function') {
+                                            Swal.close();
+                                            onSuccessCallback(result.value, response);
+                                        } else {
+                                            Swal.fire({
+                                                icon: 'success',
+                                                title: 'Welcome!',
+                                                text: 'We found matching agents for you.',
+                                                timer: 2500,
+                                                showConfirmButton: false,
+                                                padding: '2rem'
+                                            }).then(() => {
                                                 window.location.reload();
-                                            }
-                                        });
+                                            });
+                                        }
                                     } else {
                                         Swal.fire('Oops!', response.message || 'Something went wrong. Please try again.', 'warning');
                                     }
@@ -3140,7 +3150,7 @@
         };
 
         window.proceedToDestination = function(url, target) {
-            if (target === '_blank') {
+            if (target === '_blank' || (url && (url.indexOf('wa.me') !== -1 || url.indexOf('whatsapp') !== -1))) {
                 window.open(url, '_blank', 'noopener');
                 return;
             }
@@ -3154,9 +3164,10 @@
             const isAuth = {{ request.user.is_authenticated|yesno:"true,false" }};
             const href = element.getAttribute('href');
             const agentId = element.getAttribute('data-agent-id');
-            const serviceType = element.getAttribute('data-service-type') || '';
-            const insuranceType = element.getAttribute('data-insurance-type') || '';
-            const insuranceCompany = element.getAttribute('data-insurance-company') || '';
+            const urlParams = new URLSearchParams(window.location.search);
+            const serviceType = element.getAttribute('data-service-type') || urlParams.get('ServiceType') || urlParams.get('service_type') || (document.getElementById('ServiceType') ? document.getElementById('ServiceType').value : '') || '';
+            const insuranceType = element.getAttribute('data-insurance-type') || urlParams.get('InsuranceType') || urlParams.get('insurance_type') || (document.getElementById('InsuranceType') ? document.getElementById('InsuranceType').value : '') || '';
+            const insuranceCompany = element.getAttribute('data-insurance-company') || urlParams.get('InsuranceCompany') || urlParams.get('insurance_company') || (document.getElementById('InsuranceCompany') ? document.getElementById('InsuranceCompany').value : '') || '';
             const target = element.getAttribute('target');
 
             const captureLeadAndProceed = (guestData) => {
@@ -3175,103 +3186,44 @@
                     postData.mobile = guestData.mobile;
                 }
 
-                const captureLead = function() {
-                    $.ajax({
-                        url: "{% url 'agents:agent_leads_capture' %}",
-                        type: "POST",
-                        headers: { 'X-CSRFToken': "{{ csrf_token }}" },
-                        data: postData,
-                        success: function(resp) {
-                            Swal.close();
-                            if (resp.success && resp.url && resp.url !== '#') {
-                                window.proceedToDestination(resp.url, target);
-                            } else if (resp.message) {
-                                const errMsg = resp.message || 'This agent has not provided contact details for this format.';
-                                Swal.fire('Notice', errMsg, 'info');
-                            }
-                        },
-                        error: function(xhr) {
-                            Swal.close();
-                            let msg = 'Something went wrong. Please refresh the page and try again.';
-                            if (xhr.status === 403) {
-                                msg = 'Access denied. Suspicious activity has been detected from your IP.';
-                            }
-                            Swal.fire('Oops!', msg, 'warning');
-                        }
-                    });
-                };
-
                 Swal.fire({
                     title: 'Connecting you...',
                     allowOutsideClick: false,
                     didOpen: () => {
                         Swal.showLoading();
-                        if (!isAuth && guestData) {
-                            $.ajax({
-                                url: "{% url 'agents:client_quick_register' %}",
-                                type: "POST",
-                                headers: { 'X-CSRFToken': "{{ csrf_token }}" },
-                                contentType: "application/json",
-                                dataType: "json",
-                                data: JSON.stringify(guestData),
-                                success: function() {
-                                    captureLead();
-                                },
-                                error: function() {
-                                    Swal.close();
-                                    Swal.fire('Almost there!', 'We had a small hiccup during registration. Please try again.', 'info');
+                        $.ajax({
+                            url: "{% url 'agents:agent_leads_capture' %}",
+                            type: "POST",
+                            headers: { 'X-CSRFToken': "{{ csrf_token }}" },
+                            data: postData,
+                            success: function(resp) {
+                                Swal.close();
+                                if (resp.success && resp.url && resp.url !== '#') {
+                                    window.proceedToDestination(resp.url, target);
+                                } else if (resp.message) {
+                                    const errMsg = resp.message || 'This agent has not provided contact details for this format.';
+                                    Swal.fire('Notice', errMsg, 'info');
                                 }
-                            });
-                        } else {
-                            captureLead();
-                        }
+                            },
+                            error: function(xhr) {
+                                Swal.close();
+                                let msg = 'Something went wrong. Please refresh the page and try again.';
+                                if (xhr.status === 403) {
+                                    msg = 'Access denied. Suspicious activity has been detected from your IP.';
+                                }
+                                Swal.fire('Oops!', msg, 'warning');
+                            }
+                        });
                     }
                 });
             };
 
             if (!isAuth) {
-                window.showQuickRegisterPopup(window.location.pathname + window.location.search, function(response) {
-                    var postData = {
-                        agent_id: agentId,
-                        interaction_type: interactionType,
-                        service_type: serviceType,
-                        insurance_type: insuranceType,
-                        insurance_company: insuranceCompany,
-                        source_page: window.location.pathname
-                    };
-                    
-                    Swal.fire({
-                        title: 'Connecting you...',
-                        allowOutsideClick: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                            $.ajax({
-                                url: "{% url 'agents:agent_leads_capture' %}",
-                                type: "POST",
-                                headers: { 'X-CSRFToken': "{{ csrf_token }}" },
-                                data: postData,
-                                success: function(resp) {
-                                    Swal.close();
-                                    if (resp.success && resp.url && resp.url !== '#') {
-                                        window.proceedToDestination(resp.url, target);
-                                        setTimeout(() => { window.location.reload(); }, 1500);
-                                    } else if (resp.message) {
-                                        const errMsg = resp.message || 'This agent has not provided contact details for this format.';
-                                        Swal.fire('Notice', errMsg, 'info').then(() => { window.location.reload(); });
-                                    } else {
-                                        window.location.reload();
-                                    }
-                                },
-                                error: function() {
-                                    Swal.close();
-                                    window.location.reload();
-                                }
-                            });
-                        }
-                    });
+                window.showQuickRegisterPopup(window.location.pathname + window.location.search, function(guestData) {
+                    captureLeadAndProceed(guestData);
                 });
             } else {
-                captureLeadAndProceed();
+                captureLeadAndProceed(null);
             }
         };
 

@@ -555,6 +555,12 @@ class AgentProfile(models.Model):
     website_url = models.CharField(max_length=255, blank=True, null=True)
     social_links = models.JSONField(null=True, blank=True)
     career_highlights = models.TextField(blank=True, null=True)
+
+    # Google Business Profile OAuth tokens
+    gbp_access_token      = models.TextField(blank=True, null=True)
+    gbp_refresh_token     = models.TextField(blank=True, null=True)
+    gbp_token_expires_at  = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -589,6 +595,21 @@ class AgentProfile(models.Model):
         if not path:
             return '/static/img/avatar-icon.jpg'
         if path.startswith(('http://', 'https://')):
+            if any(k in path.lower() for k in ['ngrok', 'localhost', '127.0.0.1']):
+                from urllib.parse import urlparse
+                import os
+                from django.conf import settings
+                parsed = urlparse(path)
+                rel_path = parsed.path.lstrip('/')
+                if rel_path.startswith('static/'):
+                    check_path = os.path.join(settings.BASE_DIR, rel_path)
+                    if os.path.exists(check_path):
+                        return f"/{rel_path}"
+                elif rel_path.startswith('media/'):
+                    check_path = os.path.join(settings.MEDIA_ROOT, rel_path[6:])
+                    if os.path.exists(check_path):
+                        return f"/{rel_path}"
+                return '/static/img/avatar-icon.jpg'
             return path
 
         import os
@@ -1022,6 +1043,22 @@ class Invoice(models.Model):
             '1re': '₹1 (Special)',
         }
         return labels.get(folder, 'Others')
+
+
+class AgentBioGenerationLog(models.Model):
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='bio_generation_logs', db_constraint=False)
+    generated_at = models.DateTimeField(auto_now_add=True)
+    prompt_version = models.CharField(max_length=50, default='v1.0')
+    llm_model = models.CharField(max_length=100, default='llama-3.3-70b-versatile')
+    generation_time = models.FloatField(null=True, blank=True)
+    tokens_used = models.IntegerField(null=True, blank=True)
+    status = models.CharField(max_length=50, default='success')  # success, failure
+    error_message = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'agent_bio_generation_logs'
+        ordering = ['-generated_at']
+
 
 
 

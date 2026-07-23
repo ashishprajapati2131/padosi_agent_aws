@@ -1603,10 +1603,50 @@ def agent_capture_lead(request):
                 whatsapp_source = str(agent.mobile)
 
             import re
+            import urllib.parse
             whatsapp_digits = re.sub(r'[^0-9]', '', whatsapp_source)
             if len(whatsapp_digits) == 10:
                 whatsapp_digits = '91' + whatsapp_digits
-            url = f'https://wa.me/{whatsapp_digits}' if whatsapp_digits else '#'
+
+            if whatsapp_digits:
+                agent_name = (profile.display_name if profile and profile.display_name else '') or getattr(agent, 'fullname', '') or getattr(agent, 'get_full_name', lambda: '')() or getattr(agent, 'username', '') or 'Agent'
+                agent_name = agent_name.strip()
+
+                raw_host = request.get_host()
+                if raw_host:
+                    clean_host = raw_host.split(':')[0]
+                    if clean_host in ['127.0.0.1', 'localhost']:
+                        domain_name = 'localhost'
+                    else:
+                        domain_name = clean_host
+                else:
+                    domain_name = 'www.padosiagent.com'
+
+                s_type = (service_type or '').strip()
+                i_type = (insurance_type or '').strip()
+                i_comp = (insurance_company or '').strip()
+
+                if s_type and i_type:
+                    req_desc = f"{s_type} for {i_type}"
+                elif s_type:
+                    req_desc = s_type if any(w in s_type.lower() for w in ['insurance', 'policy', 'service']) else f"{s_type} Service for Insurance"
+                elif i_type:
+                    req_desc = f"Insurance Service for {i_type}"
+                else:
+                    req_desc = "Insurance Service for Insurance"
+
+                if i_comp:
+                    req_desc += f" ({i_comp})"
+
+                cust_name = (customer_name or '').strip()
+                msg = f"Hello {agent_name}, I found you on {domain_name} I am looking for {req_desc}."
+                if cust_name:
+                    msg += f" Regards, {cust_name}"
+
+                encoded_msg = urllib.parse.quote(msg)
+                url = f'https://wa.me/{whatsapp_digits}?text={encoded_msg}'
+            else:
+                url = '#'
 
         elif interaction_type == 'call':
             url = f'tel:{agent.mobile}' if agent.mobile else '#'

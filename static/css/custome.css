@@ -4258,33 +4258,43 @@ Find Agents CSS ****/
     }
 
     .dyk-slider-container {
-        overflow: hidden !important;
+        overflow-x: auto !important;
         position: relative !important;
         width: 100% !important;
         user-select: none;
+        -webkit-user-select: none;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        cursor: grab;
+    }
+    .dyk-slider-container::-webkit-scrollbar {
+        display: none;
+    }
+    .dyk-slider-container:active {
+        cursor: grabbing;
     }
     .dyk-track {
         display: flex !important;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         width: 100% !important;
-        cursor: grab;
-    }
-    .dyk-track:active {
-        cursor: grabbing;
     }
     .dyk-slide {
-        flex: 0 0 85% !important;
-        min-width: 0 !important;
+        flex: 0 0 100% !important;
+        min-width: 100% !important;
         padding-left: 8px !important;
         padding-right: 8px !important;
         box-sizing: border-box !important;
         display: flex !important;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
     }
     @media (min-width: 640px) {
-        .dyk-slide { flex: 0 0 50% !important; }
+        .dyk-slide { flex: 0 0 50% !important; min-width: 50% !important; }
     }
     @media (min-width: 1024px) {
-        .dyk-slide { flex: 0 0 33.333333% !important; }
+        .dyk-slide { flex: 0 0 33.333333% !important; min-width: 33.333333% !important; }
     }
 
     .dyk-card {

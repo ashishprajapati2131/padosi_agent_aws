@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.cache import never_cache
 from django.contrib import messages
 from django.core.cache import cache
@@ -173,6 +173,7 @@ def agent_login(request):
 
     return render(request, 'agents/login.html')
 
+@csrf_exempt
 def agent_logout(request):
     """
     Log out the agent, invalidate session, and redirect to the login page.
@@ -181,6 +182,7 @@ def agent_logout(request):
     messages.success(request, "You have been logged out successfully.")
     return redirect('agents:agent_login')
 
+@csrf_exempt
 @never_cache
 def logout_view(request):
     """

@@ -986,10 +986,40 @@ Overview
                                         value="{{ profile.website_url|default:'' }}" placeholder="www.yourwebsite.com">
                                 </div>
                                 <div class="col-md-6 mb-4">
-                                    <label class="form-label">Google Business Profile</label>
-                                    <input type="url" class="form-control" name="google_business"
-                                        value="{{ profile.social_links.google_business|default:'' }}"
-                                        placeholder="Google Maps URL">
+                                    <label class="form-label d-flex align-items-center gap-2" style="font-weight: 500;">
+                                        Google Business Profile
+                                        <span class="badge badge-success ml-2" id="gbp-linked-badge"
+                                              style="display:none;font-size:10px;background:#0d9488;color:#fff;padding:3px 8px;border-radius:20px;">&#10003; Linked</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="url" class="form-control" name="google_business"
+                                            id="google-business-input"
+                                            value="{{ profile.social_links.google_business|default:'' }}"
+                                            placeholder="Google Maps URL" style="border-right: none;">
+                                        <div class="input-group-append">
+                                            <button type="button"
+                                                    class="btn"
+                                                    id="gbp-create-btn"
+                                                    onclick="startGBPFlow()"
+                                                    style="background-color: #0d9488; border-color: #0d9488; color: #fff; font-weight: 500; transition: all 0.3s ease; border-top-right-radius: 6px; border-bottom-right-radius: 6px;"
+                                                    onmouseover="this.style.backgroundColor='#0b7a70'; this.style.borderColor='#0b7a70';"
+                                                    onmouseout="this.style.backgroundColor='#0d9488'; this.style.borderColor='#0d9488';"
+                                                    title="Manage Google Business Profile">
+                                                <i class="fab fa-google mr-1"></i>
+                                                <span id="gbp-btn-text">
+                                                    {% if profile.social_links.google_business %}
+                                                        Re-link GBP
+                                                    {% else %}
+                                                        Create / Link GBP
+                                                    {% endif %}
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <small class="form-text text-muted mt-1">
+                                        <i class="fas fa-info-circle"></i>
+                                        Verify or link your business location on Google Maps.
+                                    </small>
                                 </div>
                             </div>
 
@@ -1020,6 +1050,28 @@ Overview
                                     <input type="url" class="form-control" name="youtube_url"
                                         value="{{ profile.social_links.youtube|default:'' }}"
                                         placeholder="YouTube channel URL">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- GBP Progress / Result Modal -->
+                        <div class="modal fade" id="gbpProgressModal" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-sm" role="document" style="max-width: 440px;">
+                                <div class="modal-content" style="border-radius:12px;overflow:hidden; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+                                    <div class="modal-header py-3" style="background:#f8f9fa; border-bottom: 1px solid #eee;">
+                                        <h6 class="modal-title font-weight-bold" style="color: #3c4043; font-size: 15px; margin: 0; display: flex; align-items: center;">
+                                            <i class="fab fa-google mr-2 text-primary" style="font-size: 16px;"></i>Google Business Profile
+                                        </h6>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="font-size: 20px; line-height: 1; padding: 12px; margin: -12px -12px -12px auto;">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body text-center px-4 py-3" id="gbp-modal-body">
+                                        <!-- Content loaded dynamically -->
+                                    </div>
+                                    <div class="modal-footer px-4 pb-3 pt-0" id="gbp-modal-footer" style="border-top: 0; display: flex; gap: 10px; width: 100%;">
+                                        <!-- Buttons loaded dynamically -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1149,10 +1201,20 @@ Overview
                                     class="fas fa-info-circle text-muted" data-toggle="tooltip"
                                     title="Share notable achievements, awards (like MDRT/COT/TOT), and milestones"
                                     style="font-size: 14px; cursor: help;"></i></h5>
-                            <textarea class="form-control" name="career_highlights" rows="5" maxlength="500"
+                            <textarea class="form-control" name="career_highlights" id="career-highlights-textarea" rows="5" maxlength="500"
                                 placeholder="Share your achievements, recognitions, and career milestones..."
                                 oninput="document.getElementById('bio-counter').innerText = this.value.length + '/500 characters'">{{ profile.career_highlights|default:'' }}</textarea>
-                            <small class="text-muted d-block text-right mt-1" id="bio-counter">0/500 characters</small>
+                            <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
+                                <!-- AI Generate Button -->
+                                <button type="button" class="btn" id="ai-generate-bio-btn" onclick="triggerAIBioGeneration()"
+                                        style="background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%); border: none; color: #fff; font-weight: 500; font-size: 13px; padding: 6px 14px; border-radius: 8px; box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2); transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 6px;"
+                                        data-toggle="tooltip" title="Generate an SEO optimized professional summary using your profile.">
+                                    <i class="fas fa-magic" id="ai-bio-btn-icon"></i>
+                                    <span id="ai-bio-btn-text">Generate AI Professional Bio</span>
+                                </button>
+
+                                <small class="text-muted d-block text-right" id="bio-counter">0/500 characters</small>
+                            </div>
                         </div>
                     </div>
 
@@ -3489,5 +3551,169 @@ Overview
         btn.prop('disabled', false);
         btn.html('<i class="fas fa-plus mr-1"></i> Add');
     }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Google Business Profile (GBP) — Direct Modal Flow
+       No OAuth popup. Button click immediately opens the modal:
+         • If a GBP URL is already in the input  → show "Linked" state
+         • Otherwise                              → show "Not Found" + guide
+    ═══════════════════════════════════════════════════════════════════════ */
+    (function initGBPFlow() {
+
+        /* Expose globally so the onclick="startGBPFlow()" handler can reach it */
+        window.startGBPFlow = function startGBPFlow() {
+            var existingUrl = ($('#google-business-input').val() || '').trim();
+
+            /* Show the modal */
+            $('#gbpProgressModal').modal({ backdrop: true, keyboard: true });
+            $('#gbpProgressModal').modal('show');
+
+            if (existingUrl) {
+                /* Agent already has a GBP URL saved — show linked state */
+                _showGBPFound(existingUrl, '');
+            } else {
+                /* No URL — guide agent to create one on Google */
+                _showGBPNotFound('https://business.google.com/create');
+            }
+        };
+
+        function _showGBPFound(url, name) {
+            $('#gbp-linked-badge').show();
+            $('#gbp-btn-text').text('Re-link GBP');
+
+            $('#gbp-modal-body').html(
+                '<div style="font-size:2.5rem;color:#0d9488;margin-bottom:10px;">&#10003;</div>' +
+                '<h5 class="font-weight-bold" style="color: #202124; font-size:16px; margin-bottom:8px;">Business Profile Connected</h5>' +
+                '<p class="text-muted small" style="word-break:break-all; background:#f1f3f4; padding:8px; border-radius:6px; margin-bottom:12px;">' + _esc(url) + '</p>' +
+                '<p class="small text-muted" style="margin-bottom:0; line-height: 1.4;">Your business profile link is successfully configured. Remember to <strong>save your profile</strong> changes.</p>'
+            );
+            $('#gbp-modal-footer')
+                .html(
+                    '<button type="button" class="btn btn-outline-secondary" data-dismiss="modal" style="flex: 1; font-weight: 500; height: 40px; font-size: 13px;">Close</button>' +
+                    '<a href="' + _esc(url) + '" class="btn text-white" target="_blank" rel="noopener" style="flex: 1; background-color: #0d9488; border-color: #0d9488; font-weight: 500; height: 40px; font-size: 13px; display: inline-flex; align-items: center; justify-content: center;">' +
+                    '<i class="fas fa-external-link-alt mr-1"></i> View Live</a>'
+                )
+                .css('display', 'flex');
+        }
+
+        function _showGBPNotFound(createUrl) {
+            $('#gbp-modal-body').html(
+                '<div style="font-size:2.2rem; color: #f29900; margin-bottom:8px;">&#9888;</div>' +
+                '<h5 class="font-weight-bold" style="color: #202124; font-size:16px; margin-bottom:8px;">Link Your Google Business Profile</h5>' +
+                '<p class="text-muted small style="line-height: 1.4; margin-bottom:12px;">We could not detect a Google Business Profile URL for your account. Establishing your business on Google Search and Maps helps local customers find you.</p>' +
+                '<div class="alert text-left py-2 px-3 mb-2" style="background:#f8f9fa; border:1px solid #dadce0; font-size:12px; border-radius:8px; line-height:1.5;">' +
+                    '<strong style="color:#5f6368; display:block; margin-bottom:4px; font-size:11px; text-transform:uppercase;">Use your registered details:</strong>' +
+                    '<span class="text-dark font-weight-500">{{ agent.fullname|default:"" }}</span>' +
+                    '{% if agent.mobile %} &bull; <span class="text-dark">{{ agent.mobile }}</span>{% endif %}' +
+                    '{% if profile.office_address %} &bull; <span class="text-dark">{{ profile.office_address }}</span>{% elif agent.agent_pincode %} &bull; <span class="text-dark">{{ agent.agent_pincode }}</span>{% endif %}' +
+                '</div>' +
+                '<p class="text-muted style="font-size: 11px; margin-bottom: 0; line-height: 1.3;">Once created, simply copy and paste your Google Maps URL into the input field above and click save.</p>'
+            );
+            $('#gbp-modal-footer')
+                .html(
+                    '<button type="button" class="btn btn-outline-secondary" data-dismiss="modal" style="flex: 1; font-weight: 500; height: 40px; font-size: 13px;">Close</button>' +
+                    '<a href="' + (createUrl || 'https://business.google.com/create') + '" ' +
+                    'class="btn text-white" target="_blank" rel="noopener" style="flex: 1; background-color: #1a73e8; border-color: #1a73e8; font-weight: 500; height: 40px; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(60,64,67,0.3);">' +
+                    '<i class="fab fa-google mr-1"></i> Create on Google</a>'
+                )
+                .css('display', 'flex');
+        }
+
+        /* Safe HTML escape */
+        function _esc(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        /* On page load — restore the badge if a GBP URL already exists */
+        $(function () {
+            var existingUrl = ($('#google-business-input').val() || '').trim();
+            if (existingUrl) {
+                $('#gbp-linked-badge').show();
+                $('#gbp-btn-text').text('Re-link GBP');
+            }
+        });
+    })();
+    /* ═══════════════════════════════════════════════════════════════════════
+       AI Professional Bio Generator Flow
+    ═══════════════════════════════════════════════════════════════════════ */
+    (function initAIBioGenerator() {
+        var generatedBioCache = "";
+
+        window.triggerAIBioGeneration = function triggerAIBioGeneration() {
+            var btn = $('#ai-generate-bio-btn');
+            var icon = $('#ai-bio-btn-icon');
+            var text = $('#ai-bio-btn-text');
+            var textarea = $('#career-highlights-textarea');
+
+            // Prevent double submission
+            btn.prop('disabled', true).css('opacity', '0.7');
+            icon.removeClass('fa-magic').addClass('fa-spinner fa-spin');
+            text.text('Generating Bio...');
+
+            $.ajax({
+                url: "{% url 'agents:agent_generate_bio' %}",
+                type: "POST",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                success: function(response) {
+                    if (response.status === 'success' && response.bio) {
+                        generatedBioCache = response.bio;
+                        textarea.val(response.bio);
+                        textarea.trigger('input'); // Update counter
+
+                        // Restore button and update text to indicate regeneration is possible
+                        btn.prop('disabled', false).css('opacity', '1');
+                        icon.removeClass('fa-spinner fa-spin').addClass('fa-magic');
+                        text.text('Regenerate AI Professional Bio');
+                    } else {
+                        showError(response.message || 'Failed to generate bio.');
+                        resetBtn();
+                    }
+                },
+                error: function(xhr) {
+                    var errorMsg = 'An error occurred while generating the bio.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    showError(errorMsg);
+                    resetBtn();
+                }
+            });
+
+            function resetBtn() {
+                btn.prop('disabled', false).css('opacity', '1');
+                icon.removeClass('fa-spinner fa-spin').addClass('fa-magic');
+                text.text('Generate AI Professional Bio');
+            }
+
+            function showError(msg) {
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Generation Failed',
+                        text: msg,
+                        confirmButtonColor: '#0d9488'
+                    });
+                } else {
+                    alert(msg);
+                }
+            }
+        };
+
+        // Initialize bio character counter on load
+        $(function() {
+            var textarea = $('#career-highlights-textarea');
+            if (textarea.length) {
+                textarea.trigger('input');
+            }
+        });
+    })();
+    /* ═══════════════════════════════════════════════════════════════════════ */
+
 </script>
 {% endblock %}
