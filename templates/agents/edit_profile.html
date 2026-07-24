@@ -442,11 +442,10 @@ Overview
                                         value="{{ profile.license_number|default:'' }}"
                                         placeholder="Enter IRDAI License Number">
                                     <div class="input-group-append">
-                                        <a href="https://agencyportal.irdai.gov.in/PublicAccess/LookUpPAN.aspx"
-                                            target="_blank" class="btn btn-primary d-flex align-items-center"
-                                            onclick="copyPanToClipboard()">
-                                            <i class="fas fa-external-link-alt mr-2"></i> IRDAI
-                                        </a>
+                                        <button type="button" id="irdai-verify-btn"
+                                            class="btn btn-primary d-flex align-items-center" style="cursor: pointer;">
+                                            <i class="fas fa-search mr-2"></i> IRDAI
+                                        </button>
                                     </div>
                                 </div>
                                 {% else %}
@@ -991,30 +990,28 @@ Overview
                                         <span class="badge badge-success ml-2" id="gbp-linked-badge"
                                               style="display:none;font-size:10px;background:#0d9488;color:#fff;padding:3px 8px;border-radius:20px;">&#10003; Linked</span>
                                     </label>
-                                    <div class="input-group">
+                                    <div class="d-flex align-items-center" style="gap: 10px;">
                                         <input type="url" class="form-control" name="google_business"
                                             id="google-business-input"
                                             value="{{ profile.social_links.google_business|default:'' }}"
-                                            placeholder="Google Maps URL" style="border-right: none;">
-                                        <div class="input-group-append">
-                                            <button type="button"
-                                                    class="btn"
-                                                    id="gbp-create-btn"
-                                                    onclick="startGBPFlow()"
-                                                    style="background-color: #0d9488; border-color: #0d9488; color: #fff; font-weight: 500; transition: all 0.3s ease; border-top-right-radius: 6px; border-bottom-right-radius: 6px;"
-                                                    onmouseover="this.style.backgroundColor='#0b7a70'; this.style.borderColor='#0b7a70';"
-                                                    onmouseout="this.style.backgroundColor='#0d9488'; this.style.borderColor='#0d9488';"
-                                                    title="Manage Google Business Profile">
-                                                <i class="fab fa-google mr-1"></i>
-                                                <span id="gbp-btn-text">
-                                                    {% if profile.social_links.google_business %}
-                                                        Re-link GBP
-                                                    {% else %}
-                                                        Create / Link GBP
-                                                    {% endif %}
-                                                </span>
-                                            </button>
-                                        </div>
+                                            placeholder="Google Maps URL">
+                                        <button type="button"
+                                                class="btn"
+                                                id="gbp-create-btn"
+                                                onclick="startGBPFlow()"
+                                                style="background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057; font-weight: 500; transition: all 0.3s ease; border-radius: 6px; white-space: nowrap;"
+                                                onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#212529';"
+                                                onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#495057';"
+                                                title="Manage Google Business Profile">
+                                            <i class="fab fa-google mr-1" style="color: #4285f4;"></i>
+                                            <span id="gbp-btn-text">
+                                                {% if profile.social_links.google_business %}
+                                                    Re-link GBP
+                                                {% else %}
+                                                    Create / Link GBP
+                                                {% endif %}
+                                            </span>
+                                        </button>
                                     </div>
                                     <small class="form-text text-muted mt-1">
                                         <i class="fas fa-info-circle"></i>
@@ -1026,30 +1023,78 @@ Overview
                             <div class="row">
                                 <div class="col-md-6 mb-4">
                                     <label class="form-label">LinkedIn</label>
-                                    <input type="url" class="form-control" name="linkedin_url"
-                                        value="{{ profile.social_links.linkedin|default:'' }}"
-                                        placeholder="LinkedIn profile URL">
+                                    <div class="d-flex align-items-center" style="gap: 10px;">
+                                        <input type="url" class="form-control" name="linkedin_url"
+                                            value="{{ profile.social_links.linkedin|default:'' }}"
+                                            placeholder="LinkedIn profile URL">
+                                        <button type="button"
+                                                class="btn"
+                                                onclick="window.open('https://www.linkedin.com/', '_blank')"
+                                                style="background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057; font-weight: 500; transition: all 0.3s ease; border-radius: 6px; white-space: nowrap;"
+                                                onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#212529';"
+                                                onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#495057';"
+                                                title="Create LinkedIn Account">
+                                            <i class="fab fa-linkedin mr-1" style="color: #0077b5;"></i>
+                                            <span>Create Account</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="col-md-6 mb-4">
                                     <label class="form-label">Instagram</label>
-                                    <input type="url" class="form-control" name="instagram_url"
-                                        value="{{ profile.social_links.instagram|default:'' }}"
-                                        placeholder="Instagram profile URL">
+                                    <div class="d-flex align-items-center" style="gap: 10px;">
+                                        <input type="url" class="form-control" name="instagram_url"
+                                            value="{{ profile.social_links.instagram|default:'' }}"
+                                            placeholder="Instagram profile URL">
+                                        <button type="button"
+                                                class="btn"
+                                                onclick="window.open('https://www.instagram.com/accounts/emailsignup/', '_blank')"
+                                                style="background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057; font-weight: 500; transition: all 0.3s ease; border-radius: 6px; white-space: nowrap;"
+                                                onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#212529';"
+                                                onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#495057';"
+                                                title="Create Instagram Account">
+                                            <i class="fab fa-instagram mr-1" style="color: #e1306c;"></i>
+                                            <span>Create Account</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-4">
                                     <label class="form-label">Facebook</label>
-                                    <input type="url" class="form-control" name="facebook_url"
-                                        value="{{ profile.social_links.facebook|default:'' }}"
-                                        placeholder="Facebook page URL">
+                                    <div class="d-flex align-items-center" style="gap: 10px;">
+                                        <input type="url" class="form-control" name="facebook_url"
+                                            value="{{ profile.social_links.facebook|default:'' }}"
+                                            placeholder="Facebook page URL">
+                                        <button type="button"
+                                                class="btn"
+                                                onclick="window.open('https://www.facebook.com/r.php', '_blank')"
+                                                style="background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057; font-weight: 500; transition: all 0.3s ease; border-radius: 6px; white-space: nowrap;"
+                                                onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#212529';"
+                                                onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#495057';"
+                                                title="Create Facebook Account">
+                                            <i class="fab fa-facebook-f mr-1" style="color: #1877f2;"></i>
+                                            <span>Create Account</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="col-md-6 mb-4">
                                     <label class="form-label">YouTube</label>
-                                    <input type="url" class="form-control" name="youtube_url"
-                                        value="{{ profile.social_links.youtube|default:'' }}"
-                                        placeholder="YouTube channel URL">
+                                    <div class="d-flex align-items-center" style="gap: 10px;">
+                                        <input type="url" class="form-control" name="youtube_url"
+                                            value="{{ profile.social_links.youtube|default:'' }}"
+                                            placeholder="YouTube channel URL">
+                                        <button type="button"
+                                                class="btn"
+                                                onclick="window.open('https://accounts.google.com/signup', '_blank')"
+                                                style="background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057; font-weight: 500; transition: all 0.3s ease; border-radius: 6px; white-space: nowrap;"
+                                                onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#212529';"
+                                                onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#495057';"
+                                                title="Create YouTube/Google Account">
+                                            <i class="fab fa-youtube mr-1" style="color: #ff0000;"></i>
+                                            <span>Create Account</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3713,7 +3758,269 @@ Overview
             }
         });
     })();
+
+    /* ── IRDAI Verification Flow ── */
+    $(function() {
+        let irdaiSessionId = '';
+
+        $('#irdai-verify-btn').on('click', function(e) {
+            e.preventDefault();
+            const btn = $(this);
+            const panInput = $('#pan_number');
+            const pan = panInput.length ? panInput.val().trim() : '';
+            if (!pan) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'PAN Required',
+                    text: 'Please enter a PAN number first.',
+                    confirmButtonColor: '#0d9488'
+                });
+                return;
+            }
+
+            // Disable button, show loading spinner, prevent duplicate clicks
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> IRDAI');
+
+            Swal.fire({
+                title: 'Verifying with IRDAI...',
+                text: 'Starting browser automation, please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: "/admin/agents/irdai-verify/",
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ pan_number: pan }),
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    Swal.close();
+                    if (response.status === 'CAPTCHA_REQUIRED') {
+                        irdaiSessionId = response.session_id;
+                        $('#irdai-captcha-img').attr('src', response.captcha_image);
+                        $('#irdai-captcha-input').val('');
+                        $('#irdaiCaptchaModal').modal('show');
+                    } else if (response.status === 'SUCCESS') {
+                        handleVerificationSuccess(response.data);
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Verification Failed',
+                            text: response.message || 'Unknown error occurred.',
+                            confirmButtonColor: '#0d9488'
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    Swal.close();
+                    let errMsg = 'Failed to connect to verification service.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errMsg,
+                        confirmButtonColor: '#0d9488'
+                    });
+                },
+                complete: function() {
+                    // Re-enable button and restore original state
+                    btn.prop('disabled', false).html('<i class="fas fa-search mr-2"></i> IRDAI');
+                }
+            });
+        });
+
+        $('#irdai-captcha-submit').on('click', function(e) {
+            e.preventDefault();
+            const solution = $('#irdai-captcha-input').val().trim();
+            if (!solution) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'CAPTCHA Required',
+                    text: 'Please input the security code.',
+                    confirmButtonColor: '#0d9488'
+                });
+                return;
+            }
+
+            $('#irdaiCaptchaModal').modal('hide');
+
+            Swal.fire({
+                title: 'Submitting CAPTCHA...',
+                text: 'Extracting lookup results, please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: "/admin/agents/irdai-verify/",
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    session_id: irdaiSessionId,
+                    captcha_solution: solution
+                }),
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    Swal.close();
+                    if (response.status === 'SUCCESS') {
+                        handleVerificationSuccess(response.data);
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Verification Failed',
+                            text: response.message || 'Invalid CAPTCHA or lookup failed.',
+                            confirmButtonColor: '#0d9488'
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    Swal.close();
+                    let errMsg = 'An error occurred during submission.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errMsg,
+                        confirmButtonColor: '#0d9488'
+                    });
+                }
+            });
+        });
+
+        function handleVerificationSuccess(data) {
+            let autofilledFields = [];
+            let conflicts = [];
+
+            function fillField(inputName, scrapedValue) {
+                if (!scrapedValue) return;
+                const input = $(`input[name="${inputName}"], textarea[name="${inputName}"]`);
+                if (input.length) {
+                    const currentVal = input.val().trim();
+                    if (!currentVal) {
+                        input.val(scrapedValue);
+                        input.css('background-color', '#dcfce7');
+                        setTimeout(() => input.css('background-color', ''), 2000);
+                        autofilledFields.push(inputName);
+                    } else if (currentVal.toLowerCase() !== scrapedValue.toLowerCase()) {
+                        conflicts.push({ name: inputName, current: currentVal, scraped: scrapedValue });
+                    }
+                }
+            }
+
+            fillField('full_name', data.agent_name);
+            fillField('display_name', data.agent_name);
+            fillField('license_number', data.license_number);
+            fillField('license_valid_till', data.license_valid_till);
+            fillField('address', data.address);
+            fillField('office_address', data.address);
+            fillField('mobile', data.mobile);
+            fillField('email', data.email);
+            fillField('agency_name', data.agency_name);
+            fillField('service_pincode', data.pincode);
+
+            // Format popup values
+            const agentName = data.agent_name || 'N/A';
+            const insurer = data.agency_name || 'N/A';
+            const licenseNo = data.license_number || 'N/A';
+            const licenseStatus = data.license_status || 'N/A';
+            const validTill = data.license_valid_till || 'N/A';
+
+            const successHtml = `
+                <div style="text-align: left; margin-top: 10px; font-size: 14px; line-height: 1.6; color: #4b5563;">
+                    <p class="mb-2"><strong>Agent Name:</strong> ${agentName}</p>
+                    <p class="mb-2"><strong>Insurance Company:</strong> ${insurer}</p>
+                    <p class="mb-2"><strong>License Number:</strong> ${licenseNo}</p>
+                    <p class="mb-2"><strong>License Status:</strong> <span class="badge ${licenseStatus.toLowerCase() === 'inforce' ? 'badge-success' : 'badge-warning'}" style="padding: 4px 8px; font-size: 12px; border-radius: 4px;">${licenseStatus}</span></p>
+                    <p class="mb-3"><strong>License Valid Till:</strong> ${validTill}</p>
+                    <hr class="my-3" style="border-top: 1px solid #e5e7eb;">
+                    <p class="mb-0 text-muted small">The IRDAI details have been successfully verified and populated into the profile.</p>
+                </div>
+            `;
+
+            if (conflicts.length > 0) {
+                let conflictHtml = '<div style="text-align: left; max-height: 200px; overflow-y: auto;">';
+                conflicts.forEach(c => {
+                    conflictHtml += `<p class="mb-1"><strong>${c.name}:</strong> Scraped: <code style="color:#22c55e;">${c.scraped}</code> (Current: <code style="color:#ef4444;">${c.current}</code>)</p>`;
+                });
+                conflictHtml += '</div>';
+
+                Swal.fire({
+                    title: 'IRDAI Verification Successful',
+                    html: successHtml + `<hr class="my-3"><p class="font-weight-bold mb-2">Data Conflicts Detected:</p>${conflictHtml}<p class="mt-2 text-muted small">Would you like to overwrite these fields with official IRDAI data?</p>`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Overwrite All',
+                    cancelButtonText: 'Keep Existing',
+                    confirmButtonColor: '#0d9488',
+                    cancelButtonColor: '#aaa'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        conflicts.forEach(c => {
+                            const input = $(`input[name="${c.name}"], textarea[name="${c.name}"]`);
+                            input.val(c.scraped);
+                            input.css('background-color', '#fef9c3');
+                            setTimeout(() => input.css('background-color', ''), 2000);
+                        });
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Updated',
+                            text: 'All conflicting fields updated. Click "Submit Details" at the end of the form to save.',
+                            confirmButtonColor: '#0d9488'
+                        });
+                    }
+                });
+            } else {
+                Swal.fire({
+                    title: 'IRDAI Verification Successful',
+                    html: successHtml,
+                    icon: 'success',
+                    confirmButtonColor: '#0d9488'
+                });
+            }
+        }
+    });
     /* ═══════════════════════════════════════════════════════════════════════ */
 
 </script>
+
+<!-- IRDAI CAPTCHA Modal -->
+<div class="modal fade" id="irdaiCaptchaModal" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1060;">
+  <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+    <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 10px 25px rgba(0,0,0,0.15);">
+      <div class="modal-header py-3" style="background:#f8f9fa; border-bottom:1px solid #eee; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+        <h6 class="modal-title font-weight-bold" style="color:#3c4043; font-size:15px; margin:0;">
+          <i class="fas fa-shield-alt mr-2 text-primary"></i>IRDAI CAPTCHA
+        </h6>
+        <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 20px; line-height: 1; opacity: 0.8;">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body text-center p-4">
+        <p class="text-muted small mb-3">Please enter the security code to proceed with the verification.</p>
+        <div class="mb-3" style="background:#f1f5f9; padding:15px; border-radius:8px; display:inline-block;">
+          <img id="irdai-captcha-img" src="" alt="CAPTCHA" style="max-height:60px; border:1px solid #cbd5e1; border-radius:4px;">
+        </div>
+        <div class="mb-3">
+          <input type="text" id="irdai-captcha-input" class="form-control text-center font-weight-bold" placeholder="Enter CAPTCHA" style="font-size:18px; letter-spacing:4px; text-transform: none !important;">
+        </div>
+        <button type="button" id="irdai-captcha-submit" class="btn btn-primary w-100" style="font-weight:600; background-color:#0d9488; border-color:#0d9488; color: white;">
+          Submit Verification
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

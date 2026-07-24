@@ -126,10 +126,10 @@
           <div class="info-row" style="flex-direction:column; align-items:flex-start;">
             <span class="info-label" style="margin-bottom:6px;">PAN Number</span>
             <div style="display:flex; width:100%; gap:8px; align-items:center;">
-              <input type="text" name="pan_number" value="{{ agent.pan_number|default:'' }}" style="flex:1; border:1px solid #d7e0ea; border-radius:6px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
-              <a href="https://agencyportal.irdai.gov.in/PublicAccess/LookUpPAN.aspx" target="_blank" class="btn" style="padding:7px 14px; font-size:12px; height:38px; display:inline-flex; align-items:center; background:#f1f5f9; border:1px solid #d7e0ea; color:#1e293b; font-weight:600;">
-                <i class="fas fa-external-link-alt mr-1"></i> IRDAI
-              </a>
+              <input type="text" name="pan_number" id="pan_number_input" value="{{ agent.pan_number|default:'' }}" style="flex:1; border:1px solid #d7e0ea; border-radius:6px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
+              <button type="button" id="irdai-verify-btn" class="btn" style="padding:7px 14px; font-size:12px; height:38px; display:inline-flex; align-items:center; background:#f1f5f9; border:1px solid #d7e0ea; color:#1e293b; font-weight:600; cursor:pointer;">
+                <i class="fas fa-search mr-1"></i> Verify
+              </button>
             </div>
           </div>
           <div class="info-row" style="flex-direction:column; align-items:flex-start;">
@@ -591,8 +591,198 @@ $(document).ready(function() {
             }
         });
     });
+
+    let irdaiSessionId = '';
+
+    $('#irdai-verify-btn').on('click', function() {
+        const pan = $('#pan_number_input').val().trim();
+        if (!pan) {
+            Swal.fire('PAN Required', 'Please enter a PAN number first.', 'warning');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Verifying with IRDAI...',
+            text: 'Starting browser automation, please wait...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: "{% url 'admin_agents_irdai_verify' %}",
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ pan_number: pan }),
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                Swal.close();
+                if (response.status === 'CAPTCHA_REQUIRED') {
+                    irdaiSessionId = response.session_id;
+                    $('#irdai-captcha-img').attr('src', response.captcha_image);
+                    $('#irdai-captcha-input').val('');
+                    $('#irdaiCaptchaModal').modal('show');
+                } else if (response.status === 'SUCCESS') {
+                    handleVerificationSuccess(response.data);
+                } else {
+                    Swal.fire('Verification Failed', response.message || 'Unknown error occurred.', 'error');
+                }
+            },
+            error: function(xhr) {
+                Swal.close();
+                let errMsg = 'Failed to connect to verification service.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errMsg = xhr.responseJSON.message;
+                }
+                Swal.fire('Error', errMsg, 'error');
+            }
+        });
+    });
+
+    $('#irdai-captcha-submit').on('click', function() {
+        const solution = $('#irdai-captcha-input').val().trim();
+        if (!solution) {
+            Swal.fire('CAPTCHA Required', 'Please input the security code.', 'warning');
+            return;
+        }
+
+        $('#irdaiCaptchaModal').modal('hide');
+
+        Swal.fire({
+            title: 'Submitting CAPTCHA...',
+            text: 'Extracting lookup results, please wait...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: "{% url 'admin_agents_irdai_verify' %}",
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                session_id: irdaiSessionId,
+                captcha_solution: solution
+            }),
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                Swal.close();
+                if (response.status === 'SUCCESS') {
+                    handleVerificationSuccess(response.data);
+                } else {
+                    Swal.fire('Verification Failed', response.message || 'Invalid CAPTCHA or lookup failed.', 'error');
+                }
+            },
+            error: function(xhr) {
+                Swal.close();
+                let errMsg = 'An error occurred during submission.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errMsg = xhr.responseJSON.message;
+                }
+                Swal.fire('Error', errMsg, 'error');
+            }
+        });
+    });
+
+    function handleVerificationSuccess(data) {
+        let autofilledFields = [];
+        let conflicts = [];
+
+        function fillField(inputName, scrapedValue) {
+            if (!scrapedValue) return;
+            const input = $(`input[name="${inputName}"]`);
+            if (input.length) {
+                const currentVal = input.val().trim();
+                if (!currentVal) {
+                    input.val(scrapedValue);
+                    input.css('background-color', '#dcfce7');
+                    setTimeout(() => input.css('background-color', ''), 2000);
+                    autofilledFields.push(inputName);
+                } else if (currentVal.toLowerCase() !== scrapedValue.toLowerCase()) {
+                    conflicts.push({ name: inputName, current: currentVal, scraped: scrapedValue });
+                }
+            }
+        }
+
+        fillField('fullname', data.agent_name);
+        fillField('license_number', data.license_number);
+        fillField('license_valid_till', data.license_valid_till);
+        fillField('address', data.city);
+        fillField('office_address', data.address);
+        fillField('mobile', data.mobile);
+        fillField('email', data.email);
+
+        if (conflicts.length > 0) {
+            let conflictHtml = '<div style="text-align: left; max-height: 200px; overflow-y: auto;">';
+            conflicts.forEach(c => {
+                conflictHtml += `<p class="mb-1"><strong>${c.name}:</strong> Scraped: <code style="color:#22c55e;">${c.scraped}</code> (Current: <code style="color:#ef4444;">${c.current}</code>)</p>`;
+            });
+            conflictHtml += '</div>';
+
+            Swal.fire({
+                title: 'Data Conflicts Detected',
+                html: `<p>Some fields already contain data that differs from the IRDAI registry:</p>${conflictHtml}<p class="mt-2 text-muted small">Would you like to overwrite these fields with official IRDAI data?</p>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Overwrite All',
+                cancelButtonText: 'Keep Existing',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#aaa'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    conflicts.forEach(c => {
+                        const input = $(`input[name="${c.name}"]`);
+                        input.val(c.scraped);
+                        input.css('background-color', '#fef9c3');
+                        setTimeout(() => input.css('background-color', ''), 2000);
+                    });
+                    Swal.fire('Updated', 'All fields updated. Click "Save Profile Changes" below to submit changes.', 'success');
+                } else {
+                    Swal.fire('Kept Existing', 'Non-empty conflicting fields were left unchanged. Click "Save Profile Changes" below to submit changes.', 'info');
+                }
+            });
+        } else if (autofilledFields.length > 0) {
+            Swal.fire('Success', `Autofilled ${autofilledFields.length} field(s) successfully. Please verify and click "Save Profile Changes" below.`, 'success');
+        } else {
+            Swal.fire('Verified', 'IRDAI data matches existing profile fields exactly.', 'info');
+        }
+    }
 });
 </script>
+
+<!-- IRDAI CAPTCHA Modal -->
+<div class="modal fade" id="irdaiCaptchaModal" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1060;">
+  <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+    <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 10px 25px rgba(0,0,0,0.15);">
+      <div class="modal-header py-3" style="background:#f8f9fa; border-bottom:1px solid #eee;">
+        <h6 class="modal-title font-weight-bold" style="color:#3c4043; font-size:15px; margin:0;">
+          <i class="fas fa-shield-alt mr-2 text-primary"></i>IRDAI CAPTCHA
+        </h6>
+        <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 20px; line-height: 1; opacity: 0.8;">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body text-center p-4">
+        <p class="text-muted small mb-3">Please enter the security code to proceed with the verification.</p>
+        <div class="mb-3" style="background:#f1f5f9; padding:15px; border-radius:8px; display:inline-block;">
+          <img id="irdai-captcha-img" src="" alt="CAPTCHA" style="max-height:60px; border:1px solid #cbd5e1; border-radius:4px;">
+        </div>
+        <div class="mb-3">
+          <input type="text" id="irdai-captcha-input" class="form-control text-center font-weight-bold" placeholder="Enter CAPTCHA" style="font-size:18px; letter-spacing:4px; text-transform: none !important;">
+        </div>
+        <button type="button" id="irdai-captcha-submit" class="btn btn-primary w-100" style="font-weight:600; background-color:#1d7d5d; border-color:#1d7d5d;">
+          Submit Verification
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <style>
 .log-filter-btn { padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid #cbd5e1; background:#fff; color:#64748b; cursor:pointer; transition:.2s; }

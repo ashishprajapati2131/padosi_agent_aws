@@ -53,6 +53,7 @@ from .views.agents import (
     agent_pending_registrations,
     bulk_action_agents,
 )
+from .views.agents_irdai import verify_irdai_license
 from .views.reviews import (
     reviews_index,
     toggle_review_approval,
@@ -232,6 +233,7 @@ urlpatterns = [
     path("admin/agents/save-notes/", save_agent_notes, name="admin_agents_save_notes"),
     path("admin/agents/bulk-action/", bulk_action_agents, name="admin_agents_bulk_action"),
     path("admin/delete/", admin_delete, name="admin_agents_delete"),
+    path("admin/agents/irdai-verify/", verify_irdai_license, name="admin_agents_irdai_verify"),
 
     # Phase 4B: More Mutations
     path("admin/agents/update-visibility/", update_visibility, name="admin_agents_update_visibility"),
