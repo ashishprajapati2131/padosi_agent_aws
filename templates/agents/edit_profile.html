@@ -2591,7 +2591,7 @@ Overview
         // Pre-check investment toggles based on selectedInvestmentTypes
         $('.investment-db-toggle').prop('checked', false);
         selectedInvestmentTypes.forEach(function (invValue) {
-            const safeId = invValue.replace(/\//g, '_');
+            const safeId = invValue.replace(/\//g, '_').toLowerCase();
             $(`#db_inv_${safeId}`).prop('checked', true);
         });
 
@@ -3814,7 +3814,7 @@ Overview
                         $('#irdai-captcha-input').val('');
                         $('#irdaiCaptchaModal').modal('show');
                     } else if (response.status === 'SUCCESS') {
-                        handleVerificationSuccess(response.data);
+                        handleVerificationSuccess(response.data, response.raw_data);
                     } else {
                         Swal.fire({
                             icon: 'error',
@@ -3882,7 +3882,7 @@ Overview
                 success: function(response) {
                     Swal.close();
                     if (response.status === 'SUCCESS') {
-                        handleVerificationSuccess(response.data);
+                        handleVerificationSuccess(response.data, response.raw_data);
                     } else {
                         Swal.fire({
                             icon: 'error',
@@ -3908,7 +3908,7 @@ Overview
             });
         });
 
-        function handleVerificationSuccess(data) {
+        function handleVerificationSuccess(data, raw_data) {
             let autofilledFields = [];
             let conflicts = [];
 
@@ -3996,6 +3996,93 @@ Overview
                     html: successHtml,
                     icon: 'success',
                     confirmButtonColor: '#0d9488'
+                });
+            }
+
+            // Auto-select insurance segments and company names
+            if (data || raw_data) {
+                let rawTexts = [];
+                if (data && data.agency_name) rawTexts.push(data.agency_name);
+                if (raw_data) {
+                    for (let key in raw_data) {
+                        rawTexts.push(raw_data[key]);
+                    }
+                }
+
+                // Helper to match string against company lists
+                function findBestMatches(scrapedText, companyList) {
+                    let matches = [];
+                    let cleanScraped = scrapedText.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (cleanScraped.length < 3) return matches;
+                    for (let comp of companyList) {
+                        let cleanComp = comp.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        if (cleanScraped.indexOf(cleanComp) !== -1 || cleanComp.indexOf(cleanScraped) !== -1) {
+                            matches.push(comp);
+                        }
+                    }
+                    return matches;
+                }
+
+                // Helper to check/trigger segment checkbox & fill select
+                function selectSegmentAndCompany(segment, companyName) {
+                    const chk = $(`#db_segment_${segment}`);
+                    if (chk.length && !chk.is(':checked')) {
+                        chk.prop('checked', true).trigger('change');
+                    }
+                    
+                    const primarySelect = $(`select[name="portfolio[${segment}][primary_company]"]`);
+                    const secondarySelect = $(`select[name="portfolio[${segment}][secondary_company]"]`);
+                    
+                    if (!primarySelect.length) return;
+                    
+                    // Prevent duplicate selections in this segment
+                    if (primarySelect.val() === companyName || secondarySelect.val() === companyName) {
+                        return;
+                    }
+                    let alreadyInAdditional = false;
+                    $(`.company-rows[data-segment="${segment}"] select`).each(function() {
+                        if ($(this).val() === companyName) {
+                            alreadyInAdditional = true;
+                        }
+                    });
+                    if (alreadyInAdditional) return;
+                    
+                    // Fill empty fields first
+                    if (primarySelect.val() === "") {
+                        primarySelect.val(companyName).trigger('change');
+                    } else if (secondarySelect.val() === "") {
+                        secondarySelect.val(companyName).trigger('change');
+                    } else {
+                        // Add new row if primary/secondary are both full
+                        const addBtn = $(`.add-company-btn[data-segment="${segment}"]`);
+                        if (addBtn.length) {
+                            addBtn.trigger('click');
+                            const selectInNewRow = $(`.company-rows[data-segment="${segment}"] .company-row`).last().find('select');
+                            if (selectInNewRow.length) {
+                                selectInNewRow.val(companyName).trigger('change');
+                            }
+                        }
+                    }
+                }
+
+                rawTexts.forEach(text => {
+                    if (!text || text.length < 3) return;
+                    
+                    // Check Life
+                    findBestMatches(text, companiesLife).forEach(comp => {
+                        selectSegmentAndCompany('life', comp);
+                    });
+                    
+                    // Check Health
+                    findBestMatches(text, companiesHealth).forEach(comp => {
+                        selectSegmentAndCompany('health', comp);
+                    });
+                    
+                    // Check General (matches both Motor & SME)
+                    findBestMatches(text, companiesGeneral).forEach(comp => {
+                        selectSegmentAndCompany('motor', comp);
+                        selectSegmentAndCompany('sme', comp);
+                    });
                 });
             }
         }
