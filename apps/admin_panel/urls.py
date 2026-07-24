@@ -54,6 +54,7 @@ from .views.agents import (
     bulk_action_agents,
 )
 from .views.agents_irdai import verify_irdai_license
+from .views.agents_amfi import verify_amfi_arn
 from .views.reviews import (
     reviews_index,
     toggle_review_approval,
@@ -234,6 +235,7 @@ urlpatterns = [
     path("admin/agents/bulk-action/", bulk_action_agents, name="admin_agents_bulk_action"),
     path("admin/delete/", admin_delete, name="admin_agents_delete"),
     path("admin/agents/irdai-verify/", verify_irdai_license, name="admin_agents_irdai_verify"),
+    path("admin/agents/amfi-verify/", verify_amfi_arn, name="admin_agents_amfi_verify"),
 
     # Phase 4B: More Mutations
     path("admin/agents/update-visibility/", update_visibility, name="admin_agents_update_visibility"),

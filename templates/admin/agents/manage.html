@@ -109,7 +109,7 @@
           </div>
           <div class="info-row" style="flex-direction:column; align-items:flex-start;">
             <span class="info-label" style="margin-bottom:6px;">Location (City)</span>
-            <input type="text" name="address" value="{{ agent.address|default:'' }}" style="width:100%; border:1px solid #d7e0ea; border-radius:6px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
+            <input type="text" name="address" id="address_input" value="{{ agent.address|default:'' }}" style="width:100%; border:1px solid #d7e0ea; border-radius:6px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
           </div>
           <div class="info-row" style="flex-direction:column; align-items:flex-start;">
             <span class="info-label" style="margin-bottom:6px;">Office Address</span>
@@ -134,15 +134,20 @@
           </div>
           <div class="info-row" style="flex-direction:column; align-items:flex-start;">
             <span class="info-label" style="margin-bottom:6px;">AMFI ARN Number</span>
-            <input type="text" name="arn_number" value="{{ agent.arn_number|default:'' }}" style="width:100%; border:1px solid #d7e0ea; border-radius:6px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
+            <div style="display:flex; width:100%; gap:8px; align-items:center;">
+              <input type="text" name="arn_number" id="arn_number_input" value="{{ agent.arn_number|default:'' }}" style="flex:1; border:1px solid #d7e0ea; border-radius:6px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
+              <button type="button" id="amfi-verify-btn" class="btn" style="padding:7px 14px; font-size:12px; height:38px; display:inline-flex; align-items:center; background:#f1f5f9; border:1px solid #d7e0ea; color:#1e293b; font-weight:600; cursor:pointer;">
+                <i class="fas fa-search mr-1"></i> Verify
+              </button>
+            </div>
           </div>
           <div class="info-row" style="flex-direction:column; align-items:flex-start;">
             <span class="info-label" style="margin-bottom:6px;">EUIN Number</span>
-            <input type="text" name="euin_number" value="{{ agent.euin_number|default:'' }}" style="width:100%; border:1px solid #d7e0ea; border-radius:6px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
+            <input type="text" name="euin_number" id="euin_number_input" value="{{ agent.euin_number|default:'' }}" style="width:100%; border:1px solid #d7e0ea; border-radius:6px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
           </div>
           <div class="info-row" style="flex-direction:column; align-items:flex-start;">
             <span class="info-label" style="margin-bottom:6px;">ARN Valid Till Date</span>
-            <input type="date" name="investment_valid_till" value="{{ agent.investment_valid_till|date:'Y-m-d'|default:'' }}" style="width:100%; border:1px solid #d7e0ea; border-radius:6px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
+            <input type="date" name="investment_valid_till" id="investment_valid_till_input" value="{{ agent.investment_valid_till|date:'Y-m-d'|default:'' }}" style="width:100%; border:1px solid #d7e0ea; border-radius:6px; padding:8px 12px; font-size:14px; font-family:inherit; box-sizing:border-box;">
           </div>
           <div class="info-row" style="flex-direction:column; align-items:flex-start;">
             <span class="info-label" style="margin-bottom:6px;">Investment Types</span>
@@ -752,6 +757,138 @@ $(document).ready(function() {
         } else {
             Swal.fire('Verified', 'IRDAI data matches existing profile fields exactly.', 'info');
         }
+    }
+
+    /* ── AMFI ARN Verification Flow ── */
+    $('#amfi-verify-btn').on('click', function(e) {
+        e.preventDefault();
+        const btn = $(this);
+        let arn = $('#arn_number_input').val().trim().replace(/\s+/g, '');
+        let arnMatch = arn.match(/^(?:ARN-)?(\d+)$/i);
+        if (!arnMatch) {
+            Swal.fire('Invalid ARN', 'Please enter a valid AMFI ARN Number.', 'warning');
+            return;
+        }
+        let normalizedArn = 'ARN-' + arnMatch[1];
+
+        // Disable button, show loading spinner, prevent duplicate clicks
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Verify');
+
+        Swal.fire({
+            title: 'Verifying with AMFI...',
+            text: 'Starting browser automation, please wait...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: "{% url 'admin_agents_amfi_verify' %}",
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ arn_number: normalizedArn }),
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                Swal.close();
+                if (response.status === 'SUCCESS') {
+                    handleAmfiSuccess(response.data, response.social_profiles);
+                } else {
+                    Swal.fire('Verification Failed', response.message || 'Unknown error occurred.', 'error');
+                }
+            },
+            error: function(xhr) {
+                Swal.close();
+                let errMsg = 'Failed to connect to verification service.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errMsg = xhr.responseJSON.message;
+                }
+                Swal.fire('Error', errMsg, 'error');
+            },
+            complete: function() {
+                // Re-enable button and restore original state
+                btn.prop('disabled', false).html('<i class="fas fa-search mr-1"></i> Verify');
+            }
+        });
+    });
+
+    function handleAmfiSuccess(data, social) {
+        let profilesAdded = [];
+
+        function fillFieldIfEmpty(inputName, value) {
+            if (!value) return;
+            const input = $(`input[name="${inputName}"]`);
+            if (input.length) {
+                const currentVal = input.val().trim();
+                if (!currentVal) {
+                    input.val(value);
+                    input.css('background-color', '#dcfce7');
+                    setTimeout(() => input.css('background-color', ''), 2000);
+                }
+            }
+        }
+
+        // Populate core fields (unconditionally overwrite with verified registry data)
+        function updateField(inputName, value) {
+            if (!value) return;
+            const input = $(`input[name="${inputName}"], #${inputName}_input`);
+            if (input.length) {
+                input.val(value);
+                input.css('background-color', '#dcfce7');
+                setTimeout(() => input.css('background-color', ''), 2000);
+            }
+        }
+
+        updateField('arn_number', data.arn_number);
+        updateField('euin_number', data.euin_number);
+        updateField('investment_valid_till', data.license_valid_till);
+
+        // Put the first city from service_cities into Location (City) input if empty
+        const firstCity = data.service_cities && data.service_cities.length > 0 ? data.service_cities[0] : '';
+        if (firstCity) {
+            fillFieldIfEmpty('address', firstCity);
+        }
+
+        // Show SweetAlert popup
+        const name = data.distributor_name || 'N/A';
+        const arn = data.arn_number || 'N/A';
+        const euin = data.euin_number || 'N/A';
+        const status = data.arn_status || 'N/A';
+        const validTill = data.license_valid_till || 'N/A';
+        const citiesStr = (data.service_cities || []).join(', ') || 'N/A';
+        const pincodesStr = (data.service_pincodes || []).join(', ') || 'N/A';
+        
+        // Find which social profiles have values
+        for (let key in social) {
+            if (social[key]) {
+                profilesAdded.push(key.charAt(0).toUpperCase() + key.slice(1));
+            }
+        }
+        const profilesStr = profilesAdded.length > 0 ? profilesAdded.join(', ') : 'None';
+
+        const successHtml = `
+            <div style="text-align: left; margin-top: 10px; font-size: 14px; line-height: 1.6; color: #4b5563;">
+                <p class="mb-2"><strong>Distributor:</strong> ${name}</p>
+                <p class="mb-2"><strong>ARN:</strong> ${arn}</p>
+                <p class="mb-2"><strong>EUIN:</strong> ${euin}</p>
+                <p class="mb-2"><strong>Status:</strong> <span class="badge ${status.toLowerCase() === 'active' ? 'badge-success' : 'badge-warning'}" style="padding: 4px 8px; font-size: 12px; border-radius: 4px;">${status}</span></p>
+                <p class="mb-2"><strong>Valid Till:</strong> ${validTill}</p>
+                <p class="mb-2"><strong>Service Cities:</strong> ${citiesStr}</p>
+                <p class="mb-2"><strong>Service Pincodes:</strong> ${pincodesStr}</p>
+                <p class="mb-3"><strong>Social Profiles Discovered:</strong> ${profilesStr}</p>
+                <hr class="my-3" style="border-top: 1px solid #e5e7eb;">
+                <p class="mb-0 text-muted small">The AMFI details have been successfully verified and populated into the profile.</p>
+            </div>
+        `;
+
+        Swal.fire({
+            title: 'AMFI Verification Successful',
+            html: successHtml,
+            icon: 'success',
+            confirmButtonColor: '#0d9488'
+        });
     }
 });
 </script>
