@@ -2733,7 +2733,7 @@ Overview
     // Investment Selector Interaction
     $(document).on('change', '.investment-db-toggle', function () {
         const isChecked = $(this).is(':checked');
-        const inv = $(this).val();
+        const inv = $(this).val().toLowerCase();
         const label = $(this).siblings('label');
         const icon = label.find('i');
         const span = label.find('span');
