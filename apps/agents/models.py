@@ -561,6 +561,16 @@ class AgentProfile(models.Model):
     gbp_refresh_token     = models.TextField(blank=True, null=True)
     gbp_token_expires_at  = models.DateTimeField(null=True, blank=True)
 
+    # Professional License Document uploads
+    irdai_license_doc = models.FileField(upload_to='app/public/insurance/', null=True, blank=True)
+    amfi_license_doc  = models.FileField(upload_to='app/public/investment/', null=True, blank=True)
+
+    is_profile_visible = models.BooleanField(default=True)
+    show_certificates = models.BooleanField(default=True)
+    show_achievements = models.BooleanField(default=True)
+    show_reviews = models.BooleanField(default=True)
+    is_card_visible = models.BooleanField(default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

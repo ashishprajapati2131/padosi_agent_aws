@@ -45,7 +45,7 @@ from .views.agents import (
     update_achievement_limit,
     update_irdai_license,
     update_plan,
-    toggle_review_approval,
+    toggle_review_approval as agent_toggle_review_approval,
     update_profile,
     get_agent_json,
     get_edit_logs,
@@ -241,7 +241,7 @@ urlpatterns = [
     path("admin/agents/update-visibility/", update_visibility, name="admin_agents_update_visibility"),
     path("admin/agents/update-achievement-limit/", update_achievement_limit, name="admin_agents_update_achievement_limit"),
     path("admin/agents/update-plan/", update_plan, name="admin_agents_update_plan"),
-    path("admin/agents/toggle-review-approval/", toggle_review_approval, name="admin_agents_toggle_review_approval"),
+    path("admin/agents/toggle-review-approval/", agent_toggle_review_approval, name="admin_agents_toggle_review_approval"),
 
     # Phase 4C: Manage Agent Completion
     path("admin/agents/update-profile/", update_profile, name="admin_agents_update_profile"),

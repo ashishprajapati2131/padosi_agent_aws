@@ -478,67 +478,81 @@
         <!-- Certifications -->
         <div class="section-card">
             <h2 class="section-title"><i class="fas fa-award"></i> Certifications & Licenses</h2>
-            {% if profile.license_number %}
-                <div class="icon-list-item" style="align-items: flex-start; gap: 10px; margin-bottom: 12px;">
-                    <i class="fas fa-certificate item-icon" style="color: #0d9488; font-size: 20px;"></i>
-                    <div class="item-text" style="line-height: 1.4;">
-                        <strong style="color: #0f172a; font-size: 14px;">IRDAI Certified Insurance Agent</strong><br>
-                        <span class="text-muted small">License No: {{ profile.license_number }}</span>
-                        {% if profile.license_valid_till %}
-                            <span class="text-muted small d-block">Valid till: {{ profile.license_valid_till|date:"d M Y" }}</span>
-                        {% endif %}
+            {% if profile.show_certificates %}
+                {% if profile.license_number %}
+                    <div class="icon-list-item" style="align-items: flex-start; gap: 10px; margin-bottom: 12px;">
+                        <i class="fas fa-certificate item-icon" style="color: #0d9488; font-size: 20px;"></i>
+                        <div class="item-text" style="line-height: 1.4;">
+                            <strong style="color: #0f172a; font-size: 14px;">IRDAI Certified Insurance Agent</strong><br>
+                            <span class="text-muted small">License No: {{ profile.license_number }}</span>
+                            {% if profile.license_valid_till %}
+                                <span class="text-muted small d-block">Valid till: {{ profile.license_valid_till|date:"d M Y" }}</span>
+                            {% endif %}
+                        </div>
                     </div>
-                </div>
-            {% endif %}
-
-            {% if profile.arn_number %}
-                <div class="icon-list-item" style="align-items: flex-start; gap: 10px; margin-bottom: 12px;">
-                    <i class="fas fa-certificate item-icon" style="color: #2563eb; font-size: 20px;"></i>
-                    <div class="item-text" style="line-height: 1.4;">
-                        <strong style="color: #0f172a; font-size: 14px;">AMFI Certified Mutual Fund Distributor</strong><br>
-                        <span class="text-muted small">ARN Number: {{ profile.arn_number }}</span>
-                        {% if profile.euin_number %}
-                            <span class="text-muted small d-block">EUIN: {{ profile.euin_number }}</span>
-                        {% endif %}
-                        {% if profile.investment_valid_till %}
-                            <span class="text-muted small d-block">Valid till: {{ profile.investment_valid_till|date:"d M Y" }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-            {% endif %}
-
-            {% for certification in agent.certification_entries %}
-                <div class="icon-list-item">
-                    <i class="fas fa-certificate item-icon"></i>
-                    <div class="item-text">
-                        {{ certification.event_text }}
-                        {% if certification.month or certification.year %}
-                            <span class="text-muted small">({{ certification.month|default:"" }} {{ certification.year|default:"" }})</span>
-                        {% endif %}
-                    </div>
-                </div>
-            {% empty %}
-                {% if not profile.license_number and not profile.arn_number %}
-                    <div class="text-muted small">No certifications recorded.</div>
                 {% endif %}
-            {% endfor %}
+
+                {% if profile.arn_number %}
+                    <div class="icon-list-item" style="align-items: flex-start; gap: 10px; margin-bottom: 12px;">
+                        <i class="fas fa-certificate item-icon" style="color: #2563eb; font-size: 20px;"></i>
+                        <div class="item-text" style="line-height: 1.4;">
+                            <strong style="color: #0f172a; font-size: 14px;">AMFI Certified Mutual Fund Distributor</strong><br>
+                            <span class="text-muted small">ARN Number: {{ profile.arn_number }}</span>
+                            {% if profile.euin_number %}
+                                <span class="text-muted small d-block">EUIN: {{ profile.euin_number }}</span>
+                            {% endif %}
+                            {% if profile.investment_valid_till %}
+                                <span class="text-muted small d-block">Valid till: {{ profile.investment_valid_till|date:"d M Y" }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% for certification in agent.certification_entries %}
+                    <div class="icon-list-item">
+                        <i class="fas fa-certificate item-icon"></i>
+                        <div class="item-text">
+                            {{ certification.event_text }}
+                            {% if certification.month or certification.year %}
+                                <span class="text-muted small">({{ certification.month|default:"" }} {{ certification.year|default:"" }})</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    {% if not profile.license_number and not profile.arn_number %}
+                        <div class="text-muted small">No certifications recorded.</div>
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-lock text-muted mb-2" style="font-size: 24px;"></i>
+                    <p class="text-muted mb-0">Certifications are set to private by the administrator.</p>
+                </div>
+            {% endif %}
         </div>
 
         <!-- Achievements -->
         <div class="section-card">
             <h2 class="section-title"><i class="fas fa-trophy"></i> Achievements</h2>
-            {% if agent.achievement_entries %}
-                <div class="achievements-row">
-                    {% for achievement in agent.achievement_entries %}
-                        <div class="achievement-badge">
-                            <i class="fas fa-medal"></i> {{ achievement.event_text }}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% elif profile.career_highlights %}
-                <div class="text-muted small" style="white-space: pre-line;">{{ profile.career_highlights }}</div>
+            {% if profile.show_achievements %}
+                {% if agent.achievement_entries %}
+                    <div class="achievements-row">
+                        {% for achievement in agent.achievement_entries %}
+                            <div class="achievement-badge">
+                                <i class="fas fa-medal"></i> {{ achievement.event_text }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% elif profile.career_highlights %}
+                    <div class="text-muted small" style="white-space: pre-line;">{{ profile.career_highlights }}</div>
+                {% else %}
+                    <div class="text-muted small">No achievements recorded.</div>
+                {% endif %}
             {% else %}
-                <div class="text-muted small">No achievements recorded.</div>
+                <div class="text-center py-4">
+                    <i class="fas fa-lock text-muted mb-2" style="font-size: 24px;"></i>
+                    <p class="text-muted mb-0">Achievements are set to private by the administrator.</p>
+                </div>
             {% endif %}
         </div>
     </div>
@@ -645,72 +659,81 @@
         <div class="section-card" id="reviews-section">
             <div class="reviews-header">
                 <h2 class="section-title mb-0"><i class="far fa-star"></i> Reviews</h2>
-                <span class="total-reviews">{{ agent.review_count }} total</span>
-            </div>
-
-            <div class="reviews-body">
-                <div class="reviews-list">
-                    {% for review in reviews %}
-                        <div class="review-item">
-                            <div class="review-top">
-                                <div class="reviewer-info">
-                                    <div class="reviewer-avatar">
-                                        {{ review.author_display|slice:":1"|upper }}
-                                    </div>
-                                    <div class="reviewer-name">
-                                        {{ review.author_display }}
-                                    </div>
-                                </div>
-                                <div class="stars">
-                                    {% for i in "12345" %}
-                                        {% if review.rating >= forloop.counter %}
-                                            <i class="fas fa-star"></i>
-                                        {% else %}
-                                            <i class="far fa-star"></i>
-                                        {% endif %}
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <p class="review-text">{{ review.review|striptags }}</p>
-                            <div class="review-date">{{ review.created_at|date:"M d, Y"|default:"N/A" }}</div>
-                        </div>
-                    {% empty %}
-                        <div class="review-empty">No reviews yet. Be the first to review!</div>
-                    {% endfor %}
-                </div>
-
-                {% if not isOwnerView %}
-                <div class="write-review-box">
-                    <h3 class="write-review-title">Write a Review</h3>
-                    <form id="submit-review-form" data-is-guest="{% if request.user.is_authenticated %}false{% else %}true{% endif %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="rating" id="review-rating-input" value="{% if existingReview %}{{ existingReview.rating }}{% else %}0{% endif %}">
-                        
-                        <label class="review-rating-label">Your Rating:</label>
-                        <div class="review-stars-input">
-                            {% for i in "12345" %}
-                                <i class="{% if existingReview and existingReview.rating >= forloop.counter %}fas{% else %}far{% endif %} fa-star" data-rating="{{ forloop.counter }}"></i>
-                            {% endfor %}
-                        </div>
-                        
-                        <textarea id="review-text-input" name="review" class="form-control" rows="4" placeholder="Share your experience with this agent (minimum 10 characters)..." required minlength="10" maxlength="500">{% if existingReview %}{{ existingReview.review }}{% endif %}</textarea>
-                        
-                        <div class="char-counter">
-                            <span id="review-char-count">{% if existingReview %}{{ existingReview.review|length }}{% else %}0{% endif %}</span> / 500 characters
-                        </div>
-                        
-                        <button type="submit" class="btn btn-whatsapp" id="submit-review-btn">
-                            {% if request.user.is_authenticated and existingReview %}Update Review{% else %}Submit Review{% endif %}
-                        </button>
-                        {% if not request.user.is_authenticated %}
-                            <p class="text-muted small mt-2">
-                                Note: You will be asked to share your name, email, and mobile number to submit this review.
-                            </p>
-                        {% endif %}
-                    </form>
-                </div>
+                {% if profile.show_reviews %}
+                    <span class="total-reviews">{{ agent.review_count }} total</span>
                 {% endif %}
             </div>
+
+            {% if profile.show_reviews %}
+                <div class="reviews-body">
+                    <div class="reviews-list">
+                        {% for review in reviews %}
+                            <div class="review-item">
+                                <div class="review-top">
+                                    <div class="reviewer-info">
+                                        <div class="reviewer-avatar">
+                                            {{ review.author_display|slice:":1"|upper }}
+                                        </div>
+                                        <div class="reviewer-name">
+                                            {{ review.author_display }}
+                                        </div>
+                                    </div>
+                                    <div class="stars">
+                                        {% for i in "12345" %}
+                                            {% if review.rating >= forloop.counter %}
+                                                <i class="fas fa-star"></i>
+                                            {% else %}
+                                                <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <p class="review-text">{{ review.review|striptags }}</p>
+                                <div class="review-date">{{ review.created_at|date:"M d, Y"|default:"N/A" }}</div>
+                            </div>
+                        {% empty %}
+                            <div class="review-empty">No reviews yet. Be the first to review!</div>
+                        {% endfor %}
+                    </div>
+
+                    {% if not isOwnerView %}
+                    <div class="write-review-box">
+                        <h3 class="write-review-title">Write a Review</h3>
+                        <form id="submit-review-form" data-is-guest="{% if request.user.is_authenticated %}false{% else %}true{% endif %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="rating" id="review-rating-input" value="{% if existingReview %}{{ existingReview.rating }}{% else %}0{% endif %}">
+                            
+                            <label class="review-rating-label">Your Rating:</label>
+                            <div class="review-stars-input">
+                                {% for i in "12345" %}
+                                    <i class="{% if existingReview and existingReview.rating >= forloop.counter %}fas{% else %}far{% endif %} fa-star" data-rating="{{ forloop.counter }}"></i>
+                                {% endfor %}
+                            </div>
+                            
+                            <textarea id="review-text-input" name="review" class="form-control" rows="4" placeholder="Share your experience with this agent (minimum 10 characters)..." required minlength="10" maxlength="500">{% if existingReview %}{{ existingReview.review }}{% endif %}</textarea>
+                            
+                            <div class="char-counter">
+                                <span id="review-char-count">{% if existingReview %}{{ existingReview.review|length }}{% else %}0{% endif %}</span> / 500 characters
+                            </div>
+                            
+                            <button type="submit" class="btn btn-whatsapp" id="submit-review-btn">
+                                {% if request.user.is_authenticated and existingReview %}Update Review{% else %}Submit Review{% endif %}
+                            </button>
+                            {% if not request.user.is_authenticated %}
+                                <p class="text-muted small mt-2">
+                                    Note: You will be asked to share your name, email, and mobile number to submit this review.
+                                </p>
+                            {% endif %}
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-lock text-muted mb-2" style="font-size: 24px;"></i>
+                    <p class="text-muted mb-0">Reviews and comments are set to private by the administrator.</p>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>

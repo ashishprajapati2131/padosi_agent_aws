@@ -120,7 +120,7 @@ def manage_agent(request, id):
         SELECT
             a.id, a.fullname, a.email, a.mobile, a.status, a.created_at, a.experience_range, a.admin_notes, a.achievement_photo_limit,
             ap.address, ap.license_number, ap.experience_years, ap.office_address, ap.pan_number, ap.profile_photo_path,
-            ap.is_profile_visible, ap.show_certificates, ap.show_achievements, ap.show_reviews,
+            ap.is_profile_visible, ap.is_card_visible, ap.show_certificates, ap.show_achievements, ap.show_reviews,
             ap.license_valid_till, ap.arn_number, ap.euin_number, ap.investment_valid_till, ap.investment_types,
             s.selected_plan, s.expires_at,
             (SELECT AVG(rating) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) as avg_rating,
@@ -468,7 +468,7 @@ def update_visibility(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'})
 
-    valid_fields = ['is_profile_visible', 'show_certificates', 'show_achievements', 'show_reviews']
+    valid_fields = ['is_profile_visible', 'is_card_visible', 'show_certificates', 'show_achievements', 'show_reviews']
     if field not in valid_fields:
         return JsonResponse({'success': False, 'message': 'Invalid field'})
 

@@ -532,7 +532,7 @@ def find_agents(request):
         return render(request, 'public/find-agents.html', context)
 
     # Core query build
-    query = Agent.objects.filter(status='active', user__isnull=False)
+    query = Agent.objects.filter(status='active', user__isnull=False).exclude(profile__is_card_visible=False)
     query = query.select_related('profile', 'performanceStats').prefetch_related(
         'insuranceSegments', 'reviews', 'serviceableCities', 'productExpertise'
     )
@@ -987,7 +987,7 @@ def blacklisted_agents(request):
 def build_agent_query(pincode, location, lat, lng, detected_area, service_type_input, insurance_type_input, insurance_company_input, claim_company_input, search_val, sort_by, request=None):
     invalid_pincode = False
     # Core query build
-    query = Agent.objects.filter(status='active', user__isnull=False)
+    query = Agent.objects.filter(status='active', user__isnull=False).exclude(profile__is_card_visible=False)
     query = query.select_related('profile', 'performanceStats').prefetch_related(
         'insuranceSegments', 'reviews', 'serviceableCities', 'productExpertise'
     )

@@ -470,6 +470,108 @@ Overview
                             </div>
                         </div>
 
+                        <!-- Professional License Upload Module -->
+                        <div class="row mb-4">
+                            <div class="col-12 mb-3">
+                                <h6 class="text-primary font-weight-bold mb-1">
+                                    <i class="fas fa-file-contract mr-2"></i>Professional License Documents
+                                </h6>
+                                <small class="text-muted">Upload official certificate documents for IRDAI and AMFI license verification.</small>
+                            </div>
+
+                            <!-- IRDAI License Upload Card -->
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 border shadow-sm" style="border-radius: 12px; overflow: hidden; background: #ffffff;">
+                                    <div class="card-header bg-light py-3 border-bottom d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <div style="width: 32px; height: 32px; background: rgba(13, 148, 136, 0.1); color: #0d9488; border-radius: 8px; display: flex; align-items: center; justify-content: center;" class="mr-2">
+                                                <i class="fas fa-landmark" style="font-size: 14px;"></i>
+                                            </div>
+                                            <h6 class="mb-0 font-weight-bold text-dark" style="font-size: 14px;">IRDAI License Certificate</h6>
+                                        </div>
+                                        <span class="badge {% if profile.irdai_license_doc %}badge-success{% else %}badge-warning{% endif %}" style="font-size: 11px; padding: 4px 10px; border-radius: 20px;">
+                                            {% if profile.irdai_license_doc %}Uploaded{% else %}Not Uploaded{% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="card-body p-3">
+                                        {% if profile.irdai_license_doc %}
+                                        <div class="p-3 border rounded mb-3 bg-light d-flex align-items-center justify-content-between" id="irdai-file-preview" style="border-radius: 8px;">
+                                            <div class="d-flex align-items-center overflow-hidden mr-2">
+                                                <i class="fas fa-file-pdf text-danger fa-2x mr-3"></i>
+                                                <div class="text-truncate">
+                                                    <div class="font-weight-bold text-dark small text-truncate" style="max-width: 180px;">IRDAI Certificate</div>
+                                                    <small class="text-muted">Uploaded Document</small>
+                                                </div>
+                                            </div>
+                                            <a href="/media/{{ profile.irdai_license_doc }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary font-weight-bold" style="border-radius: 6px; font-size: 12px;">
+                                                <i class="fas fa-eye mr-1"></i> View
+                                            </a>
+                                        </div>
+                                        {% endif %}
+
+                                        <div class="custom-file-upload border rounded p-3 text-center" style="border-style: dashed !important; border-color: #cbd5e1 !important; background: #f8fafc; border-radius: 8px;">
+                                            <i class="fas fa-cloud-upload-alt text-muted fa-2x mb-2" style="color: #0d9488 !important;"></i>
+                                            <p class="mb-1 font-weight-bold small text-dark">Upload IRDAI Certificate</p>
+                                            <small class="text-muted d-block mb-2" style="font-size: 11px;">PDF, JPG, JPEG, PNG (Max 5 MB)</small>
+                                            <input type="file" name="irdai_license_doc" id="irdai_license_doc_input" class="d-none" accept=".pdf,.jpg,.jpeg,.png" onchange="handleLicenseFileChange(this, 'irdai')">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary font-weight-bold px-3" onclick="document.getElementById('irdai_license_doc_input').click()" style="border-radius: 6px; font-size: 12px;">
+                                                <i class="fas fa-folder-open mr-1"></i> Browse File
+                                            </button>
+                                            <div id="irdai-new-file-preview" class="mt-2 text-success small font-weight-bold" style="display: none;">
+                                                <i class="fas fa-check-circle mr-1"></i> Selected: <span id="irdai-new-filename"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- AMFI License Upload Card -->
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 border shadow-sm" style="border-radius: 12px; overflow: hidden; background: #ffffff;">
+                                    <div class="card-header bg-light py-3 border-bottom d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <div style="width: 32px; height: 32px; background: rgba(34, 88, 165, 0.1); color: #2258a5; border-radius: 8px; display: flex; align-items: center; justify-content: center;" class="mr-2">
+                                                <i class="fas fa-chart-line" style="font-size: 14px;"></i>
+                                            </div>
+                                            <h6 class="mb-0 font-weight-bold text-dark" style="font-size: 14px;">AMFI / ARN Certificate</h6>
+                                        </div>
+                                        <span class="badge {% if profile.amfi_license_doc %}badge-success{% else %}badge-warning{% endif %}" style="font-size: 11px; padding: 4px 10px; border-radius: 20px;">
+                                            {% if profile.amfi_license_doc %}Uploaded{% else %}Not Uploaded{% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="card-body p-3">
+                                        {% if profile.amfi_license_doc %}
+                                        <div class="p-3 border rounded mb-3 bg-light d-flex align-items-center justify-content-between" id="amfi-file-preview" style="border-radius: 8px;">
+                                            <div class="d-flex align-items-center overflow-hidden mr-2">
+                                                <i class="fas fa-file-pdf text-danger fa-2x mr-3"></i>
+                                                <div class="text-truncate">
+                                                    <div class="font-weight-bold text-dark small text-truncate" style="max-width: 180px;">AMFI Certificate</div>
+                                                    <small class="text-muted">Uploaded Document</small>
+                                                </div>
+                                            </div>
+                                            <a href="/media/{{ profile.amfi_license_doc }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary font-weight-bold" style="border-radius: 6px; font-size: 12px;">
+                                                <i class="fas fa-eye mr-1"></i> View
+                                            </a>
+                                        </div>
+                                        {% endif %}
+
+                                        <div class="custom-file-upload border rounded p-3 text-center" style="border-style: dashed !important; border-color: #cbd5e1 !important; background: #f8fafc; border-radius: 8px;">
+                                            <i class="fas fa-cloud-upload-alt text-muted fa-2x mb-2" style="color: #2258a5 !important;"></i>
+                                            <p class="mb-1 font-weight-bold small text-dark">Upload AMFI Certificate</p>
+                                            <small class="text-muted d-block mb-2" style="font-size: 11px;">PDF, JPG, JPEG, PNG (Max 5 MB)</small>
+                                            <input type="file" name="amfi_license_doc" id="amfi_license_doc_input" class="d-none" accept=".pdf,.jpg,.jpeg,.png" onchange="handleLicenseFileChange(this, 'amfi')">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary font-weight-bold px-3" onclick="document.getElementById('amfi_license_doc_input').click()" style="border-radius: 6px; font-size: 12px;">
+                                                <i class="fas fa-folder-open mr-1"></i> Browse File
+                                            </button>
+                                            <div id="amfi-new-file-preview" class="mt-2 text-success small font-weight-bold" style="display: none;">
+                                                <i class="fas fa-check-circle mr-1"></i> Selected: <span id="amfi-new-filename"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Investment License Details -->
                         <div class="row border rounded p-3 mb-4 bg-light mx-0"
                             style="border-color: #cbd5e1 !important; border-radius: 12px !important;">
@@ -2578,24 +2680,8 @@ Overview
         sme: companiesGeneral
     };
 
-    function updatePortfolioStep() {
-        const selectedSegments = typeof selectedSegmentsFromDb !== 'undefined' ? selectedSegmentsFromDb : [];
-        const selectedInvestmentTypes = typeof selectedInvestmentTypesFromDb !== 'undefined' ? selectedInvestmentTypesFromDb : [];
-
-        // Pre-check segment toggles based on selectedSegments
-        $('.segment-db-toggle').prop('checked', false);
-        selectedSegments.forEach(function (segmentValue) {
-            $(`#db_segment_${segmentValue}`).prop('checked', true);
-        });
-
-        // Pre-check investment toggles based on selectedInvestmentTypes
-        $('.investment-db-toggle').prop('checked', false);
-        selectedInvestmentTypes.forEach(function (invValue) {
-            const safeId = invValue.replace(/\//g, '_').toLowerCase();
-            $(`#db_inv_${safeId}`).prop('checked', true);
-        });
-
-        // Manually trigger styling for checkbox states
+    function syncCheckboxStyles() {
+        // Manually trigger styling for segment checkbox states
         $('.segment-db-toggle').each(function () {
             const isChecked = $(this).is(':checked');
             const label = $(this).siblings('label');
@@ -2648,6 +2734,31 @@ Overview
                 span.css('color', '#475569');
             }
         });
+    }
+
+    let isPortfolioInitialized = false;
+
+    function updatePortfolioStep() {
+        const selectedSegments = typeof selectedSegmentsFromDb !== 'undefined' ? selectedSegmentsFromDb : [];
+        const selectedInvestmentTypes = typeof selectedInvestmentTypesFromDb !== 'undefined' ? selectedInvestmentTypesFromDb : [];
+
+        // On first initialization only, apply DB values to checkboxes
+        if (!isPortfolioInitialized) {
+            $('.segment-db-toggle').prop('checked', false);
+            selectedSegments.forEach(function (segmentValue) {
+                $(`#db_segment_${segmentValue}`).prop('checked', true);
+            });
+
+            $('.investment-db-toggle').prop('checked', false);
+            selectedInvestmentTypes.forEach(function (invValue) {
+                const safeId = String(invValue).toLowerCase().replace(/\//g, '_');
+                $(`#db_inv_${safeId}`).prop('checked', true);
+            });
+
+            isPortfolioInitialized = true;
+        }
+
+        syncCheckboxStyles();
 
         if (selectedSegments.length === 0) {
             portfolioEmptyState.show();

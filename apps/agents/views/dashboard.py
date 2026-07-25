@@ -504,8 +504,17 @@ def agent_public_profile(request, slug):
         existing_review = agent.reviews.filter(user=request.user).first()
         
     profile = getattr(agent, 'profile', None)
+    is_admin = request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
     display_name = (profile.display_name if profile else '') or agent.fullname or 'Agent'
     agent_initial = display_name[0].upper() if display_name else 'A'
+
+    if profile and not profile.is_profile_visible:
+        return render(request, 'agents/profile_private_fallback.html', {
+            'agent': agent,
+            'profile': profile,
+            'agentDisplayName': display_name,
+            'agentInitial': agent_initial,
+        })
     
     import json
     social_links = {}
@@ -1094,6 +1103,22 @@ def update_profile(request):
                         }
                     }, status=422)
                     
+                # Process license document uploads
+                allowed_doc_exts = ['.pdf', '.jpg', '.jpeg', '.png']
+                if 'irdai_license_doc' in request.FILES:
+                    irdai_file = request.FILES['irdai_license_doc']
+                    ext = os.path.splitext(irdai_file.name)[1].lower()
+                    if ext in allowed_doc_exts and irdai_file.size <= 5 * 1024 * 1024:
+                        doc_path = f"app/public/insurance/irdai_{agent.id}_{int(time.time())}{ext}"
+                        profile.irdai_license_doc = default_storage.save(doc_path, irdai_file)
+
+                if 'amfi_license_doc' in request.FILES:
+                    amfi_file = request.FILES['amfi_license_doc']
+                    ext = os.path.splitext(amfi_file.name)[1].lower()
+                    if ext in allowed_doc_exts and amfi_file.size <= 5 * 1024 * 1024:
+                        doc_path = f"app/public/investment/amfi_{agent.id}_{int(time.time())}{ext}"
+                        profile.amfi_license_doc = default_storage.save(doc_path, amfi_file)
+
                 profile.website_url = website
                 profile.social_links = {
                     'google_business': google_business,
