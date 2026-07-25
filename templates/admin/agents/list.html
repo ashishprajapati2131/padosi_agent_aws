@@ -59,6 +59,8 @@
                     <option value="pending_approval" {% if status_filter == "pending_approval" %}selected{% endif %}>Pending Approval</option>
                     <option value="pending_payment" {% if status_filter == "pending_payment" %}selected{% endif %}>Pending Payment</option>
                     <option value="suspended" {% if status_filter == "suspended" %}selected{% endif %}>Suspended</option>
+                    <option value="blacklisted" {% if status_filter == "blacklisted" %}selected{% endif %}>Blacklisted</option>
+                    <option value="not_blacklisted" {% if status_filter == "not_blacklisted" %}selected{% endif %}>Not Blacklisted</option>
                 </select>
             </div>
 
@@ -102,7 +104,7 @@
             <table class="table table-hover align-middle mb-0">
                 <thead>
                     <tr>
-                        <th style="width: 40px;"></th>
+                        <th class="ps-4" style="width: 40px;"></th>
                         <th>ID</th>
                         <th>Agent Details</th>
                         <th>Location</th>
@@ -110,14 +112,14 @@
                         <th>Performance</th>
                         <th class="text-center">Status</th>
                         <th class="text-center">Recognition</th>
-                        <th class="text-end">Actions</th>
+                        <th class="text-end pe-4">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for agent in page_obj %}
                     <tr>
                         <!-- Bulk Checkbox -->
-                        <td>
+                        <td class="ps-4">
                             <input class="form-check-input row-chk" type="checkbox" name="agent_ids[]" value="{{ agent.id }}">
                         </td>
 
@@ -133,6 +135,9 @@
                                 <div>
                                     <div class="fw-bold">{{ agent.display_name|default:agent.fullname }}</div>
                                     <div class="text-muted" style="font-size: 11px;">{{ agent.email }}</div>
+                                    {% if agent.is_blacklisted %}
+                                        <span class="badge bg-danger mt-1 d-inline-block" style="font-size: 9px; padding: 2px 6px; border-radius: 4px;">Blacklisted</span>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>
@@ -192,9 +197,20 @@
                                         data-toggle="dropdown">
                                     Actions
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                <ul class="dropdown-menu dropdown-menu-end dropdown-menu-right shadow-sm">
                                     <li><a class="dropdown-item" href="{% url 'agents:agent_edit_profile' %}?agent_id={{ agent.id }}"><i class="fa-solid fa-pen-to-square me-2 text-muted"></i> Full Profile Editor</a></li>
                                     <li><a class="dropdown-item" href="{% url 'admin_agents_manage' agent.id %}"><i class="fa-solid fa-chart-line me-2 text-muted"></i> Manage Statistics</a></li>
+                                    <li>
+                                        {% if agent.is_blacklisted %}
+                                            <button type="button" class="dropdown-item text-secondary" onclick="toggleBlacklist({{ agent.id }}, 'remove')">
+                                                <i class="fa-solid fa-undo me-2"></i> Remove Blacklist
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="dropdown-item text-danger" onclick="toggleBlacklist({{ agent.id }}, 'add')">
+                                                <i class="fa-solid fa-ban me-2"></i> Blacklist Agent
+                                            </button>
+                                        {% endif %}
+                                    </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <button type="button" class="dropdown-item text-danger delete-btn" data-model="agent" data-id="{{ agent.id }}">
@@ -312,6 +328,81 @@ function updateAgentBadge(id, badge) {
         }
     })
     .catch(err => console.error(err));
+}
+
+function toggleBlacklist(agentId, action) {
+    if (action === 'add') {
+        Swal.fire({
+            title: 'Blacklist Agent?',
+            text: 'Enter the reason for blacklisting this agent:',
+            input: 'text',
+            inputValue: 'Manual Admin Blacklist',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            confirmButtonText: 'Yes, Blacklist',
+            cancelButtonText: 'Cancel',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'You need to write a reason!';
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const formData = new FormData();
+                formData.append('agent_id', agentId);
+                formData.append('reason', result.value);
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+                
+                fetch("{% url 'ajax_blacklist_confirm' %}", {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Success!', data.message, 'success').then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error!', data.message || 'Database error', 'error');
+                    }
+                })
+                .catch(err => console.error(err));
+            }
+        });
+    } else {
+        Swal.fire({
+            title: 'Remove Blacklist?',
+            text: 'Are you sure you want to remove this agent from the blacklist?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, Remove',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const formData = new FormData();
+                formData.append('agent_id', agentId);
+                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+                
+                fetch("{% url 'ajax_blacklist_remove' %}", {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Success!', data.message, 'success').then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error!', data.message || 'Database error', 'error');
+                    }
+                })
+                .catch(err => console.error(err));
+            }
+        });
+    }
 }
 
 function exportAgentsToCSV() {

@@ -17,7 +17,7 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
     """
     query = """
         SELECT
-            a.id, a.fullname, a.email, a.mobile, a.status, a.created_at, a.badge,
+            a.id, a.fullname, a.email, a.mobile, a.status, a.created_at, a.badge, a.is_blacklisted,
             ap.address, ap.display_name,
             s.selected_plan, s.expires_at,
             (SELECT AVG(rating) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) AS avg_rating,
@@ -40,7 +40,11 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
         params.append(plan_filter)
 
     # Status Filter logic
-    if status_filter and status_filter != 'All Status':
+    if status_filter == 'blacklisted':
+        query += " AND a.is_blacklisted = 1"
+    elif status_filter == 'not_blacklisted':
+        query += " AND (a.is_blacklisted = 0 OR a.is_blacklisted IS NULL)"
+    elif status_filter and status_filter != 'All Status':
         query += " AND a.status = %s"
         params.append(status_filter)
     elif not status_filter and not promo_code_filter:
@@ -841,8 +845,9 @@ def _build_queue_query(status_filter, search, plan_filter, city_filter, event_fi
     query = '''
         SELECT
             a.id, a.fullname, a.email, a.mobile, a.status,
-            a.created_at, a.updated_at, a.badge, a.registration_step,
-            ap.address, ap.display_name, ap.profile_photo_path,
+            a.created_at, a.updated_at, a.badge, a.registration_step, a.is_blacklisted,
+            ap.address, ap.display_name, ap.profile_photo_path, ap.pan_number,
+            (SELECT COUNT(*) FROM blacklisted_agents WHERE pan = ap.pan_number AND ap.pan_number IS NOT NULL AND ap.pan_number != '') as is_blacklisted_by_pan,
             s.selected_plan, s.expires_at,
             (SELECT AVG(rating) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) as avg_rating,
             (SELECT COUNT(*) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) as review_count,
