@@ -15,7 +15,9 @@ def authenticate_client(client):
                 name VARCHAR(255), 
                 email VARCHAR(255), 
                 password VARCHAR(255), 
-                role VARCHAR(50), 
+                role VARCHAR(191), 
+                permissions TEXT,
+                remember_token VARCHAR(100),
                 created_at DATETIME, 
                 updated_at DATETIME
             )

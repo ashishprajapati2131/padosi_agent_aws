@@ -23,6 +23,8 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=255)),
                 ('email', models.EmailField(max_length=254, unique=True)),
                 ('password', models.CharField(max_length=255)),
+                ('role', models.CharField(default='staff', max_length=191)),
+                ('permissions', models.JSONField(blank=True, null=True)),
                 ('remember_token', models.CharField(blank=True, max_length=100, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True, null=True)),
                 ('updated_at', models.DateTimeField(auto_now=True, null=True)),

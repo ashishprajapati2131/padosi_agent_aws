@@ -10,29 +10,24 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.SeparateDatabaseAndState(
-            database_operations=[],
-            state_operations=[
-                migrations.AddField(
-                    model_name='agentprofile',
-                    name='is_profile_visible',
-                    field=models.BooleanField(default=True),
-                ),
-                migrations.AddField(
-                    model_name='agentprofile',
-                    name='show_achievements',
-                    field=models.BooleanField(default=True),
-                ),
-                migrations.AddField(
-                    model_name='agentprofile',
-                    name='show_certificates',
-                    field=models.BooleanField(default=True),
-                ),
-                migrations.AddField(
-                    model_name='agentprofile',
-                    name='show_reviews',
-                    field=models.BooleanField(default=True),
-                ),
-            ]
-        )
+        migrations.AddField(
+            model_name='agentprofile',
+            name='is_profile_visible',
+            field=models.BooleanField(default=True),
+        ),
+        migrations.AddField(
+            model_name='agentprofile',
+            name='show_achievements',
+            field=models.BooleanField(default=True),
+        ),
+        migrations.AddField(
+            model_name='agentprofile',
+            name='show_certificates',
+            field=models.BooleanField(default=True),
+        ),
+        migrations.AddField(
+            model_name='agentprofile',
+            name='show_reviews',
+            field=models.BooleanField(default=True),
+        ),
     ]

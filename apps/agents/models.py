@@ -1070,6 +1070,35 @@ class AgentBioGenerationLog(models.Model):
         ordering = ['-generated_at']
 
 
+# Open Graph image cache invalidation signals
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.core.cache import cache
+
+@receiver(post_save, sender=AgentProfile)
+@receiver(post_delete, sender=AgentProfile)
+def clear_og_image_on_profile_change(sender, instance, **kwargs):
+    if instance.agent_id:
+        cache.delete(f'og_image_agent_card_{instance.agent_id}')
+
+@receiver(post_save, sender=AgentPerformanceStat)
+@receiver(post_delete, sender=AgentPerformanceStat)
+def clear_og_image_on_performance_change(sender, instance, **kwargs):
+    if instance.agent_id:
+        cache.delete(f'og_image_agent_card_{instance.agent_id}')
+
+@receiver(post_save, sender=AgentReview)
+@receiver(post_delete, sender=AgentReview)
+def clear_og_image_on_review_change(sender, instance, **kwargs):
+    if instance.agent_id:
+        cache.delete(f'og_image_agent_card_{instance.agent_id}')
+
+@receiver(post_save, sender=Agent)
+@receiver(post_delete, sender=Agent)
+def clear_og_image_on_agent_change(sender, instance, **kwargs):
+    cache.delete(f'og_image_agent_card_{instance.id}')
+
+
 
 
 

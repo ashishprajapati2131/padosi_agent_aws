@@ -1774,13 +1774,14 @@ def agent_og_image(request, agent_id):
     import io
     import requests
     from django.conf import settings
+    from apps.agents.models import Agent, AgentProfile, AgentPerformanceStat
 
     try:
         agent = Agent.objects.get(id=agent_id)
     except Agent.DoesNotExist:
         raise Http404("Agent not found")
 
-    cache_key = f'og_image_agent_photo_fit_{agent_id}'
+    cache_key = f'og_image_agent_card_{agent_id}'
     nocache = request.GET.get('nocache') == '1'
 
     if not nocache:
@@ -1790,16 +1791,68 @@ def agent_og_image(request, agent_id):
             response['Cache-Control'] = 'public, max-age=86400'
             return response
 
-    # Recreate image
+    # Dynamic 1200x630 Image Generation
     try:
-        width = 800
-        height = 800
-        canvas = None
-        photo_loaded = False
+        width = 1200
+        height = 630
 
-        from apps.agents.models import AgentProfile
+        # Programmatically draw a smooth vertical brand gradient background
+        # Indigo/Blue-900 (30, 58, 138) to Slate-900 (15, 23, 42)
+        color_start = (30, 58, 138)
+        color_end = (15, 23, 42)
+        canvas = Image.new('RGB', (width, height))
+        grad_draw = ImageDraw.Draw(canvas)
+        for y in range(height):
+            r = int(color_start[0] + (color_end[0] - color_start[0]) * y / height)
+            g = int(color_start[1] + (color_end[1] - color_start[1]) * y / height)
+            b = int(color_start[2] + (color_end[2] - color_start[2]) * y / height)
+            grad_draw.line((0, y, width, y), fill=(r, g, b))
+
+        draw = ImageDraw.Draw(canvas)
+
+        # Draw main card container
+        card_fill = (255, 255, 255)
+        card_outline = (226, 232, 240)
+        if hasattr(draw, 'rounded_rectangle'):
+            draw.rounded_rectangle([(50, 50), (1150, 580)], radius=24, fill=card_fill, outline=card_outline, width=3)
+        else:
+            draw.rectangle([(50, 50), (1150, 580)], fill=card_fill, outline=card_outline, width=3)
+
+        # Retrieve profile and performance details
         profile = AgentProfile.objects.filter(agent=agent).first()
+        perf = AgentPerformanceStat.objects.filter(agent=agent).first()
 
+        # Fonts configuration
+        font_paths_bold = [
+            os.path.join(settings.BASE_DIR, 'static', 'fonts', 'arialbd.ttf'),
+            "arialbd.ttf",
+            "Arial-Bold.ttf"
+        ]
+        font_paths_reg = [
+            os.path.join(settings.BASE_DIR, 'static', 'fonts', 'arial.ttf'),
+            "arial.ttf",
+            "Arial.ttf"
+        ]
+
+        def get_font(is_bold, size):
+            paths = font_paths_bold if is_bold else font_paths_reg
+            for p in paths:
+                try:
+                    return ImageFont.truetype(p, size=size)
+                except Exception:
+                    continue
+            return ImageFont.load_default()
+
+        name_font = get_font(is_bold=True, size=44)
+        subtitle_font = get_font(is_bold=False, size=20)
+        pill_font = get_font(is_bold=True, size=14)
+        label_font = get_font(is_bold=False, size=15)
+        val_font = get_font(is_bold=True, size=30)
+        footer_font = get_font(is_bold=False, size=18)
+
+        # Load profile photo
+        photo_loaded = False
+        src_image = None
         if profile and profile.profile_photo_path:
             raw_path = profile.profile_photo_path
             if '?' in raw_path:
@@ -1807,34 +1860,27 @@ def agent_og_image(request, agent_id):
 
             if raw_path.startswith(('http://', 'https://')):
                 try:
-                    res = requests.get(raw_path, timeout=10, verify=False)
+                    res = requests.get(raw_path, timeout=5, verify=False)
                     if res.status_code == 200:
                         src_image = Image.open(io.BytesIO(res.content))
                         photo_loaded = True
                 except Exception as e:
-                    logger.warning(f"Failed to fetch profile image from URL {raw_path}: {e}")
+                    logger.warning(f"Failed to fetch remote profile image: {e}")
             else:
                 normalized_path = raw_path.replace('\\', '/').lstrip('/')
                 possible_paths = [
                     os.path.join(settings.MEDIA_ROOT, normalized_path)
                 ]
-
                 cleaned_path = normalized_path
                 for prefix in ['app/public/', 'public/storage/', 'public/', 'storage/']:
                     if cleaned_path.startswith(prefix):
                         cleaned_path = cleaned_path[len(prefix):]
                         break
-
                 possible_paths.append(os.path.join(settings.MEDIA_ROOT, cleaned_path))
                 possible_paths.append(os.path.join(settings.BASE_DIR, 'media', cleaned_path))
-
                 laravel_storage_path = os.path.abspath(os.path.join(settings.BASE_DIR, '..', 'storage', 'app', 'public', cleaned_path))
                 possible_paths.append(laravel_storage_path)
 
-                laravel_public_storage = os.path.abspath(os.path.join(settings.BASE_DIR, '..', 'public', 'storage', cleaned_path))
-                possible_paths.append(laravel_public_storage)
-
-                src_image = None
                 for path in possible_paths:
                     if os.path.exists(path) and os.path.isfile(path):
                         try:
@@ -1842,101 +1888,260 @@ def agent_og_image(request, agent_id):
                             photo_loaded = True
                             break
                         except Exception as e:
-                            logger.warning(f"Failed to open image at {path}: {e}")
+                            logger.warning(f"Failed to open local image at {path}: {e}")
 
-            if photo_loaded and src_image:
+        # Paste Profile Photo / Placeholder circular shape
+        photo_x = 90
+        photo_y = 110
+        photo_size = 240
+        if photo_loaded and src_image:
+            try:
                 if src_image.mode not in ('RGB', 'RGBA'):
                     src_image = src_image.convert('RGB')
-
-                src_w, src_h = src_image.size
-                src_ratio = src_w / src_h
-                target_ratio = 1.0
-
-                if src_ratio > target_ratio:
-                    dst_w = 800
-                    dst_h = int(800 / src_ratio)
-                    dst_x = 0
-                    dst_y = int((800 - dst_h) / 2)
-                else:
-                    dst_w = int(800 * src_ratio)
-                    dst_h = 800
-                    dst_x = int((800 - dst_w) / 2)
-                    dst_y = 0
-
-                src_resized = src_image.resize((dst_w, dst_h), Image.Resampling.LANCZOS)
-                canvas = Image.new('RGB', (800, 800), (255, 255, 255))
-                if src_resized.mode == 'RGBA':
-                    canvas.paste(src_resized, (dst_x, dst_y), mask=src_resized.split()[3])
-                else:
-                    canvas.paste(src_resized, (dst_x, dst_y))
+                src_resized = src_image.resize((photo_size, photo_size), Image.Resampling.LANCZOS)
+                
+                mask = Image.new('L', (photo_size, photo_size), 0)
+                mask_draw = ImageDraw.Draw(mask)
+                mask_draw.ellipse((0, 0, photo_size, photo_size), fill=255)
+                
+                canvas.paste(src_resized, (photo_x, photo_y), mask=mask)
+                draw.ellipse((photo_x - 2, photo_y - 2, photo_x + photo_size + 2, photo_y + photo_size + 2), outline=(24, 82, 157), width=4)
+            except Exception as e:
+                logger.warning(f"Failed drawing rounded profile photo: {e}")
+                photo_loaded = False
 
         if not photo_loaded:
-            canvas = Image.new('RGB', (800, 800), (226, 232, 240))
-            draw = ImageDraw.Draw(canvas)
-
-            name = agent.fullname or 'A'
-            initial = name[0].upper() if name else 'A'
-
-            font = None
-            font_paths = [
-                os.path.join(settings.BASE_DIR, 'static', 'fonts', 'Roboto-Bold.ttf'),
-                os.path.join(settings.BASE_DIR, '..', 'public', 'fonts', 'Roboto-Bold.ttf'),
-                "Roboto-Bold.ttf",
-                "arial.ttf",
-                "Arial.ttf",
-                "msyh.ttc",
-                "msgothic.ttc"
-            ]
-            windows_fonts_dir = r"C:\Windows\Fonts"
-            if os.path.exists(windows_fonts_dir):
-                font_paths.append(os.path.join(windows_fonts_dir, "arialbd.ttf"))
-                font_paths.append(os.path.join(windows_fonts_dir, "Arial.ttf"))
-                font_paths.append(os.path.join(windows_fonts_dir, "cambriab.ttf"))
-
-            for fp in font_paths:
-                try:
-                    font = ImageFont.truetype(fp, size=400)
-                    break
-                except Exception:
-                    continue
-
-            if font is None:
-                font = ImageFont.load_default()
-
-            text_color = (100, 116, 139)
+            # Draw placeholder circle with initial
+            draw.ellipse((photo_x, photo_y, photo_x + photo_size, photo_y + photo_size), fill=(24, 82, 157))
+            name_str = agent.fullname or 'A'
+            initial = name_str[0].upper() if name_str else 'A'
+            placeholder_font = get_font(is_bold=True, size=110)
             try:
-                bbox = draw.textbbox((0, 0), initial, font=font)
-                text_w = bbox[2] - bbox[0]
-                text_h = bbox[3] - bbox[1]
-                x = (800 - text_w) / 2 - bbox[0]
-                y = (800 - text_h) / 2 - bbox[1]
-                draw.text((x, y), initial, font=font, fill=text_color)
+                p_bbox = draw.textbbox((0, 0), initial, font=placeholder_font)
+                p_w = p_bbox[2] - p_bbox[0]
+                p_h = p_bbox[3] - p_bbox[1]
+                px = photo_x + (photo_size - p_w) / 2 - p_bbox[0]
+                py = photo_y + (photo_size - p_h) / 2 - p_bbox[1]
+                draw.text((px, py), initial, font=placeholder_font, fill=(255, 255, 255))
             except AttributeError:
-                text_w, text_h = draw.textsize(initial, font=font)
-                x = (800 - text_w) / 2
-                y = (800 - text_h) / 2
-                draw.text((x, y), initial, font=font, fill=text_color)
+                p_w, p_h = draw.textsize(initial, font=placeholder_font)
+                px = photo_x + (photo_size - p_w) / 2
+                py = photo_y + (photo_size - p_h) / 2
+                draw.text((px, py), initial, font=placeholder_font, fill=(255, 255, 255))
 
-        # Save to buffer
+        # PadosiAgent Brand Logo inside card (top right)
+        logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo.png')
+        if os.path.exists(logo_path):
+            try:
+                logo_img = Image.open(logo_path)
+                l_w, l_h = logo_img.size
+                resized_w = 200
+                resized_h = int(resized_w * l_h / l_w)
+                logo_img = logo_img.resize((resized_w, resized_h), Image.Resampling.LANCZOS)
+                logo_x = 900
+                logo_y = 80
+                if logo_img.mode == 'RGBA':
+                    canvas.paste(logo_img, (logo_x, logo_y), mask=logo_img.split()[3])
+                else:
+                    canvas.paste(logo_img, (logo_x, logo_y))
+            except Exception as e:
+                logger.warning(f"Failed to paste brand logo: {e}")
+
+        # Draw Agent Name
+        display_name = (profile.display_name if profile else '') or agent.fullname or 'Agent'
+        text_x = 380
+        name_y = 115
+        draw.text((text_x, name_y), display_name, font=name_font, fill=(15, 23, 42))
+
+        # Verified Checkmark Badge
+        if agent.is_verified_agent:
+            try:
+                n_bbox = draw.textbbox((text_x, name_y), display_name, font=name_font)
+                badge_x = n_bbox[2] + 15
+                badge_y = name_y + 12
+                # Green Circle
+                draw.ellipse((badge_x, badge_y, badge_x + 24, badge_y + 24), fill=(22, 163, 74))
+                # Checkmark lines
+                draw.line((badge_x + 7, badge_y + 12, badge_x + 11, badge_y + 17), fill=(255, 255, 255), width=3)
+                draw.line((badge_x + 11, badge_y + 17, badge_x + 18, badge_y + 8), fill=(255, 255, 255), width=3)
+            except AttributeError:
+                pass
+
+        # Tagline / Specialties
+        specialties = []
+        if agent.insuranceSegments.exists():
+            specialties = [s.segment_type.capitalize() if s.segment_type != 'sme' else 'SME' for s in agent.insuranceSegments.all()]
+        specialties_str = f"Verified {', '.join(specialties)} Advisor" if specialties else "Licensed Neighbourhood Advisor"
+        draw.text((text_x, 175), specialties_str, font=subtitle_font, fill=(71, 85, 105))
+
+        # Credentials Pill Badges (IRDAI / AMFI)
+        badge_curr_x = text_x
+        badge_y_pos = 218
+        if profile and profile.license_number:
+            badge_text = "IRDAI Licensed"
+            try:
+                b_bbox = draw.textbbox((0, 0), badge_text, font=pill_font)
+                b_w = b_bbox[2] - b_bbox[0]
+                rect_r = badge_curr_x + b_w + 24
+                # Pill background
+                if hasattr(draw, 'rounded_rectangle'):
+                    draw.rounded_rectangle([(badge_curr_x, badge_y_pos), (rect_r, badge_y_pos + 28)], radius=14, fill=(240, 253, 250), outline=(153, 246, 228), width=1)
+                else:
+                    draw.rectangle([(badge_curr_x, badge_y_pos), (rect_r, badge_y_pos + 28)], fill=(240, 253, 250), outline=(153, 246, 228), width=1)
+                draw.text((badge_curr_x + 12, badge_y_pos + 4), badge_text, font=pill_font, fill=(13, 148, 136))
+                badge_curr_x = rect_r + 12
+            except AttributeError:
+                pass
+
+        if profile and profile.arn_number:
+            badge_text = "AMFI Registered"
+            try:
+                b_bbox = draw.textbbox((0, 0), badge_text, font=pill_font)
+                b_w = b_bbox[2] - b_bbox[0]
+                rect_r = badge_curr_x + b_w + 24
+                if hasattr(draw, 'rounded_rectangle'):
+                    draw.rounded_rectangle([(badge_curr_x, badge_y_pos), (rect_r, badge_y_pos + 28)], radius=14, fill=(239, 246, 255), outline=(191, 219, 254), width=1)
+                else:
+                    draw.rectangle([(badge_curr_x, badge_y_pos), (rect_r, badge_y_pos + 28)], fill=(239, 246, 255), outline=(191, 219, 254), width=1)
+                draw.text((badge_curr_x + 12, badge_y_pos + 4), badge_text, font=pill_font, fill=(37, 99, 235))
+            except AttributeError:
+                pass
+
+        # Metrics Divider line
+        draw.line((90, 290, 1110, 290), fill=(241, 245, 249), width=2)
+
+        # Draw metrics grid (Experience, Rating, Happy Clients, Claims)
+        metrics = []
+        metrics.append({
+            'label': 'EXPERIENCE',
+            'value': f"{profile.experience_years}+ Years" if (profile and profile.experience_years) else "1+ Year"
+        })
+        
+        rating_val = round(agent.average_rating, 1) if agent.average_rating else 0.0
+        review_count = agent.review_count
+        metrics.append({
+            'label': 'RATING',
+            'value': f"{rating_val} ★ ({review_count} rev)" if review_count else "5.0 ★ (Verified)"
+        })
+
+        try:
+            clients_val = int(agent.client_base or 0)
+        except (ValueError, TypeError):
+            clients_val = 0
+        metrics.append({
+            'label': 'HAPPY CLIENTS',
+            'value': f"{clients_val}+" if clients_val else "50+"
+        })
+
+        claims_val = perf.claims_settled if (perf and perf.claims_settled is not None) else 0
+        metrics.append({
+            'label': 'CLAIMS SETTLED',
+            'value': f"{claims_val}+" if claims_val else "20+"
+        })
+
+        # Render Metrics in 4 columns
+        col_x = [90, 360, 630, 900]
+        for i, m in enumerate(metrics):
+            cx = col_x[i]
+            # Label
+            draw.text((cx, 315), m['label'], font=label_font, fill=(148, 163, 184))
+            # Value
+            draw.text((cx, 345), m['value'], font=val_font, fill=(15, 23, 42))
+            # Draw vertical divider line except last
+            if i < 3:
+                draw.line((col_x[i+1] - 40, 315, col_x[i+1] - 40, 385), fill=(241, 245, 249), width=2)
+
+        # Footer divider line
+        draw.line((90, 440, 1110, 440), fill=(241, 245, 249), width=2)
+
+        # Footer text
+        footer_text = f"PadosiAgent · Find trusted & verified local insurance experts near me."
+        draw.text((90, 465), footer_text, font=footer_font, fill=(100, 116, 139))
+
+        area_text = f"Serving Location: {agent.agent_city_display or 'Neighbourhood Area'}"
+        draw.text((90, 500), area_text, font=footer_font, fill=(100, 116, 139))
+
+        # Save generated card to memory buffer and cache it
         buffer = io.BytesIO()
         canvas.save(buffer, format='JPEG', quality=90)
         encoded_image = buffer.getvalue()
 
-        cache.set(cache_key, encoded_image, 86400)
+        cache.set(cache_key, encoded_image, 86400 * 7) # Cache for 7 days
 
         response = HttpResponse(encoded_image, content_type='image/jpeg')
-        response['Cache-Control'] = 'public, max-age=86400'
+        response['Cache-Control'] = 'public, max-age=604800'
         return response
 
     except Exception as e:
         logger.exception(f"OG Image Generation error: {e}")
-        fallback_canvas = Image.new('RGB', (800, 800), (15, 58, 102))
+        # Standard safety fallback
+        fallback_canvas = Image.new('RGB', (1200, 630), (15, 58, 102))
         buf = io.BytesIO()
         fallback_canvas.save(buf, format='JPEG', quality=50)
         fallback_data = buf.getvalue()
         response = HttpResponse(fallback_data, content_type='image/jpeg')
         response['Cache-Control'] = 'no-store'
         return response
+
+
+def agent_public_share_profile(request, slug):
+    from apps.agents.models import Agent, AgentReview, AgentPerformanceStat
+    from django.shortcuts import render
+    from django.http import Http404
+
+    agent = Agent.objects.filter(profile__slug=slug).first()
+    if not agent and slug.isdigit():
+        agent = Agent.objects.filter(id=int(slug)).first()
+
+    if not agent:
+        raise Http404("Agent not found")
+
+    profile = getattr(agent, 'profile', None)
+
+    # Inactive, suspended or deleted checks
+    is_active = getattr(agent, 'is_active', True)
+    is_visible = profile.is_profile_visible if profile else False
+
+    if not is_active or not is_visible:
+        return render(request, 'agents/profile_unavailable.html', {
+            'agent': agent,
+            'profile': profile
+        }, status=404)
+
+    perf = AgentPerformanceStat.objects.filter(agent=agent).first()
+    reviews = agent.reviews.filter(is_approved=True)
+
+    # Categories list
+    categories = []
+    if agent.insuranceSegments.exists():
+        categories = [s.segment_type.capitalize() if s.segment_type != 'sme' else 'SME' for s in agent.insuranceSegments.all()]
+
+    display_name = (profile.display_name if profile else '') or agent.fullname or 'Agent'
+    agent_initial = display_name[0].upper() if display_name else 'A'
+
+    # Build description for SEO Open Graph preview
+    desc_parts = []
+    if profile and profile.experience_years:
+        desc_parts.append(f"{profile.experience_years}+ Yrs Exp")
+    if agent.average_rating:
+        desc_parts.append(f"{round(agent.average_rating, 1)} Star Rating")
+    if categories:
+        desc_parts.append(f"Services: {', '.join(categories)}")
+    if agent.agent_city_display:
+        desc_parts.append(f"Serving: {agent.agent_city_display}")
+    seo_description = " · ".join(desc_parts) or "Licensed PadosiAgent Insurance & Investment Advisor."
+
+    context = {
+        'agent': agent,
+        'profile': profile,
+        'performanceStats': perf,
+        'reviews': reviews,
+        'categories': categories,
+        'agentDisplayName': display_name,
+        'agentInitial': agent_initial,
+        'seoDescription': seo_description,
+    }
+    return render(request, 'agents/profile_share.html', context)
 
 
 def serve_private_file(request, file_path):

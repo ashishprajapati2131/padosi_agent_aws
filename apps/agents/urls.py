@@ -26,6 +26,7 @@ urlpatterns = [
     path('agent/dashboard/',    dashboard.agent_dashboard,       name='agent_dashboard'),
     path('agent/referral/',     dashboard.referral,              name='agent_referral'),
     path('profile/<str:slug>/', dashboard.agent_public_profile,  name='agent_public_profile'),
+    path('agent/<str:slug>/',   dashboard.agent_public_share_profile, name='agent_public_share_profile'),
     path('profile/<str:slug>/review/', dashboard.store_review,   name='agent_store_review'),
     path('agent/edit-profile/', dashboard.edit_profile,         name='agent_edit_profile'),
     path('agent/update-profile/', dashboard.update_profile,     name='agent_update_profile'),

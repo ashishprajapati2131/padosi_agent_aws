@@ -101,6 +101,42 @@
                     Active PadosiAgents
                 </h3>
                 <div class="d-flex align-items-center gap-2 sort-by-wrapper" style="gap: 8px;">
+                    <style>
+                        .ai-picks-trigger-btn:hover {
+                            opacity: 0.95;
+                            transform: translateY(-1px);
+                            box-shadow: 0 6px 8px -1px rgba(124, 58, 237, 0.4) !important;
+                        }
+                        .ai-picks-trigger-btn:active {
+                            transform: translateY(0);
+                        }
+                        .header-compare-trigger-btn:hover {
+                            background-color: #f0fdf4 !important;
+                            transform: translateY(-1px);
+                        }
+                        .header-compare-trigger-btn:active {
+                            transform: translateY(0);
+                        }
+                    </style>
+                    <button type="button" class="btn btn-sm ai-picks-trigger-btn" onclick="triggerAIPicks()"
+                        style="background: linear-gradient(135deg, #7c3aed, #db2777); color: white; border: none; font-weight: 700; border-radius: 20px; padding: 6px 14px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.3); transition: all 0.2s ease; cursor: pointer; height: 32px; white-space: nowrap;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                            <path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5.5 5 3Z" style="opacity: 0.8;"/>
+                            <path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1 1-2.5Z" style="opacity: 0.8;"/>
+                        </svg>
+                        AI Picks
+                    </button>
+                    <button type="button" class="btn btn-sm header-compare-trigger-btn" id="header-compare-trigger-btn" onclick="showComparisonModal()"
+                        style="background-color: white; border: 1px solid #10b981; color: #10b981; font-weight: 700; border-radius: 20px; padding: 6px 14px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease; cursor: pointer; height: 32px; white-space: nowrap;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="18" cy="18" r="3" />
+                            <circle cx="6" cy="6" r="3" />
+                            <path d="M13 6h3a2 2 0 0 1 2 2v7" />
+                            <path d="M11 18H8a2 2 0 0 1-2-2V9" />
+                        </svg>
+                        Compare
+                    </button>
                     <span class="text-muted" style="font-size: 13px; font-weight: 600;">Sort by:</span>
                     <select id="sort_by_select" onchange="window.updateSortBy(this.value)"
                         class="form-select form-select-sm"

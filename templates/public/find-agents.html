@@ -1648,6 +1648,155 @@
     </div>
 </div>
 
+<!-- AI Picks Modal -->
+<div class="modal fade" id="aiPicksModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px; overflow: hidden; border: none; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.2);">
+            <style>
+                #aiPicksModal .modal-header {
+                    background: linear-gradient(135deg, #7c3aed, #db2777);
+                    color: white;
+                    border-bottom: none;
+                }
+                #aiPicksModal .close-btn-circle {
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 50%;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 18px;
+                    border: none;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    line-height: 1;
+                    padding: 0;
+                    outline: none;
+                }
+                #aiPicksModal .close-btn-circle:hover {
+                    background: rgba(255, 255, 255, 0.35);
+                    transform: rotate(90deg);
+                }
+                .ai-compare-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                .ai-compare-row {
+                    display: grid;
+                    grid-template-columns: 2.2fr 1.6fr 2.2fr;
+                    align-items: center;
+                    border-bottom: 1px solid #f1f5f9;
+                    padding: 11px 16px;
+                    transition: background-color 0.15s ease;
+                }
+                .ai-compare-row:hover {
+                    background-color: #f8fafc;
+                }
+                .ai-compare-cell {
+                    text-align: center;
+                    font-size: 13.5px;
+                    color: #1e293b;
+                    font-weight: 600;
+                    padding: 4px;
+                }
+                .ai-compare-label {
+                    font-size: 10.5px;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    letter-spacing: 0.5px;
+                    text-transform: uppercase;
+                    text-align: center;
+                }
+                .ai-val-winner {
+                    color: #047857 !important;
+                    background-color: #ecfdf5;
+                    border: 1px solid #a7f3d0;
+                    border-radius: 20px;
+                    padding: 3px 10px;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    font-weight: 700 !important;
+                }
+                .ai-skeleton-pulse {
+                    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+                    background-size: 200% 100%;
+                    animation: ai-pulse 1.5s infinite;
+                    border-radius: 4px;
+                }
+                @keyframes ai-pulse {
+                    0% { background-position: 200% 0; }
+                    100% { background-position: -200% 0; }
+                }
+                .same-rec-box {
+                    background: #f8fafc;
+                    border-radius: 16px;
+                    border: 1px dashed #cbd5e1;
+                    padding: 24px;
+                    max-width: 480px;
+                    margin: 20px auto;
+                    text-align: center;
+                }
+            </style>
+            <div class="modal-header border-0 p-4 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-uppercase font-weight-bold" style="font-size: 11px; letter-spacing: 1.5px; opacity: 0.85; display: block;">
+                        <i class="fas fa-magic mr-1"></i> Head-to-Head Comparison
+                    </span>
+                    <h4 class="modal-title font-weight-bold mb-0 mt-1" style="font-size: 20px; color: white;">AI Suggestion vs Best Match</h4>
+                </div>
+                <button type="button" class="close-btn-circle" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-0" style="max-height: 75vh; overflow-y: auto;">
+                <!-- Skeleton Loader -->
+                <div id="ai-picks-skeleton" class="p-4 text-center">
+                    <div class="d-flex justify-content-center gap-5 mb-4" style="gap: 40px;">
+                        <div>
+                            <div class="ai-skeleton-pulse rounded-circle mx-auto mb-3" style="width: 80px; height: 80px;"></div>
+                            <div class="ai-skeleton-pulse mx-auto" style="width: 120px; height: 16px;"></div>
+                        </div>
+                        <div>
+                            <div class="ai-skeleton-pulse rounded-circle mx-auto mb-3" style="width: 80px; height: 80px;"></div>
+                            <div class="ai-skeleton-pulse mx-auto" style="width: 120px; height: 16px;"></div>
+                        </div>
+                    </div>
+                    <div class="space-y-3" style="max-width: 500px; margin: 0 auto;">
+                        <div class="ai-skeleton-pulse mb-2" style="height: 28px; width: 100%;"></div>
+                        <div class="ai-skeleton-pulse mb-2" style="height: 28px; width: 100%;"></div>
+                        <div class="ai-skeleton-pulse mb-2" style="height: 28px; width: 100%;"></div>
+                        <div class="ai-skeleton-pulse mb-2" style="height: 28px; width: 100%;"></div>
+                        <div class="ai-skeleton-pulse" style="height: 28px; width: 100%;"></div>
+                    </div>
+                    <p class="text-muted mt-3 font-weight-bold" style="font-size: 13px;">Analyzing local agents and requirements...</p>
+                </div>
+
+                <!-- Error Container -->
+                <div id="ai-picks-error-body" class="p-5 text-center" style="display: none;">
+                    <div class="text-danger mb-3" style="font-size: 40px;">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-dark mb-2">Failed to load recommendations</h5>
+                    <p class="text-muted error-msg" style="font-size: 14px;">Error details go here</p>
+                    <button type="button" class="btn btn-secondary btn-sm rounded-pill mt-3 px-4" data-bs-dismiss="modal" data-dismiss="modal">Close</button>
+                </div>
+
+                <!-- Content Body -->
+                <div id="ai-picks-content-body" style="display: none;">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-3 bg-light d-flex justify-content-between align-items-center" style="font-size: 12px;">
+                <span class="text-muted font-weight-bold"><i class="fas fa-shield-alt mr-1 text-success"></i> Verified · Licensed · Rated</span>
+                <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3" data-bs-dismiss="modal" data-dismiss="modal">Browse all</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Mobile Filter Overlay Backdrop -->
 <div class="filter-overlay d-lg-none"></div>
 
@@ -2367,6 +2516,403 @@
         $('#comparisonModal').on('hidden.bs.modal', function() {
             
         });
+
+        // AI Picks feature implementation
+        window.triggerAIPicks = function() {
+            // Open modal
+            const modalEl = document.getElementById('aiPicksModal');
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                if (bootstrap.Modal.getOrCreateInstance) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                } else {
+                    const modal = new bootstrap.Modal(modalEl);
+                    modal.show();
+                }
+            } else {
+                $(modalEl).modal('show');
+            }
+            
+            // Show skeleton, hide content
+            $('#ai-picks-skeleton').show();
+            $('#ai-picks-content-body').hide();
+            $('#ai-picks-error-body').hide();
+            
+            const currentServiceType = document.getElementById('ServiceType') ? document.getElementById('ServiceType').value : '';
+            const currentInsuranceType = document.getElementById('InsuranceType') ? document.getElementById('InsuranceType').value : '';
+            
+            // Fetch comparison data
+            $.ajax({
+                url: '{% url "home:ai_picks_comparison" %}' + window.location.search,
+                type: 'GET',
+                success: function(resp) {
+                    if (resp.success) {
+                        renderAIPicksComparison(resp, currentServiceType, currentInsuranceType);
+                    } else {
+                        showAIPicksError(resp.message || 'Failed to generate recommendations.');
+                    }
+                },
+                error: function(xhr) {
+                    let errMsg = 'Failed to load recommendation data.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    showAIPicksError(errMsg);
+                }
+            });
+        };
+        
+        window.aiPicksContactAgent = function(agentId, destination, interactionType, serviceType, insuranceType) {
+            const modalEl = document.getElementById('aiPicksModal');
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                if (modal) modal.hide();
+            } else {
+                $(modalEl).modal('hide');
+            }
+            window.compareContactAgent(agentId, destination, interactionType, serviceType, insuranceType);
+        };
+        
+        function showAIPicksError(msg) {
+            $('#ai-picks-skeleton').hide();
+            $('#ai-picks-content-body').hide();
+            $('#ai-picks-error-body').show().find('.error-msg').text(msg);
+        }
+        
+        function renderAIPicksComparison(data, currentServiceType, currentInsuranceType) {
+            const ai = data.ai_agent;
+            const best = data.best_agent;
+            const isSame = data.same_recommendation;
+            
+            const contentEl = $('#ai-picks-content-body');
+            contentEl.empty();
+            
+            if (isSame) {
+                // Centered single column layout
+                let html = `
+                    <div class="p-4">
+                        <div class="same-rec-box shadow-sm mb-4">
+                            <span class="badge text-white mb-3" style="background: linear-gradient(135deg, #7c3aed, #db2777); font-size: 11px; font-weight: 700; padding: 6px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-magic me-1"></i>Same Top Recommendation
+                            </span>
+                            <div class="mb-3 position-relative d-inline-block">
+                                <img src="${ai.profile_photo}" alt="${ai.name}" class="rounded-circle border shadow-sm" style="width: 110px; height: 110px; object-fit: cover;">
+                                ${ai.is_trusted ? '<span class="position-absolute bottom-0 right-0 badge bg-warning text-white rounded-circle p-1" style="border: 2px solid white;" title="Trusted Agent"><i class="fas fa-award"></i></span>' : ''}
+                            </div>
+                            <h4 style="font-family: \'Urbanist\', sans-serif; font-weight: 800; color: #1e3a8a;" class="mb-1">
+                                ${ai.name} 
+                                ${ai.is_verified ? '<i class="fas fa-check-circle text-success ms-1" style="font-size: 16px;" title="Verified Profile"></i>' : ''}
+                            </h4>
+                            <p class="text-muted font-weight-bold" style="font-size: 13px;">${ai.location}</p>
+                            
+                            <hr class="my-4" style="border-top: 1px dashed #cbd5e1;">
+                            
+                            <div class="row text-start px-2 mb-4" style="font-size: 13.5px; row-gap: 12px;">
+                                <div class="col-6 text-muted">Experience:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.experience_display}</div>
+                                
+                                <div class="col-6 text-muted">Rating:</div>
+                                <div class="col-6 text-dark font-weight-bold"><i class="fas fa-star text-warning"></i> ${ai.rating} (${ai.reviews} reviews)</div>
+                                
+                                <div class="col-6 text-muted">Match Score:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.match_score}%</div>
+                                
+                                <div class="col-6 text-muted">Distance:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.distance_display}</div>
+                                
+                                <div class="col-6 text-muted">Active Clients:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.happy_clients}+</div>
+                                
+                                <div class="col-6 text-muted">Claims Settled:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.claims_settled}</div>
+                                
+                                <div class="col-6 text-muted">Insurance Specializations:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.insurance_types.join(', ') || 'N/A'}</div>
+                                
+                                <div class="col-6 text-muted">Investment Types:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.investment_types.join(', ') || 'N/A'}</div>
+                                
+                                <div class="col-6 text-muted">IRDAI Licensed:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.irdai_verified ? 'Yes <i class="fas fa-check text-success ms-1"></i>' : 'No'}</div>
+                                
+                                <div class="col-6 text-muted">AMFI Registered:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.amfi_verified ? 'Yes <i class="fas fa-check text-success ms-1"></i>' : 'No'}</div>
+                                
+                                <div class="col-6 text-muted">Languages:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.languages}</div>
+                                
+                                <div class="col-6 text-muted">Response Rate:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.response_rate}%</div>
+                                
+                                <div class="col-6 text-muted">Profile Completion:</div>
+                                <div class="col-6 text-dark font-weight-bold">${ai.profile_completion}%</div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-center gap-3">
+                                <button onclick="window.aiPicksContactAgent(${ai.id}, \'tel:${ai.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill px-4" style="background-color: #2563eb; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; height: 42px; cursor:pointer;"><i class="fas fa-phone-alt"></i> Call Now</button>
+                                <button onclick="window.aiPicksContactAgent(${ai.id}, \'https://wa.me/${ai.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill px-4" style="background-color: #22c55e; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; height: 42px; cursor:pointer;"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                            </div>
+                        </div>
+                        
+                        <div class="ai-explanation-box p-3 shadow-sm" style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 12px; max-width: 600px; margin: 0 auto;">
+                            <h5 style="color: #6d28d9; font-weight: 700; font-size: 13px; margin-bottom: 8px; font-family: \'Urbanist\', sans-serif;">
+                                <i class="fas fa-magic me-2"></i>Why AI Recommended this Agent
+                            </h5>
+                            <p style="font-size: 13px; color: #4c1d95; line-height: 1.6; margin: 0; font-weight: 500;">
+                                "${data.ai_explanation}"
+                            </p>
+                        </div>
+                    </div>
+                `;
+                contentEl.html(html);
+            } else {
+                // Side-by-side comparison layout
+                const compareAndHighlight = (val1, val2, isHigherBetter, isBooleanType = false) => {
+                    if (isBooleanType) {
+                        if (val1 && !val2) {
+                            return {
+                                c1: `<span class="ai-val-winner"><i class="fas fa-check text-success"></i> Yes</span>`,
+                                c2: `No`
+                            };
+                        } else if (!val1 && val2) {
+                            return {
+                                c1: `No`,
+                                c2: `<span class="ai-val-winner"><i class="fas fa-check text-success"></i> Yes</span>`
+                            };
+                        }
+                        return {
+                            c1: val1 ? 'Yes' : 'No',
+                            c2: val2 ? 'Yes' : 'No'
+                        };
+                    }
+                    
+                    const v1 = parseFloat(val1) || 0;
+                    const v2 = parseFloat(val2) || 0;
+                    
+                    if (v1 === v2) {
+                        return { c1: val1, c2: val2 };
+                    }
+                    
+                    const isV1Better = isHigherBetter ? (v1 > v2) : (v1 < v2);
+                    
+                    if (isV1Better) {
+                        return {
+                            c1: `<span class="ai-val-winner"><i class="fas fa-check text-success"></i> ${val1}</span>`,
+                            c2: val2
+                        };
+                    } else {
+                        return {
+                            c1: val1,
+                            c2: `<span class="ai-val-winner"><i class="fas fa-check text-success"></i> ${val2}</span>`
+                        };
+                    }
+                };
+                
+                // Perform comparisons
+                const expComp = compareAndHighlight(ai.experience_years, best.experience_years, true);
+                const ratingComp = compareAndHighlight(ai.rating, best.rating, true);
+                const reviewsComp = compareAndHighlight(ai.reviews, best.reviews, true);
+                const matchComp = compareAndHighlight(ai.match_score, best.match_score, true);
+                
+                // Distance comparison
+                let distComp = { c1: ai.distance_display, c2: best.distance_display };
+                if (ai.distance !== null && best.distance !== null) {
+                    const tempComp = compareAndHighlight(ai.distance, best.distance, false);
+                    const c1Str = String(tempComp.c1);
+                    const c2Str = String(tempComp.c2);
+                    distComp.c1 = c1Str.includes('ai-val-winner') ? c1Str.replace(String(ai.distance), ai.distance_display) : ai.distance_display;
+                    distComp.c2 = c2Str.includes('ai-val-winner') ? c2Str.replace(String(best.distance), best.distance_display) : best.distance_display;
+                } else if (ai.distance !== null && best.distance === null) {
+                    distComp.c1 = `<span class="ai-val-winner"><i class="fas fa-check text-success"></i> ${ai.distance_display}</span>`;
+                } else if (ai.distance === null && best.distance !== null) {
+                    distComp.c2 = `<span class="ai-val-winner"><i class="fas fa-check text-success"></i> ${best.distance_display}</span>`;
+                }
+                
+                const clientsComp = compareAndHighlight(ai.happy_clients, best.happy_clients, true);
+                const claimsComp = compareAndHighlight(ai.claims_settled, best.claims_settled, true);
+                
+                const irdaiComp = compareAndHighlight(ai.irdai_verified, best.irdai_verified, false, true);
+                const amfiComp = compareAndHighlight(ai.amfi_verified, best.amfi_verified, false, true);
+                
+                const respComp = compareAndHighlight(ai.response_rate, best.response_rate, true);
+                const compComp = compareAndHighlight(ai.profile_completion, best.profile_completion, true);
+                
+                let html = `
+                    <div class="table-responsive p-3">
+                        <table class="ai-compare-table">
+                            <!-- Headers -->
+                            <tr class="ai-compare-row" style="border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; min-height: 140px;">
+                                <td class="ai-compare-cell">
+                                    <div class="mb-2">
+                                        <span class="badge text-white mb-2" style="background: linear-gradient(135deg, #7c3aed, #db2777); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">
+                                            <i class="fas fa-magic me-1"></i>AI Suggestion
+                                        </span>
+                                    </div>
+                                    <div class="position-relative d-inline-block">
+                                        <img src="${ai.profile_photo}" alt="${ai.name}" class="rounded-circle border" style="width: 70px; height: 70px; object-fit: cover;">
+                                        ${ai.is_trusted ? '<span class="position-absolute bottom-0 right-0 badge bg-warning text-white rounded-circle p-1" style="font-size: 8px;"><i class="fas fa-award"></i></span>' : ''}
+                                    </div>
+                                    <div class="font-weight-bold text-dark mt-2" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        ${ai.name} ${ai.is_verified ? '<i class="fas fa-check-circle text-success" style="font-size: 12px;"></i>' : ''}
+                                    </div>
+                                </td>
+                                <td class="ai-compare-label text-muted" style="font-size: 14px;">VS</td>
+                                <td class="ai-compare-cell">
+                                    <div class="mb-2">
+                                        <span class="badge bg-primary text-white mb-2" style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">
+                                            <i class="fas fa-trophy me-1"></i>Best Match
+                                        </span>
+                                    </div>
+                                    <div class="position-relative d-inline-block">
+                                        <img src="${best.profile_photo}" alt="${best.name}" class="rounded-circle border" style="width: 70px; height: 70px; object-fit: cover;">
+                                        ${best.is_trusted ? '<span class="position-absolute bottom-0 right-0 badge bg-warning text-white rounded-circle p-1" style="font-size: 8px;"><i class="fas fa-award"></i></span>' : ''}
+                                    </div>
+                                    <div class="font-weight-bold text-dark mt-2" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        ${best.name} ${best.is_verified ? '<i class="fas fa-check-circle text-success" style="font-size: 12px;"></i>' : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <!-- Experience -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell">${expComp.c1}</td>
+                                <td class="ai-compare-label">Experience</td>
+                                <td class="ai-compare-cell">${expComp.c2}</td>
+                            </tr>
+                            
+                            <!-- Rating -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell"><i class="fas fa-star text-warning"></i> ${ratingComp.c1}</td>
+                                <td class="ai-compare-label">Rating</td>
+                                <td class="ai-compare-cell"><i class="fas fa-star text-warning"></i> ${ratingComp.c2}</td>
+                            </tr>
+                            
+                            <!-- Reviews -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell">${reviewsComp.c1}</td>
+                                <td class="ai-compare-label">Reviews</td>
+                                <td class="ai-compare-cell">${reviewsComp.c2}</td>
+                            </tr>
+                            
+                            <!-- Match Score -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell">${matchComp.c1}%</td>
+                                <td class="ai-compare-label">Match Score</td>
+                                <td class="ai-compare-cell">${matchComp.c2}%</td>
+                            </tr>
+                            
+                            <!-- Distance -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell">${distComp.c1}</td>
+                                <td class="ai-compare-label">Distance</td>
+                                <td class="ai-compare-cell">${distComp.c2}</td>
+                            </tr>
+                            
+                            <!-- Location -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell" style="font-size:12.5px; color:#475569;">${ai.location}</td>
+                                <td class="ai-compare-label">Location</td>
+                                <td class="ai-compare-cell" style="font-size:12.5px; color:#475569;">${best.location}</td>
+                            </tr>
+                            
+                            <!-- Happy Clients -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell">${clientsComp.c1}+</td>
+                                <td class="ai-compare-label">Active Clients</td>
+                                <td class="ai-compare-cell">${clientsComp.c2}+</td>
+                            </tr>
+                            
+                            <!-- Claims Settled -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell">${claimsComp.c1}</td>
+                                <td class="ai-compare-label">Claims Settled</td>
+                                <td class="ai-compare-cell">${claimsComp.c2}</td>
+                            </tr>
+                            
+                            <!-- Insurance Specializations -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell" style="font-size: 11.5px; color: #475569;">${ai.insurance_types.join(', ') || 'N/A'}</td>
+                                <td class="ai-compare-label">Specializations</td>
+                                <td class="ai-compare-cell" style="font-size: 11.5px; color: #475569;">${best.insurance_types.join(', ') || 'N/A'}</td>
+                            </tr>
+                            
+                            <!-- Investment Types -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell" style="font-size: 11.5px; color: #475569;">${ai.investment_types.join(', ') || 'N/A'}</td>
+                                <td class="ai-compare-label">Investment Types</td>
+                                <td class="ai-compare-cell" style="font-size: 11.5px; color: #475569;">${best.investment_types.join(', ') || 'N/A'}</td>
+                            </tr>
+                            
+                            <!-- IRDAI Verified -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell">${irdaiComp.c1}</td>
+                                <td class="ai-compare-label">IRDAI Verified</td>
+                                <td class="ai-compare-cell">${irdaiComp.c2}</td>
+                            </tr>
+                            
+                            <!-- AMFI Verified -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell">${amfiComp.c1}</td>
+                                <td class="ai-compare-label">AMFI Verified</td>
+                                <td class="ai-compare-cell">${amfiComp.c2}</td>
+                            </tr>
+                            
+                            <!-- Languages -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell" style="font-size: 12px; color: #475569;">${ai.languages}</td>
+                                <td class="ai-compare-label">Languages</td>
+                                <td class="ai-compare-cell" style="font-size: 12px; color: #475569;">${best.languages}</td>
+                            </tr>
+                            
+                            <!-- Response Rate -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell">${respComp.c1}%</td>
+                                <td class="ai-compare-label">Response Rate</td>
+                                <td class="ai-compare-cell">${respComp.c2}%</td>
+                            </tr>
+                            
+                            <!-- Profile Completion -->
+                            <tr class="ai-compare-row">
+                                <td class="ai-compare-cell">${compComp.c1}%</td>
+                                <td class="ai-compare-label">Completeness</td>
+                                <td class="ai-compare-cell">${compComp.c2}%</td>
+                            </tr>
+                            
+                            <!-- Contact Actions -->
+                            <tr class="ai-compare-row" style="border-bottom: none; padding-top: 16px;">
+                                <td class="ai-compare-cell">
+                                    <div class="d-flex justify-content-center gap-2 flex-wrap" style="gap: 6px;">
+                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'tel:${ai.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-sm btn-primary rounded-pill px-3" style="background-color: #2563eb; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor:pointer;"><i class="fas fa-phone-alt"></i> Call</button>
+                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'https://wa.me/${ai.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-sm btn-success rounded-pill px-3" style="background-color: #22c55e; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor:pointer;"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                                    </div>
+                                </td>
+                                <td class="ai-compare-label">Actions</td>
+                                <td class="ai-compare-cell">
+                                    <div class="d-flex justify-content-center gap-2 flex-wrap" style="gap: 6px;">
+                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'tel:${best.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-sm btn-primary rounded-pill px-3" style="background-color: #2563eb; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor:pointer;"><i class="fas fa-phone-alt"></i> Call</button>
+                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'https://wa.me/${best.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-sm btn-success rounded-pill px-3" style="background-color: #22c55e; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor:pointer;"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <div class="ai-explanation-box mt-4 p-3 shadow-sm" style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 12px; max-width: 800px; margin: 20px auto 0;">
+                            <h5 style="color: #6d28d9; font-weight: 700; font-size: 13px; margin-bottom: 8px; font-family: \'Urbanist\', sans-serif;">
+                                <i class="fas fa-magic me-2"></i>Why AI Recommended this Agent
+                            </h5>
+                            <p style="font-size: 13px; color: #4c1d95; line-height: 1.6; margin: 0; font-weight: 500;">
+                                "${data.ai_explanation}"
+                            </p>
+                        </div>
+                    </div>
+                `;
+                contentEl.html(html);
+            }
+            
+            // Hide skeleton, show content
+            $('#ai-picks-skeleton').hide();
+            $('#ai-picks-content-body').show();
+        }
 
         // Dedicated lead capture for comparison modal buttons.
         window.compareContactAgent = function(agentId, destination, interactionType, serviceType, insuranceType) {
