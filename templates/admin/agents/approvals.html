@@ -954,6 +954,15 @@ function buildLogsHTML(logs) {
 
     return html;
 }
+
+$(document).ready(function() {
+    $('.table-responsive').on('show.bs.dropdown', function () {
+         $(this).css('overflow', 'visible');
+    });
+    $('.table-responsive').on('hide.bs.dropdown', function () {
+         $(this).css('overflow', '');
+    });
+});
 </script>
 {% endblock %}
 {% endblock %}

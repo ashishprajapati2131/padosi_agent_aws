@@ -62,22 +62,56 @@ class AuthService:
                 content={"success": False, "message": "Please enter both email and password."}
             )
 
-        # 1. Fetch User by email
+        # 1. Fetch User by email from primary `users` table
         user = self.user_repo.get_by_email(request.email)
-        if not user:
+
+        # 2. Verify password against `users` table
+        password_valid = False
+        if user and user.password:
+            password_valid = verify_password(request.password, user.password)
+
+        # Fallback: check Django `auth_user` table if user is missing or password mismatch in `users` table
+        if not password_valid:
+            from sqlalchemy import text
+            auth_user_row = self.db.execute(
+                text("SELECT id, username, email, password, is_active FROM auth_user WHERE LOWER(email) = LOWER(:email)"),
+                {"email": request.email}
+            ).fetchone()
+
+            if auth_user_row:
+                auth_id, auth_username, auth_email, auth_password, auth_is_active = auth_user_row
+                if verify_password(request.password, auth_password):
+                    password_valid = True
+                    if user:
+                        # Sync verified password to users table
+                        user.password = auth_password
+                        try:
+                            self.db.commit()
+                        except Exception:
+                            self.db.rollback()
+                    else:
+                        # Create missing user entry in users table based on auth_user
+                        try:
+                            from app.models.user import User as UserModel
+                            user = UserModel(
+                                fullname=auth_username,
+                                email=auth_email,
+                                password=auth_password,
+                                role='agent',
+                                status='active' if auth_is_active else 'inactive'
+                            )
+                            self.db.add(user)
+                            self.db.commit()
+                        except Exception:
+                            self.db.rollback()
+
+        if not user or not password_valid:
             record_login_attempt(ip)
             return JSONResponse(
                 status_code=401,
                 content={"success": False, "message": "Please Enter Valid Login Details"}
             )
 
-        # 2. Verify password
-        if not verify_password(request.password, user.password):
-            record_login_attempt(ip)
-            return JSONResponse(
-                status_code=401,
-                content={"success": False, "message": "Please Enter Valid Login Details"}
-            )
 
         # 3. Check role
         if user.role != 'agent':
