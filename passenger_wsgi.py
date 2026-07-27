@@ -79,17 +79,28 @@ except ImportError:
     except Exception as e:
         print(f"Failed to auto-install a2wsgi: {e}")
 
+# Load native Django WSGI application
+from django.core.wsgi import get_wsgi_application
+django_wsgi_application = get_wsgi_application()
+
 # Try loading combined ASGI app via a2wsgi for cPanel Passenger
 try:
     from a2wsgi import ASGIMiddleware
     from padosi_agent.asgi import application as asgi_app
-    application = ASGIMiddleware(asgi_app)
+    asgi_wsgi_application = ASGIMiddleware(asgi_app)
+    FASTAPI_ENABLED = True
 except Exception as e:
     import traceback
     print(f"Error loading ASGI app in passenger_wsgi.py: {e}")
     traceback.print_exc()
-    from django.core.wsgi import get_wsgi_application
-    application = get_wsgi_application()
+    FASTAPI_ENABLED = False
+
+def application(environ, start_response):
+    path = environ.get('PATH_INFO', '')
+    # Route /api paths to FastAPI (via a2wsgi/ASGI) and other paths directly to native Django WSGI
+    if FASTAPI_ENABLED and path.startswith('/api'):
+        return asgi_wsgi_application(environ, start_response)
+    return django_wsgi_application(environ, start_response)
 
 
 
