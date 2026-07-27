@@ -266,10 +266,10 @@ LOGGING = {
 
 TEST_RUNNER = 'apps.home.test_runner.ManagedModelsTestRunner'
 
+# Ensure Django trusts the reverse proxy's HTTPS header (required for CSRF validation behind GoDaddy Apache proxy)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 if not DEBUG:
-    # Ensure Django trusts the reverse proxy's HTTPS header
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
