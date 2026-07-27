@@ -117,7 +117,7 @@ def _record_failed_admin_login(request, email):
             event_type='Failed Admin Login',
             url=request.build_absolute_uri(),
             payload=json.dumps({'email': email}),
-            user_agent=(request.META.get('HTTP_USER_AGENT') or '')[:255]
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:255]
         )
         
         one_hour_ago = datetime.now() - timedelta(hours=1)
@@ -230,8 +230,8 @@ def admin_login(request):
     now_utc    = datetime.utcnow()
 
     expires_at = now_utc + timedelta(days=30)
-    ip_address = (request.META.get("REMOTE_ADDR") or "")[:45]
-    user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
+    ip_address = request.META.get("REMOTE_ADDR", "")[:45]
+    user_agent = request.META.get("HTTP_USER_AGENT", "")[:255]
 
     try:
         with connection.cursor() as cursor:
