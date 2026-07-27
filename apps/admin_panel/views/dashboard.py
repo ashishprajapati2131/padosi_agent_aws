@@ -29,12 +29,15 @@ import bcrypt
 from django.db import connection
 from django.shortcuts import render, redirect
 
+from django.views.decorators.csrf import csrf_exempt
+
 logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
 # Session Authentication Helper
 # ---------------------------------------------------------------------------
+
 
 def _get_admin_from_session(request):
     """
@@ -297,6 +300,7 @@ def admin_login(request):
     return response
 
 
+@csrf_exempt
 def admin_logout(request):
     """
     Handle admin logout.

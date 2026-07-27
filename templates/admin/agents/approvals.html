@@ -171,13 +171,21 @@
                         <td style="padding:14px 16px; border-bottom:1px solid var(--border-light);">
                             <div class="d-flex align-items-center gap-3">
                                 {% if agent.profile_photo_path %}
-                                    <img src="/storage/{{ agent.profile_photo_path }}" class="agent-photo" alt="{{ agent.display_name|default:agent.fullname }}">
+                                    <img src="/storage/{{ agent.profile_photo_path }}" class="agent-photo" alt="" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="agent-initials" style="display: none;">{{ agent.fullname|make_list|first|upper }}</div>
                                 {% else %}
                                     <div class="agent-initials">{{ agent.fullname|make_list|first|upper }}</div>
                                 {% endif %}
                                 <div>
                                     <div class="fw-bold" style="font-size:14px; color:var(--text-primary);">{{ agent.display_name|default:agent.fullname }}</div>
                                     <div style="font-size:11px; color:var(--text-muted);">{{ agent.email }}</div>
+                                    {% if agent.is_blacklisted or agent.is_blacklisted_by_pan %}
+                                    <div class="mt-1">
+                                        <span class="badge bg-danger text-white" style="font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 600;">
+                                            <i class="fa-solid fa-triangle-exclamation me-1"></i> Blacklisted PAN Match
+                                        </span>
+                                    </div>
+                                    {% endif %}
                                     {% if agent.mobile %}
                                     <div style="font-size:11px; color:var(--text-muted);">
                                         <i class="fa-solid fa-phone me-1" style="font-size:9px;"></i>{{ agent.mobile }}

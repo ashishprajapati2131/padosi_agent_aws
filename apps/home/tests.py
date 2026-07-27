@@ -34,7 +34,7 @@ class HomePageTests(TestCase):
     def test_home_page_status_code(self):
         response = self.client.get(reverse('home:home'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Insurance Expert")
+        self.assertContains(response, "PadosiAgent")
 
     def test_home_page_custom_settings(self):
         custom_hero = {

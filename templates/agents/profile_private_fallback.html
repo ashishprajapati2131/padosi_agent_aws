@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Profile Not Available | PadosiAgent{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/agent-profile-view.css' %}">
+    <style>
+        .fallback-card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e2e8f0;
+            padding: 50px 30px;
+            max-width: 600px;
+            margin: 60px auto;
+            text-align: center;
+        }
+        .fallback-icon {
+            width: 90px;
+            height: 90px;
+            background: rgba(13, 148, 136, 0.1);
+            color: #0d9488;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 42px;
+            margin: 0 auto 30px;
+            animation: pulseTeal 2s infinite;
+        }
+        @keyframes pulseTeal {
+            0% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(13, 148, 136, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0); }
+        }
+        .fallback-title {
+            font-size: 26px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+        }
+        .fallback-text {
+            color: #475569;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 35px;
+        }
+        .fallback-btn {
+            background-color: #0d9488;
+            color: #ffffff;
+            border: none;
+            padding: 12px 30px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 50px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
+        }
+        .fallback-btn:hover {
+            background-color: #0f766e;
+            color: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(13, 148, 136, 0.35);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="fallback-card">
+        <div class="fallback-icon">
+            <i class="fas fa-user-shield"></i>
+        </div>
+        <h2 class="fallback-title">Profile Not Available</h2>
+        <p class="fallback-text">
+            This agent's detailed profile page is temporarily not available. 
+            You can still contact them via their profile search card on the find agent page.
+        </p>
+        <a href="{% url 'home:find_agents' %}" class="fallback-btn">
+            <i class="fas fa-arrow-left"></i> Return to Search
+        </a>
+    </div>
+</div>
+{% endblock %}

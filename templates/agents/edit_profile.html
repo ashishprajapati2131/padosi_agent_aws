@@ -442,11 +442,10 @@ Overview
                                         value="{{ profile.license_number|default:'' }}"
                                         placeholder="Enter IRDAI License Number">
                                     <div class="input-group-append">
-                                        <a href="https://agencyportal.irdai.gov.in/PublicAccess/LookUpPAN.aspx"
-                                            target="_blank" class="btn btn-primary d-flex align-items-center"
-                                            onclick="copyPanToClipboard()">
-                                            <i class="fas fa-external-link-alt mr-2"></i> IRDAI
-                                        </a>
+                                        <button type="button" id="irdai-verify-btn"
+                                            class="btn btn-primary d-flex align-items-center" style="cursor: pointer;">
+                                            <i class="fas fa-search mr-2"></i> IRDAI
+                                        </button>
                                     </div>
                                 </div>
                                 {% else %}
@@ -471,6 +470,108 @@ Overview
                             </div>
                         </div>
 
+                        <!-- Professional License Upload Module -->
+                        <div class="row mb-4">
+                            <div class="col-12 mb-3">
+                                <h6 class="text-primary font-weight-bold mb-1">
+                                    <i class="fas fa-file-contract mr-2"></i>Professional License Documents
+                                </h6>
+                                <small class="text-muted">Upload official certificate documents for IRDAI and AMFI license verification.</small>
+                            </div>
+
+                            <!-- IRDAI License Upload Card -->
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 border shadow-sm" style="border-radius: 12px; overflow: hidden; background: #ffffff;">
+                                    <div class="card-header bg-light py-3 border-bottom d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <div style="width: 32px; height: 32px; background: rgba(13, 148, 136, 0.1); color: #0d9488; border-radius: 8px; display: flex; align-items: center; justify-content: center;" class="mr-2">
+                                                <i class="fas fa-landmark" style="font-size: 14px;"></i>
+                                            </div>
+                                            <h6 class="mb-0 font-weight-bold text-dark" style="font-size: 14px;">IRDAI License Certificate</h6>
+                                        </div>
+                                        <span class="badge {% if profile.irdai_license_doc %}badge-success{% else %}badge-warning{% endif %}" style="font-size: 11px; padding: 4px 10px; border-radius: 20px;">
+                                            {% if profile.irdai_license_doc %}Uploaded{% else %}Not Uploaded{% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="card-body p-3">
+                                        {% if profile.irdai_license_doc %}
+                                        <div class="p-3 border rounded mb-3 bg-light d-flex align-items-center justify-content-between" id="irdai-file-preview" style="border-radius: 8px;">
+                                            <div class="d-flex align-items-center overflow-hidden mr-2">
+                                                <i class="fas fa-file-pdf text-danger fa-2x mr-3"></i>
+                                                <div class="text-truncate">
+                                                    <div class="font-weight-bold text-dark small text-truncate" style="max-width: 180px;">IRDAI Certificate</div>
+                                                    <small class="text-muted">Uploaded Document</small>
+                                                </div>
+                                            </div>
+                                            <a href="/media/{{ profile.irdai_license_doc }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary font-weight-bold" style="border-radius: 6px; font-size: 12px;">
+                                                <i class="fas fa-eye mr-1"></i> View
+                                            </a>
+                                        </div>
+                                        {% endif %}
+
+                                        <div class="custom-file-upload border rounded p-3 text-center" style="border-style: dashed !important; border-color: #cbd5e1 !important; background: #f8fafc; border-radius: 8px;">
+                                            <i class="fas fa-cloud-upload-alt text-muted fa-2x mb-2" style="color: #0d9488 !important;"></i>
+                                            <p class="mb-1 font-weight-bold small text-dark">Upload IRDAI Certificate</p>
+                                            <small class="text-muted d-block mb-2" style="font-size: 11px;">PDF, JPG, JPEG, PNG (Max 5 MB)</small>
+                                            <input type="file" name="irdai_license_doc" id="irdai_license_doc_input" class="d-none" accept=".pdf,.jpg,.jpeg,.png" onchange="handleLicenseFileChange(this, 'irdai')">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary font-weight-bold px-3" onclick="document.getElementById('irdai_license_doc_input').click()" style="border-radius: 6px; font-size: 12px;">
+                                                <i class="fas fa-folder-open mr-1"></i> Browse File
+                                            </button>
+                                            <div id="irdai-new-file-preview" class="mt-2 text-success small font-weight-bold" style="display: none;">
+                                                <i class="fas fa-check-circle mr-1"></i> Selected: <span id="irdai-new-filename"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- AMFI License Upload Card -->
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 border shadow-sm" style="border-radius: 12px; overflow: hidden; background: #ffffff;">
+                                    <div class="card-header bg-light py-3 border-bottom d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center">
+                                            <div style="width: 32px; height: 32px; background: rgba(34, 88, 165, 0.1); color: #2258a5; border-radius: 8px; display: flex; align-items: center; justify-content: center;" class="mr-2">
+                                                <i class="fas fa-chart-line" style="font-size: 14px;"></i>
+                                            </div>
+                                            <h6 class="mb-0 font-weight-bold text-dark" style="font-size: 14px;">AMFI / ARN Certificate</h6>
+                                        </div>
+                                        <span class="badge {% if profile.amfi_license_doc %}badge-success{% else %}badge-warning{% endif %}" style="font-size: 11px; padding: 4px 10px; border-radius: 20px;">
+                                            {% if profile.amfi_license_doc %}Uploaded{% else %}Not Uploaded{% endif %}
+                                        </span>
+                                    </div>
+                                    <div class="card-body p-3">
+                                        {% if profile.amfi_license_doc %}
+                                        <div class="p-3 border rounded mb-3 bg-light d-flex align-items-center justify-content-between" id="amfi-file-preview" style="border-radius: 8px;">
+                                            <div class="d-flex align-items-center overflow-hidden mr-2">
+                                                <i class="fas fa-file-pdf text-danger fa-2x mr-3"></i>
+                                                <div class="text-truncate">
+                                                    <div class="font-weight-bold text-dark small text-truncate" style="max-width: 180px;">AMFI Certificate</div>
+                                                    <small class="text-muted">Uploaded Document</small>
+                                                </div>
+                                            </div>
+                                            <a href="/media/{{ profile.amfi_license_doc }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary font-weight-bold" style="border-radius: 6px; font-size: 12px;">
+                                                <i class="fas fa-eye mr-1"></i> View
+                                            </a>
+                                        </div>
+                                        {% endif %}
+
+                                        <div class="custom-file-upload border rounded p-3 text-center" style="border-style: dashed !important; border-color: #cbd5e1 !important; background: #f8fafc; border-radius: 8px;">
+                                            <i class="fas fa-cloud-upload-alt text-muted fa-2x mb-2" style="color: #2258a5 !important;"></i>
+                                            <p class="mb-1 font-weight-bold small text-dark">Upload AMFI Certificate</p>
+                                            <small class="text-muted d-block mb-2" style="font-size: 11px;">PDF, JPG, JPEG, PNG (Max 5 MB)</small>
+                                            <input type="file" name="amfi_license_doc" id="amfi_license_doc_input" class="d-none" accept=".pdf,.jpg,.jpeg,.png" onchange="handleLicenseFileChange(this, 'amfi')">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary font-weight-bold px-3" onclick="document.getElementById('amfi_license_doc_input').click()" style="border-radius: 6px; font-size: 12px;">
+                                                <i class="fas fa-folder-open mr-1"></i> Browse File
+                                            </button>
+                                            <div id="amfi-new-file-preview" class="mt-2 text-success small font-weight-bold" style="display: none;">
+                                                <i class="fas fa-check-circle mr-1"></i> Selected: <span id="amfi-new-filename"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Investment License Details -->
                         <div class="row border rounded p-3 mb-4 bg-light mx-0"
                             style="border-color: #cbd5e1 !important; border-radius: 12px !important;">
@@ -480,8 +581,16 @@ Overview
                             </div>
                             <div class="col-md-4 mb-3 pl-0">
                                 <label class="form-label">AMFI ARN Number</label>
-                                <input type="text" class="form-control" name="arn_number" id="arn_number"
-                                    value="{{ profile.arn_number|default:'' }}" placeholder="e.g. ARN-123456">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" name="arn_number" id="arn_number"
+                                        value="{{ profile.arn_number|default:'' }}" placeholder="e.g. ARN-123456">
+                                    <div class="input-group-append">
+                                        <button type="button" id="amfi-verify-btn"
+                                            class="btn btn-primary d-flex align-items-center" style="cursor: pointer;">
+                                            <i class="fas fa-search mr-2"></i> AMFI ARN
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">EUIN Number</label>
@@ -986,40 +1095,138 @@ Overview
                                         value="{{ profile.website_url|default:'' }}" placeholder="www.yourwebsite.com">
                                 </div>
                                 <div class="col-md-6 mb-4">
-                                    <label class="form-label">Google Business Profile</label>
-                                    <input type="url" class="form-control" name="google_business"
-                                        value="{{ profile.social_links.google_business|default:'' }}"
-                                        placeholder="Google Maps URL">
+                                    <label class="form-label d-flex align-items-center gap-2" style="font-weight: 500;">
+                                        Google Business Profile
+                                        <span class="badge badge-success ml-2" id="gbp-linked-badge"
+                                              style="display:none;font-size:10px;background:#0d9488;color:#fff;padding:3px 8px;border-radius:20px;">&#10003; Linked</span>
+                                    </label>
+                                    <div class="d-flex align-items-center" style="gap: 10px;">
+                                        <input type="url" class="form-control" name="google_business"
+                                            id="google-business-input"
+                                            value="{{ profile.social_links.google_business|default:'' }}"
+                                            placeholder="Google Maps URL">
+                                        <button type="button"
+                                                class="btn"
+                                                id="gbp-create-btn"
+                                                onclick="startGBPFlow()"
+                                                style="background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057; font-weight: 500; transition: all 0.3s ease; border-radius: 6px; white-space: nowrap;"
+                                                onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#212529';"
+                                                onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#495057';"
+                                                title="Manage Google Business Profile">
+                                            <i class="fab fa-google mr-1" style="color: #4285f4;"></i>
+                                            <span id="gbp-btn-text">
+                                                {% if profile.social_links.google_business %}
+                                                    Re-link GBP
+                                                {% else %}
+                                                    Create / Link GBP
+                                                {% endif %}
+                                            </span>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted mt-1">
+                                        <i class="fas fa-info-circle"></i>
+                                        Verify or link your business location on Google Maps.
+                                    </small>
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-4">
                                     <label class="form-label">LinkedIn</label>
-                                    <input type="url" class="form-control" name="linkedin_url"
-                                        value="{{ profile.social_links.linkedin|default:'' }}"
-                                        placeholder="LinkedIn profile URL">
+                                    <div class="d-flex align-items-center" style="gap: 10px;">
+                                        <input type="url" class="form-control" name="linkedin_url"
+                                            value="{{ profile.social_links.linkedin|default:'' }}"
+                                            placeholder="LinkedIn profile URL">
+                                        <button type="button"
+                                                class="btn"
+                                                onclick="window.open('https://www.linkedin.com/', '_blank')"
+                                                style="background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057; font-weight: 500; transition: all 0.3s ease; border-radius: 6px; white-space: nowrap;"
+                                                onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#212529';"
+                                                onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#495057';"
+                                                title="Create LinkedIn Account">
+                                            <i class="fab fa-linkedin mr-1" style="color: #0077b5;"></i>
+                                            <span>Create Account</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="col-md-6 mb-4">
                                     <label class="form-label">Instagram</label>
-                                    <input type="url" class="form-control" name="instagram_url"
-                                        value="{{ profile.social_links.instagram|default:'' }}"
-                                        placeholder="Instagram profile URL">
+                                    <div class="d-flex align-items-center" style="gap: 10px;">
+                                        <input type="url" class="form-control" name="instagram_url"
+                                            value="{{ profile.social_links.instagram|default:'' }}"
+                                            placeholder="Instagram profile URL">
+                                        <button type="button"
+                                                class="btn"
+                                                onclick="window.open('https://www.instagram.com/accounts/emailsignup/', '_blank')"
+                                                style="background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057; font-weight: 500; transition: all 0.3s ease; border-radius: 6px; white-space: nowrap;"
+                                                onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#212529';"
+                                                onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#495057';"
+                                                title="Create Instagram Account">
+                                            <i class="fab fa-instagram mr-1" style="color: #e1306c;"></i>
+                                            <span>Create Account</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col-md-6 mb-4">
                                     <label class="form-label">Facebook</label>
-                                    <input type="url" class="form-control" name="facebook_url"
-                                        value="{{ profile.social_links.facebook|default:'' }}"
-                                        placeholder="Facebook page URL">
+                                    <div class="d-flex align-items-center" style="gap: 10px;">
+                                        <input type="url" class="form-control" name="facebook_url"
+                                            value="{{ profile.social_links.facebook|default:'' }}"
+                                            placeholder="Facebook page URL">
+                                        <button type="button"
+                                                class="btn"
+                                                onclick="window.open('https://www.facebook.com/r.php', '_blank')"
+                                                style="background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057; font-weight: 500; transition: all 0.3s ease; border-radius: 6px; white-space: nowrap;"
+                                                onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#212529';"
+                                                onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#495057';"
+                                                title="Create Facebook Account">
+                                            <i class="fab fa-facebook-f mr-1" style="color: #1877f2;"></i>
+                                            <span>Create Account</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="col-md-6 mb-4">
                                     <label class="form-label">YouTube</label>
-                                    <input type="url" class="form-control" name="youtube_url"
-                                        value="{{ profile.social_links.youtube|default:'' }}"
-                                        placeholder="YouTube channel URL">
+                                    <div class="d-flex align-items-center" style="gap: 10px;">
+                                        <input type="url" class="form-control" name="youtube_url"
+                                            value="{{ profile.social_links.youtube|default:'' }}"
+                                            placeholder="YouTube channel URL">
+                                        <button type="button"
+                                                class="btn"
+                                                onclick="window.open('https://accounts.google.com/signup', '_blank')"
+                                                style="background-color: #f8f9fa; border: 1px solid #ced4da; color: #495057; font-weight: 500; transition: all 0.3s ease; border-radius: 6px; white-space: nowrap;"
+                                                onmouseover="this.style.backgroundColor='#e9ecef'; this.style.color='#212529';"
+                                                onmouseout="this.style.backgroundColor='#f8f9fa'; this.style.color='#495057';"
+                                                title="Create YouTube/Google Account">
+                                            <i class="fab fa-youtube mr-1" style="color: #ff0000;"></i>
+                                            <span>Create Account</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- GBP Progress / Result Modal -->
+                        <div class="modal fade" id="gbpProgressModal" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-sm" role="document" style="max-width: 440px;">
+                                <div class="modal-content" style="border-radius:12px;overflow:hidden; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+                                    <div class="modal-header py-3" style="background:#f8f9fa; border-bottom: 1px solid #eee;">
+                                        <h6 class="modal-title font-weight-bold" style="color: #3c4043; font-size: 15px; margin: 0; display: flex; align-items: center;">
+                                            <i class="fab fa-google mr-2 text-primary" style="font-size: 16px;"></i>Google Business Profile
+                                        </h6>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="font-size: 20px; line-height: 1; padding: 12px; margin: -12px -12px -12px auto;">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body text-center px-4 py-3" id="gbp-modal-body">
+                                        <!-- Content loaded dynamically -->
+                                    </div>
+                                    <div class="modal-footer px-4 pb-3 pt-0" id="gbp-modal-footer" style="border-top: 0; display: flex; gap: 10px; width: 100%;">
+                                        <!-- Buttons loaded dynamically -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1149,10 +1356,20 @@ Overview
                                     class="fas fa-info-circle text-muted" data-toggle="tooltip"
                                     title="Share notable achievements, awards (like MDRT/COT/TOT), and milestones"
                                     style="font-size: 14px; cursor: help;"></i></h5>
-                            <textarea class="form-control" name="career_highlights" rows="5" maxlength="500"
+                            <textarea class="form-control" name="career_highlights" id="career-highlights-textarea" rows="5" maxlength="500"
                                 placeholder="Share your achievements, recognitions, and career milestones..."
                                 oninput="document.getElementById('bio-counter').innerText = this.value.length + '/500 characters'">{{ profile.career_highlights|default:'' }}</textarea>
-                            <small class="text-muted d-block text-right mt-1" id="bio-counter">0/500 characters</small>
+                            <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
+                                <!-- AI Generate Button -->
+                                <button type="button" class="btn" id="ai-generate-bio-btn" onclick="triggerAIBioGeneration()"
+                                        style="background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%); border: none; color: #fff; font-weight: 500; font-size: 13px; padding: 6px 14px; border-radius: 8px; box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2); transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 6px;"
+                                        data-toggle="tooltip" title="Generate an SEO optimized professional summary using your profile.">
+                                    <i class="fas fa-magic" id="ai-bio-btn-icon"></i>
+                                    <span id="ai-bio-btn-text">Generate AI Professional Bio</span>
+                                </button>
+
+                                <small class="text-muted d-block text-right" id="bio-counter">0/500 characters</small>
+                            </div>
                         </div>
                     </div>
 
@@ -2463,24 +2680,8 @@ Overview
         sme: companiesGeneral
     };
 
-    function updatePortfolioStep() {
-        const selectedSegments = typeof selectedSegmentsFromDb !== 'undefined' ? selectedSegmentsFromDb : [];
-        const selectedInvestmentTypes = typeof selectedInvestmentTypesFromDb !== 'undefined' ? selectedInvestmentTypesFromDb : [];
-
-        // Pre-check segment toggles based on selectedSegments
-        $('.segment-db-toggle').prop('checked', false);
-        selectedSegments.forEach(function (segmentValue) {
-            $(`#db_segment_${segmentValue}`).prop('checked', true);
-        });
-
-        // Pre-check investment toggles based on selectedInvestmentTypes
-        $('.investment-db-toggle').prop('checked', false);
-        selectedInvestmentTypes.forEach(function (invValue) {
-            const safeId = invValue.replace(/\//g, '_');
-            $(`#db_inv_${safeId}`).prop('checked', true);
-        });
-
-        // Manually trigger styling for checkbox states
+    function syncCheckboxStyles() {
+        // Manually trigger styling for segment checkbox states
         $('.segment-db-toggle').each(function () {
             const isChecked = $(this).is(':checked');
             const label = $(this).siblings('label');
@@ -2533,6 +2734,31 @@ Overview
                 span.css('color', '#475569');
             }
         });
+    }
+
+    let isPortfolioInitialized = false;
+
+    function updatePortfolioStep() {
+        const selectedSegments = typeof selectedSegmentsFromDb !== 'undefined' ? selectedSegmentsFromDb : [];
+        const selectedInvestmentTypes = typeof selectedInvestmentTypesFromDb !== 'undefined' ? selectedInvestmentTypesFromDb : [];
+
+        // On first initialization only, apply DB values to checkboxes
+        if (!isPortfolioInitialized) {
+            $('.segment-db-toggle').prop('checked', false);
+            selectedSegments.forEach(function (segmentValue) {
+                $(`#db_segment_${segmentValue}`).prop('checked', true);
+            });
+
+            $('.investment-db-toggle').prop('checked', false);
+            selectedInvestmentTypes.forEach(function (invValue) {
+                const safeId = String(invValue).toLowerCase().replace(/\//g, '_');
+                $(`#db_inv_${safeId}`).prop('checked', true);
+            });
+
+            isPortfolioInitialized = true;
+        }
+
+        syncCheckboxStyles();
 
         if (selectedSegments.length === 0) {
             portfolioEmptyState.show();
@@ -2618,7 +2844,7 @@ Overview
     // Investment Selector Interaction
     $(document).on('change', '.investment-db-toggle', function () {
         const isChecked = $(this).is(':checked');
-        const inv = $(this).val();
+        const inv = $(this).val().toLowerCase();
         const label = $(this).siblings('label');
         const icon = label.find('i');
         const span = label.find('span');
@@ -3489,5 +3715,692 @@ Overview
         btn.prop('disabled', false);
         btn.html('<i class="fas fa-plus mr-1"></i> Add');
     }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Google Business Profile (GBP) — Direct Modal Flow
+       No OAuth popup. Button click immediately opens the modal:
+         • If a GBP URL is already in the input  → show "Linked" state
+         • Otherwise                              → show "Not Found" + guide
+    ═══════════════════════════════════════════════════════════════════════ */
+    (function initGBPFlow() {
+
+        /* Expose globally so the onclick="startGBPFlow()" handler can reach it */
+        window.startGBPFlow = function startGBPFlow() {
+            var existingUrl = ($('#google-business-input').val() || '').trim();
+
+            /* Show the modal */
+            $('#gbpProgressModal').modal({ backdrop: true, keyboard: true });
+            $('#gbpProgressModal').modal('show');
+
+            if (existingUrl) {
+                /* Agent already has a GBP URL saved — show linked state */
+                _showGBPFound(existingUrl, '');
+            } else {
+                /* No URL — guide agent to create one on Google */
+                _showGBPNotFound('https://business.google.com/create');
+            }
+        };
+
+        function _showGBPFound(url, name) {
+            $('#gbp-linked-badge').show();
+            $('#gbp-btn-text').text('Re-link GBP');
+
+            $('#gbp-modal-body').html(
+                '<div style="font-size:2.5rem;color:#0d9488;margin-bottom:10px;">&#10003;</div>' +
+                '<h5 class="font-weight-bold" style="color: #202124; font-size:16px; margin-bottom:8px;">Business Profile Connected</h5>' +
+                '<p class="text-muted small" style="word-break:break-all; background:#f1f3f4; padding:8px; border-radius:6px; margin-bottom:12px;">' + _esc(url) + '</p>' +
+                '<p class="small text-muted" style="margin-bottom:0; line-height: 1.4;">Your business profile link is successfully configured. Remember to <strong>save your profile</strong> changes.</p>'
+            );
+            $('#gbp-modal-footer')
+                .html(
+                    '<button type="button" class="btn btn-outline-secondary" data-dismiss="modal" style="flex: 1; font-weight: 500; height: 40px; font-size: 13px;">Close</button>' +
+                    '<a href="' + _esc(url) + '" class="btn text-white" target="_blank" rel="noopener" style="flex: 1; background-color: #0d9488; border-color: #0d9488; font-weight: 500; height: 40px; font-size: 13px; display: inline-flex; align-items: center; justify-content: center;">' +
+                    '<i class="fas fa-external-link-alt mr-1"></i> View Live</a>'
+                )
+                .css('display', 'flex');
+        }
+
+        function _showGBPNotFound(createUrl) {
+            $('#gbp-modal-body').html(
+                '<div style="font-size:2.2rem; color: #f29900; margin-bottom:8px;">&#9888;</div>' +
+                '<h5 class="font-weight-bold" style="color: #202124; font-size:16px; margin-bottom:8px;">Link Your Google Business Profile</h5>' +
+                '<p class="text-muted small style="line-height: 1.4; margin-bottom:12px;">We could not detect a Google Business Profile URL for your account. Establishing your business on Google Search and Maps helps local customers find you.</p>' +
+                '<div class="alert text-left py-2 px-3 mb-2" style="background:#f8f9fa; border:1px solid #dadce0; font-size:12px; border-radius:8px; line-height:1.5;">' +
+                    '<strong style="color:#5f6368; display:block; margin-bottom:4px; font-size:11px; text-transform:uppercase;">Use your registered details:</strong>' +
+                    '<span class="text-dark font-weight-500">{{ agent.fullname|default:"" }}</span>' +
+                    '{% if agent.mobile %} &bull; <span class="text-dark">{{ agent.mobile }}</span>{% endif %}' +
+                    '{% if profile.office_address %} &bull; <span class="text-dark">{{ profile.office_address }}</span>{% elif agent.agent_pincode %} &bull; <span class="text-dark">{{ agent.agent_pincode }}</span>{% endif %}' +
+                '</div>' +
+                '<p class="text-muted style="font-size: 11px; margin-bottom: 0; line-height: 1.3;">Once created, simply copy and paste your Google Maps URL into the input field above and click save.</p>'
+            );
+            $('#gbp-modal-footer')
+                .html(
+                    '<button type="button" class="btn btn-outline-secondary" data-dismiss="modal" style="flex: 1; font-weight: 500; height: 40px; font-size: 13px;">Close</button>' +
+                    '<a href="' + (createUrl || 'https://business.google.com/create') + '" ' +
+                    'class="btn text-white" target="_blank" rel="noopener" style="flex: 1; background-color: #1a73e8; border-color: #1a73e8; font-weight: 500; height: 40px; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(60,64,67,0.3);">' +
+                    '<i class="fab fa-google mr-1"></i> Create on Google</a>'
+                )
+                .css('display', 'flex');
+        }
+
+        /* Safe HTML escape */
+        function _esc(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        /* On page load — restore the badge if a GBP URL already exists */
+        $(function () {
+            var existingUrl = ($('#google-business-input').val() || '').trim();
+            if (existingUrl) {
+                $('#gbp-linked-badge').show();
+                $('#gbp-btn-text').text('Re-link GBP');
+            }
+        });
+    })();
+    /* ═══════════════════════════════════════════════════════════════════════
+       AI Professional Bio Generator Flow
+    ═══════════════════════════════════════════════════════════════════════ */
+    (function initAIBioGenerator() {
+        var generatedBioCache = "";
+
+        window.triggerAIBioGeneration = function triggerAIBioGeneration() {
+            var btn = $('#ai-generate-bio-btn');
+            var icon = $('#ai-bio-btn-icon');
+            var text = $('#ai-bio-btn-text');
+            var textarea = $('#career-highlights-textarea');
+
+            // Prevent double submission
+            btn.prop('disabled', true).css('opacity', '0.7');
+            icon.removeClass('fa-magic').addClass('fa-spinner fa-spin');
+            text.text('Generating Bio...');
+
+            $.ajax({
+                url: "{% url 'agents:agent_generate_bio' %}",
+                type: "POST",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                data: {
+                    agent_id: "{{ agent.id }}"
+                },
+                success: function(response) {
+                    if (response.status === 'success' && response.bio) {
+                        generatedBioCache = response.bio;
+                        textarea.val(response.bio);
+                        textarea.trigger('input'); // Update counter
+
+                        // Restore button and update text to indicate regeneration is possible
+                        btn.prop('disabled', false).css('opacity', '1');
+                        icon.removeClass('fa-spinner fa-spin').addClass('fa-magic');
+                        text.text('Regenerate AI Professional Bio');
+                    } else {
+                        showError(response.message || 'Failed to generate bio.');
+                        resetBtn();
+                    }
+                },
+                error: function(xhr) {
+                    var errorMsg = 'An error occurred while generating the bio.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    showError(errorMsg);
+                    resetBtn();
+                }
+            });
+
+            function resetBtn() {
+                btn.prop('disabled', false).css('opacity', '1');
+                icon.removeClass('fa-spinner fa-spin').addClass('fa-magic');
+                text.text('Generate AI Professional Bio');
+            }
+
+            function showError(msg) {
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Generation Failed',
+                        text: msg,
+                        confirmButtonColor: '#0d9488'
+                    });
+                } else {
+                    alert(msg);
+                }
+            }
+        };
+
+        // Initialize bio character counter on load
+        $(function() {
+            var textarea = $('#career-highlights-textarea');
+            if (textarea.length) {
+                textarea.trigger('input');
+            }
+        });
+    })();
+
+    /* ── IRDAI Verification Flow ── */
+    $(function() {
+        let irdaiSessionId = '';
+
+        $('#irdai-verify-btn').on('click', function(e) {
+            e.preventDefault();
+            const btn = $(this);
+            const panInput = $('#pan_number');
+            const pan = panInput.length ? panInput.val().trim() : '';
+            if (!pan) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'PAN Required',
+                    text: 'Please enter a PAN number first.',
+                    confirmButtonColor: '#0d9488'
+                });
+                return;
+            }
+
+            // Disable button, show loading spinner, prevent duplicate clicks
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> IRDAI');
+
+            Swal.fire({
+                title: 'Verifying with IRDAI...',
+                text: 'Starting browser automation, please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: "/admin/agents/irdai-verify/",
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ pan_number: pan }),
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    Swal.close();
+                    if (response.status === 'CAPTCHA_REQUIRED') {
+                        irdaiSessionId = response.session_id;
+                        $('#irdai-captcha-img').attr('src', response.captcha_image);
+                        $('#irdai-captcha-input').val('');
+                        $('#irdaiCaptchaModal').modal('show');
+                    } else if (response.status === 'SUCCESS') {
+                        handleVerificationSuccess(response.data, response.raw_data);
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Verification Failed',
+                            text: response.message || 'Unknown error occurred.',
+                            confirmButtonColor: '#0d9488'
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    Swal.close();
+                    let errMsg = 'Failed to connect to verification service.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errMsg,
+                        confirmButtonColor: '#0d9488'
+                    });
+                },
+                complete: function() {
+                    // Re-enable button and restore original state
+                    btn.prop('disabled', false).html('<i class="fas fa-search mr-2"></i> IRDAI');
+                }
+            });
+        });
+
+        $('#irdai-captcha-submit').on('click', function(e) {
+            e.preventDefault();
+            const solution = $('#irdai-captcha-input').val().trim();
+            if (!solution) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'CAPTCHA Required',
+                    text: 'Please input the security code.',
+                    confirmButtonColor: '#0d9488'
+                });
+                return;
+            }
+
+            $('#irdaiCaptchaModal').modal('hide');
+
+            Swal.fire({
+                title: 'Submitting CAPTCHA...',
+                text: 'Extracting lookup results, please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: "/admin/agents/irdai-verify/",
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    session_id: irdaiSessionId,
+                    captcha_solution: solution
+                }),
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    Swal.close();
+                    if (response.status === 'SUCCESS') {
+                        handleVerificationSuccess(response.data, response.raw_data);
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Verification Failed',
+                            text: response.message || 'Invalid CAPTCHA or lookup failed.',
+                            confirmButtonColor: '#0d9488'
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    Swal.close();
+                    let errMsg = 'An error occurred during submission.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errMsg,
+                        confirmButtonColor: '#0d9488'
+                    });
+                }
+            });
+        });
+
+        function handleVerificationSuccess(data, raw_data) {
+            let autofilledFields = [];
+            let conflicts = [];
+
+            function fillField(inputName, scrapedValue) {
+                if (!scrapedValue) return;
+                const input = $(`input[name="${inputName}"], textarea[name="${inputName}"]`);
+                if (input.length) {
+                    const currentVal = input.val().trim();
+                    if (!currentVal) {
+                        input.val(scrapedValue);
+                        input.css('background-color', '#dcfce7');
+                        setTimeout(() => input.css('background-color', ''), 2000);
+                        autofilledFields.push(inputName);
+                    } else if (currentVal.toLowerCase() !== scrapedValue.toLowerCase()) {
+                        conflicts.push({ name: inputName, current: currentVal, scraped: scrapedValue });
+                    }
+                }
+            }
+
+            fillField('full_name', data.agent_name);
+            fillField('display_name', data.agent_name);
+            fillField('license_number', data.license_number);
+            fillField('license_valid_till', data.license_valid_till);
+            fillField('address', data.address);
+            fillField('office_address', data.address);
+            fillField('mobile', data.mobile);
+            fillField('email', data.email);
+            fillField('agency_name', data.agency_name);
+            fillField('service_pincode', data.pincode);
+
+            // Format popup values
+            const agentName = data.agent_name || 'N/A';
+            const insurer = data.agency_name || 'N/A';
+            const licenseNo = data.license_number || 'N/A';
+            const licenseStatus = data.license_status || 'N/A';
+            const validTill = data.license_valid_till || 'N/A';
+
+            const successHtml = `
+                <div style="text-align: left; margin-top: 10px; font-size: 14px; line-height: 1.6; color: #4b5563;">
+                    <p class="mb-2"><strong>Agent Name:</strong> ${agentName}</p>
+                    <p class="mb-2"><strong>Insurance Company:</strong> ${insurer}</p>
+                    <p class="mb-2"><strong>License Number:</strong> ${licenseNo}</p>
+                    <p class="mb-2"><strong>License Status:</strong> <span class="badge ${licenseStatus.toLowerCase() === 'inforce' ? 'badge-success' : 'badge-warning'}" style="padding: 4px 8px; font-size: 12px; border-radius: 4px;">${licenseStatus}</span></p>
+                    <p class="mb-3"><strong>License Valid Till:</strong> ${validTill}</p>
+                    <hr class="my-3" style="border-top: 1px solid #e5e7eb;">
+                    <p class="mb-0 text-muted small">The IRDAI details have been successfully verified and populated into the profile.</p>
+                </div>
+            `;
+
+            if (conflicts.length > 0) {
+                let conflictHtml = '<div style="text-align: left; max-height: 200px; overflow-y: auto;">';
+                conflicts.forEach(c => {
+                    conflictHtml += `<p class="mb-1"><strong>${c.name}:</strong> Scraped: <code style="color:#22c55e;">${c.scraped}</code> (Current: <code style="color:#ef4444;">${c.current}</code>)</p>`;
+                });
+                conflictHtml += '</div>';
+
+                Swal.fire({
+                    title: 'IRDAI Verification Successful',
+                    html: successHtml + `<hr class="my-3"><p class="font-weight-bold mb-2">Data Conflicts Detected:</p>${conflictHtml}<p class="mt-2 text-muted small">Would you like to overwrite these fields with official IRDAI data?</p>`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Overwrite All',
+                    cancelButtonText: 'Keep Existing',
+                    confirmButtonColor: '#0d9488',
+                    cancelButtonColor: '#aaa'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        conflicts.forEach(c => {
+                            const input = $(`input[name="${c.name}"], textarea[name="${c.name}"]`);
+                            input.val(c.scraped);
+                            input.css('background-color', '#fef9c3');
+                            setTimeout(() => input.css('background-color', ''), 2000);
+                        });
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Updated',
+                            text: 'All conflicting fields updated. Click "Submit Details" at the end of the form to save.',
+                            confirmButtonColor: '#0d9488'
+                        });
+                    }
+                });
+            } else {
+                Swal.fire({
+                    title: 'IRDAI Verification Successful',
+                    html: successHtml,
+                    icon: 'success',
+                    confirmButtonColor: '#0d9488'
+                });
+            }
+
+            // Auto-select insurance segments and company names
+            if (data || raw_data) {
+                let rawTexts = [];
+                if (data && data.agency_name) rawTexts.push(data.agency_name);
+                if (raw_data) {
+                    for (let key in raw_data) {
+                        rawTexts.push(raw_data[key]);
+                    }
+                }
+
+                // Helper to match string against company lists
+                function findBestMatches(scrapedText, companyList) {
+                    let matches = [];
+                    let cleanScraped = scrapedText.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (cleanScraped.length < 3) return matches;
+                    for (let comp of companyList) {
+                        let cleanComp = comp.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        if (cleanScraped.indexOf(cleanComp) !== -1 || cleanComp.indexOf(cleanScraped) !== -1) {
+                            matches.push(comp);
+                        }
+                    }
+                    return matches;
+                }
+
+                // Helper to check/trigger segment checkbox & fill select
+                function selectSegmentAndCompany(segment, companyName) {
+                    const chk = $(`#db_segment_${segment}`);
+                    if (chk.length && !chk.is(':checked')) {
+                        chk.prop('checked', true).trigger('change');
+                    }
+                    
+                    const primarySelect = $(`select[name="portfolio[${segment}][primary_company]"]`);
+                    const secondarySelect = $(`select[name="portfolio[${segment}][secondary_company]"]`);
+                    
+                    if (!primarySelect.length) return;
+                    
+                    // Prevent duplicate selections in this segment
+                    if (primarySelect.val() === companyName || secondarySelect.val() === companyName) {
+                        return;
+                    }
+                    let alreadyInAdditional = false;
+                    $(`.company-rows[data-segment="${segment}"] select`).each(function() {
+                        if ($(this).val() === companyName) {
+                            alreadyInAdditional = true;
+                        }
+                    });
+                    if (alreadyInAdditional) return;
+                    
+                    // Fill empty fields first
+                    if (primarySelect.val() === "") {
+                        primarySelect.val(companyName).trigger('change');
+                    } else if (secondarySelect.val() === "") {
+                        secondarySelect.val(companyName).trigger('change');
+                    } else {
+                        // Add new row if primary/secondary are both full
+                        const addBtn = $(`.add-company-btn[data-segment="${segment}"]`);
+                        if (addBtn.length) {
+                            addBtn.trigger('click');
+                            const selectInNewRow = $(`.company-rows[data-segment="${segment}"] .company-row`).last().find('select');
+                            if (selectInNewRow.length) {
+                                selectInNewRow.val(companyName).trigger('change');
+                            }
+                        }
+                    }
+                }
+
+                rawTexts.forEach(text => {
+                    if (!text || text.length < 3) return;
+                    
+                    // Check Life
+                    findBestMatches(text, companiesLife).forEach(comp => {
+                        selectSegmentAndCompany('life', comp);
+                    });
+                    
+                    // Check Health
+                    findBestMatches(text, companiesHealth).forEach(comp => {
+                        selectSegmentAndCompany('health', comp);
+                    });
+                    
+                    // Check General (matches both Motor & SME)
+                    findBestMatches(text, companiesGeneral).forEach(comp => {
+                        selectSegmentAndCompany('motor', comp);
+                        selectSegmentAndCompany('sme', comp);
+                    });
+                });
+            }
+        }
+
+        /* ── AMFI ARN Verification Flow ── */
+        $('#amfi-verify-btn').on('click', function(e) {
+            e.preventDefault();
+            const btn = $(this);
+            let arn = $('#arn_number').val().trim().replace(/\s+/g, '');
+            let arnMatch = arn.match(/^(?:ARN-)?(\d+)$/i);
+            if (!arnMatch) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid ARN',
+                    text: 'Please enter a valid AMFI ARN Number.',
+                    confirmButtonColor: '#0d9488'
+                });
+                return;
+            }
+            let normalizedArn = 'ARN-' + arnMatch[1];
+
+            // Disable button, show loading spinner, prevent duplicate clicks
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> AMFI');
+
+            Swal.fire({
+                title: 'Verifying with AMFI...',
+                text: 'Starting browser automation, please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: "/admin/agents/amfi-verify/",
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ arn_number: normalizedArn }),
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    Swal.close();
+                    if (response.status === 'SUCCESS') {
+                        handleAmfiSuccess(response.data, response.social_profiles);
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Verification Failed',
+                            text: response.message || 'Unknown error occurred.',
+                            confirmButtonColor: '#0d9488'
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    Swal.close();
+                    let errMsg = 'Failed to connect to verification service.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: errMsg,
+                        confirmButtonColor: '#0d9488'
+                    });
+                },
+                complete: function() {
+                    // Re-enable button and restore original state
+                    btn.prop('disabled', false).html('<i class="fas fa-search mr-2"></i> AMFI ARN');
+                }
+            });
+        });
+
+        function handleAmfiSuccess(data, social) {
+            let profilesAdded = [];
+
+            function fillSocialIfEmpty(inputName, scrapedValue) {
+                if (!scrapedValue) return false;
+                const input = $(`input[name="${inputName}"]`);
+                if (input.length) {
+                    const currentVal = input.val().trim();
+                    if (!currentVal) {
+                        input.val(scrapedValue);
+                        input.css('background-color', '#dcfce7');
+                        setTimeout(() => input.css('background-color', ''), 2000);
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function fillFieldIfEmpty(inputName, value) {
+                if (!value) return;
+                const input = $(`input[name="${inputName}"]`);
+                if (input.length) {
+                    const currentVal = input.val().trim();
+                    if (!currentVal) {
+                        input.val(value);
+                        input.css('background-color', '#dcfce7');
+                        setTimeout(() => input.css('background-color', ''), 2000);
+                    }
+                }
+            }
+
+            // Fill social profile links ONLY if they are currently empty
+            if (fillSocialIfEmpty('linkedin', social.linkedin)) profilesAdded.push('LinkedIn');
+            if (fillSocialIfEmpty('facebook', social.facebook)) profilesAdded.push('Facebook');
+            if (fillSocialIfEmpty('instagram', social.instagram)) profilesAdded.push('Instagram');
+            if (fillSocialIfEmpty('youtube', social.youtube)) profilesAdded.push('YouTube');
+            if (fillSocialIfEmpty('website', social.website)) profilesAdded.push('Website');
+            if (fillSocialIfEmpty('google_business_profile', social.google_business_profile)) profilesAdded.push('Google Business Profile');
+
+            // Populate core fields
+            function updateField(inputName, value) {
+                if (!value) return;
+                const input = $(`input[name="${inputName}"], #${inputName}`);
+                if (input.length) {
+                    input.val(value);
+                    input.css('background-color', '#dcfce7');
+                    setTimeout(() => input.css('background-color', ''), 2000);
+                }
+            }
+
+            updateField('arn_number', data.arn_number);
+            updateField('euin_number', data.euin_number);
+            updateField('investment_valid_till', data.license_valid_till);
+            fillFieldIfEmpty('service_pincode', data.pincode);
+
+            // Select and prepend cities to serviceable cities dropdown with first city at the top
+            let currentCities = $('#serviceable-cities').val() || [];
+            let newCities = data.service_cities || [];
+            newCities.forEach(city => {
+                if (!currentCities.includes(city)) {
+                    if ($('#serviceable-cities option[value="' + city + '"]').length === 0) {
+                        $('#serviceable-cities').append(new Option(city, city, true, true));
+                    }
+                    currentCities.unshift(city); // Add at the beginning (top)
+                }
+            });
+            $('#serviceable-cities').val(currentCities).trigger('change');
+
+            // Format popup display
+            const name = data.distributor_name || 'N/A';
+            const arn = data.arn_number || 'N/A';
+            const euin = data.euin_number || 'N/A';
+            const status = data.arn_status || 'N/A';
+            const validTill = data.license_valid_till || 'N/A';
+            const citiesStr = (data.service_cities || []).join(', ') || 'N/A';
+            const pincodesStr = (data.service_pincodes || []).join(', ') || 'N/A';
+            const profilesStr = profilesAdded.length > 0 ? profilesAdded.join(', ') : 'None';
+
+            const successHtml = `
+                <div style="text-align: left; margin-top: 10px; font-size: 14px; line-height: 1.6; color: #4b5563;">
+                    <p class="mb-2"><strong>Distributor:</strong> ${name}</p>
+                    <p class="mb-2"><strong>ARN:</strong> ${arn}</p>
+                    <p class="mb-2"><strong>EUIN:</strong> ${euin}</p>
+                    <p class="mb-2"><strong>Status:</strong> <span class="badge ${status.toLowerCase() === 'active' ? 'badge-success' : 'badge-warning'}" style="padding: 4px 8px; font-size: 12px; border-radius: 4px;">${status}</span></p>
+                    <p class="mb-2"><strong>Valid Till:</strong> ${validTill}</p>
+                    <p class="mb-2"><strong>Service Cities:</strong> ${citiesStr}</p>
+                    <p class="mb-2"><strong>Service Pincodes:</strong> ${pincodesStr}</p>
+                    <p class="mb-3"><strong>Social Profiles Added:</strong> ${profilesStr}</p>
+                    <hr class="my-3" style="border-top: 1px solid #e5e7eb;">
+                    <p class="mb-0 text-muted small">The AMFI details have been successfully verified and populated into the profile.</p>
+                </div>
+            `;
+
+            Swal.fire({
+                title: 'AMFI Verification Successful',
+                html: successHtml,
+                icon: 'success',
+                confirmButtonColor: '#0d9488'
+            });
+        }
+    });
+    /* ═══════════════════════════════════════════════════════════════════════ */
+
 </script>
+
+<!-- IRDAI CAPTCHA Modal -->
+<div class="modal fade" id="irdaiCaptchaModal" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1060;">
+  <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+    <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 10px 25px rgba(0,0,0,0.15);">
+      <div class="modal-header py-3" style="background:#f8f9fa; border-bottom:1px solid #eee; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+        <h6 class="modal-title font-weight-bold" style="color:#3c4043; font-size:15px; margin:0;">
+          <i class="fas fa-shield-alt mr-2 text-primary"></i>IRDAI CAPTCHA
+        </h6>
+        <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 20px; line-height: 1; opacity: 0.8;">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body text-center p-4">
+        <p class="text-muted small mb-3">Please enter the security code to proceed with the verification.</p>
+        <div class="mb-3" style="background:#f1f5f9; padding:15px; border-radius:8px; display:inline-block;">
+          <img id="irdai-captcha-img" src="" alt="CAPTCHA" style="max-height:60px; border:1px solid #cbd5e1; border-radius:4px;">
+        </div>
+        <div class="mb-3">
+          <input type="text" id="irdai-captcha-input" class="form-control text-center font-weight-bold" placeholder="Enter CAPTCHA" style="font-size:18px; letter-spacing:4px; text-transform: none !important;">
+        </div>
+        <button type="button" id="irdai-captcha-submit" class="btn btn-primary w-100" style="font-weight:600; background-color:#0d9488; border-color:#0d9488; color: white;">
+          Submit Verification
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

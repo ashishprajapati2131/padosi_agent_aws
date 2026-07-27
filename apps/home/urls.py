@@ -11,6 +11,7 @@ urlpatterns = [
     path('contact/',         pages.contact,         name='contact'),
     path('contact/submit/',  pages.contact_submit,  name='contact_submit'),
     path('find-agents/',     pages.find_agents,     name='find_agents'),
+    path('find-agents/ai-picks/', pages.ai_picks_comparison, name='ai_picks_comparison'),
     path('terms/',          pages.terms,          name='terms'),
     path('privacy/',        pages.privacy,        name='privacy'),
     path('api/pincode/fetch/<str:pincode>', pages.pincode_fetch, name='pincode_fetch'),

@@ -45,7 +45,7 @@ from .views.agents import (
     update_achievement_limit,
     update_irdai_license,
     update_plan,
-    toggle_review_approval,
+    toggle_review_approval as agent_toggle_review_approval,
     update_profile,
     get_agent_json,
     get_edit_logs,
@@ -53,6 +53,8 @@ from .views.agents import (
     agent_pending_registrations,
     bulk_action_agents,
 )
+from .views.agents_irdai import verify_irdai_license
+from .views.agents_amfi import verify_amfi_arn
 from .views.reviews import (
     reviews_index,
     toggle_review_approval,
@@ -232,12 +234,14 @@ urlpatterns = [
     path("admin/agents/save-notes/", save_agent_notes, name="admin_agents_save_notes"),
     path("admin/agents/bulk-action/", bulk_action_agents, name="admin_agents_bulk_action"),
     path("admin/delete/", admin_delete, name="admin_agents_delete"),
+    path("admin/agents/irdai-verify/", verify_irdai_license, name="admin_agents_irdai_verify"),
+    path("admin/agents/amfi-verify/", verify_amfi_arn, name="admin_agents_amfi_verify"),
 
     # Phase 4B: More Mutations
     path("admin/agents/update-visibility/", update_visibility, name="admin_agents_update_visibility"),
     path("admin/agents/update-achievement-limit/", update_achievement_limit, name="admin_agents_update_achievement_limit"),
     path("admin/agents/update-plan/", update_plan, name="admin_agents_update_plan"),
-    path("admin/agents/toggle-review-approval/", toggle_review_approval, name="admin_agents_toggle_review_approval"),
+    path("admin/agents/toggle-review-approval/", agent_toggle_review_approval, name="admin_agents_toggle_review_approval"),
 
     # Phase 4C: Manage Agent Completion
     path("admin/agents/update-profile/", update_profile, name="admin_agents_update_profile"),

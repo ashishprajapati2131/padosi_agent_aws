@@ -503,7 +503,7 @@
                 if (total === 0) return;
 
                 var currentIdx = 0;
-                var cardsPerView = window.innerWidth >= 992 ? 3 : (window.innerWidth >= 640 ? 2 : 1);
+                var cardsPerView = window.innerWidth >= 1024 ? 3 : (window.innerWidth >= 640 ? 2 : 1);
                 var maxIdx = Math.max(0, total - cardsPerView);
 
                 // Build Dots
@@ -526,19 +526,22 @@
                     return slides[0].offsetWidth;
                 }
 
-                function jumpTo(index, animate) {
-                    currentIdx = Math.max(0, Math.min(index, maxIdx));
-                    var width = getSlideWidth();
-                    var gap = 20;
-                    var offset = currentIdx * (width + gap);
-
-                    track.style.transition = animate ? 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none';
-                    track.style.transform = 'translate3d(-' + offset + 'px, 0, 0)';
-
+                function updateActiveDot(idx) {
+                    currentIdx = Math.max(0, Math.min(idx, maxIdx));
                     var dots = dotsWrap.querySelectorAll('button');
                     dots.forEach(function (d, i) {
                         d.classList.toggle('active', i === currentIdx);
                     });
+                }
+
+                function jumpTo(index, animate) {
+                    currentIdx = Math.max(0, Math.min(index, maxIdx));
+                    var width = getSlideWidth();
+                    slider.scrollTo({
+                        left: currentIdx * width,
+                        behavior: animate ? 'smooth' : 'auto'
+                    });
+                    updateActiveDot(currentIdx);
                 }
 
                 if (prevBtn) {
@@ -552,13 +555,21 @@
                     });
                 }
 
+                // Sync dot highlights as user scrolls/swipes natively
+                slider.addEventListener('scroll', function () {
+                    var width = getSlideWidth();
+                    if (!width) return;
+                    var newIdx = Math.round(slider.scrollLeft / width);
+                    updateActiveDot(newIdx);
+                }, { passive: true });
+
                 // Autoplay
                 var autoplayTimer = null;
                 var direction = 1;
                 function startAutoplay() {
                     autoplayTimer = setInterval(function () {
-                        if (currentIdx === maxIdx) direction = -1;
-                        else if (currentIdx === 0) direction = 1;
+                        if (currentIdx >= maxIdx) direction = -1;
+                        else if (currentIdx <= 0) direction = 1;
                         jumpTo(currentIdx + direction, true);
                     }, 5000);
                 }
@@ -566,12 +577,48 @@
 
                 slider.addEventListener('mouseenter', function () { clearInterval(autoplayTimer); });
                 slider.addEventListener('mouseleave', startAutoplay);
+                slider.addEventListener('touchstart', function () { clearInterval(autoplayTimer); }, { passive: true });
+                slider.addEventListener('touchend', startAutoplay);
+
+                // Mouse Drag functionality for Desktop (same mechanism as review slider)
+                var isDown = false;
+                var startX = 0;
+                var scrollLeftVal = 0;
+
+                slider.addEventListener('mousedown', function (e) {
+                    isDown = true;
+                    startX = e.pageX - slider.offsetLeft;
+                    scrollLeftVal = slider.scrollLeft;
+                    clearInterval(autoplayTimer);
+                });
+
+                slider.addEventListener('mouseleave', function () {
+                    if (isDown) {
+                        isDown = false;
+                        startAutoplay();
+                    }
+                });
+
+                slider.addEventListener('mouseup', function () {
+                    if (isDown) {
+                        isDown = false;
+                        startAutoplay();
+                    }
+                });
+
+                slider.addEventListener('mousemove', function (e) {
+                    if (!isDown) return;
+                    e.preventDefault();
+                    var x = e.pageX - slider.offsetLeft;
+                    var walk = (x - startX) * 1.5;
+                    slider.scrollLeft = scrollLeftVal - walk;
+                });
 
                 var resizeTimer;
                 window.addEventListener('resize', function () {
                     clearTimeout(resizeTimer);
                     resizeTimer = setTimeout(function () {
-                        cardsPerView = window.innerWidth >= 992 ? 3 : (window.innerWidth >= 640 ? 2 : 1);
+                        cardsPerView = window.innerWidth >= 1024 ? 3 : (window.innerWidth >= 640 ? 2 : 1);
                         maxIdx = Math.max(0, total - cardsPerView);
                         jumpTo(currentIdx, false);
                     }, 200);

@@ -1,0 +1,503 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ agentDisplayName }} | PadosiAgent{% endblock %}
+
+{% block extra_css %}
+    <!-- Dynamic Open Graph / Facebook Metadata -->
+    <meta property="og:type" content="profile">
+    <meta property="og:title" content="{{ agentDisplayName }} | PadosiAgent">
+    <meta property="og:description" content="{{ seoDescription }}">
+    <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}">
+    <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+
+    <!-- Twitter Card Metadata -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ agentDisplayName }} | PadosiAgent">
+    <meta name="twitter:description" content="{{ seoDescription }}">
+    <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{{ request.path }}">
+    
+    <meta name="description" content="{{ seoDescription }}">
+
+    <style>
+        .share-page-wrapper {
+            background-color: #f8fafc;
+            min-height: 100vh;
+            padding-bottom: 60px;
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .share-cover-banner {
+            height: 200px;
+            background: linear-gradient(135deg, #1e3a8a, #0f172a);
+            position: relative;
+        }
+
+        .share-profile-card {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            margin-top: -100px;
+            padding: 30px 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .share-avatar-wrapper {
+            width: 160px;
+            height: 160px;
+            margin: -110px auto 20px auto;
+            position: relative;
+        }
+
+        .share-avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 6px solid #ffffff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background-color: #1e3a8a;
+        }
+
+        .share-avatar-placeholder {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 6px solid #ffffff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background-color: #18529d;
+            color: white;
+            font-size: 70px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .badge-pill-custom {
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin: 2px 4px;
+            border: 1px solid transparent;
+        }
+
+        .badge-irdai {
+            background-color: #f0fdf4;
+            color: #166534;
+            border-color: #bbf7d0;
+        }
+
+        .badge-amfi {
+            background-color: #eff6ff;
+            color: #1e40af;
+            border-color: #bfdbfe;
+        }
+
+        .share-stat-box {
+            background-color: #f8fafc;
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid #f1f5f9;
+            transition: all 0.3s ease;
+        }
+
+        .share-stat-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            background-color: #f1f5f9;
+        }
+
+        .share-stat-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .share-stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .btn-action-main {
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 15px 25px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-action-main:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-call {
+            background: linear-gradient(135deg, #18529d, #2563eb);
+            color: white !important;
+            border: none;
+        }
+
+        .btn-whatsapp {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white !important;
+            border: none;
+        }
+
+        .btn-view-full {
+            background: white;
+            color: #18529d !important;
+            border: 2px solid #18529d;
+        }
+
+        .btn-view-full:hover {
+            background: #eff6ff;
+        }
+
+        /* Share Modal styling */
+        .share-platform-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            color: white !important;
+            font-size: 24px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-decoration: none !important;
+        }
+
+        .share-platform-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 8px 12px rgba(0,0,0,0.1);
+        }
+
+        .sp-whatsapp { background: #25d366; }
+        .sp-telegram { background: #0088cc; }
+        .sp-facebook { background: #1877f2; }
+        .sp-linkedin { background: #0077b5; }
+        .sp-twitter { background: #000000; }
+        .sp-copy { background: #64748b; }
+
+        .share-label-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            margin-top: 8px;
+            text-align: center;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="share-page-wrapper">
+    <div class="share-cover-banner"></div>
+    
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-7">
+                
+                <div class="share-profile-card">
+                    <!-- Profile Photo / Avatar placeholder -->
+                    <div class="share-avatar-wrapper">
+                        {% if profile.profile_photo_path %}
+                            <img src="{{ profile.profile_photo_path }}" alt="{{ agentDisplayName }}" class="share-avatar">
+                        {% else %}
+                            <div class="share-avatar-placeholder">{{ agentInitial }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Identity & Badges -->
+                    <div class="text-center mb-4">
+                        <h1 class="font-weight-bold text-dark mb-1" style="font-size: 28px;">
+                            {{ agentDisplayName }}
+                            {% if agent.is_verified_agent %}
+                                <i class="fas fa-check-circle text-success ms-1" style="font-size: 20px;" title="Verified Profile"></i>
+                            {% endif %}
+                        </h1>
+                        <p class="text-muted mb-3" style="font-size: 16px;">
+                            {% if categories %}
+                                {{ categories|join:", " }} Insurance Advisor
+                            {% else %}
+                                Professional Insurance Agent
+                            {% endif %}
+                        </p>
+                        
+                        <div class="d-flex justify-content-center flex-wrap">
+                            {% if profile.license_number %}
+                                <span class="badge-pill-custom badge-irdai">
+                                    <i class="fas fa-certificate"></i> IRDAI Licensed
+                                </span>
+                            {% endif %}
+                            {% if profile.arn_number %}
+                                <span class="badge-pill-custom badge-amfi">
+                                    <i class="fas fa-university"></i> AMFI Registered
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Statistics Grid -->
+                    <div class="row g-3 mb-4">
+                        <!-- Rating -->
+                        <div class="col-6 col-sm-3">
+                            <div class="share-stat-box">
+                                <div class="share-stat-label">Rating</div>
+                                <div class="share-stat-value text-warning">
+                                    {% if agent.average_rating %}
+                                        {{ agent.average_rating|floatformat:1 }} ★
+                                    {% else %}
+                                        5.0 ★
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Experience -->
+                        <div class="col-6 col-sm-3">
+                            <div class="share-stat-box">
+                                <div class="share-stat-label">Experience</div>
+                                <div class="share-stat-value">
+                                    {% if profile.experience_years %}
+                                        {{ profile.experience_years }}+ Yrs
+                                    {% else %}
+                                        1+ Yrs
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Happy Clients -->
+                        <div class="col-6 col-sm-3">
+                            <div class="share-stat-box">
+                                <div class="share-stat-label">Clients</div>
+                                <div class="share-stat-value">
+                                    {% if agent.client_base %}
+                                        {{ agent.client_base }}+
+                                    {% else %}
+                                        50+
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Claims Settled -->
+                        <div class="col-6 col-sm-3">
+                            <div class="share-stat-box">
+                                <div class="share-stat-label">Claims</div>
+                                <div class="share-stat-value">
+                                    {% if performanceStats.claims_settled %}
+                                        {{ performanceStats.claims_settled }}+
+                                    {% else %}
+                                        20+
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Highlights Info -->
+                    {% if profile.career_highlights %}
+                    <div class="mb-4 p-3 bg-light rounded-3" style="border-left: 4px solid #18529d;">
+                        <h5 class="font-weight-bold text-dark mb-2" style="font-size: 15px;">Career Highlights</h5>
+                        <p class="text-muted mb-0" style="font-size: 13.5px; line-height: 1.5;">{{ profile.career_highlights|striptags }}</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Location info -->
+                    <div class="d-flex align-items-center justify-content-center text-muted mb-4" style="font-size: 14px;">
+                        <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                        <span>Serving Area: <strong>{{ agent.agent_city_display|default:"All India" }}</strong></span>
+                    </div>
+
+                    <!-- CTA Actions -->
+                    <div class="d-flex flex-column gap-3 mb-4">
+                        <button type="button" onclick="contactAgent('call')" class="btn btn-action-main btn-call w-100 py-3">
+                            <i class="fas fa-phone-alt me-2"></i> Call Agent Now
+                        </button>
+                        <button type="button" onclick="contactAgent('whatsapp')" class="btn btn-action-main btn-whatsapp w-100 py-3">
+                            <i class="fab fa-whatsapp me-2"></i> Chat on WhatsApp
+                        </button>
+                        <a href="{% url 'agents:agent_public_profile' agent.profile.slug %}" class="btn btn-action-main btn-view-full w-100 py-3 text-center">
+                            <i class="fas fa-user-circle me-2"></i> View Full Profile & Reviews
+                        </a>
+                        <button type="button" class="btn btn-link text-center text-secondary font-weight-bold mt-2" onclick="openShareModal()">
+                            <i class="fas fa-share-alt me-2"></i> Share this recommendation
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Social Share Modal -->
+<div class="modal fade" id="shareProfileModal" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px; border: none; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px);">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title font-weight-bold" style="font-size: 20px;">Share Profile</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="border: none; background: transparent; font-size: 24px;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="d-flex justify-content-around flex-wrap gap-3">
+                    <!-- WhatsApp -->
+                    <div class="d-flex flex-column align-items-center">
+                        <a href="#" id="share-wa" target="_blank" class="share-platform-btn sp-whatsapp">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                        <span class="share-label-text">WhatsApp</span>
+                    </div>
+
+                    <!-- Telegram -->
+                    <div class="d-flex flex-column align-items-center">
+                        <a href="#" id="share-tg" target="_blank" class="share-platform-btn sp-telegram">
+                            <i class="fab fa-telegram-plane"></i>
+                        </a>
+                        <span class="share-label-text">Telegram</span>
+                    </div>
+
+                    <!-- Twitter / X -->
+                    <div class="d-flex flex-column align-items-center">
+                        <a href="#" id="share-tw" target="_blank" class="share-platform-btn sp-twitter">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <span class="share-label-text">X (Twitter)</span>
+                    </div>
+
+                    <!-- Facebook -->
+                    <div class="d-flex flex-column align-items-center">
+                        <a href="#" id="share-fb" target="_blank" class="share-platform-btn sp-facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <span class="share-label-text">Facebook</span>
+                    </div>
+
+                    <!-- LinkedIn -->
+                    <div class="d-flex flex-column align-items-center">
+                        <a href="#" id="share-ln" target="_blank" class="share-platform-btn sp-linkedin">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <span class="share-label-text">LinkedIn</span>
+                    </div>
+
+                    <!-- Copy Link -->
+                    <div class="d-flex flex-column align-items-center">
+                        <div onclick="copyShareLink()" class="share-platform-btn sp-copy">
+                            <i class="fas fa-copy"></i>
+                        </div>
+                        <span class="share-label-text">Copy Link</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function contactAgent(type) {
+        $.ajax({
+            url: "{% url 'agents:agent_leads_capture' %}",
+            type: "POST",
+            data: {
+                agent_id: "{{ agent.id }}",
+                interaction_type: type,
+                source_page: "agent_public_share_profile",
+                csrfmiddlewaretoken: "{{ csrf_token }}"
+            },
+            success: function(response) {
+                if (response.success && response.url && response.url !== '#') {
+                    window.open(response.url, '_blank');
+                } else if (response.message) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Notice',
+                        text: response.message
+                    });
+                }
+            },
+            error: function(xhr) {
+                var msg = 'Could not process request at this time.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: msg
+                });
+            }
+        });
+    }
+
+    var shareUrl = window.location.href;
+    var shareTitle = "I recommend {{ agentDisplayName|escapejs }} on PadosiAgent";
+    var shareText = "{{ seoDescription|escapejs }}";
+
+    function openShareModal() {
+        // Set sharing URLs dynamically
+        document.getElementById('share-wa').href = "https://api.whatsapp.com/send?text=" + encodeURIComponent(shareTitle + " - " + shareUrl);
+        document.getElementById('share-tg').href = "https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(shareTitle);
+        document.getElementById('share-tw').href = "https://twitter.com/intent/tweet?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(shareTitle);
+        document.getElementById('share-fb').href = "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(shareUrl);
+        document.getElementById('share-ln').href = "https://www.linkedin.com/sharing/share-offsite/?url=" + encodeURIComponent(shareUrl);
+
+        if (navigator.share) {
+            navigator.share({
+                title: shareTitle,
+                text: shareText,
+                url: shareUrl
+            }).catch(function() {});
+            return;
+        }
+
+        $('#shareProfileModal').modal('show');
+    }
+
+    function copyShareLink() {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(shareUrl).then(function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Link Copied',
+                    text: 'Recommended profile link copied to clipboard.',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                $('#shareProfileModal').modal('hide');
+            }).catch(function() {
+                prompt('Copy this link:', shareUrl);
+            });
+        } else {
+            prompt('Copy this link:', shareUrl);
+        }
+    }
+</script>
+{% endblock %}
