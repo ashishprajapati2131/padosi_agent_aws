@@ -3824,6 +3824,9 @@ Overview
                 headers: {
                     "X-CSRFToken": "{{ csrf_token }}"
                 },
+                data: {
+                    agent_id: "{{ agent.id }}"
+                },
                 success: function(response) {
                     if (response.status === 'success' && response.bio) {
                         generatedBioCache = response.bio;
