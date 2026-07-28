@@ -2830,9 +2830,9 @@ function getCSRFToken() {
                                             <i class="fas fa-magic me-1"></i> AI Suggestion
                                         </span>
                                     </div>
-                                    <div class="position-relative mt-2 mb-2">
+                                    <div class="position-relative mt-2 mb-2 d-inline-block">
                                         <img src="${ai.profile_photo}" alt="${ai.name}" class="rounded-circle shadow-sm" style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #fff;">
-                                        ${ai.is_trusted ? '<span class="position-absolute bottom-0 right-0 badge bg-warning text-white rounded-circle p-1 shadow-sm" style="font-size: 10px; border: 2px solid white;"><i class="fas fa-award"></i></span>' : ''}
+                                        ${ai.is_trusted ? '<span class="position-absolute badge bg-warning text-white rounded-circle shadow-sm" style="top: 0; right: -4px; font-size: 10px; border: 2px solid white; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-award"></i></span>' : ''}
                                     </div>
                                     <h5 class="font-weight-bold text-dark mb-1" style="font-size: 16px;">${ai.name} ${ai.is_verified ? '<i class="fas fa-check-circle text-success" style="font-size: 14px;"></i>' : ''}</h5>
                                 </div>
@@ -2853,9 +2853,9 @@ function getCSRFToken() {
                                             <i class="fas fa-trophy me-1"></i> Best Match
                                         </span>
                                     </div>
-                                    <div class="position-relative mt-2 mb-2">
+                                    <div class="position-relative mt-2 mb-2 d-inline-block">
                                         <img src="${best.profile_photo}" alt="${best.name}" class="rounded-circle shadow-sm" style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #fff;">
-                                        ${best.is_trusted ? '<span class="position-absolute bottom-0 right-0 badge bg-warning text-white rounded-circle p-1 shadow-sm" style="font-size: 10px; border: 2px solid white;"><i class="fas fa-award"></i></span>' : ''}
+                                        ${best.is_trusted ? '<span class="position-absolute badge bg-warning text-white rounded-circle shadow-sm" style="top: 0; right: -4px; font-size: 10px; border: 2px solid white; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-award"></i></span>' : ''}
                                     </div>
                                     <h5 class="font-weight-bold text-dark mb-1" style="font-size: 16px;">${best.name} ${best.is_verified ? '<i class="fas fa-check-circle text-success" style="font-size: 14px;"></i>' : ''}</h5>
                                 </div>
