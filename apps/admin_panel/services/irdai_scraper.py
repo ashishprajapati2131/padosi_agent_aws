@@ -2,271 +2,200 @@ import os
 import uuid
 import base64
 import logging
-import threading
-import queue
+import requests
+from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
+from urllib.parse import urljoin
 
 logger = logging.getLogger(__name__)
 
-# Registry to keep track of active browser sessions (input_queue, response_queue, thread, timestamp)
+# Registry to keep track of active sessions (cookies, viewstate, timestamp)
 SESSION_REGISTRY = {}
 SESSION_TTL_MINUTES = 5
 
 def cleanup_stale_sessions():
     """Removes sessions older than SESSION_TTL_MINUTES."""
     now = datetime.now()
-    stale_keys = []
-    for key, session in SESSION_REGISTRY.items():
-        if now - session.get("timestamp", now) > timedelta(minutes=SESSION_TTL_MINUTES):
-            stale_keys.append(key)
-
+    stale_keys = [
+        key for key, session in SESSION_REGISTRY.items()
+        if now - session.get("timestamp", now) > timedelta(minutes=SESSION_TTL_MINUTES)
+    ]
     for key in stale_keys:
         logger.info(f"Cleaning up stale IRDAI lookup session: {key}")
-        session = SESSION_REGISTRY.pop(key, None)
-        if session:
-            try:
-                session["input_queue"].put({"action": "STOP"})
-            except Exception as e:
-                logger.error(f"Error signaling stop to stale session thread: {e}")
-
-def irdai_worker(pan_number, input_q, response_q):
-    from playwright.sync_api import sync_playwright
-    playwright_inst = None
-    browser = None
-    context = None
-    page = None
-    try:
-        # Set WindowsProactorEventLoopPolicy on Windows to support subprocesses in Playwright
-        import sys
-        import asyncio
-        if sys.platform == 'win32':
-            try:
-                asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-            except Exception as loop_err:
-                logger.error(f"Failed to set event loop policy: {loop_err}")
-
-        # Start a local playwright instance on this thread!
-        playwright_inst = sync_playwright().start()
-        headless = os.getenv('PLAYWRIGHT_HEADLESS', 'True').lower() in ('true', '1', 'yes')
-        browser = playwright_inst.chromium.launch(
-            headless=headless,
-            args=["--disable-dev-shm-usage", "--no-sandbox"]
-        )
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        )
-        page = context.new_page()
-        page.set_default_timeout(15000)
-
-        # 1. Load page and fill PAN
-        page.goto("https://agencyportal.irdai.gov.in/PublicAccess/LookUpPAN.aspx")
-        page.check("#ctl00_ContentPlaceHolder1_RadioButtonPanAdhar_0")
-        page.wait_for_timeout(500)
-        page.fill("#ctl00_ContentPlaceHolder1_PAN_Details", pan_number)
-
-        # 2. Capture CAPTCHA
-        captcha_elem = page.locator("#ctl00_ContentPlaceHolder1_imgcaptcha")
-        if not captcha_elem.is_visible():
-            page.wait_for_selector("#ctl00_ContentPlaceHolder1_imgcaptcha", timeout=5000)
-        captcha_bytes = captcha_elem.screenshot()
-        captcha_base64 = base64.b64encode(captcha_bytes).decode('utf-8')
-
-        # Push to response queue
-        response_q.put({
-            "status": "CAPTCHA_REQUIRED",
-            "captcha_image": f"data:image/png;base64,{captcha_base64}"
-        })
-
-        # 3. Wait for captcha solution
-        try:
-            msg = input_q.get(timeout=SESSION_TTL_MINUTES * 60)
-        except queue.Empty:
-            logger.info(f"Worker thread for PAN {pan_number} timed out waiting for input.")
-            return
-
-        if msg.get("action") == "STOP":
-            logger.info("Worker thread received STOP signal.")
-            return
-
-        captcha_solution = msg.get("captcha_solution")
-
-        # 4. Fill CAPTCHA and submit
-        page.fill("#ctl00_ContentPlaceHolder1_txtcaptcha", captcha_solution)
-        page.click("#ctl00_ContentPlaceHolder1_btn_lookup")
-
-        # Wait for network idle or load state
-        try:
-            page.wait_for_load_state("networkidle", timeout=5000)
-        except Exception:
-            pass
-
-        # Check for error labels indicating invalid CAPTCHA or no record found.
-        error_elem = page.locator("[id*='error'], [id*='Message'], [id*='lbl_err']").first
-        if error_elem.is_visible():
-            error_text = error_elem.text_content().strip()
-            if error_text:
-                response_q.put({
-                    "status": "ERROR",
-                    "message": error_text
-                })
-                return
-
-        # Extract data from tables/grids on the page
-        data = {}
-        tables = page.query_selector_all("table")
-        found_data = False
-        for table in tables:
-            rows = table.query_selector_all("tr")
-            for row in rows:
-                cols = row.query_selector_all("td, th")
-                if len(cols) >= 2:
-                    key = cols[0].text_content().strip().rstrip(':').strip()
-                    val = cols[1].text_content().strip()
-                    if key and val:
-                        if "//<![CDATA[" in key or "//<![CDATA[" in val or len(key) > 100:
-                            continue
-                        data[key] = val
-                        found_data = True
-
-        for table in tables:
-            headers = [th.text_content().strip() for th in table.query_selector_all("th")]
-            if headers:
-                rows = table.query_selector_all("tr")
-                for r in rows:
-                    tds = r.query_selector_all("td")
-                    if len(tds) == len(headers):
-                        for h, td in zip(headers, tds):
-                            key = h
-                            val = td.text_content().strip()
-                            if key and val:
-                                if "//<![CDATA[" in key or "//<![CDATA[" in val or len(key) > 100:
-                                    continue
-                                data[key] = val
-                                found_data = True
-
-        if not found_data or len(data) < 2:
-            body_text = page.locator("body").text_content()
-            if "no record" in body_text.lower() or "not found" in body_text.lower():
-                response_q.put({
-                    "status": "ERROR",
-                    "message": "No record found for the provided PAN Number."
-                })
-            else:
-                response_q.put({
-                    "status": "ERROR",
-                    "message": "Failed to extract data. The IRDAI portal structure may have changed, or CAPTCHA was invalid."
-                })
-            return
-
-        response_q.put({
-            "status": "SUCCESS",
-            "data": data
-        })
-
-    except Exception as e:
-        logger.error(f"Error in irdai_worker for PAN {pan_number}: {e}", exc_info=True)
-        response_q.put({
-            "status": "ERROR",
-            "message": str(e) or "An error occurred during execution."
-        })
-    finally:
-        # Clean up browser resources locally on this thread!
-        try:
-            if page: page.close()
-            if context: context.close()
-            if browser: browser.close()
-            if playwright_inst: playwright_inst.stop()
-        except Exception as e:
-            logger.error(f"Error cleaning up worker resources: {e}")
+        SESSION_REGISTRY.pop(key, None)
 
 class IRDAIScraperService:
+    BASE_URL = "https://agencyportal.irdai.gov.in/PublicAccess/LookUpPAN.aspx"
+
     @staticmethod
     def initiate_lookup(pan_number):
         cleanup_stale_sessions()
         session_id = str(uuid.uuid4())
         
-        input_q = queue.Queue()
-        response_q = queue.Queue()
-        
-        # Start background worker thread
-        t = threading.Thread(target=irdai_worker, args=(pan_number, input_q, response_q))
-        t.daemon = True
-        t.start()
-        
         try:
-            # Wait for CAPTCHA or error from the worker thread
-            result = response_q.get(timeout=15) # Wait up to 15 seconds for initial load
-            if result.get("status") == "CAPTCHA_REQUIRED":
-                # Save session state in registry
-                SESSION_REGISTRY[session_id] = {
-                    "input_queue": input_q,
-                    "response_queue": response_q,
-                    "thread": t,
-                    "timestamp": datetime.now(),
-                    "pan": pan_number
-                }
-                return {
-                    "status": "CAPTCHA_REQUIRED",
-                    "session_id": session_id,
-                    "captcha_image": result["captcha_image"]
-                }
-            return result
-        except queue.Empty:
-            logger.error(f"Timeout waiting for CAPTCHA from worker thread for PAN {pan_number}")
-            return {
-                "status": "ERROR",
-                "message": "Timeout loading verification page. Please try again."
+            # 1. Initialize session and get the initial page
+            session = requests.Session()
+            session.headers.update({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+            })
+            
+            response = session.get(IRDAIScraperService.BASE_URL, timeout=15)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            # 2. Extract ASP.NET state variables
+            viewstate = soup.find("input", {"id": "__VIEWSTATE"})
+            viewstategenerator = soup.find("input", {"id": "__VIEWSTATEGENERATOR"})
+            eventvalidation = soup.find("input", {"id": "__EVENTVALIDATION"})
+            
+            if not viewstate:
+                return {"status": "ERROR", "message": "Failed to load IRDAI portal. Missing VIEWSTATE."}
+                
+            state_data = {
+                "__VIEWSTATE": viewstate.get("value", "") if viewstate else "",
+                "__VIEWSTATEGENERATOR": viewstategenerator.get("value", "") if viewstategenerator else "",
+                "__EVENTVALIDATION": eventvalidation.get("value", "") if eventvalidation else "",
             }
+            
+            # 3. Extract CAPTCHA image src
+            captcha_img = soup.find("img", {"id": "ctl00_ContentPlaceHolder1_imgcaptcha"})
+            if not captcha_img or not captcha_img.get("src"):
+                return {"status": "ERROR", "message": "Failed to load CAPTCHA image from IRDAI portal."}
+                
+            captcha_url = captcha_img.get("src")
+            if not captcha_url.startswith("http"):
+                captcha_url = urljoin(IRDAIScraperService.BASE_URL, captcha_url)
+                
+            # 4. Fetch CAPTCHA image
+            captcha_response = session.get(captcha_url, timeout=10)
+            captcha_response.raise_for_status()
+            captcha_base64 = base64.b64encode(captcha_response.content).decode('utf-8')
+            
+            # 5. Store session state
+            SESSION_REGISTRY[session_id] = {
+                "cookies": session.cookies.get_dict(),
+                "state_data": state_data,
+                "timestamp": datetime.now(),
+                "pan": pan_number
+            }
+            
+            return {
+                "status": "CAPTCHA_REQUIRED",
+                "session_id": session_id,
+                "captcha_image": f"data:image/png;base64,{captcha_base64}"
+            }
+            
+        except requests.RequestException as e:
+            logger.error(f"HTTP Error in initiate_lookup for PAN {pan_number}: {e}")
+            return {"status": "ERROR", "message": "Failed to communicate with IRDAI portal."}
         except Exception as e:
             logger.error(f"Error in initiate_lookup for PAN {pan_number}: {e}", exc_info=True)
-            return {
-                "status": "ERROR",
-                "message": str(e) or "Failed to load verification page."
-            }
+            return {"status": "ERROR", "message": "An unexpected error occurred during initiation."}
 
     @staticmethod
     def resume_lookup(session_id, captcha_solution):
         cleanup_stale_sessions()
-        session = SESSION_REGISTRY.pop(session_id, None)
+        session_data = SESSION_REGISTRY.pop(session_id, None)
         
-        if not session:
-            return {
-                "status": "ERROR",
-                "message": "Session expired or invalid. Please try again."
-            }
+        if not session_data:
+            return {"status": "ERROR", "message": "Session expired or invalid. Please try again."}
             
-        input_q = session["input_queue"]
-        response_q = session["response_queue"]
-        
         try:
-            # Send CAPTCHA solution to worker thread
-            input_q.put({
-                "action": "SOLVE",
-                "captcha_solution": captcha_solution
+            # 1. Restore session
+            session = requests.Session()
+            session.headers.update({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5",
+                "Referer": IRDAIScraperService.BASE_URL,
+                "Content-Type": "application/x-www-form-urlencoded"
             })
+            requests.utils.add_dict_to_cookiejar(session.cookies, session_data["cookies"])
             
-            # Wait for result from worker thread
-            result = response_q.get(timeout=25) # Wait up to 25 seconds for solver and scraping
-            if result.get("status") == "SUCCESS":
-                mapped_data = IRDAIScraperService.map_fields(result["data"])
-                return {
-                    "status": "SUCCESS",
-                    "data": mapped_data,
-                    "raw_data": result["data"]
-                }
-            return result
-        except queue.Empty:
-            logger.error(f"Timeout waiting for results from worker thread for session {session_id}")
-            return {
-                "status": "ERROR",
-                "message": "Timeout waiting for IRDAI verification results."
+            pan_number = session_data["pan"]
+            state_data = session_data["state_data"]
+            
+            # 2. Prepare POST payload
+            payload = {
+                "__EVENTTARGET": "",
+                "__EVENTARGUMENT": "",
+                "__VIEWSTATE": state_data.get("__VIEWSTATE", ""),
+                "__VIEWSTATEGENERATOR": state_data.get("__VIEWSTATEGENERATOR", ""),
+                "__EVENTVALIDATION": state_data.get("__EVENTVALIDATION", ""),
+                "ctl00$ContentPlaceHolder1$RadioButtonPanAdhar": "RadioButtonPanAdhar_0", # Assuming PAN is _0
+                "ctl00$ContentPlaceHolder1$PAN_Details": pan_number,
+                "ctl00$ContentPlaceHolder1$txtcaptcha": captcha_solution,
+                "ctl00$ContentPlaceHolder1$btn_lookup": "Submit"
             }
+            
+            # 3. Submit form
+            response = session.post(IRDAIScraperService.BASE_URL, data=payload, timeout=20)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            # 4. Check for errors
+            error_elems = soup.select("[id*='error'], [id*='Message'], [id*='lbl_err']")
+            for elem in error_elems:
+                text = elem.get_text(strip=True)
+                style = elem.get("style", "").lower()
+                if text and "display:none" not in style and "display: none" not in style:
+                    return {"status": "ERROR", "message": text}
+                    
+            # 5. Extract data from tables
+            data = {}
+            found_data = False
+            tables = soup.find_all("table")
+            
+            for table in tables:
+                rows = table.find_all("tr")
+                for row in rows:
+                    cols = row.find_all(["td", "th"])
+                    if len(cols) >= 2:
+                        key = cols[0].get_text(strip=True).rstrip(':').strip()
+                        val = cols[1].get_text(strip=True)
+                        if key and val and "//<![CDATA[" not in key and "//<![CDATA[" not in val and len(key) <= 100:
+                            data[key] = val
+                            found_data = True
+                            
+            for table in tables:
+                headers_elems = table.find_all("th")
+                if headers_elems:
+                    headers = [th.get_text(strip=True) for th in headers_elems]
+                    rows = table.find_all("tr")
+                    for r in rows:
+                        tds = r.find_all("td")
+                        if len(tds) == len(headers):
+                            for h, td in zip(headers, tds):
+                                key = h
+                                val = td.get_text(strip=True)
+                                if key and val and "//<![CDATA[" not in key and "//<![CDATA[" not in val and len(key) <= 100:
+                                    data[key] = val
+                                    found_data = True
+                                    
+            if not found_data or len(data) < 2:
+                body_text = soup.body.get_text(separator=' ', strip=True).lower() if soup.body else ""
+                if "no record" in body_text or "not found" in body_text:
+                    return {"status": "ERROR", "message": "No record found for the provided PAN Number."}
+                else:
+                    return {"status": "ERROR", "message": "Failed to extract data. The IRDAI portal structure may have changed, or CAPTCHA was invalid."}
+                    
+            mapped_data = IRDAIScraperService.map_fields(data)
+            return {
+                "status": "SUCCESS",
+                "data": mapped_data,
+                "raw_data": data
+            }
+            
+        except requests.RequestException as e:
+            logger.error(f"HTTP Error in resume_lookup for session {session_id}: {e}")
+            return {"status": "ERROR", "message": "Failed to communicate with IRDAI portal."}
         except Exception as e:
             logger.error(f"Error in resume_lookup for session {session_id}: {e}", exc_info=True)
-            return {
-                "status": "ERROR",
-                "message": str(e) or "Failed to process verification results."
-            }
+            return {"status": "ERROR", "message": "Failed to process verification results."}
 
     @staticmethod
     def map_fields(raw_data):
