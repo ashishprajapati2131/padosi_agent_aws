@@ -20,7 +20,7 @@ from sqlalchemy.exc import OperationalError
 from app.routers import (
     registration, promo_code, email,
     auth, dashboard, profile, public_profile,
-    pincode, leads
+    pincode, leads, find_agents
 )
 
 from app.database import Base, engine
@@ -71,6 +71,7 @@ app.include_router(profile.router)
 app.include_router(public_profile.router)
 app.include_router(pincode.router)
 app.include_router(leads.router)
+app.include_router(find_agents.router)
 
 # Mount local storage directory for static access
 os.makedirs(settings.LOCAL_STORAGE_PATH, exist_ok=True)
