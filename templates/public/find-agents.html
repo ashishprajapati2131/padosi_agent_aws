@@ -1750,6 +1750,45 @@
                     border-color: #3b82f6;
                     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.05);
                 }
+                @media (max-width: 768px) {
+                    .ai-compare-row {
+                        grid-template-columns: 1fr 1fr;
+                        grid-template-areas: 
+                            "label label"
+                            "val1 val2";
+                        gap: 6px 12px;
+                        padding: 16px 12px;
+                    }
+                    .ai-compare-label {
+                        grid-area: label;
+                        margin-bottom: 4px;
+                        display: block;
+                        width: fit-content;
+                        margin-left: auto;
+                        margin-right: auto;
+                    }
+                    .ai-compare-cell:nth-child(1) { grid-area: val1; }
+                    .ai-compare-cell:nth-child(3) { grid-area: val2; }
+                    
+                    /* Hide the empty action label on mobile */
+                    .ai-compare-row.action-row .ai-compare-label {
+                        display: none;
+                    }
+                    .ai-compare-row.action-row {
+                        grid-template-areas: "val1 val2";
+                    }
+                    
+                    .ai-agent-card {
+                        padding: 20px 8px 12px;
+                    }
+                    .ai-agent-card h5 {
+                        font-size: 14px !important;
+                    }
+                    .ai-agent-card .badge {
+                        font-size: 10px !important;
+                        padding: 3px 8px !important;
+                    }
+                }
                 .ai-skeleton-pulse {
                     background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
                     background-size: 200% 100%;
@@ -2935,16 +2974,16 @@ function getCSRFToken() {
                             </div>
                             
                             <!-- Contact Actions -->
-                            <div class="ai-compare-row" style="padding-top: 24px; padding-bottom: 12px; border-bottom: none;">
+                            <div class="ai-compare-row action-row" style="padding-top: 24px; padding-bottom: 12px; border-bottom: none;">
                                 <div class="ai-compare-cell">
-                                    <div class="d-flex justify-content-center flex-column gap-2" style="max-width: 140px; margin: 0 auto;">
+                                    <div class="d-flex justify-content-center flex-column gap-3" style="max-width: 140px; margin: 0 auto;">
                                         <button onclick="window.aiPicksContactAgent(${ai.id}, \'tel:${ai.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
                                         <button onclick="window.aiPicksContactAgent(${ai.id}, \'https://wa.me/${ai.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
                                     </div>
                                 </div>
                                 <div class="ai-compare-label" style="background: transparent; box-shadow: none; color: transparent; user-select: none;">Actions</div>
                                 <div class="ai-compare-cell">
-                                    <div class="d-flex justify-content-center flex-column gap-2" style="max-width: 140px; margin: 0 auto;">
+                                    <div class="d-flex justify-content-center flex-column gap-3" style="max-width: 140px; margin: 0 auto;">
                                         <button onclick="window.aiPicksContactAgent(${best.id}, \'tel:${best.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
                                         <button onclick="window.aiPicksContactAgent(${best.id}, \'https://wa.me/${best.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
                                     </div>
