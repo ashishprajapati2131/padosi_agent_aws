@@ -2951,9 +2951,9 @@ function getCSRFToken() {
                             
                             <!-- Languages -->
                             <div class="ai-compare-row">
-                                <div class="ai-compare-cell" style="font-size: 12px; color: #475569;">${ai.languages}</div>
+                                <div class="ai-compare-cell" style="font-size: 11.5px; color: #475569; text-transform: capitalize; word-break: break-word; line-height: 1.4;">${(ai.languages || 'N/A').replace(/,/g, ', ')}</div>
                                 <div class="ai-compare-label">Languages</div>
-                                <div class="ai-compare-cell" style="font-size: 12px; color: #475569;">${best.languages}</div>
+                                <div class="ai-compare-cell" style="font-size: 11.5px; color: #475569; text-transform: capitalize; word-break: break-word; line-height: 1.4;">${(best.languages || 'N/A').replace(/,/g, ', ')}</div>
                             </div>
                             
                             <!-- Response Rate -->
