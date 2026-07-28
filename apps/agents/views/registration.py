@@ -1500,27 +1500,28 @@ def client_quick_register(request):
     if existing_user:
         # Check if they are a client
         is_client = Client.objects.filter(user=existing_user).exists()
-        if is_client:
-            request.session['quick_lead_user'] = {
-                'fullname': fullname,
-                'email': email,
-                'mobile': mobile,
-                'pincode': pincode,
-            }
-            from django.contrib.auth import login
-            login(request, existing_user)
+        if not is_client:
+            Client.objects.create(
+                user=existing_user,
+                mobile=mobile,
+                pincode=pincode
+            )
             
-            return JsonResponse({
-                'success': True,
-                'status': 'success',
-                'message': 'Welcome back! Redirecting...',
-                'redirect': data.get('redirect_url') or '/find-agents/'
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'message': 'This email is already associated with an existing account. Please use a different email or login to your account.',
-            }, status=422)
+        request.session['quick_lead_user'] = {
+            'fullname': fullname,
+            'email': email,
+            'mobile': mobile,
+            'pincode': pincode,
+        }
+        from django.contrib.auth import login
+        login(request, existing_user)
+        
+        return JsonResponse({
+            'success': True,
+            'status': 'success',
+            'message': 'Welcome back! Redirecting...',
+            'redirect': data.get('redirect_url') or '/find-agents/'
+        })
 
     # Create new client account
     from django.db import transaction

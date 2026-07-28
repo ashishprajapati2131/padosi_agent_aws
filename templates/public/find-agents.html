@@ -1240,6 +1240,7 @@
 {% endblock %}
 
 {% block content %}
+<div style="display:none;">{% csrf_token %}</div>
 <section class="benefit-con find-agents-con position-relative" style="padding-top: 0 !important;">
     <!-- Compact Horizontal Filter Bar (Spans full page width) -->
     <div class="compact-filter-bar">
@@ -1803,6 +1804,22 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+function getCSRFToken() {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, 10) === ('csrftoken=')) {
+                cookieValue = decodeURIComponent(cookie.substring(10));
+                break;
+            }
+        }
+    }
+    return cookieValue || "{{ csrf_token }}";
+}
+</script>
 {{ portfolioCompaniesByType|json_script:"portfolio-companies-data" }}
 <script>
     // Portfolio companies data from controller
@@ -2938,7 +2955,7 @@
                 $.ajax({
                     url: "{% url 'agents:agent_leads_capture' %}",
                     type: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken },
+                    headers: { 'X-CSRFToken': getCSRFToken() },
                     data: postData,
                     success: function(resp) {
                         var targetUrl = (resp && resp.success && resp.url && resp.url !== '#') ? resp.url : destination;
@@ -3221,6 +3238,22 @@
 
         // Load More Agents Function
         window.loadMoreAgents = function(nextPageUrl) {
+            const hasLoc = (
+                (document.getElementById('filter_lat') && document.getElementById('filter_lat').value) ||
+                (document.getElementById('filter_lng') && document.getElementById('filter_lng').value) ||
+                (document.getElementById('filter_pincode') && document.getElementById('filter_pincode').value) ||
+                (document.getElementById('filter_location') && document.getElementById('filter_location').value) ||
+                {% if request.session.last_lat or request.session.last_pincode or request.session.last_location %}true{% else %}false{% endif %}
+            );
+
+            if (!hasLoc) {
+                alert('Please add your pincode or location before loading more agents.');
+                if (typeof window.showLocationPopup === 'function') {
+                    window.showLocationPopup('{% url "home:find_agents" %}');
+                }
+                return;
+            }
+
             const button = $('#load-more-button');
             const textSpan = $('#load-more-text');
             const spinner = $('#load-more-spinner');
@@ -3649,7 +3682,7 @@
                             $.ajax({
                                 url: "{% url 'agents:client_quick_register' %}",
                                 type: "POST",
-                                headers: { 'X-CSRFToken': "{{ csrf_token }}" },
+                                headers: { 'X-CSRFToken': getCSRFToken() },
                                 contentType: "application/json",
                                 dataType: "json",
                                 timeout: 30000,
@@ -3740,7 +3773,7 @@
                         $.ajax({
                             url: "{% url 'agents:agent_leads_capture' %}",
                             type: "POST",
-                            headers: { 'X-CSRFToken': "{{ csrf_token }}" },
+                            headers: { 'X-CSRFToken': getCSRFToken() },
                             data: postData,
                             success: function(resp) {
                                 Swal.close();

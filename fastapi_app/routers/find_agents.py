@@ -24,7 +24,7 @@ def find_agents_get(
     search: Optional[str] = Query(None, description="Keyword search for agent name, city, state"),
     sort_by: Optional[str] = Query("match", description="Sort option: distance | match | rating | experience"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(10, ge=1, le=100, description="Page size")
+    page_size: int = Query(3, ge=1, le=3, description="Page size")
 ) -> FindAgentsResponse:
     """
     Hyperlocal Find Agent Search & Filtering API (GET).

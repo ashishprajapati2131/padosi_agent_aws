@@ -32,6 +32,7 @@
                     </li>
                     {% if not request.user.is_authenticated %}
                     {# Mobile-only Find PadosiAgent for guests with location detection badge #}
+                    {% if '/find-agents' not in request.path %}
                     <li class="nav-item d-lg-none">
                         <a class="nav-link d-flex flex-column" href="/find-agents/?openFilter=1">
                             <span class="mobile-find-brand">Find <span class="brand-padosi">Padosi</span><span class="brand-agent">Agent</span></span>
@@ -42,6 +43,7 @@
                             {% endif %}
                         </a>
                     </li>
+                    {% endif %}
                     {% endif %}
                     {% endif %}
 
@@ -58,12 +60,14 @@
                         </a>
                     </li>
                     {% else %}
+                    {% if '/find-agents' not in request.path %}
                     <li class="nav-item d-lg-none {% if '/find-agents' in request.path %}active{% endif %}">
                         <a class="nav-link" href="/find-agents/?openFilter=1">
                             <span class="mobile-find-brand">Find <span class="brand-padosi">Padosi</span><span
                                     class="brand-agent">Agent</span></span>
                         </a>
                     </li>
+                    {% endif %}
                     {% endif %}
 
                     <li class="nav-item d-lg-none">
@@ -78,10 +82,12 @@
                 </ul>
                 <div class="header-right-btns d-none d-lg-flex align-items-center">
                     {% if not request.user.is_authenticated %}
+                    {% if '/find-agents' not in request.path %}
                     <a class="contact_us text-decoration-none mr-2" href="/find-agents/?openFilter=1">
                         Find <span class="brand-padosi">Padosi</span><span class="brand-agent">Agent</span><i
                             class="fa-solid fa-arrow-right"></i>
                     </a>
+                    {% endif %}
                     {% endif %}
 
                     {% if request.user.is_authenticated %}
@@ -103,10 +109,12 @@
                             <a class="dropdown-item py-2" href="/">
                                 <i class="fas fa-home mr-2 text-primary"></i>Home
                             </a>
+                            {% if '/find-agents' not in request.path %}
                             <a class="dropdown-item py-2" href="/find-agents/?openFilter=1">
                                 <span class="mobile-find-brand">Find <span class="brand-padosi">Padosi</span><span
                                         class="brand-agent">Agent</span></span>
                             </a>
+                            {% endif %}
                             {% endif %}
                             <div class="dropdown-divider"></div>
                             <form action="/logout/" method="POST" id="logout-form" class="m-0">
