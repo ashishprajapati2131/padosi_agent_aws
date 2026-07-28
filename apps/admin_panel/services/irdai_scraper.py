@@ -2,7 +2,7 @@ import os
 import uuid
 import base64
 import logging
-import requests
+from curl_cffi import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from urllib.parse import urljoin
@@ -34,7 +34,7 @@ class IRDAIScraperService:
         
         try:
             # 1. Initialize session and get the initial page
-            session = requests.Session()
+            session = requests.Session(impersonate="chrome")
             session.headers.update({
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -88,7 +88,7 @@ class IRDAIScraperService:
                 "captcha_image": f"data:image/png;base64,{captcha_base64}"
             }
             
-        except requests.RequestException as e:
+        except requests.RequestsError as e:
             logger.error(f"HTTP Error in initiate_lookup for PAN {pan_number}: {e}")
             return {"status": "ERROR", "message": "Failed to communicate with IRDAI portal."}
         except Exception as e:
@@ -105,7 +105,7 @@ class IRDAIScraperService:
             
         try:
             # 1. Restore session
-            session = requests.Session()
+            session = requests.Session(impersonate="chrome")
             session.headers.update({
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -190,7 +190,7 @@ class IRDAIScraperService:
                 "raw_data": data
             }
             
-        except requests.RequestException as e:
+        except requests.RequestsError as e:
             logger.error(f"HTTP Error in resume_lookup for session {session_id}: {e}")
             return {"status": "ERROR", "message": "Failed to communicate with IRDAI portal."}
         except Exception as e:
