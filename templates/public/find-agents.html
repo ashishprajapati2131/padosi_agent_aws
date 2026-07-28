@@ -1770,16 +1770,18 @@
                     text-align: center;
                 }
             </style>
-            <div class="modal-header border-0 p-4 d-flex align-items-center justify-content-between">
-                <div>
-                    <span class="text-uppercase font-weight-bold" style="font-size: 11px; letter-spacing: 1.5px; opacity: 0.85; display: block; color: #6c757d;">
-                        <i class="fas fa-magic mr-1"></i> Head-to-Head Comparison
-                    </span>
-                    <h4 class="modal-title font-weight-bold mb-0 mt-1" style="font-size: 20px; color: #212529;">AI Suggestion vs Best Match</h4>
-                </div>
-                <button type="button" class="close-btn-circle" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+            <div class="modal-header border-0 px-4 pt-4 pb-2 d-flex flex-column align-items-center justify-content-center position-relative">
+                <button type="button" class="close-btn-circle position-absolute" style="right: 24px; top: 24px;" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close">
+                    <i class="fas fa-times"></i>
                 </button>
+                <h4 class="modal-title font-weight-bold text-center mb-2" style="font-size: 24px; color: #0f172a; letter-spacing: -0.5px;">
+                    <span style="color: #3b82f6;"><i class="fas fa-magic me-2"></i>AI Suggestion</span> 
+                    <span style="color: #94a3b8; font-weight: 500; font-size: 18px; margin: 0 12px;">vs</span> 
+                    Best Match
+                </h4>
+                <p class="text-muted text-center mb-0" style="font-size: 14px; max-width: 450px;">
+                    A side-by-side comparison of our smart AI recommendation and your closest match.
+                </p>
             </div>
             <div class="modal-body p-0" style="max-height: 75vh; overflow-y: auto;">
                 <!-- Skeleton Loader -->
