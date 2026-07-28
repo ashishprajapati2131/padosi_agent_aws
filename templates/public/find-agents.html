@@ -1680,46 +1680,75 @@
                     background: rgba(0, 0, 0, 0.1);
                     transform: rotate(90deg);
                 }
-                .ai-compare-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                }
                 .ai-compare-row {
                     display: grid;
-                    grid-template-columns: 2.2fr 1.6fr 2.2fr;
+                    grid-template-columns: 1fr 140px 1fr;
                     align-items: center;
                     border-bottom: 1px solid #f1f5f9;
-                    padding: 11px 16px;
-                    transition: background-color 0.15s ease;
+                    padding: 12px 16px;
+                    transition: all 0.2s ease;
+                    gap: 16px;
+                }
+                .ai-compare-row:last-child {
+                    border-bottom: none;
                 }
                 .ai-compare-row:hover {
                     background-color: #f8fafc;
+                    border-radius: 12px;
                 }
                 .ai-compare-cell {
                     text-align: center;
-                    font-size: 13.5px;
+                    font-size: 14px;
                     color: #1e293b;
                     font-weight: 600;
-                    padding: 4px;
                 }
                 .ai-compare-label {
-                    font-size: 10.5px;
+                    font-size: 11px;
                     font-weight: 700;
-                    color: #94a3b8;
+                    color: #64748b;
                     letter-spacing: 0.5px;
                     text-transform: uppercase;
                     text-align: center;
+                    background: #f1f5f9;
+                    padding: 6px 12px;
+                    border-radius: 20px;
+                    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
                 }
                 .ai-val-winner {
                     color: #047857 !important;
                     background-color: #ecfdf5;
                     border: 1px solid #a7f3d0;
                     border-radius: 20px;
-                    padding: 3px 10px;
+                    padding: 4px 12px;
                     display: inline-flex;
                     align-items: center;
-                    gap: 4px;
+                    justify-content: center;
+                    gap: 6px;
                     font-weight: 700 !important;
+                    box-shadow: 0 2px 4px rgba(4, 120, 87, 0.05);
+                }
+                .ai-agent-card {
+                    background: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 16px;
+                    padding: 24px 16px 16px;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+                    text-align: center;
+                    position: relative;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .ai-agent-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                }
+                .ai-agent-card.winner {
+                    border-color: #3b82f6;
+                    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15), 0 4px 6px -1px rgba(0, 0, 0, 0.05);
                 }
                 .ai-skeleton-pulse {
                     background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
@@ -2754,163 +2783,174 @@ function getCSRFToken() {
                 const compComp = compareAndHighlight(ai.profile_completion, best.profile_completion, true);
                 
                 let html = `
-                    <div class="table-responsive p-3">
-                        <table class="ai-compare-table">
-                            <!-- Headers -->
-                            <tr class="ai-compare-row" style="border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; min-height: 140px;">
-                                <td class="ai-compare-cell">
-                                    <div class="mb-2">
-                                        <span class="badge text-white mb-2" style="background: linear-gradient(135deg, #7c3aed, #db2777); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">
-                                            <i class="fas fa-magic me-1"></i>AI Suggestion
+                    <div class="p-4">
+                        <!-- Top Profiles -->
+                        <div class="row mb-4 align-items-stretch justify-content-center px-2">
+                            <!-- AI Suggestion Card -->
+                            <div class="col-5">
+                                <div class="ai-agent-card winner h-100">
+                                    <div class="position-absolute" style="top: -14px;">
+                                        <span class="badge bg-primary text-white shadow-sm px-3 py-2 rounded-pill" style="font-size: 12px; font-weight: 700; border: 2px solid white; letter-spacing: 0.5px;">
+                                            <i class="fas fa-magic me-1"></i> AI Suggestion
                                         </span>
                                     </div>
-                                    <div class="position-relative d-inline-block">
-                                        <img src="${ai.profile_photo}" alt="${ai.name}" class="rounded-circle border" style="width: 70px; height: 70px; object-fit: cover;">
-                                        ${ai.is_trusted ? '<span class="position-absolute bottom-0 right-0 badge bg-warning text-white rounded-circle p-1" style="font-size: 8px;"><i class="fas fa-award"></i></span>' : ''}
+                                    <div class="position-relative mt-2 mb-2">
+                                        <img src="${ai.profile_photo}" alt="${ai.name}" class="rounded-circle shadow-sm" style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #fff;">
+                                        ${ai.is_trusted ? '<span class="position-absolute bottom-0 right-0 badge bg-warning text-white rounded-circle p-1 shadow-sm" style="font-size: 10px; border: 2px solid white;"><i class="fas fa-award"></i></span>' : ''}
                                     </div>
-                                    <div class="font-weight-bold text-dark mt-2" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                        ${ai.name} ${ai.is_verified ? '<i class="fas fa-check-circle text-success" style="font-size: 12px;"></i>' : ''}
-                                    </div>
-                                </td>
-                                <td class="ai-compare-label text-muted" style="font-size: 14px;">VS</td>
-                                <td class="ai-compare-cell">
-                                    <div class="mb-2">
-                                        <span class="badge bg-primary text-white mb-2" style="font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">
-                                            <i class="fas fa-trophy me-1"></i>Best Match
+                                    <h5 class="font-weight-bold text-dark mb-1" style="font-size: 16px;">${ai.name} ${ai.is_verified ? '<i class="fas fa-check-circle text-success" style="font-size: 14px;"></i>' : ''}</h5>
+                                </div>
+                            </div>
+                            
+                            <!-- VS Divider -->
+                            <div class="col-2 d-flex align-items-center justify-content-center">
+                                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center shadow-sm" style="width: 44px; height: 44px; border: 1px solid #e2e8f0; color: #94a3b8; font-weight: 800; font-size: 13px;">
+                                    VS
+                                </div>
+                            </div>
+                            
+                            <!-- Best Match Card -->
+                            <div class="col-5">
+                                <div class="ai-agent-card h-100">
+                                    <div class="position-absolute" style="top: -14px;">
+                                        <span class="badge bg-secondary text-white shadow-sm px-3 py-2 rounded-pill" style="font-size: 12px; font-weight: 700; border: 2px solid white; letter-spacing: 0.5px; background-color: #64748b !important;">
+                                            <i class="fas fa-trophy me-1"></i> Best Match
                                         </span>
                                     </div>
-                                    <div class="position-relative d-inline-block">
-                                        <img src="${best.profile_photo}" alt="${best.name}" class="rounded-circle border" style="width: 70px; height: 70px; object-fit: cover;">
-                                        ${best.is_trusted ? '<span class="position-absolute bottom-0 right-0 badge bg-warning text-white rounded-circle p-1" style="font-size: 8px;"><i class="fas fa-award"></i></span>' : ''}
+                                    <div class="position-relative mt-2 mb-2">
+                                        <img src="${best.profile_photo}" alt="${best.name}" class="rounded-circle shadow-sm" style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #fff;">
+                                        ${best.is_trusted ? '<span class="position-absolute bottom-0 right-0 badge bg-warning text-white rounded-circle p-1 shadow-sm" style="font-size: 10px; border: 2px solid white;"><i class="fas fa-award"></i></span>' : ''}
                                     </div>
-                                    <div class="font-weight-bold text-dark mt-2" style="font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                        ${best.name} ${best.is_verified ? '<i class="fas fa-check-circle text-success" style="font-size: 12px;"></i>' : ''}
-                                    </div>
-                                </td>
-                            </tr>
+                                    <h5 class="font-weight-bold text-dark mb-1" style="font-size: 16px;">${best.name} ${best.is_verified ? '<i class="fas fa-check-circle text-success" style="font-size: 14px;"></i>' : ''}</h5>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Comparison Matrix -->
+                        <div class="bg-white rounded-4 border shadow-sm px-2 py-3 mb-4" style="border-radius: 16px;">
                             
                             <!-- Experience -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell">${expComp.c1}</td>
-                                <td class="ai-compare-label">Experience</td>
-                                <td class="ai-compare-cell">${expComp.c2}</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell">${expComp.c1}</div>
+                                <div class="ai-compare-label">Experience</div>
+                                <div class="ai-compare-cell">${expComp.c2}</div>
+                            </div>
                             
                             <!-- Rating -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell"><i class="fas fa-star text-warning"></i> ${ratingComp.c1}</td>
-                                <td class="ai-compare-label">Rating</td>
-                                <td class="ai-compare-cell"><i class="fas fa-star text-warning"></i> ${ratingComp.c2}</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell"><i class="fas fa-star text-warning"></i> ${ratingComp.c1}</div>
+                                <div class="ai-compare-label">Rating</div>
+                                <div class="ai-compare-cell"><i class="fas fa-star text-warning"></i> ${ratingComp.c2}</div>
+                            </div>
                             
                             <!-- Reviews -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell">${reviewsComp.c1}</td>
-                                <td class="ai-compare-label">Reviews</td>
-                                <td class="ai-compare-cell">${reviewsComp.c2}</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell">${reviewsComp.c1}</div>
+                                <div class="ai-compare-label">Reviews</div>
+                                <div class="ai-compare-cell">${reviewsComp.c2}</div>
+                            </div>
                             
                             <!-- Match Score -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell">${matchComp.c1}%</td>
-                                <td class="ai-compare-label">Match Score</td>
-                                <td class="ai-compare-cell">${matchComp.c2}%</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell">${matchComp.c1}%</div>
+                                <div class="ai-compare-label">Match Score</div>
+                                <div class="ai-compare-cell">${matchComp.c2}%</div>
+                            </div>
                             
                             <!-- Distance -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell">${distComp.c1}</td>
-                                <td class="ai-compare-label">Distance</td>
-                                <td class="ai-compare-cell">${distComp.c2}</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell">${distComp.c1}</div>
+                                <div class="ai-compare-label">Distance</div>
+                                <div class="ai-compare-cell">${distComp.c2}</div>
+                            </div>
                             
                             <!-- Location -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell" style="font-size:12.5px; color:#475569;">${ai.location}</td>
-                                <td class="ai-compare-label">Location</td>
-                                <td class="ai-compare-cell" style="font-size:12.5px; color:#475569;">${best.location}</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell" style="font-size:12.5px; color:#475569;">${ai.location}</div>
+                                <div class="ai-compare-label">Location</div>
+                                <div class="ai-compare-cell" style="font-size:12.5px; color:#475569;">${best.location}</div>
+                            </div>
                             
                             <!-- Happy Clients -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell">${clientsComp.c1}+</td>
-                                <td class="ai-compare-label">Active Clients</td>
-                                <td class="ai-compare-cell">${clientsComp.c2}+</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell">${clientsComp.c1}+</div>
+                                <div class="ai-compare-label">Active Clients</div>
+                                <div class="ai-compare-cell">${clientsComp.c2}+</div>
+                            </div>
                             
                             <!-- Claims Settled -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell">${claimsComp.c1}</td>
-                                <td class="ai-compare-label">Claims Settled</td>
-                                <td class="ai-compare-cell">${claimsComp.c2}</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell">${claimsComp.c1}</div>
+                                <div class="ai-compare-label">Claims Settled</div>
+                                <div class="ai-compare-cell">${claimsComp.c2}</div>
+                            </div>
                             
                             <!-- Insurance Specializations -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell" style="font-size: 11.5px; color: #475569;">${ai.insurance_types.join(', ') || 'N/A'}</td>
-                                <td class="ai-compare-label">Specializations</td>
-                                <td class="ai-compare-cell" style="font-size: 11.5px; color: #475569;">${best.insurance_types.join(', ') || 'N/A'}</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell" style="font-size: 11.5px; color: #475569; line-height: 1.4;">${ai.insurance_types.join(', ') || 'N/A'}</div>
+                                <div class="ai-compare-label">Specializations</div>
+                                <div class="ai-compare-cell" style="font-size: 11.5px; color: #475569; line-height: 1.4;">${best.insurance_types.join(', ') || 'N/A'}</div>
+                            </div>
                             
                             <!-- Investment Types -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell" style="font-size: 11.5px; color: #475569;">${ai.investment_types.join(', ') || 'N/A'}</td>
-                                <td class="ai-compare-label">Investment Types</td>
-                                <td class="ai-compare-cell" style="font-size: 11.5px; color: #475569;">${best.investment_types.join(', ') || 'N/A'}</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell" style="font-size: 11.5px; color: #475569; line-height: 1.4;">${ai.investment_types.join(', ') || 'N/A'}</div>
+                                <div class="ai-compare-label">Investments</div>
+                                <div class="ai-compare-cell" style="font-size: 11.5px; color: #475569; line-height: 1.4;">${best.investment_types.join(', ') || 'N/A'}</div>
+                            </div>
                             
                             <!-- IRDAI Verified -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell">${irdaiComp.c1}</td>
-                                <td class="ai-compare-label">IRDAI Verified</td>
-                                <td class="ai-compare-cell">${irdaiComp.c2}</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell">${irdaiComp.c1}</div>
+                                <div class="ai-compare-label">IRDAI Verified</div>
+                                <div class="ai-compare-cell">${irdaiComp.c2}</div>
+                            </div>
                             
                             <!-- AMFI Verified -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell">${amfiComp.c1}</td>
-                                <td class="ai-compare-label">AMFI Verified</td>
-                                <td class="ai-compare-cell">${amfiComp.c2}</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell">${amfiComp.c1}</div>
+                                <div class="ai-compare-label">AMFI Verified</div>
+                                <div class="ai-compare-cell">${amfiComp.c2}</div>
+                            </div>
                             
                             <!-- Languages -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell" style="font-size: 12px; color: #475569;">${ai.languages}</td>
-                                <td class="ai-compare-label">Languages</td>
-                                <td class="ai-compare-cell" style="font-size: 12px; color: #475569;">${best.languages}</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell" style="font-size: 12px; color: #475569;">${ai.languages}</div>
+                                <div class="ai-compare-label">Languages</div>
+                                <div class="ai-compare-cell" style="font-size: 12px; color: #475569;">${best.languages}</div>
+                            </div>
                             
                             <!-- Response Rate -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell">${respComp.c1}%</td>
-                                <td class="ai-compare-label">Response Rate</td>
-                                <td class="ai-compare-cell">${respComp.c2}%</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell">${respComp.c1}%</div>
+                                <div class="ai-compare-label">Response Rate</div>
+                                <div class="ai-compare-cell">${respComp.c2}%</div>
+                            </div>
                             
                             <!-- Profile Completion -->
-                            <tr class="ai-compare-row">
-                                <td class="ai-compare-cell">${compComp.c1}%</td>
-                                <td class="ai-compare-label">Completeness</td>
-                                <td class="ai-compare-cell">${compComp.c2}%</td>
-                            </tr>
+                            <div class="ai-compare-row">
+                                <div class="ai-compare-cell">${compComp.c1}%</div>
+                                <div class="ai-compare-label">Completeness</div>
+                                <div class="ai-compare-cell">${compComp.c2}%</div>
+                            </div>
                             
                             <!-- Contact Actions -->
-                            <tr class="ai-compare-row" style="border-bottom: none; padding-top: 16px;">
-                                <td class="ai-compare-cell">
-                                    <div class="d-flex justify-content-center gap-2 flex-wrap" style="gap: 6px;">
-                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'tel:${ai.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-sm btn-primary rounded-pill px-3" style="background-color: #2563eb; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor:pointer;"><i class="fas fa-phone mr-1"></i> Call</button>
-                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'https://wa.me/${ai.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-sm btn-success rounded-pill px-3" style="background-color: #22c55e; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor:pointer;"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
+                            <div class="ai-compare-row" style="padding-top: 24px; padding-bottom: 12px; border-bottom: none;">
+                                <div class="ai-compare-cell">
+                                    <div class="d-flex justify-content-center flex-column gap-2" style="max-width: 140px; margin: 0 auto;">
+                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'tel:${ai.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
+                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'https://wa.me/${ai.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
                                     </div>
-                                </td>
-                                <td class="ai-compare-label">Actions</td>
-                                <td class="ai-compare-cell">
-                                    <div class="d-flex justify-content-center gap-2 flex-wrap" style="gap: 6px;">
-                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'tel:${best.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-sm btn-primary rounded-pill px-3" style="background-color: #2563eb; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor:pointer;"><i class="fas fa-phone mr-1"></i> Call</button>
-                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'https://wa.me/${best.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-sm btn-success rounded-pill px-3" style="background-color: #22c55e; border: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor:pointer;"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
+                                </div>
+                                <div class="ai-compare-label" style="background: transparent; box-shadow: none; color: transparent; user-select: none;">Actions</div>
+                                <div class="ai-compare-cell">
+                                    <div class="d-flex justify-content-center flex-column gap-2" style="max-width: 140px; margin: 0 auto;">
+                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'tel:${best.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
+                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'https://wa.me/${best.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
                                     </div>
-                                </td>
-                            </tr>
-                        </table>
+                                </div>
+                            </div>
+                        </div>
                         
                         <div class="ai-explanation-box mt-4 p-3 shadow-sm" style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 12px; max-width: 800px; margin: 20px auto 0;">
                             <h5 style="color: #6d28d9; font-weight: 700; font-size: 13px; margin-bottom: 8px; font-family: \'Urbanist\', sans-serif;">
