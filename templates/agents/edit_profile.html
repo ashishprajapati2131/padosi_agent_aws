@@ -3829,8 +3829,12 @@ Overview
                 },
                 success: function(response) {
                     if (response.status === 'success' && response.bio) {
-                        generatedBioCache = response.bio;
-                        textarea.val(response.bio);
+                        var safeBio = response.bio;
+                        if (safeBio.length > 500) {
+                            safeBio = safeBio.substring(0, 500);
+                        }
+                        generatedBioCache = safeBio;
+                        textarea.val(safeBio);
                         textarea.trigger('input'); // Update counter
 
                         // Restore button and update text to indicate regeneration is possible

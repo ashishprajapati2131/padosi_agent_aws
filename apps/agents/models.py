@@ -554,7 +554,7 @@ class AgentProfile(models.Model):
     has_pos_license = models.BooleanField(default=False)
     website_url = models.CharField(max_length=255, blank=True, null=True)
     social_links = models.JSONField(null=True, blank=True)
-    career_highlights = models.TextField(blank=True, null=True)
+    career_highlights = models.CharField(max_length=500, blank=True, null=True)
 
     # Google Business Profile OAuth tokens
     gbp_access_token      = models.TextField(blank=True, null=True)

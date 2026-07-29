@@ -109,7 +109,7 @@ def generate_professional_bio(request):
 
     prompt_rules = (
         f"\n\nStrict Content & SEO Generation Rules:\n"
-        f"1. Target Length: 180 to 250 words total.\n"
+        f"1. Target Length: Strictly maximum 500 characters (around 60-75 words).\n"
         f"2. CTR Opening: Start with an engaging opening sentence (e.g., 'Looking for a trusted Insurance Agent in {city}?...').\n"
         f"3. Primary Keyword: Naturally include 'Insurance Agent in {city}' or 'LIC Agent in {city}'.\n"
         f"4. Local SEO: Naturally mention the location ({city}, {state}, {country}) 2–3 times.\n"
@@ -164,23 +164,11 @@ def generate_professional_bio(request):
                 cleaned_lines.append(line)
         generated_bio = " ".join([p.strip() for p in " ".join(cleaned_lines).split() if p.strip()])
 
-        # Enforce minimum length if needed by padding professionally
-        if len(generated_bio) < 500:
-            padding_options = [
-                f" Committed to delivering professional service, {fullname} focuses on providing trusted financial security and personalized insurance consultation to families across {city}.",
-                f" Dedicated to client satisfaction, {fullname} is committed to helping individuals choose clear, secure plans for their long-term requirements.",
-                f" By prioritizing transparency and custom solutions, {fullname} assists customers in navigating their investments with complete confidence."
-            ]
-            for pad_text in padding_options:
-                generated_bio += pad_text
-                if len(generated_bio) >= 500:
-                    break
-
-        # Max length buffer check (allowing 180-250 word full paragraph up to 2500 characters)
-        if len(generated_bio) > 2500:
-            truncated = generated_bio[:2496]
+        # Max length buffer check (strict 500 chars)
+        if len(generated_bio) > 500:
+            truncated = generated_bio[:496]
             last_space = truncated.rfind(' ')
-            if last_space > 2000:
+            if last_space > 400:
                 generated_bio = truncated[:last_space] + "..."
             else:
                 generated_bio = truncated + "..."

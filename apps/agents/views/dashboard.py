@@ -758,28 +758,54 @@ def update_profile(request):
         with transaction.atomic():
             # ── Step 1: Basic Info ──
             if should_process(1):
-                full_name = request.POST.get('full_name')
-                email = request.POST.get('email')
-                mobile = request.POST.get('mobile')
-                display_name = request.POST.get('display_name')
-                whatsapp = request.POST.get('whatsapp')
-                languages = request.POST.get('languages')
-                address = request.POST.get('address')
+                full_name = (request.POST.get('full_name') or '').strip()
+                email = (request.POST.get('email') or '').strip()
+                mobile = (request.POST.get('mobile') or '').strip()
+                display_name = (request.POST.get('display_name') or '').strip()
+                whatsapp = (request.POST.get('whatsapp') or '').strip()
+                languages = (request.POST.get('languages') or '').strip()
+                address = (request.POST.get('address') or '').strip()
                 
                 # Basic validation
                 errors = {}
+                from django.core.validators import validate_email
+                from django.core.exceptions import ValidationError
+                
                 if not full_name:
                     errors['full_name'] = ['The full name field is required.']
+                elif len(full_name) > 255:
+                    errors['full_name'] = ['Full name cannot exceed 255 characters.']
+                    
                 if not email:
                     errors['email'] = ['The email field is required.']
-                elif Agent.objects.filter(email__iexact=email).exclude(id=agent.id).exists():
-                    errors['email'] = ['The email has already been taken.']
+                else:
+                    try:
+                        validate_email(email)
+                        if Agent.objects.filter(email__iexact=email).exclude(id=agent.id).exists():
+                            errors['email'] = ['The email has already been taken.']
+                    except ValidationError:
+                        errors['email'] = ['Enter a valid email address.']
+                        
                 if not mobile:
                     errors['mobile'] = ['The mobile field is required.']
+                elif not mobile.isdigit() or len(mobile) < 10 or len(mobile) > 15:
+                    errors['mobile'] = ['Enter a valid mobile number (10-15 digits).']
+                    
+                if display_name and len(display_name) > 255:
+                    errors['display_name'] = ['Display name cannot exceed 255 characters.']
+                    
+                if whatsapp and (not whatsapp.isdigit() or len(whatsapp) < 10 or len(whatsapp) > 20):
+                    errors['whatsapp'] = ['Enter a valid WhatsApp number.']
+                    
                 if not languages:
                     errors['languages'] = ['The languages field is required.']
+                elif len(languages) > 255:
+                    errors['languages'] = ['Languages field cannot exceed 255 characters.']
+                    
                 if not address:
                     errors['address'] = ['The address field is required.']
+                elif len(address) > 255:
+                    errors['address'] = ['Address cannot exceed 255 characters.']
                     
                 if errors:
                     return JsonResponse({'status': 'error', 'message': 'Validation failed', 'errors': errors}, status=422)
@@ -847,24 +873,44 @@ def update_profile(request):
                 
             # ── Step 2: Professional Details ──
             if should_process(2):
-                pan = request.POST.get('pan')
-                agency_name = request.POST.get('agency_name')
-                office_address = request.POST.get('office_address')
-                service_pincode = request.POST.get('service_pincode')
+                pan = (request.POST.get('pan') or '').strip()
+                agency_name = (request.POST.get('agency_name') or '').strip()
+                office_address = (request.POST.get('office_address') or '').strip()
+                service_pincode = (request.POST.get('service_pincode') or '').strip()
                 # Default to '0' so the field is NOT silently cleared when the
                 # radio button is untouched (unchecked radio sends nothing in POST).
                 has_pos_license = request.POST.get('has_pos_license', '0') == '1'
-                experience_years = request.POST.get('experience_years')
-                client_base = request.POST.get('client_base')
+                experience_years = (request.POST.get('experience_years') or '').strip()
+                client_base = (request.POST.get('client_base') or '').strip()
                 
                 # Validation
                 errors = {}
+                import re
+                if pan and not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$', pan, re.IGNORECASE):
+                    errors['pan'] = ['Enter a valid PAN number.']
+                elif pan and len(pan) > 20:
+                    errors['pan'] = ['PAN number cannot exceed 20 characters.']
+                    
+                if agency_name and len(agency_name) > 255:
+                    errors['agency_name'] = ['Agency name cannot exceed 255 characters.']
+                    
+                if office_address and len(office_address) > 255:
+                    errors['office_address'] = ['Office address cannot exceed 255 characters.']
+                    
                 if not service_pincode:
                     errors['service_pincode'] = ['The service pincode field is required.']
+                elif not re.match(r'^[1-9][0-9]{5}$', service_pincode):
+                    errors['service_pincode'] = ['Enter a valid 6-digit PIN code.']
+                    
                 if not experience_years:
                     errors['experience_years'] = ['The experience field is required.']
+                elif len(experience_years) > 50:
+                    errors['experience_years'] = ['Experience field cannot exceed 50 characters.']
+                    
                 if not client_base:
                     errors['client_base'] = ['The client base field is required.']
+                elif len(client_base) > 50:
+                    errors['client_base'] = ['Client base cannot exceed 50 characters.']
                     
                 serviceable_cities_data = request.POST.getlist('serviceable_cities[]') or request.POST.getlist('serviceable_cities')
                 if not serviceable_cities_data:
@@ -994,15 +1040,15 @@ def update_profile(request):
                             
             # ── Step 4: Portfolios ──
             if should_process(4):
-                # Sync segments again if sent
+                # Always sync segments on step 4 even if empty, so unselecting all works
                 segments = request.POST.getlist('segments[]') or request.POST.getlist('segments')
-                if segments:
+                if 'segments[]' in request.POST or 'segments' in request.POST or str(current_step) == '4':
                     agent.insuranceSegments.all().delete()
                     for segment_type in segments:
                         AgentInsuranceSegment.objects.create(agent=agent, segment_type=segment_type)
                         
                 investment_types = request.POST.getlist('investment_types[]') or request.POST.getlist('investment_types')
-                if investment_types:
+                if 'investment_types[]' in request.POST or 'investment_types' in request.POST or str(current_step) == '4':
                     profile.investment_types = investment_types
                     profile.save()
                         
@@ -1073,13 +1119,43 @@ def update_profile(request):
                         
             # ── Step 5: Additional Info ──
             if should_process(5):
-                website = request.POST.get('website')
-                google_business = request.POST.get('google_business')
-                linkedin = request.POST.get('linkedin_url')
-                instagram = request.POST.get('instagram_url')
-                facebook = request.POST.get('facebook_url')
-                youtube = request.POST.get('youtube_url')
-                career_highlights = request.POST.get('career_highlights')
+                website = (request.POST.get('website') or '').strip()
+                google_business = (request.POST.get('google_business') or '').strip()
+                linkedin = (request.POST.get('linkedin_url') or '').strip()
+                instagram = (request.POST.get('instagram_url') or '').strip()
+                facebook = (request.POST.get('facebook_url') or '').strip()
+                youtube = (request.POST.get('youtube_url') or '').strip()
+                career_highlights = (request.POST.get('career_highlights') or '').strip()
+                
+                # Validation
+                errors = {}
+                from django.core.validators import URLValidator
+                from django.core.exceptions import ValidationError
+                url_validator = URLValidator()
+                
+                def validate_optional_url(url, field_name):
+                    if url:
+                        if len(url) > 255:
+                            errors[field_name] = ['URL cannot exceed 255 characters.']
+                        else:
+                            try:
+                                url_validator(url)
+                            except ValidationError:
+                                errors[field_name] = [f'Enter a valid URL for {field_name}.']
+                
+                validate_optional_url(website, 'website')
+                validate_optional_url(google_business, 'google_business')
+                validate_optional_url(linkedin, 'linkedin_url')
+                validate_optional_url(instagram, 'instagram_url')
+                validate_optional_url(facebook, 'facebook_url')
+                validate_optional_url(youtube, 'youtube_url')
+                
+                if career_highlights and len(career_highlights) > 500:
+                    errors['career_highlights'] = ['Professional Bio cannot exceed 500 characters.']
+                    return JsonResponse({'status': 'error', 'message': 'Professional Bio cannot exceed 500 characters.', 'errors': errors}, status=400)
+                    
+                if errors:
+                    return JsonResponse({'status': 'error', 'message': 'Validation failed', 'errors': errors}, status=422)
                 
                 # Check photos limits
                 remove_photo_ids = request.POST.getlist('remove_photos[]') or request.POST.getlist('remove_photos')
