@@ -55,7 +55,7 @@ def insurance_approvals_index(request):
             agent.insurance_company_user = None
 
         # Load onboarded_by
-        onboarded_by_id = getattr(agent, 'onboarded_by', None)
+        onboarded_by_id = getattr(agent, 'onboarded_by_id', None)
         if onboarded_by_id:
             try:
                 agent.onboarder = User.objects.get(id=onboarded_by_id)

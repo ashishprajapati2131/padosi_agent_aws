@@ -1,0 +1,139 @@
+{% extends 'insurance/base.html' %}
+
+{% block title %}My Agents — Insurance Portal {% endblock %}
+{% block page-title %}My Agents {% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h5 style="font-weight:800;margin:0;">Onboarded Agents</h5>
+        <p style="color:#64748b;font-size:13px;margin:0;">Manage and monitor all agents linked to your insurance company.</p>
+    </div>
+    {% if request.user.insurance_profile.is_insurance_manager or request.user.insurance_profile.is_insurance_onboarding %}
+    <div>
+        <a href="{% url 'insurance:agents_create' %}" class="btn-primary-custom" style="padding:10px 18px; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+            <i class="fas fa-user-plus"></i> Onboard Agent
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{#  Filters  #}
+<div class="card mb-4">
+    <div class="card-body" style="padding:16px 22px;">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="{% if request.user.insurance_profile.is_insurance_sales %}col-md-8{% else %}col-md-5{% endif %}">
+                <input type="text" name="search" class="form-control" placeholder="Search by name, email, mobile..."
+                    value="{{ request.GET.search }}" style="border-radius:10px;">
+            </div>
+            {% if not request.user.insurance_profile.is_insurance_sales %}
+            <div class="col-md-3">
+                <select name="status" class="form-control" style="border-radius:10px;">
+                    <option value="all" {% if request.GET.status|default:'all' == 'all' %}selected{% endif %}>All Statuses</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="pending_manager_approval" {% if request.GET.status == 'pending_manager_approval' %}selected{% endif %}>Pending Manager Approval</option>
+                    <option value="pending_accounts_payment" {% if request.GET.status == 'pending_accounts_payment' %}selected{% endif %}>Pending Payment</option>
+                    <option value="pending_admin_approval" {% if request.GET.status == 'pending_admin_approval' %}selected{% endif %}>Pending Admin Approval</option>
+                    <option value="rejected" {% if request.GET.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-md-2">
+                <button type="submit" class="btn-primary-custom w-100" style="justify-content:center;">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+            {% if request.GET.search or not request.user.insurance_profile.is_insurance_sales and request.GET.status and request.GET.status != 'all' %}
+            <div class="col-md-2">
+                <a href="{% url 'insurance:agents_index' %}" class="btn btn-light w-100" style="border-radius:10px;font-size:13px;">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+{#  Agents Table  #}
+<div class="card">
+    <div class="card-body p-0">
+        {% if agents. %}|length
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="padding:14px 22px;">Agent</th>
+                        <th>Mobile</th>
+                        <th>Status</th>
+                        <th>Leads</th>
+                        <th>Subscription</th>
+                        <th>Joined</th>
+                        <th style="width:100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agent in agents %}
+                    <tr>
+                        <td style="padding:14px 22px;">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <div style="width:38px;height:38px;background:linear-gradient(135deg,#0f3460,#1d5498);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;flex-shrink:0;">
+                                    {{ agent.fullname|first|upper }}
+                                </div>
+                                <div>
+                                    <div style="font-weight:700;font-size:13.5px;">{{ agent.fullname }}</div>
+                                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                        <span style="font-size:11px;color:#94a3b8;">{{ agent.email }}</span>
+                                        {% if agent.group %}
+                                            <span style="font-size:9.5px;background:#e8edf5;color:#0f3460;padding:1px 6px;border-radius:4px;font-weight:600;display:inline-flex;align-items:center;gap:3px;"><i class="fas fa-folder" style="font-size:8px;"></i>{{ agent.group }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="font-size:13px;">{{ agent.mobile|default:'—' }}</td>
+                        <td>
+                            <span class="badge-status
+                                {% if agent.status == 'active' %} badge-active
+                                {% elif agent.status == 'inactive' %} badge-inactive
+                                {% elif 'pending_' in agent.status %} badge-pending
+                                {% elif agent.status == 'rejected' %} badge-blocked
+                                {% else %} badge-inactive
+                                {% endif %}">
+                                {{ agent.status|title }}
+                            </span>
+                        </td>
+                        <td style="font-size:13px;">{{ agent.leads_count|default:0 }}</td>
+                        <td style="font-size:12px;">
+                            {% if agent.activeSubscription %}
+                                <span style="color:#059669;font-weight:600;">{{ agent.activeSubscription.selected_plan }}</span>
+                            {% else %}
+                                <span style="color:#94a3b8;">No Active Plan</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size:12px;color:#64748b;">{{ agent.created_at|date:"d M Y" }}</td>
+                        <td>
+                            <a href="{% url 'insurance:agents_show' agent.id %}"
+                               class="btn btn-sm btn-outline-primary" style="border-radius:8px;font-size:12px;">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {#  Pagination  #}
+        <div style="padding:16px 22px;">
+            {% include 'insurance/pagination.html' with page_obj=agents %}
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:60px 20px;color:#94a3b8;">
+            <i class="fas fa-users" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3;"></i>
+            <div style="font-size:15px;font-weight:600;margin-bottom:6px;color:#64748b;">No agents found</div>
+            <div style="font-size:13px;margin-bottom:16px;">There are no agents currently linked to your insurance company.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

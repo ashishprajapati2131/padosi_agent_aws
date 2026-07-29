@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'apps.home',
     'apps.admin_panel',
     'apps.agents',
+    'apps.insurance',
     'rest_framework',
     'django.contrib.humanize',
     'chatbot',

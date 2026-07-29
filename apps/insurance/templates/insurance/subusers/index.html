@@ -1,0 +1,154 @@
+{% extends 'insurance/base.html' %}
+
+{% block title %}Manage Sub-Users — Insurance Portal {% endblock %}
+{% block page-title %}Sub-Users Management {% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    {#  Sub-role Cards (Onboarding, Sales, Accounts)  #}
+    {% for role_data in roles_list %}
+        {% with roleKey=role_data.key roleInfo=role_data.info user=role_data.user %}
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 stat-card shadow-sm border">
+                <div class="card-body d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="stat-icon {{ roleInfo.color }}">
+                            <i class="fas {{ roleInfo.icon }}"></i>
+                        </div>
+                        <h5 class="card-title fw-bold" style="font-size: 16px; color: var(--text-primary);">
+                            {{ roleInfo.title }}
+                        </h5>
+                        <p class="text-muted" style="font-size: 12px; margin-bottom: 20px;">
+                            {{ roleInfo.desc }}
+                        </p>
+
+                        {% if user %}
+                            <div class="border rounded p-3 mb-3 bg-light">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge-status {% if user.status == 'active' %}'badge-active'{% else %}'badge-blocked'{% endif %}">
+                                        {{ user.status|title }}
+                                    </span>
+                                </div>
+                                <div class="fw-bold mb-1" style="font-size: 13.5px;">{{ user.fullname }}</div>
+                                <div class="text-muted" style="font-size: 12px;"><i class="fas fa-envelope me-1"></i> {{ user.email }}</div>
+                            </div>
+                        {% else %}
+                            <div class="border border-dashed rounded p-4 text-center mb-3 bg-light text-muted" style="font-size: 12px;">
+                                <i class="fas fa-user-slash fa-2x mb-2 opacity-50"></i>
+                                <div>No user assigned yet</div>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {% if user %}
+                        <div class="d-flex gap-2 mt-2">
+                            {#  Toggle Status Form  #}
+                            <form action="{% url 'insurance:subusers_toggle_status' %}" method="POST" class="flex-fill">
+                                {% csrf_token %}
+                                <input type="hidden" name="id" value="{{ user.id }}">
+                                <button type="submit" class="btn btn-outline-secondary w-100 py-2" style="font-size: 12px; font-weight: 600; border-radius: 8px;">
+                                    <i class="fas {% if user.status == 'active' %}'fa-user-slash'{% else %}'fa-user-check'{% endif %} me-1"></i>
+                                    {% if user.status == 'active' %}'Disable'{% else %}'Enable'{% endif %}
+                                </button>
+                            </form>
+
+                            {#  Password Reset Trigger  #}
+                            <button type="button" class="btn btn-outline-primary flex-fill py-2" style="font-size: 12px; font-weight: 600; border-radius: 8px;"
+                                    data-toggle="modal" data-target="#resetModal{{ user.id }}">
+                                <i class="fas fa-key me-1"></i> Reset Pass
+                            </button>
+                        </div>
+                    {% else %}
+                        {#  Create Trigger Button  #}
+                        <button type="button" class="btn btn-primary-custom w-100 py-2" style="border-radius: 10px; font-size: 12px; font-weight: 700;"
+                                data-toggle="modal" data-target="#createModal{{ roleKey }}">
+                            <i class="fas fa-plus me-1"></i> Add {% if roleKey == 'manager' %}'manager'{% else %}roleKey|title{% endif %} User
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endwith %}
+    {% endfor %}
+</div>
+
+{#  Modals Section (outside grid to avoid rendering/stacking context issues)  #}
+{% for role_data in roles_list %}
+    {% with roleKey=role_data.key roleInfo=role_data.info user=role_data.user %}
+
+    {% if user %}
+        {#  Reset Password Modal  #}
+        <div class="modal fade" id="resetModal{{ user.id }}" tabindex="-1" role="dialog" aria-labelledby="resetModalLabel{{ user.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content" style="border-radius: 16px;">
+                    <div class="modal-header border-bottom-0 pt-4 px-4">
+                        <h5 class="modal-title fw-bold" id="resetModalLabel{{ user.id }}" style="color: var(--text-primary);">Reset Sub-User Password</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form action="{% url 'insurance:subusers_reset_password' user.id %}" method="POST">
+                        {% csrf_token %}
+                        <div class="modal-body px-4">
+                            <p class="text-muted" style="font-size: 13px;">Set a new password for <strong>{{ user.fullname }}</strong>.</p>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold" style="font-size: 12px;">New Password</label>
+                                <input type="password" name="password" class="form-control" placeholder="Minimum 8 characters" required minlength="8" style="border-radius: 10px; height: 44px;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold" style="font-size: 12px;">Confirm Password</label>
+                                <input type="password" name="password_confirmation" class="form-control" placeholder="Repeat password" required minlength="8" style="border-radius: 10px; height: 44px;">
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top-0 pb-4 px-4">
+                            <button type="button" class="btn btn-light px-4" data-dismiss="modal" style="border-radius: 10px; height: 44px; font-weight: 600;">Cancel</button>
+                            <button type="submit" class="btn-primary-custom px-4" style="border-radius: 10px; height: 44px; font-weight: 600;">Save Password</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        {#  Create Sub-User Modal  #}
+        <div class="modal fade" id="createModal{{ roleKey }}" tabindex="-1" role="dialog" aria-labelledby="createModalLabel{{ roleKey }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content" style="border-radius: 16px;">
+                    <div class="modal-header border-bottom-0 pt-4 px-4">
+                        <h5 class="modal-title fw-bold" id="createModalLabel{{ roleKey }}" style="color: var(--text-primary);">Create {% if roleKey == 'manager' %}Manager{% else %}{{ roleKey|title }}{% endif %} Sub-User</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form action="{% url 'insurance:subusers_store' %}" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="insurance_sub_role" value="{{ roleKey }}">
+                        <div class="modal-body px-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold" style="font-size: 12px;">Full Name</label>
+                                <input type="text" name="fullname" class="form-control" placeholder="Enter full name" required style="border-radius: 10px; height: 44px;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold" style="font-size: 12px;">Email Address</label>
+                                <input type="email" name="email" class="form-control" placeholder="subuser@insurancecompany.com" required style="border-radius: 10px; height: 44px;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold" style="font-size: 12px;">Password</label>
+                                <input type="password" name="password" class="form-control" placeholder="Minimum 8 characters" required minlength="8" style="border-radius: 10px; height: 44px;">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold" style="font-size: 12px;">Confirm Password</label>
+                                <input type="password" name="password_confirmation" class="form-control" placeholder="Confirm password" required minlength="8" style="border-radius: 10px; height: 44px;">
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top-0 pb-4 px-4">
+                            <button type="button" class="btn btn-light px-4" data-dismiss="modal" style="border-radius: 10px; height: 44px; font-weight: 600;">Cancel</button>
+                            <button type="submit" class="btn-primary-custom px-4" style="border-radius: 10px; height: 44px; font-weight: 600;">Create User</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    {% endwith %}
+{% endfor %}
+{% endblock %}

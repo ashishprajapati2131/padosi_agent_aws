@@ -21,13 +21,18 @@ from django.conf.urls.static import static
 
 from apps.agents.views.dashboard import serve_private_file
 
+from django.contrib.auth import views as auth_views
+
 urlpatterns = [
+    path('insurance-login/', auth_views.LoginView.as_view(template_name='insurance/login.html', redirect_authenticated_user=True), name='insurance_login'),
+    path('logout/', auth_views.LogoutView.as_view(next_page='insurance_login'), name='logout'),
     path('media/app/private/<path:file_path>', serve_private_file, name='serve_private_file'),
     path('django-admin/', admin.site.urls),
     path('', include('apps.admin_panel.urls')),
     path('', include('apps.agents.urls')),
     path('chatbot/', include('chatbot.urls', namespace='chatbot')),
     path('', include('apps.home.urls')),
+    path('insurance/', include('apps.insurance.urls')),
 ]
 
 # Serve media files in development

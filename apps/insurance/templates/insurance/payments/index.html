@@ -1,0 +1,260 @@
+{% extends 'insurance/base.html' %}
+
+{% block title %}Payments Queue — Insurance Portal {% endblock %}
+{% block page-title %}Payments Queue {% endblock %}
+
+{% block content %}
+<div class="card shadow-sm border" style="border-radius: 16px;">
+    <div class="card-header bg-white py-3 border-bottom-0" style="border-radius: 16px 16px 0 0;">
+        <div class="fw-bold" style="font-size: 16px; color: var(--text-primary);">Awaiting Payment Confirmation</div>
+        <div class="text-muted" style="font-size: 12px;">Confirm payment and enter transaction reference details for agents approved by the Manager.</div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="px-4 py-3">Agent Details</th>
+                        <th class="px-4 py-3">Plan Details</th>
+                        <th class="px-4 py-3">Approved By</th>
+                        <th class="px-4 py-3">Approved Date</th>
+                        <th class="px-4 py-3 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agent in agents %}
+                        @php
+                            sub = agent.subscriptions.first();
+                        @endphp
+                        <tr>
+                            <td class="px-4 py-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="user-avatar" style="width: 38px; height: 38px; font-size: 14px;">
+                                        {{ agent.fullname|first|upper }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark" style="font-size: 14px;">{{ agent.fullname }}</div>
+                                        <div class="text-muted" style="font-size: 12px;">
+                                            <i class="fas fa-envelope me-1"></i> {{ agent.email }} <br>
+                                            <i class="fas fa-phone me-1"></i> {{ agent.mobile }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="badge bg-primary-light text-primary px-3 py-2 fw-semibold" style="font-size: 12px; border-radius: 8px;">
+                                    {% if sub %}sub.selected_plan{% else %}agent.plan_type|title{% endif %}
+                                </span>
+                                <div class="text-muted mt-1" style="font-size: 11px;">
+                                    Amount Due: <strong>₹{% if sub %}sub.registration_amount{% else %}0{% endif %}</strong>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="fw-semibold text-dark" style="font-size: 13px;">
+                                    {% if agent.insurance %}agent.insurance.fullname{% else %}'Manager'{% endif %}
+                                </div>
+                                <div class="text-muted" style="font-size: 11px;">Super User / Manager</div>
+                            </td>
+                            <td class="px-4 py-3 text-muted" style="font-size: 13px;">
+                                {{ agent.updated_at|date:"d M Y, h:i A" }}
+                            </td>
+                            <td class="px-4 py-3 text-end">
+                                {#  Record Payment Modal Trigger  #}
+                                <button type="button" class="btn btn-sm btn-primary-custom px-3 py-2" style="border-radius: 8px; font-size: 12px; font-weight: 600;"
+                                        data-toggle="modal" data-target="#paymentModal{{ agent.id }}">
+                                    <i class="fas fa-file-signature me-1"></i> Record Payment
+                                </button>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fas fa-file-invoice-dollar fa-3x mb-3 opacity-40"></i>
+                                <div class="fw-bold">No Payments Pending</div>
+                                <div style="font-size: 12px;">There are no agents awaiting payment recording.</div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if agents.has_other_pages %}
+        <div class="card-footer bg-white border-top-0 py-3 px-4">
+            {% include 'insurance/pagination.html' with page_obj=agents %}
+        </div>
+    {% endif %}
+</div>
+
+{#  Modals Section (outside grid/table to avoid rendering/stacking context issues)  #}
+{% for agent in agents %}
+    @php
+        sub = agent.subscriptions.first();
+        amount = sub ? sub.registration_amount : (agent.plan_type === 'starter' ? 2359 : 8258);
+    @endphp
+    {#  Record Payment Modal  #}
+    <div class="modal fade" id="paymentModal{{ agent.id }}" tabindex="-1" role="dialog" aria-labelledby="paymentModalLabel{{ agent.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="border-radius: 16px; text-align: left; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                <div class="modal-header bg-light border-bottom-0 pt-4 px-4 pb-3">
+                    <h5 class="modal-title fw-bold text-dark" id="paymentModalLabel{{ agent.id }}">
+                        <i class="fas fa-credit-card text-primary me-2"></i> Onboarding Payment Summary
+                    </h5>
+                    <button type="button" class="close border-0 bg-transparent" data-dismiss="modal" aria-label="Close" style="font-size: 24px; line-height: 1; color: var(--text-muted); outline: none;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body px-4 pt-3">
+                    <div class="p-3 mb-3" style="background-color: var(--primary-light); border-radius: 12px; border: 1px dashed rgba(29, 84, 152, 0.25);">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Agent Name:</span>
+                            <span class="text-dark fw-bold small">{{ agent.fullname }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small fw-semibold">Email Address:</span>
+                            <span class="text-dark small">{{ agent.email }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted small fw-semibold">Mobile Number:</span>
+                            <span class="text-dark small">{{ agent.mobile }}</span>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-borderless align-middle mb-0">
+                            <tbody>
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <td class="py-2 text-muted fw-semibold" style="font-size: 13px;">Selected Subscription Plan</td>
+                                    <td class="py-2 text-end fw-bold text-primary" style="font-size: 13px;">
+                                        {% if sub %}sub.selected_plan{% else %}(agent.plan_type === 'starter' ? "Starter's Plan" : "Professional's Plan"){% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-muted fw-bold" style="font-size: 14px;">Total Amount Due (inc. GST)</td>
+                                    <td class="py-2 text-end fw-extrabold text-success" style="font-size: 16px;">
+                                        ₹{{ amount }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 d-flex align-items-start gap-2 mb-0" style="border-radius: 10px; font-size: 11.5px; border: none; background-color: #f0f6ff; color: #1e40af;">
+                        <i class="fas fa-circle-info mt-1" style="font-size: 13px;"></i>
+                        <div>
+                            <strong>Online checkout is mandatory.</strong> Clicking the button below will securely connect to the Razorpay Gateway to complete the agent's subscription fee payment.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pb-4 pt-3 px-4 d-flex justify-content-between gap-2">
+                    <button type="button" class="btn btn-light px-4" data-dismiss="modal" style="border-radius: 10px; height: 44px; font-weight: 600; width: 35%;">Cancel</button>
+                    <button type="button" onclick="payAgentOnline({{ agent.id }})" class="btn btn-primary btn-primary-custom px-4 flex-grow-1" style="border-radius: 10px; height: 44px; font-weight: 700; width: 60%;">
+                        <i class="fas fa-shield-halved me-1"></i> Pay ₹{{ amount }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    function payAgentOnline(agentId) {
+        Swal.fire({
+            title: 'Preparing Secure Checkout',
+            text: 'Connecting to Razorpay gateway...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        var orderUrl = "{% url 'insurance:create_razorpay_order' ':agent' %}".replace(':agent', agentId);
+
+        $.ajax({
+            url: orderUrl,
+            type: "POST",
+            data: { _token: "{{ csrf_token }}" },
+            success: function(res) {
+                Swal.close();
+                if (res.success) {
+                    $(`#paymentModal${agentId}`).modal('hide');
+                    $(`#dashboardPaymentModal${agentId}`).modal('hide');
+
+                    if (res.test_payment and not res.order_id) {
+                        verifyAgentPayment(agentId, { test_payment: true });
+                    } else {
+                        var options = {
+                            "key": res.key,
+                            "amount": res.amount,
+                            "currency": "INR",
+                            "name": "PadosiAgent Onboarding",
+                            "description": "Payment for Agent Registration Fee",
+                            "order_id": res.order_id,
+                            "handler": function (response) {
+                                verifyAgentPayment(agentId, response);
+                            },
+                            "prefill": {
+                                "name": res.name,
+                                "email": res.email
+                            },
+                            "theme": { "color": "#0f3460" }
+                        };
+                        var rzp = new Razorpay(options);
+                        rzp.open();
+                    }
+                } else {
+                    Swal.fire('Error', res.message or 'Failed to prepare payment.', 'error');
+                }
+            },
+            error: function(xhr) {
+                Swal.close();
+                Swal.fire('Error', (xhr.responseJSON and xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to prepare payment.', 'error');
+            }
+        });
+    }
+
+    function verifyAgentPayment(agentId, paymentData) {
+        Swal.fire({
+            title: 'Verifying Transaction...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        var successUrl = "{% url 'insurance:handle_payment_success' ':agent' %}".replace(':agent', agentId);
+
+        $.ajax({
+            url: successUrl,
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token }}",
+                razorpay_payment_id: paymentData.razorpay_payment_id or '',
+                razorpay_order_id: paymentData.razorpay_order_id or '',
+                razorpay_signature: paymentData.razorpay_signature or '',
+                test_payment: paymentData.test_payment ? 1 : 0
+            },
+            success: function(res) {
+                Swal.close();
+                if (res.success) {
+                    Swal.fire({
+                        title: 'Success',
+                        text: res.message,
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Verification Failed', res.message or 'Unable to verify payment.', 'error');
+                }
+            },
+            error: function(xhr) {
+                Swal.close();
+                Swal.fire('Error', (xhr.responseJSON and xhr.responseJSON.message) ? xhr.responseJSON.message : 'Payment verification failed.', 'error');
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,660 @@
+{% load static %}
+<not DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}Insurance Portal — PadosiAgent {% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="{% static 'bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #0f3460;
+            --primary-light: #e8edf5;
+            --primary-mid: #1d5498;
+            --accent: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --sidebar-width: 260px;
+            --header-height: 70px;
+            --bg-body: #f0f4f8;
+            --bg-sidebar: #0a1f3d;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        /* ─── Sidebar ─────────────────────────────────────────── */
+        .sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: var(--bg-sidebar);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-brand {
+            padding: 24px 24px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .sidebar-brand img {
+            height: 38px;
+            object-fit: contain;
+            object-position: left;
+        }
+
+        .sidebar-brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: linear-gradient(135deg, #0f3460, #1d5498);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-top: 10px;
+            text-transform: uppercase;
+        }
+
+        .sidebar-user {
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0f3460, #1d5498);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .user-info {
+            min-width: 0;
+        }
+
+        .user-name {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-role {
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 11px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 0;
+        }
+
+        .sidebar-nav::-webkit-scrollbar {
+            width: 3px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .nav-section-title {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 12px 24px 4px;
+        }
+
+        .nav-item a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 24px;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            font-size: 13.5px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .nav-item a i {
+            width: 18px;
+            text-align: center;
+            font-size: 15px;
+        }
+
+        .nav-item a:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+        }
+
+        .nav-item a.active {
+            background: rgba(29, 84, 152, 0.25);
+            color: #fff;
+            border-left-color: #4f8ef7;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--danger);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 20px;
+        }
+
+        .sidebar-footer {
+            padding: 16px 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            text-decoration: none;
+            padding: 8px 0;
+            transition: color 0.2s;
+        }
+
+        .logout-btn:hover {
+            color: #ef4444;
+        }
+
+        /* ─── Main Content ────────────────────────────────────── */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+        }
+
+        .topbar {
+            height: var(--header-height);
+            background: #fff;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        .topbar-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .topbar-user {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .topbar-user .avatar {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, #0f3460, #1d5498);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .page-content {
+            padding: 28px;
+        }
+
+        /* ─── Cards ───────────────────────────────────────────── */
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 22px 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-bottom: 14px;
+        }
+
+        .stat-icon.blue {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .stat-icon.green {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .stat-icon.amber {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .stat-icon.purple {
+            background: #ede9fe;
+            color: #7c3aed;
+        }
+
+        .stat-icon.red {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .card {
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-header {
+            background: #fff;
+            border-bottom: 1px solid var(--border-color);
+            border-radius: 16px 16px 0 0;
+            padding: 18px 22px;
+        }
+
+        .card-body {
+            background: #fff;
+            border-radius: 0 0 16px 16px;
+            padding: 22px;
+        }
+
+        .table th {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        .table td {
+            vertical-align: middle;
+            font-size: 13.5px;
+        }
+
+        .badge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-inactive {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-blocked {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .btn-primary-custom {
+            background: linear-gradient(135deg, #0f3460, #1d5498);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 9px 18px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            text-decoration: none;
+        }
+
+        .btn-primary-custom:hover {
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(15, 52, 96, 0.35);
+        }
+
+        /* Alert messages */
+        .alert-success {
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            color: #065f46;
+            border-radius: 12px;
+            padding: 14px 18px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-danger {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            border-radius: 12px;
+            padding: 14px 18px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Mobile sidebar toggle */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .sidebar-overlay.show {
+                display: block;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .mobile-toggle {
+                display: block;
+            }
+        }
+    </style>
+    {% block styles %}{% endblock %}
+</head>
+
+<body>
+    {#  Sidebar  #}
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <img src="{% static 'images/logo.png' %}" alt="PadosiAgent" onerror="this.style.display='none'">
+            <span class="sidebar-brand-badge"><i class="fas fa-shield-halved"></i> Insurance Portal</span>
+        </div>
+
+        <div class="sidebar-user">
+            <div class="user-avatar">{{ request.user.first_name|first|upper }}</div>
+            <div class="user-info">
+                <div class="user-name">{{ request.user.first_name }}</div>
+                <div class="user-role">
+                    {% if request.user.insurance_profile.is_insurance_manager %}
+                        Insurance Manager
+                    {% elif request.user.insurance_profile.is_insurance_onboarding %}
+                        Onboarding & Ops
+                    {% elif request.user.insurance_profile.is_insurance_sales %}
+                        Sales Team
+                    {% elif request.user.insurance_profile.is_insurance_accounts %}
+                        Accounts & Finance
+                    {% else %}
+                        Insurance Company
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-title">Main</div>
+            <ul class="list-unstyled mb-0">
+                <li class="nav-item">
+                    <a href="{% url 'insurance:dashboard' %}"
+                        class="{% if request.resolver_match.view_name == 'insurance:dashboard' %}active{% endif %}">
+                        <i class="fas fa-chart-pie"></i> Dashboard
+                    </a>
+                </li>
+                
+                {% if request.user.insurance_profile.is_insurance_manager or request.user.insurance_profile.is_insurance_sales %}
+                <li class="nav-item">
+                    <a href="{% url 'insurance:agents_index' %}"
+                        class="{% if 'agents' in request.path and not 'create' in request.path %}active{% endif %}">
+                        <i class="fas fa-users"></i> My Agents
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% if request.user.insurance_profile.is_insurance_onboarding %}
+                <li class="nav-item">
+                    <a href="{% url 'insurance:agents_index' %}"
+                        class="{% if 'agents' in request.path and not 'create' in request.path %}active{% endif %}">
+                        <i class="fas fa-list-check"></i> My Onboardings
+                    </a>
+                </li>
+                {% endif %}
+
+                {% if request.user.insurance_profile.is_insurance_accounts %}
+                <li class="nav-item">
+                    <a href="{% url 'insurance:payments_index' %}"
+                        class="{% if request.resolver_match.view_name == 'insurance:payments_index' %}active{% endif %}">
+                        <i class="fas fa-file-invoice-dollar"></i> Payments Queue
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+
+            {% if request.user.insurance_profile.is_insurance_manager or request.user.insurance_profile.is_insurance_onboarding or request.user.insurance_profile.is_insurance_sales %}
+            <div class="nav-section-title">Actions</div>
+            <ul class="list-unstyled mb-0">
+                {% if request.user.insurance_profile.is_insurance_manager or request.user.insurance_profile.is_insurance_onboarding %}
+                <li class="nav-item">
+                    <a href="{% url 'insurance:agents_create' %}"
+                        class="{% if request.resolver_match.view_name == 'insurance:agents_create' %}active{% endif %}">
+                        <i class="fas fa-user-plus"></i> Onboard Agent
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% if request.user.insurance_profile.is_insurance_manager %}
+                <li class="nav-item">
+                    <a href="{% url 'insurance:approvals_index' %}"
+                        class="{% if request.resolver_match.view_name == 'insurance:approvals_index' %}active{% endif %}">
+                        <i class="fas fa-clipboard-check"></i> Approvals Queue
+                    </a>
+                </li>
+                {% endif %}
+
+                {% if request.user.insurance_profile.is_insurance_manager or request.user.insurance_profile.is_insurance_sales %}
+                <li class="nav-item">
+                    <a href="{% url 'insurance:notify_form' %}"
+                        class="{% if request.resolver_match.view_name == 'insurance:notify_form' %}active{% endif %}">
+                        <i class="fas fa-bell"></i> Send Notification
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            {% endif %}
+
+            <div class="nav-section-title">Account</div>
+            <ul class="list-unstyled mb-0">
+                {% if request.user.insurance_profile.is_insurance_manager %}
+                <li class="nav-item">
+                    <a href="{% url 'insurance:subusers_index' %}"
+                        class="{% if 'subusers' in request.path %}active{% endif %}">
+                        <i class="fas fa-users-gear"></i> Manage Sub-Users
+                    </a>
+                </li>
+                {% endif %}
+                <li class="nav-item">
+                    <a href="{% url 'insurance:profile' %}"
+                        class="{% if request.resolver_match.view_name == 'insurance:profile' %}active{% endif %}">
+                        <i class="fas fa-user-circle"></i> My Profile
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <form method="POST" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="logout-btn"
+                    style="background:none;border:none;cursor:pointer;width:100%;text-align:left;">
+                    <i class="fas fa-arrow-right-from-bracket"></i> Logout
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    {#  Mobile overlay  #}
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    {#  Main Content  #}
+    <div class="main-content">
+        <header class="topbar">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <button class="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <span class="topbar-title">{% block page-title %}Dashboard {% endblock %}</span>
+            </div>
+            <div class="topbar-right">
+                <div class="topbar-user">
+                    <div class="avatar">{{ request.user.first_name|first|upper }}</div>
+                    {{ request.user.first_name }}
+                </div>
+            </div>
+        </header>
+
+        <div class="page-content">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert-{{ message.tags }} mb-4" style="{% if message.tags == 'success' %}background-color: #d1fae5; color: #065f46; padding: 1rem; border-radius: 0.5rem;{% elif message.tags == 'error' %}background-color: #fee2e2; color: #991b1b; padding: 1rem; border-radius: 0.5rem;{% endif %}">
+                        {% if message.tags == 'success' %}
+                            <i class="fas fa-circle-check"></i>
+                        {% else %}
+                            <i class="fas fa-circle-exclamation"></i>
+                        {% endif %}
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="{% static 'js/jquery-3.7.1.min.js' %}"></script>
+    <script src="{% static 'js/popper.min.js' %}"></script>
+    <script src="{% static 'js/bootstrap.min.js' %}"></script>
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('show');
+            document.getElementById('sidebarOverlay').classList.toggle('show');
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

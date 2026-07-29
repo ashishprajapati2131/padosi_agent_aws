@@ -1,5 +1,11 @@
 from django.db import models
+from django.contrib.auth.models import User
 
+@property
+def user_fullname(self):
+    return f"{self.first_name} {self.last_name}".strip() or self.username
+
+User.add_to_class('fullname', user_fullname)
 def format_indian_number(num):
     try:
         num = float(num)
@@ -179,6 +185,7 @@ class Agent(models.Model):
     mobile = models.CharField(max_length=20)
     user_types = models.JSONField(default=list, blank=True)
     insurance_companies = models.JSONField(default=list, blank=True)
+    onboarded_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='onboarded_agents')
     experience_range = models.CharField(max_length=50, blank=True, default='')
     client_base = models.CharField(max_length=50, blank=True, default='')
     registration_step = models.IntegerField(default=1)

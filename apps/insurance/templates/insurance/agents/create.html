@@ -1,0 +1,1042 @@
+{% extends 'insurance/base.html' %}
+
+{% block title %}Onboard Agent — Insurance Portal {% endblock %}
+{% block page-title %}Onboard New Agent {% endblock %}
+
+{% block styles %}
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<style>
+    .onboard-container {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .nav-tabs-custom {
+        display: flex;
+        border-bottom: 2px solid #e2e8f0;
+        margin-bottom: 30px;
+        gap: 20px;
+    }
+    .nav-tab-link {
+        padding: 12px 24px;
+        font-weight: 700;
+        font-size: 15px;
+        color: #64748b;
+        text-decoration: none;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s ease;
+    }
+    .nav-tab-link:hover {
+        color: #0f3460;
+    }
+    .nav-tab-link.active {
+        color: #0f3460;
+        border-bottom-color: #0f3460;
+    }
+    .form-section-title {
+        font-weight: 800;
+        font-size: 14px;
+        color: #0f3460;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1.5px solid #e2e8f0;
+        padding-bottom: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .form-group-custom {
+        margin-bottom: 20px;
+    }
+    .form-group-custom label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: #334155;
+        margin-bottom: 6px;
+    }
+    .form-control-custom {
+        width: 100%;
+        padding: 11px 16px;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 10px;
+        font-size: 14px;
+        color: #1e293b;
+        background: #f8fafc;
+        outline: none;
+        transition: all 0.2s ease;
+    }
+    .form-control-custom:focus {
+        border-color: #0f3460;
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(15, 52, 96, 0.1);
+    }
+    .segment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        gap: 12px;
+    }
+    .segment-checkbox {
+        position: relative;
+    }
+    .segment-checkbox input {
+        display: none;
+    }
+    .segment-checkbox label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 8px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 12px;
+        color: #475569;
+        background: #f8fafc;
+        transition: all 0.2s ease;
+        margin-bottom: 0;
+        text-align: center;
+    }
+    .segment-checkbox label i {
+        font-size: 18px;
+        color: #94a3b8;
+    }
+    .segment-checkbox input:checked + label {
+        border-color: #0f3460;
+        background: #f0f4ff;
+        color: #0f3460;
+    }
+    .segment-checkbox input:checked + label i {
+        color: #0f3460;
+    }
+    
+    /* Plans Layout */
+    .plans-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    .plan-card {
+        background: #ffffff;
+        border: 2px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    .plan-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.05);
+    }
+    .plan-card.selected {
+        border-color: #0f3460;
+        background: #f0f7ff;
+    }
+    .plan-card input[type="radio"] {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        accent-color: #0f3460;
+    }
+    .plan-name {
+        font-size: 15px;
+        font-weight: 800;
+        color: #0f3460;
+        margin-bottom: 4px;
+    }
+    .plan-price {
+        font-size: 22px;
+        font-weight: 800;
+        color: #0f3460;
+        margin-bottom: 10px;
+    }
+    .plan-features {
+        font-size: 11px;
+        color: #64748b;
+        line-height: 1.5;
+        padding-left: 0;
+        list-style: none;
+    }
+    .plan-features li {
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .plan-features li i {
+        color: #10b981;
+    }
+    
+    /* Cart Styling */
+    .cart-section {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid #e2e8f0;
+        margin-top: 30px;
+    }
+    .checkout-box {
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="onboard-container">
+    {#  Tab navigation  #}
+    <div class="nav-tabs-custom">
+        <a href="javascript:void(0)" class="nav-tab-link active" onclick="switchTab('single')">
+            <i class="fas fa-user-plus me-1"></i> Single Onboarding
+        </a>
+        <a href="javascript:void(0)" class="nav-tab-link" onclick="switchTab('bulk')">
+            <i class="fas fa-users me-1"></i> Bulk Onboarding Cart
+        </a>
+    </div>
+
+    {#  SINGLE ONBOARDING TAB  #}
+    <div id="singleOnboardTab">
+        <div class="card shadow-sm border" style="border-radius: 16px;">
+            <div class="card-header bg-white py-3">
+                <div class="fw-bold" style="font-size: 16px; color: var(--text-primary);">Onboard Single Agent</div>
+                <div class="text-muted" style="font-size: 12px;">Create and register an individual agent directly in the system.</div>
+            </div>
+            <div class="card-body">
+                <form id="singleForm" method="POST" action="{% url 'insurance:agents_store' %}">
+                    {% csrf_token %}
+                    {#  Personal Info  #}
+                    <div class="form-section-title">
+                        <i class="fas fa-id-card"></i> Personal Information
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 form-group-custom">
+                            <label>Full Name *</label>
+                            <input type="text" name="fullname" class="form-control-custom" placeholder="Enter agent's full name" required maxlength="70">
+                        </div>
+                        <div class="col-md-6 form-group-custom">
+                            <label>Email Address *</label>
+                            <input type="email" name="email" class="form-control-custom" placeholder="agent.email@example.com" required>
+                        </div>
+                        <div class="col-md-6 form-group-custom">
+                            <label>Mobile Number *</label>
+                            <input type="tel" name="mobile" class="form-control-custom" placeholder="10-digit mobile number" required maxlength="10">
+                        </div>
+                    </div>
+
+                    {#  Location  #}
+                    <div class="form-section-title">
+                        <i class="fas fa-map-marker-alt"></i> Location & Services
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 form-group-custom">
+                            <label>Service Pincode *</label>
+                            <input type="text" id="single_pincode" name="agent_pincode" class="form-control-custom" placeholder="Enter 6-digit pincode" required maxlength="6" oninput="validatePincode(this, 'single')">
+                            <div id="single-pincode-feedback" style="font-size: 11px; margin-top: 4px; display: none;"></div>
+                        </div>
+                        <div class="col-md-4 form-group-custom">
+                            <label>State *</label>
+                            <input type="text" id="single_state" name="state" class="form-control-custom" placeholder="State name" required readonly>
+                        </div>
+                        <div class="col-md-4 form-group-custom">
+                            <label>Experience (Years)</label>
+                            <input type="number" name="experience_range" class="form-control-custom" placeholder="e.g. 5" min="0">
+                        </div>
+                        <div class="col-md-6 form-group-custom">
+                            <label>Client Base Size</label>
+                            <input type="number" name="client_base" class="form-control-custom" placeholder="e.g. 150" min="0">
+                        </div>
+                        <div class="col-md-6 form-group-custom">
+                            <label>Team/Group Name</label>
+                            <input type="text" name="group" class="form-control-custom" placeholder="e.g. Team Alpha">
+                        </div>
+                    </div>
+
+                    {#  Insurance Segments  #}
+                    <div class="form-group-custom">
+                        <label>Insurance Segments * <span class="fw-normal text-muted">(Select at least one)</span></label>
+                        <div class="segment-grid">
+                            <div class="segment-checkbox">
+                                <input type="checkbox" id="single_segment_health" name="segments[]" value="health" checked>
+                                <label for="single_segment_health">
+                                    <i class="fas fa-heartbeat"></i>
+                                    <span>Health</span>
+                                </label>
+                            </div>
+                            <div class="segment-checkbox">
+                                <input type="checkbox" id="single_segment_life" name="segments[]" value="life">
+                                <label for="single_segment_life">
+                                    <i class="fas fa-user-shield"></i>
+                                    <span>Life</span>
+                                </label>
+                            </div>
+                            <div class="segment-checkbox">
+                                <input type="checkbox" id="single_segment_motor" name="segments[]" value="motor">
+                                <label for="single_segment_motor">
+                                    <i class="fas fa-car"></i>
+                                    <span>Motor</span>
+                                </label>
+                            </div>
+                            <div class="segment-checkbox">
+                                <input type="checkbox" id="single_segment_sme" name="segments[]" value="sme">
+                                <label for="single_segment_sme">
+                                    <i class="fas fa-building"></i>
+                                    <span>SME</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {#  Plan Selection  #}
+                    <div class="form-section-title">
+                        <i class="fas fa-ticket"></i> Select Subscription Plan
+                    </div>
+                    <div class="plans-grid">
+                        <div class="plan-card selected" onclick="selectPlan('single', 'basic')">
+                            <input type="radio" name="plan_type" id="single_plan_basic" value="basic" checked>
+                            <div class="plan-name">Starter's Plan</div>
+                            <div class="plan-price">₹2,359 <span style="font-size:11px; font-weight:500; color:#64748b;">/ Year (incl. GST)</span></div>
+                            <ul class="plan-features">
+                                <li><i class="fas fa-check"></i> Standard Directory Listing</li>
+                                <li><i class="fas fa-check"></i> Visibility for Nearby Leads</li>
+                                <li><i class="fas fa-check"></i> Email Notifications</li>
+                            </ul>
+                        </div>
+                        <div class="plan-card" onclick="selectPlan('single', 'professional')">
+                            <input type="radio" name="plan_type" id="single_plan_prof" value="professional">
+                            <div class="plan-name">Professional's Plan</div>
+                            <div class="plan-price">₹8,258 <span style="font-size:11px; font-weight:500; color:#64748b;">/ Year (incl. GST)</span></div>
+                            <ul class="plan-features">
+                                <li><i class="fas fa-check"></i> Premium Priority Listing</li>
+                                <li><i class="fas fa-check"></i> Active Marketing Boost</li>
+                                <li><i class="fas fa-check"></i> Priority Leads Visibility</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3 mt-4">
+                        <button type="submit" class="btn-primary-custom" style="padding:12px 24px; font-size:14px; font-weight:700;">
+                            <i class="fas fa-user-plus"></i> Onboard Agent
+                        </button>
+                        <a href="{% url 'insurance:agents_index' %}" class="btn btn-light" style="border-radius:10px; padding:12px 24px; font-size:14px; font-weight:700;">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {#  BULK ONBOARDING TAB  #}
+    <div id="bulkOnboardTab" style="display: none;">
+        <div class="card shadow-sm border" style="border-radius: 16px;">
+            <div class="card-header bg-white py-3">
+                <div class="fw-bold" style="font-size: 16px; color: var(--text-primary);">Add Agent to Bulk Cart</div>
+                <div class="text-muted" style="font-size: 12px;">Fill in details, click "Add to Cart", then repeat for more agents. Finally, process one combined payment.</div>
+            </div>
+            <div class="card-body">
+                <form id="bulkAddForm">
+                    {% csrf_token %}
+                    {#  Personal Info  #}
+                    <div class="form-section-title">
+                        <i class="fas fa-id-card"></i> Agent Details
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 form-group-custom">
+                            <label>Full Name *</label>
+                            <input type="text" name="fullname" class="form-control-custom" placeholder="Enter agent's full name" required maxlength="70">
+                        </div>
+                        <div class="col-md-6 form-group-custom">
+                            <label>Email Address *</label>
+                            <input type="email" name="email" class="form-control-custom" placeholder="agent.email@example.com" required>
+                        </div>
+                        <div class="col-md-6 form-group-custom">
+                            <label>Mobile Number *</label>
+                            <input type="tel" name="mobile" class="form-control-custom" placeholder="10-digit mobile number" required maxlength="10">
+                        </div>
+                    </div>
+
+                    {#  Location  #}
+                    <div class="form-section-title">
+                        <i class="fas fa-map-marker-alt"></i> Location & Services
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 form-group-custom">
+                            <label>Service Pincode *</label>
+                            <input type="text" id="bulk_pincode" name="agent_pincode" class="form-control-custom" placeholder="Enter 6-digit pincode" required maxlength="6" oninput="validatePincode(this, 'bulk')">
+                            <div id="bulk-pincode-feedback" style="font-size: 11px; margin-top: 4px; display: none;"></div>
+                        </div>
+                        <div class="col-md-4 form-group-custom">
+                            <label>State *</label>
+                            <input type="text" id="bulk_state" name="state" class="form-control-custom" placeholder="State name" required readonly>
+                        </div>
+                        <div class="col-md-4 form-group-custom">
+                            <label>Experience (Years)</label>
+                            <input type="number" name="experience_range" class="form-control-custom" placeholder="e.g. 5" min="0">
+                        </div>
+                        <div class="col-md-6 form-group-custom">
+                            <label>Client Base Size</label>
+                            <input type="number" name="client_base" class="form-control-custom" placeholder="e.g. 150" min="0">
+                        </div>
+                        <div class="col-md-6 form-group-custom">
+                            <label>Team/Group Name</label>
+                            <input type="text" name="group" class="form-control-custom" placeholder="e.g. Team Alpha">
+                        </div>
+                    </div>
+
+                    {#  Insurance Segments  #}
+                    <div class="form-group-custom">
+                        <label>Insurance Segments * <span class="fw-normal text-muted">(Select at least one)</span></label>
+                        <div class="segment-grid">
+                            <div class="segment-checkbox">
+                                <input type="checkbox" id="bulk_segment_health" name="segments[]" value="health" checked>
+                                <label for="bulk_segment_health">
+                                    <i class="fas fa-heartbeat"></i>
+                                    <span>Health</span>
+                                </label>
+                            </div>
+                            <div class="segment-checkbox">
+                                <input type="checkbox" id="bulk_segment_life" name="segments[]" value="life">
+                                <label for="bulk_segment_life">
+                                    <i class="fas fa-user-shield"></i>
+                                    <span>Life</span>
+                                </label>
+                            </div>
+                            <div class="segment-checkbox">
+                                <input type="checkbox" id="bulk_segment_motor" name="segments[]" value="motor">
+                                <label for="bulk_segment_motor">
+                                    <i class="fas fa-car"></i>
+                                    <span>Motor</span>
+                                </label>
+                            </div>
+                            <div class="segment-checkbox">
+                                <input type="checkbox" id="bulk_segment_sme" name="segments[]" value="sme">
+                                <label for="bulk_segment_sme">
+                                    <i class="fas fa-building"></i>
+                                    <span>SME</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {#  Plan Selection  #}
+                    <div class="form-section-title">
+                        <i class="fas fa-ticket"></i> Select Subscription Plan
+                    </div>
+                    <div class="plans-grid">
+                        <div class="plan-card selected" onclick="selectPlan('bulk', 'basic')">
+                            <input type="radio" name="plan_type" id="bulk_plan_basic" value="basic" checked>
+                            <div class="plan-name">Starter's Plan</div>
+                            <div class="plan-price">₹2,359 <span style="font-size:11px; font-weight:500; color:#64748b;">/ Year (incl. GST)</span></div>
+                            <ul class="plan-features">
+                                <li><i class="fas fa-check"></i> Standard Directory Listing</li>
+                                <li><i class="fas fa-check"></i> Visibility for Nearby Leads</li>
+                                <li><i class="fas fa-check"></i> Email Notifications</li>
+                            </ul>
+                        </div>
+                        <div class="plan-card" onclick="selectPlan('bulk', 'professional')">
+                            <input type="radio" name="plan_type" id="bulk_plan_prof" value="professional">
+                            <div class="plan-name">Professional's Plan</div>
+                            <div class="plan-price">₹8,258 <span style="font-size:11px; font-weight:500; color:#64748b;">/ Year (incl. GST)</span></div>
+                            <ul class="plan-features">
+                                <li><i class="fas fa-check"></i> Premium Priority Listing</li>
+                                <li><i class="fas fa-check"></i> Active Marketing Boost</li>
+                                <li><i class="fas fa-check"></i> Priority Leads Visibility</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-primary px-4 py-2" onclick="addAgentToCart()" style="border-radius:10px; font-weight:700; height: 46px; background:#0f3460; border-color:#0f3460;">
+                            <i class="fas fa-cart-plus me-1"></i> Add Agent to Cart
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {#  CART SECTION  #}
+        <div class="cart-section">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="fw-bold m-0" style="color:#0f3460;"><i class="fas fa-shopping-cart me-2"></i> Onboarding Cart (<span id="cartCount">0</span> Agents)</h5>
+                <button type="button" class="btn btn-sm btn-outline-danger px-3" onclick="clearCart()" style="border-radius:8px;">
+                    <i class="fas fa-trash-can"></i> Clear Cart
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Agent Details</th>
+                            <th>Pincode / State</th>
+                            <th>Selected Plan</th>
+                            <th>Amount</th>
+                            <th style="width: 80px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cartTableBody">
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                <i class="fas fa-basket-shopping fa-2x mb-2 opacity-50"></i>
+                                <div>Your onboarding cart is empty. Add agents above.</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {#  Cart Summary details  #}
+            <div id="cartSummaryContainer" style="display: none;">
+                <div class="row justify-content-end mt-4">
+                    <div class="col-md-5">
+                        <div class="card bg-light border-0" style="border-radius:12px;">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">Subtotal (Base Price):</span>
+                                    <span class="fw-semibold" id="cartSubtotal">₹0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="text-muted">GST (18%):</span>
+                                    <span class="fw-semibold" id="cartGst">₹0.00</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between mb-0">
+                                    <span class="fw-bold text-dark fs-5">Grand Total:</span>
+                                    <span class="fw-bold text-dark fs-5" id="cartTotal">₹0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {#  CHECKOUT OPTIONS  #}
+                        <div class="checkout-box">
+                            {% if request.user.insurance_profile.is_insurance_onboarding %}
+                                <div class="text-center">
+                                    <p class="text-muted" style="font-size:12px;">You will submit this bulk cart to your manager for approval.</p>
+                                    <button type="button" class="btn btn-success w-100 py-3 fw-bold" onclick="submitCartForApproval()" style="border-radius:10px;">
+                                        <i class="fas fa-paper-plane me-1"></i> Submit Cart to Manager
+                                    </button>
+                                </div>
+                            {% elif request.user.insurance_profile.is_insurance_manager or request.user.insurance_profile.is_insurance_accounts %}
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold d-block" style="font-size:12px;">Payment Method</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="payment_mode" id="pay_offline" value="offline" checked onclick="togglePaymentMode('offline')">
+                                        <label class="btn btn-outline-primary py-2" for="pay_offline" style="font-size:13px; font-weight:600; border-top-left-radius:8px; border-bottom-left-radius:8px;">Offline Payment</label>
+
+                                        <input type="radio" class="btn-check" name="payment_mode" id="pay_online" value="online" onclick="togglePaymentMode('online')">
+                                        <label class="btn btn-outline-primary py-2" for="pay_online" style="font-size:13px; font-weight:600; border-top-right-radius:8px; border-bottom-right-radius:8px;">Pay Online (Razorpay)</label>
+                                    </div>
+                                </div>
+
+                                {#  Offline Payment Fields  #}
+                                <div id="offlineFields">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-dark" style="font-size:12px;">Payment Mode / Method *</label>
+                                        <select id="bulk_payment_method" class="form-control-custom" style="background:white;">
+                                            <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
+                                            <option value="Cheque">Cheque</option>
+                                            <option value="UPI">UPI</option>
+                                            <option value="Cash">Cash</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-dark" style="font-size:12px;">Transaction / Payment Reference *</label>
+                                        <input type="text" id="bulk_payment_reference" class="form-control-custom" placeholder="e.g. TXN-108284729" style="background:white;">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold text-dark" style="font-size:12px;">Payment Date *</label>
+                                        <input type="date" id="bulk_payment_recorded_at" class="form-control-custom" style="background:white;" value="{% now "Y-m-d" %}">
+                                    </div>
+                                    <button type="button" class="btn btn-success w-100 py-3 fw-bold" onclick="checkoutOfflineCart()" style="border-radius:10px;">
+                                        <i class="fas fa-receipt me-1"></i> Record Offline Payment & Create
+                                    </button>
+                                </div>
+
+                                {#  Online Payment Fields  #}
+                                <div id="onlineFields" style="display: none;">
+                                    <button type="button" class="btn btn-primary w-100 py-3 fw-bold" onclick="checkoutOnlineCart()" style="border-radius:10px; background:#0f3460; border-color:#0f3460;">
+                                        <i class="fas fa-lock me-1"></i> Pay Online via Razorpay
+                                    </button>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var currentTab = 'single';
+    var cartList = {not not  json_encode(session('insurance_bulk_cart', [])) not not };
+
+    $(document).ready(function() {
+        renderCart();
+    });
+
+    function switchTab(tab) {
+        currentTab = tab;
+        $('.nav-tab-link').removeClass('active');
+        if (tab === 'single') {
+            $('.nav-tab-link').first().addClass('active');
+            $('#singleOnboardTab').show();
+            $('#bulkOnboardTab').hide();
+        } else {
+            $('.nav-tab-link').last().addClass('active');
+            $('#singleOnboardTab').hide();
+            $('#bulkOnboardTab').show();
+        }
+    }
+
+    function selectPlan(prefix, planType) {
+        if (prefix === 'single') {
+            $('#singleOnboardTab .plan-card').removeClass('selected');
+            if (planType === 'basic') {
+                $('#single_plan_basic').prop('checked', true);
+                $('#single_plan_basic').parent().addClass('selected');
+            } else {
+                $('#single_plan_prof').prop('checked', true);
+                $('#single_plan_prof').parent().addClass('selected');
+            }
+        } else {
+            $('#bulkOnboardTab .plan-card').removeClass('selected');
+            if (planType === 'basic') {
+                $('#bulk_plan_basic').prop('checked', true);
+                $('#bulk_plan_basic').parent().addClass('selected');
+            } else {
+                $('#bulk_plan_prof').prop('checked', true);
+                $('#bulk_plan_prof').parent().addClass('selected');
+            }
+        }
+    }
+
+    function togglePaymentMode(mode) {
+        if (mode === 'offline') {
+            $('#offlineFields').show();
+            $('#onlineFields').hide();
+        } else {
+            $('#offlineFields').hide();
+            $('#onlineFields').show();
+        }
+    }
+
+    // Pincode validation & state mapping
+    function validatePincode(input, prefix) {
+        var val = input.value.replace(/[^0-9]/g, '');
+        input.value = val;
+        var feedback = document.getElementById(prefix + '-pincode-feedback');
+        var stateField = document.getElementById(prefix + '_state');
+
+        if (val.length === 6) {
+            feedback.style.display = 'block';
+            feedback.innerHTML = '<span style="color:#0f3460;"><i class="fas fa-spinner fa-spin"></i> Fetching location...</span>';
+            
+            fetch('/api/pincode/fetch/' + val)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.success and res.data and res.data.state) {
+                        feedback.innerHTML = '<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Service Area: ' + (res.data.office_name or res.data.district) + ', ' + res.data.state + '</span>';
+                        stateField.value = res.data.state;
+                    } else {
+                        feedback.innerHTML = '<span style="color:#f59e0b;"><i class="fas fa-info-circle"></i> Valid pincode format</span>';
+                        stateField.value = '';
+                    }
+                })
+                .catch(() => {
+                    feedback.style.display = 'none';
+                    stateField.value = '';
+                });
+        } else {
+            feedback.style.display = 'none';
+            stateField.value = '';
+        }
+    }
+
+    // Render cart dynamically
+    function renderCart() {
+        var tbody = $('#cartTableBody');
+        var countSpan = $('#cartCount');
+        var subtotalSpan = $('#cartSubtotal');
+        var gstSpan = $('#cartGst');
+        var totalSpan = $('#cartTotal');
+        var summaryContainer = $('#cartSummaryContainer');
+
+        if (cartList.length === 0) {
+            tbody.html(`
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">
+                        <i class="fas fa-basket-shopping fa-2x mb-2 opacity-50"></i>
+                        <div>Your onboarding cart is empty. Add agents above.</div>
+                    </td>
+                </tr>
+            `);
+            countSpan.text(0);
+            summaryContainer.hide();
+            return;
+        }
+
+        tbody.empty();
+        var subtotal = 0;
+
+        cartList.forEach(function(item) {
+            subtotal += parseFloat(item.amount);
+            
+            tbody.append(`
+                <tr>
+                    <td>
+                        <div class="fw-bold text-dark">${item.fullname}</div>
+                        <div class="text-muted small">
+                            <i class="fas fa-envelope me-1"></i> ${item.email} | 
+                            <i class="fas fa-phone me-1"></i> ${item.mobile}
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-size:13px; font-weight:600;">Pin: ${item.agent_pincode}</div>
+                        <div class="text-muted small">${item.state}</div>
+                    </td>
+                    <td>
+                        <span class="badge bg-primary text-white px-2 py-1 fw-bold" style="font-size:11px; background:#0f3460 not important;">
+                            ${item.plan_name}
+                        </span>
+                    </td>
+                    <td class="fw-bold">₹${parseFloat(item.amount).toLocaleString('en-IN')}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-light text-danger border" onclick="removeAgentFromCart('${item.email}')" style="border-radius:8px;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
+        });
+
+        var basePrice = subtotal / 1.18;
+        var gst = subtotal - basePrice;
+
+        countSpan.text(cartList.length);
+        subtotalSpan.text('₹' + basePrice.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+        gstSpan.text('₹' + gst.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+        totalSpan.text('₹' + subtotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+        summaryContainer.show();
+    }
+
+    // Add Agent to cart via AJAX
+    function addAgentToCart() {
+        var form = $('#bulkAddForm');
+        
+        // Front-end validator for segments
+        if ($('#bulkOnboardTab input[name="segments[]"]:checked').length === 0) {
+            Swal.fire('Error', 'Please select at least one insurance segment.', 'warning');
+            return;
+        }
+
+        var btn = $('#bulkAddForm button');
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Adding...');
+
+        $.ajax({
+            url: "{% url 'insurance:add_to_cart' %}",
+            type: "POST",
+            data: form.serialize(),
+            success: function(res) {
+                if (res.success) {
+                    Swal.fire({
+                        title: 'Success',
+                        text: 'Agent has been added to your cart.',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    
+                    // Reset form fields but keep csrf
+                    form[0].reset();
+                    $('#bulk_state').val('');
+                    $('#bulk-pincode-feedback').hide();
+                    selectPlan('bulk', 'basic');
+                    
+                    cartList = res.cart;
+                    renderCart();
+                } else {
+                    Swal.fire('Error', res.message or 'Failed to add agent to cart.', 'error');
+                }
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false).html('<i class="fas fa-cart-plus me-1"></i> Add Agent to Cart');
+                
+                var msg = 'Failed to add agent to cart.';
+                if (xhr.status === 422) {
+                    var errors = xhr.responseJSON.errors;
+                    msg = '<ul class="text-start mb-0" style="padding-left:15px; font-size:13px;">';
+                    Object.keys(errors).forEach(function(k) {
+                        msg += '<li>' + errors[k][0] + '</li>';
+                    });
+                    msg += '</ul>';
+                }
+                
+                Swal.fire({
+                    title: 'Validation Failed',
+                    html: msg,
+                    icon: 'error'
+                });
+            },
+            complete: function() {
+                btn.prop('disabled', false).html('<i class="fas fa-cart-plus me-1"></i> Add Agent to Cart');
+            }
+        });
+    }
+
+    // Remove Agent from cart via AJAX
+    function removeAgentFromCart(email) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "Remove this agent from your onboarding cart?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, remove'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: "{% url 'insurance:remove_from_cart' %}",
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token }}",
+                        email: email
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            cartList = res.cart;
+                            renderCart();
+                            Swal.fire('Removednot ', 'Agent has been removed from the cart.', 'success');
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // Clear cart via AJAX
+    function clearCart() {
+        Swal.fire({
+            title: 'Clear Cart?',
+            text: "Remove all agents from your onboarding cart?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, clear all'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: "{% url 'insurance:clear_cart' %}",
+                    type: "POST",
+                    data: { _token: "{{ csrf_token }}" },
+                    success: function(res) {
+                        if (res.success) {
+                            cartList = [];
+                            renderCart();
+                            Swal.fire('Clearednot ', 'All agents removed from cart.', 'success');
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // Submit cart for manager approval
+    function submitCartForApproval() {
+        Swal.fire({
+            title: 'Submit Cart?',
+            text: 'Submit this bulk cart to your manager for approval?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#0f3460',
+            confirmButtonText: 'Yes, submit'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Submitting...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+                
+                $.ajax({
+                    url: "{% url 'insurance:checkout_cart' %}",
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token }}",
+                        payment_type: "approval"
+                    },
+                    success: function(res) {
+                        Swal.close();
+                        if (res.success) {
+                            Swal.fire('Success', res.message, 'success').then(() => {
+                                window.location.href = res.redirect;
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.close();
+                        Swal.fire('Error', 'Failed to submit cart.', 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    // Checkout cart with offline payment
+    function checkoutOfflineCart() {
+        var method = $('#bulk_payment_method').val();
+        var ref = $('#bulk_payment_reference').val().trim();
+        var date = $('#bulk_payment_recorded_at').val();
+
+        if (not ref) {
+            Swal.fire('Required', 'Please enter a payment/transaction reference number.', 'warning');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Confirm Payment Details',
+            html: `Recording Offline Payment:<br><strong>${method} (${ref})</strong><br>Date: ${date}`,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            confirmButtonText: 'Yes, Record & Checkout'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Processing...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                $.ajax({
+                    url: "{% url 'insurance:checkout_cart' %}",
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token }}",
+                        payment_type: "offline",
+                        payment_method: method,
+                        payment_reference: ref,
+                        payment_recorded_at: date
+                    },
+                    success: function(res) {
+                        Swal.close();
+                        if (res.success) {
+                            Swal.fire('Success', res.message, 'success').then(() => {
+                                window.location.href = res.redirect;
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.close();
+                        Swal.fire('Error', xhr.responseJSON.message or 'Checkout failed.', 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    // Checkout cart with Razorpay online payment
+    function checkoutOnlineCart() {
+        Swal.fire({
+            title: 'Preparing Secure Checkout',
+            text: 'Redirecting to Razorpay checkout gateway...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        $.ajax({
+            url: "{% url 'insurance:checkout_cart' %}",
+            type: "POST",
+            data: { _token: "{{ csrf_token }}" },
+            success: function(res) {
+                Swal.close();
+                if (res.success) {
+                    if (res.test_payment and not res.order_id) {
+                        // Fallback/Test complete
+                        processOnlineSuccess({ test_payment: true });
+                    } else {
+                        var options = {
+                            "key": res.key,
+                            "amount": res.amount,
+                            "currency": "INR",
+                            "name": "PadosiAgent Bulk Onboarding",
+                            "description": "Payment for Onboarding Cart",
+                            "order_id": res.order_id,
+                            "handler": function (response) {
+                                processOnlineSuccess(response);
+                            },
+                            "prefill": {
+                                "name": res.name,
+                                "email": res.email
+                            },
+                            "theme": { "color": "#0f3460" }
+                        };
+                        var rzp = new Razorpay(options);
+                        rzp.open();
+                    }
+                } else {
+                    Swal.fire('Error', res.message or 'Failed to prepare online payment.', 'error');
+                }
+            },
+            error: function(xhr) {
+                Swal.close();
+                Swal.fire('Error', xhr.responseJSON.message or 'Failed to prepare payment.', 'error');
+            }
+        });
+    }
+
+    // Process payment success callback
+    function processOnlineSuccess(paymentRes) {
+        Swal.fire({
+            title: 'Verifying Transaction...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        $.ajax({
+            url: "{% url 'insurance:checkout_online_success' %}",
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token }}",
+                razorpay_payment_id: paymentRes.razorpay_payment_id or '',
+                razorpay_order_id: paymentRes.razorpay_order_id or '',
+                razorpay_signature: paymentRes.razorpay_signature or '',
+                test_payment: paymentRes.test_payment ? 1 : 0
+            },
+            success: function(res) {
+                Swal.close();
+                if (res.success) {
+                    Swal.fire({
+                        title: 'Success',
+                        text: res.message,
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = res.redirect_url;
+                    });
+                } else {
+                    Swal.fire('Verification Failed', res.message or 'Unable to verify payment.', 'error');
+                }
+            },
+            error: function() {
+                Swal.close();
+                Swal.fire('Error', 'Payment verification failed.', 'error');
+            }
+        });
+    }
+</script>
+{% endblock %}

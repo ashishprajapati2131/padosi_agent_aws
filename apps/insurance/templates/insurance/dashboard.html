@@ -1,0 +1,952 @@
+{% extends 'insurance/base.html' %}
+
+{% block title %}Dashboard — Insurance Portal {% endblock %}
+{% block page-title %}Overview {% endblock %}
+
+{% block styles %}
+    {% if request.user.insurance_profile.is_insurance_manager %}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% endif %}
+    <style>
+        /* Modern hover transitions and premium touches */
+        .stat-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            border-radius: 16px;
+            padding: 22px 24px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            border: 1px solid var(--border-color);
+            background: #fff;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #0f3460, #1d5498);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        
+        /* Onboarding funnel progress steps */
+        .funnel-container {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);
+            border: 1px solid var(--border-color);
+            margin-bottom: 24px;
+        }
+        .funnel-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            margin-top: 15px;
+        }
+        .funnel-steps::after {
+            content: '';
+            position: absolute;
+            background: #e2e8f0;
+            height: 4px;
+            width: 100%;
+            top: 22px;
+            left: 0;
+            z-index: 1;
+        }
+        .funnel-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            width: 25%;
+        }
+        .funnel-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #f1f5f9;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            border: 3px solid #fff;
+            box-shadow: 0 0 0 2px #e2e8f0;
+            transition: all 0.3s;
+        }
+        .funnel-step.active .funnel-circle {
+            background: linear-gradient(135deg, #0f3460, #1d5498);
+            color: #fff;
+            box-shadow: 0 0 0 2px #1d5498;
+        }
+        .funnel-step.completed .funnel-circle {
+            background: #10b981;
+            color: #fff;
+            box-shadow: 0 0 0 2px #10b981;
+        }
+        .funnel-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-top: 8px;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+        .funnel-step.active .funnel-label {
+            color: #0f3460;
+        }
+        .funnel-step.completed .funnel-label {
+            color: #10b981;
+        }
+        .funnel-count {
+            font-size: 14px;
+            font-weight: 800;
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-top: 4px;
+            color: #475569;
+        }
+        .funnel-step.active .funnel-count {
+            background: #e8edf5;
+            color: #0f3460;
+        }
+        .funnel-step.completed .funnel-count {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .badge-step {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+    {#  ==============================================  #}
+    {#  1. SUPER USER (MANAGER) DASHBOARD               #}
+    {#  ==============================================  #}
+    {% if request.user.insurance_profile.is_insurance_manager %}
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+                    <div class="stat-value">{{ totalAgents }}</div>
+                    <div class="stat-label">Total Agents</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fas fa-user-check"></i></div>
+                    <div class="stat-value">{{ activeAgents }}</div>
+                    <div class="stat-label">Active Agents</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="stat-card">
+                    <div class="stat-icon amber"><i class="fas fa-user-clock"></i></div>
+                    <div class="stat-value">{{ inactiveAgents }}</div>
+                    <div class="stat-label">Inactive / Pending</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="stat-card">
+                    <div class="stat-icon purple"><i class="fas fa-handshake"></i></div>
+                    <div class="stat-value">{{ totalLeads }}</div>
+                    <div class="stat-label">Total Leads</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fas fa-user-group"></i></div>
+                    <div class="stat-value">{{ subUsers|length }}</div>
+                    <div class="stat-label">Sub-Users Team</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+                <div class="stat-card">
+                    <div class="stat-icon {% if pendingRequests > 0 %}'red'{% else %}'green'{% endif %}"><i class="fas fa-clock"></i></div>
+                    <div class="stat-value">{{ pendingRequests }}</div>
+                    <div class="stat-label">Pending Actions</div>
+                </div>
+            </div>
+        </div>
+
+        {#  Onboarding Requests Table (Actionable)  #}
+        <div class="card shadow-sm border mb-4">
+            <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-danger-light text-danger p-2 rounded-circle" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-clipboard-check"></i>
+                    </span>
+                    <span style="font-weight:700;font-size:15px;color:var(--text-primary);">Onboarding Requests Awaiting Your Approval</span>
+                </div>
+                <a href="{% url 'insurance:approvals_index' %}" class="btn-primary-custom" style="padding:6px 12px;font-size:12px;">View Full Queue</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="px-4 py-2">Agent Details</th>
+                                <th class="py-2">Onboarded By</th>
+                                <th class="py-2">Selected Plan</th>
+                                <th class="py-2">Requested Date</th>
+                                <th class="px-4 py-2 text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agent in pendingManagerApprovals %}
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <div class="fw-bold text-dark">{{ agent.fullname }}</div>
+                                        <div style="font-size:11px;color:#64748b;">{{ agent.email }} | {{ agent.mobile }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">{% if agent.onboardedBy %}agent.onboardedBy.fullname{% else %}'N/A'{% endif %}</div>
+                                        <div style="font-size:10px;color:#94a3b8;">Onboarding & Ops Officer</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-primary border px-2 py-1 fw-semibold">
+                                            {{ agent.plan_type|title }}
+                                        </span>
+                                    </td>
+                                    <td class="text-muted" style="font-size:12.5px;">
+                                        {{ agent.created_at|date:"d M Y, h:i A" }}
+                                    </td>
+                                    <td class="px-4 py-3 text-end">
+                                        <div class="d-flex gap-2 justify-content-end">
+                                            <form action="{% url 'insurance:approvals_approve' agent.id %}" method="POST" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-success px-3" style="border-radius:8px;font-size:12px;font-weight:600;">
+                                                    <i class="fas fa-check me-1"></i> Approve
+                                                </button>
+                                            </form>
+                                            <button type="button" class="btn btn-sm btn-outline-danger px-3" style="border-radius:8px;font-size:12px;font-weight:600;"
+                                                    data-toggle="modal" data-target="#rejectModal{{ agent.id }}">
+                                                <i class="fas fa-times me-1"></i> Reject
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted" style="font-size:13px;">
+                                        <i class="fas fa-circle-check fa-2x mb-2 text-success opacity-75"></i>
+                                        <div>All caught upnot  No onboarding requests awaiting your approval.</div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            {#  6-Month Chart  #}
+            <div class="col-lg-7">
+                <div class="card shadow-sm border h-100">
+                    <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
+                        <span style="font-weight:700;font-size:15px;color:var(--text-primary);">Agent Onboarding Trend</span>
+                        <span style="font-size:12px;color:#64748b;">Last 6 months</span>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="trendChart" height="135"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            {#  Team Members Status Panel  #}
+            <div class="col-lg-5">
+                <div class="card shadow-sm border h-100">
+                    <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
+                        <span style="font-weight:700;font-size:15px;color:var(--text-primary);">Sub-Users Team & Performance</span>
+                        <a href="{% url 'insurance:subusers_index' %}" class="btn-primary-custom" style="padding:6px 12px;font-size:12px;">Manage Team</a>
+                    </div>
+                    <div class="card-body p-0">
+                        {% for subUser in subUsers %}
+                            <div style="display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid #f1f5f9;">
+                                <div style="width:36px;height:36px;background:linear-gradient(135deg,#e8edf5,#1d5498);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0f3460;font-size:13px;font-weight:700;flex-shrink:0;">
+                                    {{ subUser.fullname|first|upper }}
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-primary);">{{ subUser.fullname }}</div>
+                                    <div style="font-size:11px;color:#64748b;">
+                                        {% if subUser.insurance_sub_role == 'onboarding' %}
+                                            <i class="fas fa-user-plus me-1"></i> Onboarding Officer
+                                        {% elif subUser.insurance_sub_role == 'sales' %}
+                                            <i class="fas fa-handshake me-1"></i> Sales Executive
+                                        {% elif subUser.insurance_sub_role == 'accounts' %}
+                                            <i class="fas fa-file-invoice-dollar me-1"></i> Accounts Head
+                                        {% elif subUser.insurance_sub_role == 'manager' %}
+                                            <i class="fas fa-user-tie me-1"></i> Co-Manager
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <span class="badge {% if subUser.status == 'active' %}'bg-success-light text-success'{% else %}'bg-danger-light text-danger'{% endif %} border px-2 py-1" style="font-size:10px;text-transform:uppercase;font-weight:700;">
+                                    {{ subUser.status }}
+                                </span>
+                            </div>
+                        {% empty %}
+                            <div style="padding:40px 32px;text-align:center;color:#94a3b8;">
+                                <i class="fas fa-users-gear" style="font-size:28px;margin-bottom:8px;display:block;opacity:0.4;"></i>
+                                No sub-users added yet.
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {#  Quick Actions  #}
+        <div class="row g-3 mt-2">
+            <div class="col-12">
+                <div class="card shadow-sm border">
+                    <div class="card-body d-flex gap-3 flex-wrap">
+                        <a href="{% url 'insurance:agents_create' %}" class="btn-primary-custom">
+                            <i class="fas fa-user-plus"></i> Onboard New Agent
+                        </a>
+                        <a href="{% url 'insurance:notify_form' %}" class="btn-primary-custom" style="background:linear-gradient(135deg,#0f766e,#0d9488);">
+                            <i class="fas fa-bell"></i> Send Notification
+                        </a>
+                        <a href="{% url 'insurance:subusers_index' %}" class="btn-primary-custom" style="background:linear-gradient(135deg,#4f46e5,#6366f1);">
+                            <i class="fas fa-users-gear"></i> Manage Sub-Users
+                        </a>
+                        <a href="{% url 'insurance:approvals_index' %}" class="btn-primary-custom" style="background:linear-gradient(135deg,#ca8a04,#eab308);">
+                            <i class="fas fa-clipboard-check"></i> Pending Approvals
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {#  ==============================================  #}
+    {#  2. SUB-USER 1 (ONBOARDING & OPS) DASHBOARD      #}
+    {#  ==============================================  #}
+    {% elif request.user.insurance_profile.is_insurance_onboarding %}
+        {#  Visual Funnel Progress Bar  #}
+        <div class="funnel-container">
+            <h5 class="fw-bold text-dark mb-4" style="font-size: 15px;"><i class="fas fa-filter text-primary me-2"></i>Onboarding Funnel Status</h5>
+            <div class="funnel-steps">
+                <div class="funnel-step completed">
+                    <div class="funnel-circle"><i class="fas fa-user-plus"></i></div>
+                    <div class="funnel-label">Onboarded by Me</div>
+                    <div class="funnel-count">{{ totalOnboardedByMe }}</div>
+                </div>
+                <div class="funnel-step active">
+                    <div class="funnel-circle"><i class="fas fa-user-clock"></i></div>
+                    <div class="funnel-label">Awaiting Manager</div>
+                    <div class="funnel-count">{{ pendingManager }}</div>
+                </div>
+                <div class="funnel-step">
+                    <div class="funnel-circle"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div class="funnel-label">Awaiting Payment</div>
+                    <div class="funnel-count">{{ pendingPayment }}</div>
+                </div>
+                <div class="funnel-step">
+                    <div class="funnel-circle"><i class="fas fa-check-double"></i></div>
+                    <div class="funnel-label">Awaiting Admin</div>
+                    <div class="funnel-count">{{ pendingAdmin }}</div>
+                </div>
+                <div class="funnel-step">
+                    <div class="funnel-circle"><i class="fas fa-circle-check"></i></div>
+                    <div class="funnel-label">Active & Listed</div>
+                    <div class="funnel-count">{{ activeAgents }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border mb-4">
+            <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
+                <span class="fw-bold text-dark" style="font-size:15px;">My Recent Registrations</span>
+                <a href="{% url 'insurance:agents_index' %}" class="btn-primary-custom" style="padding:6px 12px;font-size:12px;">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="px-4 py-3">Agent Name</th>
+                                <th class="py-3">Email / Mobile</th>
+                                <th class="py-3">Plan Details</th>
+                                <th class="py-3">Registration Stage</th>
+                                <th class="px-4 py-3 text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agent in recentAgents %}
+                                <tr>
+                                    <td class="px-4 py-3 fw-bold text-dark">
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="user-avatar" style="width:34px;height:34px;font-size:13px;">
+                                                {{ agent.fullname|first|upper }}
+                                            </div>
+                                            {{ agent.fullname }}
+                                        </div>
+                                    </td>
+                                    <td>{{ agent.email }}<br><span class="text-muted" style="font-size:11px;">{{ agent.mobile }}</span></td>
+                                    <td>
+                                        <span class="badge bg-light text-primary border px-2 py-1 fw-semibold">
+                                            {{ agent.plan_type|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if agent.status == 'pending_manager_approval' %}
+                                            <span class="badge-step bg-warning text-dark"><i class="fas fa-clock me-1"></i> Awaiting Manager Approval</span>
+                                        {% elif agent.status == 'pending_accounts_payment' %}
+                                            <span class="badge-step bg-primary-light text-primary"><i class="fas fa-file-invoice-dollar me-1"></i> Awaiting Payment Confirmation</span>
+                                        {% elif agent.status == 'pending_admin_approval' %}
+                                            <span class="badge-step bg-info text-dark"><i class="fas fa-check-double me-1"></i> Awaiting Admin Activation</span>
+                                        {% elif agent.status == 'active' %}
+                                            <span class="badge-step bg-success text-white"><i class="fas fa-circle-check me-1"></i> Active & Listed</span>
+                                        {% elif agent.status == 'rejected' %}
+                                            <span class="badge-step bg-danger text-white"><i class="fas fa-circle-xmark me-1"></i> Rejected</span>
+                                        {% else %}
+                                            <span class="badge-step bg-secondary text-white">{{ agent.status|title }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-end">
+                                        <a href="{% url 'insurance:agents_show' agent.id %}" class="btn btn-sm btn-outline-primary px-3" style="border-radius:8px;font-size:12px;">Details</a>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="fas fa-user-plus fa-2x mb-2 opacity-45"></i>
+                                        <div>No agents onboarded yet.</div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {#  Quick Actions  #}
+        <div class="card shadow-sm border">
+            <div class="card-body d-flex gap-3">
+                <a href="{% url 'insurance:agents_create' %}" class="btn-primary-custom">
+                    <i class="fas fa-user-plus"></i> Onboard New Agent
+                </a>
+                <a href="{% url 'insurance:agents_index' %}" class="btn-primary-custom" style="background:linear-gradient(135deg,#0d9488,#0f766e);">
+                    <i class="fas fa-list-check"></i> View My Onboardings List
+                </a>
+            </div>
+        </div>
+
+    {#  ==============================================  #}
+    {#  3. SUB-USER 2 (SALES TEAM) DASHBOARD           #}
+    {#  ==============================================  #}
+    {% elif request.user.insurance_profile.is_insurance_sales %}
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fas fa-user-check"></i></div>
+                    <div class="stat-value">{{ activeAgents }}</div>
+                    <div class="stat-label">Active Agents Under Our Company</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fas fa-handshake"></i></div>
+                    <div class="stat-value">{{ totalLeads }}</div>
+                    <div class="stat-label">Total Leads Collected</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            {#  Leads Activity Panel  #}
+            <div class="col-lg-7">
+                <div class="card shadow-sm border h-100">
+                    <div class="card-header bg-white py-3">
+                        <span class="fw-bold text-dark" style="font-size:15px;">Recent Lead Activity</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="px-4 py-2">Lead Name</th>
+                                        <th class="py-2">Contact</th>
+                                        <th class="py-2">Assigned Agent</th>
+                                        <th class="py-2">Requirement</th>
+                                        <th class="px-4 py-2 text-end">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for lead in recentLeads %}
+                                        <tr>
+                                            <td class="px-4 py-3 fw-bold text-dark">{{ lead.customer_name|default:'Unknown' }}</td>
+                                            <td>{{ lead.customer_email }}<br><span class="text-muted" style="font-size:11px;">{{ lead.customer_mobile }}</span></td>
+                                            <td class="fw-semibold text-primary">{{ lead.agent_name }}</td>
+                                            <td><span class="badge bg-light text-dark border">{{ lead.insurance_type|default:'General' }}</span></td>
+                                            <td class="px-4 py-3 text-end text-muted" style="font-size:12px;">
+                                                {{ lead.created_at|date:"d M, h:i A" }}
+                                            </td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="5" class="text-center py-5 text-muted">
+                                                <i class="fas fa-handshake-slash fa-2x mb-2 opacity-45"></i>
+                                                <div>No recent leads received.</div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {#  Top Performing Agents Panel  #}
+            <div class="col-lg-5">
+                <div class="card shadow-sm border h-100">
+                    <div class="card-header bg-white py-3">
+                        <span class="fw-bold text-dark" style="font-size:15px;"><i class="fas fa-trophy text-warning me-2"></i>Top Performing Agents</span>
+                    </div>
+                    <div class="card-body p-0">
+                        {% for agent in topAgents %}
+                            <div style="display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid #f1f5f9;">
+                                <div style="font-weight: 800; font-size: 14px; width: 20px; color: {% if forloop.counter0 == 0 %}'#eab308'{% elif forloop.counter0 == 1 %}'#94a3b8'{% elif forloop.counter0 == 2 %}'#b45309'{% else %}'#64748b'{% endif %}">
+                                    #{{ forloop.counter }}
+                                </div>
+                                <div style="width:34px;height:34px;background:linear-gradient(135deg,#e8edf5,#1d5498);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0f3460;font-size:12px;font-weight:700;flex-shrink:0;">
+                                    {{ agent.fullname|first|upper }}
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ agent.fullname }}</div>
+                                    <div style="font-size:11px;color:#64748b;">{{ agent.email }}</div>
+                                </div>
+                                <span class="badge bg-primary-light text-primary px-3 py-2 rounded-pill fw-bold" style="font-size:12px;">
+                                    {{ agent.leads_count }} Leads
+                                </span>
+                            </div>
+                        {% empty %}
+                            <div style="padding:40px 32px;text-align:center;color:#94a3b8;">
+                                <i class="fas fa-users" style="font-size:28px;margin-bottom:8px;display:block;opacity:0.4;"></i>
+                                No active agents listed.
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {#  Quick Actions  #}
+        <div class="card shadow-sm border">
+            <div class="card-body d-flex gap-3">
+                <a href="{% url 'insurance:notify_form' %}" class="btn-primary-custom">
+                    <i class="fas fa-bell"></i> Send Push Notification
+                </a>
+                <a href="{% url 'insurance:agents_index' %}" class="btn-primary-custom" style="background:linear-gradient(135deg,#0d9488,#0f766e);">
+                    <i class="fas fa-users"></i> View Agents List
+                </a>
+            </div>
+        </div>
+
+    {#  ==============================================  #}
+    {#  4. SUB-USER 3 (ACCOUNTS & FINANCE) DASHBOARD    #}
+    {#  ==============================================  #}
+    {% elif request.user.insurance_profile.is_insurance_accounts %}
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <div class="stat-icon red"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div class="stat-value">{{ pendingPaymentsCount }}</div>
+                    <div class="stat-label">Pending Payments Awaiting Me</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fas fa-check-double"></i></div>
+                    <div class="stat-value">{{ processedPaymentsCount }}</div>
+                    <div class="stat-label">Total Payments Processed by Me</div>
+                </div>
+            </div>
+        </div>
+
+        {#  Dashboard Pending Payments List  #}
+        <div class="card shadow-sm border mb-4">
+            <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-warning-light text-warning p-2 rounded-circle" style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-receipt"></i>
+                    </span>
+                    <span class="fw-bold text-dark" style="font-size:15px;">Awaiting Payment Confirmation (Dashboard Queue)</span>
+                </div>
+                <a href="{% url 'insurance:payments_index' %}" class="btn-primary-custom" style="padding:6px 12px;font-size:12px;">View Payments Queue</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="px-4 py-2">Agent Details</th>
+                                <th class="py-2">Selected Plan</th>
+                                <th class="py-2">Approved By</th>
+                                <th class="px-4 py-2 text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agent in pendingPayments %}
+                                @php
+                                    sub = agent.subscriptions.first();
+                                @endphp
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <div class="fw-bold text-dark">{{ agent.fullname }}</div>
+                                        <div style="font-size:11px;color:#64748b;">{{ agent.email }} | {{ agent.mobile }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold text-primary" style="font-size:13px;">
+                                            {% if sub %}sub.selected_plan{% else %}agent.plan_type|title{% endif %}
+                                        </div>
+                                        <div class="text-muted" style="font-size:11px;">
+                                            Due: <strong>₹{% if sub %}sub.registration_amount{% else %}0{% endif %}</strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold text-dark" style="font-size:12px;">Manager</div>
+                                        <div class="text-muted" style="font-size:10px;">Super User Approved</div>
+                                    </td>
+                                    <td class="px-4 py-3 text-end">
+                                        {#  Record Payment Button Triggering Modal  #}
+                                        <button type="button" class="btn btn-sm btn-primary-custom px-3" style="border-radius:8px;font-size:12px;"
+                                                data-toggle="modal" data-target="#dashboardPaymentModal{{ agent.id }}">
+                                            <i class="fas fa-file-signature me-1"></i> Record Payment
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted" style="font-size: 13px;">
+                                        <i class="fas fa-file-invoice-dollar fa-2x mb-2 text-success opacity-75"></i>
+                                        <div>Awesomenot  No pending payments to record.</div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border mb-4">
+            <div class="card-header bg-white py-3">
+                <span class="fw-bold text-dark" style="font-size:15px;">Recent Payments Confirmed by Me</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="px-4 py-2">Agent Name</th>
+                                <th class="py-2">Method</th>
+                                <th class="py-2">Reference / UTR ID</th>
+                                <th class="py-2">Recorded Date</th>
+                                <th class="px-4 py-2 text-end">Onboarding Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for agent in recentPayments %}
+                                <tr>
+                                    <td class="px-4 py-3 fw-bold text-dark">{{ agent.fullname }}</td>
+                                    <td class="fw-semibold text-muted">{{ agent.payment_method }}</td>
+                                    <td><code class="text-primary fw-bold">{{ agent.payment_reference }}</code></td>
+                                    <td class="text-muted" style="font-size:12.5px;">
+                                        {% if agent.payment_recorded_at %}agent.payment_recorded_at|date{% else %}"d M Y, h:i A" : 'N/A'{% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-end">
+                                        <span class="badge-status {% if agent.status == 'active' %} badge-active {% else %} badge-pending {% endif %}">
+                                            {{ agent.status|title }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="fas fa-receipt fa-2x mb-2 opacity-45"></i>
+                                        <div>No processed payments recorded yet.</div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {#  Quick Actions  #}
+        <div class="card shadow-sm border">
+            <div class="card-body d-flex gap-3">
+                <a href="{% url 'insurance:payments_index' %}" class="btn-primary-custom">
+                    <i class="fas fa-file-invoice-dollar"></i> Go to Payments Queue
+                </a>
+            </div>
+        </div>
+
+    {% endif %}
+
+{#  Modals Section (outside grids/tables to avoid rendering/stacking context issues)  #}
+{% if request.user.insurance_profile.is_insurance_manager and pendingManagerApprovals %}
+    {% for agent in pendingManagerApprovals %}
+        {#  Reject Modal  #}
+        <div class="modal fade" id="rejectModal{{ agent.id }}" tabindex="-1" role="dialog" aria-labelledby="rejectModalLabel{{ agent.id }}" aria-hidden="true" style="text-align: left;">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content" style="border-radius: 16px;">
+                    <div class="modal-header border-bottom-0 pt-4 px-4">
+                        <h5 class="modal-title fw-bold text-dark" id="rejectModalLabel{{ agent.id }}">Reject Onboarding Request</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form action="{% url 'insurance:approvals_reject' agent.id %}" method="POST">
+                        {% csrf_token %}
+                        <div class="modal-body px-4">
+                            <p style="font-size: 13.5px; color:#64748b;">Are you sure you want to reject the onboarding request for <strong>{{ agent.fullname }}</strong>? Please state a reason below.</p>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark" style="font-size: 12px;">Reason for Rejection <span style="color:red;">*</span></label>
+                                <textarea name="rejection_reason" class="form-control" rows="3" required placeholder="Describe what needs correction..." style="border-radius:10px;"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top-0 pb-4 px-4">
+                            <button type="button" class="btn btn-light px-4" data-dismiss="modal" style="border-radius: 10px; font-weight:600;">Cancel</button>
+                            <button type="submit" class="btn btn-danger px-4" style="border-radius: 10px; font-weight:600;">Confirm Rejection</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% endif %}
+
+{% if request.user.insurance_profile.is_insurance_accounts and pendingPayments %}
+    {% for agent in pendingPayments %}
+        @php
+            sub = agent.subscriptions.first();
+            amount = sub ? sub.registration_amount : (agent.plan_type === 'starter' ? 2359 : 8258);
+        @endphp
+        {#  Record Payment Modal  #}
+        <div class="modal fade" id="dashboardPaymentModal{{ agent.id }}" tabindex="-1" role="dialog" aria-labelledby="dashboardPaymentModalLabel{{ agent.id }}" aria-hidden="true" style="text-align: left;">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content" style="border-radius: 16px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                    <div class="modal-header bg-light border-bottom-0 pt-4 px-4 pb-3">
+                        <h5 class="modal-title fw-bold text-dark" id="dashboardPaymentModalLabel{{ agent.id }}">
+                            <i class="fas fa-credit-card text-primary me-2"></i> Onboarding Payment Summary
+                        </h5>
+                        <button type="button" class="close border-0 bg-transparent" data-dismiss="modal" aria-label="Close" style="font-size: 24px; line-height: 1; color: var(--text-muted); outline: none;">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body px-4 pt-3">
+                        <div class="p-3 mb-3" style="background-color: var(--primary-light); border-radius: 12px; border: 1px dashed rgba(29, 84, 152, 0.25);">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small fw-semibold">Agent Name:</span>
+                                <span class="text-dark fw-bold small">{{ agent.fullname }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small fw-semibold">Email Address:</span>
+                                <span class="text-dark small">{{ agent.email }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted small fw-semibold">Mobile Number:</span>
+                                <span class="text-dark small">{{ agent.mobile }}</span>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm table-borderless align-middle mb-0">
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid var(--border-color);">
+                                        <td class="py-2 text-muted fw-semibold" style="font-size: 13px;">Selected Subscription Plan</td>
+                                        <td class="py-2 text-end fw-bold text-primary" style="font-size: 13px;">
+                                            {% if sub %}sub.selected_plan{% else %}(agent.plan_type === 'starter' ? "Starter's Plan" : "Professional's Plan"){% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2 text-muted fw-bold" style="font-size: 14px;">Total Amount Due (inc. GST)</td>
+                                        <td class="py-2 text-end fw-extrabold text-success" style="font-size: 16px;">
+                                            ₹{{ amount }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="alert alert-info py-2 px-3 d-flex align-items-start gap-2 mb-0" style="border-radius: 10px; font-size: 11.5px; border: none; background-color: #f0f6ff; color: #1e40af;">
+                            <i class="fas fa-circle-info mt-1" style="font-size: 13px;"></i>
+                            <div>
+                                <strong>Online checkout is mandatory.</strong> Clicking the button below will securely connect to the Razorpay Gateway to complete the agent's subscription fee payment.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0 pb-4 pt-3 px-4 d-flex justify-content-between gap-2">
+                        <button type="button" class="btn btn-light px-4" data-dismiss="modal" style="border-radius: 10px; height: 44px; font-weight: 600; width: 35%;">Cancel</button>
+                        <button type="button" onclick="payAgentOnline({{ agent.id }})" class="btn btn-primary btn-primary-custom px-4 flex-grow-1" style="border-radius: 10px; height: 44px; font-weight: 700; width: 60%;">
+                            <i class="fas fa-shield-halved me-1"></i> Pay ₹{{ amount }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+    {% if request.user.insurance_profile.is_insurance_manager %}
+        <script>
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: @json(trendLabels ?? []),
+                    datasets: [{
+                        label: 'Agents Onboarded',
+                        data: @json(trendData ?? []),
+                        backgroundColor: 'rgba(29, 84, 152, 0.15)',
+                        borderColor: '#1d5498',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        </script>
+    {% endif %}
+
+    {% if request.user.insurance_profile.is_insurance_accounts %}
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+        <script>
+            function payAgentOnline(agentId) {
+                Swal.fire({
+                    title: 'Preparing Secure Checkout',
+                    text: 'Connecting to Razorpay gateway...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                var orderUrl = "{% url 'insurance:create_razorpay_order' ':agent' %}".replace(':agent', agentId);
+
+                $.ajax({
+                    url: orderUrl,
+                    type: "POST",
+                    data: { _token: "{{ csrf_token }}" },
+                    success: function(res) {
+                        Swal.close();
+                        if (res.success) {
+                            $(`#paymentModal${agentId}`).modal('hide');
+                            $(`#dashboardPaymentModal${agentId}`).modal('hide');
+
+                            if (res.test_payment and not res.order_id) {
+                                verifyAgentPayment(agentId, { test_payment: true });
+                            } else {
+                                var options = {
+                                    "key": res.key,
+                                    "amount": res.amount,
+                                    "currency": "INR",
+                                    "name": "PadosiAgent Onboarding",
+                                    "description": "Payment for Agent Registration Fee",
+                                    "order_id": res.order_id,
+                                    "handler": function (response) {
+                                        verifyAgentPayment(agentId, response);
+                                    },
+                                    "prefill": {
+                                        "name": res.name,
+                                        "email": res.email
+                                    },
+                                    "theme": { "color": "#0f3460" }
+                                };
+                                var rzp = new Razorpay(options);
+                                rzp.open();
+                            }
+                        } else {
+                            Swal.fire('Error', res.message or 'Failed to prepare payment.', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.close();
+                        Swal.fire('Error', (xhr.responseJSON and xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to prepare payment.', 'error');
+                    }
+                });
+            }
+
+            function verifyAgentPayment(agentId, paymentData) {
+                Swal.fire({
+                    title: 'Verifying Transaction...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                var successUrl = "{% url 'insurance:handle_payment_success' ':agent' %}".replace(':agent', agentId);
+
+                $.ajax({
+                    url: successUrl,
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token }}",
+                        razorpay_payment_id: paymentData.razorpay_payment_id or '',
+                        razorpay_order_id: paymentData.razorpay_order_id or '',
+                        razorpay_signature: paymentData.razorpay_signature or '',
+                        test_payment: paymentData.test_payment ? 1 : 0
+                    },
+                    success: function(res) {
+                        Swal.close();
+                        if (res.success) {
+                            Swal.fire({
+                                title: 'Success',
+                                text: res.message,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            Swal.fire('Verification Failed', res.message or 'Unable to verify payment.', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.close();
+                        Swal.fire('Error', (xhr.responseJSON and xhr.responseJSON.message) ? xhr.responseJSON.message : 'Payment verification failed.', 'error');
+                    }
+                });
+            }
+        </script>
+    {% endif %}
+{% endblock %}

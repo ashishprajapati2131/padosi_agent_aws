@@ -1,0 +1,196 @@
+{% extends 'insurance/base.html' %}
+
+{% block title %}{{ agent.fullname }} — Insurance Portal{% endblock %}
+{% block page-title %}Agent Detail {% endblock %}
+
+{% block content %}
+{#  Breadcrumb  #}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;color:#64748b;">
+    <a href="{% url 'insurance:agents_index' %}" style="color:#0f3460;text-decoration:none;font-weight:600;">
+        <i class="fas fa-arrow-left me-1"></i> My Agents
+    </a>
+    <i class="fas fa-chevron-right" style="font-size:10px;"></i>
+    <span>{{ agent.fullname }}</span>
+</div>
+
+<div class="row g-4">
+    {#  Left: Agent Profile Card  #}
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-body text-center" style="padding:28px;">
+                {#  Avatar  #}
+                <div style="width:72px;height:72px;background:linear-gradient(135deg,#0f3460,#1d5498);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:800;margin:0 auto 14px;">
+                    {{ agent.fullname|first|upper }}
+                </div>
+                <div style="font-size:18px;font-weight:800;margin-bottom:4px;">{{ agent.fullname }}</div>
+                <div style="font-size:13px;color:#64748b;margin-bottom:14px;">{{ agent.email }}</div>
+                <span class="badge-status
+                    {% if agent.status == 'active' %} badge-active
+                    {% elif agent.status == 'inactive' %} badge-inactive
+                    {% elif agent.status == 'pending_approval' %} badge-pending
+                    {% else %} badge-inactive
+                    {% endif %}" style="font-size:12px;padding:5px 14px;">
+                    {{ agent.status|title }}
+                </span>
+            </div>
+            <div style="border-top:1px solid #f1f5f9;padding:16px 22px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+                    <span style="font-size:12px;color:#64748b;">Mobile</span>
+                    <span style="font-size:13px;font-weight:600;">{{ agent.mobile|default:'—' }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+                    <span style="font-size:12px;color:#64748b;">Experience</span>
+                    <span style="font-size:13px;font-weight:600;">{% if agent.experience_range %}agent.experience_range . ' yrs'{% else %}'—'{% endif %}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+                    <span style="font-size:12px;color:#64748b;">Client Base</span>
+                    <span style="font-size:13px;font-weight:600;">{{ agent.client_base|default:'—' }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+                    <span style="font-size:12px;color:#64748b;">Group</span>
+                    <span style="font-size:13px;font-weight:600;color:#0f3460;">{{ agent.group|default:'—' }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="font-size:12px;color:#64748b;">Joined</span>
+                    <span style="font-size:13px;font-weight:600;">{{ agent.created_at|date:"d M Y" }}</span>
+                </div>
+            </div>
+        </div>
+
+        {#  Subscription Card  #}
+        <div class="card mb-4">
+            <div class="card-header">
+                <span style="font-weight:700;font-size:14px;"><i class="fas fa-credit-card me-2" style="color:#0f3460;"></i>Subscription</span>
+            </div>
+            <div class="card-body">
+                {% if agent.activeSubscription %}
+                    <div style="background:#ecfdf5;border-radius:10px;padding:14px;text-align:center;">
+                        <div style="font-size:14px;font-weight:700;color:#059669;">{{ agent.activeSubscription.selected_plan }}</div>
+                        <div style="font-size:12px;color:#64748b;margin-top:4px;">
+                            Expires: {{ agent.activeSubscription.expires_at|date:"d M Y" }}
+                        </div>
+                    </div>
+                {% else %}
+                    <div style="background:#fef2f2;border-radius:10px;padding:14px;text-align:center;">
+                        <div style="font-size:13px;color:#dc2626;font-weight:600;">No Active Subscription</div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {#  Activation Request Card  #}
+        <div class="card">
+            <div class="card-header">
+                <span style="font-weight:700;font-size:14px;"><i class="fas fa-toggle-on me-2" style="color:#0f3460;"></i>Status Management</span>
+            </div>
+            <div class="card-body">
+                {% if pendingRequest %}
+                    <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:10px;padding:14px;margin-bottom:14px;">
+                        <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px;">
+                            <i class="fas fa-clock me-1"></i> Request Pending
+                        </div>
+                        <div style="font-size:12px;color:#92400e;">
+                            Your <strong>{{ pendingRequest.action|title }}</strong> request is awaiting admin approval.
+                        </div>
+                        <div style="font-size:11px;color:#a16207;margin-top:6px;">
+                            Submitted: {{ pendingRequest.created_at|timesince }}
+                        </div>
+                    </div>
+                {% else %}
+                    <p style="font-size:12px;color:#64748b;margin-bottom:14px;">
+                        To change this agent's status, submit a request to admin. The change will be applied after admin approval.
+                    </p>
+
+                    {#  Activate Request  #}
+                    {% if agent.status not == 'active' %}
+                    <form method="POST" action="{% url 'insurance:request_status_change' agent.id %}" class="mb-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="activate">
+                        <textarea name="reason" class="form-control mb-2" rows="2" placeholder="Reason for activation request..." required style="font-size:13px;border-radius:10px;"></textarea>
+                        <button type="submit" class="btn-primary-custom w-100" style="justify-content:center;background:linear-gradient(135deg,#059669,#10b981);">
+                            <i class="fas fa-user-check"></i> Request Activation
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {#  Deactivate Request  #}
+                    {% if agent.status == 'active' %}
+                    <form method="POST" action="{% url 'insurance:request_status_change' agent.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="deactivate">
+                        <textarea name="reason" class="form-control mb-2" rows="2" placeholder="Reason for deactivation request..." required style="font-size:13px;border-radius:10px;"></textarea>
+                        <button type="submit" class="btn btn-outline-danger w-100" style="border-radius:10px;font-size:13px;font-weight:600;"
+                            onclick="return confirm('Submit deactivation request for this agent?')">
+                            <i class="fas fa-user-xmark me-1"></i> Request Deactivation
+                        </button>
+                    </form>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {#  Right: Leads  #}
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span style="font-weight:700;font-size:15px;"><i class="fas fa-handshake me-2" style="color:#0f3460;"></i>Agent Leads</span>
+                <span style="background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;">
+                    {{ leads.total() }} total
+                </span>
+            </div>
+            <div class="card-body p-0">
+                {% if leads. %}|length
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="padding:12px 22px;">Name</th>
+                                <th>Contact</th>
+                                <th>Service</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                             {% for lead in leads %}
+                             <tr>
+                                 <td style="padding:12px 22px;">
+                                     <div style="font-weight:600;font-size:13.5px;">{{ lead.customer_name|default:'N/A' }}</div>
+                                 </td>
+                                 <td>
+                                     <div style="font-size:12px;">{{ lead.customer_mobile|default:'—' }}</div>
+                                     <div style="font-size:11px;color:#94a3b8;">{{ lead.customer_email ?? '' }}</div>
+                                 </td>
+                                 <td style="font-size:12px;color:#64748b;">{{ lead.service_type ?? lead.insurance_type|default:'—' }}</td>
+                                 <td>
+                                     @php status = lead.lead_status|default:'new'; @endphp
+                                     <span class="badge-status
+                                         {% if status == 'new' %} badge-pending
+                                         {% elif status == 'closed' %} badge-inactive
+                                         {% else %} badge-active
+                                         {% endif %}">
+                                         {{ status|title }}
+                                     </span>
+                                 </td>
+                                 <td style="font-size:12px;color:#64748b;">{{ lead.created_at|date:"d M Y" }}</td>
+                             </tr>
+                             {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="padding:14px 22px;">
+                    {% include 'insurance/pagination.html' with page_obj=leads %}
+                </div>
+                {% else %}
+                <div style="text-align:center;padding:50px 20px;color:#94a3b8;">
+                    <i class="fas fa-handshake" style="font-size:36px;display:block;margin-bottom:12px;opacity:0.3;"></i>
+                    <div style="font-size:14px;font-weight:600;color:#64748b;">No leads yet</div>
+                    <div style="font-size:12px;">Leads will appear here as clients contact this agent.</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
