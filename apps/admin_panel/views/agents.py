@@ -18,10 +18,11 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
     query = """
         SELECT
             a.id, a.fullname, a.email, a.mobile, a.status, a.created_at, a.badge, a.is_blacklisted,
-            ap.address, ap.display_name,
+            ap.address, ap.state, ap.display_name,
             s.selected_plan, s.expires_at,
             (SELECT AVG(rating) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) AS avg_rating,
-            (SELECT COUNT(*) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) AS review_count
+            (SELECT COUNT(*) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) AS review_count,
+            (SELECT COUNT(*) FROM agent_leads WHERE agent_id = a.id) AS leads_count
         FROM agents AS a
         LEFT JOIN agent_profiles AS ap ON a.id = ap.agent_id
         LEFT JOIN agent_subscriptions AS s ON a.id = s.agent_id

@@ -3,14 +3,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from apps.agents.models import Agent
 from django.http import HttpResponseForbidden
-
-def is_insurance_manager(user):
-    return hasattr(user, 'insurance_profile') and user.insurance_profile.is_insurance_manager()
+from apps.insurance.decorators import insurance_manager_required
 
 @login_required
+@insurance_manager_required
 def approvals_index(request):
-    if not is_insurance_manager(request.user):
-        return HttpResponseForbidden("Unauthorized")
 
     company_id = request.user.insurance_profile.get_insurance_company_id()
     agents = Agent.objects.filter(
@@ -21,9 +18,8 @@ def approvals_index(request):
     return render(request, 'insurance/approvals/index.html', {'agents': agents})
 
 @login_required
+@insurance_manager_required
 def approvals_approve(request, agent_id):
-    if not is_insurance_manager(request.user):
-        return HttpResponseForbidden("Unauthorized")
 
     company_id = request.user.insurance_profile.get_insurance_company_id()
     agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)
@@ -36,9 +32,8 @@ def approvals_approve(request, agent_id):
     return redirect('insurance:approvals_index')
 
 @login_required
+@insurance_manager_required
 def approvals_reject(request, agent_id):
-    if not is_insurance_manager(request.user):
-        return HttpResponseForbidden("Unauthorized")
 
     company_id = request.user.insurance_profile.get_insurance_company_id()
     agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)

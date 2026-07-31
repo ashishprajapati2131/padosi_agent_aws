@@ -143,7 +143,7 @@
                         </td>
 
                         <!-- Location -->
-                        <td style="font-size: 13px;">{{ agent.address|default:"Unknown" }}</td>
+                        <td style="font-size: 13px;">{{ agent.state|default:agent.address|default:"Unknown" }}</td>
 
                         <!-- Plan Type -->
                         <td>
@@ -155,13 +155,13 @@
                         <!-- Performance -->
                         <td>
                             <div style="font-size: 13px;"><i class="fa-solid fa-star text-warning me-1"></i> {{ agent.avg_rating|default:"0"|floatformat:1 }} ({{ agent.review_count|default:"0" }})</div>
-                            <div class="text-muted" style="font-size: 11px;">0 Leads</div>
+                            <div class="text-muted" style="font-size: 11px;">{{ agent.leads_count|default:"0" }} Leads</div>
                         </td>
 
-                        <!-- Status Toggle (Frontend only — backend wiring required later) -->
+                        <!-- Status Toggle -->
                         <td class="text-center">
                             <div class="form-check form-switch d-inline-block">
-                                <input class="form-check-input" type="checkbox" {% if agent.status == 'active' %}checked{% endif %} onchange="toggleAgentStatus({{ agent.id }}, this.checked)">
+                                <input class="form-check-input" type="checkbox" role="switch" {% if agent.status == 'active' %}checked{% endif %} onchange="toggleAgentStatus({{ agent.id }}, this.checked)">
                             </div>
                         </td>
 
@@ -325,6 +325,29 @@ function updateAgentBadge(id, badge) {
             }
         } else {
             alert(data.message || 'Error updating badge');
+        }
+    })
+    .catch(err => console.error(err));
+}
+
+function toggleAgentStatus(id, isChecked) {
+    fetch("{% url 'admin_agents_toggle_status' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ id: id, status: isChecked ? 'active' : 'inactive' })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Status updated successfully', showConfirmButton: false, timer: 3000 });
+            }
+        } else {
+            alert(data.message || 'Error updating status');
         }
     })
     .catch(err => console.error(err));

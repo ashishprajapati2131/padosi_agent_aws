@@ -1,0 +1,326 @@
+{% extends 'distributors/layout.html' %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Welcome Banner -->
+<div class="mb-4">
+    <h4 class="fw-bold mb-2">👋 Welcome back, {{ request.user.first_name }}!</h4>
+    <div class="text-muted small mb-3">
+        Your referral code: <span class="fw-bold text-success">{{ referralCode.code }}</span> — share the registration link: 
+        <a href="{% url 'agents:referral_join' referralCode.code %}" target="_blank" style="color: #db2777; text-decoration: none;" id="refLinkText">{{ referralUrl }}</a>
+        <button class="btn btn-sm btn-link text-muted p-0 ms-1" onclick="copyRefCode()" title="Copy Link"><i class="fa-solid fa-copy"></i></button>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'distributors:agents_create'  %}" class="btn btn-primary shadow-sm" style="background: #10b981; border: none; border-radius: 6px;">
+            <i class="fa-solid fa-user-plus me-2"></i> Register New Agent
+        </a>
+        <a href="{% url 'distributors:agents_index'  %}" class="btn shadow-sm" style="background: #115e59; color: white; border: none; border-radius: 6px;">
+            <i class="fa-solid fa-users me-2"></i> View All Agents
+        </a>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-4 mb-4">
+    <!-- Total Agents -->
+    <div class="col-md-3">
+        <div class="stat-card shadow-sm border-0">
+            <div class="stat-icon" style="background: #ecfdf5; color: #10b981;">
+                <i class="fa-solid fa-users-gear"></i>
+            </div>
+            <div class="stat-value">{{totalAgents}}</div>
+            <div class="stat-label">TOTAL AGENTS</div>
+            <div class="text-muted mt-2" style="font-size: 11px;">
+                {% if newAgentsThisMonth > 0 %}
+                    <span class="text-success fw-bold"><i class="fa-solid fa-arrow-up"></i> {{ newAgentsThisMonth }}</span> new this month
+                {% else %}
+                    0 new this month
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Active Agents -->
+    <div class="col-md-3">
+        <div class="stat-card shadow-sm border-0">
+            <div class="stat-icon" style="background: #ecfdf5; color: #10b981;">
+                <i class="fa-solid fa-check-circle"></i>
+            </div>
+            <div class="stat-value text-success">{{activeAgents}}</div>
+            <div class="stat-label">ACTIVE AGENTS</div>
+            <div class="text-muted mt-2" style="font-size: 11px;">Approved & live on platform</div>
+        </div>
+    </div>
+
+    <!-- Professional Plan -->
+    <div class="col-md-3">
+        <div class="stat-card shadow-sm border-0">
+            <div class="stat-icon" style="background: #eff6ff; color: #3b82f6;">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+            <div class="stat-value text-primary">{{professionalAgents|default:0}}</div>
+            <div class="stat-label">PROFESSIONAL PLAN</div>
+            <div class="text-muted mt-2" style="font-size: 11px;">₹6,999/year premium agents</div>
+        </div>
+    </div>
+
+    <!-- New This Month -->
+    <div class="col-md-3">
+        <div class="stat-card shadow-sm border-0">
+            <div class="stat-icon" style="background: #fefce8; color: #eab308;">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <div class="stat-value text-warning">{{newAgentsThisMonth|default:0}}</div>
+            <div class="stat-label">NEW THIS MONTH</div>
+            <div class="text-muted mt-2" style="font-size: 11px;">Registrations this month</div>
+        </div>
+    </div>
+</div>
+
+<!-- Share Link Section -->
+<div class="card mb-4 border-0 shadow-sm overflow-hidden" style="border-radius: 12px;">
+    <div class="row g-0">
+        <!-- Left Side: Info & Stats -->
+        <div class="col-lg-5 p-4" style="background: linear-gradient(135deg, #0e2b20 0%, #1a4a38 100%); color: white;">
+            <h5 class="fw-bold mb-3"><i class="fa-solid fa-bullhorn text-warning me-2"></i> Grow Your Network</h5>
+            <p style="font-size: 14px; opacity: 0.9; line-height: 1.6; margin-bottom: 24px;">
+                Invite other agents to join PadosiAgent. Send your unique referral link to your contacts, and they'll automatically be added to your network once registered.
+            </p>
+            
+            <h6 class="text-uppercase fw-bold mb-3" style="font-size: 11px; letter-spacing: 1px; color: rgba(255,255,255,0.5);">Referral Analytics</h6>
+            <div class="d-flex flex-column gap-2">
+                <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background: rgba(255,255,255,0.1);">
+                    <span style="font-size: 13px;"><i class="fa-solid fa-arrow-pointer me-2 text-info"></i> Link Clicks</span>
+                    <span class="fw-bold">{{referralStats.clicks}}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background: rgba(255,255,255,0.1);">
+                    <span style="font-size: 13px;"><i class="fa-solid fa-user-clock me-2 text-warning"></i> Pending Signups</span>
+                    <span class="fw-bold">{{referralStats.pending}}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background: rgba(255,255,255,0.1);">
+                    <span style="font-size: 13px;"><i class="fa-solid fa-check-circle me-2 text-success"></i> Successfully Converted</span>
+                    <span class="fw-bold">{{referralStats.converted}}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Message & Actions -->
+        <div class="col-lg-7 p-4 bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold m-0" style="color: #1e293b;">Your Invitation Message</h6>
+                <span class="badge bg-light text-muted border" style="font-size: 10px;">Fully Customizable</span>
+            </div>
+            <p class="text-muted mb-3" style="font-size: 12px;">You can customize the message below. Be sure to keep the <code>{LINK}</code> placeholder, or paste your link directly if you delete it. Your link is: <strong class="text-success">{{ referralUrl }}</strong></p>
+            
+            <div class="mb-2">
+                <textarea id="inviteMessageText" class="form-control bg-light text-dark shadow-inner" rows="6" style="font-size: 14px; resize: none; border: 1px solid #e2e8f0; border-radius: 8px;" onkeyup="updateShareLinks()">{{ shareMessage }}</textarea>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <div>
+                    <button onclick="copyInviteMessage()" class="btn btn-sm btn-white border shadow-sm" title="Copy Message">
+                        <i class="fa-regular fa-copy"></i> Copy Text
+                    </button>
+                    <button onclick="saveCustomMessage()" class="btn btn-sm btn-dark shadow-sm" id="saveMsgBtn">
+                        <i class="fa-solid fa-save"></i> Save Custom Message
+                    </button>
+                </div>
+            </div>
+
+            <h6 class="fw-bold mb-3" style="color: #1e293b; font-size: 13px;">Quick Send Via:</h6>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="#" id="btnWhatsapp" target="_blank" class="btn btn-sm fw-bold px-4 shadow-sm d-flex align-items-center justify-content-center" style="background: #25D366; color: white; border: none; border-radius: 8px;">
+                    <i class="fa-brands fa-whatsapp me-2" style="font-size: 16px;"></i> WhatsApp
+                </a>
+                <a href="#" id="btnSms" class="btn btn-sm fw-bold px-4 shadow-sm d-flex align-items-center justify-content-center" style="background: #3b82f6; color: white; border: none; border-radius: 8px;">
+                    <i class="fa-solid fa-comment-sms me-2" style="font-size: 16px;"></i> SMS
+                </a>
+                <a href="#" id="btnEmail" class="btn btn-sm fw-bold px-4 shadow-sm d-flex align-items-center justify-content-center" style="background: #f59e0b; color: white; border: none; border-radius: 8px;">
+                    <i class="fa-solid fa-envelope me-2" style="font-size: 16px;"></i> Email
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="row g-4">
+    <!-- Registration Trend Chart -->
+    <div class="col-lg-7">
+        <div class="card p-4 h-100 border-0 shadow-sm">
+            <div class="mb-4 d-flex align-items-center gap-2">
+                <i class="fa-solid fa-chart-area text-success"></i>
+                <h6 class="fw-bold m-0">Registration Trend (Last 6 Months)</h6>
+            </div>
+            <div style="height: 300px; width: 100%;">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Agents List -->
+    <div class="col-lg-5">
+        <div class="card p-4 h-100 border-0 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+                    <h6 class="fw-bold m-0">Recent Agents</h6>
+                </div>
+                <a href="{% url 'distributors:agents_index'  %}" class="text-success text-decoration-none" style="font-size: 12px; font-weight: 600;">View All &rarr;</a>
+            </div>
+            
+            {% if recentAgents %}
+                <div class="table-responsive">
+                    <table class="table table-hover border-top">
+                        <tbody>
+                            {% for agent in recentAgents %}
+                            <tr>
+                                <td class="py-3 border-bottom-0">
+                                    <div class="fw-bold" style="font-size: 14px;">{{ agent.fullname }}</div>
+                                    <div class="text-muted" style="font-size: 12px;">{{ agent.email }}</div>
+                                </td>
+                                <td class="py-3 text-end border-bottom-0">
+                                    <div class="text-muted mb-1" style="font-size: 11px;">{{ agent.created_at|timesince }} ago{{"" }}</div>
+                                    {% if agent.status == 'active' %}
+                                        <span class="badge bg-success-light text-success" style="font-size: 10px; padding: 4px 8px;">ACTIVE</span>
+                                    {% else %}
+                                        <span class="badge bg-warning-light text-warning" style="font-size: 10px; padding: 4px 8px;">{{ agent.status|upper }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center my-auto py-5">
+                    <div class="mb-3" style="font-size: 40px; color: #e2e8f0;">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </div>
+                    <div style="font-size: 14px; color: #64748b; font-weight: 500;">No agents registered yet.</div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Share your referral link to get started!</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-success-light { background: #dcfce7 !important; border-radius: 6px; }
+    .bg-warning-light { background: #fef3c7 !important; border-radius: 6px; }
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyRefCode() {
+        var link = document.getElementById("refLinkText").innerText;
+        navigator.clipboard.writeText(link);
+        alert("Referral link copied to clipboard!");
+    }
+
+    function copyInviteMessage() {
+        var msg = document.getElementById("inviteMessageText").value;
+        navigator.clipboard.writeText(msg);
+        alert("Message copied to clipboard!");
+    }
+
+    function updateShareLinks() {
+        var msg = document.getElementById("inviteMessageText").value;
+        var encoded = encodeURIComponent(msg);
+        document.getElementById("btnWhatsapp").href = "https://wa.me/?text=" + encoded;
+        document.getElementById("btnSms").href = "sms:?body=" + encoded;
+        document.getElementById("btnEmail").href = "mailto:?subject=Join my PadosiAgent Network&body=" + encoded;
+    }
+
+    function saveCustomMessage() {
+        var btn = document.getElementById("saveMsgBtn");
+        var msg = document.getElementById("inviteMessageText").value;
+        var originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        btn.disabled = true;
+
+        fetch("{% url 'distributors:dashboard_invite_message'  %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ custom_invite_message: msg })
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }, 2000);
+            
+            // Note: If they saved an empty string, the backend resets it to default next time
+            // So if msg is empty, let's inform them.
+            if(msg.trim() == '') {
+                alert("Message cleared! The system will revert to the admin default message on your next visit.");
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            btn.innerHTML = 'Error!';
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }, 2000);
+        });
+    }
+
+    // Initialize Chart.js and links
+    document.addEventListener("DOMContentLoaded", function() {
+        updateShareLinks();
+        
+        const ctx = document.getElementById('trendChart');
+        if(ctx) {
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: {{trendLabels|safe}},
+                    datasets: [{
+                        label: 'New Agents',
+                        data: {{trendData|safe}},
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderColor: '#10b981',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0, color: '#94a3b8', font: { size: 11 } },
+                            border: { display: false },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            ticks: { color: '#64748b', font: { size: 11 } },
+                            border: { display: false },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

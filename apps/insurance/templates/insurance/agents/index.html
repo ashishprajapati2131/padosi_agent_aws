@@ -128,11 +128,7 @@
             {% include 'insurance/pagination.html' with page_obj=agents %}
         </div>
         {% else %}
-        <div style="text-align:center;padding:60px 20px;color:#94a3b8;">
-            <i class="fas fa-users" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3;"></i>
-            <div style="font-size:15px;font-weight:600;margin-bottom:6px;color:#64748b;">No agents found</div>
-            <div style="font-size:13px;margin-bottom:16px;">There are no agents currently linked to your insurance company.</div>
-        </div>
+            {% include 'insurance/partials/empty_state.html' with is_table=False icon='fa-users' title='No agents found' subtitle='There are no agents currently linked to your insurance company.' %}
         {% endif %}
     </div>
 </div>

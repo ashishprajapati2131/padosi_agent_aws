@@ -67,13 +67,7 @@
                             </td>
                         </tr>
                     {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center py-5 text-muted">
-                                <i class="fas fa-file-invoice-dollar fa-3x mb-3 opacity-40"></i>
-                                <div class="fw-bold">No Payments Pending</div>
-                                <div style="font-size: 12px;">There are no agents awaiting payment recording.</div>
-                            </td>
-                        </tr>
+                        {% include 'insurance/partials/empty_state.html' with is_table=True colspan='5' icon='fa-file-invoice-dollar' title='No Payments Pending' subtitle='There are no agents awaiting payment recording.' %}
                     {% endfor %}
                 </tbody>
             </table>

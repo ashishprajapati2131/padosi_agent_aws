@@ -31,6 +31,7 @@ urlpatterns = [
     path('', include('apps.admin_panel.urls')),
     path('', include('apps.agents.urls')),
     path('chatbot/', include('chatbot.urls', namespace='chatbot')),
+    path('', include('apps.distributors.urls')),
     path('', include('apps.home.urls')),
     path('insurance/', include('apps.insurance.urls')),
 ]

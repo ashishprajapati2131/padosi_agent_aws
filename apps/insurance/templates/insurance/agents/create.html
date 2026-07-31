@@ -643,14 +643,15 @@
             feedback.style.display = 'block';
             feedback.innerHTML = '<span style="color:#0f3460;"><i class="fas fa-spinner fa-spin"></i> Fetching location...</span>';
             
-            fetch('/api/pincode/fetch/' + val)
+            fetch('https://api.postalpincode.in/pincode/' + val)
                 .then(res => res.json())
                 .then(res => {
-                    if (res.success and res.data and res.data.state) {
-                        feedback.innerHTML = '<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Service Area: ' + (res.data.office_name or res.data.district) + ', ' + res.data.state + '</span>';
-                        stateField.value = res.data.state;
+                    if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice && res[0].PostOffice.length > 0) {
+                        var postOffice = res[0].PostOffice[0];
+                        feedback.innerHTML = '<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Service Area: ' + postOffice.Name + ', ' + postOffice.State + '</span>';
+                        stateField.value = postOffice.State;
                     } else {
-                        feedback.innerHTML = '<span style="color:#f59e0b;"><i class="fas fa-info-circle"></i> Valid pincode format</span>';
+                        feedback.innerHTML = '<span style="color:#f59e0b;"><i class="fas fa-info-circle"></i> Invalid Pincode</span>';
                         stateField.value = '';
                     }
                 })

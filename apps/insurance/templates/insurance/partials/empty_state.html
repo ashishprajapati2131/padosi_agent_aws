@@ -1,0 +1,17 @@
+{% if is_table %}
+<tr>
+    <td colspan="{{ colspan|default:'5' }}" class="text-center py-5 text-muted">
+{% else %}
+<div style="text-align:center;padding:60px 20px;color:#94a3b8;">
+{% endif %}
+        <i class="fas {{ icon|default:'fa-folder-open' }} {% if is_table %}fa-3x mb-3 opacity-40{% else %}fa-3x{% endif %}" {% if not is_table %}style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3;"{% endif %}></i>
+        <div class="fw-bold" {% if not is_table %}style="font-size:15px;font-weight:600;margin-bottom:6px;color:#64748b;"{% endif %}>{{ title|default:'No Data Found' }}</div>
+        {% if subtitle %}
+            <div style="font-size: {% if is_table %}12px{% else %}13px{% endif %}; {% if not is_table %}margin-bottom:16px;{% endif %}">{{ subtitle }}</div>
+        {% endif %}
+{% if is_table %}
+    </td>
+</tr>
+{% else %}
+</div>
+{% endif %}

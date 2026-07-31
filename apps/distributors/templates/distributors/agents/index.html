@@ -1,0 +1,150 @@
+{% extends 'distributors/layout.html' %}
+
+{% block page_title %}My Agents{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h4 class="fw-bold mb-1" style="color: #1e293b;">
+        <i class="fa-solid fa-user-group me-2" style="color: #312e81;"></i> My Registered Agents
+    </h4>
+    <div class="text-muted small">agents registered under your account</div>
+</div>
+
+<div class="card p-3 border-0 shadow-sm mb-4" style="border-radius: 12px;">
+    <form action="{% url 'distributors:agents_index'  %}" method="GET" class="m-0">
+        <div class="d-flex align-items-end justify-content-between flex-wrap gap-3">
+            
+            <!-- Search -->
+            <div style="flex: 1; min-width: 250px; max-width: 400px;">
+                <label class="form-label text-muted small mb-1" style="font-size: 13px;">Search</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-search"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Name, email, mobile..." value="{{ request.GET.search|default:'' }}">
+                </div>
+            </div>
+
+            <!-- Status & Plan -->
+            <div class="d-flex align-items-center gap-4 flex-wrap">
+                <!-- Status -->
+                <div class="d-flex align-items-center gap-2">
+                    <label class="form-label text-muted small mb-0" style="font-size: 13px;">Status</label>
+                    <select name="status" class="form-select form-select-sm" style="width: 150px; height: 38px;">
+                        <option value="all">All Statuses</option>
+                        <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="pending_approval" {% if request.GET.status == 'pending_approval' %}selected{% endif %}>Pending</option>
+                        <option value="incomplete" {% if request.GET.status == 'incomplete' %}selected{% endif %}>Incomplete</option>
+                    </select>
+                </div>
+
+                <!-- Plan -->
+                <div class="d-flex align-items-center gap-2">
+                    <label class="form-label text-muted small mb-0" style="font-size: 13px;">Plan</label>
+                    <select name="plan" class="form-select form-select-sm" style="width: 150px; height: 38px;">
+                        <option value="all">All Plans</option>
+                        <option value="starter" {% if request.GET.plan == 'starter' %}selected{% endif %}>Starter</option>
+                        <option value="professional" {% if request.GET.plan == 'professional' %}selected{% endif %}>Professional</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Filter Button -->
+            <div>
+                <button type="submit" class="btn border-0 shadow-sm d-flex flex-column align-items-center justify-content-center" style="background: #10b981; color: white; width: 60px; height: 55px; border-radius: 6px;">
+                    <i class="fa-solid fa-filter" style="font-size: 14px; margin-bottom: 2px;"></i>
+                    <span style="font-size: 11px; font-weight: 600;">Filter</span>
+                </button>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 14px;">
+            <thead class="bg-light">
+                <tr>
+                    <th class="text-muted small fw-bold ps-4 py-3 border-bottom-0" style="letter-spacing: 0.5px;">AGENT</th>
+                    <th class="text-muted small fw-bold py-3 border-bottom-0" style="letter-spacing: 0.5px;">CONTACT</th>
+                    <th class="text-muted small fw-bold py-3 border-bottom-0" style="letter-spacing: 0.5px;">STATUS</th>
+                    <th class="text-muted small fw-bold py-3 border-bottom-0" style="letter-spacing: 0.5px;">PLAN</th>
+                    <th class="text-muted small fw-bold py-3 border-bottom-0" style="letter-spacing: 0.5px;">LEADS</th>
+                    <th class="text-muted small fw-bold py-3 border-bottom-0" style="letter-spacing: 0.5px;">RATING</th>
+                    <th class="text-muted small fw-bold pe-4 py-3 border-bottom-0" style="letter-spacing: 0.5px;">REGISTERED</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for agent in agents %}
+                <tr>
+                    <td class="ps-4 py-3">
+                        <div class="fw-bold" style="color: #1e293b;"><a href="{% url 'distributors:agents_show' agent.id %}" class="text-decoration-none text-dark">{{ agent.fullname }}</a></div>
+                    </td>
+                    <td class="py-3">
+                        <div style="color: #475569;">{{ agent.email }}</div>
+                        <div class="small" style="color: #94a3b8;">{{ agent.mobile }}</div>
+                    </td>
+                    <td class="py-3">
+                        {% if agent.status == 'active' %}
+                            <span class="badge" style="background: #dcfce7; color: #15803d; border-radius: 6px;">Active</span>
+                        {% elif agent.status == 'pending_approval' %}
+                            <span class="badge" style="background: #fef3c7; color: #b45309; border-radius: 6px;">Pending</span>
+                        {% else %}
+                            <span class="badge bg-secondary rounded-2">{{ agent.status|title }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3">
+                        {% if agent.activeSubscription %}
+                            <div class="fw-bold" style="color: #334155; font-size: 13px;">{{ agent.activeSubscription.selected_plan }}</div>
+                        {% else %}
+                            <span class="text-muted" style="font-size: 12px;">No Plan</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3">
+                        <span class="fw-bold" style="color: #3b82f6;">{{ agent.leads_count|default:0 }}</span>
+                    </td>
+                    <td class="py-3">
+                        <div class="text-warning" style="font-size: 12px;">
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-regular fa-star" style="color: #cbd5e1;"></i>
+                        </div>
+                    </td>
+                    <td class="pe-4 py-3">
+                        <div style="color: #475569;">{{ agent.created_at|date:'M d, Y' }}</div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-5">
+                        <div class="mb-3" style="font-size: 48px; color: #cbd5e1;">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </div>
+                        <div style="color: #64748b; font-size: 15px;">No agents found. Share your referral code <span class="fw-bold" style="color: #334155;">{{ referralCode.code|default:'N/A' }}</span> to get started!</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if agents.has_other_pages %}
+<div class="mt-4">
+    <!-- Basic Pagination -->
+    <ul class="pagination">
+        {% if agents.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ agents.previous_page_number }}">&laquo;</a></li>
+        {% endif %}
+        {% for num in agents.paginator.page_range %}
+            <li class="page-item {% if agents.number == num %}active{% endif %}"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+        {% endfor %}
+        {% if agents.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ agents.next_page_number }}">&raquo;</a></li>
+        {% endif %}
+    </ul>
+</div>
+{% endif %}
+
+{% endblock %}

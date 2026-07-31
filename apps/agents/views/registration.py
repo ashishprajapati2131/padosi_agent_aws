@@ -18,7 +18,7 @@ import re
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST, require_http_methods
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.utils import timezone
 from django.conf import settings
 
@@ -124,7 +124,13 @@ def _get_registration_context(request):
         except AgentDraft.DoesNotExist:
             pass
 
+    from apps.distributors.views.dashboard import is_distributor
+    layout_template = 'base.html'
+    if request.user.is_authenticated and is_distributor(request.user):
+        layout_template = 'distributors/layout.html'
+
     return {
+        'layout_template': layout_template,
         'reg_step': reg_step,
         'email_verified': email_verified,
         'verified_email': verified_email,
@@ -1012,11 +1018,14 @@ def agent_register_complete(request):
             agent = create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment')
             
             # Capture referral code from session
-            ref_code = request.session.get('ref_code')
+            ref_code = request.session.get('ref_code') or request.session.get('applied_promo_code')
             if ref_code:
                 from apps.admin_panel.models.referral_code import ReferralCode
-                if ReferralCode.objects.filter(code=ref_code, is_active=True).exists():
+                ref_obj = ReferralCode.objects.filter(code=ref_code, is_active=True).first()
+                if ref_obj:
                     agent.referred_by_code = ref_code
+                    if ref_obj.distributor_id:
+                        agent.distributor_id = ref_obj.distributor_id
                     agent.save()
             
             # Calculate subscription duration
@@ -1125,7 +1134,9 @@ def agent_register_complete(request):
                 
                 from django.contrib.auth import login
                 user = create_or_link_django_user(agent)
-                login(request, user)
+                from apps.distributors.views.dashboard import is_distributor
+                if not (request.user.is_authenticated and is_distributor(request.user)):
+                    login(request, user)
                 
                 request.session.pop('current_draft_id', None)
                 request.session.pop('reg_step', None)
@@ -1366,7 +1377,9 @@ def payment_success(request):
             # Link user and login
             from django.contrib.auth import login
             user = create_or_link_django_user(agent)
-            login(request, user)
+            from apps.distributors.views.dashboard import is_distributor
+            if not (request.user.is_authenticated and is_distributor(request.user)):
+                login(request, user)
 
             # Clear session
             request.session.pop('current_draft_id', None)
@@ -1445,7 +1458,7 @@ def referral_join(request, ref_code):
 
 
 @require_POST
-@csrf_protect
+@csrf_exempt
 def client_quick_register(request):
     """
     Client quick registration view. Replicates Laravel's ClientRegistrationController.quickRegister().
@@ -1514,7 +1527,9 @@ def client_quick_register(request):
             'pincode': pincode,
         }
         from django.contrib.auth import login
-        login(request, existing_user)
+        from apps.distributors.views.dashboard import is_distributor
+        if not (request.user.is_authenticated and is_distributor(request.user)):
+            login(request, existing_user)
         
         return JsonResponse({
             'success': True,
@@ -1552,7 +1567,9 @@ def client_quick_register(request):
 
         # Log user in
         from django.contrib.auth import login
-        login(request, user)
+        from apps.distributors.views.dashboard import is_distributor
+        if not (request.user.is_authenticated and is_distributor(request.user)):
+            login(request, user)
 
         request.session['quick_lead_user'] = {
             'fullname': fullname,
@@ -1909,7 +1926,9 @@ def test_real_webhook(request):
         # Success! Log in the user to simulate success redirect
         from django.contrib.auth import login
         user = create_or_link_django_user(agent)
-        login(request, user)
+        from apps.distributors.views.dashboard import is_distributor
+        if not (request.user.is_authenticated and is_distributor(request.user)):
+            login(request, user)
         
         # Clear session
         request.session.pop('current_draft_id', None)

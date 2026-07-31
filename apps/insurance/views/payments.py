@@ -15,14 +15,11 @@ try:
 except ImportError:
     razorpay = None
 
-def is_insurance_manager_or_accounts(user):
-    if not hasattr(user, 'insurance_profile'): return False
-    return user.insurance_profile.is_insurance_manager() or user.insurance_profile.is_insurance_accounts()
+from apps.insurance.decorators import insurance_manager_or_accounts_required
 
 @login_required
+@insurance_manager_or_accounts_required
 def payments_index(request):
-    if not is_insurance_manager_or_accounts(request.user):
-        return HttpResponseForbidden("Unauthorized")
 
     company_id = request.user.insurance_profile.get_insurance_company_id()
     agents = Agent.objects.filter(
@@ -33,17 +30,15 @@ def payments_index(request):
     return render(request, 'insurance/payments/index.html', {'agents': agents})
 
 @login_required
+@insurance_manager_or_accounts_required
 def record_payment(request, agent_id):
-    if not is_insurance_manager_or_accounts(request.user):
-        return HttpResponseForbidden("Unauthorized")
 
     messages.error(request, 'Offline payment is disabled. Please pay online via Razorpay.')
     return redirect('insurance:payments_index')
 
 @login_required
+@insurance_manager_or_accounts_required
 def create_razorpay_order(request, agent_id):
-    if not is_insurance_manager_or_accounts(request.user):
-        return JsonResponse({'success': False, 'message': 'Unauthorized.'}, status=403)
 
     company_id = request.user.insurance_profile.get_insurance_company_id()
     agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)
@@ -87,9 +82,8 @@ def create_razorpay_order(request, agent_id):
     })
 
 @login_required
+@insurance_manager_or_accounts_required
 def handle_payment_success(request, agent_id):
-    if not is_insurance_manager_or_accounts(request.user):
-        return JsonResponse({'success': False, 'message': 'Unauthorized.'}, status=403)
 
     company_id = request.user.insurance_profile.get_insurance_company_id()
     agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)

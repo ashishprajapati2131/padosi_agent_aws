@@ -104,7 +104,17 @@ def agent_login(request):
 
                 if is_agent:
                     agent = Agent.objects.get(user=authenticated_user)
-                    if agent.status != 'active':
+                    
+                    if agent.status == 'active':
+                        pass # proceed to login
+                    elif agent.status == 'pending_approval':
+                        messages.info(request, "Your account is pending admin approval.")
+                        return render(request, 'agents/login.html', {'email': email})
+                    elif agent.status in ['suspended', 'blacklisted', 'rejected']:
+                        messages.error(request, f"Your account is currently {agent.status}.")
+                        return render(request, 'agents/login.html', {'email': email})
+                    else:
+                        # Status is 'incomplete' or 'pending_payment'
                         # Try verifying pending payment first (Case 4 - network lost recovery)
                         from apps.agents.views.registration import verify_and_activate_pending_payment
                         if verify_and_activate_pending_payment(agent):
@@ -113,8 +123,11 @@ def agent_login(request):
                             if agent.status == 'active':
                                 # Payment verified and account active - proceed to login!
                                 pass
-                            else:
+                            elif agent.status == 'pending_approval':
                                 messages.info(request, "Your payment has been verified. Your account is pending admin approval.")
+                                return render(request, 'agents/login.html', {'email': email})
+                            else:
+                                messages.info(request, f"Your account status is currently: {agent.status}")
                                 return render(request, 'agents/login.html', {'email': email})
                         else:
                             # Not paid yet (or verification failed) - resume Choose Plan

@@ -6,13 +6,11 @@ from django.contrib.auth.hashers import make_password
 from apps.insurance.models import InsuranceProfile
 from django.http import HttpResponseForbidden
 
-def is_insurance_manager(user):
-    return hasattr(user, 'insurance_profile') and user.insurance_profile.is_insurance_manager()
+from apps.insurance.decorators import insurance_manager_required
 
 @login_required
+@insurance_manager_required
 def subusers_index(request):
-    if not is_insurance_manager(request.user):
-        return HttpResponseForbidden("Unauthorized")
 
     sub_users = User.objects.filter(
         insurance_profile__insurance_parent_id=request.user.id
@@ -64,9 +62,8 @@ def subusers_index(request):
     return render(request, 'insurance/subusers/index.html', {'roles_list': roles_list})
 
 @login_required
+@insurance_manager_required
 def subusers_store(request):
-    if not is_insurance_manager(request.user):
-        return HttpResponseForbidden("Unauthorized")
 
     if request.method == 'POST':
         fullname = request.POST.get('fullname')
@@ -126,9 +123,8 @@ def subusers_store(request):
     return redirect('insurance:subusers_index')
 
 @login_required
+@insurance_manager_required
 def subusers_reset_password(request, user_id):
-    if not is_insurance_manager(request.user):
-        return HttpResponseForbidden("Unauthorized")
 
     if request.method == 'POST':
         sub_user = get_object_or_404(User, id=user_id, insurance_profile__insurance_parent_id=request.user.id)
@@ -151,9 +147,8 @@ def subusers_reset_password(request, user_id):
     return redirect('insurance:subusers_index')
 
 @login_required
+@insurance_manager_required
 def subusers_toggle_status(request):
-    if not is_insurance_manager(request.user):
-        return HttpResponseForbidden("Unauthorized")
 
     if request.method == 'POST':
         user_id = request.POST.get('id')

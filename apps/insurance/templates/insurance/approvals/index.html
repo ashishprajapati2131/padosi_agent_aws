@@ -103,13 +103,7 @@
                             </td>
                         </tr>
                     {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center py-5 text-muted">
-                                <i class="fas fa-clipboard-question fa-3x mb-3 opacity-40"></i>
-                                <div class="fw-bold">No Pending Approvals</div>
-                                <div style="font-size: 12px;">All onboarding requests have been reviewed.</div>
-                            </td>
-                        </tr>
+                        {% include 'insurance/partials/empty_state.html' with is_table=True colspan='5' icon='fa-clipboard-question' title='No Pending Approvals' subtitle='All onboarding requests have been reviewed.' %}
                     {% endfor %}
                 </tbody>
             </table>

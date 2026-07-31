@@ -20,6 +20,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load .env file
 load_dotenv(BASE_DIR / '.env', override=True)
 
+# Use a custom CSRF cookie name for local dev to avoid conflicts with stale Secure cookies
+CSRF_COOKIE_NAME = "padosi_csrf_token"
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -67,6 +70,7 @@ INSTALLED_APPS = [
     'apps.admin_panel',
     'apps.agents',
     'apps.insurance',
+    'apps.distributors',
     'rest_framework',
     'django.contrib.humanize',
     'chatbot',

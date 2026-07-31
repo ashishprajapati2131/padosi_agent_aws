@@ -158,7 +158,12 @@ def distributor_store(request):
         })
 
     # Success: Save User
-    hashed_password = make_password(password)
+    # Keep the legacy bcrypt hashing format ($2y$) used by Laravel
+    import bcrypt
+    salt = bcrypt.gensalt()
+    bcrypt_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    # Convert python's $2b$ prefix to Laravel's expected $2y$ prefix
+    hashed_password = bcrypt_hash.replace('$2b$', '$2y$', 1)
     now = timezone.now()
 
     try:
