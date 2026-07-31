@@ -75,7 +75,7 @@ app.include_router(find_agents.router)
 
 # Mount local storage directory for static access
 os.makedirs(settings.LOCAL_STORAGE_PATH, exist_ok=True)
-app.mount("/static", StaticFiles(directory=settings.LOCAL_STORAGE_PATH), name="static")
+app.mount("/media", StaticFiles(directory=settings.LOCAL_STORAGE_PATH), name="media")
 
 @app.get("/reset-password/{token}", response_class=HTMLResponse)
 def get_reset_password_page(request: Request, token: str, email: str, type: str = "agent"):

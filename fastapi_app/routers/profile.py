@@ -129,7 +129,7 @@ async def upload_profile_image(
                 CloudinaryService.delete_image(old_path)
             except Exception as e:
                 logger.error(f"Failed to delete old image from Cloudinary: {str(e)}")
-        elif "/static/uploads/" in old_path:
+        elif "/static/uploads/" in old_path or "/media/uploads/" in old_path:
             try:
                 LocalStorageService.delete_file(old_path)
             except Exception as e:

@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str = ""
 
     # Local Storage Fallback Path
-    LOCAL_STORAGE_PATH: str = "storage"
+    LOCAL_STORAGE_PATH: str = "media"
 
     # Security Config
     SECURITY_ALERT_EMAIL: str = "ashisprajapati2131@gmail.com"

@@ -23,8 +23,7 @@ class LocalStorageService:
         year_str = now.strftime("%Y")
         month_str = now.strftime("%m")
 
-        # Resolve base URL — prefer the caller-supplied value (live domain)
-        effective_base_url = (base_url or settings.APP_URL).rstrip("/")
+        # Base URL is no longer prepended to ensure proxy-agnostic relative paths.
 
         # Build upload directory path
         upload_dir = os.path.join(
@@ -49,9 +48,9 @@ class LocalStorageService:
         with open(file_path, "wb") as f:
             f.write(file_bytes)
 
-        # Return public URL path using the effective base URL
+        # Return relative public URL path
         relative_path = f"uploads/{subfolder}/{year_str}/{month_str}/{unique_name}"
-        public_url = f"{effective_base_url}/static/{relative_path}"
+        public_url = f"/media/{relative_path}"
         return public_url
 
     @staticmethod
@@ -62,9 +61,9 @@ class LocalStorageService:
         if not public_url:
             return False
 
-        if "/static/uploads/" in public_url:
+        if "/media/uploads/" in public_url:
             try:
-                parts = public_url.split("/static/")
+                parts = public_url.split("/media/")
                 if len(parts) > 1:
                     relative_path = parts[1]
                     # Secure check to prevent directory traversal

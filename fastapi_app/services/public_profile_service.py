@@ -195,12 +195,28 @@ class PublicProfileService:
             if not path:
                 return ""
             if path.startswith(('http://', 'https://')):
+                if any(k in path.lower() for k in ['localhost', '127.0.0.1', 'ngrok']):
+                    from urllib.parse import urlparse
+                    parsed = urlparse(path)
+                    normalized = parsed.path.lstrip('/')
+                    if "image/upload/" in normalized and "agent_profiles" in normalized:
+                        filename = normalized.split('/')[-1]
+                        return f"/media/uploads/profile/2026/07/{filename}"
+                    if normalized.startswith("media/"):
+                        return f"/{normalized}"
+                    if normalized.startswith("static/"):
+                        return f"/media/{normalized[7:]}"
+                    return f"/media/{normalized}"
                 return path
             normalized = path.lstrip('/')
             if "image/upload/" in normalized and "agent_profiles" in normalized:
                 filename = normalized.split('/')[-1]
-                return f"{settings.APP_URL}/static/uploads/profile/2026/07/{filename}"
-            return f"{settings.APP_URL}/static/{normalized}"
+                return f"/media/uploads/profile/2026/07/{filename}"
+            if normalized.startswith("media/"):
+                return f"/{normalized}"
+            if normalized.startswith("static/"):
+                return f"/media/{normalized[7:]}"
+            return f"/media/{normalized}"
 
         return PublicProfileResponse(
             agent_id=agent.id,

@@ -103,6 +103,18 @@ class ProfileService:
             if not path:
                 return ""
             if path.startswith(('http://', 'https://')):
+                if any(k in path.lower() for k in ['localhost', '127.0.0.1', 'ngrok']):
+                    from urllib.parse import urlparse
+                    parsed = urlparse(path)
+                    normalized = parsed.path.lstrip('/')
+                    if "image/upload/" in normalized and "agent_profiles" in normalized:
+                        filename = normalized.split('/')[-1]
+                        return f"/media/uploads/profile/2026/07/{filename}"
+                    if normalized.startswith("media/"):
+                        return f"/{normalized}"
+                    if normalized.startswith("static/"):
+                        return f"/media/{normalized[7:]}" # map old static uploads to media
+                    return f"/media/{normalized}"
                 return path
 
             normalized = path.lstrip('/')
@@ -111,14 +123,17 @@ class ProfileService:
             if "image/upload/" in normalized and "agent_profiles" in normalized:
                 # Extracts filename (e.g. profile.png -> profile.png)
                 # Usually matches structure: dsj8cvdhe/image/upload/v1784117464/agent_profiles/155/profile.png
-                # Let's map it to static/uploads/profile/2026/07/
-                # We can dynamically fallback to static/uploads/profile/2026/07/ plus whatever files exist or the default file
-                # But to make it robust, we serve from storage/uploads/profile/2026/07/
-                # Or return settings.APP_URL/static/uploads/profile/2026/07/filename
+                # Let's map it to media/uploads/profile/2026/07/
+                # We can dynamically fallback to media/uploads/profile/2026/07/ plus whatever files exist or the default file
+                # But to make it robust, we serve from media/uploads/profile/2026/07/
                 filename = normalized.split('/')[-1]
-                return f"{settings.APP_URL}/static/uploads/profile/2026/07/{filename}"
+                return f"/media/uploads/profile/2026/07/{filename}"
 
-            return f"{settings.APP_URL}/static/{normalized}"
+            if normalized.startswith("media/"):
+                return f"/{normalized}"
+            if normalized.startswith("static/"):
+                return f"/media/{normalized[7:]}"
+            return f"/media/{normalized}"
 
         def safe_float(val):
             if not val:
@@ -447,7 +462,7 @@ class ProfileService:
                         if "res.cloudinary.com" in p_obj.photo_path:
                             from app.services.cloudinary_service import CloudinaryService
                             CloudinaryService.delete_image(p_obj.photo_path)
-                        elif "/static/uploads/" in p_obj.photo_path:
+                        elif "/static/uploads/" in p_obj.photo_path or "/media/uploads/" in p_obj.photo_path:
                             from app.services.local_storage_service import LocalStorageService
                             LocalStorageService.delete_file(p_obj.photo_path)
                     except Exception:

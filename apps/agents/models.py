@@ -865,6 +865,14 @@ class AgentAchievementPhoto(models.Model):
         if not path:
             return '/static/img/avatar-icon.jpg'
         if path.startswith(('http://', 'https://')):
+            if any(k in path.lower() for k in ['ngrok', 'localhost', '127.0.0.1']):
+                from urllib.parse import urlparse
+                parsed = urlparse(path)
+                rel_path = parsed.path.lstrip('/')
+                if rel_path.startswith('static/'):
+                    return f"/{rel_path}"
+                elif rel_path.startswith('media/'):
+                    return f"/{rel_path}"
             return path
         normalized_path = path.replace('\\', '/').lstrip('/')
         from django.conf import settings
