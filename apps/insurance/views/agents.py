@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.conf import settings
 from apps.agents.models import Agent, AgentProfile, AgentSubscription
@@ -37,7 +38,9 @@ def agents_index(request):
     search = request.GET.get('search')
     if search:
         agents_query = agents_query.filter(
-            fullname__icontains=search
+            Q(fullname__icontains=search) | 
+            Q(email__icontains=search) | 
+            Q(mobile__icontains=search)
         ) # Additional fields can be added using Q objects
 
     if is_insurance_sales(user):

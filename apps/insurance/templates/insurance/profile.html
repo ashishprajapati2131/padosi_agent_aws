@@ -79,13 +79,13 @@
                 </div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
                     <span style="font-size:12px;color:#94a3b8;">Account Status</span>
-                    <span class="badge-status {% if insurance.status == 'active' %}'badge-active'{% else %}'badge-blocked'{% endif %}">
-                        {{ insurance.status|title }}
+                    <span class="badge-status {% if insurance.is_active %}badge-active{% else %}badge-blocked{% endif %}">
+                        {% if insurance.is_active %}Active{% else %}Blocked{% endif %}
                     </span>
                 </div>
                 <div style="display:flex;justify-content:space-between;">
                     <span style="font-size:12px;color:#94a3b8;">Member Since</span>
-                    <span style="font-size:13px;font-weight:600;">{{ insurance.created_at|date:"d M Y" }}</span>
+                    <span style="font-size:13px;font-weight:600;">{{ insurance.date_joined|date:"d M Y" }}</span>
                 </div>
             </div>
         </div>

@@ -23,9 +23,7 @@
                 </thead>
                 <tbody>
                     {% for agent in agents %}
-                        @php
-                            sub = agent.subscriptions.first();
-                        @endphp
+                        {% with sub=agent.subscriptions.first %}
                         <tr>
                             <td class="px-4 py-3">
                                 <div class="d-flex align-items-center gap-3">
@@ -43,10 +41,10 @@
                             </td>
                             <td class="px-4 py-3">
                                 <span class="badge bg-primary-light text-primary px-3 py-2 fw-semibold" style="font-size: 12px; border-radius: 8px;">
-                                    {% if sub %}sub.selected_plan{% else %}agent.plan_type|title{% endif %}
+                                    {% if sub %}{{ sub.selected_plan }}{% else %}{{ agent.plan_type|title }}{% endif %}
                                 </span>
                                 <div class="text-muted mt-1" style="font-size: 11px;">
-                                    Amount Due: <strong>₹{% if sub %}sub.registration_amount{% else %}0{% endif %}</strong>
+                                    Amount Due: <strong>₹{% if sub %}{{ sub.registration_amount }}{% else %}0{% endif %}</strong>
                                 </div>
                             </td>
                             <td class="px-4 py-3">
@@ -66,6 +64,7 @@
                                 </button>
                             </td>
                         </tr>
+                        {% endwith %}
                     {% empty %}
                         <tr>
                             <td colspan="5" class="text-center py-5 text-muted">
@@ -88,10 +87,7 @@
 
 {#  Modals Section (outside grid/table to avoid rendering/stacking context issues)  #}
 {% for agent in agents %}
-    @php
-        sub = agent.subscriptions.first();
-        amount = sub ? sub.registration_amount : (agent.plan_type === 'starter' ? 2359 : 8258);
-    @endphp
+    {% with sub=agent.subscriptions.first %}
     {#  Record Payment Modal  #}
     <div class="modal fade" id="paymentModal{{ agent.id }}" tabindex="-1" role="dialog" aria-labelledby="paymentModalLabel{{ agent.id }}" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
@@ -126,13 +122,13 @@
                                 <tr style="border-bottom: 1px solid var(--border-color);">
                                     <td class="py-2 text-muted fw-semibold" style="font-size: 13px;">Selected Subscription Plan</td>
                                     <td class="py-2 text-end fw-bold text-primary" style="font-size: 13px;">
-                                        {% if sub %}sub.selected_plan{% else %}(agent.plan_type === 'starter' ? "Starter's Plan" : "Professional's Plan"){% endif %}
+                                        {% if sub %}{{ sub.selected_plan }}{% elif agent.plan_type == 'starter' %}Starter's Plan{% else %}Professional's Plan{% endif %}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td class="py-2 text-muted fw-bold" style="font-size: 14px;">Total Amount Due (inc. GST)</td>
                                     <td class="py-2 text-end fw-extrabold text-success" style="font-size: 16px;">
-                                        ₹{{ amount }}
+                                        ₹{% if sub %}{{ sub.registration_amount }}{% elif agent.plan_type == 'starter' %}2359{% else %}8258{% endif %}
                                     </td>
                                 </tr>
                             </tbody>
@@ -149,12 +145,13 @@
                 <div class="modal-footer border-top-0 pb-4 pt-3 px-4 d-flex justify-content-between gap-2">
                     <button type="button" class="btn btn-light px-4" data-dismiss="modal" style="border-radius: 10px; height: 44px; font-weight: 600; width: 35%;">Cancel</button>
                     <button type="button" onclick="payAgentOnline({{ agent.id }})" class="btn btn-primary btn-primary-custom px-4 flex-grow-1" style="border-radius: 10px; height: 44px; font-weight: 700; width: 60%;">
-                        <i class="fas fa-shield-halved me-1"></i> Pay ₹{{ amount }}
+                        <i class="fas fa-shield-halved me-1"></i> Pay ₹{% if sub %}{{ sub.registration_amount }}{% elif agent.plan_type == 'starter' %}2359{% else %}8258{% endif %}
                     </button>
                 </div>
             </div>
         </div>
     </div>
+    {% endwith %}
 {% endfor %}
 {% endblock %}
 
@@ -170,7 +167,7 @@
             didOpen: () => { Swal.showLoading(); }
         });
 
-        var orderUrl = "{% url 'insurance:create_razorpay_order' ':agent' %}".replace(':agent', agentId);
+        var orderUrl = "{% url 'insurance:create_razorpay_order' 999999999 %}".replace('999999999', agentId);
 
         $.ajax({
             url: orderUrl,
@@ -222,7 +219,7 @@
             didOpen: () => { Swal.showLoading(); }
         });
 
-        var successUrl = "{% url 'insurance:handle_payment_success' ':agent' %}".replace(':agent', agentId);
+        var successUrl = "{% url 'insurance:handle_payment_success' 999999999 %}".replace('999999999', agentId);
 
         $.ajax({
             url: successUrl,

@@ -423,7 +423,7 @@ platform.{% endblock %}
         if (val.length === 6) {
             feedback.style.display = 'block';
             feedback.innerHTML = '<span style="color:#273c8e;"><i class="fas fa-spinner fa-spin"></i> Checking location...</span>';
-            fetch('/api/pincode/fetch/' + val)
+            fetch('/insurance/api/pincode/fetch/' + val)
                 .then(function (res) { return res.json(); })
                 .then(function (res) {
                     if (res.success && res.data && res.data.state) {

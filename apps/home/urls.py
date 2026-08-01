@@ -14,7 +14,7 @@ urlpatterns = [
     path('find-agents/ai-picks/', pages.ai_picks_comparison, name='ai_picks_comparison'),
     path('terms/',          pages.terms,          name='terms'),
     path('privacy/',        pages.privacy,        name='privacy'),
-    path('api/pincode/fetch/<str:pincode>', pages.pincode_fetch, name='pincode_fetch'),
+    path('insurance/api/pincode/fetch/<str:pincode>', pages.pincode_fetch, name='pincode_fetch'),
     path('blacklisted-agents/', pages.blacklisted_agents, name='blacklisted_agents'),
     path('<slug:slug>/',     pages.custom_page,    name='custom_page'),
 ]

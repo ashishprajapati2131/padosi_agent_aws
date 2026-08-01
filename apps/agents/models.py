@@ -181,6 +181,7 @@ class Agent(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
     fullname = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
+    google_id = models.CharField(max_length=255, blank=True, null=True)
     email_verified_at = models.DateTimeField(null=True, blank=True)
     mobile = models.CharField(max_length=20)
     user_types = models.JSONField(default=list, blank=True)
@@ -195,6 +196,7 @@ class Agent(models.Model):
     upgrade_discount_percent = models.IntegerField(default=0)
     referred_by_code = models.CharField(max_length=50, blank=True, default='')
     referral_reward_type = models.CharField(max_length=50, blank=True, default='')
+    referral_reward_claimed = models.BooleanField(default=False)
     agent_pincode = models.CharField(max_length=6, blank=True, default='')
     latitude = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
     longitude = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
@@ -809,6 +811,48 @@ class AgentReview(models.Model):
     class Meta:
         db_table = 'agent_reviews'
         managed = True
+
+class AgentBackup(models.Model):
+    # This id corresponds to the old agent's ID when they are deleted.
+    # It acts as the primary key here, but it's not auto-incrementing in the context of inserts 
+    # from the trigger, although Django will make it a bigserial PK by default.
+    user_id = models.IntegerField(null=True, blank=True)
+    event_id = models.IntegerField(null=True, blank=True)
+    distributor_id = models.IntegerField(null=True, blank=True)
+    fullname = models.CharField(max_length=255, null=True, blank=True)
+    email = models.EmailField(null=True, blank=True)
+    google_id = models.CharField(max_length=255, blank=True, null=True)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
+    mobile = models.CharField(max_length=20, null=True, blank=True)
+    registration_step = models.IntegerField(null=True, blank=True)
+    agent_pincode = models.CharField(max_length=6, blank=True, null=True)
+    latitude = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
+    plan_type = models.CharField(max_length=50, blank=True, null=True)
+    trial_ends_at = models.DateTimeField(null=True, blank=True)
+    upgrade_discount_percent = models.IntegerField(null=True, blank=True)
+    referred_by_code = models.CharField(max_length=50, blank=True, null=True)
+    referral_reward_type = models.CharField(max_length=50, blank=True, null=True)
+    referral_reward_claimed = models.BooleanField(default=False)
+    status = models.CharField(max_length=50, blank=True, null=True)
+    is_approved = models.BooleanField(default=False)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    badge = models.CharField(max_length=255, blank=True, null=True)
+    admin_notes = models.TextField(blank=True, null=True)
+    registration_draft = models.JSONField(null=True, blank=True)
+    user_types = models.JSONField(null=True, blank=True)
+    insurance_companies = models.JSONField(null=True, blank=True)
+    experience_range = models.CharField(max_length=50, blank=True, null=True)
+    client_base = models.CharField(max_length=50, blank=True, null=True)
+    achievement_photo_limit = models.PositiveSmallIntegerField(null=True, blank=True)
+    profession = models.CharField(max_length=255, null=True, blank=True)
+    created_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'agent_backup'
+        managed = True
+
 
     @property
     def star_display(self):
