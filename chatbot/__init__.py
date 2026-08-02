@@ -1,1 +1,0 @@
-# Chatbot app initialization

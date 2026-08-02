@@ -4,6 +4,7 @@ import uuid
 
 class ChatSession(models.Model):
     session_id = models.CharField(max_length=255, unique=True, default=uuid.uuid4)
+    is_test_traffic = models.BooleanField(default=False, help_text="Flag to exclude dev/QA sessions from analytics")
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -26,6 +27,7 @@ class ChatMessage(models.Model):
     # Store tool call information if applicable
     tool_call_id = models.CharField(max_length=255, blank=True, null=True)
     tool_name = models.CharField(max_length=255, blank=True, null=True)
+    agent_cards = models.JSONField(null=True, blank=True)
 
     class Meta:
         ordering = ['timestamp']

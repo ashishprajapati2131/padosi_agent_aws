@@ -33,7 +33,7 @@ body {
 .background-bokeh {
     position: absolute;
     inset: 0;
-    background-image: url('/images/bg.png');
+    background-image: url('/images/bg.jpg');
     background-size: 100%;
     background-position: center;
     z-index: 0;
@@ -42,7 +42,7 @@ body {
 .spotlight-gradient {
     position: absolute;
     inset: 0;
-    background-image: url('/images/spotlight-gradient.png');
+    background-image: url('/images/spotlight-gradient.jpg');
     background-size: cover;
     background-position: center;
     z-index: 1;
