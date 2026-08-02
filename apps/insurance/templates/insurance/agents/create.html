@@ -580,7 +580,7 @@
 {% block scripts %}
 <script>
     var currentTab = 'single';
-    var cartList = {not not  json_encode(session('insurance_bulk_cart', [])) not not };
+    var cartList = [];
 
     $(document).ready(function() {
         renderCart();
@@ -643,13 +643,12 @@
             feedback.style.display = 'block';
             feedback.innerHTML = '<span style="color:#0f3460;"><i class="fas fa-spinner fa-spin"></i> Fetching location...</span>';
             
-            fetch('https://api.postalpincode.in/pincode/' + val)
+            fetch('/insurance/api/pincode/fetch/' + val)
                 .then(res => res.json())
                 .then(res => {
-                    if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice && res[0].PostOffice.length > 0) {
-                        var postOffice = res[0].PostOffice[0];
-                        feedback.innerHTML = '<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Service Area: ' + postOffice.Name + ', ' + postOffice.State + '</span>';
-                        stateField.value = postOffice.State;
+                    if (res.success && res.data && res.data.state) {
+                        feedback.innerHTML = '<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Service Area: ' + (res.data.office_name || res.data.district) + ', ' + res.data.state + '</span>';
+                        stateField.value = res.data.state;
                     } else {
                         feedback.innerHTML = '<span style="color:#f59e0b;"><i class="fas fa-info-circle"></i> Invalid Pincode</span>';
                         stateField.value = '';
@@ -709,7 +708,7 @@
                     </td>
                     <td>
                         <span class="badge bg-primary text-white px-2 py-1 fw-bold" style="font-size:11px; background:#0f3460 not important;">
-                            ${item.plan_name}
+                            ${item.plan_type === 'starter' ? "Starter's Plan" : "Professional's Plan"}
                         </span>
                     </td>
                     <td class="fw-bold">₹${parseFloat(item.amount).toLocaleString('en-IN')}</td>
@@ -768,7 +767,7 @@
                     cartList = res.cart;
                     renderCart();
                 } else {
-                    Swal.fire('Error', res.message or 'Failed to add agent to cart.', 'error');
+                    Swal.fire('Error', res.message || 'Failed to add agent to cart.', 'error');
                 }
             },
             error: function(xhr) {
@@ -812,7 +811,7 @@
                     url: "{% url 'insurance:remove_from_cart' %}",
                     type: "POST",
                     data: {
-                        _token: "{{ csrf_token }}",
+                        csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val(),
                         email: email
                     },
                     success: function(res) {
@@ -842,7 +841,7 @@
                 $.ajax({
                     url: "{% url 'insurance:clear_cart' %}",
                     type: "POST",
-                    data: { _token: "{{ csrf_token }}" },
+                    data: { csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val() },
                     success: function(res) {
                         if (res.success) {
                             cartList = [];
@@ -876,7 +875,7 @@
                     url: "{% url 'insurance:checkout_cart' %}",
                     type: "POST",
                     data: {
-                        _token: "{{ csrf_token }}",
+                        csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val(),
                         payment_type: "approval"
                     },
                     success: function(res) {
@@ -902,7 +901,7 @@
         var ref = $('#bulk_payment_reference').val().trim();
         var date = $('#bulk_payment_recorded_at').val();
 
-        if (not ref) {
+        if (!ref) {
             Swal.fire('Required', 'Please enter a payment/transaction reference number.', 'warning');
             return;
         }
@@ -926,7 +925,7 @@
                     url: "{% url 'insurance:checkout_cart' %}",
                     type: "POST",
                     data: {
-                        _token: "{{ csrf_token }}",
+                        csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val(),
                         payment_type: "offline",
                         payment_method: method,
                         payment_reference: ref,
@@ -942,7 +941,7 @@
                     },
                     error: function(xhr) {
                         Swal.close();
-                        Swal.fire('Error', xhr.responseJSON.message or 'Checkout failed.', 'error');
+                        Swal.fire('Error', xhr.responseJSON.message || 'Checkout failed.', 'error');
                     }
                 });
             }
@@ -961,11 +960,11 @@
         $.ajax({
             url: "{% url 'insurance:checkout_cart' %}",
             type: "POST",
-            data: { _token: "{{ csrf_token }}" },
+            data: { csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val() },
             success: function(res) {
                 Swal.close();
                 if (res.success) {
-                    if (res.test_payment and not res.order_id) {
+                    if (res.test_payment && !res.order_id) {
                         // Fallback/Test complete
                         processOnlineSuccess({ test_payment: true });
                     } else {
@@ -989,12 +988,12 @@
                         rzp.open();
                     }
                 } else {
-                    Swal.fire('Error', res.message or 'Failed to prepare online payment.', 'error');
+                    Swal.fire('Error', res.message || 'Failed to prepare online payment.', 'error');
                 }
             },
             error: function(xhr) {
                 Swal.close();
-                Swal.fire('Error', xhr.responseJSON.message or 'Failed to prepare payment.', 'error');
+                Swal.fire('Error', xhr.responseJSON.message || 'Failed to prepare payment.', 'error');
             }
         });
     }
@@ -1011,10 +1010,10 @@
             url: "{% url 'insurance:checkout_online_success' %}",
             type: "POST",
             data: {
-                _token: "{{ csrf_token }}",
-                razorpay_payment_id: paymentRes.razorpay_payment_id or '',
-                razorpay_order_id: paymentRes.razorpay_order_id or '',
-                razorpay_signature: paymentRes.razorpay_signature or '',
+                csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val(),
+                razorpay_payment_id: paymentRes.razorpay_payment_id || '',
+                razorpay_order_id: paymentRes.razorpay_order_id || '',
+                razorpay_signature: paymentRes.razorpay_signature || '',
                 test_payment: paymentRes.test_payment ? 1 : 0
             },
             success: function(res) {
@@ -1030,7 +1029,7 @@
                         window.location.href = res.redirect_url;
                     });
                 } else {
-                    Swal.fire('Verification Failed', res.message or 'Unable to verify payment.', 'error');
+                    Swal.fire('Verification Failed', res.message || 'Unable to verify payment.', 'error');
                 }
             },
             error: function() {

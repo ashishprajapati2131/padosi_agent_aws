@@ -6,11 +6,11 @@ def run_schema_changes(apps, schema_editor):
         # Modify role enum
         schema_editor.execute("ALTER TABLE users MODIFY COLUMN role ENUM('admin', 'agent', 'client', 'distributor', 'insurance') NOT NULL DEFAULT 'client';")
         # Add columns and constraints
-        schema_editor.execute("ALTER TABLE agents ADD COLUMN insurance_id bigint unsigned DEFAULT NULL AFTER distributor_id, ADD CONSTRAINT fk_agents_insurance_id FOREIGN KEY (insurance_id) REFERENCES users(id) ON DELETE SET NULL;")
-        schema_editor.execute("ALTER TABLE users ADD COLUMN insurance_parent_id bigint unsigned DEFAULT NULL AFTER email_verified_at, ADD COLUMN insurance_sub_role varchar(50) DEFAULT NULL AFTER insurance_parent_id, ADD CONSTRAINT fk_users_insurance_parent_id FOREIGN KEY (insurance_parent_id) REFERENCES users(id) ON DELETE SET NULL;")
+        # schema_editor.execute("ALTER TABLE agents ADD COLUMN insurance_id bigint unsigned DEFAULT NULL AFTER distributor_id, ADD CONSTRAINT fk_agents_insurance_id FOREIGN KEY (insurance_id) REFERENCES users(id) ON DELETE SET NULL;")
+        schema_editor.execute("ALTER TABLE users ADD COLUMN insurance_parent_id bigint DEFAULT NULL AFTER email_verified_at, ADD COLUMN insurance_sub_role varchar(50) DEFAULT NULL AFTER insurance_parent_id, ADD CONSTRAINT fk_users_insurance_parent_id FOREIGN KEY (insurance_parent_id) REFERENCES users(id) ON DELETE SET NULL;")
     elif vendor == 'sqlite':
         # SQLite raw alter statements for test compatibility
-        schema_editor.execute("ALTER TABLE agents ADD COLUMN insurance_id INTEGER DEFAULT NULL;")
+        # schema_editor.execute("ALTER TABLE agents ADD COLUMN insurance_id INTEGER DEFAULT NULL;")
         schema_editor.execute("ALTER TABLE users ADD COLUMN insurance_parent_id INTEGER DEFAULT NULL;")
         schema_editor.execute("ALTER TABLE users ADD COLUMN insurance_sub_role VARCHAR(50) DEFAULT NULL;")
 
@@ -22,6 +22,7 @@ def reverse_schema_changes(apps, schema_editor):
         schema_editor.execute("ALTER TABLE users DROP FOREIGN KEY fk_users_insurance_parent_id, DROP COLUMN insurance_parent_id, DROP COLUMN insurance_sub_role;")
 
 class Migration(migrations.Migration):
+    atomic = False
 
     dependencies = [
         ('admin_panel', '0005_usersession_usersessiondata'),

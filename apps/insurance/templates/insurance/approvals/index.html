@@ -23,9 +23,7 @@
                 </thead>
                 <tbody>
                     {% for agent in agents %}
-                        @php
-                            sub = agent.subscriptions.first();
-                        @endphp
+                        {% with sub=agent.subscriptions.first %}
                         <tr>
                             <td class="px-4 py-3">
                                 <div class="d-flex align-items-center gap-3">
@@ -43,15 +41,15 @@
                             </td>
                             <td class="px-4 py-3">
                                 <span class="badge bg-primary-light text-primary px-3 py-2 fw-semibold" style="font-size: 12px; border-radius: 8px;">
-                                    {% if sub %}sub.selected_plan{% else %}agent.plan_type|title{% endif %}
+                                    {% if sub %}{{ sub.selected_plan }}{% else %}{{ agent.plan_type|title }}{% endif %}
                                 </span>
                                 <div class="text-muted mt-1" style="font-size: 11px;">
-                                    Amount: ₹{% if sub %}sub.registration_amount{% else %}0{% endif %}
+                                    Amount: ₹{% if sub %}{{ sub.registration_amount }}{% else %}0{% endif %}
                                 </div>
                             </td>
                             <td class="px-4 py-3">
                                 <div class="fw-semibold text-dark" style="font-size: 13px;">
-                                    {% if agent.onboardedBy %}agent.onboardedBy.fullname{% else %}'Direct'{% endif %}
+                                    {% if agent.onboarded_by %}{{ agent.onboarded_by.fullname }}{% else %}Direct{% endif %}
                                 </div>
                                 <div class="text-muted" style="font-size: 11px;">Onboarding Team</div>
                             </td>
@@ -70,7 +68,7 @@
 
                                     {#  Reject Trigger Button  #}
                                     <button type="button" class="btn btn-sm btn-danger px-3 py-2" style="border-radius: 8px; font-size: 12px; font-weight: 600;"
-                                            data-bs-toggle="modal" data-bs-target="#rejectModal{{ agent.id }}">
+                                            data-toggle="modal" data-target="#rejectModal{{ agent.id }}">
                                         <i class="fas fa-times me-1"></i> Reject
                                     </button>
                                 </div>
@@ -81,7 +79,7 @@
                                         <div class="modal-content" style="border-radius: 16px; text-align: left;">
                                             <div class="modal-header border-bottom-0 pt-4 px-4">
                                                 <h5 class="modal-title fw-bold text-dark">Reject Onboarding Request</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <form action="{% url 'insurance:approvals_reject' agent.id %}" method="POST">
                                                 {% csrf_token %}
@@ -93,7 +91,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer border-top-0 pb-4 px-4">
-                                                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="border-radius: 10px; height: 44px; font-weight: 600;">Cancel</button>
+                                                    <button type="button" class="btn btn-light px-4" data-dismiss="modal" style="border-radius: 10px; height: 44px; font-weight: 600;">Cancel</button>
                                                     <button type="submit" class="btn btn-danger px-4" style="border-radius: 10px; height: 44px; font-weight: 600;">Reject Request</button>
                                                 </div>
                                             </form>
@@ -102,6 +100,7 @@
                                 </div>
                             </td>
                         </tr>
+                        {% endwith %}
                     {% empty %}
                         {% include 'insurance/partials/empty_state.html' with is_table=True colspan='5' icon='fa-clipboard-question' title='No Pending Approvals' subtitle='All onboarding requests have been reviewed.' %}
                     {% endfor %}
