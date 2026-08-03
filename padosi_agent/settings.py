@@ -188,7 +188,7 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "padosi_agent.storage.SingleThreadedCompressedManifestStaticFilesStorage",
     },
 }
 WHITENOISE_MANIFEST_STRICT = False
