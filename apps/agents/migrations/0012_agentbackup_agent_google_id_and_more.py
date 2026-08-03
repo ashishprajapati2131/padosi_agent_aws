@@ -54,17 +54,17 @@ class Migration(migrations.Migration):
                         'managed': True,
                     },
                 ),
+                migrations.AddField(
+                    model_name='agent',
+                    name='google_id',
+                    field=models.CharField(blank=True, max_length=255, null=True),
+                ),
+                migrations.AddField(
+                    model_name='agent',
+                    name='referral_reward_claimed',
+                    field=models.BooleanField(default=False),
+                ),
             ],
             database_operations=[]
-        ),
-        migrations.AddField(
-            model_name='agent',
-            name='google_id',
-            field=models.CharField(blank=True, max_length=255, null=True),
-        ),
-        migrations.AddField(
-            model_name='agent',
-            name='referral_reward_claimed',
-            field=models.BooleanField(default=False),
         ),
     ]
