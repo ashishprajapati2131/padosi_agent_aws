@@ -650,9 +650,15 @@ def store_review(request, slug):
 @never_cache
 def edit_profile(request):
     from apps.admin_panel.views.dashboard import _get_admin_from_session
-    admin_id = _get_admin_from_session(request)
-    is_admin = bool(admin_id) or request.user.is_staff or request.user.is_superuser
-    
+
+    # Determine if this is a legitimate admin request.
+    # An admin is someone who BOTH has a valid admin session cookie AND
+    # is a Django staff/superuser — prevents stale admin cookies from
+    # giving agents unintended admin-level access.
+    admin_session_id = _get_admin_from_session(request)
+    is_admin = bool(admin_session_id) and (request.user.is_staff or request.user.is_superuser)
+
+    # Gate: regular agents must be authenticated via Django auth.
     if not is_admin and not request.user.is_authenticated:
         return redirect('agents:agent_login')
 
@@ -731,9 +737,12 @@ def update_profile(request):
     import json
     
     from apps.admin_panel.views.dashboard import _get_admin_from_session
-    admin_id = _get_admin_from_session(request)
-    is_admin = bool(admin_id) or request.user.is_staff or request.user.is_superuser
-    
+
+    # Same admin guard as edit_profile — require BOTH a valid admin session
+    # cookie AND Django staff/superuser status to treat the request as admin.
+    admin_session_id = _get_admin_from_session(request)
+    is_admin = bool(admin_session_id) and (request.user.is_staff or request.user.is_superuser)
+
     if not is_admin and not request.user.is_authenticated:
         return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
         
