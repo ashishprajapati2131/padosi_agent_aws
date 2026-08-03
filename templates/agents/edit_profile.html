@@ -221,7 +221,7 @@ Overview
                                     style="{% if profile.profile_photo_path %}border-style: solid; background-color: white;{% endif %}">
                                     {% if profile.profile_photo_path %}
                                     <img src="{{ profile.profile_photo_url }}" alt="Profile Photo"
-                                        onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.jpg' %}';">
+                                        onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.webp' %}';">
                                     {% else %}
                                     <i class="fas fa-camera fa-2x"></i>
                                     {% endif %}
@@ -3237,7 +3237,7 @@ Overview
     (function (url, id) {
         const previewItem = `
                     <div class="photo-preview-item" data-id="${id}">
-                        <img src="${url}" alt="Achievement Photo" onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.jpg' %}';">
+                        <img src="${url}" alt="Achievement Photo" onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.webp' %}';">
                         <button type="button" class="remove-photo" onclick="removeExistingPhoto(${id}, this)">
                             <i class="fas fa-times"></i>
                         </button>

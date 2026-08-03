@@ -20,7 +20,7 @@
         @page {
             margin: 0.4cm;
             {% if invoice.payment_status|lower == 'paid' %}
-            background-image: url('{% static "img/paid_watermark_bg.png" %}');
+            background-image: url('{% static "img/paid_watermark_bg.webp" %}');
             {% endif %}
         }
 
@@ -243,7 +243,7 @@
         <tr>
             <td style="width: 50%;">
                 {% load static %}
-                <img src="{% static 'img/logo.png' %}" alt="PadosiAgent Logo" class="company-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+                <img src="{% static 'img/logo.webp' %}" alt="PadosiAgent Logo" class="company-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
                 <h2 style="color: #18529d; margin: 0; display: none;">PadosiAgent</h2>
             </td>
             <td class="company-details">

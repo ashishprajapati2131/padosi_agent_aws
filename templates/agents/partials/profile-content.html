@@ -327,7 +327,7 @@
             <div class="profile-img-container">
                 <div class="profile-img-wrapper">
                     {% if profile and profile.profile_photo_url %}
-                        <img src="{{ profile.profile_photo_url }}" alt="{{ agentDisplayName }}" onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.jpg' %}';">
+                        <img src="{{ profile.profile_photo_url }}" alt="{{ agentDisplayName }}" onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.webp' %}';">
                     {% else %}
                         <div class="d-flex align-items-center justify-content-center h-100 bg-secondary text-white" style="font-size: 48px;">
                             {{ agentInitial }}
@@ -642,7 +642,7 @@
             <div class="media-grid">
                 {% for photo in agent.achievementPhotos.all %}
                     <div class="media-item lightbox-trigger" data-index="{{ forloop.counter0 }}" data-src="{{ photo.photo_url }}">
-                           <img src="{{ photo.photo_url }}" alt="Achievement" loading="lazy" onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.jpg' %}'; this.style.opacity='0.5';">
+                           <img src="{{ photo.photo_url }}" alt="Achievement" loading="lazy" onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.webp' %}'; this.style.opacity='0.5';">
                            <div class="media-overlay">
                                <i class="fas fa-search-plus text-white fa-2x"></i>
                            </div>
@@ -918,7 +918,7 @@
             html: `
                 <div class="padosi-popup-form" style="font-family: 'Outfit', sans-serif;">
                     <div class="padosi-popup-brand" style="margin-bottom: 8px;">
-                        <img src="{% static 'img/logo.png' %}" alt="PadosiAgent" style="width: 90px;">
+                        <img src="{% static 'img/logo.webp' %}" alt="PadosiAgent" style="width: 90px;">
                     </div>
                     
                     <h2 class="padosi-popup-title">${title}</h2>

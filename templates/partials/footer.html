@@ -1,5 +1,5 @@
 {% load static %}
-<section class="footer-con position-relative">
+<footer class="footer-con position-relative">
     <div class="container position-relative">
         <div class="middle_portion">
             <div class="row">
@@ -9,10 +9,11 @@
                             <div class="logo-content">
                                 <a href="/" class="footer-logo">
                                     <figure class="mb-0">
-                                        <img src="{% if footer_settings.site_logo %}{% if footer_settings.site_logo|slice:':4' == 'http' or footer_settings.site_logo|slice:':1' == '/' %}{{ footer_settings.site_logo }}{% else %}{% static footer_settings.site_logo %}{% endif %}{% else %}{% static 'img/logo.png' %}{% endif %}"
-                                            alt="{{ footer_settings.site_name|default:'PadosiAgent' }}"
+                                        <img src="{% if footer_settings.site_logo %}{% if footer_settings.site_logo|slice:':4' == 'http' or footer_settings.site_logo|slice:':1' == '/' %}{{ footer_settings.site_logo }}{% else %}{% static footer_settings.site_logo %}{% endif %}{% else %}{% static 'img/logo.webp' %}{% endif %}"
+                                            alt="{{ footer_settings.site_name|default:'PadosiAgent' }} Logo"
                                             style="max-height: 50px;"
-                                            onerror="this.onerror=null; this.src='{% static 'img/logo.png' %}';">
+                                            width="150" height="50" loading="lazy" decoding="async"
+                                            onerror="this.onerror=null; this.src='{% static 'img/logo.webp' %}';">
                                     </figure>
                                 </a>
                                 <p class="text-size-14 mb-0">Connecting clients with the right insurance agents in their
@@ -71,23 +72,23 @@
                                 <ul class="list-unstyled mb-0 social-icons">
                                     {% if footer_settings.social_links.facebook and footer_settings.social_links.facebook != '#' %}
                                     <li><a href="{{ footer_settings.social_links.facebook }}" target="_blank"
-                                            rel="noopener noreferrer" class="text-decoration-none"><i
+                                            rel="noopener noreferrer" class="text-decoration-none" aria-label="Facebook"><i
                                                 class="fa-brands fa-facebook-f social-networks"></i></a></li>
                                     {% endif %}
                                     {% if footer_settings.social_links.twitter and footer_settings.social_links.twitter != '#' %}
                                     <li><a href="{{ footer_settings.social_links.twitter }}" target="_blank"
-                                            rel="noopener noreferrer" class="text-decoration-none"><i
+                                            rel="noopener noreferrer" class="text-decoration-none" aria-label="Twitter/X"><i
                                                 class="fa-brands fa-x-twitter social-networks"
                                                 aria-hidden="true"></i></a></li>
                                     {% endif %}
                                     {% if footer_settings.social_links.instagram and footer_settings.social_links.instagram != '#' %}
                                     <li><a href="{{ footer_settings.social_links.instagram }}" target="_blank"
-                                            rel="noopener noreferrer" class="text-decoration-none"><i
+                                            rel="noopener noreferrer" class="text-decoration-none" aria-label="Instagram"><i
                                                 class="fa-brands fa-instagram social-networks"></i></a></li>
                                     {% endif %}
                                     {% if footer_settings.social_links.linkedin and footer_settings.social_links.linkedin != '#' %}
                                     <li><a href="{{ footer_settings.social_links.linkedin }}" target="_blank"
-                                            rel="noopener noreferrer" class="text-decoration-none"><i
+                                            rel="noopener noreferrer" class="text-decoration-none" aria-label="LinkedIn"><i
                                                 class="fa-brands fa-linkedin-in social-networks"></i></a></li>
                                     {% endif %}
                                 </ul>
@@ -123,4 +124,4 @@
         });
     </script>
     {% endif %}
-</section>
+</footer>

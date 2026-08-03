@@ -3,9 +3,9 @@
     <div class="container">
         <nav class="navbar navbar-expand-lg navbar-light p-0">
             <a class="navbar-brand"
-                href="{% if request.user.is_authenticated and request.user.role == 'agent' %}/agent/dashboard/{% else %}/{% endif %}">
+                href="{% if request.user.is_authenticated and request.user.role == 'agent' %}/agent/dashboard/{% else %}/{% endif %}" aria-label="PadosiAgent Home">
                 <figure class="logo mb-0">
-                    <img src="{% static 'img/logo.png' %}" alt="PadosiAgent" class="img-fluid">
+                    <img src="{% static 'img/logo.webp' %}" alt="PadosiAgent Logo" class="img-fluid" width="150" height="50" fetchpriority="high">
                 </figure>
             </a>
             <button class="navbar-toggler collapsed" type="button" data-toggle="collapse"
