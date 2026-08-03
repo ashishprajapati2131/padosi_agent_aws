@@ -22,7 +22,7 @@ def admin_badge_counts(request):
         total_pincodes_count    – Pincode Manager    (#7c3aed) — always shown if >0
         notif_count             – Bell badge = sum of non-active agents + pending reviews + pending contacts
     """
-    if not request.path.startswith('/admin/'):
+    if not (request.path.startswith('/admin/') or request.path.startswith('/padosi-admin/')):
         return {}
 
     counts = {
@@ -39,6 +39,11 @@ def admin_badge_counts(request):
         'total_pincodes_count':    0,
         'insurance_pending_count': 0,
         'notif_count':             0,
+        # Permission-gate helpers used by the sidebar template:
+        #   is_super_admin     – True for Super Admins (all items visible)
+        #   admin_permissions  – set of canonical permission keys for Staff Admins
+        'is_super_admin':          False,
+        'admin_permissions':       set(),
     }
 
     try:
@@ -177,7 +182,7 @@ def admin_badge_counts(request):
             )
             counts['notif_count'] = min(notif_count, 99)
 
-            # 13. Fetch logged in admin details
+            # 13. Fetch logged in admin details + inject permission-gate context
             try:
                 from apps.admin_panel.models.admin_auth import Admin
                 token = request.COOKIES.get("session_token")
@@ -190,7 +195,15 @@ def admin_badge_counts(request):
                         d_row = cursor.fetchone()
                         if d_row:
                             admin_id = int(d_row[0])
-                            counts['logged_in_admin'] = Admin.objects.filter(id=admin_id).first()
+                            admin_obj = Admin.objects.filter(id=admin_id).first()
+                            counts['logged_in_admin'] = admin_obj
+                            if admin_obj:
+                                is_super = (admin_obj.role == 'super')
+                                counts['is_super_admin'] = is_super
+                                # For staff admins, expose a set for O(1) 'in' checks in templates.
+                                # Super admins get an empty set; is_super_admin=True short-circuits all guards.
+                                if not is_super and isinstance(admin_obj.permissions, list):
+                                    counts['admin_permissions'] = set(admin_obj.permissions)
             except Exception:
                 pass
 

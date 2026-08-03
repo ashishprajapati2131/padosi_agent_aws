@@ -393,24 +393,33 @@
     <div class="sidebar-menu">
 
         <!-- Dashboard -->
+        {% if is_super_admin or 'dashboard' in admin_permissions %}
         <a href="/admin/dashboard/"
            class="menu-item {% if request.path == '/admin/dashboard/' %}active{% endif %}">
             <i class="fa-solid fa-chart-pie"></i> Dashboard
         </a>
+        {% endif %}
 
         <!-- User Management -->
+        {% if is_super_admin or 'agents' in admin_permissions or 'distributors' in admin_permissions or 'approvals' in admin_permissions or 'blacklisted_agents' in admin_permissions or 'pending_registrations' in admin_permissions or 'users' in admin_permissions or 'insurance' in admin_permissions or 'insurance_approvals' in admin_permissions %}
         <div class="menu-label">User Management</div>
+        {% endif %}
 
+        {% if is_super_admin or 'agents' in admin_permissions %}
         <a href="/admin/agents/"
            class="menu-item {% if request.path == '/admin/agents/' %}active{% endif %}">
             <i class="fa-solid fa-users-gear"></i> Agents
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'distributors' in admin_permissions %}
         <a href="/admin/distributors/"
            class="menu-item {% if '/admin/distributors/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-building-user"></i> Distributors
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'approvals_awaiting_verification' in admin_permissions or 'approvals_missing_licenses' in admin_permissions %}
         <a href="/admin/approvals/"
            class="menu-item {% if '/admin/approvals/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-user-check"></i> Pending Approvals
@@ -418,7 +427,9 @@
             <span class="badge bg-success ms-auto">{{ pending_agents_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'pending_registrations' in admin_permissions %}
         <a href="/admin/pending-registrations/"
            class="menu-item {% if '/admin/pending-registrations/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-user-clock"></i> Registration Pending
@@ -426,22 +437,30 @@
             <span class="badge bg-dark ms-auto">{{ incomplete_agents_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'users' in admin_permissions %}
         <a href="/admin/users/"
            class="menu-item {% if '/admin/users/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-user-group"></i> Clients / Users
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'blacklisted_agents' in admin_permissions %}
         <a href="{% url 'admin_blacklisted_agents' %}"
            class="menu-item {% if request.path == '/padosi-admin/blacklisted-agents/' %}active{% endif %}">
             <i class="fa-solid fa-user-slash"></i> Blacklisted Agents
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'insurance' in admin_permissions %}
         <a href="{% url 'admin_insurance_index' %}"
            class="menu-item {% if '/admin/insurance/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-shield-halved" style="color:#0f3460;"></i> Insurance Companies
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'insurance_approvals' in admin_permissions %}
         <a href="{% url 'admin_insurance_approvals_index' %}"
            class="menu-item {% if '/admin/insurance-approvals/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-clipboard-check" style="color:#d97706;"></i> Insurance Approvals
@@ -449,6 +468,7 @@
             <span class="badge bg-warning text-dark ms-auto">{{ insurance_pending_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
         {% if logged_in_admin.role == 'super' %}
         <a href="{% url 'admin_admins_index' %}"
@@ -458,14 +478,17 @@
         {% endif %}
 
         <!-- Event Management -->
+        {% if is_super_admin or 'events' in admin_permissions %}
         <div class="menu-label">Event Management</div>
 
         <a href="/admin/events/"
            class="menu-item {% if '/admin/events/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-calendar-days"></i> Events
         </a>
+        {% endif %}
 
         <!-- Subscriptions -->
+        {% if is_super_admin or 'subscriptions' in admin_permissions %}
         <div class="menu-label">Subscriptions</div>
 
         <a href="/admin/subscriptions/"
@@ -475,10 +498,14 @@
             <span class="badge bg-danger ms-auto">{{ expiring_soon_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
         <!-- Leads & Inquiries -->
+        {% if is_super_admin or 'leads' in admin_permissions or 'contacts' in admin_permissions %}
         <div class="menu-label">Leads &amp; Inquiries</div>
+        {% endif %}
 
+        {% if is_super_admin or 'leads' in admin_permissions %}
         <a href="/admin/leads/"
            class="menu-item {% if '/admin/leads/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-phone-volume"></i> Agent Leads
@@ -486,7 +513,9 @@
             <span class="badge bg-warning text-dark ms-auto">{{ new_leads_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'contacts' in admin_permissions %}
         <a href="/admin/contacts/"
            class="menu-item {% if '/admin/contacts/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-envelope-open-text"></i> Contact Inbox
@@ -494,8 +523,10 @@
             <span class="badge bg-primary ms-auto">{{ pending_contacts_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
         <!-- Reviews & Ratings -->
+        {% if is_super_admin or 'reviews' in admin_permissions %}
         <div class="menu-label">Reviews &amp; Ratings</div>
 
         <a href="/admin/reviews/"
@@ -505,8 +536,10 @@
             <span class="badge bg-warning text-dark ms-auto">{{ pending_reviews_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
         <!-- Communications -->
+        {% if is_super_admin or 'notifications' in admin_permissions %}
         <div class="menu-label">Communications</div>
 
         <a href="/admin/agent/notifications/"
@@ -518,8 +551,10 @@
            class="menu-item {% if '/admin/broadcast/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-paper-plane"></i> Broadcast
         </a>
+        {% endif %}
 
         <!-- Content Control -->
+        {% if is_super_admin or 'content' in admin_permissions %}
         <div class="menu-label">Content Control</div>
 
         <a href="/admin/settings/homepage/"
@@ -561,15 +596,21 @@
            class="menu-item {% if '/admin/pages/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-file-lines"></i> Pages &amp; CMS
         </a>
+        {% endif %}
 
         <!-- Finances -->
+        {% if is_super_admin or 'revenue' in admin_permissions or 'invoices' in admin_permissions or 'promo_codes' in admin_permissions or 'free_trial' in admin_permissions or 'referrals' in admin_permissions %}
         <div class="menu-label">Finances</div>
+        {% endif %}
 
+        {% if is_super_admin or 'revenue' in admin_permissions %}
         <a href="/admin/revenue/"
            class="menu-item {% if '/admin/revenue/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-indian-rupee-sign"></i> Revenue Dashboard
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'invoices' in admin_permissions %}
         <a href="/admin/invoices/"
            class="menu-item {% if '/admin/invoices/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-file-invoice" style="color:#4f46e5;"></i> Invoices
@@ -577,12 +618,16 @@
             <span class="badge ms-auto" style="background:#4f46e5;">{{ unsynced_invoice_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'promo_codes' in admin_permissions %}
         <a href="/admin/promo-codes/"
            class="menu-item {% if '/admin/promo-codes/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-ticket-alt"></i> Promo Codes
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'free_trial' in admin_permissions %}
         <a href="/admin/free-trial/"
            class="menu-item {% if '/admin/free-trial/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-flask text-success"></i> Free Trial Manager
@@ -590,7 +635,9 @@
             <span class="badge bg-success ms-auto">{{ active_trial_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'referrals' in admin_permissions %}
         <a href="/admin/referrals/"
            class="menu-item {% if '/admin/referrals/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-share-nodes" style="color:#7c3aed;"></i> Referral System
@@ -598,25 +645,35 @@
             <span class="badge ms-auto" style="background:#7c3aed;">{{ unclaimed_rewards_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
         <!-- Tools -->
+        {% if is_super_admin or 'finance_accounts' in admin_permissions or 'export' in admin_permissions or 'qr_generator' in admin_permissions or 'geocoding' in admin_permissions or 'pincode' in admin_permissions %}
         <div class="menu-label">Tools</div>
+        {% endif %}
 
+        {% if is_super_admin or 'finance_accounts' in admin_permissions %}
         <a href="/admin/finance/"
            class="menu-item {% if '/admin/finance/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-landmark" style="color:#2563eb;"></i> Finance &amp; Accounts
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'export' in admin_permissions %}
         <a href="/admin/export/"
            class="menu-item {% if '/admin/export/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-download"></i> Export Center
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'qr_generator' in admin_permissions %}
         <a href="{% url 'admin_qr_files_index' %}"
            class="menu-item {% if '/admin/qr-files/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-qrcode" style="color:#10b981;"></i> QR Code Generator
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'geocoding' in admin_permissions %}
         <a href="/admin/geocoding-manager/"
            class="menu-item {% if '/admin/geocoding-manager/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-map-location-dot" style="color:#0891b2;"></i> Geocoding Manager
@@ -624,7 +681,9 @@
             <span class="badge ms-auto" style="background:#0891b2;">{{ geo_missing_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
+        {% if is_super_admin or 'pincode' in admin_permissions %}
         <a href="{% url 'admin_pincode_index' %}"
            class="menu-item {% if '/admin/pincode/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-map-pin" style="color:#7c3aed;"></i> Pincode Manager
@@ -632,28 +691,33 @@
             <span class="badge ms-auto" style="background:#7c3aed;">{{ total_pincodes_count }}</span>
             {% endif %}
         </a>
+        {% endif %}
 
         <!-- Developer & API -->
+        {% if is_super_admin %}
         <div class="menu-label">Developer &amp; API</div>
 
         <a href="/api/docs" target="_blank"
            class="menu-item {% if '/api/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-code" style="color:#6366f1;"></i> FastAPI Services (Docs)
         </a>
+        {% endif %}
 
         <!-- Advanced -->
+        {% if is_super_admin or 'analytics' in admin_permissions or 'error_logs' in admin_permissions %}
         <div class="menu-label">Advanced</div>
-
 
         <a href="/admin/advanced/analytics/"
            class="menu-item {% if '/admin/advanced/analytics/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-chart-line"></i> Analytics
         </a>
 
+        {% if is_super_admin or 'error_logs' in admin_permissions %}
         <a href="{% url 'admin_error_logs_index' %}"
            class="menu-item {% if '/admin/advanced/error-logs/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-triangle-exclamation text-danger"></i> Error Logs
         </a>
+        {% endif %}
 
         <a href="/admin/advanced/activity-logs/"
            class="menu-item {% if '/admin/advanced/activity-logs/' in request.path %}active{% endif %}">
@@ -664,8 +728,10 @@
            class="menu-item {% if '/admin/security/threat-logs/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-bug-slash"></i> Threat Intelligence
         </a>
+        {% endif %}
 
         <!-- System -->
+        {% if is_super_admin or 'site_settings' in admin_permissions or 'email_templates' in admin_permissions %}
         <div class="menu-label">System</div>
 
         <a href="/admin/settings/general/"
@@ -683,10 +749,13 @@
             <i class="fa-solid fa-shield-halved"></i> Security &amp; Limits
         </a>
 
+        {% if is_super_admin or 'email_templates' in admin_permissions %}
         <a href="/admin/settings/templates/"
            class="menu-item {% if '/admin/settings/templates/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-file-code"></i> Email &amp; PDF Templates
         </a>
+        {% endif %}
+        {% endif %}
 
         <div style="margin-top:40px; border-top:1px solid var(--border-light); padding-top:20px;">
             <a href="/admin/logout/" class="menu-item text-danger">
@@ -833,11 +902,13 @@
             <!-- Admin Avatar -->
             <div style="display:flex;align-items:center;gap:10px;">
                 <div style="text-align:right;line-height:1;" class="d-none d-md-block">
-                    <div style="font-weight:600;font-size:14px;color:var(--text-primary);">Administrator</div>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Super Admin</div>
+                    <div style="font-weight:600;font-size:14px;color:var(--text-primary);">{{ logged_in_admin.name|default:"Administrator" }}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+                        {% if is_super_admin %}Super Admin{% else %}Staff Admin{% endif %}
+                    </div>
                 </div>
                 <div style="width:38px;height:38px;border-radius:10px;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">
-                    A
+                    {{ logged_in_admin.name.0|default:"A"|upper }}
                 </div>
             </div>
 

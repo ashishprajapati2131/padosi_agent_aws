@@ -75,6 +75,7 @@
 </div>
 
 {# Header + Sort Controls #}
+{% if is_super_admin or 'approvals_awaiting_verification' in admin_permissions %}
 <div class="card border-0 shadow-sm" style="border-top: 3px solid var(--primary);">
     <div class="card-header py-3">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
@@ -348,8 +349,10 @@
         </div>
     </form>
 </div>
+{% endif %}
 
 {# ═══════════════ MISSING IRDAI LICENSES SECTION ═══════════════ #}
+{% if is_super_admin or 'approvals_missing_licenses' in admin_permissions %}
 <div class="card border-0 shadow-sm mt-4" style="border-top: 3px solid #10b981;">
     <div class="card-header py-3">
         <h6 class="m-0 fw-bold"><i class="fa-solid fa-building-shield me-2" style="color:#10b981;"></i>Missing IRDAI Licenses</h6>
@@ -465,6 +468,7 @@
         </table>
     </div>
 </div>
+{% endif %}
 
 {# ═══════════════ PROFILE CHANGES DRAWER ═══════════════ #}
 <div id="changes-overlay" onclick="closeChangesDrawer()" style="
