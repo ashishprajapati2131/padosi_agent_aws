@@ -425,7 +425,7 @@ platform.{% endblock %}
         if (val.length === 6) {
             feedback.style.display = 'block';
             feedback.innerHTML = '<span style="color:#273c8e;"><i class="fas fa-spinner fa-spin"></i> Checking location...</span>';
-            fetch('/insurance/api/pincode/fetch/' + val)
+            fetch('https://api.postalpincode.in/pincode/' + val)
                 .then(function (res) { return res.json(); })
                 .then(function (res) {
                     if (res && res[0] && res[0].Status === 'Success' && res[0].PostOffice && res[0].PostOffice.length > 0) {

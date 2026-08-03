@@ -10,7 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from apps.agents.models import Agent, AgentProfile, AgentBioGenerationLog
-from chatbot.llm_client import get_groq_client
+from chatbot.llm_client import call_llm_with_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -126,10 +126,8 @@ def generate_professional_bio(request):
     start_time = time.time()
     
     try:
-        # 4. LLM Generation via Groq
-        client = get_groq_client()
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+        # 4. LLM Generation via Fallback Client
+        response, provider = call_llm_with_fallback(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": full_prompt}

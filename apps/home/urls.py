@@ -1,9 +1,10 @@
 from django.urls import path
-from .views import pages
+from .views import pages, seo
 
 app_name = 'home'
 
 urlpatterns = [
+    path('robots.txt',       seo.robots_txt,        name='robots_txt'),
     path('favicon.ico',      pages.favicon,         name='favicon'),
     path('',                 pages.home,            name='home'),
     path('about/',           pages.about,           name='about'),

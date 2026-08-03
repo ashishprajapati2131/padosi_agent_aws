@@ -1,5 +1,5 @@
-{% load static static_v %}
-<link rel="stylesheet" href="{% static_v 'chatbot/css/widget.css' %}">
+{% load static %}
+<link rel="stylesheet" href="{% static 'chatbot/css/widget.css' %}">
 
 <!-- Chatbot Trigger Button -->
 <button id="chatbot-trigger" class="chatbot-trigger" aria-label="Ask AI">
@@ -78,4 +78,4 @@
     </div>
 </div>
 
-<script src="{% static_v 'chatbot/js/widget.js' %}"></script>
+<script src="{% static 'chatbot/js/widget.js' %}"></script>

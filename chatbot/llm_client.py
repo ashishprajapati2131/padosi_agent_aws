@@ -283,6 +283,8 @@ def call_llm_with_fallback(messages, tools=None, tool_choice=None, **extra_kwarg
     for i, provider in enumerate(rotated_providers):
         is_last_provider = (i == len(rotated_providers) - 1)
         api_key = os.environ.get(provider["api_key_env"])
+        if not api_key and provider["type"] == "groq":
+            api_key = os.environ.get("GROQ_API_KEY")
         if not api_key:
             continue
             
@@ -906,6 +908,8 @@ def stream_plain_text_completion(session_id, user_message):
     for i, provider in enumerate(rotated_providers):
         is_last_provider = (i == len(rotated_providers) - 1)
         api_key = os.environ.get(provider["api_key_env"])
+        if not api_key and provider["type"] == "groq":
+            api_key = os.environ.get("GROQ_API_KEY")
         if not api_key:
             continue
             
@@ -1136,6 +1140,8 @@ def stream_plain_text_completion(session_id, user_message):
 
         except Exception as e:
             last_error = e
+            import traceback
+            traceback.print_exc()
             logger.warning(f"Streaming provider {provider['name']} failed: {e}")
             if not is_last_provider:
                 cache.set(f"llm_cooldown_{provider['name']}", True, timeout=60)

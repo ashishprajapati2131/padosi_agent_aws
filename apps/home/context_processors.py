@@ -42,3 +42,14 @@ def footer_settings(request):
         'footer_settings': cached_data,
         'site_name': cached_data.get('site_name'),  # for backwards compatibility in base.html
     }
+
+def seo_context(request):
+    """
+    Provides default SEO context variables across all pages.
+    """
+    return {
+        'default_canonical_url': request.build_absolute_uri(request.path),
+        'default_meta_title': 'PadosiAgent — Expert & Trusted Insurance Agent',
+        'default_meta_description': 'Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent.',
+        'default_og_image': request.build_absolute_uri('/static/img/logo.png'),
+    }

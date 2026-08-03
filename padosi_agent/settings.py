@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sitemaps',
     
     # Internal Apps
     'apps.home',
@@ -88,6 +89,7 @@ MIDDLEWARE = [
     'apps.admin_panel.middleware.AdminPermissionMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.admin_panel.middleware.ExceptionLoggerMiddleware',
+    'padosi_agent.middleware.SEOMiddleware',
 ]
 
 ROOT_URLCONF = 'padosi_agent.urls'
@@ -104,6 +106,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'apps.admin_panel.context_processors.admin_badge_counts',
                 'apps.home.context_processors.footer_settings',
+                'apps.home.context_processors.seo_context',
             ],
         },
     },

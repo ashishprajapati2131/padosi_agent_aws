@@ -2,9 +2,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>{% block title %}PadosiAgent — Expert & Trusted Insurance Agent{% endblock %}</title>
+    <title>{% block title %}{{ default_meta_title }}{% endblock %}</title>
     <link rel="icon" href="{% url 'home:favicon' %}" type="image/x-icon">
-    <meta name="description" content="{% block meta_description %}Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent.{% endblock %}">
+    <meta name="description" content="{% block meta_description %}{{ default_meta_description }}{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}insurance agent, trusted agent, PadosiAgent{% endblock %}">
+    <link rel="canonical" href="{% block canonical_url %}{{ default_canonical_url }}{% endblock %}">
+    <meta name="robots" content="{% block meta_robots %}index, follow{% endblock %}">
+    
+    <!-- Open Graph Tags -->
+    <meta property="og:title" content="{% block og_title %}{{ default_meta_title }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ default_meta_description }}{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}{{ default_canonical_url }}{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{{ default_og_image }}{% endblock %}">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    
+    <!-- Twitter Card Tags -->
+    <meta name="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}">
+    <meta name="twitter:title" content="{% block twitter_title %}{{ default_meta_title }}{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}{{ default_meta_description }}{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}{{ default_og_image }}{% endblock %}">
+
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="utf-8">
     <meta name="theme-color" content="#ffffff">

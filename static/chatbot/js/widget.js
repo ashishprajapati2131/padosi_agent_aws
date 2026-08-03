@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let sessionId = localStorage.getItem('chatbot_session_id') || "";
 
     const loadChips = () => {
-        fetch('/api/chatbot/chips/')
+        fetch('/chatbot-api/chips/')
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.data && suggestionsContainer) {
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         try {
-            const res = await fetch(`/api/chatbot/history/${sessionId}/`);
+            const res = await fetch(`/chatbot-api/history/${sessionId}/`);
             const data = await res.json();
             if (data.success && data.data && data.data.length > 0) {
                 // Clear welcome message and chips
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             setTimeout(() => {
                 const newSuggestions = document.getElementById('chatbot-suggestions');
-                fetch('/api/chatbot/chips/')
+                fetch('/chatbot-api/chips/')
                     .then(res => res.json())
                     .then(data => {
                         if (data.success && data.data && newSuggestions) {
@@ -342,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
         botMsgDiv.className = 'chatbot-message bot-message';
 
         try {
-            const response = await fetch('/api/chatbot/message/', {
+            const response = await fetch('/chatbot-api/message/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: text, session_id: sessionId })
