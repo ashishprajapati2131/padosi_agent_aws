@@ -96,7 +96,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('admin_panel', '0001_initial'),
-        ('agents', '0012_agentbackup_agent_google_id_and_more'),
+        ('agents', '0011_agent_onboarded_by'),
     ]
 
     operations = [
