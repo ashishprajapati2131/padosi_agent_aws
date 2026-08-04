@@ -23,7 +23,8 @@ urlpatterns = [
     path('agents/cart/remove/', agents.remove_from_cart, name='remove_from_cart'),
     path('agents/cart/clear/', agents.clear_cart, name='clear_cart'),
     path('agents/cart/checkout/', agents.checkout_cart, name='checkout_cart'),
-    path('agents/cart/checkout-success/', agents.checkout_cart, name='checkout_online_success'),
+    path('agents/cart/checkout-online/', agents.checkout_online_start, name='checkout_online_start'),
+    path('agents/cart/checkout-success/', agents.checkout_online_success, name='checkout_online_success'),
     
     path('approvals/', approvals.approvals_index, name='approvals_index'),
     path('approvals/<int:agent_id>/approve/', approvals.approvals_approve, name='approvals_approve'),

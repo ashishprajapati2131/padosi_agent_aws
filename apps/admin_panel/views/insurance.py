@@ -123,6 +123,7 @@ def insurance_store(request):
             auth_user.save()
             
         admin_user = User.objects.create(
+            id=auth_user.id,
             fullname=fullname,
             email=email,
             password=hashed_password,

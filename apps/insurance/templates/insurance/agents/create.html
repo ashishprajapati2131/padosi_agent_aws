@@ -580,7 +580,7 @@
 {% block scripts %}
 <script>
     var currentTab = 'single';
-    var cartList = [];
+    var cartList = {{ initial_cart_json|safe|default:"[]" }};
 
     $(document).ready(function() {
         renderCart();
@@ -748,6 +748,9 @@
         $.ajax({
             url: "{% url 'insurance:add_to_cart' %}",
             type: "POST",
+            headers: {
+                'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+            },
             data: form.serialize(),
             success: function(res) {
                 if (res.success) {
@@ -883,7 +886,7 @@
                         Swal.close();
                         if (res.success) {
                             Swal.fire('Success', res.message, 'success').then(() => {
-                                window.location.href = res.redirect;
+                                window.location.href = res.redirect || "{% url 'insurance:agents_index' %}";
                             });
                         }
                     },
@@ -936,7 +939,7 @@
                         Swal.close();
                         if (res.success) {
                             Swal.fire('Success', res.message, 'success').then(() => {
-                                window.location.href = res.redirect;
+                                window.location.href = res.redirect || "{% url 'insurance:agents_index' %}";
                             });
                         }
                     },
@@ -959,7 +962,7 @@
         });
 
         $.ajax({
-            url: "{% url 'insurance:checkout_cart' %}",
+            url: "{% url 'insurance:checkout_online_start' %}",
             type: "POST",
             data: { csrfmiddlewaretoken: $('input[name="csrfmiddlewaretoken"]').val() },
             success: function(res) {
@@ -1027,7 +1030,7 @@
                         timer: 2000,
                         showConfirmButton: false
                     }).then(() => {
-                        window.location.href = res.redirect_url;
+                        window.location.href = res.redirect_url || res.redirect || "{% url 'insurance:agents_index' %}";
                     });
                 } else {
                     Swal.fire('Verification Failed', res.message || 'Unable to verify payment.', 'error');

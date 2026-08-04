@@ -227,6 +227,8 @@ def logout_view(request):
         return redirect('/distributor-login')
 
     messages.success(request, "You have been logged out successfully.")
+    if role == 'agent':
+        return redirect('agents:agent_login')
     return redirect('agents:agent_login')
 
 @login_required(login_url='agents:agent_login')

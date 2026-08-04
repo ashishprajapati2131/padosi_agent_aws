@@ -35,6 +35,11 @@
         .skip-link { position: absolute; top: -40px; left: 0; background: #273c8e; color: #fff; padding: 8px; z-index: 999999; transition: top 0.2s; }
         .skip-link:focus { top: 0; outline: 3px solid #f9a826; }
         :focus-visible { outline: 3px solid #2563eb !important; outline-offset: 2px !important; }
+        input:focus, select:focus, textarea:focus, 
+        input:focus-visible, select:focus-visible, textarea:focus-visible { 
+            outline: none !important; 
+            box-shadow: none !important; 
+        }
 
         .loader-mask{position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;transition:opacity 0.3s ease}
         .loader-mask.hidden{opacity:0;pointer-events:none}
@@ -173,15 +178,12 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="{% static 'css/custome.css' %}">
     <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
-    <link rel="preload" href="{% static 'css/owl.carousel.min.css' %}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="{% static 'css/owl.theme.default.min.css' %}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="{% static 'css/magnific-popup.css' %}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="{% static 'css/aos.css' %}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" href="{% static 'css/agent-profile-view.css' %}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <link rel="preload" as="style"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-          onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous">
-    <noscript>
+    <link rel="stylesheet" href="{% static 'css/owl.carousel.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/owl.theme.default.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/magnific-popup.css' %}">
+    <link rel="stylesheet" href="{% static 'css/aos.css' %}">
+    <link rel="stylesheet" href="{% static 'css/agent-profile-view.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
         <link rel="stylesheet" href="{% static 'css/owl.carousel.min.css' %}">
         <link rel="stylesheet" href="{% static 'css/owl.theme.default.min.css' %}">
         <link rel="stylesheet" href="{% static 'css/magnific-popup.css' %}">

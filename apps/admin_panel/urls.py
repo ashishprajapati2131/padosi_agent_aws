@@ -199,7 +199,7 @@ from apps.admin_panel.views.blacklisted import (
 # app_name = "admin_panel"
 
 urlpatterns = [
-    path('padosi-admin/blacklisted-agents/', blacklisted_agents_view, name='admin_blacklisted_agents'),
+    path('admin/blacklisted-agents/', blacklisted_agents_view, name='admin_blacklisted_agents'),
     path('admin/ajax/blacklist/approve/', ajax_blacklist_approve, name='ajax_blacklist_approve'),
     path('admin/ajax/blacklist/confirm/', ajax_blacklist_confirm, name='ajax_blacklist_confirm'),
     path('admin/ajax/blacklist/remove/', ajax_blacklist_remove, name='ajax_blacklist_remove'),

@@ -822,10 +822,10 @@
             new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: @json(trendLabels ?? []),
+                    labels: {{ trendLabels|safe }},
                     datasets: [{
                         label: 'Agents Onboarded',
-                        data: @json(trendData ?? []),
+                        data: {{ trendData|safe }},
                         backgroundColor: 'rgba(29, 84, 152, 0.15)',
                         borderColor: '#1d5498',
                         borderWidth: 2,
@@ -870,7 +870,7 @@
                             $(`#paymentModal${agentId}`).modal('hide');
                             $(`#dashboardPaymentModal${agentId}`).modal('hide');
 
-                            if (res.test_payment and not res.order_id) {
+                            if (res.test_payment && !res.order_id) {
                                 verifyAgentPayment(agentId, { test_payment: true });
                             } else {
                                 var options = {
@@ -893,12 +893,12 @@
                                 rzp.open();
                             }
                         } else {
-                            Swal.fire('Error', res.message or 'Failed to prepare payment.', 'error');
+                            Swal.fire('Error', res.message || 'Failed to prepare payment.', 'error');
                         }
                     },
                     error: function(xhr) {
                         Swal.close();
-                        Swal.fire('Error', (xhr.responseJSON and xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to prepare payment.', 'error');
+                        Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to prepare payment.', 'error');
                     }
                 });
             }
@@ -917,9 +917,9 @@
                     type: "POST",
                     data: {
                         _token: "{{ csrf_token }}",
-                        razorpay_payment_id: paymentData.razorpay_payment_id or '',
-                        razorpay_order_id: paymentData.razorpay_order_id or '',
-                        razorpay_signature: paymentData.razorpay_signature or '',
+                        razorpay_payment_id: paymentData.razorpay_payment_id || '',
+                        razorpay_order_id: paymentData.razorpay_order_id || '',
+                        razorpay_signature: paymentData.razorpay_signature || '',
                         test_payment: paymentData.test_payment ? 1 : 0
                     },
                     success: function(res) {
@@ -935,12 +935,12 @@
                                 window.location.reload();
                             });
                         } else {
-                            Swal.fire('Verification Failed', res.message or 'Unable to verify payment.', 'error');
+                            Swal.fire('Verification Failed', res.message || 'Unable to verify payment.', 'error');
                         }
                     },
                     error: function(xhr) {
                         Swal.close();
-                        Swal.fire('Error', (xhr.responseJSON and xhr.responseJSON.message) ? xhr.responseJSON.message : 'Payment verification failed.', 'error');
+                        Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Payment verification failed.', 'error');
                     }
                 });
             }

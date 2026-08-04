@@ -652,11 +652,10 @@ def edit_profile(request):
     from apps.admin_panel.views.dashboard import _get_admin_from_session
 
     # Determine if this is a legitimate admin request.
-    # An admin is someone who BOTH has a valid admin session cookie AND
-    # is a Django staff/superuser — prevents stale admin cookies from
-    # giving agents unintended admin-level access.
+    # An admin is someone who has a valid admin session cookie OR
+    # is a Django staff/superuser.
     admin_session_id = _get_admin_from_session(request)
-    is_admin = bool(admin_session_id) and (request.user.is_staff or request.user.is_superuser)
+    is_admin = bool(admin_session_id) or (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser))
 
     # Gate: regular agents must be authenticated via Django auth.
     if not is_admin and not request.user.is_authenticated:
@@ -738,17 +737,18 @@ def update_profile(request):
     
     from apps.admin_panel.views.dashboard import _get_admin_from_session
 
-    # Same admin guard as edit_profile — require BOTH a valid admin session
-    # cookie AND Django staff/superuser status to treat the request as admin.
+    # Same admin guard as edit_profile
     admin_session_id = _get_admin_from_session(request)
-    is_admin = bool(admin_session_id) and (request.user.is_staff or request.user.is_superuser)
+    is_admin = bool(admin_session_id) or (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser))
 
     if not is_admin and not request.user.is_authenticated:
         return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
         
     agent_id = request.POST.get('agent_id')
     
-    if is_admin and agent_id:
+    is_admin_edit = is_admin and bool(agent_id)
+    
+    if is_admin_edit:
         agent = Agent.objects.filter(id=agent_id).first()
     else:
         agent = Agent.objects.filter(user=request.user).first()
@@ -829,7 +829,7 @@ def update_profile(request):
                     agent.user_types = user_types
                     
                 # Admin values
-                if is_admin:
+                if is_admin_edit:
                     badge_data = request.POST.getlist('badge[]') or request.POST.getlist('badge')
                     agent.badge = ','.join(filter(None, badge_data))
                     if request.POST.get('status'):
@@ -949,7 +949,7 @@ def update_profile(request):
                 else:
                     profile.investment_valid_till = None
                 
-                if is_admin and request.POST.get('license_number'):
+                if is_admin_edit and request.POST.get('license_number'):
                     profile.license_number = request.POST.get('license_number')
                     
                 profile.save()
@@ -1307,7 +1307,7 @@ def update_profile(request):
                 
             # ── Step 7: Final Submission ──
             if not current_step or str(current_step) == '7':
-                if not is_admin:
+                if not is_admin_edit:
                     agent.status = 'pending_approval'
                     agent.save()
                     
@@ -1315,7 +1315,7 @@ def update_profile(request):
                 'status': 'success',
                 'message': 'Profile saved successfully' if not current_step else 'Progress saved',
                 'redirect': None if current_step and str(current_step) != '7' else (
-                    '/admin/agents/manage/' + str(agent.id) + '/' if is_admin else '/agent/dashboard/'
+                    '/admin/agents/manage/' + str(agent.id) + '/' if is_admin_edit else '/agent/dashboard/'
                 ),
                 'profile_photo_url': profile.profile_photo_url
             })

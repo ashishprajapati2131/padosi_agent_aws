@@ -485,7 +485,7 @@
     {#  Sidebar  #}
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
-            <img src="{% static 'images/logo.png' %}" alt="PadosiAgent" onerror="this.style.display='none'">
+            <img src="{% static 'img/logo.png' %}" alt="PadosiAgent" onerror="this.style.display='none'">
             <span class="sidebar-brand-badge"><i class="fas fa-shield-halved"></i> Insurance Portal</span>
         </div>
 
@@ -599,7 +599,7 @@
         </nav>
 
         <div class="sidebar-footer">
-            <form method="POST" action="{% url 'logout' %}">
+            <form method="POST" action="{% url 'agents:logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="logout-btn"
                     style="background:none;border:none;cursor:pointer;width:100%;text-align:left;">

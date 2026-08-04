@@ -28,7 +28,7 @@ from padosi_agent.sitemaps import sitemaps
 urlpatterns = [
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('insurance-login/', auth_views.LoginView.as_view(template_name='insurance/login.html', redirect_authenticated_user=True), name='insurance_login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='insurance_login'), name='logout'),
+    # Removed overriding logout view, now handled by apps.agents.urls
     path('media/app/private/<path:file_path>', serve_private_file, name='serve_private_file'),
     path('django-admin/', admin.site.urls),
     path('', include('apps.admin_panel.urls')),

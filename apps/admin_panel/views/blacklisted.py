@@ -1,13 +1,18 @@
-from django.shortcuts import render
-from django.http import JsonResponse
+from django.shortcuts import render, redirect
+from django.http import JsonResponse, HttpResponseForbidden
 from django.utils import timezone
 from django.core.paginator import Paginator
 from django.db.models import Q, Exists, OuterRef
 from apps.agents.models import Agent
 from apps.home.models.blacklisted_agent import BlacklistedAgent
+from apps.admin_panel.views.dashboard import _get_admin_from_session
 
 
 def blacklisted_agents_view(request):
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect('admin_login_page')
+        
     active_tab = request.GET.get('tab', 'flagged')
     
     # Tab 1 — IRDAI Flagged
@@ -104,6 +109,10 @@ def blacklisted_agents_view(request):
 
 
 def ajax_blacklist_approve(request):
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+        
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Invalid method'})
     agent_id = request.POST.get('agent_id')
@@ -117,6 +126,10 @@ def ajax_blacklist_approve(request):
 
 
 def ajax_blacklist_confirm(request):
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+        
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Invalid method'})
     agent_id = request.POST.get('agent_id')
@@ -134,6 +147,10 @@ def ajax_blacklist_confirm(request):
 
 
 def ajax_blacklist_remove(request):
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+        
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Invalid method'})
     agent_id = request.POST.get('agent_id')
