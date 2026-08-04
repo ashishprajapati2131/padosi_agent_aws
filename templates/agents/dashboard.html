@@ -305,6 +305,7 @@
                                             <th>Name</th>
                                             <th>Contact</th>
                                             <th>Pincode</th>
+                                            <th>Insurance Type</th>
                                             <th>Requirement</th>
                                             <th>Source</th>
                                             <th>Status</th>
@@ -320,6 +321,7 @@
                                                     <small class="text-muted">{{ lead.customer_email|default:'-' }}</small>
                                                 </td>
                                                 <td>{{ lead.customer_pincode|default:'-' }}</td>
+                                                <td>{{ lead.insurance_type|default:'-' }}</td>
                                                 <td>{{ lead.enquiry_requirements|default:'-' }}</td>
                                                 <td style="text-transform: capitalize;">{{ lead.interaction_type }}</td>
                                                 <td>

@@ -1,8 +1,6 @@
-{% extends 'distributors/layout.html' %}->check() && auth()->user()->role === 'distributor' ? 'distributor.layout' :
-'layouts.app')
+{% extends 'distributors/layout.html' %}
 
-{% block title', !empty($prefillLifeSegment) ? 'LIC Agent Registration | PadosiAgent' : 'Agent Registration |
-PadosiAgent %}
+{% block title %}Agent Registration | PadosiAgent{% endblock %}
 
 {% block styles %}
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">

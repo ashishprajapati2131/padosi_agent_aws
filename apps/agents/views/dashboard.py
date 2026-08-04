@@ -1749,12 +1749,12 @@ def agent_capture_lead(request):
                     req_desc += f" ({i_comp})"
 
                 cust_name = (customer_name or '').strip()
-                msg = f"Hello {agent_name}, I found you on {domain_name} I am looking for {req_desc}."
+                msg = f"Hello {agent_name},\nI found you on {domain_name}\n\nI am looking for {req_desc}."
                 if cust_name:
-                    msg += f" Regards, {cust_name}"
+                    msg += f"\n\nRegards,\n{cust_name}"
 
                 encoded_msg = urllib.parse.quote(msg)
-                url = f'https://wa.me/{whatsapp_digits}?text={encoded_msg}'
+                url = f'https://api.whatsapp.com/send/?phone={whatsapp_digits}&text={encoded_msg}&type=phone_number&app_absent=0'
             else:
                 url = '#'
 
