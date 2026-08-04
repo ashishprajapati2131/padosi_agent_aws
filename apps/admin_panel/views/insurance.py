@@ -108,12 +108,32 @@ def insurance_store(request):
 
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-        User.objects.create(
+        from django.contrib.auth.models import User as AuthUser
+        from apps.insurance.models import InsuranceProfile
+
+        auth_user = AuthUser.objects.filter(username=email).first()
+        if not auth_user:
+            auth_user = AuthUser.objects.create_user(
+                username=email,
+                email=email,
+                password=password
+            )
+        else:
+            auth_user.set_password(password)
+            auth_user.save()
+            
+        admin_user = User.objects.create(
+            id=auth_user.id,
             fullname=fullname,
             email=email,
             password=hashed_password,
             role='insurance',
             status='active'
+        )
+
+        InsuranceProfile.objects.get_or_create(
+            user=auth_user,
+            defaults={'insurance_sub_role': 'manager'}
         )
 
         messages.success(request, f"Insurance company user '{fullname}' created successfully.")
