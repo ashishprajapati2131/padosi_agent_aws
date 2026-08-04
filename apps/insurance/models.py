@@ -27,7 +27,12 @@ class InsuranceProfile(models.Model):
         return self.insurance_sub_role == 'accounts'
 
     def get_insurance_company_id(self):
-        return self.insurance_parent_id if self.insurance_parent_id else self.user.id
+        from apps.admin_panel.models.users import User as AdminUser
+        target_user = self.insurance_parent if self.insurance_parent_id else self.user
+        legacy_user = AdminUser.objects.filter(email=target_user.email, role='insurance').first()
+        if legacy_user:
+            return legacy_user.id
+        return target_user.id
 
     def __str__(self):
         return f"{self.user.username} - {self.insurance_sub_role or 'Company Admin'}"
