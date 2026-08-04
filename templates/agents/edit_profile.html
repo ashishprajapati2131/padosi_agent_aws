@@ -256,6 +256,10 @@ Overview
                                     value="{{ profile.display_name|default:'' }}" placeholder="Name shown to customers"
                                     maxlength="35" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '');">
                                 <small class="text-muted">This name will be shown to customers</small>
+                                <div class="mt-3 d-flex align-items-center" style="gap: 8px;">
+                                    <input type="checkbox" id="same-as-fullname" style="width: 16px; height: 16px; cursor: pointer;">
+                                    <label for="same-as-fullname" class="mb-0 small text-muted" style="cursor: pointer; user-select: none;">Same as full name</label>
+                                </div>
                             </div>
                         </div>
 
@@ -489,7 +493,7 @@ Overview
                                             </div>
                                             <h6 class="mb-0 font-weight-bold text-dark" style="font-size: 14px;">IRDAI License Certificate</h6>
                                         </div>
-                                        <span class="badge {% if profile.irdai_license_doc %}badge-success{% else %}badge-warning{% endif %}" style="font-size: 11px; padding: 4px 10px; border-radius: 20px;">
+                                        <span id="irdai-badge" class="badge {% if profile.irdai_license_doc %}badge-success{% else %}badge-warning{% endif %}" style="font-size: 11px; padding: 4px 10px; border-radius: 20px;" {% if profile.irdai_license_doc %}data-uploaded="true"{% endif %}>
                                             {% if profile.irdai_license_doc %}Uploaded{% else %}Not Uploaded{% endif %}
                                         </span>
                                     </div>
@@ -535,7 +539,7 @@ Overview
                                             </div>
                                             <h6 class="mb-0 font-weight-bold text-dark" style="font-size: 14px;">AMFI / ARN Certificate</h6>
                                         </div>
-                                        <span class="badge {% if profile.amfi_license_doc %}badge-success{% else %}badge-warning{% endif %}" style="font-size: 11px; padding: 4px 10px; border-radius: 20px;">
+                                        <span id="amfi-badge" class="badge {% if profile.amfi_license_doc %}badge-success{% else %}badge-warning{% endif %}" style="font-size: 11px; padding: 4px 10px; border-radius: 20px;" {% if profile.amfi_license_doc %}data-uploaded="true"{% endif %}>
                                             {% if profile.amfi_license_doc %}Uploaded{% else %}Not Uploaded{% endif %}
                                         </span>
                                     </div>
@@ -789,9 +793,7 @@ Overview
                                     <input type="text" class="form-control" name="claims_amount" id="claims_amount"
                                         value="{{ agent.performanceStats.claims_amount|floatformat:0|default:'' }}"
                                         placeholder="e.g., 25000000" maxlength="10"
-                                        oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length > 10) this.value = this.value.slice(0, 10); updateClaimsAmountWords(this.value);">
-                                    <div id="claims_amount_words" class="text-success small font-weight-bold mt-2"
-                                        style="min-height: 18px;"></div>
+                                        oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length > 10) this.value = this.value.slice(0, 10);">
                                 </div>
                                 <div class="col-md-6 mb-4">
                                     <label class="form-label">Claim Success Rate <i
@@ -2142,7 +2144,7 @@ Overview
             // Validate Claim Stats
             const processed = parseInt($('#claims_processed').val()) || 0;
             const settled = parseInt($('#claims_settled').val()) || 0;
-            if (settled > processed && processed > 0) {
+            if (settled > processed) {
                 addError('claims_settled', 'Settled claims cannot exceed processed claims');
                 $('#success_rate').addClass('is-invalid');
             } else if (settled > 0 && processed === 0) {
@@ -3670,23 +3672,18 @@ Overview
             const settled = parseInt($('#claims_settled').val()) || 0;
             const successRateField = $('#success_rate');
 
-            if (settled > processed && processed > 0) {
-                $(this).addClass('is-invalid');
+            if (settled > processed) {
+                $('#claims_settled').addClass('is-invalid');
                 successRateField.val('Error').addClass('is-invalid');
             } else {
                 $('#claims_processed, #claims_settled, #success_rate').removeClass('is-invalid');
                 $('#claims_processed, #claims_settled, #success_rate').next('.invalid-feedback').remove();
 
                 if (processed > 0) {
-                    const rate = ((settled / processed) * 100).toFixed(2);
-                    successRateField.val(rate + '%');
+                    const rate = (settled / processed) * 100;
+                    successRateField.val((rate % 1 === 0 ? rate : rate.toFixed(2)) + '%');
                 } else {
-                    if (settled > 0) {
-                        successRateField.val('Error').addClass('is-invalid');
-                        $('#claims_settled').addClass('is-invalid');
-                    } else {
-                        successRateField.val('0%');
-                    }
+                    successRateField.val('0%');
                 }
             }
         });
@@ -3695,9 +3692,7 @@ Overview
             $('#claims_processed').trigger('input');
         }
 
-        if ($('#claims_amount').val()) {
-            updateClaimsAmountWords($('#claims_amount').val());
-        }
+
     });
 
     function removeTimelineItem(index) {
@@ -4377,6 +4372,65 @@ Overview
         }
     });
     /* ═══════════════════════════════════════════════════════════════════════ */
+
+    document.getElementById('same-as-fullname').addEventListener('change', function() {
+        if (this.checked) {
+            let fullName = document.getElementsByName('full_name')[0].value;
+            let displayInput = document.getElementsByName('display_name')[0];
+            displayInput.value = fullName.replace(/[^a-zA-Z\s]/g, '');
+        }
+    });
+
+    document.getElementsByName('full_name')[0].addEventListener('input', function() {
+        if (document.getElementById('same-as-fullname').checked) {
+            let displayInput = document.getElementsByName('display_name')[0];
+            displayInput.value = this.value.replace(/[^a-zA-Z\s]/g, '');
+        }
+    });
+
+    function handleLicenseFileChange(input, type) {
+        if (input.files && input.files[0]) {
+            let file = input.files[0];
+            if (file.size > 5 * 1024 * 1024) {
+                Swal.fire('Error', 'File size must be less than 5MB', 'error');
+                input.value = '';
+                return;
+            }
+            document.getElementById(type + '-new-filename').innerText = file.name;
+            
+            // Create or update the view button
+            let viewBtn = document.getElementById(type + '-new-view-btn');
+            if (!viewBtn) {
+                viewBtn = document.createElement('a');
+                viewBtn.id = type + '-new-view-btn';
+                viewBtn.className = 'btn btn-sm btn-outline-primary font-weight-bold ml-3';
+                viewBtn.innerHTML = '<i class="fas fa-eye mr-1"></i> View';
+                viewBtn.target = '_blank';
+                document.getElementById(type + '-new-file-preview').appendChild(viewBtn);
+            }
+            viewBtn.href = URL.createObjectURL(file);
+            
+            document.getElementById(type + '-new-file-preview').style.display = 'block';
+
+            // Change badge
+            let badge = document.getElementById(type + '-badge');
+            if (badge) {
+                badge.className = 'badge badge-success';
+                badge.innerText = 'Selected';
+            }
+        } else {
+            document.getElementById(type + '-new-file-preview').style.display = 'none';
+            let badge = document.getElementById(type + '-badge');
+            if (badge && !badge.hasAttribute('data-uploaded')) {
+                badge.className = 'badge badge-warning';
+                badge.innerText = 'Not Uploaded';
+            } else if (badge && badge.hasAttribute('data-uploaded')) {
+                badge.className = 'badge badge-success';
+                badge.innerText = 'Uploaded';
+            }
+        }
+    }
+
 
 </script>
 

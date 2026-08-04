@@ -5,6 +5,12 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/agent-dashboard.css' %}">
+<style>
+.toggle { width:40px; height:22px; border-radius:11px; background:#cbd5e1; position:relative; cursor:pointer; border:none; transition:.2s; }
+.toggle::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 2px rgba(0,0,0,.1); }
+.toggle.on { background:#22c55e; }
+.toggle.on::after { left:20px; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -421,6 +427,35 @@
                     </div>
 
                     <div class="row">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Section Controls Card -->
+            <div class="card premium-dashboard-card mb-4 mx-2">
+                <div class="card-body p-4">
+                    <p class="card-section-title mb-1">🎛️ Profile Section Controls</p>
+                    <p class="text-muted small mb-4">Toggle which sections appear on the public profile.</p>
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+                        <span style="font-size:14px;font-weight:500;">Full Profile Visibility</span>
+                        <button type="button" class="toggle {% if profile.is_profile_visible %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'is_profile_visible', this)"></button>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+                        <span style="font-size:14px;font-weight:500;">Card Visibility</span>
+                        <button type="button" class="toggle {% if profile.is_card_visible %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'is_card_visible', this)"></button>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+                        <span style="font-size:14px;font-weight:500;">Certificates Section</span>
+                        <button type="button" class="toggle {% if profile.show_certificates %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_certificates', this)"></button>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+                        <span style="font-size:14px;font-weight:500;">Achievements Section</span>
+                        <button type="button" class="toggle {% if profile.show_achievements %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_achievements', this)"></button>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+                        <span style="font-size:14px;font-weight:500;">Comments / Reviews Section</span>
+                        <button type="button" class="toggle {% if profile.show_reviews %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_reviews', this)"></button>
                     </div>
                 </div>
             </div>
@@ -931,5 +966,54 @@
             }
         });
     });
+
+    function updateVisibility(id, field, btnElement) {
+        // Optimistically toggle class
+        const isCurrentlyOn = btnElement.classList.contains('on');
+        const newValue = !isCurrentlyOn;
+        
+        if (newValue) {
+            btnElement.classList.remove('off');
+            btnElement.classList.add('on');
+        } else {
+            btnElement.classList.remove('on');
+            btnElement.classList.add('off');
+        }
+
+        fetch("{% url 'agents:agent_update_visibility' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ id: id, field: field, value: newValue })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                alert('Error updating visibility: ' + (data.message || 'Unknown error'));
+                // Revert UI on failure
+                if (isCurrentlyOn) {
+                    btnElement.classList.remove('off');
+                    btnElement.classList.add('on');
+                } else {
+                    btnElement.classList.remove('on');
+                    btnElement.classList.add('off');
+                }
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            // Revert UI on failure
+            if (isCurrentlyOn) {
+                btnElement.classList.remove('off');
+                btnElement.classList.add('on');
+            } else {
+                btnElement.classList.remove('on');
+                btnElement.classList.add('off');
+            }
+        });
+    }
 </script>
 {% endblock %}

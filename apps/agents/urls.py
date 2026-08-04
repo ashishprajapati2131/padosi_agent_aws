@@ -40,6 +40,7 @@ urlpatterns = [
     path('auth/google/clear-session/', auth.clearGoogleSession,  name='google_auth_clear_session'),
     path('agent/leads/capture/', dashboard.agent_capture_lead,   name='agent_leads_capture'),
     path('agent/leads/update-status/', dashboard.update_lead_status, name='update_lead_status'),
+    path('agent/update-visibility/', dashboard.agent_update_visibility, name='agent_update_visibility'),
     path('client/quick-register/', registration.client_quick_register, name='client_quick_register'),
     path('og-image/<int:agent_id>/preview.jpg', dashboard.agent_og_image, name='agent_og_image'),
 

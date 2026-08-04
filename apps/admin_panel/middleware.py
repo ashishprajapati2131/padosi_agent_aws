@@ -231,6 +231,18 @@ class AdminPermissionMiddleware:
         
         admin_id = _get_admin_from_session(request)
         if not admin_id:
+            import logging
+            logging.getLogger(__name__).error(f"Unauthorized admin access from path: {request.path}")
+            # For AJAX / JSON requests, return a clean 403 JSON — never add flash messages
+            # that would leak into the agent login page after logout.
+            is_ajax = (
+                request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                or 'application/json' in request.headers.get('Accept', '')
+                or request.content_type == 'application/json'
+            )
+            if is_ajax:
+                from django.http import JsonResponse
+                return JsonResponse({'success': False, 'message': 'Unauthorized. Please sign in to the admin panel.'}, status=403)
             messages.error(request, "Please sign in to access the admin panel.")
             return redirect('admin_login_page')
 
@@ -238,6 +250,14 @@ class AdminPermissionMiddleware:
             admin = Admin.objects.get(pk=admin_id)
         except Admin.DoesNotExist:
             from apps.admin_panel.views.dashboard import admin_logout
+            is_ajax = (
+                request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                or 'application/json' in request.headers.get('Accept', '')
+                or request.content_type == 'application/json'
+            )
+            if is_ajax:
+                from django.http import JsonResponse
+                return JsonResponse({'success': False, 'message': 'Admin account not found.'}, status=403)
             messages.error(request, "Admin account not found. Logged out.")
             return admin_logout(request)
 

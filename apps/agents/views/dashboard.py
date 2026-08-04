@@ -11,7 +11,7 @@ from django.db.models import Sum, Q, Avg
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
-from apps.agents.models import Agent, AgentSubscription, AgentLead, AgentProfileView, AgentInsuranceSegment, City, AgentDeviceToken
+from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentLead, AgentProfileView, AgentInsuranceSegment, City, AgentDeviceToken
 from apps.home.models import SiteSetting
 from apps.admin_panel.models.referral_code import ReferralCode
 from apps.admin_panel.models.referral_usage import ReferralUsage
@@ -2268,5 +2268,34 @@ def serve_private_file(request, file_path):
         raise Http404("File not found")
 
     return FileResponse(open(normalized_full_path, 'rb'))
+
+@login_required
+@require_POST
+def agent_update_visibility(request):
+    """
+    Allow agents to toggle visibility of sections on their public profile.
+    """
+    try:
+        data = json.loads(request.body)
+        field = data.get('field')
+        value = 1 if data.get('value') else 0
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'})
+
+    valid_fields = ['is_profile_visible', 'is_card_visible', 'show_certificates', 'show_achievements', 'show_reviews']
+    if field not in valid_fields:
+        return JsonResponse({'success': False, 'message': 'Invalid field'})
+
+    try:
+        profile = AgentProfile.objects.filter(agent__user=request.user).first()
+        if not profile:
+            return JsonResponse({'success': False, 'message': 'Agent profile not found'})
+
+        setattr(profile, field, value)
+        profile.save(update_fields=[field])
+        return JsonResponse({'success': True})
+    except Exception as e:
+        logger.error(f"Error updating agent visibility: {e}")
+        return JsonResponse({'success': False, 'message': 'Database error'})
 
 
