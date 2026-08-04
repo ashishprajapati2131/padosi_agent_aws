@@ -171,7 +171,7 @@ class ThreatMonitorMiddleware:
                 }
                 html_body = render_to_string('emails/security_threat.html', {'threat': threat_context})
                 send_brevo_email(
-                    to_email='parth.ramanujj@gmail.com',
+                    to_email='ashisprajapati131@gmail.com',
                     to_name='Admin',
                     subject='⚠️ SECURITY ALERT: Malicious Activity Detected on PadosiAgent',
                     html_content=html_body
