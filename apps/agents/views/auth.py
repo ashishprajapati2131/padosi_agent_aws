@@ -225,6 +225,10 @@ def logout_view(request):
 
     if role == 'distributor':
         return redirect('/distributor-login')
+        
+    if role == 'insurance_company':
+        messages.success(request, "You have been logged out successfully.")
+        return redirect('insurance_login')
 
     messages.success(request, "You have been logged out successfully.")
     if role == 'agent':
