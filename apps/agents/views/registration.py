@@ -757,7 +757,7 @@ def verify_and_activate_pending_payment(agent):
         return False
 
     paid_amount_paise = successful_payment.get('amount')
-    expected_amount_paise = int(round(subscription.registration_amount * 100))
+    expected_amount_paise = int(round((subscription.registration_amount or 0) * 100))
     if paid_amount_paise != expected_amount_paise:
         logger.critical(
             f"[verify_and_activate_pending_payment] Price tampering check failed! "

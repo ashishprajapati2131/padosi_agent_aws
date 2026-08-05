@@ -38,6 +38,7 @@ def admin_badge_counts(request):
         'geo_missing_count':       0,
         'total_pincodes_count':    0,
         'insurance_pending_count': 0,
+        'payment_pending_count':   0,
         'notif_count':             0,
     }
 
@@ -55,6 +56,22 @@ def admin_badge_counts(request):
                 "SELECT COUNT(*) FROM agents WHERE status IN ('incomplete', 'pending_payment')"
             )
             counts['incomplete_agents_count'] = cursor.fetchone()[0]
+
+            # 2b. Payment Initiated but Pending ── agents with razorpay order but no success callback
+            try:
+                cursor.execute("""
+                    SELECT COUNT(*)
+                    FROM agents a
+                    JOIN agent_subscriptions s ON a.id = s.agent_id
+                        AND s.id = (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
+                    WHERE a.status IN ('incomplete', 'pending_payment')
+                      AND s.razorpay_order_id IS NOT NULL
+                      AND s.payment_status = 'pending'
+                      AND s.created_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+                """)
+                counts['payment_pending_count'] = cursor.fetchone()[0]
+            except Exception:
+                counts['payment_pending_count'] = 0
 
             # 3. Renewal Tracker ── subscriptions expiring within 30 days for active agents
             # Mirrors: DB::table('agent_subscriptions as s')

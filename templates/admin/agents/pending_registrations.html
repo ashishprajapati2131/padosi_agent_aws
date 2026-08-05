@@ -39,6 +39,42 @@
     .btn-call:hover { background: #bbf7d0; color: #166534; }
     .btn-email { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
     .btn-email:hover { background: #bfdbfe; color: #1e40af; }
+
+    /* Payment status badges */
+    .payment-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 10px; border-radius: 20px;
+        font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+    }
+    .payment-initiated { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+    .payment-failed    { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .payment-none      { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+
+    /* Verify button */
+    .btn-verify {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 14px; border-radius: 8px;
+        font-size: 11px; font-weight: 700;
+        background: linear-gradient(135deg, #059669, #10b981);
+        color: #fff; border: none; cursor: pointer;
+        transition: all 0.2s; box-shadow: 0 1px 3px rgba(5,150,105,0.3);
+    }
+    .btn-verify:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(5,150,105,0.4); }
+    .btn-verify:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-verify .spinner-border { width: 14px; height: 14px; border-width: 2px; }
+
+    /* Toast notification */
+    .verify-toast {
+        position: fixed; top: 20px; right: 20px; z-index: 9999;
+        min-width: 350px; max-width: 500px;
+        padding: 16px 20px; border-radius: 12px;
+        font-size: 13px; font-weight: 600;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        display: none; animation: slideIn 0.3s ease;
+    }
+    .verify-toast.success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .verify-toast.error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 </style>
 {% endblock %}
 
@@ -46,7 +82,7 @@
 
 {# Stat Cards #}
 <div class="row g-3 mb-4">
-    <div class="col-sm-4">
+    <div class="col-sm-3">
         <div class="stat-mini">
             <div class="stat-mini-icon" style="background: #fef3c7;">
                 <i class="fa-solid fa-hourglass-half" style="color: #d97706;"></i>
@@ -57,7 +93,7 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-4">
+    <div class="col-sm-3">
         <div class="stat-mini">
             <div class="stat-mini-icon" style="background: #fee2e2;">
                 <i class="fa-solid fa-triangle-exclamation" style="color: #dc2626;"></i>
@@ -68,7 +104,7 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-4">
+    <div class="col-sm-3">
         <div class="stat-mini">
             <div class="stat-mini-icon" style="background: #dbeafe;">
                 <i class="fa-solid fa-clock" style="color: #2563eb;"></i>
@@ -76,6 +112,17 @@
             <div>
                 <div class="stat-mini-val">{% if avgWaitHours > 0 %}{{ avgWaitHours|floatformat:0 }}h{% else %}—{% endif %}</div>
                 <div class="stat-mini-lbl">Avg. Waiting Time</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-3">
+        <div class="stat-mini">
+            <div class="stat-mini-icon" style="background: #fef9c3;">
+                <i class="fa-solid fa-credit-card" style="color: #ca8a04;"></i>
+            </div>
+            <div>
+                <div class="stat-mini-val" style="color: #ca8a04;">{{ paymentInitiatedCount }}</div>
+                <div class="stat-mini-lbl">Payment Initiated</div>
             </div>
         </div>
     </div>
@@ -151,6 +198,7 @@
                         <th style="padding:12px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); background:var(--bg-table-header); border-bottom:1px solid var(--border-color);">⌛ Waiting</th>
                         <th style="padding:12px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); background:var(--bg-table-header); border-bottom:1px solid var(--border-color);">Location</th>
                         <th style="padding:12px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); background:var(--bg-table-header); border-bottom:1px solid var(--border-color);">Plan</th>
+                        <th style="padding:12px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); background:var(--bg-table-header); border-bottom:1px solid var(--border-color); text-align:center;">Payment Status</th>
                         <th style="padding:12px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); background:var(--bg-table-header); border-bottom:1px solid var(--border-color); text-align:center;">Contact</th>
                         <th style="padding:12px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); background:var(--bg-table-header); border-bottom:1px solid var(--border-color); text-align:center;">Actions</th>
                     </tr>
@@ -252,6 +300,42 @@
                             {% endif %}
                         </td>
 
+                        {# Payment Status #}
+                        <td style="padding:14px 16px; border-bottom:1px solid var(--border-light); text-align:center;">
+                            {% if agent.razorpay_order_id and agent.sub_payment_status == 'pending' %}
+                                <span class="payment-badge payment-initiated">
+                                    <i class="fa-solid fa-credit-card" style="font-size:9px;"></i>
+                                    Payment Initiated
+                                </span>
+                                {% if agent.sub_minutes_ago is not None and agent.sub_minutes_ago >= 15 %}
+                                <div style="font-size:10px; color:#92400e; margin-top:4px;">
+                                    <i class="fa-solid fa-clock" style="font-size:8px;"></i>
+                                    {{ agent.sub_minutes_ago }}min ago
+                                </div>
+                                {% elif agent.sub_minutes_ago is not None %}
+                                <div style="font-size:10px; color:#6b7280; margin-top:4px;">
+                                    <i class="fa-solid fa-hourglass-start" style="font-size:8px;"></i>
+                                    {{ agent.sub_minutes_ago }}min ago (waiting...)
+                                </div>
+                                {% endif %}
+                                {% if agent.registration_amount %}
+                                <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">
+                                    ₹{{ agent.registration_amount|floatformat:0 }}
+                                </div>
+                                {% endif %}
+                            {% elif agent.sub_payment_status == 'failed' %}
+                                <span class="payment-badge payment-failed">
+                                    <i class="fa-solid fa-xmark" style="font-size:9px;"></i>
+                                    Failed
+                                </span>
+                            {% else %}
+                                <span class="payment-badge payment-none">
+                                    <i class="fa-solid fa-minus" style="font-size:9px;"></i>
+                                    Not Attempted
+                                </span>
+                            {% endif %}
+                        </td>
+
                         {# Contact #}
                         <td style="padding:14px 16px; border-bottom:1px solid var(--border-light); text-align:center;">
                             <div class="d-flex gap-2 justify-content-center flex-wrap">
@@ -270,12 +354,24 @@
 
                         {# Actions #}
                         <td style="padding:14px 16px; border-bottom:1px solid var(--border-light); text-align:center;">
-                            <button type="button" class="btn btn-danger btn-sm delete-btn" data-model="agent" data-id="{{ agent.id }}" title="Delete Incomplete Registration" style="padding: 4px 8px;"><i class="fas fa-trash"></i></button>
+                            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                {% if agent.razorpay_order_id and agent.sub_payment_status == 'pending' and agent.sub_minutes_ago >= 15 %}
+                                <button type="button"
+                                    class="btn-verify verify-payment-btn"
+                                    data-agent-id="{{ agent.id }}"
+                                    data-agent-name="{{ agent.display_name|default:agent.fullname }}"
+                                    title="Verify payment with Razorpay for {{ agent.display_name|default:agent.fullname }}">
+                                    <i class="fa-solid fa-shield-check"></i>
+                                    Verify Payment
+                                </button>
+                                {% endif %}
+                                <button type="button" class="btn btn-danger btn-sm delete-btn" data-model="agent" data-id="{{ agent.id }}" title="Delete Incomplete Registration" style="padding: 4px 8px;"><i class="fas fa-trash"></i></button>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="8" class="text-center py-5">
                             <i class="fa-solid fa-circle-check fa-3x mb-3 opacity-25" style="color: var(--primary);"></i>
                             <h6 class="fw-bold" style="color: var(--text-muted);">All Clear! No Pending Registrations</h6>
                             <p style="font-size: 13px; color: var(--text-muted);">New registrations will appear here for review.</p>
@@ -293,6 +389,7 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Format wait times
     document.querySelectorAll('.format-wait-time').forEach(function(el) {
         let h = parseInt(el.getAttribute('data-hours')) || 0;
         let d = Math.floor(h / 24);
@@ -304,6 +401,77 @@ document.addEventListener('DOMContentLoaded', function() {
         let h = parseInt(el.getAttribute('data-hours')) || 0;
         el.textContent = h < 1 ? 'Just now' : h + 'h ago';
     });
+
+    // ── Verify Payment Button Handler ──────────────────────────────────────
+    document.querySelectorAll('.verify-payment-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const agentId = this.getAttribute('data-agent-id');
+            const agentName = this.getAttribute('data-agent-name');
+            const row = this.closest('tr');
+            const btnEl = this;
+
+            if (!confirm(`Verify payment with Razorpay for "${agentName}"?\n\nThis will check if payment was received and activate the agent if confirmed.`)) {
+                return;
+            }
+
+            // Show loading state
+            const originalHTML = btnEl.innerHTML;
+            btnEl.disabled = true;
+            btnEl.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Verifying...';
+
+            fetch('{% url "admin_agents_verify_pending_payment" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ agent_id: parseInt(agentId) })
+            })
+            .then(r => r.json().then(data => ({ ok: r.ok, data })))
+            .then(({ ok, data }) => {
+                if (data.success) {
+                    showVerifyToast('success', data.message);
+                    // Fade out and remove the row
+                    row.style.transition = 'opacity 0.5s, background 0.3s';
+                    row.style.background = '#dcfce7';
+                    setTimeout(() => {
+                        row.style.opacity = '0';
+                        setTimeout(() => row.remove(), 500);
+                    }, 1000);
+                } else {
+                    showVerifyToast('error', data.message || 'Verification failed.');
+                    btnEl.disabled = false;
+                    btnEl.innerHTML = originalHTML;
+                }
+            })
+            .catch(err => {
+                showVerifyToast('error', 'Network error. Please try again.');
+                btnEl.disabled = false;
+                btnEl.innerHTML = originalHTML;
+            });
+        });
+    });
+
+    // Toast helper
+    function showVerifyToast(type, message) {
+        // Remove any existing toast
+        document.querySelectorAll('.verify-toast').forEach(t => t.remove());
+
+        const toast = document.createElement('div');
+        toast.className = 'verify-toast ' + type;
+        const icon = type === 'success'
+            ? '<i class="fa-solid fa-circle-check me-2"></i>'
+            : '<i class="fa-solid fa-triangle-exclamation me-2"></i>';
+        toast.innerHTML = icon + message;
+        document.body.appendChild(toast);
+        toast.style.display = 'block';
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.5s';
+            setTimeout(() => toast.remove(), 500);
+        }, 6000);
+    }
 });
 </script>
 {% endblock %}

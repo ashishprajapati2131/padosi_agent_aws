@@ -52,6 +52,7 @@ from .views.agents import (
     agent_approvals,
     agent_pending_registrations,
     bulk_action_agents,
+    admin_verify_pending_payment,
 )
 from .views.agents_irdai import verify_irdai_license
 from .views.agents_amfi import verify_amfi_arn
@@ -102,6 +103,8 @@ from .views.invoices import (
     save_sheet_url,
     sync_sheet,
     open_sheet,
+    create_manual_invoice,
+    admin_verify_promo,
 )
 from .views.promo_codes import (
     promo_code_list,
@@ -251,6 +254,7 @@ urlpatterns = [
     # Phase 4D: Queues
     path("admin/approvals/", agent_approvals, name="admin_agents_approvals"),
     path("admin/pending-registrations/", agent_pending_registrations, name="admin_agents_pending_registrations"),
+    path("admin/agents/verify-pending-payment/", admin_verify_pending_payment, name="admin_agents_verify_pending_payment"),
 
     # Phase 5: Finance & Accounts
     path("admin/finance/", finance.index, name="admin_finance_index"),
@@ -309,6 +313,8 @@ urlpatterns = [
 
     # Phase 6G.1A: Invoices Dashboard
     path("admin/invoices/", invoice_list, name="admin_invoices"),
+    path("admin/invoices/create/", create_manual_invoice, name="admin_invoices_create"),
+    path("admin/invoices/verify-promo/", admin_verify_promo, name="admin_invoices_verify_promo"),
     
     # Phase 6G.2D: Preview and Download
     path("admin/invoices/<int:invoice_id>/preview/", preview_invoice, name="admin_invoice_preview"),

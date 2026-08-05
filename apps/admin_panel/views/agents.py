@@ -850,9 +850,12 @@ def _build_queue_query(status_filter, search, plan_filter, city_filter, event_fi
             ap.address, ap.display_name, ap.profile_photo_path, ap.pan_number,
             (SELECT COUNT(*) FROM blacklisted_agents WHERE pan = ap.pan_number AND ap.pan_number IS NOT NULL AND ap.pan_number != '') as is_blacklisted_by_pan,
             s.selected_plan, s.expires_at,
+            s.razorpay_order_id, s.payment_status as sub_payment_status,
+            s.created_at as sub_created_at, s.registration_amount,
             (SELECT AVG(rating) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) as avg_rating,
             (SELECT COUNT(*) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) as review_count,
-            TIMESTAMPDIFF(HOUR, a.created_at, UTC_TIMESTAMP()) as hours_waiting
+            TIMESTAMPDIFF(HOUR, a.created_at, NOW()) as hours_waiting,
+            TIMESTAMPDIFF(MINUTE, s.created_at, NOW()) as sub_minutes_ago
         FROM agents as a
         LEFT JOIN agent_profiles as ap ON a.id = ap.agent_id
         LEFT JOIN agent_subscriptions as s ON a.id = s.agent_id
@@ -1001,6 +1004,7 @@ def agent_pending_registrations(request):
     total_pending = 0
     urgent_count = 0
     total_wait_hours = 0
+    payment_initiated_count = 0
 
     try:
         from django.db import connection
@@ -1017,6 +1021,9 @@ def agent_pending_registrations(request):
         total_wait_hours += hours_waiting
         if hours_waiting > 48:
             urgent_count += 1
+        # Count agents who initiated payment (have order_id) but subscription still pending
+        if agent.get('razorpay_order_id') and agent.get('sub_payment_status') == 'pending':
+            payment_initiated_count += 1
 
     avg_wait_hours = (total_wait_hours / total_pending) if total_pending > 0 else 0
 
@@ -1031,6 +1038,86 @@ def agent_pending_registrations(request):
         'totalPending': total_pending,
         'urgentCount': urgent_count,
         'avgWaitHours': avg_wait_hours,
+        'paymentInitiatedCount': payment_initiated_count,
     }
 
     return render(request, 'admin/agents/pending_registrations.html', context)
+
+
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_protect
+
+@require_POST
+@csrf_protect
+def admin_verify_pending_payment(request):
+    """
+    Admin endpoint to manually verify a pending payment via Razorpay API.
+    If payment was captured/authorized, triggers the full activation flow:
+    subscription update, agent activation, user creation, invoice generation, welcome email.
+    """
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        data = request.POST
+
+    agent_id = data.get('agent_id')
+    if not agent_id:
+        return JsonResponse({'success': False, 'message': 'Agent ID is required.'}, status=400)
+
+    from apps.agents.models import Agent, AgentSubscription
+
+    agent = Agent.objects.filter(pk=agent_id).first()
+    if not agent:
+        return JsonResponse({'success': False, 'message': 'Agent not found.'}, status=404)
+
+    # Check if agent already has a completed subscription
+    from apps.agents.models import Invoice
+    if Invoice.objects.filter(agent_email=agent.email, payment_status='paid').exists():
+        return JsonResponse({
+            'success': True,
+            'already_active': True,
+            'message': f'Agent {agent.fullname} is already activated with a paid invoice.'
+        })
+
+    # Check for pending subscription with razorpay_order_id
+    subscription = AgentSubscription.objects.filter(
+        agent=agent,
+        payment_status='pending'
+    ).order_by('-created_at').first()
+
+    if not subscription or not subscription.razorpay_order_id:
+        return JsonResponse({
+            'success': False,
+            'message': f'No pending payment found for {agent.fullname}. No Razorpay order was initiated.'
+        }, status=400)
+
+    # Use existing verify_and_activate_pending_payment function
+    from apps.agents.views.registration import verify_and_activate_pending_payment
+    
+    try:
+        result = verify_and_activate_pending_payment(agent)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error during manual payment verification for {agent.email}: {e}")
+        return JsonResponse({
+            'success': False,
+            'message': 'An internal server error occurred while verifying the payment. Please try again later.'
+        }, status=500)
+
+    if result:
+        logger.info(f"[admin_verify_pending_payment] Admin #{admin_id} successfully verified payment for agent {agent.email} (ID: {agent.id})")
+        return JsonResponse({
+            'success': True,
+            'message': f'Payment verified successfully for {agent.fullname}! Agent activated, invoice generated, and welcome email sent.',
+            'agent_status': agent.status,
+        })
+    else:
+        logger.info(f"[admin_verify_pending_payment] Admin #{admin_id} attempted verification for agent {agent.email} (ID: {agent.id}) — payment NOT found on Razorpay")
+        return JsonResponse({
+            'success': False,
+            'message': f'Payment NOT received from Razorpay for order {subscription.razorpay_order_id}. The user may not have completed the payment on the Razorpay checkout page.'
+        }, status=400)
