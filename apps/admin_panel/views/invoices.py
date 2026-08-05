@@ -1,9 +1,14 @@
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect
-from django.http import HttpResponse, Http404, FileResponse
+from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 from django.db import connection
 from django.views.decorators.http import require_http_methods
 import os
+import random
+import string
+from django.core.mail import EmailMessage
+from django.conf import settings
+from apps.agents.models import Agent, Invoice, PromoCode
 
 from .dashboard import _get_admin_from_session
 from ..services.pdf_generator import generate_invoice_pdf, get_pdf_absolute_path
@@ -261,3 +266,155 @@ def open_sheet(request):
         return redirect('admin_invoices')
         
     return redirect(sheet_url)
+
+@require_http_methods(["GET", "POST"])
+def create_manual_invoice(request):
+    admin = _get_admin_from_session(request)
+    if not admin:
+        return redirect("admin_login_page")
+
+    if request.method == "GET":
+        from apps.home.models import SiteSetting
+        pricing_config = SiteSetting.get_value('pricing_config') or {}
+        starter = pricing_config.get('starter', {})
+        prof = pricing_config.get('professional', {})
+        
+        context = {
+            'starter': starter,
+            'prof': prof,
+        }
+        return render(request, "admin/invoices/create.html", context)
+
+    # POST processing
+    name = request.POST.get('name', '').strip()
+    email = request.POST.get('email', '').strip()
+    mobile = request.POST.get('mobile', '').strip()
+    address = request.POST.get('address', '').strip()
+    state = request.POST.get('state', '').strip()
+    
+    plan_name = request.POST.get('plan_name', '').strip()
+    base_amount_str = request.POST.get('base_amount', '0')
+    gst_amount_str = request.POST.get('gst_amount', '0')
+    total_amount_str = request.POST.get('total_amount', '0')
+    promo_code_str = request.POST.get('promo_code', '').strip()
+    
+    email_subject = request.POST.get('email_subject', 'Your Invoice from Padosi').strip()
+    email_header = request.POST.get('email_header', '').strip()
+    email_body = request.POST.get('email_body', '').strip()
+
+    try:
+        base_amount = float(base_amount_str)
+        gst_amount = float(gst_amount_str)
+        total_amount = float(total_amount_str)
+    except ValueError:
+        return render(request, "admin/invoices/create.html", {"error": "Invalid amounts provided."})
+
+    discount_percent = 0
+    if promo_code_str:
+        try:
+            pc = PromoCode.objects.get(code=promo_code_str, is_active=True)
+            if pc.is_valid():
+                # In real scenario we might calculate discount exactly
+                discount_percent = pc.discount_value
+        except PromoCode.DoesNotExist:
+            pass
+
+    # We need a Dummy Agent because Invoice requires agent_id.
+    # Let's find or create a dummy agent for manual invoices.
+    dummy_email = "manual_invoice_dummy@padosi.local"
+    agent, created = Agent.objects.get_or_create(
+        email=dummy_email,
+        defaults={
+            'fullname': "Manual Invoice User",
+            'mobile': "0000000000",
+            'status': "incomplete"
+        }
+    )
+
+    import datetime
+    now = datetime.datetime.now()
+    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+    invoice_number = f"INV-M-{now.strftime('%Y%m%d')}-{random_str}"
+    
+    folder = Invoice.resolve_discount_folder(discount_percent, total_amount)
+
+    invoice = Invoice.objects.create(
+        invoice_number=invoice_number,
+        agent=agent,
+        agent_name=name,
+        agent_email=email,
+        agent_mobile=mobile,
+        agent_address=address,
+        agent_state=state,
+        plan_name=plan_name,
+        plan_type='manual',
+        base_amount=base_amount,
+        gst_amount=gst_amount,
+        total_amount=total_amount,
+        discount_percent=discount_percent,
+        discount_folder=folder,
+        promo_code=promo_code_str,
+        payment_status='paid'
+    )
+
+    # Generate PDF
+    result = generate_invoice_pdf(invoice.id)
+    if result and result.get('success'):
+        pdf_path = result.get('absolute_path')
+        if pdf_path and os.path.exists(pdf_path):
+            # Send Email
+            try:
+                # Use Brevo/SMTP fallback service
+                from apps.agents.services.brevo import email_service
+                body = f"{email_header}<br><br>{email_body}".replace('\n', '<br>')
+                success = email_service.send_generic(
+                    to_email=email,
+                    to_name=name,
+                    subject=email_subject,
+                    html_content=body,
+                    attachment_path=pdf_path
+                )
+                if not success:
+                    return render(request, "admin/invoices/create.html", {"error": f"Invoice created but failed to send email via Brevo or SMTP."})
+
+            except Exception as e:
+                return render(request, "admin/invoices/create.html", {"error": f"Invoice created but failed to send email: {str(e)}"})
+            
+            return render(request, "admin/invoices/create.html", {"success": f"Invoice {invoice_number} created and emailed to {email} successfully."})
+        else:
+            return render(request, "admin/invoices/create.html", {"error": "Failed to locate generated PDF."})
+    else:
+        return render(request, "admin/invoices/create.html", {"error": "Failed to generate Invoice PDF."})
+
+@require_http_methods(["POST"])
+def admin_verify_promo(request):
+    import json
+    admin = _get_admin_from_session(request)
+    if not admin:
+        return JsonResponse({'success': False, 'message': 'Unauthorized'})
+
+    try:
+        data = json.loads(request.body)
+        promo_code = data.get('promo_code', '').strip().upper()
+    except Exception:
+        promo_code = request.POST.get('promo_code', '').strip().upper()
+
+    if not promo_code:
+        return JsonResponse({'success': False, 'message': 'Promo code is required.'})
+
+    try:
+        promo = PromoCode.objects.get(code=promo_code, is_active=True)
+        if promo.is_valid():
+            return JsonResponse({
+                'success': True,
+                'discount_type': promo.discount_type,
+                'discount_value': float(promo.discount_value),
+                'message': f'Promo code applied successfully!',
+            })
+    except PromoCode.DoesNotExist:
+        pass
+
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid or expired promo code.',
+    })

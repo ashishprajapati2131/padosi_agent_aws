@@ -1,0 +1,212 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Create Manual Invoice{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1" style="color:#1e293b;">📝 Create Manual Invoice</h2>
+            <p class="text-muted mb-0" style="font-size:14px;">Generate an invoice manually and send via email.</p>
+        </div>
+        <a href="{% url 'admin_invoices' %}" class="btn btn-outline-secondary">← Back to Invoices</a>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <form action="{% url 'admin_invoices_create' %}" method="POST" id="invoiceForm">
+                {% csrf_token %}
+                
+                <h5 class="mb-3 text-primary border-bottom pb-2">Client Details</h5>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" required placeholder="e.g. Rahul Patel">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Email <span class="text-danger">*</span></label>
+                        <input type="email" name="email" class="form-control" required placeholder="e.g. rahul@example.com">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Mobile</label>
+                        <input type="text" name="mobile" class="form-control" placeholder="e.g. 9876543210">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Address</label>
+                        <input type="text" name="address" class="form-control" placeholder="e.g. 101, Business Park">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">State</label>
+                        <select name="state" id="stateSelect" class="form-select" onchange="calculateTotal()">
+                            <option value="Gujarat">Gujarat (CGST + SGST)</option>
+                            <option value="Maharashtra">Maharashtra (IGST)</option>
+                            <option value="Delhi">Delhi (IGST)</option>
+                            <option value="Other">Other (IGST)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h5 class="mb-3 text-primary border-bottom pb-2">Plan Details</h5>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Select Plan <span class="text-danger">*</span></label>
+                        <select name="plan_name" id="planSelect" class="form-select" onchange="updateBaseAmount()" required>
+                            <option value="">-- Select Plan --</option>
+                            {% if starter.full_price %}
+                            <option value="{{ starter.name|default:'Starter Plan' }}" data-price="{{ starter.full_price }}">{{ starter.name|default:'Starter Plan' }} (₹{{ starter.full_price }})</option>
+                            {% endif %}
+                            {% if prof.full_price %}
+                            <option value="{{ prof.name|default:'Professional Plan' }}" data-price="{{ prof.full_price }}">{{ prof.name|default:'Professional Plan' }} (₹{{ prof.full_price }})</option>
+                            {% endif %}
+                            <option value="Custom" data-price="0">Custom Plan</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Promo Code</label>
+                        <div class="input-group">
+                            <input type="text" name="promo_code" id="promoCode" class="form-control" placeholder="e.g. SAVE20">
+                            <button class="btn btn-outline-secondary" type="button" onclick="verifyPromoCode()">Apply</button>
+                        </div>
+                        <small id="promoMessage" class="text-muted d-block mt-1"></small>
+                        <input type="hidden" id="discountValue" value="0">
+                        <input type="hidden" id="discountType" value="">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Base Amount (₹)</label>
+                        <input type="number" step="0.01" name="base_amount" id="baseAmount" class="form-control" value="0" required oninput="calculateTotal()">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">GST Amount (18%) (₹)</label>
+                        <input type="number" step="0.01" name="gst_amount" id="gstAmount" class="form-control" value="0" readonly>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Total Amount (₹)</label>
+                        <input type="number" step="0.01" name="total_amount" id="totalAmount" class="form-control" value="0" readonly>
+                    </div>
+                </div>
+
+                <h5 class="mb-3 text-primary border-bottom pb-2">Email Customization</h5>
+                <div class="row mb-4">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label fw-bold">Email Subject</label>
+                        <input type="text" name="email_subject" class="form-control" value="Your Invoice from Padosi">
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label fw-bold">Email Header Message</label>
+                        <input type="text" name="email_header" class="form-control" value="Thank you for your business!" placeholder="Header text for the email">
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label fw-bold">Email Body</label>
+                        <textarea name="email_body" class="form-control" rows="8">Hi there,
+
+Thank you for choosing Padosi!
+
+Please find attached your invoice for the selected plan. We appreciate your business and are here to help if you need anything.
+
+Best regards,
+Team Padosi</textarea>
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                        <i class="fa fa-envelope"></i> Generate & Send Email
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function verifyPromoCode() {
+        const promoCode = document.getElementById('promoCode').value.trim();
+        const message = document.getElementById('promoMessage');
+        if (!promoCode) {
+            message.innerHTML = '<span class="text-danger">Enter promo code</span>';
+            return;
+        }
+        
+        message.innerHTML = '<span class="text-info">Verifying...</span>';
+        
+        try {
+            const response = await fetch('{% url "admin_invoices_verify_promo" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ promo_code: promoCode })
+            });
+            const data = await response.json();
+            if (data.success) {
+                message.innerHTML = `<span class="text-success">✓ ${data.message}</span>`;
+                document.getElementById('discountValue').value = data.discount_value;
+                document.getElementById('discountType').value = data.discount_type;
+                updateBaseAmount();
+            } else {
+                message.innerHTML = `<span class="text-danger">✗ ${data.message}</span>`;
+                document.getElementById('discountValue').value = '0';
+                updateBaseAmount();
+            }
+        } catch (e) {
+            message.innerHTML = `<span class="text-danger">✗ Error verifying code.</span>`;
+        }
+    }
+
+    function updateBaseAmount() {
+        const select = document.getElementById('planSelect');
+        const option = select.options[select.selectedIndex];
+        const baseAmountInput = document.getElementById('baseAmount');
+        
+        if (option && option.value && option.value !== 'Custom') {
+            let fullPrice = parseFloat(option.getAttribute('data-price')) || 0;
+            
+            // Apply discount if any
+            const discountVal = parseFloat(document.getElementById('discountValue').value) || 0;
+            const discountType = document.getElementById('discountType').value;
+            
+            if (discountVal > 0) {
+                if (discountType === 'percentage') {
+                    fullPrice = fullPrice - (fullPrice * discountVal / 100);
+                } else {
+                    fullPrice = Math.max(0, fullPrice - discountVal);
+                }
+            }
+            
+            const base = (fullPrice / 1.18).toFixed(2);
+            baseAmountInput.value = base;
+            baseAmountInput.readOnly = true;
+        } else {
+            baseAmountInput.value = '0';
+            baseAmountInput.readOnly = false;
+        }
+        calculateTotal();
+    }
+
+    function calculateTotal() {
+        const base = parseFloat(document.getElementById('baseAmount').value) || 0;
+        const gst = parseFloat((base * 0.18).toFixed(2));
+        const total = (base + gst).toFixed(2);
+        
+        document.getElementById('gstAmount').value = gst;
+        document.getElementById('totalAmount').value = total;
+    }
+
+    document.getElementById('invoiceForm').addEventListener('submit', function() {
+        document.getElementById('submitBtn').innerHTML = '<i class="fa fa-spinner fa-spin"></i> Sending...';
+        // Note: we can't disable the button immediately or the form might not submit on some browsers,
+        // but adding a small timeout works.
+        setTimeout(() => {
+            document.getElementById('submitBtn').disabled = true;
+        }, 50);
+    });
+</script>
+{% endblock %}

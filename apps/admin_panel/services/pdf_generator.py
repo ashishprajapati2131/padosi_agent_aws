@@ -128,37 +128,87 @@ def generate_invoice_pdf(invoice_id):
             "status": "reused"
         }
     
-    # Render HTML template natively
-    html_string = render_to_string('admin/invoices/pdf.html', {'invoice': invoice_data})
+    agent_state = str(invoice_data.get('agent_state') or '').strip().lower()
+    is_gujarat = (agent_state == 'gujarat')
+    invoice_data['is_gujarat'] = is_gujarat
     
-    # Generate PDF via pdfkit
-    resolved_path = settings.WKHTMLTOPDF_PATH
-    logger.debug(f"[DEBUG PDFKIT] Resolved WKHTMLTOPDF_PATH from settings: {resolved_path}")
+    gst_amount = float(invoice_data.get('gst_amount') or 0)
+    half_gst = gst_amount / 2 if is_gujarat else 0
     
-    if not resolved_path:
-        raise RuntimeError(
-            "wkhtmltopdf executable not found in PATH. "
-            "Please ensure wkhtmltopdf is installed and its bin directory is added to your system PATH."
-        )
+    plan_name = invoice_data.get('plan_name') or "Custom Plan"
+    plan_type = invoice_data.get('plan_type')
+    
+    plan_desc = "PadosiAgent Subscription"
+    if plan_type == 'free_trial':
+        plan_desc += " – 30 Day Trial"
+    elif plan_type == 'basic':
+        plan_desc += " – 1 Year Starter"
+    elif plan_type == 'professional':
+        plan_desc += " – 1 Year Professional"
         
-    try:
-        config = pdfkit.configuration(wkhtmltopdf=resolved_path)
-        logger.debug(f"[DEBUG PDFKIT] Successfully created pdfkit configuration using: {resolved_path}")
-    except Exception as e:
-        logger.error(f"[DEBUG PDFKIT] Failed to create pdfkit configuration: {e}")
-        raise
-        
-    options = {
-        'page-size': 'A4',
-        'margin-top': '0.5cm',
-        'margin-right': '0.5cm',
-        'margin-bottom': '0.5cm',
-        'margin-left': '0.5cm',
-        'encoding': "UTF-8",
-        'enable-local-file-access': None
+    items = [
+        {
+            'name': plan_name,
+            'description': plan_desc,
+            'amount': float(invoice_data.get('base_amount') or 0),
+        }
+    ]
+
+    context = {
+        'invoice': invoice_data,
+        'items': items,
+        'is_gujarat': is_gujarat,
+        'half_gst': half_gst,
     }
+
+    # Render HTML template natively
+    html_string = render_to_string('admin/invoices/pdf.html', context)
     
-    pdfkit.from_string(html_string, absolute_path, configuration=config, options=options)
+    # Generate PDF via xhtml2pdf
+    from xhtml2pdf import pisa
+    import tempfile
+    
+    # Temporary monkey-patch for xhtml2pdf Windows file-lock bug on NamedTemporaryFile
+    original_named_temp_file = tempfile.NamedTemporaryFile
+
+    class ClosedNamedTemporaryFile:
+        def __init__(self, *args, **kwargs):
+            kwargs['delete'] = False
+            self._file = original_named_temp_file(*args, **kwargs)
+            self.name = self._file.name
+            self._closed = False
+
+        def write(self, data):
+            if not self._closed:
+                self._file.write(data)
+
+        def flush(self):
+            if not self._closed:
+                self._file.flush()
+                self._file.close()
+                self._closed = True
+
+        def close(self):
+            pass
+
+        def __del__(self):
+            try:
+                if os.path.exists(self.name):
+                    os.remove(self.name)
+            except Exception:
+                pass
+
+    tempfile.NamedTemporaryFile = ClosedNamedTemporaryFile
+
+    try:
+        with open(absolute_path, "w+b") as result_file:
+            pisa_status = pisa.CreatePDF(html_string, dest=result_file, encoding='utf-8')
+    finally:
+        # Restore original tempfile behavior
+        tempfile.NamedTemporaryFile = original_named_temp_file
+
+    if pisa_status.err:
+        return {"success": False, "error": "Failed to render PDF using xhtml2pdf"}
     
     return {
         "success": True,
