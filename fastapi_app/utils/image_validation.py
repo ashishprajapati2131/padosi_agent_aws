@@ -78,3 +78,51 @@ def validate_image_file(file_content: bytes, filename: str, content_type: str) -
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Invalid or corrupted image file."
         )
+
+
+def validate_document_file(file_content: bytes, filename: str, content_type: str) -> bytes:
+    """
+    Validates a document file (PDF or Image) for size, format, extension, and integrity.
+    Supports: PDF, JPEG, JPG, PNG.
+    """
+    # 1. Size Check (5 MB for documents)
+    max_size = 5 * 1024 * 1024
+    if len(file_content) > max_size:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="File size exceeds the maximum limit of 5 MB."
+        )
+
+    # 2. Extension Check
+    allowed_exts = {".jpg", ".jpeg", ".png", ".pdf"}
+    filename_lower = filename.lower()
+    if not any(filename_lower.endswith(ext) for ext in allowed_exts):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid file extension. Only .pdf, .jpg, .jpeg, and .png are allowed."
+        )
+
+    # 3. MIME Type Check
+    allowed_mimes = {"application/pdf", "image/jpeg", "image/jpg", "image/png"}
+    if content_type.lower() not in allowed_mimes:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid MIME type. Only application/pdf, image/jpeg, and image/png are allowed."
+        )
+
+    # 4. Handle PDF validation
+    if filename_lower.endswith(".pdf"):
+        # Magic bytes for PDF: %PDF-
+        if not file_content.startswith(b'%PDF-'):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="File signature (magic bytes) mismatch. The file is not a valid PDF."
+            )
+        return file_content
+
+    # 5. Handle Image validation (delegate to validate_image_file, but avoid WEBP if not needed)
+    try:
+        return validate_image_file(file_content, filename, content_type)
+    except HTTPException as e:
+        raise e
+

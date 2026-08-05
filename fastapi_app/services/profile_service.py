@@ -564,7 +564,8 @@ class ProfileService:
                 raise HTTPException(status_code=404, detail="Agent profile not found.")
             profile.profile_photo_path = secure_url
             db.commit()
-            return {"success": True, "profile_photo_url": secure_url}
+            response_url = f"/media/{secure_url}" if not secure_url.startswith("http") else secure_url
+            return {"success": True, "profile_photo_url": response_url}
         except Exception as e:
             db.rollback()
             raise e
@@ -576,9 +577,10 @@ class ProfileService:
             for pf in processed_files:
                 if pf["hash"] in existing_photos_map:
                     existing = existing_photos_map[pf["hash"]]
+                    response_url = f"/media/{existing.photo_path}" if not existing.photo_path.startswith("http") else existing.photo_path
                     uploaded_results.append({
                         "id": existing.id,
-                        "photo_url": existing.photo_path
+                        "photo_url": response_url
                     })
                     continue
 
@@ -590,9 +592,10 @@ class ProfileService:
                 db.add(new_photo)
                 db.flush()
                 
+                response_url = f"/media/{new_photo.photo_path}" if not new_photo.photo_path.startswith("http") else new_photo.photo_path
                 uploaded_results.append({
                     "id": new_photo.id,
-                    "photo_url": new_photo.photo_path
+                    "photo_url": response_url
                 })
             db.commit()
             return uploaded_results

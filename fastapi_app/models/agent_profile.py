@@ -41,6 +41,9 @@ class AgentProfile(Base):
     social_links = Column(JSON, nullable=True)
     career_highlights = Column(Text, nullable=True)
     
+    irdai_license_doc = Column(String(255), nullable=True)
+    amfi_license_doc = Column(String(255), nullable=True)
+    
     is_profile_visible = Column(Boolean, default=True, nullable=False)
     show_certificates = Column(Boolean, default=True, nullable=False)
     show_achievements = Column(Boolean, default=True, nullable=False)

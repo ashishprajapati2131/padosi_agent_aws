@@ -5,11 +5,22 @@ from app.config import settings
 
 class LocalStorageService:
     @staticmethod
+    def save_django_path_file(file_bytes: bytes, relative_path: str) -> str:
+        """
+        Saves the file to local storage exactly at the given relative path.
+        Used to mirror Django's storage paths (e.g. app/public/insurance/...)
+        """
+        full_local_path = os.path.join(settings.LOCAL_STORAGE_PATH, relative_path)
+        os.makedirs(os.path.dirname(full_local_path), exist_ok=True)
+        
+        with open(full_local_path, "wb") as f:
+            f.write(file_bytes)
+            
+        return relative_path
+
+    @staticmethod
     def save_file(file_bytes: bytes, subfolder: str, filename: str, base_url: str = None) -> str:
         """
-        Saves the file to local storage and returns its public URL.
-        Layout: {LOCAL_STORAGE_PATH}/uploads/{subfolder}/{year}/{month}/{unique_filename}
-
         Args:
             file_bytes: Raw bytes of the file to save.
             subfolder:  Sub-directory name (e.g. "profile", "achievement").

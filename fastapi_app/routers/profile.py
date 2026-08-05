@@ -18,7 +18,7 @@ from app.schemas.profile import AgentProfileResponse, AgentProfileUpdateRequest
 from app.repositories.agent_repository import AgentRepository
 from app.services.profile_service import ProfileService
 from app.services.cloudinary_service import CloudinaryService
-from app.utils.image_validation import validate_image_file
+from app.utils.image_validation import validate_image_file, validate_document_file
 from app.models.agent_profile import AgentProfile
 from app.models.agent_achievement_photo import AgentAchievementPhoto
 import logging
@@ -106,14 +106,11 @@ async def upload_profile_image(
     except Exception as e:
         logger.warning(f"Cloudinary upload failed ({type(e).__name__}): {str(e)}. Fallback to local storage initiated.")
         try:
-            # Use the live request base URL so the returned URL works via ngrok / production domain
-            live_base_url = str(request.base_url).rstrip("/")
-            secure_url = LocalStorageService.save_file(
-                file_bytes,
-                subfolder="profile",
-                filename=file.filename or "profile.png",
-                base_url=live_base_url
-            )
+            import time, os
+            ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".jpg"
+            relative_path = f"app/public/profile/agent_{current_agent.id}_{int(time.time())}{ext}"
+            
+            secure_url = LocalStorageService.save_django_path_file(file_bytes, relative_path)
             logger.info(f"Local storage success: URL={secure_url}")
         except Exception as local_err:
             logger.error(f"Local storage failure: {str(local_err)}")
@@ -186,12 +183,33 @@ async def upload_achievement_image(
     
     for f in uploaded_files:
         if isinstance(f, str):
+            import base64
+            import re
             filename = "achievement.jpg"
             content_type = "image/jpeg"
-            try:
-                raw_bytes = f.encode('latin-1')
-            except Exception:
-                raw_bytes = f.encode('utf-8')
+            
+            if f.startswith("data:image"):
+                match = re.match(r'data:(?P<mime>image/[a-zA-Z0-9]+);base64,(?P<data>.*)', f)
+                if match:
+                    content_type = match.group('mime')
+                    b64_data = match.group('data')
+                    ext = content_type.split('/')[-1]
+                    filename = f"achievement.{ext}"
+                    try:
+                        raw_bytes = base64.b64decode(b64_data)
+                    except Exception:
+                        raise HTTPException(status_code=400, detail="Invalid base64 image data.")
+                else:
+                    raise HTTPException(status_code=400, detail="Invalid base64 data URI format.")
+            else:
+                try:
+                    # Attempt base64 decoding if no prefix
+                    raw_bytes = base64.b64decode(f)
+                except Exception:
+                    try:
+                        raw_bytes = f.encode('latin-1')
+                    except Exception:
+                        raw_bytes = f.encode('utf-8')
         else:
             filename = f.filename or "achievement.jpg"
             content_type = f.content_type or "image/jpeg"
@@ -276,13 +294,13 @@ async def upload_achievement_image(
         except Exception as e:
             logger.warning(f"Cloudinary upload failed ({type(e).__name__}): {str(e)}. Fallback to local storage initiated.")
             try:
-                # Use the live request base URL so the returned URL works via ngrok / production domain
-                live_base_url = str(request.base_url).rstrip("/")
-                secure_url = LocalStorageService.save_file(
+                import time, os, uuid
+                ext = os.path.splitext(pf["filename"])[1].lower() if pf["filename"] else ".jpg"
+                relative_path = f"app/public/achievement/achievement_{current_agent.id}_{int(time.time())}_{uuid.uuid4().hex[:6]}{ext}"
+                
+                secure_url = LocalStorageService.save_django_path_file(
                     pf["bytes"],
-                    subfolder="achievements",
-                    filename=pf["filename"] or f"{pf['hash']}.png",
-                    base_url=live_base_url
+                    relative_path
                 )
                 logger.info(f"Local storage success: URL={secure_url}")
             except Exception as local_err:
@@ -303,11 +321,9 @@ async def upload_achievement_image(
         existing_photos_map=existing_photos_map
     )
 
-    # Construct backward-compatible response
-    first_photo = uploaded_results[0] if uploaded_results else None
+    # Construct response
     return {
         "success": True,
-        "photo": first_photo,
         "photos": uploaded_results
     }
 
@@ -385,4 +401,220 @@ def get_companies(current_agent: Agent = Depends(get_current_agent), db: Session
         
     return grouped_companies
 
+@router.post("/profile/licenses/irdai")
+async def upload_irdai_license(
+    request: Request,
+    file: UploadFile = File(...),
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload IRDAI license document.
+    """
+    # 1. Read file and validate
+    file_bytes = await file.read()
+    file_bytes = validate_document_file(file_bytes, file.filename or "irdai.pdf", file.content_type or "application/pdf")
+    
+    # 2. Get profile
+    profile = db.query(AgentProfile).filter(AgentProfile.agent_id == current_agent.id).first()
+    if not profile:
+        profile = AgentProfile(agent_id=current_agent.id)
+        db.add(profile)
+        db.flush()
+        
+    old_path = profile.irdai_license_doc
+    
+    # 3. Save to Django media path
+    import time, os
+    ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".jpg"
+    relative_path = f"app/public/insurance/irdai_{current_agent.id}_{int(time.time())}{ext}"
+    
+    try:
+        saved_path = LocalStorageService.save_django_path_file(file_bytes, relative_path)
+    except Exception as e:
+        logger.error(f"Local storage failure for IRDAI: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to save IRDAI license document.")
+        
+    # 4. Update DB
+    profile.irdai_license_doc = saved_path
+    db.commit()
+    
+    # 5. Cleanup old local file (if it was local)
+    if old_path and not old_path.startswith("http"):
+        try:
+            full_old_path = os.path.join(settings.LOCAL_STORAGE_PATH, old_path)
+            if os.path.exists(full_old_path):
+                os.remove(full_old_path)
+        except Exception:
+            pass
+            
+    response_path = f"/media/{saved_path}" if not saved_path.startswith("http") else saved_path
+    return {"status": "success", "message": "IRDAI license uploaded successfully.", "path": response_path}
+
+
+@router.post("/profile/licenses/amfi")
+async def upload_amfi_license(
+    request: Request,
+    file: UploadFile = File(...),
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload AMFI license document.
+    """
+    # 1. Read file and validate
+    file_bytes = await file.read()
+    file_bytes = validate_document_file(file_bytes, file.filename or "amfi.pdf", file.content_type or "application/pdf")
+    
+    # 2. Get profile
+    profile = db.query(AgentProfile).filter(AgentProfile.agent_id == current_agent.id).first()
+    if not profile:
+        profile = AgentProfile(agent_id=current_agent.id)
+        db.add(profile)
+        db.flush()
+        
+    old_path = profile.amfi_license_doc
+    
+    # 3. Save to Django media path
+    import time, os
+    ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".jpg"
+    relative_path = f"app/public/investment/amfi_{current_agent.id}_{int(time.time())}{ext}"
+    
+    try:
+        saved_path = LocalStorageService.save_django_path_file(file_bytes, relative_path)
+    except Exception as e:
+        logger.error(f"Local storage failure for AMFI: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to save AMFI license document.")
+        
+    # 4. Update DB
+    profile.amfi_license_doc = saved_path
+    db.commit()
+    
+    # 5. Cleanup old local file
+    if old_path and not old_path.startswith("http"):
+        try:
+            full_old_path = os.path.join(settings.LOCAL_STORAGE_PATH, old_path)
+            if os.path.exists(full_old_path):
+                os.remove(full_old_path)
+        except Exception:
+            pass
+            
+    response_path = f"/media/{saved_path}" if not saved_path.startswith("http") else saved_path
+    return {"status": "success", "message": "AMFI license uploaded successfully.", "path": response_path}
+
+
+@router.get("/profile/generate-bio")
+def generate_professional_bio(
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate an AI professional bio using the authenticated agent's data.
+    The data is pulled exclusively from the database using the agent's identity.
+    """
+    import os, sys
+    src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+
+    import django
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'padosi_agent.settings')
+    from django.apps import apps
+    if not apps.ready:
+        django.setup()
+
+    from apps.agents.models import Agent as DjangoAgent
+    from apps.agents.models import AgentProfile as DjangoAgentProfile
+    from apps.agents.views.bio_generator import generate_agent_bio_logic
+
+    try:
+        django_agent = DjangoAgent.objects.filter(id=current_agent.id).first()
+        if not django_agent:
+            raise HTTPException(status_code=404, detail="Agent profile not found in Django context.")
+
+        django_profile, _ = DjangoAgentProfile.objects.get_or_create(agent=django_agent)
+        
+        bio = generate_agent_bio_logic(django_agent, django_profile, {})
+        return {"status": "success", "bio": bio}
+    except Exception as e:
+        logger.error(f"Bio generation failed via FastAPI: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to generate professional bio. Please try again later.")
+
+
+from pydantic import BaseModel
+
+class CityCreateRequest(BaseModel):
+    name: str
+
+@router.get("/profile/serviceable-cities")
+def get_serviceable_cities(
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve a list of all active serviceable cities.
+    """
+    import os, sys
+    src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+
+    import django
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'padosi_agent.settings')
+    from django.apps import apps
+    if not apps.ready:
+        django.setup()
+
+    from apps.agents.models import City as DjangoCity
+
+    cities = DjangoCity.objects.filter(is_active=True).order_by('name')
+    result = [{"id": c.id, "name": c.name} for c in cities]
+    return {"status": "success", "cities": result}
+
+
+@router.post("/profile/serviceable-cities")
+def add_serviceable_city(
+    payload: CityCreateRequest,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Add a new city to the global database if it doesn't already exist.
+    """
+    import os, sys
+    src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+
+    import django
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'padosi_agent.settings')
+    from django.apps import apps
+    if not apps.ready:
+        django.setup()
+
+    from apps.agents.models import City as DjangoCity
+
+    if not payload.name or not payload.name.strip():
+        raise HTTPException(status_code=400, detail="City name is required.")
+
+    name = payload.name.strip()
+    
+    # Check if city already exists (case-insensitive)
+    existing_city = DjangoCity.objects.filter(name__iexact=name).first()
+    if existing_city:
+        return {
+            "status": "success",
+            "message": "City already exists.",
+            "city": {"id": existing_city.id, "name": existing_city.name}
+        }
+
+    # Create new city
+    from django.utils.text import slugify
+    new_slug = slugify(name)
+    new_city = DjangoCity.objects.create(name=name, slug=new_slug, state="", is_active=True)
+    return {
+        "status": "success",
+        "message": "City added successfully.",
+        "city": {"id": new_city.id, "name": new_city.name}
+    }
 
