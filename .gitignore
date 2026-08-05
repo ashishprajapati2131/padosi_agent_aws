@@ -6,10 +6,6 @@ db.sqlite3
 *.log
 .vscode/
 staticfiles/
-<<<<<<< HEAD
 media/
 cache/
 scratch/
-=======
-media/
->>>>>>> 1d1f1e16257e335c851c1ecbdf76d8c5ce5ca624
