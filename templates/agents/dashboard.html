@@ -431,135 +431,32 @@
                 </div>
             </div>
 
-            <!-- Profile Section Visibility Card -->
+            <!-- Profile Section Controls Card -->
             <div class="card premium-dashboard-card mb-4 mx-2">
                 <div class="card-body p-4">
-                    <p class="card-section-title mb-1" style="display:flex;align-items:center;gap:6px;">
-                        <i class="fas fa-eye text-teal-600"></i> Profile Section Visibility
-                    </p>
-                    <p class="text-muted small mb-4">Control what end users can see on your public profile</p>
+                    <p class="card-section-title mb-1">🎛️ Profile Section Controls</p>
+                    <p class="text-muted small mb-4">Toggle which sections appear on the public profile.</p>
 
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-eye text-teal-600" style="font-size:14px;"></i>
-                            <div>
-                                <div style="font-size:14px;font-weight:600;color:#1e293b;">Experience & Years</div>
-                                <div style="font-size:11px;color:#64748b;">Show your years of experience on profile</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.agent_show_experience %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_experience', this)"></button>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+                        <span style="font-size:14px;font-weight:500;">Full Profile Visibility</span>
+                        <button type="button" class="toggle {% if profile.is_profile_visible %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'is_profile_visible', this)"></button>
                     </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-eye text-teal-600" style="font-size:14px;"></i>
-                            <div>
-                                <div style="font-size:14px;font-weight:600;color:#1e293b;">Claims & Settled Stats</div>
-                                <div style="font-size:11px;color:#64748b;">Claims processed, settled, amount, success rate</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.agent_show_claims_stats %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_claims_stats', this)"></button>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+                        <span style="font-size:14px;font-weight:500;">Card Visibility</span>
+                        <button type="button" class="toggle {% if profile.is_card_visible %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'is_card_visible', this)"></button>
                     </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-eye text-teal-600" style="font-size:14px;"></i>
-                            <div>
-                                <div style="font-size:14px;font-weight:600;color:#1e293b;">Client Base</div>
-                                <div style="font-size:11px;color:#64748b;">Show approximate client count</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.agent_show_client_base %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_client_base', this)"></button>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+                        <span style="font-size:14px;font-weight:500;">Certificates Section</span>
+                        <button type="button" class="toggle {% if profile.show_certificates %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_certificates', this)"></button>
                     </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-eye text-teal-600" style="font-size:14px;"></i>
-                            <div>
-                                <div style="font-size:14px;font-weight:600;color:#1e293b;">Ratings & Stars</div>
-                                <div style="font-size:11px;color:#64748b;">Show star rating on your profile</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.agent_show_ratings %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_ratings', this)"></button>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+                        <span style="font-size:14px;font-weight:500;">Achievements Section</span>
+                        <button type="button" class="toggle {% if profile.show_achievements %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_achievements', this)"></button>
                     </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-eye text-teal-600" style="font-size:14px;"></i>
-                            <div>
-                                <div style="font-size:14px;font-weight:600;color:#1e293b;">Comments & Reviews</div>
-                                <div style="font-size:11px;color:#64748b;">Show customer reviews section</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.agent_show_reviews %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_reviews', this)"></button>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+                        <span style="font-size:14px;font-weight:500;">Comments / Reviews Section</span>
+                        <button type="button" class="toggle {% if profile.show_reviews %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_reviews', this)"></button>
                     </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-eye text-teal-600" style="font-size:14px;"></i>
-                            <div>
-                                <div style="font-size:14px;font-weight:600;color:#1e293b;">Certifications</div>
-                                <div style="font-size:11px;color:#64748b;">Show certifications section</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.agent_show_certificates %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_certificates', this)"></button>
-                    </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-eye text-teal-600" style="font-size:14px;"></i>
-                            <div>
-                                <div style="font-size:14px;font-weight:600;color:#1e293b;">Achievements</div>
-                                <div style="font-size:11px;color:#64748b;">Show achievement badges</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.agent_show_achievements %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_achievements', this)"></button>
-                    </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-eye text-teal-600" style="font-size:14px;"></i>
-                            <div>
-                                <div style="font-size:14px;font-weight:600;color:#1e293b;">Social Media Buttons</div>
-                                <div style="font-size:11px;color:#64748b;">LinkedIn, Facebook, Twitter links</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.agent_show_social_media %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_social_media', this)"></button>
-                    </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-eye text-teal-600" style="font-size:14px;"></i>
-                            <div>
-                                <div style="font-size:14px;font-weight:600;color:#1e293b;">Languages</div>
-                                <div style="font-size:11px;color:#64748b;">Show languages you speak</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.agent_show_languages %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_languages', this)"></button>
-                    </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-eye text-teal-600" style="font-size:14px;"></i>
-                            <div>
-                                <div style="font-size:14px;font-weight:600;color:#1e293b;">Media / Gallery</div>
-                                <div style="font-size:11px;color:#64748b;">Show photo gallery section</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.agent_show_gallery %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_gallery', this)"></button>
-                    </div>
-
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <i class="fas fa-eye text-teal-600" style="font-size:14px;"></i>
-                            <div>
-                                <div style="font-size:14px;font-weight:600;color:#1e293b;">Contact Info (Phone/WhatsApp)</div>
-                                <div style="font-size:11px;color:#64748b;">Show phone and WhatsApp number</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.agent_show_contact_info %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_contact_info', this)"></button>
-                    </div>
-
                 </div>
             </div>
 

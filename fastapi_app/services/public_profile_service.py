@@ -43,11 +43,6 @@ class PublicProfileService:
             raise HTTPException(status_code=404, detail="Agent Profile Not found")
             
         profile = agent.profile
-        
-        # Check Admin Master Override for Full Profile Visibility
-        if profile and not profile.is_profile_visible:
-            raise HTTPException(status_code=404, detail="Agent Profile Not found")
-            
         perf = agent.performance_stats
         prefs = agent.lead_preferences
         
@@ -249,18 +244,5 @@ class PublicProfileService:
             performance_stats=perf_schema,
             service_fees=service_fees,
             media_urls=media_urls,
-            reviews=review_schemas,
-            
-            # Visibility Flags
-            show_experience=profile.agent_show_experience if profile else True,
-            show_claims_stats=profile.agent_show_claims_stats if profile else True,
-            show_client_base=profile.agent_show_client_base if profile else True,
-            show_ratings=profile.agent_show_ratings if profile else True,
-            show_reviews_section=(profile.agent_show_reviews and profile.show_reviews) if profile else True,
-            show_certificates_section=(profile.agent_show_certificates and profile.show_certificates) if profile else True,
-            show_achievements_section=(profile.agent_show_achievements and profile.show_achievements) if profile else True,
-            show_social_media=profile.agent_show_social_media if profile else True,
-            show_languages=profile.agent_show_languages if profile else True,
-            show_gallery=profile.agent_show_gallery if profile else True,
-            show_contact_info=profile.agent_show_contact_info if profile else True
+            reviews=review_schemas
         )

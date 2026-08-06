@@ -246,8 +246,8 @@
     <div>
 
       <div class="card" style="padding:20px;margin-bottom:16px;">
-        <p class="section-title">🎛️ Admin Master Visibility Overrides</p>
-        <p style="font-size:13px;color:#5f6b7a;margin:0 0 14px;">These controls have the highest priority. If disabled here, they will be hidden regardless of agent's choice.</p>
+        <p class="section-title">🎛️ Profile Section Controls</p>
+        <p style="font-size:13px;color:#5f6b7a;margin:0 0 14px;">Toggle which sections appear on the public profile.</p>
         
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
           <span style="font-size:14px;font-weight:500;">Full Profile Visibility</span>
@@ -268,56 +268,6 @@
         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
           <span style="font-size:14px;font-weight:500;">Comments / Reviews Section</span>
           <button type="button" class="toggle {% if agent.show_reviews %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_reviews', this)"></button>
-        </div>
-      </div>
-
-      <div class="card" style="padding:20px;margin-bottom:16px;">
-        <p class="section-title">🎛️ Agent Profile Preferences</p>
-        <p style="font-size:13px;color:#5f6b7a;margin:0 0 14px;">Detailed visibility toggles managed by the agent.</p>
-        
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:500;">Experience & Years</span>
-          <button type="button" class="toggle {% if agent.agent_show_experience %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_experience', this)"></button>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:500;">Claims & Settled Stats</span>
-          <button type="button" class="toggle {% if agent.agent_show_claims_stats %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_claims_stats', this)"></button>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:500;">Client Base</span>
-          <button type="button" class="toggle {% if agent.agent_show_client_base %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_client_base', this)"></button>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:500;">Ratings & Stars</span>
-          <button type="button" class="toggle {% if agent.agent_show_ratings %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_ratings', this)"></button>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:500;">Comments & Reviews</span>
-          <button type="button" class="toggle {% if agent.agent_show_reviews %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_reviews', this)"></button>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:500;">Certifications</span>
-          <button type="button" class="toggle {% if agent.agent_show_certificates %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_certificates', this)"></button>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:500;">Achievements</span>
-          <button type="button" class="toggle {% if agent.agent_show_achievements %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_achievements', this)"></button>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:500;">Social Media Buttons</span>
-          <button type="button" class="toggle {% if agent.agent_show_social_media %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_social_media', this)"></button>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:500;">Languages</span>
-          <button type="button" class="toggle {% if agent.agent_show_languages %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_languages', this)"></button>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:500;">Media / Gallery</span>
-          <button type="button" class="toggle {% if agent.agent_show_gallery %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_gallery', this)"></button>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
-          <span style="font-size:14px;font-weight:500;">Contact Info</span>
-          <button type="button" class="toggle {% if agent.agent_show_contact_info %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'agent_show_contact_info', this)"></button>
         </div>
       </div>
 

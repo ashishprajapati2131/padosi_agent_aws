@@ -108,18 +108,6 @@ class ProfileSchema(BaseModel):
     career_highlights: Optional[str] = ""
     website: Optional[str] = ""
     social_links: SocialLinksSchema
-    
-    agent_show_experience: bool = True
-    agent_show_claims_stats: bool = True
-    agent_show_client_base: bool = True
-    agent_show_ratings: bool = True
-    agent_show_reviews: bool = True
-    agent_show_certificates: bool = True
-    agent_show_achievements: bool = True
-    agent_show_social_media: bool = True
-    agent_show_languages: bool = True
-    agent_show_gallery: bool = True
-    agent_show_contact_info: bool = True
 
 class AgentProfileResponse(BaseModel):
     agent: AgentSchema
@@ -165,18 +153,6 @@ class ProfileUpdateSchema(BaseModel):
     career_highlights: Optional[str] = ""
     website: Optional[str] = ""
     social_links: SocialLinksSchema
-    
-    agent_show_experience: bool = True
-    agent_show_claims_stats: bool = True
-    agent_show_client_base: bool = True
-    agent_show_ratings: bool = True
-    agent_show_reviews: bool = True
-    agent_show_certificates: bool = True
-    agent_show_achievements: bool = True
-    agent_show_social_media: bool = True
-    agent_show_languages: bool = True
-    agent_show_gallery: bool = True
-    agent_show_contact_info: bool = True
 
 class AgentProfileUpdateRequest(BaseModel):
     agent: AgentUpdateSchema

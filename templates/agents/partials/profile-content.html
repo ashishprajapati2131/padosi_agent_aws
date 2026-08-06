@@ -341,7 +341,6 @@
                 {% endif %}
             </div>
 
-            {% if profile.agent_show_social_media %}
             <div class="social-links">
                 {% if socialLinks.linkedin %}
                     <a href="javascript:void(0)" target="_blank" class="social-icon" 
@@ -374,9 +373,7 @@
                        data-interaction-type="google_business"><i class="fab fa-google"></i></a>
                 {% endif %}
             </div>
-            {% endif %}
 
-            {% if profile.agent_show_contact_info %}
             <div class="action-btns">
                 <a href="javascript:void(0)" target="_blank" 
                    class="btn btn-whatsapp" 
@@ -393,7 +390,6 @@
                     <i class="fa-solid fa-phone"></i> Call Now
                 </a>
             </div>
-            {% endif %}
         </div>
 
         <div class="profile-right-col">
@@ -414,21 +410,15 @@
             </p>
 
             <div class="quick-stats-row">
-                {% if profile.agent_show_experience %}
                 <div class="quick-stat-pill">
                     <i class="fas fa-briefcase"></i> {{ agent.experience_range|default:"0" }} years
                 </div>
-                {% endif %}
-                {% if profile.agent_show_client_base %}
                 <div class="quick-stat-pill">
                     <i class="fas fa-users"></i> {{ agent.client_base|default:"0+" }} clients
                 </div>
-                {% endif %}
-                {% if profile.agent_show_languages %}
                 <div class="quick-stat-pill">
                     <i class="fas fa-language"></i> {{ profile.formatted_languages }}
                 </div>
-                {% endif %}
             </div>
 
             <div class="insurance-types">
@@ -451,7 +441,6 @@
                 {% endfor %}
             </div>
 
-            {% if profile.agent_show_ratings %}
             <div class="reviews-summary" style="cursor: pointer;" onclick="document.getElementById('reviews-section').scrollIntoView({behavior: 'smooth'})">
                 <div class="stars">
                     {% for i in "12345" %}
@@ -464,7 +453,6 @@
                 </div>
                 {{ agent.average_rating|floatformat:1 }} ({{ agent.review_count }} reviews) <i class="fas fa-arrow-up-right-from-square ml-2" style="font-size: 10px;"></i>
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -490,7 +478,7 @@
         <!-- Certifications -->
         <div class="section-card">
             <h2 class="section-title"><i class="fas fa-award"></i> Certifications & Licenses</h2>
-            {% if profile.show_certificates and profile.agent_show_certificates %}
+            {% if profile.show_certificates %}
                 {% if profile.license_number %}
                     <div class="icon-list-item" style="align-items: flex-start; gap: 10px; margin-bottom: 12px;">
                         <i class="fas fa-certificate item-icon" style="color: #0d9488; font-size: 20px;"></i>
@@ -546,7 +534,7 @@
         <!-- Achievements -->
         <div class="section-card">
             <h2 class="section-title"><i class="fas fa-trophy"></i> Achievements</h2>
-            {% if profile.show_achievements and profile.agent_show_achievements %}
+            {% if profile.show_achievements %}
                 {% if agent.achievement_entries %}
                     <div class="achievements-row">
                         {% for achievement in agent.achievement_entries %}
@@ -574,13 +562,10 @@
         <div class="section-card">
             <h2 class="section-title"><i class="fas fa-chart-line"></i> Performance Stats</h2>
             <div class="stats-grid">
-                {% if profile.agent_show_client_base %}
                 <div class="stat-box">
                     <div class="stat-value">{{ agent.client_base|default:"0" }}</div>
                     <div class="stat-label">Clients Served</div>
                 </div>
-                {% endif %}
-                {% if profile.agent_show_claims_stats %}
                 <div class="stat-box">
                     <div class="stat-value">{{ performanceStats.formatted_claims_processed|default:"0" }}</div>
                     <div class="stat-label">Claims Processed</div>
@@ -603,13 +588,10 @@
                     <div class="stat-value">&lt; {{ performanceStats.response_time|default:"2" }} hours</div>
                     <div class="stat-label">Response Time</div>
                 </div>
-                {% endif %}
-                {% if profile.agent_show_ratings %}
                 <div class="stat-box">
                     <div class="stat-value">{{ agent.average_rating|floatformat:1 }}</div>
                     <div class="stat-label">Rating</div>
                 </div>
-                {% endif %}
             </div>
         </div>
 
@@ -653,7 +635,6 @@
         </div>
 
         <!-- Media Gallery -->
-        {% if profile.agent_show_gallery %}
         <div class="section-card">
             <div class="media-header">
                 <h2 class="section-title mb-0"><i class="fas fa-images"></i> Media</h2>
@@ -673,18 +654,17 @@
                 {% endfor %}
             </div>
         </div>
-        {% endif %}
 
         <!-- Reviews -->
         <div class="section-card" id="reviews-section">
             <div class="reviews-header">
                 <h2 class="section-title mb-0"><i class="far fa-star"></i> Reviews</h2>
-                {% if profile.show_reviews and profile.agent_show_reviews %}
+                {% if profile.show_reviews %}
                     <span class="total-reviews">{{ agent.review_count }} total</span>
                 {% endif %}
             </div>
 
-            {% if profile.show_reviews and profile.agent_show_reviews %}
+            {% if profile.show_reviews %}
                 <div class="reviews-body">
                     <div class="reviews-list">
                         {% for review in reviews %}
