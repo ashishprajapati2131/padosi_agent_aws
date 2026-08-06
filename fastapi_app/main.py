@@ -28,18 +28,9 @@ import app.models
 
 logger = logging.getLogger(__name__)
 
-# Resilient database connection and migration check on startup
-for i in range(5):
-    try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("✓ Database tables verified/created successfully.")
-        break
-    except OperationalError as oe:
-        if i == 4:
-            logger.critical("Database connection failed after 5 retries. Exiting.")
-            raise oe
-        logger.warning(f"Database not ready yet (retry {i+1}/5): {oe}. Waiting 2 seconds...")
-        time.sleep(2)
+# NOTE: Removed blocking startup DB connection and migration logic here
+# to prevent "Resource temporarily unavailable" / timeout errors in Passenger WSGI.
+# Database tables should be created externally or via a script, not automatically on every worker boot.
 
 app = FastAPI(
     title="PadosiAgent FastAPI Service",

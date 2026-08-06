@@ -68,16 +68,9 @@ if os.path.exists(VENV_PATH_64) and VENV_PATH_64 not in sys.path:
 # Set Django Settings module
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "padosi_agent.settings")
 
-# Auto-install a2wsgi if missing (for users without SSH access)
-try:
-    import a2wsgi
-except ImportError:
-    import subprocess
-    import sys
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "a2wsgi"])
-    except Exception as e:
-        print(f"Failed to auto-install a2wsgi: {e}")
+# Note: a2wsgi must be installed via pip (pip install a2wsgi) prior to running.
+# We removed the auto-install subprocess logic because it causes
+# "Cannot fork a new process" errors in Passenger during worker initialization.
 
 # Load native Django WSGI application
 from django.core.wsgi import get_wsgi_application
