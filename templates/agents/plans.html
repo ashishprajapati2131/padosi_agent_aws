@@ -926,8 +926,28 @@
 
             const data = await response.json();
             if (data.success) {
-                if (!data.order_id && data.redirect_url) {
-                    window.location.href = data.redirect_url;
+                if (data.already_completed) {
+                    Swal.fire({
+                        title: 'Already Registered',
+                        text: 'An active account with this email already exists. Please login.',
+                        icon: 'info',
+                        confirmButtonText: 'Go to Login'
+                    }).then(() => {
+                        window.location.href = data.redirect_url;
+                    });
+                } else if (!data.order_id && data.redirect_url) {
+                    if (data.message) {
+                        Swal.fire({
+                            title: 'Success!',
+                            text: data.message,
+                            icon: 'success',
+                            confirmButtonText: 'Continue'
+                        }).then(() => {
+                            window.location.href = data.redirect_url;
+                        });
+                    } else {
+                        window.location.href = data.redirect_url;
+                    }
                 } else {
                     const options = {
                         "key": data.key,
@@ -946,14 +966,23 @@
                             }
                         }
                     };
+                    if (typeof Razorpay === 'undefined') {
+                        Swal.fire('Error', 'Payment gateway could not be loaded. Please disable your ad-blocker or check your internet connection.', 'error');
+                        return;
+                    }
                     const rzp = new Razorpay(options);
+                    rzp.on('payment.failed', function (response){
+                        Swal.fire('Payment Failed', response.error.description, 'error');
+                        handlePaymentFailure(data.agent_id);
+                    });
                     rzp.open();
                 }
             } else {
                 Swal.fire('Error', data.message || 'Unable to complete registration.', 'error');
             }
-        } catch {
-            Swal.fire('Error', 'Payment preparation failed.', 'error');
+        } catch (error) {
+            console.error("Payment Error:", error);
+            Swal.fire('Error', 'Payment preparation failed: ' + (error.message || 'Unknown error'), 'error');
         } finally {
             paymentBtn.disabled = false;
             paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
