@@ -67,3 +67,16 @@ class PublicProfileResponse(BaseModel):
     media_urls: List[str] = []
     
     reviews: List[ReviewSchema] = []
+    
+    # Effective Visibility Flags
+    show_experience: bool = True
+    show_claims_stats: bool = True
+    show_client_base: bool = True
+    show_ratings: bool = True
+    show_reviews_section: bool = True
+    show_certificates_section: bool = True
+    show_achievements_section: bool = True
+    show_social_media: bool = True
+    show_languages: bool = True
+    show_gallery: bool = True
+    show_contact_info: bool = True

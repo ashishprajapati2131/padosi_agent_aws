@@ -580,6 +580,18 @@ class AgentProfile(models.Model):
     show_reviews = models.BooleanField(default=True)
     is_card_visible = models.BooleanField(default=True)
 
+    agent_show_experience = models.BooleanField(default=True)
+    agent_show_claims_stats = models.BooleanField(default=True)
+    agent_show_client_base = models.BooleanField(default=True)
+    agent_show_ratings = models.BooleanField(default=True)
+    agent_show_reviews = models.BooleanField(default=True)
+    agent_show_certificates = models.BooleanField(default=True)
+    agent_show_achievements = models.BooleanField(default=True)
+    agent_show_social_media = models.BooleanField(default=True)
+    agent_show_languages = models.BooleanField(default=True)
+    agent_show_gallery = models.BooleanField(default=True)
+    agent_show_contact_info = models.BooleanField(default=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

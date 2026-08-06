@@ -49,5 +49,17 @@ class AgentProfile(Base):
     show_achievements = Column(Boolean, default=True, nullable=False)
     show_reviews = Column(Boolean, default=True, nullable=False)
     
+    agent_show_experience = Column(Boolean, default=True, nullable=False)
+    agent_show_claims_stats = Column(Boolean, default=True, nullable=False)
+    agent_show_client_base = Column(Boolean, default=True, nullable=False)
+    agent_show_ratings = Column(Boolean, default=True, nullable=False)
+    agent_show_reviews = Column(Boolean, default=True, nullable=False)
+    agent_show_certificates = Column(Boolean, default=True, nullable=False)
+    agent_show_achievements = Column(Boolean, default=True, nullable=False)
+    agent_show_social_media = Column(Boolean, default=True, nullable=False)
+    agent_show_languages = Column(Boolean, default=True, nullable=False)
+    agent_show_gallery = Column(Boolean, default=True, nullable=False)
+    agent_show_contact_info = Column(Boolean, default=True, nullable=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

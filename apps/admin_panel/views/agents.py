@@ -473,7 +473,13 @@ def update_visibility(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'})
 
-    valid_fields = ['is_profile_visible', 'is_card_visible', 'show_certificates', 'show_achievements', 'show_reviews']
+    valid_fields = [
+        'is_profile_visible', 'is_card_visible', 'show_certificates', 'show_achievements', 'show_reviews',
+        'agent_show_experience', 'agent_show_claims_stats', 'agent_show_client_base',
+        'agent_show_ratings', 'agent_show_reviews', 'agent_show_certificates',
+        'agent_show_achievements', 'agent_show_social_media', 'agent_show_languages',
+        'agent_show_gallery', 'agent_show_contact_info'
+    ]
     if field not in valid_fields:
         return JsonResponse({'success': False, 'message': 'Invalid field'})
 
