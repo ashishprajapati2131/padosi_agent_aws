@@ -38,18 +38,35 @@ class ThreatMonitorMiddleware:
         # 4. Identify potential Malicious Payloads (Basic WAF functionality)
         url_to_check = request.build_absolute_uri()
         
+        # Check if user is an authenticated Admin (to allow safe HTML saving)
+        is_admin = False
+        try:
+            if hasattr(request, 'session') and request.session and request.session.get('admin_id'):
+                is_admin = True
+        except Exception:
+            pass
+        
+        safe_html_fields = ['file_content', 'content', 'html_content', 'template']
+        
         # Collect request input fields
         payload_dict = {}
         if request.method in ['POST', 'PUT', 'PATCH']:
             # Try to load POST parameters
             for k, v in request.POST.items():
-                payload_dict[k] = v
+                if is_admin and k in safe_html_fields:
+                    payload_dict[k] = "[HTML_CONTENT_REDACTED_FOR_WAF]"
+                else:
+                    payload_dict[k] = v
             # If JSON body, try parsing it
             try:
                 if request.content_type == 'application/json' and request.body:
                     json_data = json.loads(request.body.decode('utf-8', errors='ignore'))
                     if isinstance(json_data, dict):
-                        payload_dict.update(json_data)
+                        for k, v in json_data.items():
+                            if is_admin and k in safe_html_fields:
+                                payload_dict[k] = "[HTML_CONTENT_REDACTED_FOR_WAF]"
+                            else:
+                                payload_dict[k] = v
             except Exception:
                 pass
         
