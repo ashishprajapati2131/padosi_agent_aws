@@ -15,7 +15,7 @@ from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentLead
 from apps.home.models import SiteSetting
 from apps.admin_panel.models.referral_code import ReferralCode
 from apps.admin_panel.models.referral_usage import ReferralUsage
-
+from apps.agents.utils.file_validation import validate_magic_bytes
 logger = logging.getLogger(__name__)
 
 @login_required(login_url='agents:agent_login')
@@ -1192,13 +1192,17 @@ def update_profile(request):
                 allowed_doc_exts = ['.pdf', '.jpg', '.jpeg', '.png']
                 if 'irdai_license_doc' in request.FILES:
                     irdai_file = request.FILES['irdai_license_doc']
-                    ext = os.path.splitext(irdai_file.name)[1].lower()
-                    if ext not in allowed_doc_exts:
+                    file_content = irdai_file.read()
+                    irdai_file.seek(0)
+                    is_valid, error_msg = validate_magic_bytes(file_content, irdai_file.name)
+                    if not is_valid:
                         return JsonResponse({
                             'status': 'error',
-                            'message': 'Invalid file type for IRDAI certificate. Only PDF, JPG, and PNG are allowed.',
-                            'errors': {'irdai_license_doc': ['Invalid file extension.']}
+                            'message': f'Invalid file type for IRDAI certificate: {error_msg}',
+                            'errors': {'irdai_license_doc': [error_msg]}
                         }, status=422)
+                    
+                    ext = os.path.splitext(irdai_file.name)[1].lower()
                     if irdai_file.size <= 5 * 1024 * 1024:
                         doc_path = f"app/public/insurance/irdai_{agent.id}_{int(time.time())}{ext}"
                         profile.irdai_license_doc = default_storage.save(doc_path, irdai_file)
@@ -1211,13 +1215,17 @@ def update_profile(request):
 
                 if 'amfi_license_doc' in request.FILES:
                     amfi_file = request.FILES['amfi_license_doc']
-                    ext = os.path.splitext(amfi_file.name)[1].lower()
-                    if ext not in allowed_doc_exts:
+                    file_content = amfi_file.read()
+                    amfi_file.seek(0)
+                    is_valid, error_msg = validate_magic_bytes(file_content, amfi_file.name)
+                    if not is_valid:
                         return JsonResponse({
                             'status': 'error',
-                            'message': 'Invalid file type for AMFI certificate. Only PDF, JPG, and PNG are allowed.',
-                            'errors': {'amfi_license_doc': ['Invalid file extension.']}
+                            'message': f'Invalid file type for AMFI certificate: {error_msg}',
+                            'errors': {'amfi_license_doc': [error_msg]}
                         }, status=422)
+                    
+                    ext = os.path.splitext(amfi_file.name)[1].lower()
                     if amfi_file.size <= 5 * 1024 * 1024:
                         doc_path = f"app/public/investment/amfi_{agent.id}_{int(time.time())}{ext}"
                         profile.amfi_license_doc = default_storage.save(doc_path, amfi_file)
@@ -1246,6 +1254,16 @@ def update_profile(request):
                 # Process photo uploads
                 allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
                 for photo_file in new_photos:
+                    file_content = photo_file.read()
+                    photo_file.seek(0)
+                    is_valid, error_msg = validate_magic_bytes(file_content, photo_file.name)
+                    if not is_valid:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': f'Invalid file for achievement photo: {error_msg}',
+                            'errors': {'achievement_photos': [error_msg]}
+                        }, status=422)
+                    
                     file_ext = os.path.splitext(photo_file.name)[1].lower()
                     if file_ext not in allowed_extensions:
                         return JsonResponse({
@@ -1257,8 +1275,8 @@ def update_profile(request):
                     if photo_file.size > 5 * 1024 * 1024:
                         return JsonResponse({
                             'status': 'error',
-                            'message': 'File size exceeds the 5MB limit.',
-                            'errors': {'achievement_photos': ['Image size must be less than 5MB.']}
+                            'message': 'One of your photos exceeds 5MB size limit.',
+                            'errors': {'achievement_photos': ['A photo exceeds 5MB.']}
                         }, status=422)
 
                     from PIL import Image
