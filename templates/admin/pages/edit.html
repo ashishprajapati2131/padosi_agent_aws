@@ -1,12 +1,12 @@
 {% extends 'admin/base.html' %}
 
-{% if page %}
-{% block title %}Edit Page — {{ page.title }} — PadosiAgent Admin{% endblock %}
-{% block breadcrumb_title %}Pages › Edit{% endblock %}
-{% else %}
-{% block title %}Create Page — PadosiAgent Admin{% endblock %}
-{% block breadcrumb_title %}Pages › Create{% endblock %}
-{% endif %}
+{% block title %}
+    {% if page %}Edit Page — {{ page.title }} — PadosiAgent Admin{% else %}Create Page — PadosiAgent Admin{% endif %}
+{% endblock %}
+
+{% block breadcrumb_title %}
+    {% if page %}Pages › Edit{% else %}Pages › Create{% endif %}
+{% endblock %}
 
 {% block extra_css %}
 <style>
