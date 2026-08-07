@@ -67,6 +67,33 @@
 <form method="POST" action="{% url 'admin_content_plans_update' %}">
     {% csrf_token %}
 
+    <!-- Global Labels -->
+    <div class="plan-editor-card mb-4 mt-2">
+        <div class="plan-editor-header">
+            <i class="fa-solid fa-tag text-primary"></i>
+            Global Labels & Promo Text
+        </div>
+        <div class="p-4">
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <label class="form-label fw-semibold" style="font-size:13px;">Promo Discount Label</label>
+                    <input type="text" name="promo_discount_label" class="form-control"
+                           value="{{ pricing.promo_discount_label|default:'Partner Promo Applied! Once in a lifetime offer!' }}"
+                           placeholder="Partner Promo Applied! Once in a lifetime offer!">
+                    <small class="text-muted">Shown when a promo code is applied at checkout.</small>
+                </div>
+                <div class="col-lg-6">
+                    <label class="form-label fw-semibold" style="font-size:13px;">Standard Plans Label</label>
+                    <input type="text" name="standard_label" class="form-control"
+                           value="{{ pricing.standard_label|default:'Get started with our standard partner plans' }}"
+                           placeholder="Get started with our standard partner plans">
+                    <small class="text-muted">Shown above the plan cards on the pricing page.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plans & Pricing Editor -->
     <div class="row g-4 mb-4">
 
         <!-- Starter Plan Editor -->
@@ -166,32 +193,6 @@
                                    placeholder="RECOMMENDED">
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Global Labels -->
-    <div class="plan-editor-card mb-4">
-        <div class="plan-editor-header">
-            <i class="fa-solid fa-tag text-primary"></i>
-            Global Labels & Promo Text
-        </div>
-        <div class="p-4">
-            <div class="row g-3">
-                <div class="col-lg-6">
-                    <label class="form-label fw-semibold" style="font-size:13px;">Promo Discount Label</label>
-                    <input type="text" name="promo_discount_label" class="form-control"
-                           value="{{ pricing.promo_discount_label|default:'Partner Promo Applied! Once in a lifetime offer!' }}"
-                           placeholder="Partner Promo Applied! Once in a lifetime offer!">
-                    <small class="text-muted">Shown when a promo code is applied at checkout.</small>
-                </div>
-                <div class="col-lg-6">
-                    <label class="form-label fw-semibold" style="font-size:13px;">Standard Plans Label</label>
-                    <input type="text" name="standard_label" class="form-control"
-                           value="{{ pricing.standard_label|default:'Get started with our standard partner plans' }}"
-                           placeholder="Get started with our standard partner plans">
-                    <small class="text-muted">Shown above the plan cards on the pricing page.</small>
                 </div>
             </div>
         </div>
