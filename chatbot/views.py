@@ -99,7 +99,12 @@ def send_message(request):
                     # LLM wants to make a tool call — use the full non-streaming flow.
                     # The user_message was already saved to DB by stream_plain_text_completion,
                     # so pass user_message=None to get_chat_completion to avoid double-saving.
-                    result = get_chat_completion(session_id, user_message=None)
+                    result = get_chat_completion(
+                        session_id, 
+                        user_message=None,
+                        prefilled_response_message=first.get("response_message"),
+                        prefilled_tool_calls=first.get("tool_calls")
+                    )
                     payload = {
                         "type": "full_response",
                         "success": result.get("success", True),

@@ -722,7 +722,7 @@ def _execute_find_agents(function_args, messages):
             traceback.print_exc()
             return "Error executing find_agents tool.", []
 
-def get_chat_completion(session_id, user_message=None):
+def get_chat_completion(session_id, user_message=None, prefilled_response_message=None, prefilled_tool_calls=None):
     import time
     t_start = time.time()
     
@@ -772,29 +772,34 @@ def get_chat_completion(session_id, user_message=None):
     current_tool_choice = "auto"
 
     try:
-        response, provider = call_llm_with_fallback(
-            messages=messages,
-            tools=tools,
-            tool_choice=current_tool_choice,
-            max_tokens=_MAX_TOKENS_CHAT,
-        )
-        
-        response_message = response.choices[0].message
-        
-        tool_calls = response_message.tool_calls
-        if tool_calls:
-            # We got a tool call!
-            # Safely serialize the response message before appending to messages
-            if hasattr(response_message, "model_dump"):
-                msg_dict = response_message.model_dump(exclude_unset=True)
-            else:
-                try:
-                    tc_list = [tc.model_dump() for tc in tool_calls]
-                except AttributeError:
-                    # Fallback if objects don't have model_dump
-                    tc_list = [{"id": tc.id, "type": getattr(tc, "type", "function"), "function": {"name": getattr(tc.function, "name", ""), "arguments": getattr(tc.function, "arguments", "")}} for tc in tool_calls]
-                msg_dict = {"role": "assistant", "content": response_message.content, "tool_calls": tc_list}
+        if prefilled_response_message and prefilled_tool_calls:
+            msg_dict = prefilled_response_message
+            tool_calls = prefilled_tool_calls
+        else:
+            response, provider = call_llm_with_fallback(
+                messages=messages,
+                tools=tools,
+                tool_choice=current_tool_choice,
+                max_tokens=_MAX_TOKENS_CHAT,
+            )
+            
+            response_message = response.choices[0].message
+            
+            tool_calls = response_message.tool_calls
+            if tool_calls:
+                # We got a tool call!
+                # Safely serialize the response message before appending to messages
+                if hasattr(response_message, "model_dump"):
+                    msg_dict = response_message.model_dump(exclude_unset=True)
+                else:
+                    try:
+                        tc_list = [tc.model_dump() for tc in tool_calls]
+                    except AttributeError:
+                        # Fallback if objects don't have model_dump
+                        tc_list = [{"id": tc.id, "type": getattr(tc, "type", "function"), "function": {"name": getattr(tc.function, "name", ""), "arguments": getattr(tc.function, "arguments", "")}} for tc in tool_calls]
+                    msg_dict = {"role": "assistant", "content": response_message.content, "tool_calls": tc_list}
                 
+        if tool_calls:
             # Sanitize tool names before appending to prevent API rejection on next turn
             if "tool_calls" in msg_dict and msg_dict["tool_calls"]:
                 for tc in msg_dict["tool_calls"]:
@@ -1083,7 +1088,12 @@ def stream_plain_text_completion(session_id, user_message):
                     for msg in inserted_msgs:
                         msg.delete()
                         
-                    yield {"type": "use_full_flow"}
+                    tc_list = [{"id": tc_id, "type": "function", "function": {"name": tc_name, "arguments": tc_args_buf}}]
+                    yield {
+                        "type": "use_full_flow",
+                        "response_message": {"role": "assistant", "content": None, "tool_calls": tc_list},
+                        "tool_calls": tc_list
+                    }
                     return
 
             # Emit residual if delimiter never arrived
