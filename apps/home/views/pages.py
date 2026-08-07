@@ -929,16 +929,16 @@ def custom_page(request, slug):
     Catch-all view to render custom CMS pages.
     """
     from apps.home.models.page import Page
-    from django.http import HttpResponse, HttpResponseNotFound
+    from django.http import HttpResponse, Http404
     
     page = Page.objects.filter(slug=slug).first()
     if not page:
-        return HttpResponseNotFound("Page not found")
+        raise Http404("Page not found")
         
     # Draft check: only admins can view drafts
     is_admin = bool(request.session.get('admin_id'))
     if not page.is_active and not is_admin:
-        return HttpResponseNotFound("Page not found")
+        raise Http404("Page not found")
         
     # Serve raw page content directly if raw code mode is active
     if page.is_raw_code:

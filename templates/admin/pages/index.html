@@ -54,9 +54,9 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="/page/{{ page.slug }}/" target="_blank" class="text-decoration-none text-muted"
+                            <a href="{% url 'home:custom_page' page.slug %}" target="_blank" class="text-decoration-none text-muted"
                                style="font-family:monospace;font-size:12px;">
-                                /page/{{ page.slug }}/
+                                /{{ page.slug }}/
                                 <i class="fa-solid fa-arrow-up-right-from-square fa-xs ms-1"></i>
                             </a>
                         </td>
@@ -74,7 +74,7 @@
                         <td class="text-muted">{{ page.updated_at|date:"d M Y, H:i" }}</td>
                         <td class="text-end px-4">
                             <div class="d-flex justify-content-end gap-2">
-                                <a href="/page/{{ page.slug }}/" target="_blank"
+                                <a href="{% url 'home:custom_page' page.slug %}" target="_blank"
                                    class="btn btn-sm btn-light border" title="View Page">
                                     <i class="fa-solid fa-eye"></i>
                                 </a>
@@ -121,7 +121,7 @@
             <div>
                 <div class="fw-bold mb-1" style="font-size: 14px;">About CMS Pages</div>
                 <ul class="mb-0 text-muted" style="font-size: 13px; padding-left: 16px;">
-                    <li>Pages are accessible at <code>/page/&lt;slug&gt;/</code> on the public site.</li>
+                    <li>Pages are accessible at <code>/&lt;slug&gt;/</code> on the public site.</li>
                     <li>Use <strong>Published</strong> to make a page live and <strong>Draft</strong> to hide it.</li>
                     <li>Enable <strong>Raw HTML</strong> mode for pages with custom embedded code.</li>
                     <li>Deleting a page is permanent. Make sure the URL is not linked anywhere.</li>
