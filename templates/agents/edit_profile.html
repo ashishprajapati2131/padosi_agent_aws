@@ -4389,6 +4389,15 @@ Overview
     function handleLicenseFileChange(input, type) {
         if (input.files && input.files[0]) {
             let file = input.files[0];
+            
+            const ext = file.name.split('.').pop().toLowerCase();
+            const allowedExts = ['pdf', 'jpg', 'jpeg', 'png'];
+            if (!allowedExts.includes(ext)) {
+                Swal.fire('Error', 'Invalid file type. Only PDF, JPG, JPEG, and PNG are allowed.', 'error');
+                input.value = '';
+                return;
+            }
+            
             if (file.size > 5 * 1024 * 1024) {
                 Swal.fire('Error', 'File size must be less than 5MB', 'error');
                 input.value = '';
