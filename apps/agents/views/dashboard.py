@@ -1193,16 +1193,40 @@ def update_profile(request):
                 if 'irdai_license_doc' in request.FILES:
                     irdai_file = request.FILES['irdai_license_doc']
                     ext = os.path.splitext(irdai_file.name)[1].lower()
-                    if ext in allowed_doc_exts and irdai_file.size <= 5 * 1024 * 1024:
+                    if ext not in allowed_doc_exts:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Invalid file type for IRDAI certificate. Only PDF, JPG, and PNG are allowed.',
+                            'errors': {'irdai_license_doc': ['Invalid file extension.']}
+                        }, status=422)
+                    if irdai_file.size <= 5 * 1024 * 1024:
                         doc_path = f"app/public/insurance/irdai_{agent.id}_{int(time.time())}{ext}"
                         profile.irdai_license_doc = default_storage.save(doc_path, irdai_file)
+                    else:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'IRDAI certificate file size must be under 5MB.',
+                            'errors': {'irdai_license_doc': ['File too large.']}
+                        }, status=422)
 
                 if 'amfi_license_doc' in request.FILES:
                     amfi_file = request.FILES['amfi_license_doc']
                     ext = os.path.splitext(amfi_file.name)[1].lower()
-                    if ext in allowed_doc_exts and amfi_file.size <= 5 * 1024 * 1024:
+                    if ext not in allowed_doc_exts:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Invalid file type for AMFI certificate. Only PDF, JPG, and PNG are allowed.',
+                            'errors': {'amfi_license_doc': ['Invalid file extension.']}
+                        }, status=422)
+                    if amfi_file.size <= 5 * 1024 * 1024:
                         doc_path = f"app/public/investment/amfi_{agent.id}_{int(time.time())}{ext}"
                         profile.amfi_license_doc = default_storage.save(doc_path, amfi_file)
+                    else:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'AMFI certificate file size must be under 5MB.',
+                            'errors': {'amfi_license_doc': ['File too large.']}
+                        }, status=422)
 
                 profile.website_url = website
                 profile.social_links = {
@@ -2283,7 +2307,7 @@ def agent_update_visibility(request):
         return JsonResponse({'success': False, 'message': 'Invalid JSON'})
 
     valid_fields = [
-        'is_profile_visible', 'is_card_visible', 'show_certificates', 'show_achievements', 'show_reviews',
+        'show_certificates', 'show_achievements', 'show_reviews',
         'show_experience', 'show_claims_stats', 'show_client_base', 'show_ratings',
         'show_languages', 'show_gallery', 'show_contact_info', 'show_social_links'
     ]
