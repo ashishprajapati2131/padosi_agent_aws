@@ -34,6 +34,7 @@
                     {% endif %}
                 </div>
 
+                {% if profile.show_ratings %}
                 <div class="rac-rating">
                     <div class="rac-stars">
                         {% for star in agent.star_rating_list %}
@@ -55,6 +56,7 @@
                     <span class="rac-rating-val">{{ rating|floatformat:1 }}</span>
                     <span class="rac-rating-count">({{ agent.review_count }} reviews)</span>
                 </div>
+                {% endif %}
 
                                 {% if has_distance or request.GET.pincode or request.GET.location or request.GET.lat or request.session.last_pincode or request.session.last_lat %}
                     <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:2px;">
@@ -89,14 +91,19 @@
                 
 
                 <div class="rac-stats-grid" style="margin-top: 8px;">
+                    {% if profile.show_experience %}
                     <div class="rac-stat-box">
                         <div class="rac-stat-num">{{ exp_years }}+</div>
                         <div class="rac-stat-lbl">YEARS</div>
                     </div>
+                    {% endif %}
+                    {% if profile.show_client_base %}
                     <div class="rac-stat-box">
                         <div class="rac-stat-num">{{ agent.formatted_client_base }}</div>
                         <div class="rac-stat-lbl">CLIENTS</div>
                     </div>
+                    {% endif %}
+                    {% if profile.show_claims_stats %}
                     <div class="rac-stat-box">
                         <div class="rac-stat-num">{{ performance.formatted_claims_processed|default:"0" }}</div>
                         <div class="rac-stat-lbl">CLAIMS</div>
@@ -105,6 +112,7 @@
                         <div class="rac-stat-num">₹{{ performance.formatted_claims_amount|default:"0" }}</div>
                         <div class="rac-stat-lbl">SETTLED</div>
                     </div>
+                    {% endif %}
                 </div>
 
                 {% if agent.ordered_insurance_segments %}
@@ -217,6 +225,7 @@
                     {% endif %}
                 </div>
 
+                {% if profile.show_ratings %}
                 <div class="rac-d-rating">
                     <div class="rac-stars rac-stars--lg">
                         {% for star in agent.star_rating_list %}
@@ -238,6 +247,7 @@
                     <span class="rac-d-rating-val">{{ rating|floatformat:1 }}</span>
                     <span class="rac-d-rating-count">({{ agent.review_count }} reviews)</span>
                 </div>
+                {% endif %}
 
                 {% if has_distance %}
                     <div class="rac-d-dist-pill">
@@ -263,14 +273,19 @@
                 
 
                 <div class="rac-stats-grid">
+                    {% if profile.show_experience %}
                     <div class="rac-stat-box">
                         <div class="rac-stat-num">{{ exp_years }}+</div>
                         <div class="rac-stat-lbl">YEARS</div>
                     </div>
+                    {% endif %}
+                    {% if profile.show_client_base %}
                     <div class="rac-stat-box">
                         <div class="rac-stat-num">{{ agent.formatted_client_base }}</div>
                         <div class="rac-stat-lbl">CLIENTS</div>
                     </div>
+                    {% endif %}
+                    {% if profile.show_claims_stats %}
                     <div class="rac-stat-box">
                         <div class="rac-stat-num">{{ performance.formatted_claims_processed|default:"0" }}</div>
                         <div class="rac-stat-lbl">CLAIMS</div>
@@ -279,6 +294,7 @@
                         <div class="rac-stat-num">₹{{ performance.formatted_claims_amount|default:"0" }}</div>
                         <div class="rac-stat-lbl">SETTLED</div>
                     </div>
+                    {% endif %}
                 </div>
 
                 {% if agent.ordered_insurance_segments %}

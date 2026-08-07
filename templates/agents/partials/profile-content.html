@@ -341,6 +341,7 @@
                 {% endif %}
             </div>
 
+            {% if profile.show_social_links %}
             <div class="social-links">
                 {% if socialLinks.linkedin %}
                     <a href="javascript:void(0)" target="_blank" class="social-icon" 
@@ -373,9 +374,11 @@
                        data-interaction-type="google_business"><i class="fab fa-google"></i></a>
                 {% endif %}
             </div>
+            {% endif %}
 
-            <div class="action-btns">
-                <a href="javascript:void(0)" target="_blank" 
+            {% if profile.show_contact_info %}
+            <div class="profile-right-actions">
+                <a href="javascript:void(0)" 
                    class="btn btn-whatsapp" 
                    onclick="return handleAgentContactClick(event, this, 'whatsapp')"
                    data-agent-id="{{ agent.id }}"
@@ -390,6 +393,7 @@
                     <i class="fa-solid fa-phone"></i> Call Now
                 </a>
             </div>
+            {% endif %}
         </div>
 
         <div class="profile-right-col">
@@ -410,15 +414,21 @@
             </p>
 
             <div class="quick-stats-row">
+                {% if profile.show_experience %}
                 <div class="quick-stat-pill">
                     <i class="fas fa-briefcase"></i> {{ agent.experience_range|default:"0" }} years
                 </div>
+                {% endif %}
+                {% if profile.show_client_base %}
                 <div class="quick-stat-pill">
                     <i class="fas fa-users"></i> {{ agent.client_base|default:"0+" }} clients
                 </div>
+                {% endif %}
+                {% if profile.show_languages %}
                 <div class="quick-stat-pill">
                     <i class="fas fa-language"></i> {{ profile.formatted_languages }}
                 </div>
+                {% endif %}
             </div>
 
             <div class="insurance-types">
@@ -441,6 +451,7 @@
                 {% endfor %}
             </div>
 
+            {% if profile.show_ratings %}
             <div class="reviews-summary" style="cursor: pointer;" onclick="document.getElementById('reviews-section').scrollIntoView({behavior: 'smooth'})">
                 <div class="stars">
                     {% for i in "12345" %}
@@ -453,6 +464,7 @@
                 </div>
                 {{ agent.average_rating|floatformat:1 }} ({{ agent.review_count }} reviews) <i class="fas fa-arrow-up-right-from-square ml-2" style="font-size: 10px;"></i>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -561,6 +573,7 @@
         <!-- Performance Stats -->
         <div class="section-card">
             <h2 class="section-title"><i class="fas fa-chart-line"></i> Performance Stats</h2>
+            {% if profile.show_claims_stats %}
             <div class="stats-grid">
                 <div class="stat-box">
                     <div class="stat-value">{{ agent.client_base|default:"0" }}</div>
@@ -593,6 +606,12 @@
                     <div class="stat-label">Rating</div>
                 </div>
             </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-lock text-muted mb-2" style="font-size: 24px;"></i>
+                    <p class="text-muted mb-0">Performance stats are set to private by the administrator.</p>
+                </div>
+            {% endif %}
         </div>
 
         <!-- Service Fees -->
@@ -639,6 +658,7 @@
             <div class="media-header">
                 <h2 class="section-title mb-0"><i class="fas fa-images"></i> Media</h2>
             </div>
+            {% if profile.show_gallery %}
             <div class="media-grid">
                 {% for photo in agent.achievementPhotos.all %}
                     <div class="media-item lightbox-trigger" data-index="{{ forloop.counter0 }}" data-src="{{ photo.photo_url }}">
@@ -653,6 +673,12 @@
                     </div>
                 {% endfor %}
             </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-lock text-muted mb-2" style="font-size: 24px;"></i>
+                    <p class="text-muted mb-0">Gallery is set to private by the administrator.</p>
+                </div>
+            {% endif %}
         </div>
 
         <!-- Reviews -->

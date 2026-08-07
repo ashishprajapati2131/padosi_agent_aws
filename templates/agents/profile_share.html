@@ -261,11 +261,12 @@
                     <!-- Statistics Grid -->
                     <div class="row g-3 mb-4">
                         <!-- Rating -->
+                        {% if profile.show_ratings %}
                         <div class="col-6 col-sm-3">
                             <div class="share-stat-box">
                                 <div class="share-stat-label">Rating</div>
                                 <div class="share-stat-value text-warning">
-                                    {% if agent.average_rating %}
+                                    {% if agent.average_rating > 0 %}
                                         {{ agent.average_rating|floatformat:1 }} ★
                                     {% else %}
                                         5.0 ★
@@ -273,8 +274,10 @@
                                 </div>
                             </div>
                         </div>
+                        {% endif %}
                         
                         <!-- Experience -->
+                        {% if profile.show_experience %}
                         <div class="col-6 col-sm-3">
                             <div class="share-stat-box">
                                 <div class="share-stat-label">Experience</div>
@@ -287,8 +290,10 @@
                                 </div>
                             </div>
                         </div>
+                        {% endif %}
 
                         <!-- Happy Clients -->
+                        {% if profile.show_client_base %}
                         <div class="col-6 col-sm-3">
                             <div class="share-stat-box">
                                 <div class="share-stat-label">Clients</div>
@@ -301,8 +306,10 @@
                                 </div>
                             </div>
                         </div>
+                        {% endif %}
 
                         <!-- Claims Settled -->
+                        {% if profile.show_claims_stats %}
                         <div class="col-6 col-sm-3">
                             <div class="share-stat-box">
                                 <div class="share-stat-label">Claims</div>
@@ -315,6 +322,7 @@
                                 </div>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
 
                     <!-- Highlights Info -->
@@ -333,12 +341,14 @@
 
                     <!-- CTA Actions -->
                     <div class="d-flex flex-column gap-3 mb-4">
+                        {% if profile.show_contact_info %}
                         <button type="button" onclick="contactAgent('call')" class="btn btn-action-main btn-call w-100 py-3">
                             <i class="fas fa-phone-alt me-2"></i> Call Agent Now
                         </button>
                         <button type="button" onclick="contactAgent('whatsapp')" class="btn btn-action-main btn-whatsapp w-100 py-3">
                             <i class="fab fa-whatsapp me-2"></i> Chat on WhatsApp
                         </button>
+                        {% endif %}
                         <a href="{% url 'agents:agent_public_profile' agent.profile.slug %}" class="btn btn-action-main btn-view-full w-100 py-3 text-center">
                             <i class="fas fa-user-circle me-2"></i> View Full Profile & Reviews
                         </a>
