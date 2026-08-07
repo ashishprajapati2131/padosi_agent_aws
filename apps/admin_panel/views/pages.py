@@ -53,11 +53,25 @@ def pages_store(request):
         slug    = request.POST.get('slug', '').strip()
         content = request.POST.get('content', '').strip()
 
+        reserved_slugs = ['admin', 'api', 'login', 'logout', 'register', 'home', 'find-agents', 'profile', 'free-trial', 'invoices', 'settings', 'plans', 'faq', 'about', 'contact', 'assets', 'images', 'js', 'css']
+
         if not title:
             messages.error(request, 'Title is required.')
             return render(request, 'admin/pages/edit.html', {'page': None})
 
+        if len(title) > 255:
+            messages.error(request, 'Title must not exceed 255 characters.')
+            return render(request, 'admin/pages/edit.html', {'page': None})
+
+        if not content:
+            messages.error(request, 'Content is required.')
+            return render(request, 'admin/pages/edit.html', {'page': None})
+
         slug = slugify(slug) if slug else slugify(title)
+
+        if slug in reserved_slugs:
+            messages.error(request, 'The provided URL slug is reserved and cannot be used.')
+            return render(request, 'admin/pages/edit.html', {'page': None})
 
         if Page.objects.filter(slug=slug).exists():
             messages.error(request, 'A page with this URL slug already exists.')
@@ -102,11 +116,25 @@ def pages_update(request, page_id):
         slug    = request.POST.get('slug', '').strip()
         content = request.POST.get('content', '').strip()
 
+        reserved_slugs = ['admin', 'api', 'login', 'logout', 'register', 'home', 'find-agents', 'profile', 'free-trial', 'invoices', 'settings', 'plans', 'faq', 'about', 'contact', 'assets', 'images', 'js', 'css']
+
         if not title:
             messages.error(request, 'Title is required.')
             return render(request, 'admin/pages/edit.html', {'page': page})
+            
+        if len(title) > 255:
+            messages.error(request, 'Title must not exceed 255 characters.')
+            return render(request, 'admin/pages/edit.html', {'page': page})
+
+        if not content:
+            messages.error(request, 'Content is required.')
+            return render(request, 'admin/pages/edit.html', {'page': page})
 
         slug = slugify(slug) if slug else slugify(title)
+
+        if slug in reserved_slugs:
+            messages.error(request, 'The provided URL slug is reserved and cannot be used.')
+            return render(request, 'admin/pages/edit.html', {'page': page})
 
         if Page.objects.filter(slug=slug).exclude(id=page.id).exists():
             messages.error(request, 'A page with this URL slug already exists.')
