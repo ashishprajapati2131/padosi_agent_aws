@@ -132,6 +132,7 @@ class AgentUpdateSchema(BaseModel):
     careerTimelines: List[CareerTimelineSchema] = []
     achievementPhotos: List[AchievementPhotoSchema] = []
     leadPreferences: Optional[LeadPreferenceSchema] = None
+    serviceableCities: List[str] = []
 
 class ProfileUpdateSchema(BaseModel):
     profile_photo_url: Optional[str] = None

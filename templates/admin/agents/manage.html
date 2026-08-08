@@ -269,6 +269,38 @@
           <span style="font-size:14px;font-weight:500;">Comments / Reviews Section</span>
           <button type="button" class="toggle {% if agent.show_reviews %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_reviews', this)"></button>
         </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+          <span style="font-size:14px;font-weight:500;">Experience & Years</span>
+          <button type="button" class="toggle {% if agent.show_experience %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_experience', this)"></button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+          <span style="font-size:14px;font-weight:500;">Claims & Settled Stats</span>
+          <button type="button" class="toggle {% if agent.show_claims_stats %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_claims_stats', this)"></button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+          <span style="font-size:14px;font-weight:500;">Client Base</span>
+          <button type="button" class="toggle {% if agent.show_client_base %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_client_base', this)"></button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+          <span style="font-size:14px;font-weight:500;">Ratings & Stars</span>
+          <button type="button" class="toggle {% if agent.show_ratings %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_ratings', this)"></button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+          <span style="font-size:14px;font-weight:500;">Languages</span>
+          <button type="button" class="toggle {% if agent.show_languages %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_languages', this)"></button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+          <span style="font-size:14px;font-weight:500;">Gallery</span>
+          <button type="button" class="toggle {% if agent.show_gallery %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_gallery', this)"></button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+          <span style="font-size:14px;font-weight:500;">Contact Info</span>
+          <button type="button" class="toggle {% if agent.show_contact_info %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_contact_info', this)"></button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid #edf3f8;margin-bottom:10px;">
+          <span style="font-size:14px;font-weight:500;">Social Media Buttons</span>
+          <button type="button" class="toggle {% if agent.show_social_links %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_social_links', this)"></button>
+        </div>
       </div>
 
       <!-- License Documents Card -->

@@ -7,9 +7,11 @@
 <div class="row justify-content-center">
     <div class="col-lg-8">
 
-        {#  Info Banner  #}
-        <div style="background:linear-gradient(135deg,#0f3460,#1d5498);border-radius:16px;padding:24px 28px;margin-bottom:24px;color:#fff;display:flex;align-items:center;gap:20px;">
-            <div style="background:rgba(255,255,255,0.15);border-radius:12px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">
+        {# Info Banner #}
+        <div
+            style="background:linear-gradient(135deg,#0f3460,#1d5498);border-radius:16px;padding:24px 28px;margin-bottom:24px;color:#fff;display:flex;align-items:center;gap:20px;">
+            <div
+                style="background:rgba(255,255,255,0.15);border-radius:12px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">
                 <i class="fas fa-bell"></i>
             </div>
             <div>
@@ -21,40 +23,50 @@
             </div>
         </div>
 
-        {#  Send Notification Form  #}
+        {# Send Notification Form #}
         <div class="card mb-4">
             <div class="card-header">
-                <span style="font-weight:700;font-size:15px;"><i class="fas fa-paper-plane me-2" style="color:#0f3460;"></i>Send to Specific Agent</span>
+                <span style="font-weight:700;font-size:15px;"><i class="fas fa-paper-plane me-2"
+                        style="color:#0f3460;"></i>Send to Specific Agent</span>
             </div>
             <div class="card-body">
                 <form method="POST" action="{% url 'insurance:notify_send' %}" id="notifyForm">
                     {% csrf_token %}
 
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:13px;font-weight:600;">Select Agent <span style="color:red;">*</span></label>
-                        <select name="agent_id" class="form-control {% if form.agent_id.errors %} is-invalid {% endif %}" required style="border-radius:10px;">
+                        <label class="form-label" style="font-size:13px;font-weight:600;">Select Agent <span
+                                style="color:red;">*</span></label>
+                        <select name="agent_id"
+                            class="form-control {% if form.agent_id.errors %} is-invalid {% endif %}" required
+                            style="border-radius:10px;">
                             <option value="">— Choose an agent —</option>
                             {% for agent in agents %}
-                                <option value="{{ agent.id }}" {% if request.POST.agent_id == agent.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ agent.fullname }} ({{ agent.email }})
-                                </option>
+                            <option value="{{ agent.id }}" {% if request.POST.agent_id==agent.id|stringformat:"s"
+                                %}selected{% endif %}>
+                                {{ agent.fullname }} ({{ agent.email }})
+                            </option>
                             {% endfor %}
                         </select>
                         {% if form.agent_id.errors %} <div class="invalid-feedback">{{ message }}</div> {% endif %}
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label" style="font-size:13px;font-weight:600;">Notification Title <span style="color:red;">*</span></label>
-                        <input type="text" name="title" class="form-control {% if form.title.errors %} is-invalid {% endif %}"
-                            value="{{ request.POST.title|default_if_none:'' }}" placeholder="e.g. Important Update" maxlength="100" required style="border-radius:10px;">
+                        <label class="form-label" style="font-size:13px;font-weight:600;">Notification Title <span
+                                style="color:red;">*</span></label>
+                        <input type="text" name="title"
+                            class="form-control {% if form.title.errors %} is-invalid {% endif %}"
+                            value="{{ request.POST.title|default_if_none:'' }}" placeholder="e.g. Important Update"
+                            maxlength="100" required style="border-radius:10px;">
                         {% if form.title.errors %} <div class="invalid-feedback">{{ message }}</div> {% endif %}
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label" style="font-size:13px;font-weight:600;">Message Body <span style="color:red;">*</span></label>
+                        <label class="form-label" style="font-size:13px;font-weight:600;">Message Body <span
+                                style="color:red;">*</span></label>
                         <textarea name="body" class="form-control {% if form.body.errors %} is-invalid {% endif %}"
                             rows="3" placeholder="Enter your notification message..." maxlength="255" required
-                            style="border-radius:10px;" id="msgBody">{{ request.POST.body|default_if_none:'' }}</textarea>
+                            style="border-radius:10px;"
+                            id="msgBody">{{ request.POST.body|default_if_none:'' }}</textarea>
                         <div style="font-size:11px;color:#94a3b8;text-align:right;margin-top:4px;">
                             <span id="charCount">0</span>/255 characters
                         </div>
@@ -68,11 +80,12 @@
             </div>
         </div>
 
-        {#  Agents with push enabled  #}
+        {# Agents with push enabled #}
         {% if pushAgents. %}|length
         <div class="card">
             <div class="card-header">
-                <span style="font-weight:700;font-size:15px;"><i class="fas fa-mobile-screen me-2" style="color:#059669;"></i>Agents with Push Enabled ({{ pushAgents|length }}</span>
+                <span style="font-weight:700;font-size:15px;"><i class="fas fa-mobile-screen me-2"
+                        style="color:#059669;"></i>Agents with Push Enabled ({{ pushAgents|length }}</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -93,7 +106,8 @@
                                     <div style="font-size:11px;color:#94a3b8;">{{ pa.email }}</div>
                                 </td>
                                 <td style="font-size:13px;">
-                                    <span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;">
+                                    <span
+                                        style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;">
                                         {{ pa.token_count }} device(s)
                                     </span>
                                 </td>
@@ -101,8 +115,8 @@
                                     {% if pa.last_seen_at %}pa.last_seen_at|timesince{% else %}'—'{% endif %}
                                 </td>
                                 <td>
-                                    <button onclick="fillAgent({{ pa.id }})"
-                                        class="btn btn-sm btn-outline-primary" style="border-radius:8px;font-size:12px;">
+                                    <button onclick="fillAgent({{ pa.id }})" class="btn btn-sm btn-outline-primary"
+                                        style="border-radius:8px;font-size:12px;">
                                         <i class="fas fa-bolt"></i> Select
                                     </button>
                                 </td>
@@ -120,23 +134,23 @@
 
 {% block scripts %}
 <script>
-// Character counter
-const msgBody = document.getElementById('msgBody');
-const charCount = document.getElementById('charCount');
-if (msgBody) {
-    const update = () => charCount.textContent = msgBody.value.length;
-    msgBody.addEventListener('input', update);
-    update();
-}
-
-// Fill agent select from table
-function fillAgent(id) {
-    const select = document.querySelector('select[name="agent_id"]');
-    if (select) {
-        select.value = id;
-        select.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        select.focus();
+    // Character counter
+    const msgBody = document.getElementById('msgBody');
+    const charCount = document.getElementById('charCount');
+    if (msgBody) {
+        const update = () => charCount.textContent = msgBody.value.length;
+        msgBody.addEventListener('input', update);
+        update();
     }
-}
+
+    // Fill agent select from table
+    function fillAgent(id) {
+        const select = document.querySelector('select[name="agent_id"]');
+        if (select) {
+            select.value = id;
+            select.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            select.focus();
+        }
+    }
 </script>
 {% endblock %}

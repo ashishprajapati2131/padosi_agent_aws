@@ -345,7 +345,7 @@ class ProfileService:
             db.query(AgentServicePincode).filter(AgentServicePincode.agent_id == agent_id).delete(synchronize_session=False)
             db.query(AgentServiceableCity).filter(AgentServiceableCity.agent_id == agent_id).delete(synchronize_session=False)
             
-            unique_cities = set()
+            unique_cities = set(payload.agent.serviceableCities)
             for p in payload.profile.service_pincodes:
                 db.add(AgentServicePincode(
                     agent_id=agent_id,
@@ -356,6 +356,9 @@ class ProfileService:
                 ))
                 if p.city_name:
                     unique_cities.add(p.city_name)
+            
+            if payload.profile.service_pincodes:
+                agent.agent_pincode = payload.profile.service_pincodes[0].pincode
                     
             # Process cities
             for city_name in unique_cities:
@@ -438,14 +441,7 @@ class ProfileService:
             agent.profile.website_url = payload.profile.website
             agent.profile.career_highlights = payload.profile.career_highlights
             agent.profile.social_links = payload.profile.social_links.dict()
-            agent.profile.service_pincodes = [
-                {
-                    "pincode": sp.pincode,
-                    "city_name": sp.city_name,
-                    "selected_areas": sp.selected_areas,
-                    "postal_data": sp.postal_data
-                } for sp in payload.profile.service_pincodes
-            ]
+            agent.profile.service_pincodes = [sp.pincode for sp in payload.profile.service_pincodes]
             
             existing_photos = db.query(AgentAchievementPhoto).filter(AgentAchievementPhoto.agent_id == agent_id).all()
             existing_photo_ids = {p.id: p for p in existing_photos}

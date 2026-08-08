@@ -126,6 +126,8 @@ def manage_agent(request, id):
             a.id, a.fullname, a.email, a.mobile, a.status, a.created_at, a.experience_range, a.admin_notes, a.achievement_photo_limit,
             ap.address, ap.license_number, ap.experience_years, ap.office_address, ap.pan_number, ap.profile_photo_path,
             ap.is_profile_visible, ap.is_card_visible, ap.show_certificates, ap.show_achievements, ap.show_reviews,
+            ap.show_experience, ap.show_claims_stats, ap.show_client_base, ap.show_ratings,
+            ap.show_languages, ap.show_gallery, ap.show_contact_info, ap.show_social_links,
             ap.license_valid_till, ap.arn_number, ap.euin_number, ap.investment_valid_till, ap.investment_types,
             s.selected_plan, s.expires_at,
             (SELECT AVG(rating) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) as avg_rating,
@@ -473,7 +475,11 @@ def update_visibility(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'})
 
-    valid_fields = ['is_profile_visible', 'is_card_visible', 'show_certificates', 'show_achievements', 'show_reviews']
+    valid_fields = [
+        'is_profile_visible', 'is_card_visible', 'show_certificates', 'show_achievements', 'show_reviews',
+        'show_experience', 'show_claims_stats', 'show_client_base', 'show_ratings',
+        'show_languages', 'show_gallery', 'show_contact_info', 'show_social_links'
+    ]
     if field not in valid_fields:
         return JsonResponse({'success': False, 'message': 'Invalid field'})
 

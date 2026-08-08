@@ -477,27 +477,7 @@
                         }
                     </style>
 
-                    <div class="visibility-row">
-                        <div style="display:flex; align-items:center; gap:12px;">
-                            <i class="far fa-eye visibility-icon"></i>
-                            <div>
-                                <div class="visibility-title">Full Profile Visibility</div>
-                                <div class="visibility-subtitle">Allow users to view your complete profile</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.is_profile_visible %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'is_profile_visible', this)"></button>
-                    </div>
 
-                    <div class="visibility-row">
-                        <div style="display:flex; align-items:center; gap:12px;">
-                            <i class="far fa-id-card visibility-icon"></i>
-                            <div>
-                                <div class="visibility-title">Card Visibility</div>
-                                <div class="visibility-subtitle">Show your agent card in search results</div>
-                            </div>
-                        </div>
-                        <button type="button" class="toggle {% if profile.is_card_visible %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'is_card_visible', this)"></button>
-                    </div>
 
                     <div class="visibility-row">
                         <div style="display:flex; align-items:center; gap:12px;">
