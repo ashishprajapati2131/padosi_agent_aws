@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Sign Up | PadosiAgent{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Outfit', sans-serif;
+    }
+    .premium-auth-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at 10% 20%, rgb(240, 247, 255) 0%, rgb(255, 255, 255) 90%);
+        padding: 40px 20px;
+    }
+    .auth-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        border-radius: 24px;
+        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(226, 232, 240, 0.4);
+        width: 100%;
+        max-width: 440px;
+        padding: 40px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .auth-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
+    }
+    .auth-header {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+    .auth-logo {
+        height: 60px;
+        margin-bottom: 20px;
+        transition: transform 0.3s ease;
+    }
+    .auth-logo:hover {
+        transform: scale(1.05);
+    }
+    .auth-header h2 {
+        font-size: 28px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 8px;
+    }
+    .auth-header p {
+        font-size: 15px;
+        color: #64748b;
+    }
+    .form-group {
+        margin-bottom: 22px;
+    }
+    .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 8px;
+    }
+    .form-control-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 12px;
+        font-size: 15px;
+        color: #1e293b;
+        background: #f8fafc;
+        outline: none;
+        transition: all 0.3s ease;
+    }
+    .form-control-input:focus {
+        border-color: #273c8e;
+        background: #ffffff;
+        box-shadow: 0 0 0 4px rgba(39, 60, 142, 0.1);
+    }
+    .btn-submit {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #273c8e 0%, #1e2e6d 100%);
+        color: #ffffff;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 10px 20px -5px rgba(39, 60, 142, 0.3);
+        transition: all 0.3s ease;
+        margin-top: 10px;
+    }
+    .btn-submit:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 15px 25px -5px rgba(39, 60, 142, 0.4);
+    }
+    .btn-submit:active {
+        transform: translateY(0);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="premium-auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <a href="/">
+                <img src="{% static 'img/logo-icon.png' %}" class="auth-logo" alt="PadosiAgent Logo">
+            </a>
+            <h2>Join PadosiAgent</h2>
+            <p>Find the best local insurance agents instantly.</p>
+        </div>
+
+        <form id="fbSignupForm">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="fullname">Full Name</label>
+                <input type="text" id="fullname" name="fullname" class="form-control-input" required placeholder="Enter your full name">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" class="form-control-input" required placeholder="name@example.com">
+            </div>
+
+            <div class="form-group">
+                <label for="mobile">Mobile Number</label>
+                <input type="tel" id="mobile" name="mobile" class="form-control-input" required placeholder="10-digit mobile number" pattern="[6-9][0-9]{9}" maxlength="10">
+            </div>
+
+            <div class="form-group">
+                <label for="pincode">Pincode</label>
+                <input type="text" id="pincode" name="pincode" class="form-control-input" required placeholder="6-digit pincode" pattern="[0-9]{6}" maxlength="6">
+            </div>
+
+            <div id="formErrors" class="alert alert-danger d-none" role="alert" style="border-radius: 12px; font-size: 13px;"></div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <span id="btn-text">Continue to Find Agents</span>
+                <i class="fas fa-arrow-right" id="btn-icon"></i>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCSRFToken() {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, 10) === ('csrftoken=')) {
+                cookieValue = decodeURIComponent(cookie.substring(10));
+                break;
+            }
+        }
+    }
+    // Fallback to hidden input if cookie isn't available
+    if (!cookieValue) {
+        const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrfInput) cookieValue = csrfInput.value;
+    }
+    return cookieValue;
+}
+
+$(document).ready(function() {
+    $('#fbSignupForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const $form = $(this);
+        const $btn = $('#submitBtn');
+        const $errors = $('#formErrors');
+        
+        $errors.addClass('d-none').html('');
+        $btn.prop('disabled', true).text('Processing...');
+        
+        const formData = {
+            fullname: $('#fullname').val().trim(),
+            email: $('#email').val().trim(),
+            mobile: $('#mobile').val().trim(),
+            pincode: $('#pincode').val().trim()
+        };
+        
+        $.ajax({
+            url: "{% url 'agents:fb_ad_signup' %}",
+            type: "POST",
+            headers: { 'X-CSRFToken': getCSRFToken() },
+            contentType: "application/json",
+            dataType: "json",
+            data: JSON.stringify(formData),
+            success: function(response) {
+                if (response.status === 'success' || response.success) {
+                    $btn.text('Success! Redirecting...');
+                    window.location.href = response.redirect;
+                } else {
+                    $errors.removeClass('d-none').html(response.message || 'Something went wrong.');
+                    $btn.prop('disabled', false).text('Continue to Find Agents');
+                }
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).text('Continue to Find Agents');
+                
+                let errorHtml = 'An error occurred. Please try again.';
+                if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                    errorHtml = '<ul class="mb-0">';
+                    const errors = xhr.responseJSON.errors;
+                    for (const key in errors) {
+                        errorHtml += `<li>${errors[key][0]}</li>`;
+                    }
+                    errorHtml += '</ul>';
+                } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorHtml = xhr.responseJSON.message;
+                }
+                
+                $errors.removeClass('d-none').html(errorHtml);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

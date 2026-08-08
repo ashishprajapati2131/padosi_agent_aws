@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator
+from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, career_timeline as career_timeline_views
 
 app_name = 'agents'
 
@@ -32,6 +32,7 @@ urlpatterns = [
     path('agent/push-token/',   dashboard.agent_push_token,      name='agent_push_token'),
     path('agent/upgrade-plan/', dashboard.agent_upgrade_plan,    name='agent_upgrade_plan'),
     path('agent/referral-info/', dashboard.referral_info,        name='agent_referral_info'),
+    path('join/ad/', registration.fb_ad_signup, name='fb_ad_signup'),
     path('join/<str:ref_code>/', registration.referral_join,     name='referral_join'),
     path('auth/google/', auth.redirectToGoogle,                  name='google_auth'),
     path('auth/google/callback/', auth.handleGoogleCallback,    name='google_auth_callback'),
@@ -51,6 +52,9 @@ urlpatterns = [
 
     # ── AI Bio Generator ─────────────────────────────────────────────────────
     path('agent/generate-bio/', bio_generator.generate_professional_bio, name='agent_generate_bio'),
+
+    # ── Career Timeline API (read-only) ──────────────────────────────────────
+    path('agent/career-timeline/suggestions/', career_timeline_views.career_timeline_suggestions, name='agent_career_timeline_suggestions'),
 
     # ── Catch-all public agent profile share route ────────────────────────────
     path('agent/<str:slug>/',   dashboard.agent_public_share_profile, name='agent_public_share_profile'),

@@ -1258,13 +1258,15 @@ def update_profile(request):
                     event_text = request.POST.get(f'career_timelines[{idx}][event_text]', '').strip()
                     month = request.POST.get(f'career_timelines[{idx}][month]', '').strip()
                     year = request.POST.get(f'career_timelines[{idx}][year]', '').strip()
+                    suggestion_key = request.POST.get(f'career_timelines[{idx}][suggestion_key]', '').strip() or None
                     if event_text and year:
                         AgentCareerTimeline.objects.create(
                             agent=agent,
                             event_type=event_type,
                             event_text=event_text,
                             month=month,
-                            year=year
+                            year=year,
+                            suggestion_key=suggestion_key,
                         )
                         
             # ── Step 6: Lead Preferences ──
