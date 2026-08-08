@@ -93,5 +93,5 @@ Applies to both the manual flow and the payment flow (PHP uses the same generato
 | 3 | Download `Content-Disposition` filename lost the `PA/26-27` prefix (Django sanitizes slashes out of `filename="PA/26-27/00997.pdf"` → `00997.pdf`); PHP sends the full number. | Replace `/` with `-` → `PA-26-27-00997.pdf`. | ✅ Fixed |
 
 Verification: manual POST through the running server succeeded for custom number, duplicate number
-(error + preserved inputs), auto number (`PA/26-27/01001`), no-email path (PDF only), preview
+(error + preserved inputs), auto number (`PA/26-27/01002`), no-email path (PDF only), preview
 (logo + SAC 9983) and download (application/pdf).
