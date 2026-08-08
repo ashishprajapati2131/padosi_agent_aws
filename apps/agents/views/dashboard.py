@@ -504,6 +504,8 @@ def agent_public_profile(request, slug):
         existing_review = agent.reviews.filter(user=request.user).first()
         
     profile = getattr(agent, 'profile', None)
+    if profile is None:
+        raise Http404("Agent profile not found")
     is_admin = request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
     display_name = (profile.display_name if profile else '') or agent.fullname or 'Agent'
     agent_initial = display_name[0].upper() if display_name else 'A'

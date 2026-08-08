@@ -822,6 +822,14 @@ class AgentReview(models.Model):
         db_table = 'agent_reviews'
         managed = True
 
+    @property
+    def author_display(self):
+        if self.reviewer_name:
+            return self.reviewer_name
+        if self.user:
+            return getattr(self.user, 'fullname', '') or self.user.get_full_name() or self.user.username
+        return 'User'
+
 class AgentBackup(models.Model):
     # This id corresponds to the old agent's ID when they are deleted.
     # It acts as the primary key here, but it's not auto-incrementing in the context of inserts 

@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
-from apps.agents.models import Agent, AgentProfile, AgentPerformanceStat
+from django.contrib.auth.models import User
+from apps.agents.models import Agent, AgentProfile, AgentPerformanceStat, AgentReview
 from django.core.cache import cache
 
 class AgentSharingTests(TestCase):
@@ -58,3 +59,85 @@ class AgentSharingTests(TestCase):
         self.profile.experience_years = 15
         self.profile.save()
         self.assertTrue(cache.get(cache_key) is None)
+
+
+class AgentPublicProfileTests(TestCase):
+    """
+    Regression tests for the public profile page (/profile/<slug|id>/).
+
+    Covers the production crash where guest reviews (user=NULL) caused the
+    template to resolve review.user.username on None, raising
+    VariableDoesNotExist / AttributeError / ValueError.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.agent = Agent.objects.create(
+            fullname="Ravi Kumar",
+            email="ravi.kumar@padosiagent.com",
+            mobile="9876501234",
+            status="active"
+        )
+        self.profile = AgentProfile.objects.create(
+            agent=self.agent,
+            slug="ravi-kumar",
+            display_name="Ravi Kumar",
+            is_profile_visible=True,
+            show_reviews=True,
+        )
+
+    def test_profile_with_guest_review_null_user_renders(self):
+        # Guest reviews are stored with user=None (see store_review).
+        # This is the exact data shape that crashed production.
+        AgentReview.objects.create(
+            agent=self.agent,
+            user=None,
+            reviewer_name="Guest Reviewer",
+            reviewer_email="guest@example.com",
+            rating=5,
+            review="Great service!",
+            is_approved=True,
+        )
+        for url in (
+            reverse('agents:agent_public_profile', args=['ravi-kumar']),
+            reverse('agents:agent_public_profile', args=[str(self.agent.id)]),
+        ):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "Guest Reviewer")
+
+    def test_profile_with_user_review_renders(self):
+        user = User.objects.create_user(
+            username="client_one", email="client1@example.com", password="pw12345!"
+        )
+        AgentReview.objects.create(
+            agent=self.agent,
+            user=user,
+            reviewer_name="",
+            rating=4,
+            review="Very professional.",
+            is_approved=True,
+        )
+        response = self.client.get(reverse('agents:agent_public_profile', args=['ravi-kumar']))
+        self.assertEqual(response.status_code, 200)
+        # author_display falls back to the user's username when no name is set
+        self.assertContains(response, "client_one")
+
+    def test_missing_agent_returns_404(self):
+        response = self.client.get(reverse('agents:agent_public_profile', args=['999999']))
+        self.assertEqual(response.status_code, 404)
+
+    def test_non_numeric_slug_returns_404(self):
+        response = self.client.get('/profile/username/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_agent_without_profile_returns_404(self):
+        # An agent row with no AgentProfile must not crash the template.
+        incomplete = Agent.objects.create(
+            fullname="No Profile Agent",
+            email="noprofile@padosiagent.com",
+            mobile="9876509999",
+            status="active",
+        )
+        response = self.client.get(reverse('agents:agent_public_profile', args=[str(incomplete.id)]))
+        self.assertEqual(response.status_code, 404)
