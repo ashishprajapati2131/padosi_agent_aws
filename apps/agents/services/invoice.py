@@ -23,6 +23,47 @@ from apps.home.models import SiteSetting
 logger = logging.getLogger(__name__)
 
 
+def generate_invoice_number() -> str:
+    """
+    Generate a unique invoice number matching Laravel's InvoiceService::generateInvoiceNumber().
+
+    Format: PA/{yy}-{yy}/{seq:05d}  (e.g. PA/26-27/00042)
+
+    - Financial-year prefix: resets on April 1st.
+    - Next sequence = MAX(numeric tail) + 1 across rows with the current prefix.
+    - Falls back to 42 when no PA/... row exists (byte-for-byte Laravel parity).
+    - Collision-safety loop skips any number that already exists.
+    """
+    now = datetime.now()
+    start_year = now.year if now.month >= 4 else now.year - 1
+    end_year = start_year + 1
+    prefix = f"PA/{str(start_year)[-2:]}-{str(end_year)[-2:]}/"
+
+    from django.db import connection
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT invoice_number FROM invoices WHERE invoice_number LIKE %s "
+            "ORDER BY CAST(SUBSTRING(invoice_number, %s) AS UNSIGNED) DESC LIMIT 1",
+            [prefix + '%', len(prefix) + 1],
+        )
+        row = cursor.fetchone()
+
+    next_num = 42
+    if row:
+        try:
+            next_num = int(row[0][len(prefix):]) + 1
+        except ValueError:
+            next_num = 42
+
+    while True:
+        number = f"{prefix}{next_num:05d}"
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM invoices WHERE invoice_number = %s", [number])
+            if not cursor.fetchone():
+                return number
+        next_num += 1
+
+
 def link_callback(uri, rel):
     """
     Convert HTML URIs to absolute system paths so xhtml2pdf can access those resources.
@@ -131,19 +172,10 @@ class InvoiceService:
 
     def generate_invoice_number(self) -> str:
         """
-        Generate unique invoice number like INV-2026-00042.
-        Uses select_for_update to lock rows and prevent duplicate generation.
+        Generate unique invoice number like PA/26-27/00042.
+        Matches Laravel's generateInvoiceNumber (financial-year prefix, MAX-based sequence).
         """
-        year = datetime.now().year
-        # Acquire a row lock on all invoices of this year to serialize count calculation
-        invoices = Invoice.objects.filter(created_at__year=year).select_for_update()
-        count = invoices.count() + 1
-        
-        while True:
-            number = f"INV-{year}-{str(count).zfill(5)}"
-            if not Invoice.objects.filter(invoice_number=number).exists():
-                return number
-            count += 1
+        return generate_invoice_number()
 
     def calculate_discount_percent(self, agent: Agent, subscription: AgentSubscription, paid_amount: float) -> float:
         """
@@ -211,14 +243,16 @@ class InvoiceService:
             # Render HTML to string
             html_string = render_to_string('pdf/invoice.html', context)
 
-            # Define output path
-            sub_folder = 'discount' if invoice.promo_code else 'no_discount'
+            # Define output path (match Laravel: invoices/{discount_folder}/{invoice_number}.pdf)
+            sub_folder = invoice.discount_folder or ('discount' if invoice.promo_code else 'no_discount')
             relative_dir = os.path.join('app', 'private', 'invoices', sub_folder)
             target_dir = os.path.join(settings.MEDIA_ROOT, relative_dir)
             os.makedirs(target_dir, exist_ok=True)
 
             filename = f"{invoice.invoice_number}.pdf"
             full_path = os.path.join(target_dir, filename)
+            # Invoice numbers contain slashes (PA/26-27/XXXXX) -> create nested dirs
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
             relative_path = os.path.join('invoices', sub_folder, filename).replace('\\', '/')
 
             # Temporary monkey-patch for xhtml2pdf Windows file-lock bug on NamedTemporaryFile

@@ -1,4 +1,5 @@
 import os
+import base64
 import datetime
 import pdfkit
 import logging
@@ -8,6 +9,20 @@ from django.template.loader import render_to_string
 from .invoice_storage import get_invoice_root, get_folder_path, ensure_invoice_directories
 
 logger = logging.getLogger(__name__)
+
+def get_logo_data_uri():
+    """Embed the PadosiAgent logo as a base64 data URI (matches Laravel's base64 logo embed)."""
+    try:
+        from django.contrib.staticfiles import finders
+    except Exception:
+        finders = None
+    for name in ('img/logo.webp', 'img/logo.png'):
+        path = finders.find(name) if finders else None
+        if path and os.path.exists(path):
+            ext = 'png' if name.endswith('.png') else 'webp'
+            with open(path, 'rb') as f:
+                return f"data:image/{ext};base64,{base64.b64encode(f.read()).decode()}"
+    return ''
 
 def resolve_discount_folder(discount_percent, total_amount):
     """
@@ -45,22 +60,11 @@ def resolve_discount_folder(discount_percent, total_amount):
 
 def generate_invoice_number():
     """
-    Match Laravel: INV-YYYY-XXXXX
-    Use current year. Check collisions via Raw SQL.
+    Match Laravel: PA/{yy}-{yy}/{seq:05d} (financial-year based).
+    Delegates to the shared generator in apps.agents.services.invoice.
     """
-    year = datetime.datetime.now().year
-    
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT COUNT(*) FROM invoices WHERE YEAR(created_at) = %s", [year])
-        row = cursor.fetchone()
-        count = (row[0] if row else 0) + 1
-        
-        while True:
-            number = f"INV-{year}-{count:05d}"
-            cursor.execute("SELECT 1 FROM invoices WHERE invoice_number = %s", [number])
-            if not cursor.fetchone():
-                return number
-            count += 1
+    from apps.agents.services.invoice import generate_invoice_number as _gen
+    return _gen()
 
 def generate_invoice_pdf(invoice_id):
     """
@@ -116,6 +120,8 @@ def generate_invoice_pdf(invoice_id):
     
     folder_abs_path = get_folder_path(folder)
     absolute_path = os.path.join(str(folder_abs_path), f"{invoice_number}.pdf")
+    # Invoice numbers contain slashes (PA/26-27/XXXXX) -> create nested dirs
+    os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
     
     # Check if PDF already exists (Laravel behavior: do not regenerate if present)
     if os.path.exists(absolute_path):
@@ -129,7 +135,7 @@ def generate_invoice_pdf(invoice_id):
         }
     
     agent_state = str(invoice_data.get('agent_state') or '').strip().lower()
-    is_gujarat = (agent_state == 'gujarat')
+    is_gujarat = ('gujarat' in agent_state)
     invoice_data['is_gujarat'] = is_gujarat
     
     gst_amount = float(invoice_data.get('gst_amount') or 0)
@@ -159,6 +165,7 @@ def generate_invoice_pdf(invoice_id):
         'items': items,
         'is_gujarat': is_gujarat,
         'half_gst': half_gst,
+        'logo_src': get_logo_data_uri(),
     }
 
     # Render HTML template natively
@@ -201,6 +208,10 @@ def generate_invoice_pdf(invoice_id):
     tempfile.NamedTemporaryFile = ClosedNamedTemporaryFile
 
     try:
+        # Invoice numbers contain slashes (PA/26-27/00042), so the path may
+        # nest below the discount folder; create the parent dirs like
+        # Laravel's Storage::put does automatically.
+        os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
         with open(absolute_path, "w+b") as result_file:
             pisa_status = pisa.CreatePDF(html_string, dest=result_file, encoding='utf-8')
     finally:
@@ -222,17 +233,15 @@ def generate_invoice_pdf(invoice_id):
 def get_pdf_absolute_path(pdf_path):
     """
     Helper to resolve the database pdf_path string to the physical file system absolute path.
+    Supports nested paths (invoice numbers contain slashes, e.g. invoices/no_discount/PA/26-27/XXXXX.pdf).
     """
     if not pdf_path:
         return None
-        
-    parts = pdf_path.replace("\\", "/").split('/')
-    if len(parts) >= 2:
-        filename = parts[-1]
-        folder = parts[-2]
-        return str(get_folder_path(folder) / filename)
-        
-    return None
+
+    normalized = pdf_path.replace("\\", "/").strip("/")
+    if normalized.startswith("invoices/"):
+        normalized = normalized[len("invoices/"):]
+    return get_invoice_root() / normalized
 
 def pdf_exists(pdf_path):
     """

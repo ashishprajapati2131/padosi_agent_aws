@@ -340,9 +340,10 @@
             <thead>
                 <tr>
                     <th style="width: 5%;">#</th>
-                    <th style="width: 52%;">Service Details</th>
-                    <th class="text-right" style="width: 22%;">Base Price (excl. GST)</th>
-                    <th class="text-right" style="width: 21%;">Amount</th>
+                    <th style="width: 42%;">Service Details</th>
+                    <th style="width: 15%;">SAC Code</th>
+                    <th class="text-right" style="width: 18%;">Base Price (excl. GST)</th>
+                    <th class="text-right" style="width: 20%;">Amount</th>
                 </tr>
             </thead>
             <tbody>
@@ -361,6 +362,7 @@
                             <p style="font-size:12px; color:#059669; font-weight:bold; margin-top:5px;">✨ Promo Applied: {{ invoice.promo_code }}</p>
                         {% endif %}
                     </td>
+                    <td>9983</td>
                     <td class="text-right">{{ rs|safe }}{{ invoice.base_amount|floatformat:2 }}</td>
                     <td class="text-right">{{ rs|safe }}{{ invoice.base_amount|floatformat:2 }}</td>
                 </tr>
@@ -404,7 +406,11 @@
 
                 <tr>
                     <td colspan="2" class="text-right" style="font-size: 10px; color: #999;">
-                        *Inclusive of GST {{ rs|safe }}{{ invoice.gst_amount|floatformat:2 }}
+                        {% if invoice.is_igst %}
+                            *Inclusive of IGST {{ rs|safe }}{{ invoice.gst_amount_igst|floatformat:2 }}
+                        {% else %}
+                            *Inclusive of CGST {{ rs|safe }}{{ invoice.gst_amount_cgst|floatformat:2 }} + SGST {{ rs|safe }}{{ invoice.gst_amount_sgst|floatformat:2 }}
+                        {% endif %}
                     </td>
                 </tr>
             </table>
@@ -413,6 +419,7 @@
         <!-- Footer -->
         <div class="invoice-footer">
             <p class="thank-you">Thank you for choosing PadosiAgent.</p>
+            <p>If you have any questions concerning this invoice, please contact support@padosiagent.com</p>
             
             <p class="footer-branding">
                 Powered by <strong>PadosiAgent ServTech Pvt Ltd</strong>

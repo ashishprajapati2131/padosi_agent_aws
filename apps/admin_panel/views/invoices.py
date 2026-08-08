@@ -3,15 +3,15 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponse, Http404, FileResponse, JsonResponse
 from django.db import connection
 from django.views.decorators.http import require_http_methods
+from django.contrib import messages
 import os
-import random
-import string
 from django.core.mail import EmailMessage
 from django.conf import settings
 from apps.agents.models import Agent, Invoice, PromoCode
+from apps.agents.services.invoice import generate_invoice_number
 
 from .dashboard import _get_admin_from_session
-from ..services.pdf_generator import generate_invoice_pdf, get_pdf_absolute_path
+from ..services.pdf_generator import generate_invoice_pdf, get_pdf_absolute_path, get_logo_data_uri
 from ..services.google_sheet_sync import sync_all_pending
 
 def get_folder_label(folder):
@@ -121,6 +121,9 @@ def invoice_list(request):
         row = cursor.fetchone()
         googleSheetUrl = row[0] if row else None
 
+        cursor.execute("SELECT COUNT(*) FROM invoices WHERE synced_to_sheet = 0")
+        unsynced_invoice_count = cursor.fetchone()[0]
+
     context = {
         'admin': admin,
         'invoices': invoices,
@@ -131,7 +134,8 @@ def invoice_list(request):
         'totalRevenue': total_revenue,
         'total_filtered': total_filtered,
         'googleSheetUrl': googleSheetUrl,
-        
+        'unsynced_invoice_count': unsynced_invoice_count,
+
         'page_obj': page_obj,
         'page_range': page_range,
         'first_item': page_obj.start_index(),
@@ -166,7 +170,15 @@ def preview_invoice(request, invoice_id):
             cursor.execute("SELECT * FROM invoices WHERE id = %s", [invoice_id])
             row = cursor.fetchone()
             invoice = dict(zip(columns, row))
-            
+
+    # Bill-to state fallback to the agent profile state (matches Laravel template)
+    if not invoice.get('agent_state') and invoice.get('agent_id'):
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT state FROM agent_profiles WHERE agent_id = %s LIMIT 1", [invoice['agent_id']])
+            prow = cursor.fetchone()
+            if prow and prow[0]:
+                invoice['agent_state'] = prow[0]
+
     # GST logic for template preview matching Laravel
     agent_state = invoice.get('agent_state') or ''
     is_igst = 'gujarat' not in agent_state.lower()
@@ -179,7 +191,10 @@ def preview_invoice(request, invoice_id):
         invoice['gst_amount_cgst'] = gst_amount / 2
         invoice['gst_amount_sgst'] = gst_amount / 2
         
-    return render(request, "admin/invoices/preview.html", {'invoice': invoice})
+    return render(request, "admin/invoices/preview.html", {
+        'invoice': invoice,
+        'logo_src': get_logo_data_uri(),
+    })
 
 
 @require_http_methods(["GET"])
@@ -216,7 +231,10 @@ def download_invoice(request, invoice_id):
     if not abs_path or not os.path.exists(abs_path):
         raise Http404("PDF file not found")
         
-    filename = f"{invoice_number}.pdf"
+    # Keep the full invoice number in the download name (Laravel sends
+    # "PA/26-27/XXXXX.pdf"); replace "/" so the filename survives browser
+    # sanitization.
+    filename = f"{invoice_number.replace('/', '-')}.pdf"
     
     return FileResponse(open(abs_path, 'rb'), as_attachment=True, filename=filename)
 
@@ -236,6 +254,7 @@ def save_sheet_url(request):
             ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `updated_at` = NOW()
         """, [sheet_url])
         
+    messages.success(request, 'Google Sheet URL saved successfully!')
     return redirect('admin_invoices')
 
 
@@ -244,10 +263,26 @@ def sync_sheet(request):
     admin = _get_admin_from_session(request)
     if not admin:
         return redirect("admin_login_page")
-        
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT value FROM site_settings WHERE `key` = 'invoice_google_sheet_url'")
+        row = cursor.fetchone()
+        sheet_url = row[0] if row else None
+
+    if not sheet_url:
+        messages.error(request, 'Google Sheet URL is not configured. Please save a URL first.')
+        return redirect('admin_invoices')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) FROM invoices WHERE synced_to_sheet = 0")
+        pending = cursor.fetchone()[0]
+
+    if pending == 0:
+        messages.success(request, 'All invoices are already synced to Google Sheet!')
+        return redirect('admin_invoices')
+
     count = sync_all_pending()
-    
-    # Normally we would use Django messages framework, but keeping it simple as requested
+    messages.success(request, f"Synced {count} invoice(s) to Google Sheet successfully.")
     return redirect('admin_invoices')
 
 
@@ -279,9 +314,12 @@ def create_manual_invoice(request):
         starter = pricing_config.get('starter', {})
         prof = pricing_config.get('professional', {})
         
+        old = request.session.pop('invoice_old', {})
+        
         context = {
             'starter': starter,
             'prof': prof,
+            'old': old,
         }
         return render(request, "admin/invoices/create.html", context)
 
@@ -297,17 +335,34 @@ def create_manual_invoice(request):
     gst_amount_str = request.POST.get('gst_amount', '0')
     total_amount_str = request.POST.get('total_amount', '0')
     promo_code_str = request.POST.get('promo_code', '').strip()
+    custom_invoice_number = request.POST.get('invoice_number', '').strip()
+    payment_id = request.POST.get('razorpay_payment_id', '').strip()
+    send_email = request.POST.get('send_email') in ('on', '1', 'true')
     
     email_subject = request.POST.get('email_subject', 'Your Invoice from Padosi').strip()
     email_header = request.POST.get('email_header', '').strip()
     email_body = request.POST.get('email_body', '').strip()
+
+    old_values = {
+        'name': name, 'email': email, 'mobile': mobile, 'address': address, 'state': state,
+        'plan_name': plan_name, 'base_amount': base_amount_str, 'gst_amount': gst_amount_str,
+        'total_amount': total_amount_str, 'promo_code': promo_code_str,
+        'invoice_number': custom_invoice_number, 'razorpay_payment_id': payment_id,
+        'send_email': send_email, 'email_subject': email_subject,
+        'email_header': email_header, 'email_body': email_body,
+    }
+
+    def back_with_error(message):
+        request.session['invoice_old'] = old_values
+        messages.error(request, message)
+        return redirect('admin_invoices_create')
 
     try:
         base_amount = float(base_amount_str)
         gst_amount = float(gst_amount_str)
         total_amount = float(total_amount_str)
     except ValueError:
-        return render(request, "admin/invoices/create.html", {"error": "Invalid amounts provided."})
+        return back_with_error('Invalid amounts provided.')
 
     discount_percent = 0
     if promo_code_str:
@@ -318,6 +373,14 @@ def create_manual_invoice(request):
                 discount_percent = pc.discount_value
         except PromoCode.DoesNotExist:
             pass
+
+    # Invoice number: custom (with duplicate check) or auto-generated PA/YY-YY/XXXXX
+    if custom_invoice_number:
+        if Invoice.objects.filter(invoice_number=custom_invoice_number).exists():
+            return back_with_error(f"Invoice number {custom_invoice_number} already exists. Please use a different number.")
+        invoice_number = custom_invoice_number
+    else:
+        invoice_number = generate_invoice_number()
 
     # We need a Dummy Agent because Invoice requires agent_id.
     # Let's find or create a dummy agent for manual invoices.
@@ -331,11 +394,6 @@ def create_manual_invoice(request):
         }
     )
 
-    import datetime
-    now = datetime.datetime.now()
-    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-    invoice_number = f"INV-M-{now.strftime('%Y%m%d')}-{random_str}"
-    
     folder = Invoice.resolve_discount_folder(discount_percent, total_amount)
 
     invoice = Invoice.objects.create(
@@ -354,37 +412,42 @@ def create_manual_invoice(request):
         discount_percent=discount_percent,
         discount_folder=folder,
         promo_code=promo_code_str,
+        razorpay_payment_id=payment_id or None,
         payment_status='paid'
     )
 
     # Generate PDF
     result = generate_invoice_pdf(invoice.id)
-    if result and result.get('success'):
-        pdf_path = result.get('absolute_path')
-        if pdf_path and os.path.exists(pdf_path):
-            # Send Email
-            try:
-                # Use Brevo/SMTP fallback service
-                from apps.agents.services.brevo import email_service
-                body = f"{email_header}<br><br>{email_body}".replace('\n', '<br>')
-                success = email_service.send_generic(
-                    to_email=email,
-                    to_name=name,
-                    subject=email_subject,
-                    html_content=body,
-                    attachment_path=pdf_path
-                )
-                if not success:
-                    return render(request, "admin/invoices/create.html", {"error": f"Invoice created but failed to send email via Brevo or SMTP."})
+    if not (result and result.get('success')):
+        return back_with_error("Failed to generate Invoice PDF.")
 
-            except Exception as e:
-                return render(request, "admin/invoices/create.html", {"error": f"Invoice created but failed to send email: {str(e)}"})
-            
-            return render(request, "admin/invoices/create.html", {"success": f"Invoice {invoice_number} created and emailed to {email} successfully."})
-        else:
-            return render(request, "admin/invoices/create.html", {"error": "Failed to locate generated PDF."})
+    pdf_path = result.get('absolute_path')
+    if not pdf_path or not os.path.exists(pdf_path):
+        return back_with_error("Failed to locate generated PDF.")
+
+    # Send email only when requested
+    if send_email:
+        try:
+            # Use Brevo/SMTP fallback service
+            from apps.agents.services.brevo import email_service
+            body = f"{email_header}<br><br>{email_body}".replace('\n', '<br>')
+            success = email_service.send_generic(
+                to_email=email,
+                to_name=name,
+                subject=email_subject,
+                html_content=body,
+                attachment_path=pdf_path
+            )
+            if not success:
+                return back_with_error(f"Invoice {invoice_number} created but failed to send email via Brevo or SMTP.")
+        except Exception as e:
+            return back_with_error(f"Invoice created but failed to send email: {str(e)}")
+        
+        messages.success(request, f"Invoice {invoice_number} created and emailed to {email} successfully.")
     else:
-        return render(request, "admin/invoices/create.html", {"error": "Failed to generate Invoice PDF."})
+        messages.success(request, f"Invoice {invoice_number} created successfully.")
+
+    return redirect('admin_invoices_create')
 
 @require_http_methods(["POST"])
 def admin_verify_promo(request):

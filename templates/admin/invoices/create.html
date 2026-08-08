@@ -7,17 +7,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="fw-bold mb-1" style="color:#1e293b;">📝 Create Manual Invoice</h2>
-            <p class="text-muted mb-0" style="font-size:14px;">Generate an invoice manually and send via email.</p>
+            <p class="text-muted mb-0" style="font-size:14px;">Generate an invoice manually, download the PDF, and optionally send it via email.</p>
         </div>
         <a href="{% url 'admin_invoices' %}" class="btn btn-outline-secondary">← Back to Invoices</a>
     </div>
-
-    {% if error %}
-    <div class="alert alert-danger">{{ error }}</div>
-    {% endif %}
-    {% if success %}
-    <div class="alert alert-success">{{ success }}</div>
-    {% endif %}
 
     <div class="card border-0 shadow-sm">
         <div class="card-body p-4">
@@ -28,27 +21,27 @@
                 <div class="row mb-4">
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Name <span class="text-danger">*</span></label>
-                        <input type="text" name="name" class="form-control" required placeholder="e.g. Rahul Patel">
+                        <input type="text" name="name" class="form-control" required placeholder="e.g. Rahul Patel" value="{{ old.name|default:'' }}">
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Email <span class="text-danger">*</span></label>
-                        <input type="email" name="email" class="form-control" required placeholder="e.g. rahul@example.com">
+                        <input type="email" name="email" class="form-control" required placeholder="e.g. rahul@example.com" value="{{ old.email|default:'' }}">
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Mobile</label>
-                        <input type="text" name="mobile" class="form-control" placeholder="e.g. 9876543210">
+                        <input type="text" name="mobile" class="form-control" placeholder="e.g. 9876543210" value="{{ old.mobile|default:'' }}">
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Address</label>
-                        <input type="text" name="address" class="form-control" placeholder="e.g. 101, Business Park">
+                        <input type="text" name="address" class="form-control" placeholder="e.g. 101, Business Park" value="{{ old.address|default:'' }}">
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">State</label>
-                        <select name="state" id="stateSelect" class="form-select" onchange="calculateTotal()">
-                            <option value="Gujarat">Gujarat (CGST + SGST)</option>
-                            <option value="Maharashtra">Maharashtra (IGST)</option>
-                            <option value="Delhi">Delhi (IGST)</option>
-                            <option value="Other">Other (IGST)</option>
+                        <select name="state" id="stateSelect" class="form-select">
+                            <option value="Gujarat" {% if not old.state or old.state == 'Gujarat' %}selected{% endif %}>Gujarat (CGST + SGST)</option>
+                            <option value="Maharashtra" {% if old.state == 'Maharashtra' %}selected{% endif %}>Maharashtra (IGST)</option>
+                            <option value="Delhi" {% if old.state == 'Delhi' %}selected{% endif %}>Delhi (IGST)</option>
+                            <option value="Other" {% if old.state == 'Other' %}selected{% endif %}>Other (IGST)</option>
                         </select>
                     </div>
                 </div>
@@ -56,22 +49,27 @@
                 <h5 class="mb-3 text-primary border-bottom pb-2">Plan Details</h5>
                 <div class="row mb-4">
                     <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Invoice Number <span class="text-muted fw-normal">(optional — auto-generated if empty)</span></label>
+                        <input type="text" name="invoice_number" class="form-control" placeholder="e.g. PA/26-27/00099" value="{{ old.invoice_number|default:'' }}">
+                        <small class="text-muted d-block mt-1">Leave empty to auto-generate (e.g. PA/26-27/00042)</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Select Plan <span class="text-danger">*</span></label>
                         <select name="plan_name" id="planSelect" class="form-select" onchange="updateBaseAmount()" required>
                             <option value="">-- Select Plan --</option>
                             {% if starter.full_price %}
-                            <option value="{{ starter.name|default:'Starter Plan' }}" data-price="{{ starter.full_price }}">{{ starter.name|default:'Starter Plan' }} (₹{{ starter.full_price }})</option>
+                            <option value="{{ starter.name|default:'Starter Plan' }}" data-price="{{ starter.full_price }}" {% if old.plan_name == starter.name|default:'Starter Plan' %}selected{% endif %}>{{ starter.name|default:'Starter Plan' }} (₹{{ starter.full_price }})</option>
                             {% endif %}
                             {% if prof.full_price %}
-                            <option value="{{ prof.name|default:'Professional Plan' }}" data-price="{{ prof.full_price }}">{{ prof.name|default:'Professional Plan' }} (₹{{ prof.full_price }})</option>
+                            <option value="{{ prof.name|default:'Professional Plan' }}" data-price="{{ prof.full_price }}" {% if old.plan_name == prof.name|default:'Professional Plan' %}selected{% endif %}>{{ prof.name|default:'Professional Plan' }} (₹{{ prof.full_price }})</option>
                             {% endif %}
-                            <option value="Custom" data-price="0">Custom Plan</option>
+                            <option value="Custom" data-price="0" {% if old.plan_name == 'Custom' %}selected{% endif %}>Custom Plan</option>
                         </select>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label fw-bold">Promo Code</label>
                         <div class="input-group">
-                            <input type="text" name="promo_code" id="promoCode" class="form-control" placeholder="e.g. SAVE20">
+                            <input type="text" name="promo_code" id="promoCode" class="form-control" placeholder="e.g. SAVE20" value="{{ old.promo_code|default:'' }}">
                             <button class="btn btn-outline-secondary" type="button" onclick="verifyPromoCode()">Apply</button>
                         </div>
                         <small id="promoMessage" class="text-muted d-block mt-1"></small>
@@ -80,44 +78,55 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold">Base Amount (₹)</label>
-                        <input type="number" step="0.01" name="base_amount" id="baseAmount" class="form-control" value="0" required oninput="calculateTotal()">
+                        <input type="number" step="0.01" name="base_amount" id="baseAmount" class="form-control" value="{{ old.base_amount|default:'0' }}" required oninput="calculateTotal()">
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold">GST Amount (18%) (₹)</label>
-                        <input type="number" step="0.01" name="gst_amount" id="gstAmount" class="form-control" value="0" readonly>
+                        <input type="number" step="0.01" name="gst_amount" id="gstAmount" class="form-control" value="{{ old.gst_amount|default:'0' }}" readonly>
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label fw-bold">Total Amount (₹)</label>
-                        <input type="number" step="0.01" name="total_amount" id="totalAmount" class="form-control" value="0" readonly>
+                        <input type="number" step="0.01" name="total_amount" id="totalAmount" class="form-control" value="{{ old.total_amount|default:'0' }}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Payment ID <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="text" name="razorpay_payment_id" class="form-control" placeholder="e.g. pay_XXXXXXXXXXXX" value="{{ old.razorpay_payment_id|default:'' }}">
                     </div>
                 </div>
 
                 <h5 class="mb-3 text-primary border-bottom pb-2">Email Customization</h5>
                 <div class="row mb-4">
                     <div class="col-md-12 mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="send_email" id="sendEmail" value="on" {% if old.send_email or not old %}checked{% endif %} onchange="updateSubmitBtn()">
+                            <label class="form-check-label fw-bold" for="sendEmail">Send invoice via email (attaches the PDF)</label>
+                            <small class="text-muted d-block mt-1">Uncheck to only generate the invoice without sending any email.</small>
+                        </div>
+                    </div>
+                    <div class="col-md-12 mb-3">
                         <label class="form-label fw-bold">Email Subject</label>
-                        <input type="text" name="email_subject" class="form-control" value="Your Invoice from Padosi">
+                        <input type="text" name="email_subject" class="form-control" value="{{ old.email_subject|default:'Your Invoice from Padosi' }}">
                     </div>
                     <div class="col-md-12 mb-3">
                         <label class="form-label fw-bold">Email Header Message</label>
-                        <input type="text" name="email_header" class="form-control" value="Thank you for your business!" placeholder="Header text for the email">
+                        <input type="text" name="email_header" class="form-control" value="{{ old.email_header|default:'Thank you for your business!' }}" placeholder="Header text for the email">
                     </div>
                     <div class="col-md-12 mb-3">
                         <label class="form-label fw-bold">Email Body</label>
-                        <textarea name="email_body" class="form-control" rows="8">Hi there,
+                        <textarea name="email_body" class="form-control" rows="8">{{ old.email_body|default:'Hi there,
 
 Thank you for choosing Padosi!
 
 Please find attached your invoice for the selected plan. We appreciate your business and are here to help if you need anything.
 
 Best regards,
-Team Padosi</textarea>
+Team Padosi' }}</textarea>
                     </div>
                 </div>
 
                 <div class="text-end">
                     <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
-                        <i class="fa fa-envelope"></i> Generate & Send Email
+                        <i class="fa fa-envelope" id="submitBtnIcon"></i> <span id="submitBtnText">Generate &amp; Send Email</span>
                     </button>
                 </div>
             </form>
@@ -126,6 +135,12 @@ Team Padosi</textarea>
 </div>
 
 <script>
+    function updateSubmitBtn() {
+        const send = document.getElementById('sendEmail').checked;
+        document.getElementById('submitBtnText').textContent = send ? 'Generate & Send Email' : 'Generate Invoice';
+        document.getElementById('submitBtnIcon').className = send ? 'fa fa-envelope' : 'fa fa-file-invoice';
+    }
+
     async function verifyPromoCode() {
         const promoCode = document.getElementById('promoCode').value.trim();
         const message = document.getElementById('promoMessage');
@@ -200,8 +215,17 @@ Team Padosi</textarea>
         document.getElementById('totalAmount').value = total;
     }
 
-    document.getElementById('invoiceForm').addEventListener('submit', function() {
-        document.getElementById('submitBtn').innerHTML = '<i class="fa fa-spinner fa-spin"></i> Sending...';
+    document.addEventListener('DOMContentLoaded', function () {
+        updateSubmitBtn();
+        if (document.getElementById('baseAmount').value && document.getElementById('baseAmount').value !== '0') {
+            calculateTotal();
+        }
+    });
+
+    document.getElementById('invoiceForm').addEventListener('submit', function () {
+        const send = document.getElementById('sendEmail').checked;
+        document.getElementById('submitBtnText').textContent = send ? 'Sending...' : 'Generating...';
+        document.getElementById('submitBtnIcon').className = 'fa fa-spinner fa-spin';
         // Note: we can't disable the button immediately or the form might not submit on some browsers,
         // but adding a small timeout works.
         setTimeout(() => {
