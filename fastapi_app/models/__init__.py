@@ -29,3 +29,4 @@ from app.models.blocked_ip import BlockedIp
 from app.models.security_threat_log import SecurityThreatLog
 from app.models.password_reset_token import PasswordResetToken
 from app.models.insurance_company import InsuranceCompany
+from app.models.api_log import ApiLog

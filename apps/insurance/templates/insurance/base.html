@@ -537,7 +537,7 @@
                 </li>
                 {% endif %}
 
-                {% if request.user.insurance_profile.is_insurance_accounts %}
+                {% if request.user.insurance_profile.is_insurance_accounts or request.user.insurance_profile.is_insurance_sales %}
                 <li class="nav-item">
                     <a href="{% url 'insurance:payments_index' %}"
                         class="{% if request.resolver_match.view_name == 'insurance:payments_index' %}active{% endif %}">

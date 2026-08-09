@@ -863,7 +863,7 @@
                 $.ajax({
                     url: orderUrl,
                     type: "POST",
-                    data: { _token: "{{ csrf_token }}" },
+                    data: { csrfmiddlewaretoken: "{{ csrf_token }}" },
                     success: function(res) {
                         Swal.close();
                         if (res.success) {
@@ -916,7 +916,7 @@
                     url: successUrl,
                     type: "POST",
                     data: {
-                        _token: "{{ csrf_token }}",
+                        csrfmiddlewaretoken: "{{ csrf_token }}",
                         razorpay_payment_id: paymentData.razorpay_payment_id || '',
                         razorpay_order_id: paymentData.razorpay_order_id || '',
                         razorpay_signature: paymentData.razorpay_signature || '',

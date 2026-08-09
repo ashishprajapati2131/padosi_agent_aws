@@ -198,6 +198,16 @@ from apps.admin_panel.views.blacklisted import (
     ajax_blacklist_confirm,
     ajax_blacklist_remove,
 )
+from apps.admin_panel.views.search import admin_search
+from apps.admin_panel.views.system import (
+    health,
+    clear_cache,
+    logs,
+    api_logs,
+    backups,
+    run_backup,
+    download_backup,
+)
 
 # app_name = "admin_panel"
 
@@ -460,4 +470,16 @@ urlpatterns = [
     path("admin/advanced/error-logs/", error_logs_index, name="admin_error_logs_index"),
     path("admin/advanced/error-logs/<int:id>/", error_logs_show, name="admin_error_logs_show"),
     path("admin/advanced/error-logs/delete/", error_logs_delete, name="admin_error_logs_delete"),
+
+    # Search
+    path("admin/search/", admin_search, name="admin_search"),
+
+    # System
+    path("admin/system/health/", health, name="admin_system_health"),
+    path("admin/system/clear-cache/", clear_cache, name="admin_system_clear_cache"),
+    path("admin/system/logs/", logs, name="admin_system_logs"),
+    path("admin/system/api-logs/", api_logs, name="admin_system_api_logs"),
+    path("admin/system/backups/", backups, name="admin_system_backups"),
+    path("admin/system/backups/run/", run_backup, name="admin_system_run_backup"),
+    path("admin/system/backups/download/<str:filename>/", download_backup, name="admin_system_download_backup"),
 ]

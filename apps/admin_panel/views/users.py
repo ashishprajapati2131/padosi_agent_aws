@@ -119,7 +119,7 @@ def user_edit(request, user_id):
 
 import re
 from django.contrib import messages
-from django.contrib.auth.hashers import make_password
+import bcrypt
 from django.shortcuts import redirect
 
 def user_update(request, user_id):
@@ -191,13 +191,19 @@ def user_update(request, user_id):
     
     if password:
         update_fields.append('password = %s')
-        update_args.append(make_password(password))
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        update_args.append(hashed_password)
         
     update_args.append(user_id)
     query = f"UPDATE users SET {', '.join(update_fields)} WHERE id = %s"
     
-    with connection.cursor() as cursor:
-        cursor.execute(query, update_args)
-        
-    messages.success(request, 'User updated successfully')
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(query, update_args)
+        messages.success(request, 'User updated successfully')
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error updating user: {e}")
+        messages.error(request, 'Failed to update user due to a database error.')
+
     return redirect('admin_users')

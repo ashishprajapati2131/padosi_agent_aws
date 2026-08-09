@@ -1,0 +1,118 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}System Logs — PadosiAgent Admin{% endblock %}
+{% block breadcrumb_title %}System / Error Logs{% endblock %}
+
+{% block styles %}
+<style>
+    .log-container {
+        background-color: #0f172a;
+        color: #e2e8f0;
+        font-family: 'Consolas', 'Courier New', monospace;
+        padding: 16px;
+        border-radius: 8px;
+        max-height: 700px;
+        overflow-y: auto;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    .log-item {
+        padding: 8px;
+        border-bottom: 1px solid #334155;
+        margin-bottom: 8px;
+    }
+    .log-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+    .log-timestamp {
+        color: #94a3b8;
+        margin-right: 12px;
+    }
+    .log-env {
+        color: #7dd3fc;
+        margin-right: 8px;
+    }
+    .log-level {
+        font-weight: bold;
+        margin-right: 12px;
+    }
+    .log-level.error, .log-level.error, .log-level.critical { color: #ef4444; }
+    .log-level.warning { color: #f59e0b; }
+    .log-level.info { color: #3b82f6; }
+    .log-level.debug { color: #10b981; }
+    
+    .log-message {
+        color: #f8fafc;
+        word-break: break-all;
+    }
+    .log-stack {
+        display: none;
+        margin-top: 8px;
+        padding: 8px;
+        background: rgba(0,0,0,0.2);
+        color: #cbd5e1;
+        white-space: pre-wrap;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+    .toggle-stack {
+        cursor: pointer;
+        color: #3b82f6;
+        text-decoration: underline;
+        margin-left: 8px;
+        font-size: 11px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-body">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1" style="font-weight: 700;">System Logs</h4>
+            <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Displaying the most recent entries from django.log</p>
+        </div>
+        <form method="GET" class="d-flex align-items-center gap-2">
+            <select name="level" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="all" {% if levelFilter == 'all' %}selected{% endif %}>All Levels</option>
+                <option value="error" {% if levelFilter == 'error' %}selected{% endif %}>Errors Only</option>
+                <option value="warning" {% if levelFilter == 'warning' %}selected{% endif %}>Warnings Only</option>
+                <option value="info" {% if levelFilter == 'info' %}selected{% endif %}>Info Only</option>
+            </select>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            {% if not logs %}
+                <div class="p-5 text-center text-muted">
+                    <i class="fa-solid fa-check-circle mb-3" style="font-size: 48px; color: var(--primary);"></i>
+                    <h5>No Logs Found</h5>
+                    <p>There are no logs matching your criteria, or the log file is empty.</p>
+                </div>
+            {% else %}
+                <div class="log-container">
+                    {% for log in logs %}
+                        <div class="log-item">
+                            <div>
+                                <span class="log-timestamp">[{{ log.timestamp }}]</span>
+                                {% if log.env %}<span class="log-env">{{ log.env }}</span>{% endif %}
+                                <span class="log-level {{ log.level|lower }}">{{ log.level|upper }}</span>
+                                <span class="log-message">{{ log.message }}</span>
+                                {% if log.stack %}
+                                    <span class="toggle-stack" onclick="$('#stack-{{ forloop.counter }}').slideToggle()">Toggle Stack Trace</span>
+                                {% endif %}
+                            </div>
+                            {% if log.stack %}
+                                <div id="stack-{{ forloop.counter }}" class="log-stack">{{ log.stack }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

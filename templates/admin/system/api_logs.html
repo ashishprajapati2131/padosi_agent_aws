@@ -1,0 +1,124 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}API Logs — PadosiAgent Admin{% endblock %}
+{% block breadcrumb_title %}System / API Logs{% endblock %}
+
+{% block content %}
+<div class="content-body">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1" style="font-weight: 700;">Integration & Webhook Logs</h4>
+            <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Monitor incoming third-party webhooks (Razorpay, FCM, etc.)</p>
+        </div>
+        <form method="GET" class="d-flex align-items-center gap-2">
+            <select name="service" class="form-select" onchange="this.form.submit()">
+                <option value="">All Services</option>
+                <option value="razorpay" {% if serviceFilter == 'razorpay' %}selected{% endif %}>Razorpay</option>
+                <option value="fcm" {% if serviceFilter == 'fcm' %}selected{% endif %}>Firebase (FCM)</option>
+                <option value="brevo" {% if serviceFilter == 'brevo' %}selected{% endif %}>Brevo (Email)</option>
+            </select>
+        </form>
+    </div>
+
+    {% if tableMissing %}
+    <div class="alert alert-danger p-4 border-0 mb-4" style="background: rgba(239, 68, 68, 0.1);">
+        <div class="d-flex">
+            <i class="fa-solid fa-triangle-exclamation text-danger mt-1 me-3" style="font-size: 24px;"></i>
+            <div>
+                <h5 class="text-danger mb-2" style="font-weight: 700;">Database Table Missing</h5>
+                <p style="color: var(--text-muted); margin-bottom: 0;">The <code>api_logs</code> table has not been created in the database yet. Please run your database migrations to enable this feature and resolve the 500 error.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date & Time</th>
+                            <th>Service</th>
+                            <th>Endpoint</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td style="color: var(--text-muted);">#{{ log.id }}</td>
+                            <td>{{ log.created_at|date:"d M Y, h:i A" }}</td>
+                            <td>
+                                {% if log.service == 'razorpay' %}
+                                    <span class="badge bg-primary">Razorpay</span>
+                                {% elif log.service == 'fcm' %}
+                                    <span class="badge bg-warning text-dark">FCM</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ log.service|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div style="font-size: 13px; font-weight: 600;">{{ log.method }}</div>
+                                <div style="font-size: 12px; color: var(--text-muted);">{{ log.request_url }}</div>
+                            </td>
+                            <td>
+                                {% if log.response_code >= 200 and log.response_code < 300 %}
+                                    <span class="badge bg-success">{{ log.response_code }} OK</span>
+                                {% elif log.response_code %}
+                                    <span class="badge bg-danger">{{ log.response_code }} ERR</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewLogPayload({{ log.id }})">View Data</button>
+                                <textarea id="payload-{{ log.id }}" style="display:none;">Data preview not loaded in this view.</textarea>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div style="color: var(--text-muted);">
+                                    <i class="fa-solid fa-satellite-dish mb-2" style="font-size: 24px;"></i>
+                                    <p class="mb-0">No API logs recorded yet.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for viewing JSON data -->
+<div class="modal fade" id="logModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" style="background: var(--bg-card); color: var(--text-primary);">
+      <div class="modal-header border-bottom-0">
+        <h5 class="modal-title">API Request / Response Data</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0">
+          <pre id="logDataViewer" style="background: #0f172a; color: #a5b4fc; padding: 20px; border-radius: 0 0 8px 8px; max-height: 500px; overflow-y: auto; font-size: 13px; margin: 0;"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function viewLogPayload(id) {
+        const data = $('#payload-' + id).val();
+        $('#logDataViewer').text(data);
+        const modal = new bootstrap.Modal(document.getElementById('logModal'));
+        modal.show();
+    }
+</script>
+{% endblock %}

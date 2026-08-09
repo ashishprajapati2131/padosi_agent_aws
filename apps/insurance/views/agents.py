@@ -282,7 +282,7 @@ def clear_cart(request):
 @login_required
 def checkout_cart(request):
     user = request.user
-    if not (is_insurance_manager(user) or is_insurance_onboarding(user)):
+    if not (is_insurance_manager(user) or is_insurance_onboarding(user) or is_insurance_sales(user)):
         return JsonResponse({'success': False, 'message': 'Unauthorized.'}, status=403)
 
     if request.method != 'POST':
@@ -376,7 +376,7 @@ except ImportError:
 @login_required
 def checkout_online_start(request):
     user = request.user
-    if not (is_insurance_manager(user) or is_insurance_onboarding(user)):
+    if not (is_insurance_manager(user) or is_insurance_onboarding(user) or is_insurance_sales(user)):
         return JsonResponse({'success': False, 'message': 'Unauthorized.'}, status=403)
 
     if request.method != 'POST':
@@ -428,7 +428,7 @@ def checkout_online_start(request):
 @login_required
 def checkout_online_success(request):
     user = request.user
-    if not (is_insurance_manager(user) or is_insurance_onboarding(user)):
+    if not (is_insurance_manager(user) or is_insurance_onboarding(user) or is_insurance_sales(user)):
         return JsonResponse({'success': False, 'message': 'Unauthorized.'}, status=403)
 
     if request.method != 'POST':
@@ -458,8 +458,19 @@ def checkout_online_success(request):
                 'razorpay_payment_id': payment_ref,
                 'razorpay_signature': signature
             })
+            
+            # Amount verification
+            expected_amount = sum(item.get('amount', 0) for item in cart)
+            expected_amount_paise = int(expected_amount * 100)
+            
+            razorpay_payment = client.payment.fetch(payment_ref)
+            if int(razorpay_payment['amount']) != expected_amount_paise:
+                return JsonResponse({'success': False, 'message': 'Payment amount mismatch.'}, status=400)
+                
         except razorpay.errors.SignatureVerificationError:
             return JsonResponse({'success': False, 'message': 'Invalid payment signature.'}, status=400)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Failed to verify payment: {str(e)}'}, status=400)
 
     if not payment_ref:
         payment_ref = 'TEST_PAY_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))

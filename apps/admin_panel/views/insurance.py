@@ -106,38 +106,44 @@ def insurance_store(request):
             messages.error(request, 'Email already exists.')
             return redirect('admin_insurance_create')
 
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        try:
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-        from django.contrib.auth.models import User as AuthUser
-        from apps.insurance.models import InsuranceProfile
+            from django.contrib.auth.models import User as AuthUser
+            from apps.insurance.models import InsuranceProfile
 
-        auth_user = AuthUser.objects.filter(username=email).first()
-        if not auth_user:
-            auth_user = AuthUser.objects.create_user(
-                username=email,
+            auth_user = AuthUser.objects.filter(username=email).first()
+            if not auth_user:
+                auth_user = AuthUser.objects.create_user(
+                    username=email,
+                    email=email,
+                    password=password
+                )
+            else:
+                auth_user.set_password(password)
+                auth_user.save()
+                
+            admin_user = User.objects.create(
+                id=auth_user.id,
+                fullname=fullname,
                 email=email,
-                password=password
+                password=hashed_password,
+                role='insurance',
+                status='active'
             )
-        else:
-            auth_user.set_password(password)
-            auth_user.save()
-            
-        admin_user = User.objects.create(
-            id=auth_user.id,
-            fullname=fullname,
-            email=email,
-            password=hashed_password,
-            role='insurance',
-            status='active'
-        )
 
-        InsuranceProfile.objects.get_or_create(
-            user=auth_user,
-            defaults={'insurance_sub_role': 'manager'}
-        )
+            InsuranceProfile.objects.get_or_create(
+                user=auth_user,
+                defaults={'insurance_sub_role': 'manager'}
+            )
 
-        messages.success(request, f"Insurance company user '{fullname}' created successfully.")
-        return redirect('admin_insurance_index')
+            messages.success(request, f"Insurance company user '{fullname}' created successfully.")
+            return redirect('admin_insurance_index')
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Error creating insurance user: {e}")
+            messages.error(request, 'An error occurred while creating the insurance user. Please try again.')
+            return redirect('admin_insurance_create')
 
     return redirect('admin_insurance_index')
 

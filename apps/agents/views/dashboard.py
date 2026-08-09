@@ -1492,6 +1492,12 @@ def agent_upgrade_plan(request):
         if plan_type not in ['basic', 'professional']:
             return JsonResponse({'success': False, 'message': 'Invalid plan selection.'}, status=400)
 
+        promo_code = data.get('promo_code', '').strip()
+        promo_obj = None
+        if promo_code:
+            from apps.admin_panel.models.promo_code import PromoCode
+            promo_obj = PromoCode.objects.filter(code=promo_code, is_active=True).first()
+
         # Re-compute prices
         admin_default = SiteSetting.get_value('trial_upgrade_discount', 20)
         agent_specific = agent.upgrade_discount_percent or 0
@@ -1513,12 +1519,20 @@ def agent_upgrade_plan(request):
         starter_full = float(pricing_config.get('starter', {}).get('full_price', 2359))
         prof_full = float(pricing_config.get('professional', {}).get('full_price', 8258))
 
+        starter_final = starter_full
+        if promo_obj and promo_obj.is_valid('basic'):
+            starter_final = starter_full - promo_obj.calculate_discount(starter_full)
+
         discount_factor = (100 - discount_pct) / 100
-        starter_final = round(starter_full * discount_factor)
+        starter_final = round(starter_final * discount_factor)
         starter_base = round(starter_final / 1.18, 0)
         starter_disc = starter_base + round(starter_base * 0.18, 0)
 
-        prof_final = round(prof_full * discount_factor)
+        prof_final = prof_full
+        if promo_obj and promo_obj.is_valid('professional'):
+            prof_final = prof_full - promo_obj.calculate_discount(prof_full)
+
+        prof_final = round(prof_final * discount_factor)
         if agent.referral_reward_type == 'pro_plan_1rs':
             prof_final = 1
             discount_pct = 99.99
@@ -1581,7 +1595,7 @@ def agent_upgrade_plan(request):
             razorpay_order_id=razorpay_order_id,
             defaults={
                 'selected_plan': plan_name or plan_type,
-                'promo_code': None,
+                'promo_code': promo_code if promo_obj else None,
                 'registration_amount': total_amount,
                 'payment_status': 'pending',
                 'status': 'inactive',

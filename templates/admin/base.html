@@ -688,6 +688,26 @@
             <i class="fa-solid fa-file-code"></i> Email &amp; PDF Templates
         </a>
 
+        <a href="{% url 'admin_system_health' %}"
+           class="menu-item {% if '/admin/system/health/' in request.path %}active{% endif %}">
+            <i class="fa-solid fa-server"></i> Server Health
+        </a>
+
+        <a href="{% url 'admin_system_logs' %}"
+           class="menu-item {% if '/admin/system/logs/' in request.path %}active{% endif %}">
+            <i class="fa-solid fa-bug"></i> Error Logs
+        </a>
+
+        <a href="{% url 'admin_system_api_logs' %}"
+           class="menu-item {% if '/admin/system/api-logs/' in request.path %}active{% endif %}">
+            <i class="fa-solid fa-network-wired"></i> API Logs
+        </a>
+
+        <a href="{% url 'admin_system_backups' %}"
+           class="menu-item {% if '/admin/system/backups/' in request.path %}active{% endif %}">
+            <i class="fa-solid fa-database"></i> Database Backups
+        </a>
+
         <div style="margin-top:40px; border-top:1px solid var(--border-light); padding-top:20px;">
             <a href="/admin/logout/" class="menu-item text-danger">
                 <i class="fa-solid fa-right-from-bracket"></i> Logout

@@ -88,8 +88,38 @@ def handle_payment_success(request, agent_id):
     company_id = request.user.insurance_profile.get_insurance_company_id()
     agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)
 
-    # Simplified mock payment logic matching the Laravel testing path
-    payment_ref = request.POST.get('razorpay_payment_id') or 'TEST_PAY_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+    is_test_payment = request.POST.get('test_payment') == '1'
+    payment_ref = request.POST.get('razorpay_payment_id')
+    order_id = request.POST.get('razorpay_order_id')
+    signature = request.POST.get('razorpay_signature')
+    
+    key = getattr(settings, 'RAZORPAY_KEY', '')
+    secret = getattr(settings, 'RAZORPAY_SECRET', '')
+
+    if not is_test_payment and key and secret and razorpay:
+        client = razorpay.Client(auth=(key, secret))
+        try:
+            client.utility.verify_payment_signature({
+                'razorpay_order_id': order_id,
+                'razorpay_payment_id': payment_ref,
+                'razorpay_signature': signature
+            })
+            
+            subscription = agent.subscriptions.filter(payment_status='pending').order_by('-created_at').first()
+            amount = subscription.registration_amount if subscription else (2359 if agent.plan_type == 'starter' else 8258)
+            expected_amount_paise = int(amount * 100)
+            
+            razorpay_payment = client.payment.fetch(payment_ref)
+            if int(razorpay_payment['amount']) != expected_amount_paise:
+                return JsonResponse({'success': False, 'message': 'Payment amount mismatch.'}, status=400)
+                
+        except razorpay.errors.SignatureVerificationError:
+            return JsonResponse({'success': False, 'message': 'Invalid payment signature.'}, status=400)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Failed to verify payment: {str(e)}'}, status=400)
+
+    if not payment_ref:
+        payment_ref = 'TEST_PAY_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
 
     try:
         with transaction.atomic():

@@ -1,0 +1,104 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Server Health — PadosiAgent Admin{% endblock %}
+{% block breadcrumb_title %}System / Server Health{% endblock %}
+
+{% block content %}
+<div class="content-body">
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="m-0"><i class="fa-solid fa-server me-2"></i> Server Information</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <tbody>
+                            <tr>
+                                <td style="width: 40%; font-weight: 600; color: var(--text-muted);">OS</td>
+                                <td>{{ serverInfo.os }}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--text-muted);">Software</td>
+                                <td>{{ serverInfo.server_software }}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--text-muted);">Python Version</td>
+                                <td>{{ serverInfo.php_version }}</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--text-muted);">Django Version</td>
+                                <td>{{ serverInfo.laravel_version }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="m-0"><i class="fa-solid fa-microchip me-2"></i> Resource Usage</h5>
+                </div>
+                <div class="card-body">
+                    <h6 style="font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">Storage Space</h6>
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div class="progress-bar {% if serverInfo.disk_usage_percent > 85 %}bg-danger{% elif serverInfo.disk_usage_percent > 70 %}bg-warning{% else %}bg-success{% endif %}" role="progressbar" style="width: {{ serverInfo.disk_usage_percent }}%;" aria-valuenow="{{ serverInfo.disk_usage_percent }}" aria-valuemin="0" aria-valuemax="100">{{ serverInfo.disk_usage_percent }}%</div>
+                    </div>
+                    <div class="d-flex justify-content-between mb-4" style="font-size: 12px; color: var(--text-muted);">
+                        <span>Used: {{ serverInfo.disk_used }}</span>
+                        <span>Total: {{ serverInfo.disk_total }}</span>
+                    </div>
+
+                    <h6 style="font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px;">Python Memory Usage (Current Request)</h6>
+                    <h4 style="color: var(--primary);">{{ serverInfo.memory_usage }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="m-0"><i class="fa-solid fa-broom me-2"></i> Cache Management</h5>
+        </div>
+        <div class="card-body">
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">Clear application cache if you are not seeing recent changes in configurations, routes, or views on the live site.</p>
+            
+            <div class="d-flex flex-wrap gap-3">
+                <form action="{% url 'admin_system_clear_cache' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="type" value="all">
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-rotate me-1"></i> Clear All Cache</button>
+                </form>
+                
+                <form action="{% url 'admin_system_clear_cache' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="type" value="config">
+                    <button type="submit" class="btn btn-outline-secondary">Clear Config</button>
+                </form>
+
+                <form action="{% url 'admin_system_clear_cache' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="type" value="route">
+                    <button type="submit" class="btn btn-outline-secondary">Clear Routes</button>
+                </form>
+
+                <form action="{% url 'admin_system_clear_cache' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="type" value="view">
+                    <button type="submit" class="btn btn-outline-secondary">Clear Views</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

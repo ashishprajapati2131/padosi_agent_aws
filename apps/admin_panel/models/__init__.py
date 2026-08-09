@@ -16,6 +16,7 @@ from .qr_file import QrFile
 from .insurance_approval import AgentApprovalRequest
 from .user_session import UserSession, UserSessionData
 from .error_log import ErrorLog
+from .api_log import ApiLog
 
 __all__ = [
     'Agent',
@@ -37,5 +38,6 @@ __all__ = [
     'UserSession',
     'UserSessionData',
     'ErrorLog',
+    'ApiLog',
 ]
 

@@ -8,6 +8,7 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.threat_monitor import ThreatMonitorMiddleware
 from app.middleware.rate_limiter import RateLimitMiddleware
 from app.middleware.admin_auth import AdminAuthMiddleware
+from app.middleware.api_logger import APILoggingMiddleware
 import os
 
 
@@ -48,6 +49,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(RateLimitMiddleware, requests_limit=100, window_seconds=60)
+app.add_middleware(APILoggingMiddleware)
 app.add_middleware(ThreatMonitorMiddleware)
 app.add_middleware(AdminAuthMiddleware)
 

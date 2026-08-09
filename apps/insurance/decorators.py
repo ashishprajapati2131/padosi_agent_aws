@@ -29,7 +29,8 @@ def insurance_manager_or_onboarding_required(view_func):
 def insurance_manager_or_accounts_required(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
-        if not (is_insurance_manager(request.user) or is_insurance_accounts(request.user)):
+        profile = getattr(request.user, 'insurance_profile', None)
+        if not profile or not (profile.is_insurance_manager() or profile.is_insurance_accounts() or profile.is_insurance_sales()):
             return HttpResponseForbidden("Unauthorized")
         return view_func(request, *args, **kwargs)
     return _wrapped_view
