@@ -53,14 +53,35 @@
                         <p class="text-muted mb-3" style="font-size: 12px;">Select which dashboard sections this staff user is authorized to view and update:</p>
                         
                         <div class="row">
-                            {% for slug, label in permissionsList.items %}
-                                <div class="col-md-6 mb-2">
-                                    <div class="form-check">
-                                        <input class="form-check-input permission-checkbox" type="checkbox" name="permissions[]" value="{{ slug }}" id="perm_{{ slug }}">
-                                        <label class="form-check-label" style="font-size: 13px; font-weight: 500;" for="perm_{{ slug }}">
-                                            {{ label }}
+                            {% for item in permissionsList %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check d-flex align-items-center">
+                                        <input class="form-check-input permission-checkbox mr-2" type="checkbox" {% if item.key != 'approvals' %}name="permissions[]"{% endif %} value="{{ item.key }}" id="perm_{{ item.key }}">
+                                        <label class="form-check-label flex-grow-1" style="font-size: 13px; font-weight: 500;" for="perm_{{ item.key }}">
+                                            {{ item.label }}
                                         </label>
+                                        
+                                        {% if item.children %}
+                                            <a data-toggle="collapse" href="#collapse_{{ item.key }}" role="button" aria-expanded="false" class="text-muted ml-2 p-1" onclick="event.preventDefault();">
+                                                <i class="fa-solid fa-chevron-down" style="font-size: 11px;"></i>
+                                            </a>
+                                        {% endif %}
                                     </div>
+                                    
+                                    {% if item.children %}
+                                    <div class="collapse mt-2" id="collapse_{{ item.key }}">
+                                        <div style="margin-left: 24px; border-left: 2px solid #e2e8f0; padding-left: 12px;">
+                                            {% for child in item.children %}
+                                            <div class="form-check mb-1">
+                                                <input class="form-check-input permission-checkbox" type="checkbox" name="permissions[]" value="{{ child.key }}" id="perm_{{ child.key }}">
+                                                <label class="form-check-label text-muted" style="font-size: 12px; font-weight: 500;" for="perm_{{ child.key }}">
+                                                    {{ child.label }}
+                                                </label>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             {% endfor %}
                         </div>
@@ -98,6 +119,27 @@
 
         roleSelect.addEventListener('change', handleRoleChange);
         handleRoleChange(); // Run on page load
+        
+        // Auto-check Pending Approvals parent if both children are checked, 
+        // and sync their states when clicked.
+        const permApprovals = document.getElementById('perm_approvals');
+        const permVerification = document.getElementById('perm_approvals_awaiting_verification');
+        const permLicenses = document.getElementById('perm_approvals_missing_licenses');
+        
+        if (permApprovals && permVerification && permLicenses) {
+            permApprovals.checked = permVerification.checked || permLicenses.checked;
+            
+            permApprovals.addEventListener('change', (e) => {
+                permVerification.checked = e.target.checked;
+                permLicenses.checked = e.target.checked;
+            });
+            
+            const syncParent = () => {
+                permApprovals.checked = permVerification.checked || permLicenses.checked;
+            };
+            permVerification.addEventListener('change', syncParent);
+            permLicenses.addEventListener('change', syncParent);
+        }
     });
 
     function toggleAllCheckboxes(checked) {

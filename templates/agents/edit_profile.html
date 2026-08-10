@@ -1240,29 +1240,151 @@ Overview
                                     title="Add key milestones in your career"
                                     style="font-size: 14px; cursor: help;"></i></h5>
 
-                            <!-- Quick Start -->
-                            <div class="card bg-light border-0 mb-4">
+
+                            <!-- ═══════════════════════════════════════════════════════════════
+                                 AUTO-DETECTED FROM YOUR DETAILS (Phase 3 — display only)
+                                 Populated via AJAX when Step 4 becomes visible.
+                                 Hidden until the API returns at least one suggestion.
+                            ═══════════════════════════════════════════════════════════════ -->
+                            <div class="card border-0 mb-4" id="auto-suggestions-card" style="display:none; background:#f0fdf9; border: 1px solid #a7f3d0 !important;">
                                 <div class="card-body">
-                                    <h6 class="text-success mb-2" style="color: #0d9488 !important;"><i
-                                            class="fas fa-magic mr-2"></i>Quick Start</h6>
-                                    <p class="text-muted small mb-3">We recommend starting with when you began your
-                                        insurance career:</p>
-                                    <div class="d-flex flex-wrap">
-                                        <button type="button"
-                                            class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
-                                            data-type="Career Event" data-text="Started Insurance Career">Started
-                                            Insurance Career</button>
-                                        <button type="button"
-                                            class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
-                                            data-type="Certification" data-text="Obtained IRDAI License">Obtained IRDAI
-                                            License</button>
-                                        <button type="button"
-                                            class="btn btn-outline-secondary btn-sm rounded-pill mb-2 quick-start-btn"
-                                            data-type="Achievement" data-text="Top Performer Award">Top Performer
-                                            Award</button>
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <div class="d-flex align-items-center">
+                                            <span style="background:#0d9488; border-radius:6px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; margin-right:10px; flex-shrink:0;">
+                                                <i class="fas fa-magic" style="color:#fff; font-size:13px;"></i>
+                                            </span>
+                                            <div>
+                                                <h6 class="mb-0 font-weight-bold" style="color:#065f46; font-size:14px;">Auto-detected from your details</h6>
+                                                <p class="mb-0 text-muted" style="font-size:12px;">Based on your saved profile information — select a date and click + Add</p>
+                                            </div>
+                                        </div>
+                                        <span class="badge badge-pill" id="auto-suggestions-counter"
+                                              style="background:#0d9488; color:#fff; font-size:11px; padding:4px 10px; border-radius:20px; white-space:nowrap;">
+                                            — pending
+                                        </span>
                                     </div>
+
+                                    <!-- Suggestion rows injected here by JS -->
+                                    <div id="auto-suggestions-list"></div>
                                 </div>
                             </div>
+
+                            <!-- Quick Add Suggestions (4-tab redesign) -->
+                            <div class="card border-0 mb-4" id="quick-add-suggestions-card"
+                                 style="background:#fff; border: 1px solid #e5e7eb !important; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                <div class="card-body pb-2">
+
+                                    <h6 class="mb-3 font-weight-bold" style="color:#1f2937; font-size:14px; letter-spacing:.01em;">
+                                        <i class="fas fa-bolt mr-2" style="color:#0d9488;"></i>Quick Add Suggestions
+                                    </h6>
+
+                                    <!-- ── Tab buttons ──────────────────────────────────────── -->
+                                    <div class="d-flex flex-wrap mb-3" id="quick-add-tabs" style="gap:6px;">
+                                        <button type="button" class="quick-add-tab btn btn-sm"
+                                                data-tab="career" data-type-val="Career Event"
+                                                style="border-radius:20px; font-size:12px; font-weight:600; padding:5px 14px;
+                                                       background:#0d9488; border-color:#0d9488; color:#fff;">
+                                            <i class="fas fa-briefcase mr-1"></i>Career
+                                        </button>
+                                        <button type="button" class="quick-add-tab btn btn-sm"
+                                                data-tab="achievement" data-type-val="Achievement"
+                                                style="border-radius:20px; font-size:12px; font-weight:600; padding:5px 14px;
+                                                       background:transparent; border:1px solid #d1d5db; color:#6b7280;">
+                                            <i class="fas fa-trophy mr-1"></i>Achievement
+                                        </button>
+                                        <button type="button" class="quick-add-tab btn btn-sm"
+                                                data-tab="certification" data-type-val="Certification"
+                                                style="border-radius:20px; font-size:12px; font-weight:600; padding:5px 14px;
+                                                       background:transparent; border:1px solid #d1d5db; color:#6b7280;">
+                                            <i class="fas fa-certificate mr-1"></i>Certification
+                                        </button>
+                                        <button type="button" class="quick-add-tab btn btn-sm"
+                                                data-tab="milestone" data-type-val="Milestone"
+                                                style="border-radius:20px; font-size:12px; font-weight:600; padding:5px 14px;
+                                                       background:transparent; border:1px solid #d1d5db; color:#6b7280;">
+                                            <i class="fas fa-flag mr-1"></i>Milestone
+                                        </button>
+                                    </div>
+
+                                    <!-- ── Preset pill panels ───────────────────────────────── -->
+
+                                    <!-- Career panel (default visible) -->
+                                    <div class="quick-add-presets" id="quick-presets-career">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Career Event" data-text="Started Insurance Career">Started Insurance Career</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Career Event" data-text="Joined as Corporate Agent">Joined as Corporate Agent</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Career Event" data-text="Started Own Agency">Started Own Agency</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Career Event" data-text="Promoted to Senior Agent">Promoted to Senior Agent</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Career Event" data-text="Joined Broker Channel">Joined Broker Channel</button>
+                                    </div>
+
+                                    <!-- Achievement panel (hidden by default) -->
+                                    <div class="quick-add-presets d-none" id="quick-presets-achievement">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Achievement" data-text="500+ Client Base">500+ Client Base</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Achievement" data-text="1000+ Client Base">1000+ Client Base</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Achievement" data-text="100+ Claims Settled">100+ Claims Settled</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Achievement" data-text="500+ Claims Settled">500+ Claims Settled</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Achievement" data-text="MDRT Qualifier">MDRT Qualifier</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Achievement" data-text="MDRT 2024">MDRT 2024</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Achievement" data-text="COT (Court of the Table)">COT (Court of the Table)</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Achievement" data-text="TOT (Top of the Table)">TOT (Top of the Table)</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Achievement" data-text="Top Performer Award">Top Performer Award</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Achievement" data-text="Star Club Member">Star Club Member</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Achievement" data-text="Chairman Club Member">Chairman Club Member</button>
+                                    </div>
+
+                                    <!-- Certification panel (hidden by default) -->
+                                    <div class="quick-add-presets d-none" id="quick-presets-certification">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Certification" data-text="Obtained Insurance License">Obtained Insurance License</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Certification" data-text="III Licentiate (LIII)">III Licentiate (LIII)</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Certification" data-text="III Associateship (AIII)">III Associateship (AIII)</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Certification" data-text="III Fellowship (FIII)">III Fellowship (FIII)</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Certification" data-text="CFP Certification">CFP Certification</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Certification" data-text="POS License Obtained">POS License Obtained</button>
+                                    </div>
+
+                                    <!-- Milestone panel (hidden by default) -->
+                                    <div class="quick-add-presets d-none" id="quick-presets-milestone">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Milestone" data-text="First 100 Clients">First 100 Clients</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Milestone" data-text="First 100 Claims Settled">First 100 Claims Settled</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Milestone" data-text="₹1 Crore Claims Settled">₹1 Crore Claims Settled</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Milestone" data-text="₹5 Crore Claims Settled">₹5 Crore Claims Settled</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Milestone" data-text="₹10 Crore Premium Collection">₹10 Crore Premium Collection</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Milestone" data-text="10 Years in Insurance">10 Years in Insurance</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill mr-2 mb-2 quick-start-btn"
+                                                data-type="Milestone" data-text="25 Years in Insurance">25 Years in Insurance</button>
+                                    </div>
+
+                                </div>
+                            </div>
+
 
                             <!-- Add Entry Form -->
                             <div class="card border-0 shadow-sm mb-4">
@@ -2082,6 +2204,9 @@ Overview
                     width: '100%'
                 });
             }
+
+            // ── Phase 3: Load auto-detected suggestions ──────────────────────
+            loadAutoSuggestions();
         }
     }
 
@@ -3462,6 +3587,10 @@ Overview
     let timelineIndex = {{ agent.careerTimelines.all.count|default:0 }};
 
     jQuery(document).ready(function ($) {
+        if (typeof window.sortTimeline === 'function') {
+            window.sortTimeline();
+        }
+
         $('.quick-start-btn').on('click', function () {
             const type = $(this).data('type');
             const text = $(this).data('text');
@@ -3469,6 +3598,42 @@ Overview
             $('#timeline-type').val(type).trigger('change');
             $('#timeline-text').val(text);
             $('#timeline-text').focus().select();
+        });
+
+        // ── Quick Add Suggestions — tab switching ─────────────────────────────
+        // Switches the visible preset panel and updates active tab style.
+        // Also pre-selects the Type dropdown to match the active tab, so the user
+        // only needs to pick Month/Year before clicking Add.
+        $(document).on('click', '.quick-add-tab', function () {
+            const $clicked = $(this);
+            const targetTab = $clicked.data('tab');
+            const typeVal   = $clicked.data('type-val');
+
+            // Update tab button styles
+            $('.quick-add-tab').each(function () {
+                if ($(this).data('tab') === targetTab) {
+                    $(this).css({
+                        'background': '#0d9488',
+                        'border-color': '#0d9488',
+                        'color': '#fff'
+                    });
+                } else {
+                    $(this).css({
+                        'background': 'transparent',
+                        'border': '1px solid #d1d5db',
+                        'color': '#6b7280'
+                    });
+                }
+            });
+
+            // Show target preset panel, hide others
+            $('.quick-add-presets').addClass('d-none');
+            $('#quick-presets-' + targetTab).removeClass('d-none');
+
+            // Pre-select matching Type in the Add Entry form
+            if (typeVal) {
+                $('#timeline-type').val(typeVal).trigger('change');
+            }
         });
 
         function updateTimelineMonthState() {
@@ -3575,8 +3740,30 @@ Overview
             }
 
             $('#timeline-list .empty-state').hide();
+            appendTimelineRow(month, year, type, text, '');
+            $('#timeline-text').val('');
+            updateTimelineButtonState();
+        });
 
+        /**
+         * appendTimelineRow()
+         * ─────────────────────────────────────────────────────────────────────
+         * Shared function used by BOTH:
+         *   • The existing manual Add Entry form (#add-timeline-btn)
+         *   • The auto-detected suggestions "+ Add" buttons (Phase 4)
+         *
+         * @param {string} month         - e.g. "August"
+         * @param {string} year          - e.g. "2026"
+         * @param {string} type          - e.g. "Certification"
+         * @param {string} text          - event description / title
+         * @param {string} suggestionKey - the suggestion `key` (empty '' for manual entries)
+         */
+        window.appendTimelineRow = function appendTimelineRow(month, year, type, text, suggestionKey) {
             const index = timelineIndex++;
+
+            // suggestionKey hidden input — always present; empty string for manual rows
+            // (backend reads it in Phase 5 — harmless until then)
+            const keyInput = `<input type="hidden" name="career_timelines[${index}][suggestion_key]" value="${suggestionKey}">`;
 
             const newItem = `
             <div class="timeline-item-row mb-3 p-3 bg-white border rounded shadow-sm position-relative" id="timeline-row-${index}" style="display:none;">
@@ -3597,15 +3784,44 @@ Overview
                 <input type="hidden" name="career_timelines[${index}][year]" value="${year}">
                 <input type="hidden" name="career_timelines[${index}][type]" value="${type}">
                 <input type="hidden" name="career_timelines[${index}][event_text]" value="${text}">
-            </div>
-        `;
+                ${keyInput}
+            </div>`;
 
             const $newItem = $(newItem);
-            $('#timeline-list').prepend($newItem);
+            $('#timeline-list').append($newItem);
+            window.sortTimeline();
             $newItem.slideDown();
-            $('#timeline-text').val('');
-            updateTimelineButtonState();
-        });
+        };
+
+        window.sortTimeline = function () {
+            const months = {
+                'January': 1, 'February': 2, 'March': 3, 'April': 4,
+                'May': 5, 'June': 6, 'July': 7, 'August': 8,
+                'September': 9, 'October': 10, 'November': 11, 'December': 12
+            };
+
+            const $list = $('#timeline-list');
+            const $rows = $list.children('.timeline-item-row').detach();
+
+            $rows.sort(function (a, b) {
+                const yearA = parseInt($(a).find('input[name$="[year]"]').val()) || 0;
+                const yearB = parseInt($(b).find('input[name$="[year]"]').val()) || 0;
+                
+                if (yearA !== yearB) {
+                    return yearA - yearB;
+                }
+
+                const monthStrA = $(a).find('input[name$="[month]"]').val();
+                const monthStrB = $(b).find('input[name$="[month]"]').val();
+                
+                const monthA = months[monthStrA] || 0;
+                const monthB = months[monthStrB] || 0;
+
+                return monthA - monthB;
+            });
+
+            $list.append($rows);
+        };
 
         // Number to Words (Indian System)
         window.numToWordsIndian = function (number) {
@@ -3709,6 +3925,186 @@ Overview
         const btn = $('#add-timeline-btn');
         btn.prop('disabled', false);
         btn.html('<i class="fas fa-plus mr-1"></i> Add');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       Auto-detected Career Timeline Suggestions (Phase 3 — display only)
+       Called by showStep() each time Step 4 becomes visible.
+    ═══════════════════════════════════════════════════════════════════════ */
+    const TIMELINE_MONTHS = [
+        'January','February','March','April','May','June',
+        'July','August','September','October','November','December'
+    ];
+    const TIMELINE_YEARS = (function() {
+        const ys = [];
+        const cur = new Date().getFullYear();
+        for (let y = cur; y >= 1980; y--) ys.push(y);
+        return ys;
+    })();
+
+    function buildMonthOptions(selected) {
+        return TIMELINE_MONTHS.map(m =>
+            `<option value="${m}"${m === selected ? ' selected' : ''}>${m}</option>`
+        ).join('');
+    }
+    function buildYearOptions(selected) {
+        return TIMELINE_YEARS.map(y =>
+            `<option value="${y}"${String(y) === String(selected) ? ' selected' : ''}>${y}</option>`
+        ).join('');
+    }
+
+    function updateAutoSuggestionCounter() {
+        const total = $('#auto-suggestions-list .auto-suggestion-row').length;
+        $('#auto-suggestions-counter').text(total + ' pending');
+    }
+
+    function renderAutoSuggestions(suggestions) {
+        const $card = $('#auto-suggestions-card');
+        const $list = $('#auto-suggestions-list');
+        $list.empty();
+
+        if (!suggestions || suggestions.length === 0) {
+            $card.hide();
+            return;
+        }
+
+        suggestions.forEach(function(s) {
+            const hasMonth = s.month && s.month.trim() !== '';
+            const hasYear  = s.year  && s.year.trim()  !== '';
+            const canAdd   = hasMonth && hasYear;
+
+            // Active Add button style matches existing btn-success in the form
+            const btnStyle = canAdd
+                ? 'background-color:#0d9488; border-color:#0d9488; color:#fff;'
+                : 'background-color:#e5e7eb; border-color:#d1d5db; color:#9ca3af; cursor:not-allowed;';
+
+            const row = `
+            <div class="auto-suggestion-row d-flex align-items-center flex-wrap mb-3 pb-3"
+                 style="border-bottom: 1px solid #d1fae5; gap:8px;"
+                 data-key="${s.key}"
+                 data-event-type="${s.event_type}"
+                 data-event-text="${s.title}">
+
+                <!-- Title + subtitle -->
+                <div style="flex:1 1 160px; min-width:140px;">
+                    <div class="font-weight-bold text-dark" style="font-size:13px; line-height:1.3;">${s.title}</div>
+                    <div class="text-muted" style="font-size:11px; line-height:1.3;">${s.subtitle}</div>
+                </div>
+
+                <!-- Month select -->
+                <div style="flex:0 0 120px;">
+                    <select class="form-control form-control-sm auto-sug-month" style="font-size:12px;">
+                        <option value="">Month</option>
+                        ${buildMonthOptions(s.month)}
+                    </select>
+                </div>
+
+                <!-- Year select -->
+                <div style="flex:0 0 90px;">
+                    <select class="form-control form-control-sm auto-sug-year" style="font-size:12px;">
+                        <option value="">Year</option>
+                        ${buildYearOptions(s.year)}
+                    </select>
+                </div>
+
+                <!-- Add button (Phase 4: wired) -->
+                <div style="flex:0 0 auto;">
+                    <button type="button"
+                            class="btn btn-sm auto-sug-add-btn"
+                            style="${btnStyle} font-size:12px; font-weight:600; padding:4px 12px; border-radius:6px; transition: opacity .2s;"
+                            ${canAdd ? '' : 'disabled'}>
+                        <i class="fas fa-plus mr-1"></i>Add
+                    </button>
+                </div>
+            </div>`;
+
+            $list.append(row);
+
+            // ── Initialize Select2 on the newly-injected selects ─────────────
+            // The page's CSS strips native <select> appearance (appearance:none etc.)
+            // for .form-control elements and relies on Select2 for rendering.
+            // Since these selects are injected dynamically they miss the showStep(4)
+            // initialization, so we do it here immediately after appending.
+            if ($.fn.select2) {
+                $list.find('.auto-suggestion-row[data-key="' + s.key + '"] .auto-sug-month,' +
+                           '.auto-suggestion-row[data-key="' + s.key + '"] .auto-sug-year').select2({
+                    minimumResultsForSearch: Infinity,
+                    width: '100%'
+                });
+            }
+
+            // Grab the live DOM row (avoids key-escaping issues in inline onclick)
+            const $row = $list.find(`.auto-suggestion-row[data-key="${s.key}"]`);
+
+            // ── Re-evaluate Add button state when month/year selects change ──
+            $row.find('.auto-sug-month, .auto-sug-year').on('change', function() {
+                const m = $row.find('.auto-sug-month').val();
+                const y = $row.find('.auto-sug-year').val();
+                const ok = m && y;
+                const $btn = $row.find('.auto-sug-add-btn');
+                $btn.prop('disabled', !ok);
+                if (ok) {
+                    $btn.css({ 'background-color': '#0d9488', 'border-color': '#0d9488', 'color': '#fff', 'cursor': 'pointer' });
+                } else {
+                    $btn.css({ 'background-color': '#e5e7eb', 'border-color': '#d1d5db', 'color': '#9ca3af', 'cursor': 'not-allowed' });
+                }
+            });
+
+            // ── Phase 4: Wire the Add button ─────────────────────────────────
+            $row.find('.auto-sug-add-btn').on('click', function() {
+                const $btn = $(this);
+                if ($btn.prop('disabled')) return;
+
+                const chosenMonth = $row.find('.auto-sug-month').val();
+                const chosenYear  = $row.find('.auto-sug-year').val();
+                if (!chosenMonth || !chosenYear) return;
+
+                // Push into the real career_timelines form array
+                $('#timeline-list .empty-state').hide();
+                appendTimelineRow(
+                    chosenMonth,
+                    chosenYear,
+                    $row.data('event-type'),   // e.g. "Certification"
+                    $row.data('event-text'),   // e.g. "Licensed Insurance Agent (IRDAI)"
+                    $row.data('key')           // e.g. "licensed_agent"
+                );
+                updateTimelineButtonState();
+
+                // Remove this suggestion from the pending list
+                $row.slideUp(250, function() {
+                    $row.remove();
+                    updateAutoSuggestionCounter();
+                    // Hide entire card if no suggestions remain
+                    if ($('#auto-suggestions-list .auto-suggestion-row').length === 0) {
+                        $('#auto-suggestions-card').fadeOut(200);
+                    }
+                });
+            });
+        });
+
+        updateAutoSuggestionCounter();
+        $card.show();
+    }
+
+    function loadAutoSuggestions() {
+        // Reset to loading state each time step 4 is shown
+        $('#auto-suggestions-card').hide();
+        $('#auto-suggestions-list').empty();
+
+        $.ajax({
+            url: "{% url 'agents:agent_career_timeline_suggestions' %}",
+            type: 'GET',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            success: function(response) {
+                if (response.status === 'success') {
+                    renderAutoSuggestions(response.suggestions);
+                }
+            },
+            error: function(xhr) {
+                // Silent fail — feature is additive; don't block the existing UI
+                console.warn('[AutoSuggestions] Failed to load:', xhr.status, xhr.responseText);
+            }
+        });
     }
 
     /* ═══════════════════════════════════════════════════════════════════════

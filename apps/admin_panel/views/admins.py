@@ -7,35 +7,45 @@ from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.models.admin_auth import Admin
 
 def get_permissions_list():
-    return {
-        'dashboard': 'Dashboard View',
-        'agents': 'Active Agents',
-        'approvals': 'Pending Approvals',
-        'pending_registrations': 'Registration Pending',
-        'distributors': 'Distributors',
-        'insurance': 'Insurance Companies',
-        'insurance_approvals': 'Insurance Onboarding Approvals',
-        'users': 'Clients / Users Registry',
-        'events': 'Event Management',
-        'subscriptions': 'Renewal Tracker',
-        'leads': 'Agent Leads',
-        'contacts': 'Contact Inbox',
-        'reviews': 'Review Moderation',
-        'notifications': 'Custom Notifications & Broadcasts',
-        'content': 'Content & Pages CMS',
-        'revenue': 'Revenue Dashboard',
-        'invoices': 'Invoices Management',
-        'promo_codes': 'Promo Codes',
-        'free_trial': 'Free Trial Manager',
-        'referrals': 'Referral System Config & Rewards',
-        'finance_accounts': 'Finance & Accounts',
-        'export': 'Export Center',
-        'qr_generator': 'QR Code Generator & File Manager',
-        'geocoding': 'Geocoding Manager',
-        'pincode': 'Pincode Database Manager',
-        'analytics': 'Analytics, Activity Logs & Threat Intelligence',
-        'site_settings': 'Site Settings, SEO & Security Rules',
-    }
+    return [
+        {'key': 'dashboard', 'label': 'Dashboard View'},
+        {'key': 'agents', 'label': 'Active Agents'},
+        {
+            'key': 'approvals',
+            'label': 'Pending Approvals',
+            'children': [
+                {'key': 'approvals_awaiting_verification', 'label': 'Awaiting Verification Only'},
+                {'key': 'approvals_missing_licenses', 'label': 'Missing IRDAI Licenses Only'}
+            ]
+        },
+        {'key': 'blacklisted_agents', 'label': 'Blacklisted Agents'},
+        {'key': 'pending_registrations', 'label': 'Registration Pending'},
+        {'key': 'distributors', 'label': 'Distributors'},
+        {'key': 'insurance', 'label': 'Insurance Companies'},
+        {'key': 'insurance_approvals', 'label': 'Insurance Onboarding Approvals'},
+        {'key': 'users', 'label': 'Clients / Users Registry'},
+        {'key': 'events', 'label': 'Event Management'},
+        {'key': 'subscriptions', 'label': 'Renewal Tracker'},
+        {'key': 'leads', 'label': 'Agent Leads'},
+        {'key': 'contacts', 'label': 'Contact Inbox'},
+        {'key': 'reviews', 'label': 'Review Moderation'},
+        {'key': 'notifications', 'label': 'Push Notifications'},
+        {'key': 'content', 'label': 'Content Control'},
+        {'key': 'revenue', 'label': 'Revenue Tracking'},
+        {'key': 'invoices', 'label': 'Invoices'},
+        {'key': 'promo_codes', 'label': 'Promo Codes'},
+        {'key': 'free_trial', 'label': 'Free Trial Manager'},
+        {'key': 'referrals', 'label': 'Referral System'},
+        {'key': 'finance_accounts', 'label': 'Finance Accounts'},
+        {'key': 'export', 'label': 'Export Manager'},
+        {'key': 'qr_generator', 'label': 'QR Generator'},
+        {'key': 'geocoding', 'label': 'Geocoding Manager'},
+        {'key': 'pincode', 'label': 'Pincode Database Manager'},
+        {'key': 'analytics', 'label': 'Analytics, Activity Logs & Threat Intelligence'},
+        {'key': 'error_logs', 'label': 'Error Logs'},
+        {'key': 'site_settings', 'label': 'Site Settings, SEO & Security Rules'},
+        {'key': 'email_templates', 'label': 'Email & PDF Templates'}
+    ]
 
 def admins_index(request):
     admin_id = _get_admin_from_session(request)

@@ -1940,5 +1940,134 @@ def test_real_webhook(request):
         return HttpResponse(f"Webhook simulation failed. Status code: {response.status_code}, Body: {response.content.decode('utf-8')}")
 
 
+def fb_ad_signup(request):
+    """
+    Dedicated landing page and signup flow for Facebook Ads.
+    Mirrors client_quick_register but fixes the password=email security issue,
+    adds a transaction guard for concurrent email signups, and blocks agent accounts.
+    """
+    if request.method == 'GET':
+        return render(request, 'public/fb_ad_signup.html')
+        
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, AttributeError):
+        data = request.POST
 
+    fullname = (data.get('fullname') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    mobile = (data.get('mobile') or '').strip()
+    pincode = (data.get('pincode') or '').strip()
+
+    # --- Validation ---
+    errors = {}
+    if not fullname:
+        errors['fullname'] = ['Full name is required.']
+    elif len(fullname) < 2 or len(fullname) > 100:
+        errors['fullname'] = ['Name must be between 2 and 100 characters.']
+    elif not re.match(r'^[\w\s.\-\']+$', fullname):
+        errors['fullname'] = ['Name may only contain letters, spaces, dots, hyphens or apostrophes.']
+
+    if not email:
+        errors['email'] = ['Email is required.']
+    elif '@' not in email:
+        errors['email'] = ['Please enter a valid email address.']
+
+    if not mobile:
+        errors['mobile'] = ['Mobile number is required.']
+    elif len(mobile) != 10 or not mobile.isdigit():
+        errors['mobile'] = ['Mobile number must be exactly 10 digits.']
+    elif not re.match(r'^[6-9][0-9]{9}$', mobile):
+        errors['mobile'] = ['Please enter a valid Indian mobile number.']
+
+    if not pincode:
+        errors['pincode'] = ['Pincode is required.']
+    elif len(pincode) != 6 or not pincode.isdigit():
+        errors['pincode'] = ['Pincode must be exactly 6 digits.']
+
+    if errors:
+        return JsonResponse({
+            'success': False,
+            'message': 'Please fix the validation errors below.',
+            'errors': errors
+        }, status=422)
+
+    from django.contrib.auth.models import User
+    from apps.agents.models import Client, Agent
+    from django.contrib.auth import login
+    from django.db import transaction
+    
+    try:
+        with transaction.atomic():
+            # Guard against duplicates via select_for_update if existing, else create carefully
+            existing_user = User.objects.select_for_update().filter(email=email).first()
+            
+            if existing_user:
+                # Security Check: Prevent Agents from using this consumer flow
+                if Agent.objects.filter(user=existing_user).exists():
+                    return JsonResponse({
+                        'success': False,
+                        'status': 'error',
+                        'message': 'This email is already registered as an agent — please use the agent login page.'
+                    }, status=403)
+
+                is_client = Client.objects.filter(user=existing_user).exists()
+                if not is_client:
+                    Client.objects.create(
+                        user=existing_user,
+                        mobile=mobile,
+                        pincode=pincode
+                    )
+                user_to_login = existing_user
+                message = 'Welcome back! Redirecting...'
+            else:
+                username = email.split('@')[0]
+                counter = 1
+                base_username = username
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+
+                user_to_login = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    first_name=fullname.split(' ')[0],
+                    last_name=' '.join(fullname.split(' ')[1:])
+                )
+                
+                # MODIFICATION 1: Avoid setting password to email for security
+                user_to_login.set_unusable_password()
+                user_to_login.save()
+
+                Client.objects.create(
+                    user=user_to_login,
+                    mobile=mobile,
+                    pincode=pincode
+                )
+                message = 'Registration successful! Redirecting...'
+
+    except Exception as e:
+        logger.error(f"FB Ad quick registration failed: {e}")
+        return JsonResponse({
+            'success': False,
+            'status': 'error',
+            'message': 'Unable to complete registration right now. Please try again.'
+        }, status=500)
+
+    # Set session for agent_capture_lead compatibility
+    request.session['quick_lead_user'] = {
+        'fullname': fullname,
+        'email': email,
+        'mobile': mobile,
+        'pincode': pincode,
+    }
+    
+    login(request, user_to_login)
+    
+    return JsonResponse({
+        'success': True,
+        'status': 'success',
+        'message': message,
+        'redirect': f'/find-agents/?pincode={pincode}'
+    })
 

@@ -995,6 +995,10 @@ class AgentCareerTimeline(models.Model):
     event_text = models.TextField()
     month = models.CharField(max_length=50, blank=True, default='')
     year = models.CharField(max_length=4)
+    # Stable key linking this row to an auto-detected suggestion.
+    # Set when an entry is created via the "Auto-detected" suggestions panel.
+    # NULL for all manually-created entries (existing rows unaffected).
+    suggestion_key = models.CharField(max_length=50, null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

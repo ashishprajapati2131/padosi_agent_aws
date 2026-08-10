@@ -213,7 +213,7 @@ class AdminIpWhitelistMiddleware:
 
     def __call__(self, request):
         path = request.path.rstrip('/')
-        if path.startswith('/admin') or path.startswith('/django-admin'):
+        if path.startswith('/admin') or path.startswith('/padosi-admin') or path.startswith('/django-admin'):
             x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
             ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR')
             
@@ -236,7 +236,7 @@ class AdminPermissionMiddleware:
 
     def __call__(self, request):
         path = request.path.rstrip('/')
-        if not path.startswith('/admin'):
+        if not (path.startswith('/admin') or path.startswith('/padosi-admin')):
             return self.get_response(request)
 
         # Allow auth endpoints without session or permissions
@@ -320,83 +320,245 @@ class AdminPermissionMiddleware:
                 return JsonResponse({'success': False, 'message': 'Unauthorized. Only Super Admins can manage administrator accounts.'}, status=403)
             return get_redirect_response('Unauthorized. Only Super Admins can manage administrator accounts.')
 
-        # 3. SECTION/MODULE PERMISSION CHECK:
+        # 3. SECTION/MODULE PERMISSION CHECK (exact lookup, deny-by-default):
+        # get_required_permission() does a direct dict lookup — no prefix matching.
+        # If url_name is a non-empty string not in the map, staff admins are denied.
+        # If url_name is empty (resolver_match is None → genuine 404), pass through.
         required_permission = self.get_required_permission(url_name)
-        if required_permission:
-            # Check permissions
-            permissions_list = admin.permissions if isinstance(admin.permissions, list) else []
-            if required_permission not in permissions_list:
+        if required_permission is None:
+            if url_name:
+                # Known URL pattern but not in our permission map → deny by default.
                 if request.headers.get('accept') == 'application/json' or request.path.startswith('/api/'):
-                    return JsonResponse({'success': False, 'message': 'Unauthorized. You do not have permission to access this module.'}, status=403)
-                perm_name = required_permission.replace('_', ' ').title()
-                return get_redirect_response(f'Unauthorized. You do not have permission to access the {perm_name} module.')
+                    return JsonResponse({'success': False, 'message': 'Unauthorized. Access to this section is not permitted for your staff account.'}, status=403)
+                return get_redirect_response('Access to this section is not permitted for your staff account.')
+            # url_name is empty → unresolved URL; let Django render the 404.
+            return self.get_response(request)
+
+        permissions_list = admin.permissions if isinstance(admin.permissions, list) else []
+        
+        has_permission = required_permission in permissions_list
+        if required_permission == 'approvals':
+            has_permission = 'approvals_awaiting_verification' in permissions_list or 'approvals_missing_licenses' in permissions_list
+
+        if not has_permission:
+            if request.headers.get('accept') == 'application/json' or request.path.startswith('/api/'):
+                return JsonResponse({'success': False, 'message': 'Unauthorized. You do not have permission to access this module.'}, status=403)
+            perm_name = required_permission.replace('_', ' ').title()
+            return get_redirect_response(f'Unauthorized. You do not have permission to access the {perm_name} module.')
 
         request.admin_user = admin
         return self.get_response(request)
 
     def get_required_permission(self, url_name):
+        """
+        Returns the canonical permission key required to access the given URL name,
+        or None if url_name is empty or not in the map.
+
+        Uses EXACT url_name matching — no startswith prefix matching — to eliminate
+        prefix-overlap bugs (e.g. 'admin_agents' vs 'admin_agents_approvals').
+
+        When None is returned for a non-empty url_name the __call__ deny-by-default
+        block redirects staff admins instead of silently allowing access.
+
+        Intentionally excluded from this map (handled by other rules or not admin-gated):
+          - Auth routes (admin_login, admin_login_page, admin_login_post, admin_logout)
+          - Admin-management routes (admin_admins_*) — caught by rule #2
+          - Public routes (referral_join, agent_referral_dashboard, qr_download)
+        """
         if not url_name:
             return None
-            
-        mappings = {
-            'admin_dashboard': 'dashboard',
-            'admin_blacklisted': 'agents',
-            'ajax_blacklist': 'agents',
-            'admin_agents': 'agents',
-            'admin_approvals': 'approvals',
-            'admin_pending_registrations': 'pending_registrations',
-            'admin_distributors': 'distributors',
-            'admin_distributor_': 'distributors',
-            'admin_insurance': 'insurance',
-            'admin_insurance_approvals': 'insurance_approvals',
-            'admin_users': 'users',
-            'admin_events': 'events',
-            'admin_subscriptions': 'subscriptions',
-            'admin_delete_subscription': 'subscriptions',
-            'admin_leads': 'leads',
-            'admin_contacts': 'contacts',
-            'admin_reviews': 'reviews',
-            'admin_notifications': 'notifications',
-            'agent_notify': 'notifications',
-            'admin_broadcast': 'notifications',
-            'broadcast_': 'notifications',
-            'admin_free_trial': 'free_trial',
-            'admin_ft_': 'free_trial',
-            'admin_revenue': 'revenue',
-            'admin_invoices': 'invoices',
-            'admin_invoice_': 'invoices',
-            'admin_promo_codes': 'promo_codes',
-            'admin_promo_code_': 'promo_codes',
-            'admin_referrals': 'referrals',
-            'admin_finance': 'finance_accounts',
-            'admin_export': 'export',
-            'export_': 'export',
-            'admin_qr_files': 'qr_generator',
-            'qr_download': 'qr_generator',
-            'admin_geocoding': 'geocoding',
-            'admin_pincode': 'pincode',
-            'advanced_analytics': 'analytics',
-            'advanced_activity_logs': 'analytics',
-            'admin_error_logs': 'analytics',
-            'security_threat_logs': 'analytics',
-            'security_blocked_ips': 'site_settings',
-            'security_block_ip': 'site_settings',
-            'security_unblock_ip': 'site_settings',
-            'admin_settings': 'site_settings',
-            'admin_content': 'dashboard',
-            'admin_pages': 'dashboard',
-        }
-        
-        for prefix, permission in mappings.items():
-            if url_name.startswith(prefix):
-                return permission
-        return None
+        return {
+            # ── Dashboard ─────────────────────────────────────────────────
+            'admin_dashboard':                          'dashboard',
+            # ── Agents ────────────────────────────────────────────────────
+            'admin_agents':                             'agents',
+            'admin_agents_manage':                      'agents',
+            'admin_agents_manage_alt':                  'agents',
+            'admin_agents_toggle_status':               'agents',
+            'admin_agents_update_badge':                'agents',
+            'admin_agents_update_irdai_license':        'agents',
+            'admin_agents_save_notes':                  'agents',
+            'admin_agents_bulk_action':                 'agents',
+            'admin_agents_delete':                      'agents',
+            'admin_agents_irdai_verify':                'agents',
+            'admin_agents_amfi_verify':                 'agents',
+            'admin_agents_update_visibility':           'agents',
+            'admin_agents_update_achievement_limit':    'agents',
+            'admin_agents_update_plan':                 'agents',
+            'admin_agents_toggle_review_approval':      'agents',
+            'admin_agents_update_profile':              'agents',
+            'admin_agents_get_agent_json':              'agents',
+            'admin_agents_get_edit_logs':               'agents',
+            # ── Approvals / Pending / Blacklist ───────────────────────────
+            'admin_agents_approvals':                   'approvals',
+            'admin_agents_pending_registrations':       'pending_registrations',
+            'admin_blacklisted_agents':                 'blacklisted_agents',
+            'ajax_blacklist_approve':                   'approvals',
+            'ajax_blacklist_confirm':                   'approvals',
+            'ajax_blacklist_remove':                    'approvals',
+            # ── Distributors ──────────────────────────────────────────────
+            'admin_distributors':                       'distributors',
+            'admin_distributors_create':                'distributors',
+            'admin_distributors_store':                 'distributors',
+            'admin_distributor_toggle_status':          'distributors',
+            'admin_distributor_detail':                 'distributors',
+            # ── Insurance Companies ───────────────────────────────────────
+            'admin_insurance_index':                    'insurance',
+            'admin_insurance_create':                   'insurance',
+            'admin_insurance_store':                    'insurance',
+            'admin_insurance_show':                     'insurance',
+            'admin_insurance_toggle_status':            'insurance',
+            # ── Insurance Approvals ───────────────────────────────────────
+            'admin_insurance_approvals_index':                  'insurance_approvals',
+            'admin_insurance_approvals_process':                'insurance_approvals',
+            'admin_insurance_approvals_approve_onboarding':     'insurance_approvals',
+            'admin_insurance_approvals_reject_onboarding':      'insurance_approvals',
+            # ── Clients / Users ───────────────────────────────────────────
+            'admin_users':                              'users',
+            'admin_users_edit':                         'users',
+            'admin_users_update':                       'users',
+            # ── Events ────────────────────────────────────────────────────
+            'admin_events_index':                       'events',
+            'admin_events_show':                        'events',
+            'admin_events_export':                      'events',
+            # ── Subscriptions ─────────────────────────────────────────────
+            'admin_subscriptions_index':                'subscriptions',
+            'admin_delete_subscription':                'subscriptions',
+            # ── Leads ─────────────────────────────────────────────────────
+            'admin_leads_index':                        'leads',
+            'admin_leads_update_status':                'leads',
+            # ── Contacts ──────────────────────────────────────────────────
+            'admin_contacts_index':                     'contacts',
+            'admin_contacts_show':                      'contacts',
+            'admin_contacts_update_status':             'contacts',
+            'admin_contacts_delete':                    'contacts',
+            # ── Reviews ───────────────────────────────────────────────────
+            'admin_reviews_index':                      'reviews',
+            'admin_reviews_toggle_approval':            'reviews',
+            'admin_reviews_bulk_approve':               'reviews',
+            'admin_reviews_delete':                     'reviews',
+            # ── Notifications / Broadcast ─────────────────────────────────
+            'agent_notify':                             'notifications',
+            'agent_notify_send':                        'notifications',
+            'agent_notify_broadcast':                   'notifications',
+            'broadcast_index':                          'notifications',
+            'broadcast_send':                           'notifications',
+            # ── Content & CMS (incl. homepage + hero editors) ─────────────
+            # Note: admin_settings_homepage* and admin_settings_hero_section*
+            # map to 'content' (sidebar: Content Control), NOT 'site_settings'.
+            'admin_content_about':                      'content',
+            'admin_content_about_update':               'content',
+            'admin_content_faqs':                       'content',
+            'admin_content_faqs_settings_update':       'content',
+            'admin_content_faqs_store':                 'content',
+            'admin_content_faqs_update':                'content',
+            'admin_content_faqs_toggle':                'content',
+            'admin_content_contact':                    'content',
+            'admin_content_contact_update':             'content',
+            'admin_content_banners':                    'content',
+            'admin_content_banners_update':             'content',
+            'admin_content_plans':                      'content',
+            'admin_content_plans_update':               'content',
+            'admin_settings_homepage':                  'content',
+            'admin_settings_homepage_update':           'content',
+            'admin_settings_hero_section':              'content',
+            'admin_settings_hero_section_update':       'content',
+            'admin_pages_index':                        'content',
+            'admin_pages_create':                       'content',
+            'admin_pages_store':                        'content',
+            'admin_pages_edit':                         'content',
+            'admin_pages_update':                       'content',
+            'admin_pages_delete':                       'content',
+            # ── Revenue ───────────────────────────────────────────────────
+            'admin_revenue':                            'revenue',
+            # ── Invoices ──────────────────────────────────────────────────
+            'admin_invoices':                           'invoices',
+            'admin_invoice_preview':                    'invoices',
+            'admin_invoice_download':                   'invoices',
+            'admin_invoice_save_sheet_url':             'invoices',
+            'admin_invoice_sync_sheet':                 'invoices',
+            'admin_invoice_open_sheet':                 'invoices',
+            # ── Promo Codes ───────────────────────────────────────────────
+            'admin_promo_codes':                        'promo_codes',
+            'admin_promo_code_store':                   'promo_codes',
+            'admin_promo_code_update':                  'promo_codes',
+            'admin_promo_code_toggle_status':           'promo_codes',
+            # ── Free Trial ────────────────────────────────────────────────
+            'admin_free_trial':                         'free_trial',
+            'admin_ft_update_config':                   'free_trial',
+            'admin_ft_update_discount':                 'free_trial',
+            'admin_ft_update_referral_config':          'free_trial',
+            'admin_ft_force_test_credit':               'free_trial',
+            'admin_ft_generate_promo':                  'free_trial',
+            'admin_ft_update_promo':                    'free_trial',
+            'admin_ft_toggle_promo':                    'free_trial',
+            'admin_ft_delete_promo':                    'free_trial',
+            'admin_ft_history':                         'free_trial',
+            'admin_ft_analytics_data':                  'free_trial',
+            # ── Referrals ─────────────────────────────────────────────────
+            'admin_referrals_index':                    'referrals',
+            'admin_referrals_toggle_code':              'referrals',
+            'admin_referrals_mark_claimed':             'referrals',
+            'admin_referrals_generate_missing':         'referrals',
+            'admin_referrals_update_tiers':             'referrals',
+            # ── Finance & Accounts ────────────────────────────────────────
+            'admin_finance_index':                      'finance_accounts',
+            'admin_finance_mark_payment':               'finance_accounts',
+            # ── Export Center ─────────────────────────────────────────────
+            'export_index':                             'export',
+            'export_agents':                            'export',
+            'export_leads':                             'export',
+            'export_contacts':                          'export',
+            'export_subscriptions':                     'export',
+            'export_reviews':                           'export',
+            'export_pending':                           'export',
+            # ── QR Generator ──────────────────────────────────────────────
+            'admin_qr_files_index':                     'qr_generator',
+            'admin_qr_files_store':                     'qr_generator',
+            'admin_qr_files_update':                    'qr_generator',
+            'admin_qr_files_delete':                    'qr_generator',
+            # ── Geocoding ─────────────────────────────────────────────────
+            'admin_geocoding_index':                    'geocoding',
+            'admin_geocoding_single':                   'geocoding',
+            'admin_geocoding_batch':                    'geocoding',
+            'admin_geocoding_stats':                    'geocoding',
+            # ── Pincode ───────────────────────────────────────────────────
+            'admin_pincode_index':                      'pincode',
+            'admin_pincode_upload':                     'pincode',
+            'admin_pincode_import':                     'pincode',
+            'admin_pincode_districts':                  'pincode',
+            'admin_pincode_sample':                     'pincode',
+            'admin_pincode_export':                     'pincode',
+            'admin_pincode_delete_state':               'pincode',
+            # ── Analytics / Advanced / Error Logs / Threats ───────────────
+            'advanced_analytics':                       'analytics',
+            'advanced_activity_logs':                   'analytics',
+            'advanced_activity_logs_delete':            'analytics',
+            'admin_error_logs_index':                   'error_logs',
+            'admin_error_logs_show':                    'error_logs',
+            'admin_error_logs_delete':                  'error_logs',
+            'security_threat_logs':                     'analytics',
+            'security_threat_logs_delete':              'analytics',
+            # ── Site Settings / Security (blocked IPs) ────────────────────
+            'admin_settings_general':                   'site_settings',
+            'admin_settings_seo':                       'site_settings',
+            'admin_settings_security':                  'site_settings',
+            'admin_settings_templates':                 'email_templates',
+            'admin_settings_templates_update':          'email_templates',
+            'admin_settings_update':                    'site_settings',
+            'security_blocked_ips':                     'site_settings',
+            'security_block_ip':                        'site_settings',
+            'security_unblock_ip':                      'site_settings',
+        }.get(url_name)
 
     def get_first_allowed_route(self, admin):
         permission_to_route = {
             'dashboard': 'admin_dashboard',
             'agents': 'admin_agents',
             'approvals': 'admin_agents',
+            'approvals_awaiting_verification': 'admin_agents_approvals',
+            'approvals_missing_licenses': 'admin_agents_approvals',
+            'blacklisted_agents': 'admin_blacklisted_agents',
             'pending_registrations': 'admin_agents',
             'distributors': 'admin_distributors',
             'insurance': 'admin_agents',
@@ -420,7 +582,9 @@ class AdminPermissionMiddleware:
             'geocoding': 'admin_dashboard',
             'pincode': 'admin_dashboard',
             'analytics': 'admin_dashboard',
+            'error_logs': 'admin_dashboard',
             'site_settings': 'admin_dashboard',
+            'email_templates': 'admin_dashboard',
         }
         
         permissions_list = admin.permissions if isinstance(admin.permissions, list) else []

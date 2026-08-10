@@ -22,6 +22,7 @@ Notes:
 """
 
 from django.urls import path
+from apps.agents.views.registration import fb_ad_signup
 from .views.dashboard import (
     show_login_form,
     admin_login,
@@ -362,6 +363,7 @@ urlpatterns = [
     path("admin/referrals/update-tiers/",              admin_referrals_update_tiers,    name="admin_referrals_update_tiers"),
 
     # Phase REFERRAL_SYSTEM: Agent-facing
+    path("join/ad/",               fb_ad_signup,               name="admin_fb_ad_signup"),
     path("join/<str:ref_code>/",   referral_join,              name="referral_join"),
     path("agent/referral/",        agent_referral_dashboard,   name="agent_referral_dashboard"),
 
