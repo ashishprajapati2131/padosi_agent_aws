@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>{% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/logo-icon.png' %}">
+    <title>Cancellation & Refund Policy - PadosiAgent</title>
+    <style>
+        :root {
+            --primary-color: #3a86ff;
+            --secondary-color: #8338ec;
+            --accent-color: #ff006e;
+            --success-color: #06d6a0;
+            --text-color: #333;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+            --padosi-blue: #003AAD;
+            --agent-green: #06A441;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            color: var(--text-color);
+            line-height: 1.6;
+            background-color: var(--light-bg);
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .content-card {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            margin-top: 30px;
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-size: 2rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        h1:before {
+            content: "🔁";
+            font-size: 1.5rem;
+        }
+        
+        h2 {
+            color: var(--secondary-color);
+            margin: 25px 0 15px;
+            font-size: 1.5rem;
+            padding-left: 10px;
+            border-left: 3px solid var(--secondary-color);
+        }
+        
+        h3 {
+            color: var(--accent-color);
+            margin: 20px 0 10px;
+            font-size: 1.2rem;
+        }
+        
+        p {
+            margin-bottom: 15px;
+        }
+        
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 20px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        .policy-header {
+            background: linear-gradient(135deg, #fff5f5, #f0f8ff);
+            border-radius: 10px;
+            padding: 25px;
+            margin: 0 0 30px 0;
+            border-left: 4px solid var(--accent-color);
+        }
+        
+        .warning-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-left: 4px solid #fdcb6e;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .strict-box {
+            background: linear-gradient(135deg, #ffefef, #ffeaea);
+            border: 1px solid #ff6b6b;
+            border-left: 4px solid #ff6b6b;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .non-refundable-box {
+            background: linear-gradient(135deg, #fff0f0, #ffe6e6);
+            border: 2px solid #ff006e;
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .non-refundable-box:before {
+            content: "❌ NO EXCEPTIONS";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff006e;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .contact-box {
+            background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        
+        .policy-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .policy-table th, .policy-table td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .policy-table th {
+            background-color: var(--light-bg);
+            font-weight: 600;
+        }
+        
+        .policy-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+            color: #6c757d;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .logo span.padosi {
+            color: #003AAD !important;
+        }
+        
+        .logo span.agent {
+            color: #06A441;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .content-card {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.7rem;
+            }
+            
+            h2 {
+                font-size: 1.3rem;
+            }
+            
+            .policy-table {
+                font-size: 0.9rem;
+            }
+            
+            .policy-table th, .policy-table td {
+                padding: 8px;
+            }
+        }
+        
+        .definition-item {
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 2px solid var(--border-color);
+        }
+        
+        .definition-term {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .clause-header {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .clause-number {
+            background: var(--primary-color);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .no-list {
+            list-style-type: none;
+            margin-left: 0;
+        }
+        
+        .no-list li {
+            position: relative;
+            padding-left: 25px;
+            margin-bottom: 10px;
+        }
+        
+        .no-list li:before {
+            content: "•";
+            color: var(--accent-color);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+            font-size: 1.2rem;
+        }
+        
+        .prohibited-item {
+            color: #ff006e;
+            font-weight: bold;
+        }
+        
+        .timeline-box {
+            background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+            border-left: 4px solid var(--agent-green);
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .jurisdiction-box {
+            background: linear-gradient(135deg, #fff5f5, #fff0f0);
+            border-left: 4px solid #003AAD;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 0 8px 8px 0;
+            text-align: center;
+        }
+        
+        .policy-note {
+            background: linear-gradient(135deg, #fff9e6, #fff4d6);
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 5px 5px 0;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="content-card">
+            <h1>CANCELLATION & REFUND POLICY</h1>
+            
+            <div class="policy-header">
+                <p><strong>PadosiAgent ServTech Private Limited</strong></p>
+                <p>Last Updated: <strong>December 25, 2025</strong></p>
+                <p>Effective Date: <strong>December 25, 2025</strong></p>
+            </div>
+            
+            <h2>1. POLICY SCOPE & PRECEDENCE</h2>
+            <p>This Cancellation & Refund Policy is supplementary to and must be read in conjunction with:</p>
+            <ul class="no-list">
+                <li>Terms & Conditions</li>
+                <li>Privacy Policy</li>
+                <li>Any plan-specific disclaimer or declaration</li>
+            </ul>
+            <p><strong>In case of any inconsistency, the Terms & Conditions shall prevail at all times.</strong></p>
+            
+            <h2>2. CANCELLATION REQUEST – 7 DAYS INTIMATION</h2>
+            <p>A User may request cancellation of a subscription within 7 (seven) calendar days from the date of successful payment only by written intimation to the Company.</p>
+            
+            <div class="strict-box">
+                <h3>Valid Intimation Method:</h3>
+                <p>📧 Email to: <strong>support@padosiagent.com</strong></p>
+                <p>Subject line must clearly state:</p>
+                <p><strong>"Cancellation Request – Registered Mobile/Email"</strong></p>
+                <p><strong>No other mode of communication shall be considered valid.</strong></p>
+            </div>
+            
+            <h2>3. ELIGIBILITY FOR REFUND (STRICT CONDITIONS)</h2>
+            <p>A refund request shall be considered only if <strong>ALL</strong> the following conditions are met:</p>
+            <ul class="no-list">
+                <li>Cancellation request is submitted within 7 days</li>
+                <li>No violation of Terms & Conditions</li>
+                <li>Account has not engaged in misuse, fraud, or misrepresentation</li>
+                <li>No irreversible service consumption beyond basic access</li>
+            </ul>
+            
+            <div class="non-refundable-box">
+                <h2>4. NON-REFUNDABLE CIRCUMSTANCES (NO EXCEPTIONS)</h2>
+                <p>Refunds shall <strong>NOT</strong> be applicable in the following cases:</p>
+                <ul class="no-list">
+                    <li>Any lead (organic, service, referral, priority, or paid) is shared</li>
+                    <li>Profile listing, visibility, badge, or digital card is activated</li>
+                    <li>Login access is used after onboarding</li>
+                    <li>Partial usage of any feature</li>
+                    <li>Dissatisfaction with:
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>Lead quality</li>
+                            <li>Lead quantity</li>
+                            <li>Conversion or business outcome</li>
+                        </ul>
+                    </li>
+                    <li>Promotional, discounted, or pre-launch offers</li>
+                    <li>Account suspension or termination due to violation</li>
+                    <li>Failure to read terms or disclaimers</li>
+                </ul>
+            </div>
+            
+            <h2>5. REFUND AMOUNT & DEDUCTIONS</h2>
+            <p>If approved, refund shall be processed after deducting:</p>
+            <ul class="no-list">
+                <li>Platform onboarding charges</li>
+                <li>Payment gateway charges</li>
+                <li>Taxes (GST or statutory deductions)</li>
+                <li>Any consumed service value</li>
+            </ul>
+            <p><strong>The Company reserves the right to determine the refundable amount, if any.</strong></p>
+            
+            <h2>6. REFUND PROCESSING TIMELINE – UP TO 30 DAYS</h2>
+            <div class="timeline-box">
+                <ul class="no-list">
+                    <li>Approved refunds shall be processed within <strong>30 (thirty) working days</strong></li>
+                    <li>Refunds shall be credited only to the <strong>original payment source</strong></li>
+                    <li>Processing delays caused by banks, gateways, or third parties are <strong>not the Company's responsibility</strong></li>
+                </ul>
+            </div>
+            
+            <h2>7. NO CASH / MANUAL REFUNDS</h2>
+            <ul class="no-list">
+                <li>No cash, cheque, or alternative mode refunds</li>
+                <li>No wallet credits unless expressly approved by the Company</li>
+            </ul>
+            
+            <h2>8. AUTO-EXPIRY OF REQUEST</h2>
+            <div class="warning-box">
+                <p>If no cancellation request is raised within 7 days, the subscription shall be deemed:</p>
+                <p><strong>"Accepted, confirmed, and non-refundable."</strong></p>
+            </div>
+            
+            <h2>9. COMPANY DISCRETION & FINAL AUTHORITY</h2>
+            <ul class="no-list">
+                <li>All refund decisions rest <strong>solely with PadosiAgent</strong></li>
+                <li>The Company's decision shall be <strong>final and binding</strong></li>
+                <li>No escalation, chargeback, or dispute shall override this policy</li>
+            </ul>
+            
+            <h2>10. FRAUD & ABUSE PREVENTION</h2>
+            <p>Any attempt to:</p>
+            <ul class="no-list">
+                <li>Abuse refund policy</li>
+                <li>File false chargebacks</li>
+                <li>Misrepresent facts</li>
+            </ul>
+            <p>Shall result in:</p>
+            <ul class="no-list">
+                <li>Immediate account termination</li>
+                <li>Permanent blacklist</li>
+                <li>Legal action if required</li>
+            </ul>
+            
+            <h2>11. JURISDICTION</h2>
+            <div class="jurisdiction-box">
+                <p>This Policy shall be governed by <strong>Indian laws</strong> with exclusive jurisdiction of courts at <strong>Ahmedabad, Gujarat</strong>.</p>
+            </div>
+            
+            <h2>12. CONTACT</h2>
+            <div class="contact-box">
+                <p>📧 <strong>support@padosiagent.com</strong></p>
+                <p>📍 <strong>Ahmedabad, Gujarat, India</strong></p>
+            </div>
+            
+            <div class="policy-note">
+                <p><strong>Note:</strong> This policy is digitally published and does not require physical signatures. Continued use of the platform constitutes acceptance of these terms.</p>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>© 2025 PadosiAgent ServTech Private Limited. All rights reserved. | <a href="{% url 'home:privacy' %}" style="color: inherit; text-decoration: none;">Privacy Policy</a> | <a href="{% url 'home:terms' %}" style="color: inherit; text-decoration: none;">Terms & Conditions</a></p>
+            {% comment %} <p style="font-size: 0.9rem; margin-top: 10px;">
+                <a href="/terms" style="color: var(--primary-color); margin: 0 10px;">Terms & Conditions</a> | 
+                <a href="/privacy" style="color: var(--primary-color); margin: 0 10px;">Privacy Policy</a> | 
+                <a href="/refund" style="color: var(--primary-color); margin: 0 10px;">Cancellation & Refund Policy</a>
+            </p> {% endcomment %}
+        </div>
+    </footer>
+</body>
+</html>

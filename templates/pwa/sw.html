@@ -1,0 +1,133 @@
+// ─── Firebase Messaging (must be imported before any other SW code) ───
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js');
+
+{% if fcm_api_key %}
+firebase.initializeApp({
+  apiKey:            "{{ fcm_api_key }}",
+  authDomain:        "{{ fcm_auth_domain }}",
+  projectId:         "{{ fcm_project_id }}",
+  storageBucket:     "{{ fcm_storage_bucket }}",
+  messagingSenderId: "{{ fcm_messaging_sender_id }}",
+  appId:             "{{ fcm_app_id }}"
+});
+
+const messaging = firebase.messaging();
+
+// ─── Handle background FCM push notifications ───
+messaging.onBackgroundMessage((payload) => {
+  const title = payload.notification?.title || 'PadosiAgent';
+  const body  = payload.notification?.body  || 'You have a new notification.';
+
+  return self.registration.showNotification(title, {
+    body,
+    icon:               '/pwa/pwa-192.png',
+    badge:              '/pwa/pwa-72.png',
+    vibrate:            [200, 100, 200],
+    requireInteraction: true,
+    data:               payload.data || {},
+  });
+});
+{% endif %}
+
+// ─── Cache Setup ───
+const CACHE_NAME   = 'padosi-agent-pwa-v6';
+const STATIC_ASSETS = ['/offline.html'];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.map((key) => (key === CACHE_NAME ? null : caches.delete(key)))
+      )
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', (event) => {
+  // We only intercept GET requests
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
+  // 1. Navigation requests (HTML page loads) - Always Network-Only, fallback to offline page
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // If the page is not found (404), fallback to login helper (if needed)
+          if (!response || response.status === 404) {
+            return fetch('/agent-login').catch(() => response);
+          }
+          return response;
+        })
+        .catch(() => caches.match('/offline.html'))
+    );
+    return;
+  }
+
+  // Determine if it is a static asset request
+  const isStaticAsset =
+    event.request.destination === 'style' ||
+    event.request.destination === 'script' ||
+    event.request.destination === 'image' ||
+    event.request.destination === 'font' ||
+    requestUrl.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webmanifest)$/) ||
+    requestUrl.pathname.startsWith('/pwa/');
+
+  // 2. Static assets - Cache-First strategy with Network fallback
+  if (isStaticAsset) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) {
+          return cached;
+        }
+        return fetch(event.request).then((response) => {
+          // Cache successful responses for static assets only
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // 3. All other requests (API, CSRF, POST/PUT, dynamic AJAX queries) - Network-Only (no intercept/cache)
+});
+
+// ─── Notification click → open dashboard ───
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/agent/dashboard';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes('/agent') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+      return undefined;
+    })
+  );
+});

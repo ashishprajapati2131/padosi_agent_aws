@@ -16,6 +16,13 @@ urlpatterns = [
     path('terms/',          pages.terms,          name='terms'),
     path('privacy/',        pages.privacy,        name='privacy'),
     path('insurance/api/pincode/fetch/<str:pincode>', pages.pincode_fetch, name='pincode_fetch'),
+    path('api/pincode/check-agents/<str:pincode>', pages.check_pincode_agents, name='check_pincode_agents'),
+    path('check-pincode', pages.check_pincode, name='check_pincode'),
+    path('marketing/', pages.marketing, name='marketing'),
+    path('calculator/', pages.calculator, name='calculator'),
+    path('coming-soon/', pages.coming_soon, name='coming_soon'),
+    path('lic-agent/', pages.lic_event, name='lic_event'),
+    path('cancellation-refund-policy/', pages.cancellation_refund_policy, name='cancellation_refund'),
     path('blacklisted-agents/', pages.blacklisted_agents, name='blacklisted_agents'),
     path('<slug:slug>/',     pages.custom_page,    name='custom_page'),
 ]

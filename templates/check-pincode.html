@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Insurance Agent Competition by Pincode | PadosiAgent</title>
+    <meta name="description"
+        content="Enter your PIN code to check how many insurance agents are registered in your area. Start your business today if zero competition is found!">
+    {% load static %}
+    <link rel="icon" type="image/png" href="{% static 'img/logo-icon.webp' %}">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Urbanist:wght@500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="{% static 'bootstrap/bootstrap.min.css' %}">
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        crossorigin="anonymous">
+
+    <!-- Styles -->
+    <style>
+        :root {
+            --primary: #0d9488;
+            --primary-hover: #0f766e;
+            --bg-gradient: radial-gradient(circle at center, #f8fafc 0%, #e2e8f0 100%);
+            --font-main: 'Outfit', sans-serif;
+            --font-heading: 'Urbanist', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .logo-img {
+            max-height: 55px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .tagline {
+            font-size: 13.5px;
+            color: #64748b;
+            font-weight: 500;
+            margin-top: 8px;
+            letter-spacing: 0.3px;
+        }
+
+        /* Card styles */
+        .checker-card {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 15px 45px rgba(15, 23, 42, 0.04);
+            padding: 45px 40px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .card-title {
+            font-family: var(--font-heading);
+            font-weight: 800;
+            font-size: 26px;
+            color: #0f172a;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+
+        .card-subtitle {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.5;
+            margin-bottom: 30px;
+            font-weight: 400;
+        }
+
+        /* Input styling */
+        .input-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 4px 18px;
+            transition: all 0.3s ease;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.1);
+            background: #ffffff;
+        }
+
+        .input-icon {
+            color: #94a3b8;
+            font-size: 18px;
+            margin-right: 12px;
+        }
+
+        .pincode-input {
+            border: none !important;
+            background: transparent !important;
+            outline: none !important;
+            font-size: 16px;
+            font-weight: 600;
+            color: #0f172a;
+            width: 100%;
+            height: 48px;
+        }
+
+        .pincode-input::placeholder {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        /* Button styling */
+        .submit-btn {
+            background: var(--primary);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 15px;
+            border: none;
+            border-radius: 12px;
+            width: 100%;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.15);
+        }
+
+        .submit-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(13, 148, 136, 0.25);
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .submit-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Loader */
+        .loader-icon {
+            display: none;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Results container */
+        .results-container {
+            margin-top: 24px;
+        }
+
+        /* Custom opportunity modal styling */
+        .custom-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.35);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            padding: 20px;
+        }
+
+        .custom-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .custom-modal-card {
+            background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+            border: 1.5px solid #86efac;
+            border-radius: 24px;
+            box-shadow: 0 25px 60px rgba(34, 197, 94, 0.15);
+            max-width: 500px;
+            width: 100%;
+            padding: 45px 35px 35px;
+            position: relative;
+            transform: scale(0.9);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .custom-modal-overlay.active .custom-modal-card {
+            transform: scale(1);
+        }
+
+        .modal-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #166534;
+            opacity: 0.7;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 5px;
+            line-height: 1;
+            z-index: 50;
+        }
+
+        .modal-close-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .modal-badge {
+            display: inline-flex;
+            padding: 6px 16px;
+            background: #dcfce7;
+            color: #166534;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+        }
+
+        .modal-icon {
+            font-size: 52px;
+            color: #16a34a;
+            margin-bottom: 16px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .modal-title {
+            font-family: var(--font-heading);
+            font-weight: 800;
+            font-size: 28px;
+            color: #14532d;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+
+        .modal-subtitle {
+            font-size: 16px;
+            color: #166534;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .modal-desc {
+            font-size: 14.5px;
+            color: #475569;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .modal-cta-btn {
+            background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 16px;
+            border: none;
+            border-radius: 50px;
+            width: 100%;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 25px rgba(22, 163, 74, 0.3) !important;
+            text-decoration: none !important;
+        }
+
+        .modal-cta-btn:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px rgba(22, 163, 74, 0.4) !important;
+            color: #ffffff;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 15px;
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #64748b;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: #475569;
+            text-decoration: none;
+        }
+
+        @media (max-width: 576px) {
+            .checker-card {
+                padding: 30px 20px;
+            }
+
+            .card-title {
+                font-size: 22px;
+            }
+
+            .custom-modal-card {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <!-- Logo -->
+        <div class="logo-section">
+            <a href="{% url 'home:home' %}">
+                <img src="{% static 'img/logo.webp' %}" alt="PadosiAgent Logo" class="logo-img">
+            </a>
+            <div class="tagline">Local Pincode Agent Explorer</div>
+        </div>
+
+        <!-- Main Card -->
+        <div class="checker-card">
+            <h2 class="card-title text-center">Explore Your Opportunity</h2>
+            <p class="card-subtitle text-center">Check registered agents and discover your local market potential
+                instantly.</p>
+
+            <form id="checkerForm" class="m-0">
+                <div class="input-wrapper">
+                    <span class="input-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </span>
+                    <input type="text" id="pincodeInput" name="pincode" class="pincode-input"
+                        placeholder="Enter 6-Digit PIN Code" maxlength="6" inputmode="numeric" pattern="^[1-9][0-9]{5}$"
+                        required autocomplete="off" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+
+                <button type="submit" id="submitBtn" class="submit-btn">
+                    <span id="btnText">Check Availability</span>
+                    <i class="fas fa-arrow-right" id="arrowIcon"></i>
+                    <i class="fas fa-circle-notch loader-icon" id="loaderIcon"></i>
+                </button>
+            </form>
+
+            <!-- Dynamic Results Section -->
+            <div class="results-container" id="resultsContainer"></div>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="{% url 'home:home' %}" class="back-link">
+                <i class="fas fa-arrow-left mr-1"></i> Back to Homepage
+            </a>
+        </div>
+
+    </div>
+
+    <!-- Opportunity Modal -->
+    <div class="custom-modal-overlay" id="opportunityModal">
+        <div class="custom-modal-card">
+            <!-- Premium Badge Decoration -->
+            <div class="position-absolute"
+                style="top: -20px; right: -20px; width: 120px; height: 120px; background: rgba(34, 197, 94, 0.08); border-radius: 50%; pointer-events: none;">
+            </div>
+
+            <button class="modal-close-btn" id="closeModalBtn" aria-label="Close modal">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <div class="modal-badge" id="modalBadge">Great Opportunity</div>
+
+            <div class="modal-icon">
+                <i class="fas fa-award" id="modalIcon"></i>
+            </div>
+
+            <h3 class="modal-title" id="modalTitle">🎉 Great Opportunity!</h3>
+            <div class="modal-subtitle">
+                <i class="fas fa-map-marker-alt"></i>
+                <span id="modalLocationName">N/A</span>
+            </div>
+
+            <p class="modal-desc" id="modalDesc">
+                There are only <strong id="modalAgentCount" style="color: #18529d;">0registered agents </strong> in this
+                area (PIN: <strong id="modalPincode">N/A</strong>).
+                List yourself today as a PadosiAgent to capture exclusive customer Visiblity in your neighborhood!
+            </p>
+
+            <div class="mt-4">
+                <a href="{% url 'events:register.form' %}" id="modalCtaBtn" class="modal-cta-btn">
+                    Claim Your PIN Code Now <i class="fas fa-arrow-right ml-1.5"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- AJAX Handling Scripts -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('checkerForm');
+            const input = document.getElementById('pincodeInput');
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const arrowIcon = document.getElementById('arrowIcon');
+            const loaderIcon = document.getElementById('loaderIcon');
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            // Modal elements
+            const modal = document.getElementById('opportunityModal');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const modalBadge = document.getElementById('modalBadge');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalLocationName = document.getElementById('modalLocationName');
+            const modalAgentCount = document.getElementById('modalAgentCount');
+            const modalPincode = document.getElementById('modalPincode');
+            const modalDesc = document.getElementById('modalDesc');
+            const modalCtaBtn = document.getElementById('modalCtaBtn');
+
+            // Pre-fill pincode if provided in URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlPincode = urlParams.get('pincode');
+            if (urlPincode && /^[1-9][0-9]{5}$/.test(urlPincode)) {
+                input.value = urlPincode;
+                checkPincode(urlPincode);
+            }
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const pincode = input.value.trim();
+                if (/^[1-9][0-9]{5}$/.test(pincode)) {
+                    checkPincode(pincode);
+                } else {
+                    alert('Please enter a valid 6-digit Indian PIN code.');
+                }
+            });
+
+            function checkPincode(pincode) {
+                // Show loading state
+                submitBtn.disabled = true;
+                btnText.textContent = 'Checking...';
+                arrowIcon.style.display = 'none';
+                loaderIcon.style.display = 'inline-block';
+
+                // Reset results
+                resultsContainer.innerHTML = '';
+
+                // AJAX request to check-pincode
+                const url = `{% url 'home:check_pincode' %}?pincode=${pincode}`;
+
+                fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.text();
+                    })
+                    .then(html => {
+                        // Populate results container
+                        resultsContainer.innerHTML = html;
+
+                        // Parse details from the inserted wrapper
+                        const resultWrapper = resultsContainer.querySelector('.pincode-result-wrapper');
+                        if (resultWrapper) {
+                            const count = parseInt(resultWrapper.getAttribute('data-count'));
+                            const parsedPincode = resultWrapper.getAttribute('data-pincode');
+                            const location = resultWrapper.getAttribute('data-location');
+
+                            // If count is 0 to 10, trigger the Opportunity Modal
+                            if (count >= 0 && count <= 10) {
+                                triggerOpportunityModal(count, parsedPincode, location);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking pincode:', error);
+                        resultsContainer.innerHTML = `
+                    <div class="alert alert-danger border-0 p-3 text-center" style="border-radius: 12px; font-size: 14px; background: #fef2f2; color: #991b1b;">
+                        <i class="fas fa-exclamation-circle mr-1"></i> An error occurred while checking PIN code. Please try again.
+                    </div>
+                `;
+                    })
+                    .finally(() => {
+                        // Reset button state
+                        submitBtn.disabled = false;
+                        btnText.textContent = 'Check Availability';
+                        arrowIcon.style.display = 'inline-block';
+                        loaderIcon.style.display = 'none';
+                    });
+            }
+
+            function triggerOpportunityModal(count, pincode, location) {
+                // Update modal details
+                modalLocationName.textContent = location;
+                modalPincode.textContent = pincode;
+                modalAgentCount.textContent = count;
+
+                if (count === 0) {
+                    modalBadge.textContent = "Exclusive Opportunity";
+                    modalTitle.textContent = "🎉 Great Opportunity!";
+                    modalDesc.innerHTML = `There are currently <strong style="color: #18529d;">0 active agents</strong> registered in <strong>${location} (PIN: ${pincode})</strong>. Register today to get 100% exclusive local Visiblity in your area with zero competition!`;
+                    modalCtaBtn.innerHTML = `Claim Your PIN Code Now <i class="fas fa-arrow-right ml-1.5"></i>`;
+                } else {
+                    modalBadge.textContent = "Great Opportunity";
+                    modalTitle.textContent = "🔥 Low Competition!";
+                    modalDesc.innerHTML = `There are only <strong style="color: #18529d;">${count} agents registered </strong> in <strong>${location} (PIN: ${pincode})</strong>. Demand is extremely high. Register today to stand out and capture high-intent local clients!`;
+                    modalCtaBtn.innerHTML = `Register in this PIN Code <i class="fas fa-arrow-right ml-1.5"></i>`;
+                }
+
+                // Update CTA href to include the pincode parameter
+                modalCtaBtn.href = `{% url 'events:register.form' %}?pincode=${pincode}`;
+
+                // Show modal
+                modal.classList.add('active');
+            }
+
+            // Close modal logic
+            function closeModal() {
+                modal.classList.remove('active');
+            }
+
+            closeModalBtn.addEventListener('click', closeModal);
+
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && modal.classList.contains('active')) {
+                    closeModal();
+                }
+            });
+        });
+    </script>
+
+</body>
+
+</html>

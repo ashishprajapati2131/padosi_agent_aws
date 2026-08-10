@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator
+from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites
 
 app_name = 'agents'
 
@@ -52,6 +52,7 @@ urlpatterns = [
 
     # ── AI Bio Generator ─────────────────────────────────────────────────────
     path('agent/generate-bio/', bio_generator.generate_professional_bio, name='agent_generate_bio'),
+    path('agent/toggle-favorite/', favorites.toggle_favorite, name='agent_toggle_favorite'),
 
     # ── Catch-all public agent profile share route ────────────────────────────
     path('agent/<str:slug>/',   dashboard.agent_public_share_profile, name='agent_public_share_profile'),

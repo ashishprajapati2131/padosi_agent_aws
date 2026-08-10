@@ -1,0 +1,2005 @@
+{% extends 'base.html' %}{% load static %}
+
+{% block title %}PadosiAgent Services - Hyperlocal Insurance Experts{% endblock %}
+
+{% block content %}
+    <!-- Outfit Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <div class="marketing-page-wrapper">
+        <div class="container marketing-container">
+            <!-- Brand Logo and Header (Compact Layout) -->
+            <div class="d-flex flex-column align-items-center text-center mb-3 brand-header-wrap">
+                <a href="{% url 'home:home' %}" class="mb-1">
+                    <img src="{% static 'img/logo.webp' %}"
+                        alt="PadosiAgent" class="site-logo">
+                </a>
+                <h1 class="page-title">Find and connect with Trusted local Insurance experts in your <strong
+                        style="color: #18529d;">Neighborhood</strong>.
+
+
+                </h1>
+                <p class="page-subtitle mb-0" style="font-size: 100px;"> Insurance Services, Simplified </p>
+            </div>
+
+            <!-- Service Selector (4 Service Buttons in a Row - Compact) -->
+            <div class="row justify-content-center mb-3 gx-2 service-selector-row">
+                <div class="col-6 col-md-3 mb-2 mb-md-0">
+                    <button class="service-select-btn card-buy-new active" data-service="New Policy"
+                        data-label="Buy New Insurance">
+                        <div class="service-btn-icon">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                        </div>
+                        <span class="service-btn-title">Buy New Insurance</span>
+                    </button>
+                </div>
+                <div class="col-6 col-md-3 mb-2 mb-md-0">
+                    <button class="service-select-btn card-port-transfer" data-service="Policy Review"
+                        data-label="Port/Transfer">
+                        <div class="service-btn-icon">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </div>
+                        <span class="service-btn-title">Port/<wbr>Transfer</span>
+                    </button>
+                </div>
+                <div class="col-6 col-md-3 mb-2 mb-md-0">
+                    <button class="service-select-btn card-renew-insurance" data-service="New Policy"
+                        data-label="Renew Insurance">
+                        <div class="service-btn-icon">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <span class="service-btn-title">Renew Insurance</span>
+                    </button>
+                </div>
+                <div class="col-6 col-md-3 mb-2 mb-md-0">
+                    <button class="service-select-btn card-claim-assistance" data-service="Claim Assistance"
+                        data-label="Claim assistance">
+                        <div class="service-btn-icon">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                        </div>
+                        <span class="service-btn-title">Claim assistance</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Policybazaar Style Product Grid Section (Compact) -->
+            <div class="product-bazaar-section mb-3">
+                <div class="d-flex align-items-center justify-content-between mb-3 grid-header">
+                    <h3 class="grid-title">Explore Insurance Products</h3>
+                    <span id="service-badge" class="service-badge-pill">Buy New Insurance</span>
+                </div>
+
+                <!-- Alert for Disabled Life Insurance when Port/Transfer is selected -->
+                <div id="life-disabled-alert" class="alert alert-warning mb-3 py-2 px-3 align-items-center"
+                    style="display: none; border-radius: 8px; font-size: 12px; margin-top: 5px;">
+                    <i class="fa-solid fa-circle-info me-2 text-warning" style="font-size: 1.1rem;"></i>
+                    <span>Porting or transferring is not applicable for Life Insurance. These options are temporarily
+                        disabled.</span>
+                </div>
+
+                <div class="product-bazaar-grid">
+                    <!-- Card 1: Term Life -->
+                    <a href="#" class="product-bazaar-card" data-type="Life Insurance" data-company="Term Plan">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#818cf8" />
+                                        <stop offset="100%" stop-color="#4f46e5" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M32 4L12 12v18c0 12.3 8.5 23.8 20 27c11.5-3.2 20-14.7 20-27V12L32 4z"
+                                    fill="url(#g1)" opacity="0.15" />
+                                <path d="M32 6L14 13.2v16.8c0 11.1 7.7 21.5 18 24.4c10.3-2.9 18-13.3 18-24.4V13.2L32 6z"
+                                    fill="none" stroke="url(#g1)" stroke-width="2" />
+                                <path
+                                    d="M32 16c-5.5 0-10 4.5-10 10c0 8.5 10 18 10 18s10-9.5 10-18c0-5.5-4.5-10-10-10zm0 14c-2.2 0-4-1.8-4-4s1.8-4 4-4s4 1.8 4 4s-1.8 4-4 4z"
+                                    fill="url(#g1)" />
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">Term Life Insurance</span>
+                    </a>
+
+                    <!-- Card 2: Health Insurance -->
+                    <a href="#" class="product-bazaar-card" data-type="Health Insurance" data-company="Mediclaim">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#f87171" />
+                                        <stop offset="100%" stop-color="#dc2626" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M12 28c0-8.8 7.2-16 16-16s16 7.2 16 16c0 14-16 26-16 26S12 42 12 28z"
+                                    fill="url(#g2)" opacity="0.15" />
+                                <path
+                                    d="M32 50S14 36.5 14 26a12 12 0 0 1 20.3-8.8L32 19.4l-2.3-2.2A12 12 0 0 1 50 26c0 10.5-18 24-18 24z"
+                                    fill="none" stroke="url(#g2)" stroke-width="2" />
+                                <path d="M22 26h6v-6h4v6h6v4h-6v-6h-4v-6h-6v-4z" fill="url(#g2)" />
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">Health Insurance</span>
+                    </a>
+
+                    <!-- Card 3: Investment Plans -->
+                    <a href="#" class="product-bazaar-card" data-type="Life Insurance" data-company="ULIP Plan">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#fbbf24" />
+                                        <stop offset="100%" stop-color="#d97706" />
+                                    </linearGradient>
+                                </defs>
+                                <circle cx="32" cy="32" r="24" fill="url(#g3)" opacity="0.15" />
+                                <circle cx="24" cy="40" r="10" fill="none" stroke="url(#g3)" stroke-width="2" />
+                                <path d="M20 40h8m-4-4v8" stroke="url(#g3)" stroke-width="2" />
+                                <circle cx="40" cy="24" r="10" fill="none" stroke="url(#g3)" stroke-width="2" />
+                                <path d="M36 24h8m-4-4v8" stroke="url(#g3)" stroke-width="2" />
+                                <path d="M24 24l16 16" stroke="#10b981" stroke-width="3" stroke-linecap="round" />
+                                <path d="M40 34v6h-6" stroke="#10b981" stroke-width="3" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">Investment Plans</span>
+                    </a>
+
+                    <!-- Card 4: Car Insurance -->
+                    <a href="#" class="product-bazaar-card" data-type="Motor Insurance" data-company="Private Car">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g4" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#94a3b8" />
+                                        <stop offset="100%" stop-color="#475569" />
+                                    </linearGradient>
+                                </defs>
+                                <rect x="8" y="24" width="48" height="24" rx="8" fill="url(#g4)" opacity="0.15" />
+                                <path d="M12 28h40l-4-10H16l-4 10z" fill="none" stroke="url(#g4)" stroke-width="2" />
+                                <rect x="8" y="28" width="48" height="12" rx="4" fill="none" stroke="url(#g4)"
+                                    stroke-width="2" />
+                                <circle cx="20" cy="44" r="6" fill="#1e293b" />
+                                <circle cx="20" cy="44" r="2" fill="#fff" />
+                                <circle cx="44" cy="44" r="6" fill="#1e293b" />
+                                <circle cx="44" cy="44" r="2" fill="#fff" />
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">Car Insurance</span>
+                    </a>
+
+                    <!-- Card 5: 2 Wheeler Insurance -->
+                    <a href="#" class="product-bazaar-card" data-type="Motor Insurance" data-company="Two Wheeler">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g5" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#34d399" />
+                                        <stop offset="100%" stop-color="#059669" />
+                                    </linearGradient>
+                                </defs>
+                                <circle cx="20" cy="40" r="10" fill="none" stroke="url(#g5)" stroke-width="2" />
+                                <circle cx="44" cy="40" r="10" fill="none" stroke="url(#g5)" stroke-width="2" />
+                                <path d="M20 40h10l8-18h10" fill="none" stroke="url(#g5)" stroke-width="3"
+                                    stroke-linecap="round" />
+                                <path d="M38 22L30 32" stroke="url(#g5)" stroke-width="2" />
+                                <rect x="34" y="16" width="12" height="6" rx="2" fill="url(#g5)" />
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">2 Wheeler Insurance</span>
+                    </a>
+
+                    <!-- Card 6: Family Health Insurance -->
+                    <a href="#" class="product-bazaar-card" data-type="Health Insurance" data-company="Family Mediclaim">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g6" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#38bdf8" />
+                                        <stop offset="100%" stop-color="#0284c7" />
+                                    </linearGradient>
+                                </defs>
+                                <path
+                                    d="M32 12a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM20 18a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM44 18a5 5 0 1 0 0-10 5 5 0 0 0 0 10z"
+                                    fill="url(#g6)" />
+                                <path
+                                    d="M32 46c0-6 4-10 10-10s10 4 10 10v12H32V46zM12 46c0-6 4-10 10-10s10 4 10 10v12H12V46z"
+                                    fill="url(#g6)" opacity="0.6" />
+                                <path d="M22 30c0-5 3.5-8.5 8.5-8.5S39 25 39 30v14H22V30z" fill="url(#g6)" />
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">Family Health Insurance</span>
+                    </a>
+
+                    <!-- Card 7: Travel Insurance -->
+                    <a href="#" class="product-bazaar-card" data-type="Travel Insurance" data-company="Others">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g7" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#38bdf8" />
+                                        <stop offset="100%" stop-color="#0284c7" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M12 40l10-8l12 12l-6 10H12z" fill="url(#g7)" opacity="0.15" />
+                                <path d="M54 22L36 12L22 28L14 26L10 30L18 36L14 50L18 52L28 42L38 46L42 42L34 34L54 22z"
+                                    fill="url(#g7)" />
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">Travel Insurance</span>
+                    </a>
+
+                    <!-- Card 8: Term Insurance (Women) -->
+                    <!-- <a href="#" class="product-bazaar-card" data-type="Life Insurance" data-company="Term Plan">
+                                                                    <div class="product-bazaar-card-icon">
+                                                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                                                            <defs>
+                                                                                <linearGradient id="g8" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                                                    <stop offset="0%" stop-color="#f472b6" />
+                                                                                    <stop offset="100%" stop-color="#db2777" />
+                                                                                </linearGradient>
+                                                                            </defs>
+                                                                            <path d="M32 4L12 12v18c0 12.3 8.5 23.8 20 27c11.5-3.2 20-14.7 20-27V12L32 4z"
+                                                                                fill="url(#g8)" opacity="0.15" />
+                                                                            <path d="M32 6L14 13.2v16.8c0 11.1 7.7 21.5 18 24.4c10.3-2.9 18-13.3 18-24.4V13.2L32 6z"
+                                                                                fill="none" stroke="url(#g8)" stroke-width="2" />
+                                                                            <circle cx="32" cy="22" r="6" fill="url(#g8)" />
+                                                                            <path d="M32 28c-5 0-9 4-9 9v5h18v-5c0-5-4-9-9-9z" fill="url(#g8)" />
+                                                                        </svg>
+                                                                    </div>
+                                                                    <span class="product-bazaar-card-title">Term Insurance (Women)</span>
+                                                                </a> -->
+
+                    <!-- Card 9: Term with Return of Premium -->
+                    <!-- <a href="#" class="product-bazaar-card" data-type="Life Insurance" data-company="Term Plan">
+                                                                <div class="product-bazaar-card-icon">
+                                                                    <svg viewBox="0 0 64 64" width="36" height="36">
+                                                                        <defs>
+                                                                            <linearGradient id="g9" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                                                <stop offset="0%" stop-color="#818cf8" />
+                                                                                <stop offset="100%" stop-color="#4f46e5" />
+                                                                            </linearGradient>
+                                                                        </defs>
+                                                                        <circle cx="32" cy="32" r="24" fill="url(#g9)" opacity="0.15" />
+                                                                        <path d="M48 32A16 16 0 1 0 32 48" fill="none" stroke="url(#g9)" stroke-width="3" />
+                                                                        <path d="M28 26l6 6l-6 6" fill="none" stroke="url(#g9)" stroke-width="3"
+                                                                            stroke-linecap="round" stroke-linejoin="round" />
+                                                                        <circle cx="32" cy="32" r="10" fill="url(#g9)" />
+                                                                        <text x="32" y="36" font-family="'Outfit', sans-serif" font-size="12" font-weight="800"
+                                                                            fill="#fff" text-anchor="middle">₹</text>
+                                                                    </svg>
+                                                                </div>
+                                                                <span class="product-bazaar-card-title">Term Plans (Return of Premium)</span>
+                                                            </a> -->
+
+                    <!-- Card 10: Guaranteed Return Plans -->
+                    <a href="#" class="product-bazaar-card" data-type="Life Insurance" data-company="Saving Plan">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g10" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#10b981" />
+                                        <stop offset="100%" stop-color="#047857" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M22 20h20l4 8v16c0 4-4 8-10 8H28c-6 0-10-4-10-8V28l4-8z" fill="url(#g10)"
+                                    opacity="0.15" />
+                                <path d="M22 20c0-6 4-10 10-10s10 4 10 10" fill="none" stroke="url(#g10)"
+                                    stroke-width="3" />
+                                <circle cx="32" cy="34" r="12" fill="url(#g10)" />
+                                <text x="32" y="38" font-family="'Outfit', sans-serif" font-size="10" font-weight="900"
+                                    fill="#fff" text-anchor="middle">100%</text>
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">Guaranteed Return Plans</span>
+                    </a>
+
+                    <!-- Card 11: Child Savings Plans -->
+                    <a href="#" class="product-bazaar-card" data-type="Life Insurance" data-company="Saving Plan">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g11" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#f472b6" />
+                                        <stop offset="100%" stop-color="#db2777" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M46 22c5 0 8 4 8 8c0 10-10 18-22 18S10 38 10 30c0-4 3-8 8-8h28z" fill="url(#g11)"
+                                    opacity="0.15" />
+                                <rect x="28" y="8" width="8" height="8" rx="2" fill="url(#g11)" />
+                                <circle cx="28" cy="30" r="14" fill="none" stroke="url(#g11)" stroke-width="2" />
+                                <circle cx="44" cy="24" r="3" fill="url(#g11)" />
+                                <rect x="24" y="44" width="6" height="8" rx="2" fill="url(#g11)" />
+                                <rect x="34" y="44" width="6" height="8" rx="2" fill="url(#g11)" />
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">Child Savings Plans</span>
+                    </a>
+
+                    <!-- Card 12: Retirement Plans -->
+                    <a href="#" class="product-bazaar-card" data-type="Life Insurance" data-company="Pension Plan">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g12" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#a78bfa" />
+                                        <stop offset="100%" stop-color="#7c3aed" />
+                                    </linearGradient>
+                                </defs>
+                                <circle cx="24" cy="20" r="5" fill="url(#g12)" />
+                                <path d="M24 27c-4.4 0-8 3.6-8 8v15h4V38h2v12h4V35c0-4.4-3.6-8-8-8z" fill="url(#g12)" />
+                                <circle cx="40" cy="22" r="4.5" fill="url(#g12)" opacity="0.7" />
+                                <path d="M40 28.5c-3.6 0-6.5 2.9-6.5 6.5v15h3.5v-11h1.5v11h3.5v-15c0-3.6-2.9-6.5-6.5-6.5z"
+                                    fill="url(#g12)" opacity="0.7" />
+                                <path d="M12 48h40" stroke="url(#g12)" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">Retirement Plans</span>
+                    </a>
+
+                    <!-- Card 13: Employee Group Health -->
+                    <a href="#" class="product-bazaar-card" data-type="Health Insurance" data-company="GPA/GMC">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g13" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#2dd4bf" />
+                                        <stop offset="100%" stop-color="#0d9488" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M32 4L16 12v18c0 10 7 19.5 16 22c9-2.5 16-12 16-22V12L32 4z" fill="url(#g13)"
+                                    opacity="0.15" />
+                                <path d="M32 6L18 13v15c0 8.5 6 16.5 14 18.6c8-2.1 14-10.1 14-18.6V13L32 6z" fill="none"
+                                    stroke="url(#g13)" stroke-width="2" />
+                                <circle cx="24" cy="22" r="4" fill="url(#g13)" />
+                                <circle cx="40" cy="22" r="4" fill="url(#g13)" />
+                                <circle cx="32" cy="32" r="5" fill="url(#g13)" />
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">Employee Group Health</span>
+                    </a>
+
+                    <!-- Card 14: Home Insurance -->
+                    <a href="#" class="product-bazaar-card" data-type="SME Insurance" data-company="Fire">
+                        <div class="product-bazaar-card-icon">
+                            <svg viewBox="0 0 64 64" width="36" height="36">
+                                <defs>
+                                    <linearGradient id="g14" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="#a78bfa" />
+                                        <stop offset="100%" stop-color="#7c3aed" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M12 28v22h40V28L32 12L12 28zm14 22v-12h12v12H26z" fill="url(#g14)"
+                                    opacity="0.15" />
+                                <path d="M32 10L8 30h6v18h12V36h12v12h12V30h6L32 10z" fill="none" stroke="url(#g14)"
+                                    stroke-width="2" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                        <span class="product-bazaar-card-title">Home Insurance</span>
+                    </a>
+                    <div class="view-all-grid-wrapper">
+                        <a id="btn-view-all-products" href="javascript:void(0)" class="btn-view-all-bazaar">
+                            <i class="fa-solid fa-grid-2" style="margin-right:6px;font-size:0.9em;"></i>
+                            View all products
+                        </a>
+                    </div>
+                </div>
+
+                <!-- All Products Modal (Popup overlay) -->
+                <div id="all-products-modal" class="all-products-modal" style="display: none;">
+                    <div class="all-products-modal-backdrop" onclick="closeAllProductsModal()"></div>
+                    <div class="all-products-modal-content">
+                        <div class="all-products-modal-header">
+                            <h2 class="all-products-modal-title">ALL INSURANCE PRODUCTS</h2>
+                            <button class="all-products-modal-close" onclick="closeAllProductsModal()">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <div class="all-products-modal-body">
+                            <div class="product-bazaar-grid">
+                                <!-- Card 1: Term Life Insurance -->
+                                <a href="#" class="product-bazaar-card" data-type="Life Insurance" data-company="Term Plan">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#818cf8" />
+                                                    <stop offset="100%" stop-color="#4f46e5" />
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M32 4L12 12v18c0 12.3 8.5 23.8 20 27c11.5-3.2 20-14.7 20-27V12L32 4z"
+                                                fill="url(#pg1)" opacity="0.15" />
+                                            <path
+                                                d="M32 6L14 13.2v16.8c0 11.1 7.7 21.5 18 24.4c10.3-2.9 18-13.3 18-24.4V13.2L32 6z"
+                                                fill="none" stroke="url(#pg1)" stroke-width="2" />
+                                            <path
+                                                d="M32 16c-5.5 0-10 4.5-10 10c0 8.5 10 18 10 18s10-9.5 10-18c0-5.5-4.5-10-10-10zm0 14c-2.2 0-4-1.8-4-4s1.8-4 4-4s4 1.8 4 4s-1.8 4-4 4z"
+                                                fill="url(#pg1)" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Term Life Insurance</span>
+                                </a>
+
+                                <!-- Card 2: Savings & Investment Plan -->
+                                <a href="#" class="product-bazaar-card" data-type="Life Insurance" data-company="ULIP Plan">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg3" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#fbbf24" />
+                                                    <stop offset="100%" stop-color="#d97706" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg3)" opacity="0.15" />
+                                            <circle cx="24" cy="40" r="10" fill="none" stroke="url(#pg3)"
+                                                stroke-width="2" />
+                                            <path d="M20 40h8m-4-4v8" stroke="url(#pg3)" stroke-width="2" />
+                                            <circle cx="40" cy="24" r="10" fill="none" stroke="url(#pg3)"
+                                                stroke-width="2" />
+                                            <path d="M36 24h8m-4-4v8" stroke="url(#pg3)" stroke-width="2" />
+                                            <path d="M24 24l16 16" stroke="#10b981" stroke-width="3"
+                                                stroke-linecap="round" />
+                                            <path d="M40 34v6h-6" stroke="#10b981" stroke-width="3" stroke-linecap="round"
+                                                stroke-linejoin="round" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Investment Plans</span>
+                                </a>
+
+                                <!-- Card 3: Child Savings Plans -->
+                                <a href="#" class="product-bazaar-card" data-type="Life Insurance"
+                                    data-company="Saving Plan">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg11" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#f472b6" />
+                                                    <stop offset="100%" stop-color="#db2777" />
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M46 22c5 0 8 4 8 8c0 10-10 18-22 18S10 38 10 30c0-4 3-8 8-8h28z"
+                                                fill="url(#pg11)" opacity="0.15" />
+                                            <rect x="28" y="8" width="8" height="8" rx="2" fill="url(#pg11)" />
+                                            <circle cx="28" cy="30" r="14" fill="none" stroke="url(#pg11)"
+                                                stroke-width="2" />
+                                            <circle cx="44" cy="24" r="3" fill="url(#pg11)" />
+                                            <rect x="24" y="44" width="6" height="8" rx="2" fill="url(#pg11)" />
+                                            <rect x="34" y="44" width="6" height="8" rx="2" fill="url(#pg11)" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Child Savings Plans</span>
+                                </a>
+
+                                <!-- Card 4: Retirement Plans -->
+                                <a href="#" class="product-bazaar-card" data-type="Life Insurance"
+                                    data-company="Pension Plan">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg12" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#a78bfa" />
+                                                    <stop offset="100%" stop-color="#7c3aed" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="24" cy="20" r="5" fill="url(#pg12)" />
+                                            <path d="M24 27c-4.4 0-8 3.6-8 8v15h4V38h2v12h4V35c0-4.4-3.6-8-8-8z"
+                                                fill="url(#pg12)" />
+                                            <circle cx="40" cy="22" r="4.5" fill="url(#pg12)" opacity="0.7" />
+                                            <path
+                                                d="M40 28.5c-3.6 0-6.5 2.9-6.5 6.5v15h3.5v-11h1.5v11h3.5v-15c0-3.6-2.9-6.5-6.5-6.5z"
+                                                fill="url(#pg12)" opacity="0.7" />
+                                            <path d="M12 48h40" stroke="url(#pg12)" stroke-width="2"
+                                                stroke-linecap="round" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Retirement Plans</span>
+                                </a>
+
+                                <!-- Card 5: Tax-Saving Plan (80C) -->
+                                <a href="#" class="product-bazaar-card" data-type="Life Insurance"
+                                    data-company="Saving Plan">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg10" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#10b981" />
+                                                    <stop offset="100%" stop-color="#047857" />
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M22 20h20l4 8v16c0 4-4 8-10 8H28c-6 0-10-4-10-8V28l4-8z"
+                                                fill="url(#pg10)" opacity="0.15" />
+                                            <path d="M22 20c0-6 4-10 10-10s10 4 10 10" fill="none" stroke="url(#pg10)"
+                                                stroke-width="3" />
+                                            <circle cx="32" cy="34" r="12" fill="url(#pg10)" />
+                                            <text x="32" y="38" font-family="'Outfit', sans-serif" font-size="10"
+                                                font-weight="900" fill="#fff" text-anchor="middle">80C</text>
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Tax-Saving Plan (80C)</span>
+                                </a>
+
+                                <!-- Card 6: Guaranteed Return Plans -->
+                                <a href="#" class="product-bazaar-card" data-type="Life Insurance"
+                                    data-company="Saving Plan">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg10_guar" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#10b981" />
+                                                    <stop offset="100%" stop-color="#047857" />
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M22 20h20l4 8v16c0 4-4 8-10 8H28c-6 0-10-4-10-8V28l4-8z"
+                                                fill="url(#pg10_guar)" opacity="0.15" />
+                                            <path d="M22 20c0-6 4-10 10-10s10 4 10 10" fill="none" stroke="url(#pg10_guar)"
+                                                stroke-width="3" />
+                                            <circle cx="32" cy="34" r="12" fill="url(#pg10_guar)" />
+                                            <text x="32" y="38" font-family="'Outfit', sans-serif" font-size="10"
+                                                font-weight="900" fill="#fff" text-anchor="middle">100%</text>
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Guaranteed Return Plans</span>
+                                </a>
+
+                                <!-- Card 7: Individual Health Plan -->
+                                <a href="#" class="product-bazaar-card" data-type="Health Insurance"
+                                    data-company="Mediclaim">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg2" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#f87171" />
+                                                    <stop offset="100%" stop-color="#dc2626" />
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M12 28c0-8.8 7.2-16 16-16s16 7.2 16 16c0 14-16 26-16 26S12 42 12 28z"
+                                                fill="url(#pg2)" opacity="0.15" />
+                                            <path
+                                                d="M32 50S14 36.5 14 26a12 12 0 0 1 20.3-8.8L32 19.4l-2.3-2.2A12 12 0 0 1 50 26c0 10.5-18 24-18 24z"
+                                                fill="none" stroke="url(#pg2)" stroke-width="2" />
+                                            <path d="M22 26h6v-6h4v6h6v4h-6v-6h-4v-6h-6v-4z" fill="url(#pg2)" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Individual Health Plan</span>
+                                </a>
+
+                                <!-- Card 8: Family Floater Plan / Family Health Insurance -->
+                                <a href="#" class="product-bazaar-card" data-type="Health Insurance"
+                                    data-company="Family Mediclaim">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg6" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#38bdf8" />
+                                                    <stop offset="100%" stop-color="#0284c7" />
+                                                </linearGradient>
+                                            </defs>
+                                            <path
+                                                d="M32 12a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM20 18a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM44 18a5 5 0 1 0 0-10 5 5 0 0 0 0 10z"
+                                                fill="url(#pg6)" />
+                                            <path
+                                                d="M32 46c0-6 4-10 10-10s10 4 10 10v12H32V46zM12 46c0-6 4-10 10-10s10 4 10 10v12H12V46z"
+                                                fill="url(#pg6)" opacity="0.6" />
+                                            <path d="M22 30c0-5 3.5-8.5 8.5-8.5S39 25 39 30v14H22V30z" fill="url(#pg6)" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Family Health Insurance</span>
+                                </a>
+
+                                <!-- Card 9: Senior Citizen Health Plan -->
+                                <a href="#" class="product-bazaar-card" data-type="Health Insurance"
+                                    data-company="Mediclaim">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_sr" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#f97316" />
+                                                    <stop offset="100%" stop-color="#ea580c" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_sr)" opacity="0.15" />
+                                            <circle cx="32" cy="22" r="6" fill="none" stroke="url(#pg_sr)"
+                                                stroke-width="2.5" />
+                                            <path d="M18 48c0-8 6-12 14-12s14 4 14 12" fill="none" stroke="url(#pg_sr)"
+                                                stroke-width="2.5" />
+                                            <path d="M42 36l4-8M46 28h5" stroke="url(#pg_sr)" stroke-width="2.5"
+                                                stroke-linecap="round" stroke-linejoin="round" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Senior Citizen Health</span>
+                                </a>
+
+                                <!-- Card 10: Critical Illness Cover -->
+                                <a href="#" class="product-bazaar-card" data-type="Health Insurance"
+                                    data-company="Critical Illness">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_crit" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#c084fc" />
+                                                    <stop offset="100%" stop-color="#9333ea" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_crit)" opacity="0.15" />
+                                            <path d="M32 14L16 20v14c0 10 7 19.5 16 22 9-2.5 16-12 16-22V20L32 14z"
+                                                fill="none" stroke="url(#pg_crit)" stroke-width="2" />
+                                            <path d="M26 34h12m-6-6v12" stroke="url(#pg_crit)" stroke-width="3"
+                                                stroke-linecap="round" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Critical Illness Cover</span>
+                                </a>
+
+                                <!-- Card 11: Personal Accident Cover -->
+                                <a href="#" class="product-bazaar-card" data-type="Health Insurance"
+                                    data-company="Personal Accident">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_acc" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#dc2626" />
+                                                    <stop offset="100%" stop-color="#991b1b" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_acc)" opacity="0.15" />
+                                            <path d="M14 42l10-10l8 8l18-18m0 0h-8m8 0v8" fill="none" stroke="url(#pg_acc)"
+                                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Personal Accident</span>
+                                </a>
+
+                                <!-- Card 12: Top-Up Health Plan -->
+                                <a href="#" class="product-bazaar-card" data-type="Health Insurance"
+                                    data-company="Top-up Plans">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_top" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#4f46e5" />
+                                                    <stop offset="100%" stop-color="#3730a3" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_top)" opacity="0.15" />
+                                            <path
+                                                d="M32 14c-10 0-18 8-18 18s8 18 18 18s18-8 18-18S42 14 32 14zm0 28c-5.5 0-10-4.5-10-10s4.5-10 10-10s10 4.5 10 10s-4.5 10-10 10z"
+                                                fill="url(#pg_top)" />
+                                            <path d="M30 32h4m-2-2v4" stroke="#ffffff" stroke-width="2"
+                                                stroke-linecap="round" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Top-Up Health Plan</span>
+                                </a>
+
+                                <!-- Card 13: Car Insurance -->
+                                <a href="#" class="product-bazaar-card" data-type="Motor Insurance"
+                                    data-company="Private Car">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg4" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#94a3b8" />
+                                                    <stop offset="100%" stop-color="#475569" />
+                                                </linearGradient>
+                                            </defs>
+                                            <rect x="8" y="24" width="48" height="24" rx="8" fill="url(#pg4)"
+                                                opacity="0.15" />
+                                            <path d="M12 28h40l-4-10H16l-4 10z" fill="none" stroke="url(#pg4)"
+                                                stroke-width="2" />
+                                            <rect x="8" y="28" width="48" height="12" rx="4" fill="none" stroke="url(#pg4)"
+                                                stroke-width="2" />
+                                            <circle cx="20" cy="44" r="6" fill="#1e293b" />
+                                            <circle cx="20" cy="44" r="2" fill="#fff" />
+                                            <circle cx="44" cy="44" r="6" fill="#1e293b" />
+                                            <circle cx="44" cy="44" r="2" fill="#fff" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Car Insurance</span>
+                                </a>
+
+                                <!-- Card 14: 2 Wheeler Insurance -->
+                                <a href="#" class="product-bazaar-card" data-type="Motor Insurance"
+                                    data-company="Two Wheeler">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg5" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#34d399" />
+                                                    <stop offset="100%" stop-color="#059669" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="20" cy="40" r="10" fill="none" stroke="url(#pg5)"
+                                                stroke-width="2" />
+                                            <circle cx="44" cy="40" r="10" fill="none" stroke="url(#pg5)"
+                                                stroke-width="2" />
+                                            <path d="M20 40h10l8-18h10" fill="none" stroke="url(#pg5)" stroke-width="3"
+                                                stroke-linecap="round" />
+                                            <path d="M38 22L30 32" stroke="url(#pg5)" stroke-width="2" />
+                                            <rect x="34" y="16" width="12" height="6" rx="2" fill="url(#pg5)" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">2 Wheeler Insurance</span>
+                                </a>
+
+                                <!-- Card 15: Travel Insurance -->
+                                <a href="#" class="product-bazaar-card" data-type="Travel Insurance" data-company="Others">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg7" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#38bdf8" />
+                                                    <stop offset="100%" stop-color="#0284c7" />
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M12 40l10-8l12 12l-6 10H12z" fill="url(#pg7)" opacity="0.15" />
+                                            <path
+                                                d="M54 22L36 12L22 28L14 26L10 30L18 36L14 50L18 52L28 42L38 46L42 42L34 34L54 22z"
+                                                fill="url(#pg7)" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Travel Insurance</span>
+                                </a>
+
+                                <!-- Card 16: Home Insurance -->
+                                <a href="#" class="product-bazaar-card" data-type="SME Insurance" data-company="Fire">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg14" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#a78bfa" />
+                                                    <stop offset="100%" stop-color="#7c3aed" />
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M12 28v22h40V28L32 12L12 28zm14 22v-12h12v12H26z" fill="url(#pg14)"
+                                                opacity="0.15" />
+                                            <path d="M32 10L8 30h6v18h12V36h12v12h12V30h6L32 10z" fill="none"
+                                                stroke="url(#pg14)" stroke-width="2" stroke-linejoin="round" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Home Insurance</span>
+                                </a>
+                                <!-- Business Insurance Cards -->
+                                <!-- Card 1: Fire & Property Insurance -->
+                                <a href="#" class="product-bazaar-card" data-type="SME Insurance" data-company="Fire">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_fire" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#f97316" />
+                                                    <stop offset="100%" stop-color="#ea580c" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_fire)" opacity="0.15" />
+                                            <path d="M18 44c0-8 6-14 14-14s14 6 14 14H18z" fill="none"
+                                                stroke="url(#pg_fire)" stroke-width="2.5" />
+                                            <path d="M32 16v14m-6-8h12" stroke="url(#pg_fire)" stroke-width="3"
+                                                stroke-linecap="round" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Fire & Property Insurance</span>
+                                </a>
+
+                                <!-- Card 2: Shop Owner Insurance -->
+                                <a href="#" class="product-bazaar-card" data-type="SME Insurance" data-company="Fire">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_shop" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#84cc16" />
+                                                    <stop offset="100%" stop-color="#65a30d" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_shop)" opacity="0.15" />
+                                            <path d="M14 26l6-10h24l6 10H14zm6 0v22h24V26" fill="none"
+                                                stroke="url(#pg_shop)" stroke-width="2.5" stroke-linejoin="round" />
+                                            <circle cx="32" cy="36" r="4" fill="url(#pg_shop)" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Shop Owner Insurance</span>
+                                </a>
+
+                                <!-- Card 3: Office Package Policy -->
+                                <a href="#" class="product-bazaar-card" data-type="SME Insurance" data-company="Others">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_off" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#06b6d4" />
+                                                    <stop offset="100%" stop-color="#0891b2" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_off)" opacity="0.15" />
+                                            <rect x="22" y="16" width="20" height="32" rx="2" fill="none"
+                                                stroke="url(#pg_off)" stroke-width="2.5" />
+                                            <path d="M26 22h4m-4 6h4m-4 6h4m8-12h4m-4 6h4m-4 6h4" stroke="url(#pg_off)"
+                                                stroke-width="2" stroke-linecap="round" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Office Package Policy</span>
+                                </a>
+
+                                <!-- Card 4: Commercial Vehicle -->
+                                <a href="#" class="product-bazaar-card" data-type="Motor Insurance"
+                                    data-company="Commercial Vehicle">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_truck" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#eab308" />
+                                                    <stop offset="100%" stop-color="#ca8a04" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_truck)" opacity="0.15" />
+                                            <path d="M12 24h24v16H12zm24 6h10l6 4v6H36z" fill="none" stroke="url(#pg_truck)"
+                                                stroke-width="2.5" stroke-linejoin="round" />
+                                            <circle cx="20" cy="44" r="4" fill="url(#pg_truck)" />
+                                            <circle cx="42" cy="44" r="4" fill="url(#pg_truck)" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Commercial Vehicle</span>
+                                </a>
+
+                                <!-- Card 5: Employee Group Health -->
+                                <a href="#" class="product-bazaar-card" data-type="Health Insurance" data-company="GPA/GMC">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg13" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#2dd4bf" />
+                                                    <stop offset="100%" stop-color="#0d9488" />
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M32 4L16 12v18c0 10 7 19.5 16 22c9-2.5 16-12 16-22V12L32 4z"
+                                                fill="url(#pg13)" opacity="0.15" />
+                                            <path d="M32 6L18 13v15c0 8.5 6 16.5 14 18.6c8-2.1 14-10.1 14-18.6V13L32 6z"
+                                                fill="none" stroke="url(#pg13)" stroke-width="2" />
+                                            <circle cx="24" cy="22" r="4" fill="url(#pg13)" />
+                                            <circle cx="40" cy="22" r="4" fill="url(#pg13)" />
+                                            <circle cx="32" cy="32" r="5" fill="url(#pg13)" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Employee Group Health</span>
+                                </a>
+
+                                <!-- Card 6: Group Personal Accident -->
+                                <a href="#" class="product-bazaar-card" data-type="Health Insurance"
+                                    data-company="Personal Accident">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_gpa" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#f43f5e" />
+                                                    <stop offset="100%" stop-color="#be123c" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_gpa)" opacity="0.15" />
+                                            <path
+                                                d="M32 14c-10 0-18 8-18 18s8 18 18 18s18-8 18-18s-8-18-18-18zm0 24c-3.3 0-6-2.7-6-6s2.7-6 6-6s6 2.7 6 6s-2.7 6-6 6z"
+                                                fill="url(#pg_gpa)" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Group Personal Accident</span>
+                                </a>
+
+                                <!-- Card 7: Group Term Life -->
+                                <a href="#" class="product-bazaar-card" data-type="SME Insurance" data-company="GPA/GMC">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_gtl" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#8b5cf6" />
+                                                    <stop offset="100%" stop-color="#7c3aed" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_gtl)" opacity="0.15" />
+                                            <path d="M32 14L16 20v14c0 10 7 19.5 16 22 9-2.5 16-12 16-22V20L32 14z"
+                                                fill="none" stroke="url(#pg_gtl)" stroke-width="2.5" />
+                                            <path d="M26 30l4 4l8-8" fill="none" stroke="url(#pg_gtl)" stroke-width="3"
+                                                stroke-linecap="round" stroke-linejoin="round" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Group Term Life</span>
+                                </a>
+
+                                <!-- Card 8: Workmen Compensation -->
+                                <a href="#" class="product-bazaar-card" data-type="SME Insurance" data-company="GPA/GMC">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_work" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#6366f1" />
+                                                    <stop offset="100%" stop-color="#4f46e5" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_work)" opacity="0.15" />
+                                            <path d="M20 40h24l-4-12H24l-4 12zm6-20h12v4H26z" fill="none"
+                                                stroke="url(#pg_work)" stroke-width="2.5" stroke-linejoin="round" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Workmen Compensation</span>
+                                </a>
+
+                                <!-- Card 9: Professional Indemnity -->
+                                <a href="#" class="product-bazaar-card" data-type="SME Insurance" data-company="Liability">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_prof" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#0ea5e9" />
+                                                    <stop offset="100%" stop-color="#0284c7" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_prof)" opacity="0.15" />
+                                            <path d="M20 24h24m-12-8v24m-6 0h12" stroke="url(#pg_prof)" stroke-width="2.5"
+                                                stroke-linecap="round" />
+                                            <path d="M22 32l-2-8h4l-2 8zm18 0l-2-8h4l-2 8z" fill="none"
+                                                stroke="url(#pg_prof)" stroke-width="2" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Professional Indemnity</span>
+                                </a>
+
+                                <!-- Card 10: General Liability -->
+                                <a href="#" class="product-bazaar-card" data-type="SME Insurance" data-company="Liability">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_liab" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#64748b" />
+                                                    <stop offset="100%" stop-color="#475569" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_liab)" opacity="0.15" />
+                                            <rect x="18" y="22" width="28" height="20" rx="3" fill="none"
+                                                stroke="url(#pg_liab)" stroke-width="2.5" />
+                                            <path d="M26 22v-4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4" stroke="url(#pg_liab)"
+                                                stroke-width="2" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">General Liability</span>
+                                </a>
+
+                                <!-- Card 11: Cyber Risk Insurance -->
+                                <a href="#" class="product-bazaar-card" data-type="SME Insurance" data-company="Cyber">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_cyber" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#3b82f6" />
+                                                    <stop offset="100%" stop-color="#1d4ed8" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_cyber)" opacity="0.15" />
+                                            <rect x="20" y="24" width="24" height="18" rx="2" fill="none"
+                                                stroke="url(#pg_cyber)" stroke-width="2.5" />
+                                            <path d="M26 24v-6a6 6 0 0 1 12 0v6" fill="none" stroke="url(#pg_cyber)"
+                                                stroke-width="2" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Cyber Risk Insurance</span>
+                                </a>
+
+                                <!-- Card 12: Directors & Officers Liability -->
+                                <a href="#" class="product-bazaar-card" data-type="SME Insurance" data-company="Liability">
+                                    <div class="product-bazaar-card-icon">
+                                        <svg viewBox="0 0 64 64" width="36" height="36">
+                                            <defs>
+                                                <linearGradient id="pg_dir" x1="0%" y1="0%" x2="100%" y2="100%">
+                                                    <stop offset="0%" stop-color="#2563eb" />
+                                                    <stop offset="100%" stop-color="#1e3a8a" />
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="32" cy="32" r="24" fill="url(#pg_dir)" opacity="0.15" />
+                                            <path
+                                                d="M32 14c-10 0-18 8-18 18s8 18 18 18s18-8 18-18s-8-18-18-18zm0 8a5 5 0 1 1 0 10a5 5 0 0 1 0-10zm0 24c-6.6 0-12-3.4-12-7.5s5.4-7.5 12-7.5s12 3.4 12 7.5s-5.4 7.5-12 7.5z"
+                                                fill="url(#pg_dir)" />
+                                        </svg>
+                                    </div>
+                                    <span class="product-bazaar-card-title">Directors & Officers Liability</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Section (Agent CTA / Register Link) -->
+            <div class="d-flex align-items-center justify-content-center pt-3 border-top footer-row">
+                <p class="agent-cta-text mb-0"><span style="color: #18529d;">Are you an Insurance Agent?</span><a
+                        href="{% url 'agents:agent_registration' %}" class="agent-cta-link">Check Your Eligibility <i
+                            class="fa-solid fa-arrow-right-long ms-1"></i></a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Specific Custom Styles -->
+    <style>
+        .footer-con {
+            display: none !important;
+        }
+
+        /* ── All Products Modal Styling (Premium Overlay with Backdrop Blur) ── */
+        .all-products-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .all-products-modal-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            cursor: pointer;
+            animation: modalFadeIn 0.3s ease-out forwards;
+        }
+
+        .all-products-modal-content {
+            width: 90%;
+            max-width: 1100px;
+            max-height: 85vh;
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            z-index: 10;
+            animation: modalZoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .all-products-modal-header {
+            padding: 20px 28px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #ffffff;
+        }
+
+        .all-products-modal-title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .all-products-modal-close {
+            background: #f1f5f9;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .all-products-modal-close:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .all-products-modal-body {
+            padding: 28px;
+            overflow-y: auto;
+            flex: 1;
+            background-color: #ffffff;
+        }
+
+        /* Prevent background scrolling when modal is open */
+        body.modal-open {
+            overflow: hidden !important;
+        }
+
+        /* Modal category groupings */
+        .modal-category-group {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+        }
+
+        .modal-category-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .modal-category-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #1e293b;
+            margin-top: 0;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 10px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .modal-subcategory-block {
+            margin-bottom: 24px;
+        }
+
+        .modal-subcategory-block:last-child {
+            margin-bottom: 0;
+        }
+
+        .modal-subcategory-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #475569;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-subcategory-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 12px;
+            background: #3b82f6;
+            border-radius: 2px;
+        }
+
+        /* Modal specific Grid adjustments */
+        .all-products-modal-body .product-bazaar-grid {
+            grid-template-columns: repeat(6, 1fr);
+            gap: 14px;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes modalZoomIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Viewport Adjustments for Modal */
+        @media (max-width: 1200px) {
+            .all-products-modal-body .product-bazaar-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 991px) {
+            .all-products-modal-content {
+                max-height: 90vh;
+            }
+
+            .all-products-modal-body .product-bazaar-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 767px) {
+            .all-products-modal-content {
+                width: 95%;
+                max-height: 92vh;
+                border-radius: 16px;
+            }
+
+            .all-products-modal-header {
+                padding: 16px 20px;
+            }
+
+            .all-products-modal-title {
+                font-size: 1.1rem;
+            }
+
+            .all-products-modal-body {
+                padding: 16px;
+            }
+
+            .modal-category-group {
+                padding: 16px;
+                border-radius: 12px;
+                margin-bottom: 16px;
+            }
+
+            .modal-category-title {
+                font-size: 1rem;
+                margin-bottom: 14px;
+                padding-bottom: 8px;
+            }
+
+            .modal-subcategory-block {
+                margin-bottom: 16px;
+            }
+
+            .modal-subcategory-title {
+                font-size: 0.78rem;
+                margin-bottom: 8px;
+            }
+
+            .all-products-modal-body .product-bazaar-grid {
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 4px !important;
+            }
+        }
+
+        .marketing-page-wrapper {
+            background-color: #ffffff;
+            font-family: 'Outfit', sans-serif;
+            min-height: calc(100vh - 120px);
+            display: flex;
+            align-items: center;
+            padding: 20px 0;
+            box-sizing: border-box;
+        }
+
+        .marketing-container {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        .site-logo {
+            max-height: 75px;
+            width: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .site-logo:hover {
+            transform: scale(1.03);
+        }
+
+        .page-title {
+            color: #0f172a;
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+        }
+
+        .page-subtitle {
+            color: #64748b;
+            font-size: 0.95rem;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.4;
+        }
+
+        /* Service Selection Grid styling */
+        .service-selector-row {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .service-select-btn {
+            display: flex;
+            align-items: center;
+            background-color: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 18px;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            outline: none !important;
+            text-align: left;
+        }
+
+        .service-select-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background-color: transparent;
+            transition: background-color 0.3s ease;
+        }
+
+        /* Border Left highlight colors */
+        .card-port-transfer::after {
+            background-color: #0ea5e9;
+        }
+
+        .card-buy-new::after {
+            background-color: #6366f1;
+        }
+
+        .card-renew-insurance::after {
+            background-color: #0d9488;
+        }
+
+        .card-claim-assistance::after {
+            background-color: #ef4444;
+        }
+
+        .service-select-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.04);
+            border-color: #cbd5e1;
+        }
+
+        /* Active highlight styling */
+        .service-select-btn.active {
+            border-width: 1.5px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
+        }
+
+        .service-select-btn.card-port-transfer.active {
+            border-color: #0ea5e9;
+            background-color: #f0f9ff;
+        }
+
+        .service-select-btn.card-buy-new.active {
+            border-color: #6366f1;
+            background-color: #eef2ff;
+        }
+
+        .service-select-btn.card-renew-insurance.active {
+            border-color: #0d9488;
+            background-color: #f0fdfa;
+        }
+
+        .service-select-btn.card-claim-assistance.active {
+            border-color: #ef4444;
+            background-color: #fef2f2;
+        }
+
+        .service-btn-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            margin-right: 10px;
+            transition: transform 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .card-port-transfer .service-btn-icon {
+            background-color: #f0f9ff;
+            color: #0ea5e9;
+        }
+
+        .card-buy-new .service-btn-icon {
+            background-color: #eef2ff;
+            color: #6366f1;
+        }
+
+        .card-renew-insurance .service-btn-icon {
+            background-color: #f0fdfa;
+            color: #0d9488;
+        }
+
+        .card-claim-assistance .service-btn-icon {
+            background-color: #fef2f2;
+            color: #ef4444;
+        }
+
+        .service-select-btn:hover .service-btn-icon {
+            transform: scale(1.06) rotate(3deg);
+        }
+
+        .service-btn-title {
+            color: #334155;
+            font-size: 0.92rem;
+            font-weight: 600;
+            flex-grow: 1;
+            line-height: 1.3;
+            min-width: 0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .service-select-btn.active .service-btn-title {
+            color: #0f172a;
+        }
+
+        /* Policybazaar Grid section styling */
+        .product-bazaar-section {
+            max-width: 1100px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border: 1px solid #f1f5f9;
+            border-radius: 16px;
+            padding: 20px 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.01);
+            transition: all 0.3s ease;
+        }
+
+        .grid-header {
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 8px;
+        }
+
+        .grid-title {
+            color: #0f172a;
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: -0.2px;
+            margin: 0;
+        }
+
+        .service-badge-pill {
+            background-color: #e2e8f0;
+            color: #475569;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+            transition: all 0.3s ease;
+        }
+
+        /* Policybazaar Product Cards Grid layout (Strictly 6 columns) */
+        .product-bazaar-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 14px;
+        }
+
+        /* Wrapper for the View All products button inside the grid */
+        .view-all-grid-wrapper {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 80px;
+            padding: 10px;
+        }
+
+        @media (max-width: 767px) {
+            .view-all-grid-wrapper {
+                min-height: 90px !important;
+                padding: 4px;
+            }
+        }
+
+        .product-bazaar-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 18px 10px;
+            text-decoration: none !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 120px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.01);
+        }
+
+        .product-bazaar-card:hover {
+            background-color: #ffffff;
+            border-color: #3b82f6;
+            box-shadow: 0 12px 20px -5px rgba(59, 130, 246, 0.12), 0 4px 6px -2px rgba(59, 130, 246, 0.04);
+            transform: translateY(-4px);
+        }
+
+        .product-bazaar-card-icon {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        .product-bazaar-card-icon svg {
+            width: 36px;
+            height: 36px;
+        }
+
+        .product-bazaar-card:hover .product-bazaar-card-icon {
+            transform: scale(1.08);
+        }
+
+        .product-bazaar-card-title {
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #334155;
+            text-align: center;
+            line-height: 1.3;
+            width: 100%;
+        }
+
+        .product-bazaar-card:hover .product-bazaar-card-title {
+            color: #0f172a;
+        }
+
+        /* Dynamic Disabled Card state for Port/Transfer validation */
+        .product-bazaar-card.disabled-product {
+            opacity: 0.3;
+            cursor: not-allowed !important;
+            pointer-events: none;
+            border-color: #e2e8f0;
+            box-shadow: none !important;
+            transform: none !important;
+            background-color: #f1f5f9;
+        }
+
+        /* View all button */
+        .btn-view-all-bazaar {
+            display: inline-block;
+            background-color: #ffffff;
+            color: #2563eb;
+            border: 1.5px solid #2563eb;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-decoration: none !important;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+        }
+
+        .btn-view-all-bazaar:hover {
+            background-color: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 8px 12px -3px rgba(37, 99, 235, 0.15);
+            transform: translateY(-1px);
+        }
+
+        /* Agent CTA Section */
+        .footer-row {
+            max-width: 1100px;
+            margin: 0 auto;
+            border-color: #f1f5f9 !important;
+            padding-top: 15px !important;
+        }
+
+        .agent-cta-row {
+            font-size: 0.95rem;
+        }
+
+        .agent-cta-text {
+            color: #475569;
+            font-weight: 700;
+            margin: 0;
+            font-size: 1.2rem;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: -0.1px;
+        }
+
+        .agent-cta-link {
+            color: #0d9488;
+            font-weight: 700;
+            text-decoration: none !important;
+            margin-left: 4px;
+            display: inline-flex;
+            align-items: center;
+            border-bottom: 2px solid transparent;
+            padding-bottom: 2px;
+            transition: all 0.2s ease;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: -0.1px;
+        }
+
+        .agent-cta-link i {
+            transition: transform 0.2s ease;
+        }
+
+        .agent-cta-link:hover {
+            color: #0f766e;
+            border-color: #0f766e;
+        }
+
+        .agent-cta-link:hover i {
+            transform: translateX(4px);
+        }
+
+        @media (min-width: 992px) {
+            .marketing-page-wrapper {
+                min-height: 100vh;
+                padding: 10px 0;
+            }
+
+            .marketing-container {
+                padding-top: 10px;
+                padding-bottom: 10px;
+            }
+
+            .brand-header-wrap {
+                margin-bottom: 10px !important;
+            }
+
+            .page-title {
+                font-size: 1.55rem !important;
+                margin-bottom: 2px !important;
+            }
+
+            .page-subtitle {
+                font-size: 0.88rem !important;
+            }
+
+            .service-selector-row {
+                margin-bottom: 10px !important;
+            }
+
+            .service-select-btn {
+                padding: 10px 14px !important;
+            }
+
+            .product-bazaar-section {
+                padding: 14px 20px !important;
+                margin-bottom: 10px !important;
+            }
+
+            .grid-header {
+                padding-bottom: 4px !important;
+                margin-bottom: 10px !important;
+            }
+
+            .grid-title {
+                font-size: 1.05rem !important;
+            }
+
+            .product-bazaar-grid {
+                gap: 10px !important;
+            }
+
+            .product-bazaar-card {
+                min-height: 95px !important;
+                padding: 12px 8px !important;
+            }
+
+            .product-bazaar-card-icon {
+                margin-bottom: 6px !important;
+            }
+
+            .product-bazaar-card-icon svg {
+                width: 30px !important;
+                height: 30px !important;
+            }
+
+            .product-bazaar-card-title {
+                font-size: 0.8rem !important;
+            }
+
+            .view-all-grid-wrapper {
+                min-height: 55px !important;
+                padding: 5px !important;
+            }
+
+            .btn-view-all-bazaar {
+                padding: 6px 16px !important;
+                font-size: 0.8rem !important;
+            }
+
+            .footer-row {
+                padding-top: 10px !important;
+            }
+        }
+
+        /* Responsive styling */
+        @media (max-width: 1200px) {
+            .product-bazaar-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+
+            .view-all-grid-wrapper {
+                grid-column: 1 / -1;
+                min-height: 120px;
+            }
+        }
+
+        @media (max-width: 991px) {
+            .service-selector-row>div {
+                margin-bottom: 8px;
+            }
+
+            .product-bazaar-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 767px) {
+            .marketing-page-wrapper {
+                min-height: calc(100vh - 65px) !important;
+                height: auto !important;
+                max-height: none !important;
+                overflow-y: auto !important;
+                padding: 8px 0 !important;
+            }
+
+            .marketing-container {
+                height: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                padding-top: 8px !important;
+                padding-bottom: 8px !important;
+            }
+
+            .site-logo {
+                max-height: 48px !important;
+            }
+
+            .page-title {
+                font-size: 1.1rem !important;
+                margin-bottom: 1px !important;
+            }
+
+            .page-subtitle {
+                font-size: 0.72rem !important;
+                line-height: 1.2 !important;
+            }
+
+            /* Responsive button layout for 2x2 grid */
+            .service-select-btn {
+                padding: 6px 8px !important;
+                border-radius: 8px !important;
+            }
+
+            .service-btn-icon {
+                width: 20px !important;
+                height: 20px !important;
+                margin-right: 6px !important;
+                font-size: 0.75rem !important;
+            }
+
+            .service-btn-title {
+                font-size: 0.7rem !important;
+                line-height: 1.2 !important;
+            }
+
+            .product-bazaar-section {
+                padding: 6px 6px !important;
+                border-radius: 10px !important;
+            }
+
+            .grid-header {
+                padding-bottom: 2px !important;
+            }
+
+            .grid-title {
+                font-size: 0.8rem !important;
+            }
+
+            .service-badge-pill {
+                font-size: 0.58rem !important;
+                padding: 2px 6px !important;
+            }
+
+            .product-bazaar-grid {
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 4px !important;
+            }
+
+            .product-bazaar-card {
+                min-height: 60px !important;
+                padding: 4px 2px !important;
+                border-radius: 6px !important;
+            }
+
+            .product-bazaar-card-icon {
+                margin-bottom: 2px !important;
+            }
+
+            .product-bazaar-card-icon svg {
+                width: 20px !important;
+                height: 20px !important;
+            }
+
+            .product-bazaar-card-title {
+                font-size: 0.58rem !important;
+            }
+
+            .btn-view-all-bazaar {
+                font-size: 0.65rem !important;
+                padding: 4px 8px !important;
+                border-width: 1px !important;
+                border-radius: 20px !important;
+            }
+
+            .footer-row {
+                padding-top: 4px !important;
+            }
+
+            .agent-cta-text {
+                font-size: 0.9rem !important;
+                display: block !important;
+                text-align: center !important;
+                line-height: 1 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .agent-cta-text span {
+                display: block !important;
+                margin: 0 0 1px 0 !important;
+                padding: 0 !important;
+                line-height: 1 !important;
+            }
+
+            .agent-cta-link {
+                margin: 0 !important;
+                padding: 0 !important;
+                display: inline-flex !important;
+                line-height: 1 !important;
+            }
+        }
+    </style>
+
+    <!-- Interactive script to handle grid url updates & active states -->
+    <script>
+
+        document.addEventListener('DOMContentLoaded', function () {
+
+            window.openAllProductsModal = function () {
+                var modal = document.getElementById('all-products-modal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    document.body.classList.add('modal-open');
+                }
+            };
+
+            window.closeAllProductsModal = function () {
+                var modal = document.getElementById('all-products-modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                }
+            };
+
+            // Close modal on Escape key
+            window.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    window.closeAllProductsModal();
+                }
+            });
+
+            // ── Store current active service so we can restore it after HTMX/back navigation ──
+            var _currentService = null;
+            var _currentLabel = null;
+
+            // ── Product link updater — always queries fresh DOM ──
+            function updateProductLinks(serviceType, serviceLabel) {
+                var freshCards = document.querySelectorAll('.product-bazaar-card');
+                var badge = document.getElementById('service-badge');
+                var lifeAlert = document.getElementById('life-disabled-alert');
+
+                // Update Badge Label
+                if (badge) {
+                    badge.textContent = serviceLabel;
+                    badge.className = 'service-badge-pill';
+                    if (serviceLabel === 'Port/Transfer') {
+                        badge.style.backgroundColor = '#e0f2fe';
+                        badge.style.color = '#0369a1';
+                    } else if (serviceLabel === 'Buy New Insurance') {
+                        badge.style.backgroundColor = '#eef2ff';
+                        badge.style.color = '#4338ca';
+                    } else if (serviceLabel === 'Renew Insurance') {
+                        badge.style.backgroundColor = '#f0fdfa';
+                        badge.style.color = '#0f766e';
+                    } else if (serviceLabel === 'Claim assistance') {
+                        badge.style.backgroundColor = '#fef2f2';
+                        badge.style.color = '#b91c1c';
+                    }
+                }
+
+                // Handle Life Insurance Disabling for Port/Transfer
+                if (lifeAlert) {
+                    lifeAlert.style.display = (serviceType === 'Policy Review') ? 'flex' : 'none';
+                }
+
+                // Update product card hrefs (fresh query every time — fixes back-button bug)
+                freshCards.forEach(function (card) {
+                    var type = card.getAttribute('data-type');
+                    var company = card.getAttribute('data-company');
+                    if (serviceType === 'Policy Review' && type === 'Life Insurance') {
+                        card.classList.add('disabled-product');
+                        card.setAttribute('href', 'javascript:void(0)');
+                    } else {
+                        card.classList.remove('disabled-product');
+                        var targetUrl = "{% url 'home:find_agents' %}?ServiceType=" + encodeURIComponent(serviceType) +
+                            "&InsuranceType=" + encodeURIComponent(type) +
+                            "&InsuranceCompany%5B%5D=" + encodeURIComponent(company) +
+                            "&openFilter=1";
+                        card.setAttribute('href', targetUrl);
+                    }
+                });
+            }
+
+            function initPage() {
+                // Clone buttons to remove any stale event listeners (prevents double-binding on re-init)
+                var btns = document.querySelectorAll('.service-select-btn');
+                btns.forEach(function (btn) {
+                    var newBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(newBtn, btn);
+                });
+
+                // Re-query after cloning and attach fresh click listeners
+                document.querySelectorAll('.service-select-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        document.querySelectorAll('.service-select-btn').forEach(function (b) {
+                            b.classList.remove('active');
+                        });
+                        this.classList.add('active');
+                        _currentService = this.getAttribute('data-service');
+                        _currentLabel = this.getAttribute('data-label');
+                        updateProductLinks(_currentService, _currentLabel);
+                    });
+                });
+
+                // Re-bind View All button
+                var bva = document.getElementById('btn-view-all-products');
+                if (bva) {
+                    var newBva = bva.cloneNode(true);
+                    bva.parentNode.replaceChild(newBva, bva);
+                    newBva.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.openAllProductsModal();
+                    });
+                }
+
+                // Restore previously selected service (if user navigated back) or use default active btn
+                if (_currentService && _currentLabel) {
+                    updateProductLinks(_currentService, _currentLabel);
+                } else {
+                    var defaultActive = document.querySelector('.service-select-btn.active');
+                    if (defaultActive) {
+                        _currentService = defaultActive.getAttribute('data-service');
+                        _currentLabel = defaultActive.getAttribute('data-label');
+                        updateProductLinks(_currentService, _currentLabel);
+                    }
+                }
+            }
+
+            // ── Run on initial page load ──
+            initPage();
+
+            // ── Re-run after HTMX swaps the DOM (fixes back-button + in-app navigation) ──
+            document.addEventListener('htmx:afterSettle', initPage);
+            document.addEventListener('htmx:afterSwap', initPage);
+
+            // ── Re-run when browser restores page from bfcache (physical back button) ──
+            window.addEventListener('pageshow', function (e) {
+                if (e.persisted) {
+                    initPage();
+                }
+            });
+        });
+    </script>
+{% endblock %}

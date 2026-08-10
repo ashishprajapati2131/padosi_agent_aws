@@ -5,11 +5,12 @@ from django.http import JsonResponse
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.conf import settings
 from apps.agents.models import Agent, AgentProfile, AgentSubscription
 from django.contrib.auth.models import User
 from apps.admin_panel.models.insurance_approval import AgentApprovalRequest
-import random, string, logging
+import random, string, logging, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -282,7 +283,8 @@ def clear_cart(request):
 @login_required
 def checkout_cart(request):
     user = request.user
-    if not (is_insurance_manager(user) or is_insurance_onboarding(user) or is_insurance_sales(user)):
+    # Laravel parity: manager / onboarding / accounts operate the cart; sales kept for existing behaviour
+    if not (is_insurance_manager(user) or is_insurance_onboarding(user) or is_insurance_sales(user) or is_insurance_accounts(user)):
         return JsonResponse({'success': False, 'message': 'Unauthorized.'}, status=403)
 
     if request.method != 'POST':
@@ -293,7 +295,26 @@ def checkout_cart(request):
         return JsonResponse({'success': False, 'message': 'Your cart is empty.'}, status=400)
 
     payment_type = request.POST.get('payment_type') # 'offline' or 'approval'
-    payment_reference = request.POST.get('payment_reference', '')
+    payment_method = request.POST.get('payment_method', '').strip()
+    payment_reference = request.POST.get('payment_reference', '').strip()
+    payment_recorded_at = request.POST.get('payment_recorded_at', '').strip()
+
+    if payment_type == 'offline' and not (is_insurance_manager(user) or is_insurance_accounts(user)):
+        return JsonResponse({'success': False, 'message': 'Only the manager or accounts sub-user can record offline payments.'}, status=403)
+
+    recorded_dt = None
+    if payment_type == 'offline':
+        if not payment_method:
+            return JsonResponse({'success': False, 'message': 'Payment method is required for offline payment.'}, status=400)
+        if not payment_reference:
+            return JsonResponse({'success': False, 'message': 'Transaction reference / UTR is required for offline payment.'}, status=400)
+        if not payment_recorded_at:
+            return JsonResponse({'success': False, 'message': 'Payment date is required for offline payment.'}, status=400)
+        recorded_dt = parse_date(payment_recorded_at)
+        if not recorded_dt:
+            return JsonResponse({'success': False, 'message': 'Payment date is invalid.'}, status=400)
+
+    recorded_at = datetime.datetime.combine(recorded_dt, datetime.datetime.min.time()) if recorded_dt else None
 
     try:
         with transaction.atomic():
@@ -328,6 +349,10 @@ def checkout_cart(request):
                     status=agent_status,
                     plan_type=plan_type,
                     registration_step=2,
+                    payment_method=payment_method if payment_type == 'offline' else '',
+                    payment_reference=payment_reference if payment_type == 'offline' else '',
+                    payment_recorded_at=recorded_at,
+                    payment_recorded_by=user if payment_type == 'offline' else None,
                 )
 
                 AgentProfile.objects.create(
@@ -347,9 +372,9 @@ def checkout_cart(request):
                     registration_amount=amount,
                     payment_status=sub_payment_status,
                     status='inactive',
-                    starts_at=timezone.now() if payment_type == 'offline' else None,
-                    expires_at=(timezone.now() + timezone.timedelta(days=365)) if payment_type == 'offline' else None,
-                    razorpay_order_id='OFFLINE_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10)),
+                    starts_at=recorded_at if payment_type == 'offline' else None,
+                    expires_at=(recorded_at + timezone.timedelta(days=365)) if recorded_at else None,
+                    razorpay_order_id=payment_reference if payment_type == 'offline' else 'OFFLINE_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10)),
                     razorpay_payment_id=payment_reference if payment_type == 'offline' else None,
                 )
 

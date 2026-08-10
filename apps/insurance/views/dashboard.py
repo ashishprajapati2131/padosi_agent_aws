@@ -2,8 +2,9 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
-from apps.agents.models import Agent
+from apps.agents.models import Agent, AgentLead
 from django.contrib.auth.models import User
+from django.db.models import Count, F
 from apps.admin_panel.models.insurance_approval import AgentApprovalRequest
 
 @login_required
@@ -25,9 +26,11 @@ def dashboard(request):
         total_agents = Agent.objects.filter(insurance_id=insurance_id).count()
         active_agents = Agent.objects.filter(insurance_id=insurance_id, status='active').count()
         inactive_agents = Agent.objects.filter(insurance_id=insurance_id, status='inactive').count()
-        
-        # Placeholder for leads
-        total_leads = 0 
+
+        # Real lead count: joins agent_leads → agents on insurance_id (mirrors Laravel)
+        total_leads = AgentLead.objects.filter(
+            agent__insurance_id=insurance_id
+        ).count()
         
         now = timezone.now()
         new_agents_this_month = Agent.objects.filter(
@@ -104,11 +107,20 @@ def dashboard(request):
 
     if profile.is_insurance_sales():
         active_agents = Agent.objects.filter(insurance_id=insurance_id, status='active').count()
-        total_leads = 0
-        recent_leads = []
-        
-        # Fake top agents for now since no lead model exists yet
-        top_agents = Agent.objects.filter(insurance_id=insurance_id, status='active').order_by('-created_at')[:5]
+        total_leads = AgentLead.objects.filter(
+            agent__insurance_id=insurance_id
+        ).count()
+        recent_leads = AgentLead.objects.filter(
+            agent__insurance_id=insurance_id
+        ).select_related('agent').annotate(agent_name=F('agent__fullname')).order_by('-created_at')[:5]
+
+        # Top performing active agents by lead count (mirrors withCount('leads'))
+        top_agents = (
+            Agent.objects
+            .filter(insurance_id=insurance_id, status='active')
+            .annotate(leads_count=Count('leads'))
+            .order_by('-leads_count')[:5]
+        )
 
         context.update({
             'activeAgents': active_agents,
@@ -120,9 +132,10 @@ def dashboard(request):
 
     if profile.is_insurance_accounts():
         pending_payments_count = Agent.objects.filter(insurance_id=insurance_id, status='pending_accounts_payment').count()
-        # Missing payment_recorded_by in model, using total onboarded fallback or generic filter
-        processed_payments_count = Agent.objects.filter(insurance_id=insurance_id, status='active').count()
-        recent_payments = Agent.objects.filter(insurance_id=insurance_id, status='active').order_by('-created_at')[:5]
+        processed_payments_count = Agent.objects.filter(insurance_id=insurance_id, payment_recorded_by=user).count()
+        recent_payments = Agent.objects.filter(
+            insurance_id=insurance_id, payment_recorded_by=user
+        ).order_by('-payment_recorded_at')[:5]
         
         pending_payments = Agent.objects.filter(
             insurance_id=insurance_id, status='pending_accounts_payment'

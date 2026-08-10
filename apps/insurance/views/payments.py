@@ -5,9 +5,10 @@ from django.http import JsonResponse
 from apps.agents.models import Agent, AgentSubscription
 from django.http import HttpResponseForbidden
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.conf import settings
 from django.db import transaction
-import random, string
+import random, string, datetime
 
 # Optional razorpay import
 try:
@@ -32,9 +33,80 @@ def payments_index(request):
 @login_required
 @insurance_manager_or_accounts_required
 def record_payment(request, agent_id):
+    """Records an offline payment (NEFT/Cheque/UPI/Cash) against an agent's
+    pending subscription, mirroring Laravel's offline checkoutCart flow:
+    agent -> pending_admin_approval + payment audit fields; subscription completed."""
 
-    messages.error(request, 'Offline payment is disabled. Please pay online via Razorpay.')
-    return redirect('insurance:payments_index')
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
+
+    company_id = request.user.insurance_profile.get_insurance_company_id()
+    agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)
+
+    payment_method = request.POST.get('payment_method', '').strip()
+    payment_reference = request.POST.get('payment_reference', '').strip()
+    payment_recorded_at = request.POST.get('payment_recorded_at', '').strip()
+
+    errors = []
+    if not payment_method:
+        errors.append('Payment method is required.')
+    if not payment_reference:
+        errors.append('Transaction reference / UTR is required.')
+    if not payment_recorded_at:
+        errors.append('Payment date is required.')
+
+    recorded_dt = None
+    if payment_recorded_at:
+        recorded_dt = parse_date(payment_recorded_at)
+        if not recorded_dt:
+            errors.append('Payment date is invalid.')
+
+    if errors:
+        msg = ' '.join(errors)
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': msg}, status=400)
+        messages.error(request, msg)
+        return redirect('insurance:payments_index')
+
+    recorded_at = datetime.datetime.combine(recorded_dt, datetime.datetime.min.time())
+
+    try:
+        with transaction.atomic():
+            agent = Agent.objects.select_for_update().get(id=agent.id)
+            if agent.status in ['pending_admin_approval', 'active']:
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'success': True, 'message': 'Payment for this agent is already recorded.'})
+                messages.info(request, 'Payment for this agent is already recorded.')
+                return redirect('insurance:payments_index')
+
+            agent.status = 'pending_admin_approval'
+            agent.payment_method = payment_method
+            agent.payment_reference = payment_reference
+            agent.payment_recorded_at = recorded_at
+            agent.payment_recorded_by = request.user
+            agent.save()
+
+            subscription = agent.subscriptions.filter(
+                payment_status='pending'
+            ).order_by('-created_at').select_for_update().first()
+            if subscription:
+                subscription.payment_status = 'completed'
+                subscription.razorpay_order_id = payment_reference
+                subscription.starts_at = recorded_at
+                subscription.expires_at = recorded_at + timezone.timedelta(days=365)
+                subscription.save()
+
+        success_msg = 'Offline payment recorded. Agent advanced to admin approval.'
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': success_msg})
+        messages.success(request, success_msg)
+        return redirect('insurance:payments_index')
+
+    except Exception as e:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'message': f'Failed to record payment: {str(e)}'}, status=500)
+        messages.error(request, f'Failed to record payment: {str(e)}')
+        return redirect('insurance:payments_index')
 
 @login_required
 @insurance_manager_or_accounts_required
@@ -131,7 +203,8 @@ def handle_payment_success(request, agent_id):
             agent.status = 'pending_admin_approval'
             agent.payment_method = 'Razorpay (Online)'
             agent.payment_reference = payment_ref
-            # Missing in model but needed in logic, handled generically.
+            agent.payment_recorded_at = timezone.now()
+            agent.payment_recorded_by = request.user
             agent.save()
 
             subscription = agent.subscriptions.filter(payment_status='pending').order_by('-created_at').select_for_update().first()

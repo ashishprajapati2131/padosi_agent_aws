@@ -129,18 +129,63 @@
                         </table>
                     </div>
 
-                    <div class="alert alert-info py-2 px-3 d-flex align-items-start gap-2 mb-0" style="border-radius: 10px; font-size: 11.5px; border: none; background-color: #f0f6ff; color: #1e40af;">
-                        <i class="fas fa-circle-info mt-1" style="font-size: 13px;"></i>
-                        <div>
-                            <strong>Online checkout is mandatory.</strong> Clicking the button below will securely connect to the Razorpay Gateway to complete the agent's subscription fee payment.
+                    <ul class="nav nav-pills nav-justified mb-3" style="gap: 6px;">
+                        <li class="nav-item" style="flex: 1;">
+                            <button type="button" class="nav-link active rounded-3" style="font-size: 13px; font-weight: 600; color: #0f3460;" data-bs-payment-tab="online" onclick="switchPaymentTab({{ agent.id }}, 'online')">
+                                <i class="fas fa-shield-halved me-1"></i> Pay Online
+                            </button>
+                        </li>
+                        <li class="nav-item" style="flex: 1;">
+                            <button type="button" class="nav-link rounded-3" style="font-size: 13px; font-weight: 600; color: #64748b;" data-bs-payment-tab="offline" onclick="switchPaymentTab({{ agent.id }}, 'offline')">
+                                <i class="fas fa-hand-holding-dollar me-1"></i> Record Offline
+                            </button>
+                        </li>
+                    </ul>
+
+                    {#  Online Checkout Panel  #}
+                    <div id="onlinePanel{{ agent.id }}">
+                        <div class="alert alert-info py-2 px-3 d-flex align-items-start gap-2 mb-3" style="border-radius: 10px; font-size: 11.5px; border: none; background-color: #f0f6ff; color: #1e40af;">
+                            <i class="fas fa-circle-info mt-1" style="font-size: 13px;"></i>
+                            <div>
+                                <strong>Online checkout.</strong> Clicking the button below will securely connect to the Razorpay Gateway to complete the agent's subscription fee payment.
+                            </div>
                         </div>
+                        <button type="button" onclick="payAgentOnline({{ agent.id }})" class="btn btn-primary btn-primary-custom px-4 w-100" style="border-radius: 10px; height: 44px; font-weight: 700;">
+                            <i class="fas fa-shield-halved me-1"></i> Pay ₹{% if sub %}{{ sub.registration_amount }}{% elif agent.plan_type == 'starter' %}2359{% else %}8258{% endif %}
+                        </button>
+                    </div>
+
+                    {#  Offline Payment Panel  #}
+                    <div id="offlinePanel{{ agent.id }}" class="d-none">
+                        <div class="alert alert-warning py-2 px-3 d-flex align-items-start gap-2 mb-3" style="border-radius: 10px; font-size: 11.5px; border: none; background-color: #fff8e6; color: #92400e;">
+                            <i class="fas fa-triangle-exclamation mt-1" style="font-size: 13px;"></i>
+                            <div>Record an offline payment (NEFT/IMPS, Cheque, UPI or Cash) only after the amount is credited to the company account.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-muted mb-1" for="offlineMethod{{ agent.id }}">Payment Method</label>
+                            <select id="offlineMethod{{ agent.id }}" class="form-select form-select-sm" style="border-radius: 8px; background: white;">
+                                <option value="">Select method</option>
+                                <option>Bank Transfer (NEFT/IMPS)</option>
+                                <option>Cheque</option>
+                                <option>UPI</option>
+                                <option>Cash</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-muted mb-1" for="offlineRef{{ agent.id }}">Transaction Reference / UTR</label>
+                            <input type="text" id="offlineRef{{ agent.id }}" class="form-control form-control-sm" placeholder="e.g. TXN-108284729" style="border-radius: 8px; background: white;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-muted mb-1" for="offlineDate{{ agent.id }}">Payment Date</label>
+                            <input type="date" id="offlineDate{{ agent.id }}" class="form-control form-control-sm" value="{% now 'Y-m-d' %}" style="border-radius: 8px; background: white;">
+                        </div>
+                        <button type="button" onclick="recordOfflinePayment({{ agent.id }})" class="btn btn-success px-4 w-100" style="border-radius: 10px; height: 44px; font-weight: 700;">
+                            <i class="fas fa-file-signature me-1"></i> Record Offline Payment
+                        </button>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 pb-4 pt-3 px-4 d-flex justify-content-between gap-2">
-                    <button type="button" class="btn btn-light px-4" data-dismiss="modal" style="border-radius: 10px; height: 44px; font-weight: 600; width: 35%;">Cancel</button>
-                    <button type="button" onclick="payAgentOnline({{ agent.id }})" class="btn btn-primary btn-primary-custom px-4 flex-grow-1" style="border-radius: 10px; height: 44px; font-weight: 700; width: 60%;">
-                        <i class="fas fa-shield-halved me-1"></i> Pay ₹{% if sub %}{{ sub.registration_amount }}{% elif agent.plan_type == 'starter' %}2359{% else %}8258{% endif %}
-                    </button>
+                <div class="modal-footer border-top-0 pb-4 pt-3 px-4">
+                    <button type="button" class="btn btn-light px-4" data-dismiss="modal" style="border-radius: 10px; height: 44px; font-weight: 600; width: 100%;">Cancel</button>
                 </div>
             </div>
         </div>
@@ -153,6 +198,76 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
+    function switchPaymentTab(agentId, mode) {
+        var tabs = $(`#paymentModal${agentId} [data-bs-payment-tab]`);
+        tabs.removeClass('active');
+        tabs.each(function (i, tab) { tab.style.color = (tab.dataset.bsPaymentTab === mode) ? '#0f3460' : '#64748b'; });
+        $(`#paymentModal${agentId} [data-bs-payment-tab="${mode}"]`).addClass('active');
+        $(`#paymentModal${agentId} [data-bs-payment-tab="${mode}"]`)[0].style.color = '#0f3460';
+        $(`#onlinePanel${agentId}`).toggleClass('d-none', mode !== 'online');
+        $(`#offlinePanel${agentId}`).toggleClass('d-none', mode !== 'offline');
+    }
+
+    var paymentRecordUrlBase = "{% url 'insurance:record_payment' 999999999 %}";
+
+    function recordOfflinePayment(agentId) {
+        var method = $(`#offlineMethod${agentId}`).val();
+        var ref = $(`#offlineRef${agentId}`).val().trim();
+        var date = $(`#offlineDate${agentId}`).val();
+
+        if (!method) { Swal.fire('Missing Details', 'Please select a payment method.', 'warning'); return; }
+        if (!ref) { Swal.fire('Missing Details', 'Please enter the transaction reference / UTR number.', 'warning'); return; }
+        if (!date) { Swal.fire('Missing Details', 'Please select the payment date.', 'warning'); return; }
+
+        Swal.fire({
+            title: 'Confirm Offline Payment',
+            html: `Record <strong>${method}</strong> payment for this agent?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Record Payment',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+
+            Swal.fire({
+                title: 'Recording Payment...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: paymentRecordUrlBase.replace('999999999', agentId),
+                type: "POST",
+                data: {
+                    csrfmiddlewaretoken: "{{ csrf_token }}",
+                    payment_method: method,
+                    payment_reference: ref,
+                    payment_recorded_at: date
+                },
+                success: function(res) {
+                    Swal.close();
+                    if (res.success) {
+                        Swal.fire({
+                            title: 'Success',
+                            text: res.message,
+                            icon: 'success',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error', res.message || 'Failed to record payment.', 'error');
+                    }
+                },
+                error: function(xhr) {
+                    Swal.close();
+                    Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to record payment.', 'error');
+                }
+            });
+        });
+    }
+
     function payAgentOnline(agentId) {
         Swal.fire({
             title: 'Preparing Secure Checkout',

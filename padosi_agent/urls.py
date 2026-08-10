@@ -20,12 +20,17 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from apps.agents.views.dashboard import serve_private_file
+from apps.agents.views import pwa as pwa_views
 
 from django.contrib.auth import views as auth_views
 from django.contrib.sitemaps.views import sitemap
 from padosi_agent.sitemaps import sitemaps
 
 urlpatterns = [
+    # ── PWA (mirrors Laravel pwa.manifest / pwa.sw / pwa.offline) ────────────
+    path('manifest.webmanifest', pwa_views.manifest,       name='pwa.manifest'),
+    path('sw.js',                pwa_views.service_worker, name='pwa.sw'),
+    path('offline.html',         pwa_views.offline,        name='pwa.offline'),
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('insurance-login/', auth_views.LoginView.as_view(template_name='insurance/login.html', redirect_authenticated_user=True), name='insurance_login'),
     # Removed overriding logout view, now handled by apps.agents.urls
@@ -33,6 +38,7 @@ urlpatterns = [
     path('django-admin/', admin.site.urls),
     path('', include('apps.admin_panel.urls')),
     path('', include('apps.agents.urls')),
+    path('events/', include('apps.agents.urls_events')),
     path('chatbot-api/', include('chatbot.urls')),
     path('', include('apps.distributors.urls')),
     path('', include('apps.home.urls')),

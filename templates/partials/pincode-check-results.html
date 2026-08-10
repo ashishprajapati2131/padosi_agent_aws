@@ -1,0 +1,140 @@
+{% with details=results.details|default:None %}
+<div class="pincode-result-wrapper" data-count="{% if results.invalid %}-1{% else %}{{ results.count|default:0 }}{% endif %}"
+    data-pincode="{{ results.pincode|default:'' }}" data-location="{% if details %}{{ details.formatted_location }}{% else %}PIN Code {{ results.pincode|default:'' }}{% endif %}">
+
+    {% if results.invalid %}
+        <!-- Invalid Pincode State -->
+        <div class="pincode-result-card animate__animated animate__fadeIn border-warning text-center p-4"
+            style="background: #fffbeb; border: 1.5px solid #fcd34d; border-radius: 16px; box-shadow: 0 10px 30px rgba(245, 158, 11, 0.04);">
+            <div class="pincode-result-icon mb-2" style="color: #d97706; font-size: 32px;">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h4 class="font-weight-bold" style="color: #78350f; font-size: 18px; font-family: 'Urbanist', sans-serif;">
+                Invalid PIN Code</h4>
+            <p class="text-muted mt-1 mb-0" style="font-size: 14px; max-width: 400px; margin: 0 auto; line-height: 1.4;">
+                Please enter a valid 6-digit Indian PIN code (e.g., 380015 or 110001) to check availability.
+            </p>
+        </div>
+
+    {% elif results.count == 0 %}
+        <!-- Zero Agents: Great Opportunity State -->
+        <div class="pincode-result-card animate__animated animate__fadeIn border-success text-center p-4 position-relative overflow-hidden"
+            style="background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%); border: 1.5px solid #86efac; border-radius: 18px; box-shadow: 0 15px 30px rgba(34, 197, 94, 0.05);">
+
+            <div class="pincode-result-icon mb-2 text-success" style="font-size: 40px;">
+                <i class="fas fa-trophy"></i>
+            </div>
+
+            <span class="d-inline-block px-2.5 py-0.5 mb-2"
+                style="background: #dcfce7; color: #166534; font-size: 11px; font-weight: 700; border-radius: 30px; letter-spacing: 0.5px; text-transform: uppercase;">
+                Exclusive Market
+            </span>
+
+            <h3 class="font-weight-bold mb-1" style="color: #14532d; font-size: 22px; font-family: 'Urbanist', sans-serif;">
+                🎉 Great Opportunity!
+            </h3>
+            <h5 class="mb-2" style="color: #166534; font-size: 14px; font-weight: 600;">
+                <i class="fas fa-map-marker-alt mr-1"></i> {% if details %}{{ details.formatted_location }}{% else %}PIN Code {{ results.pincode|default:'' }}{% endif %}
+            </h5>
+
+            <p class="text-muted mx-auto mb-3" style="font-size: 13.5px; max-width: 500px; line-height: 1.5;">
+                There are currently <strong style="color: #18529d;">0 active insurance agents</strong> registered in this
+                PIN code.
+                Register today to get 100% exclusive local Visiblity in your neighborhood with zero competition!
+            </p>
+
+            <div>
+                <a href="{% url 'events:register.form' %}?pincode={{ results.pincode }}"
+                    class="btn btn-success text-decoration-none font-weight-bold px-4 py-2"
+                    style="background: #0d9488; border: none; border-radius: 10px; font-size: 14.5px; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2) !important;">
+                    Claim Your PIN Code Now <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+    {% elif results.count <= 10 %}
+        <!-- Low Competition: 1 to 10 Agents -->
+        <div class="pincode-result-card animate__animated animate__fadeIn text-center p-4 position-relative overflow-hidden"
+            style="background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%); border: 1.5px solid #a7f3d0; border-radius: 18px; box-shadow: 0 15px 30px rgba(16, 185, 129, 0.05);">
+
+            <div class="pincode-result-icon mb-2 text-success" style="font-size: 40px; color: #0d9488 !important;">
+                <i class="fas fa-chart-line"></i>
+            </div>
+
+            <span class="d-inline-block px-2.5 py-0.5 mb-2"
+                style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 700; border-radius: 30px; letter-spacing: 0.5px; text-transform: uppercase;">
+                High Demand
+            </span>
+
+            <h3 class="font-weight-bold mb-1" style="color: #064e3b; font-size: 22px; font-family: 'Urbanist', sans-serif;">
+                🔥 Low Competition!
+            </h3>
+            <h5 class="mb-2" style="color: #065f46; font-size: 14px; font-weight: 600;">
+                <i class="fas fa-map-marker-alt mr-1"></i> {% if details %}{{ details.formatted_location }}{% else %}PIN Code {{ results.pincode|default:'' }}{% endif %}
+            </h5>
+
+            <p class="text-muted mx-auto mb-3" style="font-size: 13.5px; max-width: 500px; line-height: 1.5;">
+                There are only <strong style="color: #18529d;">{{ results.count }} registered agents</strong> in this PIN code.
+                Demand is extremely high. Register today to stand out and capture high-intent local clients!
+            </p>
+
+            <div>
+                <a href="{% url 'events:register.form' %}?pincode={{ results.pincode }}"
+                    class="btn btn-primary text-decoration-none font-weight-bold px-4 py-2"
+                    style="background: #0d9488; border: none; border-radius: 10px; font-size: 14.5px; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2) !important;">
+                    Register in this PIN Code <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+
+    {% else %}
+        <!-- Moderate/High Competition: > 10 Agents -->
+        <div class="pincode-result-card animate__animated animate__fadeIn p-4"
+            style="background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 18px; box-shadow: 0 15px 30px rgba(15, 23, 42, 0.04);">
+
+            <div
+                class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3 text-center text-md-left">
+                <div>
+                    <span class="d-inline-block px-2.5 py-0.5 mb-2"
+                        style="background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; border-radius: 30px; text-transform: uppercase;">
+                        Established Market
+                    </span>
+                    <h4 class="font-weight-bold mb-1"
+                        style="color: #0f172a; font-size: 20px; font-family: 'Urbanist', sans-serif;">
+                        {{ results.count }} Registered Agents Found
+                    </h4>
+                    <p class="text-muted mb-0" style="font-size: 13.5px;">
+                        <i class="fas fa-map-marker-alt mr-1"></i> {% if details %}{{ details.formatted_location }}{% else %}PIN Code {{ results.pincode|default:'' }}{% endif %}
+                    </p>
+                </div>
+
+                <div class="mt-2 mt-md-0">
+                    <a href="{% url 'events:register.form' %}?pincode={{ results.pincode }}"
+                        class="btn btn-primary text-decoration-none font-weight-bold px-4 py-2.5"
+                        style="background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); border: none; border-radius: 10px; font-size: 14px; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2) !important;">
+                        Register in this PIN Code <i class="fas fa-plus ml-1.5"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- competitive marketing CTA -->
+            <div class="p-3 text-center mt-3" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                <h5 class="font-weight-bold mb-1" style="color: #1e293b; font-size: 15px;">Want to stand out from the
+                    competition?</h5>
+                <p class="text-muted mx-auto mb-2" style="font-size: 13px; max-width: 500px; line-height: 1.4;">
+                    Configure your insurance specialties, showcase customer reviews, and receive direct customer leads in
+                    your neighborhood!
+                </p>
+                <div>
+                    <a href="{% url 'events:register.form' %}?pincode={{ results.pincode }}"
+                        class="btn btn-outline-secondary font-weight-bold px-3 py-1.5"
+                        style="border-radius: 8px; font-size: 13px; color: #475569; border-color: #cbd5e1; background: #ffffff;">
+                        Get Listed Now
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    {% endif %}
+</div>
+{% endwith %}

@@ -1,0 +1,796 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Choose Your Plan — PadosiAgent</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #1d7d5d;
+            --primary-dark: #12543e;
+            --accent: #f59e0b;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            --card-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            --padosi-blue: #1e3a8a;
+            --padosi-blue-light: #eff6ff;
+            --highlight-pink: #fff1f2;
+            --border-pink: #fecdd3;
+            --text-pink: #e11d48;
+            --pill-green: #e6f7f0;
+            --text-green: #10b981;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-gradient);
+            color: #1e293b;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .plans-wrapper { width: 100%; max-width: 550px; }
+
+        .header-section { text-align: center; margin-bottom: 35px; }
+        .header-section h1 { font-weight: 800; color: #0f172a; font-size: 28px; letter-spacing: -0.5px; margin-bottom: 6px; }
+        .header-section .subtitle { color: #ef4444; font-size: 15px; font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .header-section .description { color: #64748b; font-size: 13px; font-weight: 500; }
+
+        .progress-indicator {
+            display: flex; justify-content: space-between;
+            margin-bottom: 55px; position: relative;
+            max-width: 320px; margin-left: auto; margin-right: auto;
+        }
+        .progress-indicator::before { content: ''; position: absolute; top: 15px; left: 10%; right: 10%; height: 2px; background: #cbd5e1; z-index: 1; }
+        .progress-step {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: #cbd5e1; color: #64748b;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 13px;
+            position: relative; z-index: 2;
+            box-shadow: 0 0 0 4px #fff; transition: all 0.3s;
+        }
+        .progress-step.completed { background: #10b981; color: #fff; }
+        .progress-step.active { background: var(--primary); color: #fff; box-shadow: 0 0 0 4px #fff, 0 4px 10px rgba(29, 125, 93, 0.3); }
+        .step-label { position: absolute; top: 38px; font-size: 10px; font-weight: 600; width: 90px; text-align: center; color: #64748b; }
+        .progress-step.active .step-label { color: var(--primary); font-weight: 700; }
+
+        .plan-card-container { position: relative; perspective: 1000px; margin-bottom: 25px; }
+        .plan-card {
+            background: #ffffff; border-radius: 24px; box-shadow: var(--card-shadow);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            padding: 35px 28px; position: relative; overflow: hidden;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s;
+            transform-style: preserve-3d;
+        }
+
+        .recommended-ribbon {
+            position: absolute; top: 22px; right: -38px;
+            background: #10b981; color: white;
+            font-size: 9px; font-weight: 800; padding: 6px 40px;
+            transform: rotate(45deg); text-transform: uppercase;
+            letter-spacing: 0.8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); z-index: 10;
+        }
+
+        .plan-header { text-align: center; margin-bottom: 28px; border-bottom: 1px solid #f1f5f9; padding-bottom: 20px; }
+        .plan-name { font-size: 24px; font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+        .plan-card.starter-theme .plan-name { color: var(--padosi-blue); }
+        .plan-price { font-size: 38px; font-weight: 800; color: var(--primary); display: flex; align-items: center; justify-content: center; gap: 2px; }
+        .plan-card.starter-theme .plan-price { color: var(--padosi-blue); }
+        .plan-price span { font-size: 13px; color: #64748b; font-weight: 600; margin-left: 4px; }
+        .plan-subtitle { font-size: 13px; color: #64748b; font-weight: 500; font-style: italic; margin-top: 4px; }
+
+        .category-block { margin-bottom: 22px; }
+        .category-header { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--padosi-blue); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .feature-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0; border-bottom: 1px dashed #f1f5f9;
+            font-size: 13px; font-weight: 500; color: #334155;
+        }
+        .feature-name { display: flex; align-items: center; gap: 8px; }
+        .feature-name i { font-size: 13px; color: var(--padosi-blue); }
+
+        .badge-capsule { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 50px; text-transform: capitalize; }
+        .badge-filled-green { background: #e6f7f0; color: #10b981; }
+        .badge-outline-green { border: 1px solid #10b981; color: #10b981; background: transparent; }
+
+        .coming-soon-panel { background: #f0fdf4; border: 1px solid #d1fae5; border-radius: 12px; padding: 16px; margin-top: 15px; }
+        .coming-soon-title { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #15803d; margin-bottom: 10px; text-transform: uppercase; }
+        .coming-soon-item { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #166534; margin-bottom: 6px; }
+        .coming-soon-item:last-child { margin-bottom: 0; }
+        .coming-soon-item i { font-size: 10px; color: #15803d; }
+
+        .btn-select-plan {
+            background: #10b981; color: white; font-weight: 700; font-size: 15px;
+            padding: 14px; border-radius: 14px; width: 100%; border: none;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            margin-top: 25px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        .btn-select-plan:hover { background: #059669; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3); }
+        .btn-select-plan.starter-btn { background: var(--padosi-blue); box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2); }
+        .btn-select-plan.starter-btn:hover { background: #1e3a8a; box-shadow: 0 6px 16px rgba(30, 58, 138, 0.3); }
+
+        .footer-note { text-align: center; font-size: 11px; color: #64748b; font-weight: 500; margin-top: 8px; font-style: italic; }
+
+        .info-switcher-box {
+            background: var(--padosi-blue-light); border: 1px dashed var(--padosi-blue);
+            border-radius: 12px; padding: 14px; text-align: center;
+            font-size: 12px; font-weight: 600; color: #1e3a8a;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .info-switcher-box a { color: #1e3a8a; text-decoration: underline; font-weight: 700; cursor: pointer; }
+        .info-switcher-box a:hover { color: #0f172a; }
+
+        .d-none-animated { display: none !important; opacity: 0; transform: scale(0.95); }
+        .fade-enter-active { animation: cardFadeIn 0.3s ease-out forwards; }
+        @keyframes cardFadeIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .checkout-box {
+            background: rgba(255, 255, 255, 0.98); border-radius: 20px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: var(--card-shadow); padding: 30px; margin-top: 30px;
+            animation: cardFadeIn 0.4s ease-out forwards;
+        }
+        .section-title {
+            font-size: 14px; font-weight: 700; color: var(--padosi-blue);
+            margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;
+            border-bottom: 1.5px solid #f1f5f9; padding-bottom: 6px;
+            margin-top: 15px;
+        }
+        .detail-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #475569; }
+        .detail-row strong { color: #0f172a; }
+        .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 20px; }
+        .summary-total {
+            border-top: 1.5px solid #cbd5e1; padding-top: 10px; margin-top: 10px;
+            display: flex; justify-content: space-between;
+            font-size: 15px; font-weight: 700; color: #0f172a;
+        }
+
+        .btn-pay {
+            background: var(--primary); color: white; font-weight: 700; font-size: 15px;
+            width: 100%; border: none; display: flex; align-items: center; justify-content: center; gap: 10px;
+            transition: all 0.2s; box-shadow: 0 4px 12px rgba(29, 125, 93, 0.2);
+        }
+        .btn-pay:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(29, 125, 93, 0.3); }
+        .btn-pay:disabled { background: #cbd5e1; color: #94a3b8; box-shadow: none; cursor: not-allowed; }
+
+        .custom-popup-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center;
+            z-index: 10000; backdrop-filter: blur(4px);
+        }
+        .custom-popup {
+            background: white; border-radius: 20px; padding: 30px;
+            width: 90%; max-width: 400px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            animation: popupScale 0.3s ease-out;
+        }
+        @keyframes popupScale { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .popup-icon { font-size: 50px; margin-bottom: 15px; }
+        .popup-title { font-size: 20px; font-weight: 800; margin-bottom: 10px; color: #0f172a; }
+        .popup-message { font-size: 14px; color: #64748b; margin-bottom: 20px; font-weight: 500; }
+    </style>
+</head>
+
+<body>
+
+    <div class="plans-wrapper">
+        <!-- Header -->
+        <div class="header-section">
+            <div class="subtitle">Get started with our standard partner plans</div>
+            <h1>Choose Your PadosiAgent Plan</h1>
+            <div class="description text-muted">Select the plan that best fits your professional needs.</div>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-warning{% endif %} border-0 rounded-3 mb-4 shadow-sm" style="font-size:14px;">
+                    <i class="fa-solid fa-circle-info me-2"></i> {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Progress Steps -->
+        <div class="progress-indicator">
+            <div class="progress-step completed" style="margin-left: 0;">
+                1
+                <span class="step-label">Event Details</span>
+            </div>
+            <div class="progress-step active" style="margin-left: auto; margin-right: auto;">
+                2
+                <span class="step-label">Choose Plan & Checkout</span>
+            </div>
+            <div class="progress-step" style="margin-right: 0;">
+                3
+                <span class="step-label">Registered & Paid</span>
+            </div>
+        </div>
+
+        <div class="plan-card-container">
+
+            <!-- 1. RECOMMENDED PROFESSIONAL'S PLAN CARD -->
+            <div class="plan-card fade-enter-active {% if selected_professional %}border border-success border-3 shadow-lg{% endif %}" id="professionalCard" {% if selected_professional %}style="background: #f0fdf4;"{% endif %}>
+                <div class="recommended-ribbon">Recommended</div>
+
+                <div class="plan-header">
+                    <div class="plan-name">Professional's Plan</div>
+                    <div class="plan-price">
+                        {% if event_registration.promocode and pricing.professional.base < 6999 %}
+                            <span style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">₹6,999</span>
+                            ₹{{ pricing.professional.base|floatformat:0 }}/-<span>1st Year Only</span>
+                        {% else %}
+                            ₹{{ pricing.professional.base|floatformat:0 }}/-<span>1st Year Only</span>
+                        {% endif %}
+                    </div>
+                    {% if event_registration.promocode and pricing.professional.base < 6999 %}
+                        <div style="text-align:center; margin-top:6px;">
+                            <span style="background:#d1fae5; color:#059669; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #6ee7b7;">
+                                <i class="fa-solid fa-tag me-1"></i> Promo Applied — You Save ₹{{ base_minus_6999|floatformat:0 }}
+                            </span>
+                        </div>
+                    {% endif %}
+                    <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+ 18% GST applicable at checkout</div>
+                    <div class="plan-subtitle">For Established Professionals</div>
+                </div>
+
+                <div class="plan-features">
+                    <div class="category-block">
+                        <div class="category-header"><i class="fa-solid fa-briefcase"></i> Sales Kit</div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Organic Lead Inquiries</span></div>
+                            <span class="badge-capsule badge-filled-green">Priority</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Service Lead Inquiries*</span></div>
+                            <span class="badge-capsule badge-filled-green">Priority</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Referral Lead Inquiries</span></div>
+                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Paid Lead Inquiries*</span></div>
+                        </div>
+                    </div>
+
+                    <div class="category-block">
+                        <div class="category-header"><i class="fa-solid fa-bullhorn"></i> Asset & Marketing</div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Webpage</span></div>
+                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Social Media Integration</span></div>
+                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Digital Business Card</span></div>
+                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Digital Gallery</span></div>
+                            <span class="badge-capsule badge-filled-green">10 Images</span>
+                        </div>
+                    </div>
+
+                    <div class="category-block">
+                        <div class="category-header"><i class="fa-solid fa-headset"></i> Business Support</div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Profile Review & Rating</span></div>
+                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Trusted Badge</span></div>
+                            <span class="badge-capsule badge-filled-green">Yes</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Profile Analytics</span></div>
+                            <span class="badge-capsule badge-filled-green">Advanced</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Retention Tools</span></div>
+                            <span class="badge-capsule badge-filled-green">Full Access</span>
+                        </div>
+                    </div>
+
+                    <div class="coming-soon-panel">
+                        <div class="coming-soon-title"><i class="fa-solid fa-bolt"></i> More Features Coming Soon</div>
+                        <div class="coming-soon-item"><i class="fa-regular fa-folder-closed"></i><span>Business Ops Kit</span></div>
+                        <div class="coming-soon-item"><i class="fa-solid fa-cubes"></i><span>Cross Sell Products</span></div>
+                        <div class="coming-soon-item"><i class="fa-solid fa-rocket"></i><span>Many More...</span></div>
+                    </div>
+                </div>
+
+                <form action="{% url 'events:plans.submit' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan_type" value="professional">
+                    {% if selected_professional %}
+                        <button type="submit" class="btn-select-plan" style="background: #047857;">
+                            <i class="fa-solid fa-circle-check"></i> Professional's Plan Selected
+                        </button>
+                    {% else %}
+                        <button type="submit" class="btn-select-plan">
+                            <i class="fa-solid fa-crown"></i> Select Professional's Plan
+                        </button>
+                    {% endif %}
+                </form>
+                <div class="footer-note">Special Pre-Launch Price</div>
+            </div>
+
+            <!-- 2. STARTER'S PLAN CARD -->
+            <div class="plan-card starter-theme d-none-animated {% if selected_basic %}border border-primary border-3 shadow-lg{% endif %}" id="starterCard" {% if selected_basic %}style="background: #eff6ff;"{% endif %}>
+                <div class="plan-header">
+                    <div class="plan-name">Starter's Plan</div>
+                    <div class="plan-price">
+                        ₹{{ pricing.basic.base|floatformat:0 }}/-<span>1st Year Only</span>
+                    </div>
+                    <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:2px;">+ 18% GST applicable at checkout</div>
+                    {% if event_registration.promocode %}
+                        <div style="text-align:center; margin-top:6px;">
+                            <span style="background:#fff7ed; color:#c2410c; font-size:10px; font-weight:600; padding:3px 10px; border-radius:50px; border:1px solid #fed7aa;">
+                                <i class="fa-solid fa-info-circle me-1"></i> Promo codes apply to Professional's Plan only
+                            </span>
+                        </div>
+                    {% endif %}
+                    <div class="plan-subtitle">Perfect for New Agents</div>
+                </div>
+
+                <div class="plan-features">
+                    <div class="category-block">
+                        <div class="category-header"><i class="fa-solid fa-briefcase"></i> Sales Kit</div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Organic Lead Inquiries</span></div>
+                            <span class="badge-capsule badge-outline-green" style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Standard</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Service Lead Inquiries*</span></div>
+                            <span class="badge-capsule badge-outline-green" style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Standard</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Referral Lead Inquiries</span></div>
+                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                        </div>
+                    </div>
+
+                    <div class="category-block">
+                        <div class="category-header"><i class="fa-solid fa-bullhorn"></i> Asset & Marketing</div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Webpage</span></div>
+                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Social Media Integration</span></div>
+                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Digital Business Card</span></div>
+                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Digital Gallery</span></div>
+                            <span class="badge-capsule badge-filled-green">5 Images</span>
+                        </div>
+                    </div>
+
+                    <div class="category-block">
+                        <div class="category-header"><i class="fa-solid fa-headset"></i> Business Support</div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Profile Review & Rating</span></div>
+                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Profile Analytics</span></div>
+                            <span class="badge-capsule badge-outline-green" style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Basic</span>
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name"><i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i><span>Retention Tools</span></div>
+                            <span class="badge-capsule badge-outline-green" style="border-color: #94a3b8; color: #94a3b8;">Limited Access</span>
+                        </div>
+                    </div>
+                </div>
+
+                <form action="{% url 'events:plans.submit' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="plan_type" value="basic">
+                    {% if selected_basic %}
+                        <button type="submit" class="btn-select-plan starter-btn" style="background: #1e3a8a;">
+                            <i class="fa-solid fa-circle-check"></i> Starter's Plan Selected
+                        </button>
+                    {% else %}
+                        <button type="submit" class="btn-select-plan starter-btn">
+                            <i class="fa-solid fa-circle-check"></i> Select Starter's Plan
+                        </button>
+                    {% endif %}
+                </form>
+                <div class="footer-note">Special Launch Price</div>
+            </div>
+
+        </div>
+
+        <!-- Toggle Selector Bottom Banner -->
+        {% if not selected_plan %}
+            <div class="info-switcher-box" id="toggleBox">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>If your experience is less than 1 year: <a onclick="togglePlans('starter', true)">Click here to register for our Starter's Plan</a></span>
+            </div>
+        {% endif %}
+
+        {% if selected_plan %}
+            <!-- Dynamic Merged Secure Checkout UI (Step 2.5) -->
+            <div class="checkout-box" id="checkoutSection">
+                <div class="brand-header text-center mb-3">
+                    <h4 class="fw-bold text-success mb-1"><i class="fa-solid fa-shield-halved"></i> Secure Checkout</h4>
+                    <p class="text-muted small">Please review your billing details to complete payment.</p>
+                </div>
+
+                <div class="section-title">Order Summary</div>
+                <div class="summary-card">
+                    <div class="detail-row"><span>Selected Plan</span><strong>{{ selected_plan.name }}</strong></div>
+                    <div class="detail-row">
+                        <span>Base Registration Fee</span>
+                        {% if event_registration.promocode and selected_plan_key == 'professional' and selected_plan.base < 6999 %}
+                            <strong><s style="color:#94a3b8; font-weight:500;">₹6,999.00</s> ₹{{ selected_plan.base|floatformat:2 }}</strong>
+                        {% else %}
+                            <strong>₹{{ selected_plan.base|floatformat:2 }}</strong>
+                        {% endif %}
+                    </div>
+                    {% if event_registration.promocode and selected_plan_key == 'professional' and selected_plan.base < 6999 %}
+                        <div class="detail-row" style="color:#059669;">
+                            <span><i class="fa-solid fa-tag me-1"></i> Promo Discount ({{ event_registration.promocode }})</span>
+                            <strong>− ₹{{ promo_discount_amount|floatformat:2 }}</strong>
+                        </div>
+                    {% endif %}
+                    <div class="detail-row"><span>GST (18%)</span><strong>₹{{ selected_plan.gst|floatformat:2 }}</strong></div>
+                    <div class="summary-total">
+                        <span>Total Amount Payable</span>
+                        <strong style="color: var(--primary);">₹{{ selected_plan.total|floatformat:2 }}</strong>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-column-reverse flex-sm-row gap-3 mt-4">
+                    <a href="{% url 'events:register.form' %}" class="btn btn-outline-secondary py-3 px-4 rounded-3 fw-bold d-flex align-items-center justify-content-center" style="border-width: 2px; font-size: 15px;">
+                        <i class="fa-solid fa-arrow-left me-2"></i> Previous
+                    </a>
+                    <button id="payButton" onclick="initiatePayment()" class="btn-pay py-3 px-4 rounded-3 fw-bold flex-grow-1 d-flex align-items-center justify-content-center">
+                        <i class="fa-solid fa-lock me-2"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>
+                    </button>
+                </div>
+
+                <div class="info-switcher-box mt-3" id="toggleBox2">
+                    <i class="fa-solid fa-circle-info"></i>
+                    {% if selected_plan_key == 'basic' %}
+                        <span>If your experience is more than 1 year: <a onclick="togglePlans('professional', true)">Click here to register for our Professional's Plan</a></span>
+                    {% else %}
+                        <span>If your experience is less than 1 year: <a onclick="togglePlans('starter', true)">Click here to register for our Starter's Plan</a></span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Switcher logic with smooth entry and exit effects -->
+    <script>
+        function togglePlans(targetPlan, isUserAction) {
+            {% if selected_plan %}
+                if (isUserAction) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '{% url "events:plans.submit" %}';
+
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = '{{ csrf_token }}';
+                    form.appendChild(csrfInput);
+
+                    const planInput = document.createElement('input');
+                    planInput.type = 'hidden';
+                    planInput.name = 'plan_type';
+                    planInput.value = targetPlan === 'starter' ? 'basic' : 'professional';
+                    form.appendChild(planInput);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                    return;
+                }
+            {% endif %}
+
+            const profCard = document.getElementById('professionalCard');
+            const starterCard = document.getElementById('starterCard');
+            const toggleBox = document.getElementById('toggleBox') || document.getElementById('toggleBox2');
+
+            if (targetPlan === 'starter') {
+                profCard.classList.add('d-none-animated');
+                profCard.classList.remove('fade-enter-active');
+                starterCard.classList.remove('d-none-animated');
+                starterCard.classList.add('fade-enter-active');
+                if (toggleBox) {
+                    toggleBox.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>If your experience is more than 1 year: <a onclick="togglePlans('professional', true)">Click here to register for our Professional's Plan</a></span>`;
+                }
+            } else {
+                starterCard.classList.add('d-none-animated');
+                starterCard.classList.remove('fade-enter-active');
+                profCard.classList.remove('d-none-animated');
+                profCard.classList.add('fade-enter-active');
+                if (toggleBox) {
+                    toggleBox.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>If your experience is less than 1 year: <a onclick="togglePlans('starter', true)">Click here to register for our Starter's Plan</a></span>`;
+                }
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', function () {
+            {% if selected_plan_key == 'basic' %}
+                togglePlans('starter');
+            {% else %}
+                togglePlans('professional');
+            {% endif %}
+
+            {% if selected_plan %}
+                document.getElementById('checkoutSection')?.scrollIntoView({ behavior: 'smooth' });
+            {% endif %}
+        });
+    </script>
+
+    {% if selected_plan %}
+        <!-- Razorpay Script Integration -->
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+        <script>
+            var EVENT_RAZORPAY_KEY = "{{ razorpay_key }}";
+            var EVENT_RAZORPAY_ORDER_ID = "{{ razorpay_order_id }}";
+            var EVENT_AMOUNT = "{{ selected_plan.total_cents }}";
+            var EVENT_PLAN_NAME = "{{ selected_plan.name|escapejs }}";
+            var EVENT_FULLNAME = "{{ event_registration.fullname|escapejs }}";
+            var EVENT_EMAIL = "{{ event_registration.email|escapejs }}";
+            var EVENT_MOBILE = "{{ event_registration.mobile|escapejs }}";
+            var EVENT_CSRF_TOKEN = "{{ csrf_token }}";
+
+            let isProcessing = false;
+
+            async function initiatePayment() {
+                if (isProcessing) return;
+
+                const payBtn = document.getElementById('payButton');
+                payBtn.disabled = true;
+                payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Initializing Secure Checkout...';
+                isProcessing = true;
+
+                const options = {
+                    "key": EVENT_RAZORPAY_KEY,
+                    "amount": EVENT_AMOUNT,
+                    "currency": "INR",
+                    "name": "PadosiAgent",
+                    "description": EVENT_PLAN_NAME + ' Registration',
+                    "image": "{% static 'img/logo.png' %}",
+                    "order_id": EVENT_RAZORPAY_ORDER_ID,
+                    "handler": async function (response) {
+                        await handlePaymentResponse(response);
+                    },
+                    "prefill": {
+                        "name": EVENT_FULLNAME,
+                        "email": EVENT_EMAIL,
+                        "contact": EVENT_MOBILE
+                    },
+                    "theme": { "color": "#1d7d5d" },
+                    "modal": {
+                        "ondismiss": function () {
+                            isProcessing = false;
+                            payBtn.disabled = false;
+                            payBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment';
+                            logPaymentFailure(EVENT_RAZORPAY_ORDER_ID);
+                        }
+                    }
+                };
+
+                try {
+                    const rzp = new Razorpay(options);
+                    rzp.on('payment.failed', function (response) {
+                        isProcessing = false;
+                        payBtn.disabled = false;
+                        payBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment';
+                        logPaymentFailure(EVENT_RAZORPAY_ORDER_ID);
+                        showErrorPopup('Payment Failed', response.error.description || 'Your payment could not be processed. Please try again.');
+                    });
+                    rzp.open();
+                } catch (err) {
+                    isProcessing = false;
+                    payBtn.disabled = false;
+                    payBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment';
+                    showErrorPopup('Checkout Error', 'Payment gateway failed to load. Please try again.');
+                }
+            }
+
+            async function handlePaymentResponse(paymentResponse) {
+                showLoadingPopup(
+                    'Verifying Payment',
+                    'We have received your payment. Please wait while we verify the transaction and set up your agent account.'
+                );
+                try {
+                    const response = await fetch('{% url "events:payment.success" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': EVENT_CSRF_TOKEN,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                            razorpay_order_id: paymentResponse.razorpay_order_id,
+                            razorpay_signature: paymentResponse.razorpay_signature
+                        })
+                    });
+
+                    const data = await response.json();
+                    hideLoadingPopup();
+                    if (data.success) {
+                        showSuccessPopup('Success!', 'Your registration is complete. Welcome to PadosiAgent!', data.redirect_url);
+                    } else {
+                        showErrorPopup('Checkout Failed', data.message || 'Verification failed. Please try again.');
+                    }
+                } catch (error) {
+                    hideLoadingPopup();
+                    showErrorPopup('Error', 'Unable to complete network request. Please check your connection.');
+                } finally {
+                    isProcessing = false;
+                    const payBtn = document.getElementById('payButton');
+                    payBtn.disabled = false;
+                    payBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment';
+                }
+            }
+
+            async function logPaymentFailure(orderId) {
+                try {
+                    await fetch('{% url "events:payment.failure" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': EVENT_CSRF_TOKEN,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ razorpay_order_id: orderId })
+                    });
+                } catch (e) {
+                    console.error('Error logging payment failure:', e);
+                }
+            }
+
+            let loadingOverlay = null;
+
+            function showLoadingPopup(title, message) {
+                if (loadingOverlay) loadingOverlay.remove();
+
+                loadingOverlay = document.createElement('div');
+                loadingOverlay.className = 'custom-popup-overlay';
+                loadingOverlay.id = 'loadingOverlay';
+
+                const popup = document.createElement('div');
+                popup.className = 'custom-popup';
+
+                const icon = document.createElement('div');
+                icon.className = 'popup-icon';
+                icon.style.color = '#1d7d5d';
+                icon.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+
+                const popTitle = document.createElement('div');
+                popTitle.className = 'popup-title';
+                popTitle.textContent = title;
+
+                const popMsg = document.createElement('div');
+                popMsg.className = 'popup-message';
+                popMsg.style.cssText = 'margin-bottom: 10px; font-weight: 500;';
+                popMsg.textContent = message;
+
+                const warnMsg = document.createElement('div');
+                warnMsg.style.cssText = 'color: #ea580c; font-weight: 700; font-size: 13px; margin-top: 15px; margin-bottom: 10px;';
+                warnMsg.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> PLEASE DO NOT CLICK THE BACK BUTTON';
+
+                const infoMsg = document.createElement('div');
+                infoMsg.style.cssText = 'font-size: 12px; color: #94a3b8; font-weight: 600;';
+                infoMsg.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin me-1"></i> Logging you into agent dashboard...';
+
+                popup.appendChild(icon);
+                popup.appendChild(popTitle);
+                popup.appendChild(popMsg);
+                popup.appendChild(warnMsg);
+                popup.appendChild(infoMsg);
+                loadingOverlay.appendChild(popup);
+                document.body.appendChild(loadingOverlay);
+            }
+
+            function hideLoadingPopup() {
+                if (loadingOverlay) {
+                    loadingOverlay.remove();
+                    loadingOverlay = null;
+                }
+            }
+
+            function showSuccessPopup(title, message, redirectUrl) {
+                const overlay = document.createElement('div');
+                overlay.className = 'custom-popup-overlay';
+
+                const popup = document.createElement('div');
+                popup.className = 'custom-popup';
+
+                const icon = document.createElement('div');
+                icon.className = 'popup-icon';
+                icon.style.color = '#10b981';
+                icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+
+                const popTitle = document.createElement('div');
+                popTitle.className = 'popup-title';
+                popTitle.textContent = title;
+
+                const popMsg = document.createElement('div');
+                popMsg.className = 'popup-message';
+                popMsg.textContent = message;
+
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-success w-100 fw-bold py-2 rounded-3';
+                btn.textContent = 'Continue';
+                btn.addEventListener('click', function () {
+                    window.location.href = redirectUrl;
+                });
+
+                popup.appendChild(icon);
+                popup.appendChild(popTitle);
+                popup.appendChild(popMsg);
+                popup.appendChild(btn);
+                overlay.appendChild(popup);
+                document.body.appendChild(overlay);
+            }
+
+            function showErrorPopup(title, message) {
+                // DOM construction to prevent any script injection
+                let existing = document.querySelector('.custom-popup-overlay');
+                if (existing) existing.remove();
+
+                const overlay = document.createElement('div');
+                overlay.className = 'custom-popup-overlay';
+
+                const popup = document.createElement('div');
+                popup.className = 'custom-popup';
+
+                const icon = document.createElement('div');
+                icon.className = 'popup-icon';
+                icon.style.color = '#ef4444';
+                icon.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+
+                const popTitle = document.createElement('div');
+                popTitle.className = 'popup-title';
+                popTitle.textContent = title;
+
+                const popMsg = document.createElement('div');
+                popMsg.className = 'popup-message';
+                popMsg.textContent = message;
+
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-outline-secondary w-100 fw-bold py-2 rounded-3';
+                btn.textContent = 'Close';
+                btn.addEventListener('click', function () { overlay.remove(); });
+
+                popup.appendChild(icon);
+                popup.appendChild(popTitle);
+                popup.appendChild(popMsg);
+                popup.appendChild(btn);
+                overlay.appendChild(popup);
+                document.body.appendChild(overlay);
+            }
+        </script>
+    {% endif %}
+
+</body>
+</html>

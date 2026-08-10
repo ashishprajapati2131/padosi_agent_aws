@@ -11,7 +11,7 @@ from django.db.models import Sum, Q, Avg
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
-from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentLead, AgentProfileView, AgentInsuranceSegment, City, AgentDeviceToken
+from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentLead, AgentProfileView, AgentInsuranceSegment, City, AgentDeviceToken, FavoriteAgent
 from apps.home.models import SiteSetting
 from apps.admin_panel.models.referral_code import ReferralCode
 from apps.admin_panel.models.referral_usage import ReferralUsage
@@ -130,6 +130,19 @@ def agent_dashboard(request):
     if referral_config.get('eligibility') == 'all' or agent.plan_type == 'free_trial':
         show_referral = True
 
+    # ── Unread Notifications (Laravel: fetch + mark-read-on-view) ────────────
+    from apps.agents.models import AgentNotification
+    unread_notifications = []
+    if agent:
+        try:
+            unread_notifications = list(
+                AgentNotification.objects.filter(agent=agent, is_read=False).order_by('-created_at')
+            )
+            if unread_notifications:
+                AgentNotification.objects.filter(agent=agent, is_read=False).update(is_read=True)
+        except Exception as e:
+            logger.warning(f"Dashboard notifications unavailable for agent #{agent.id}: {e}")
+
     # Profile Completion Check
     completion = 15
     profile = getattr(agent, 'profile', None)
@@ -218,13 +231,23 @@ def agent_dashboard(request):
             
     plan_name = raw_plan.replace('_', ' ').replace('-', ' ').title()
 
+    favorite_ids = set(
+        FavoriteAgent.objects.filter(user=request.user).values_list('agent_id', flat=True)
+    )
+
     context = {
         'agent': agent,
         'profile': profile,
+        'favorite_ids': favorite_ids,
         'dashboardStats': dashboard_stats,
         'recentLeads': recent_leads,
         'allLeads': all_leads,
         'showReferral': show_referral,
+        'unreadNotifications': unread_notifications,
+        'unread_notifications_json': json.dumps(
+            [{'title': n.title, 'body': n.body} for n in unread_notifications],
+            ensure_ascii=False,
+        ),
         'completion': completion,
         'isOnTrial': is_on_trial,
         'daysLeft': days_left,

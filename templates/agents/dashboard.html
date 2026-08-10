@@ -1158,5 +1158,38 @@
             }
         });
     }
+
+    // Unread notifications popups (ported from Laravel dashboard.blade.php)
+    document.addEventListener('DOMContentLoaded', async function() {
+        const notifications = {{ unread_notifications_json|safe }};
+
+        async function showPopups() {
+            for (const notif of notifications) {
+                await Swal.fire({
+                    title: notif.title,
+                    html: `<div style="font-size: 15px; color: #475569; margin-top: 10px;">${notif.body}</div>`,
+                    icon: 'info',
+                    iconColor: '#1d7d5d',
+                    confirmButtonText: 'Close',
+                    confirmButtonColor: '#1d7d5d',
+                    customClass: {
+                        popup: 'rounded-3 shadow-lg border-0',
+                        title: 'fw-bold text-dark'
+                    }
+                });
+            }
+        }
+
+        if (notifications && notifications.length > 0) {
+            if (typeof Swal === 'undefined') {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+                script.onload = showPopups;
+                document.head.appendChild(script);
+            } else {
+                showPopups();
+            }
+        }
+    });
 </script>
 {% endblock %}

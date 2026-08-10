@@ -94,6 +94,13 @@ def notify_send(request):
 
     agent = get_object_or_404(Agent, id=agent_id)
 
+    # Save to agent_notifications for dashboard popup (mirrors Laravel AgentNotification::create)
+    try:
+        from apps.agents.models import AgentNotification
+        AgentNotification.objects.create(agent=agent, title=title, body=body)
+    except Exception as exc:
+        logger.warning(f"Could not persist notification row for agent #{agent.id}: {exc}")
+
     # Collect FCM tokens for this agent
     tokens = list(
         AgentDeviceToken.objects
@@ -105,10 +112,10 @@ def notify_send(request):
     )
 
     if not tokens:
-        messages.error(
+        messages.success(
             request,
-            f"No device tokens found for {agent.fullname}. "
-            "They may not have the PWA installed or notifications enabled."
+            f"Notification saved for {agent.fullname}. "
+            "No device tokens found — they may not have the PWA installed or notifications enabled."
         )
         return redirect('agent_notify')
 
@@ -177,6 +184,18 @@ def notify_broadcast(request):
         messages.error(request, 'No agents found for the selected target group.')
         return redirect('agent_notify')
 
+    # Save to agent_notifications for dashboard popups (mirrors Laravel chunked insert)
+    try:
+        from apps.agents.models import AgentNotification
+        for i in range(0, len(agent_ids), 500):
+            chunk = [
+                AgentNotification(agent_id=agent_id, title=title, body=body)
+                for agent_id in agent_ids[i:i + 500]
+            ]
+            AgentNotification.objects.bulk_create(chunk)
+    except Exception as exc:
+        logger.warning(f"Could not persist broadcast notification rows: {exc}")
+
     # Gather all device tokens for those agents
     tokens = list(
         AgentDeviceToken.objects
@@ -188,10 +207,10 @@ def notify_broadcast(request):
     )
 
     if not tokens:
-        messages.error(
+        messages.success(
             request,
-            'No device tokens found for the selected agents. '
-            'They may not have the PWA installed.'
+            f"Notifications saved for {len(agent_ids)} agent(s). "
+            'No device tokens found — they may not have the PWA installed.'
         )
         return redirect('agent_notify')
 

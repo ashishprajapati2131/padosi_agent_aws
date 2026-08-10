@@ -65,7 +65,25 @@ def notify_send(request):
                 body=body
             )
 
-        # FCM sending logic would go here...
+        # Send FCM push if the agent has device tokens (mirrors InsuranceNotificationController)
+        try:
+            if AgentDeviceToken:
+                tokens = list(
+                    AgentDeviceToken.objects
+                    .filter(agent_id=agent.id)
+                    .exclude(token__isnull=True)
+                    .exclude(token='')
+                    .values_list('token', flat=True)
+                    .distinct()
+                )
+                if tokens:
+                    from apps.admin_panel.services.fcm import FcmService
+                    FcmService().send_to_tokens(tokens, title, body, {
+                        'type': 'insurance_notification',
+                        'sender': user.get_full_name() or user.username,
+                    })
+        except Exception as exc:
+            logger.warning(f"FCM push notify failed for agent #{agent.id}: {exc}")
         
         logger.info(f"Insurance user #{user.id} sent notification to agent #{agent.id} ({agent.fullname})")
         messages.success(request, f"Notification sent successfully to {agent.fullname}!")

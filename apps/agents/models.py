@@ -220,6 +220,11 @@ class Agent(models.Model):
     blacklisted_at = models.DateTimeField(blank=True, null=True)
     blacklist_source = models.CharField(max_length=50, blank=True, null=True)
 
+    payment_method = models.CharField(max_length=100, blank=True, default='')
+    payment_reference = models.CharField(max_length=255, blank=True, default='')
+    payment_recorded_at = models.DateTimeField(null=True, blank=True)
+    payment_recorded_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='recorded_agent_payments')
+
     class Meta:
         db_table = 'agents'
         managed = True
@@ -1145,6 +1150,128 @@ class AgentBioGenerationLog(models.Model):
     class Meta:
         db_table = 'agent_bio_generation_logs'
         ordering = ['-generated_at']
+
+
+class AgentNotification(models.Model):
+    """
+    DB-backed in-app notification for agents.
+    Mirrors Laravel's agent_notifications table (agent_id, title, body, is_read).
+    managed=False: the table is owned by the Laravel schema (shared MySQL DB),
+    exactly like the admin_panel mirror models.
+    """
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, db_column='agent_id', related_name='notifications')
+    title = models.CharField(max_length=191)
+    body = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        db_table = 'agent_notifications'
+        managed = False
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Notification({self.title}, agent={self.agent_id}, read={self.is_read})"
+
+
+class FavoriteAgent(models.Model):
+    """
+    Favorites: a logged-in user can favourite an agent profile.
+    Mirrors Laravel's favorite_agents table (user_id, agent_id).
+    user maps to Django auth.User — the port keeps auth_user.id == users.id
+    for the same person (see admin_panel.views.insurance), so ids align with
+    the Laravel-side user space.
+    """
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE, db_column='user_id', related_name='favorite_agents')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, db_column='agent_id', related_name='favorited_by')
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        db_table = 'favorite_agents'
+        managed = False
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Favorite(user={self.user_id}, agent={self.agent_id})"
+
+
+class EventRegistration(models.Model):
+    """
+    Public event registration funnel — mirrors Laravel's event_registrations table.
+    Session-driven: current_step 1 = form, 2 = plan chosen, 3 = payment done.
+    """
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, db_column='event_id', related_name='event_registrations')
+    fullname = models.CharField(max_length=255)
+    email = models.EmailField(max_length=255)
+    mobile = models.CharField(max_length=255)
+    insurance_segments = models.JSONField(default=list)
+    pincode = models.CharField(max_length=255, null=True, blank=True)
+    experience = models.CharField(max_length=255, null=True, blank=True)
+    promocode = models.CharField(max_length=255, null=True, blank=True)
+    current_step = models.PositiveSmallIntegerField(default=1)
+    selected_plan = models.CharField(max_length=255, null=True, blank=True)
+    status = models.CharField(max_length=20, default='incomplete')  # incomplete, completed
+    payment_status = models.CharField(max_length=255, default='pending')  # pending, success, failed
+    razorpay_order_id = models.CharField(max_length=255, null=True, blank=True)
+    razorpay_payment_id = models.CharField(max_length=255, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        db_table = 'event_registrations'
+        managed = False
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"EventRegistration({self.email}, {self.payment_status})"
+
+
+class Participant(models.Model):
+    """
+    Event participant (Facebook auto-post / share flow).
+    Mirrors Laravel's participants table (plus the Facebook connection columns
+    the Laravel FacebookPostController writes to — added via migration 0014).
+    """
+    full_name = models.CharField(max_length=191)
+    email = models.EmailField(max_length=191, unique=True)
+    phone_number = models.CharField(max_length=191)
+    have_insurance = models.CharField(max_length=5, null=True, blank=True)   # yes / no
+    insurance_products = models.JSONField(null=True, blank=True)
+    insurance_planning = models.CharField(max_length=191, null=True, blank=True)
+    mutual_fund = models.CharField(max_length=5, null=True, blank=True)      # yes / no
+    mf_plan = models.CharField(max_length=191, null=True, blank=True)
+    thank_my_padosi = models.CharField(max_length=191, null=True, blank=True)
+    thank_my_padosi_for = models.TextField(null=True, blank=True)
+    participant_shared = models.CharField(max_length=5, default='No')        # Yes / No
+    shareable_id = models.CharField(max_length=191, null=True, blank=True)
+    registration_completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    # Facebook connection fields (used by the facebook API module)
+    facebook_access_token = models.TextField(null=True, blank=True)
+    facebook_user_id = models.CharField(max_length=191, null=True, blank=True)
+    facebook_post_id = models.CharField(max_length=191, null=True, blank=True)
+    facebook_post_url = models.CharField(max_length=500, null=True, blank=True)
+    status = models.CharField(max_length=50, default='registered')
+    manual_share = models.BooleanField(default=False)
+    screenshot_path = models.CharField(max_length=500, null=True, blank=True)
+
+    class Meta:
+        db_table = 'participants'
+        managed = False
+
+    def __str__(self):
+        return f"Participant({self.email}, shared={self.participant_shared})"
+
+    def mark_as_shared(self):
+        self.participant_shared = 'Yes'
+        self.save(update_fields=['participant_shared', 'updated_at'])
+
+    def is_shared(self):
+        return self.participant_shared == 'Yes'
 
 
 # Open Graph image cache invalidation signals

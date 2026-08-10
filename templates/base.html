@@ -26,6 +26,11 @@
     <meta charset="utf-8">
     <meta name="theme-color" content="#ffffff">
 
+    {% if request.path|slice:':6' == '/agent' %}
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/pwa/pwa-192.png">
+    {% endif %}
+
     <!-- Critical inline CSS: eliminates FOUC, zero render-blocking for above-fold -->
     <style>
         *,*::before,*::after{box-sizing:border-box}
@@ -203,6 +208,48 @@
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
     <script src="{% static 'js/owl.carousel.js' %}" defer></script>
     <script src="{% static 'js/carousel.js' %}" defer></script>
+
+    <!-- Favorite agent toggle (port of app.blade.php toggleFavoriteAgent) -->
+    <script>
+        window.toggleFavoriteAgent = function (btn, agentId) {
+            const isAuth = {{ request.user.is_authenticated|yesno:"true,false" }};
+            if (!isAuth) {
+                if (typeof window.showQuickRegisterPopup === 'function') {
+                    window.showQuickRegisterPopup(window.location.pathname + window.location.search);
+                } else {
+                    window.location.href = "{% url 'agents:agent_login' %}";
+                }
+                return;
+            }
+
+            const $btn = $(btn);
+            const $svg = $btn.find('svg');
+
+            $.ajax({
+                url: "{% url 'agents:agent_toggle_favorite' %}",
+                method: 'POST',
+                data: {
+                    csrfmiddlewaretoken: "{{ csrf_token }}",
+                    agent_id: agentId
+                },
+                success: function (response) {
+                    if (response.status === 'success') {
+                        if (response.is_favorited) {
+                            $btn.addClass('is-favorited text-red-500');
+                            $svg.attr('fill', 'currentColor');
+                        } else {
+                            $btn.removeClass('is-favorited text-red-500');
+                            $svg.attr('fill', 'none');
+                        }
+                    }
+                },
+                error: function (xhr) {
+                    const message = xhr.responseJSON ? xhr.responseJSON.message : "Something didn't quite work. Please give it another try.";
+                    if (typeof Swal !== 'undefined') { Swal.fire('Oops!', message, 'warning'); } else { alert(message); }
+                }
+            });
+        };
+    </script>
     {% block extra_css %}{% endblock %}
 
     <!-- Microsoft Clarity – behaviour tracking -->
@@ -232,6 +279,13 @@
         {% include 'chatbot/widget.html' %}
     {% endblock %}
     {% block extra_js %}{% endblock %}
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js');
+            });
+        }
+    </script>
     <script>
         // Global fix: Prevent number inputs from changing value on mouse scroll
         document.addEventListener('wheel', function(e) {

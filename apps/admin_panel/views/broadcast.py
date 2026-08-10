@@ -156,8 +156,20 @@ def send_broadcast(request):
         # Push Notification Channel
         if 'notification' in channels:
             from apps.admin_panel.services.fcm import FcmService
+            from apps.agents.models import AgentNotification
             agent_ids = [agent.id for agent in agents]
             if agent_ids:
+                # Save rows for dashboard popups (mirrors Laravel chunked insert)
+                try:
+                    for i in range(0, len(agent_ids), 500):
+                        chunk = [
+                            AgentNotification(agent_id=agent_id, title=subject, body=message[:191])
+                            for agent_id in agent_ids[i:i + 500]
+                        ]
+                        AgentNotification.objects.bulk_create(chunk)
+                except Exception:
+                    pass
+
                 tokens = list(AgentDeviceToken.objects.filter(agent_id__in=agent_ids).exclude(token=None).exclude(token='').values_list('token', flat=True).distinct())
                 if tokens:
                     push_body = message[:255]

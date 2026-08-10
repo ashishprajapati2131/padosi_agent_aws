@@ -154,11 +154,11 @@
                         <path d="M11 18H8a2 2 0 0 1-2-2V9" />
                     </svg>
                 </button>
-                <button class="rac-icon-btn favorite-btn {% if is_favorited %}is-favorited{% endif %}"
+                <button class="rac-icon-btn favorite-btn {% if agent.id in favorite_ids %}is-favorited{% endif %}"
                     onclick="toggleFavoriteAgent(this, {{ agent.id }})" data-agent-id="{{ agent.id }}"
                     title="Add to Favourites">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                        fill="{% if is_favorited %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2"
+                        fill="{% if agent.id in favorite_ids %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                     </svg>
@@ -377,11 +377,11 @@
                             </svg>
                             Compare
                         </button>
-                        <button class="rac-icon-btn rac-icon-btn--fav favorite-btn {% if is_favorited %}is-favorited{% endif %}"
+                        <button class="rac-icon-btn rac-icon-btn--fav favorite-btn {% if agent.id in favorite_ids %}is-favorited{% endif %}"
                             onclick="toggleFavoriteAgent(this, {{ agent.id }})" data-agent-id="{{ agent.id }}"
                             title="Add to Favourites">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                fill="{% if is_favorited %}currentColor{% else %}none{% endif %}" stroke="currentColor"
+                                fill="{% if agent.id in favorite_ids %}currentColor{% else %}none{% endif %}" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                             </svg>

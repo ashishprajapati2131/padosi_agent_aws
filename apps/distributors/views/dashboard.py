@@ -95,17 +95,17 @@ def dashboard(request):
     referral_url = request.build_absolute_uri(f'/join/{referral_code.code}')
     default_message = f"Hi! I'm partnering with PadosiAgent, and I'd love for you to join my network. Register using my exclusive link below to get special benefits:\n\n{referral_url}\n\nLet me know if you have any questions!"
     
-    # Try getting custom message
-    try:
-        setting = SiteSetting.objects.get(key='distributor_invite_message')
-        raw_message = setting.value
-    except SiteSetting.DoesNotExist:
-        raw_message = default_message
-
-    custom_message = getattr(distributor, 'custom_invite_message', None)
+    # Laravel parity: custom invite message (users.custom_invite_message) wins over the admin site setting
+    custom_message = l_user.custom_invite_message if l_user else None
     if custom_message:
         raw_message = custom_message
-        
+    else:
+        try:
+            setting = SiteSetting.objects.get(key='distributor_invite_message')
+            raw_message = setting.value
+        except SiteSetting.DoesNotExist:
+            raw_message = default_message
+
     share_message = raw_message.replace('{LINK}', referral_url)
 
     context = {
@@ -132,13 +132,27 @@ def save_invite_message(request):
         try:
             data = json.loads(request.body)
             msg = data.get('custom_invite_message', '')
-            
-            # Since custom_invite_message might not exist on the default User model
-            # We would need to save it. If it's not on User, we might need a UserProfile or SiteSetting per user.
-            # Let's try to set it dynamically (though it won't persist to DB on standard User model)
-            # A better way is using a related profile model. 
-            request.user.custom_invite_message = msg
-            request.user.save()
+
+            # Persist to the Laravel users table row (mirrors PHP: $distributor->custom_invite_message = ...)
+            from apps.admin_panel.models import User as LaravelUser
+
+            l_user = LaravelUser.objects.filter(email=request.user.email).first()
+            if l_user is None:
+                LaravelUser.objects.create(
+                    fullname=request.user.first_name or request.user.username,
+                    email=request.user.email,
+                    password=request.user.password or '',
+                    role='distributor',
+                    status='active',
+                    custom_invite_message=msg,
+                    created_at=timezone.now(),
+                    updated_at=timezone.now(),
+                )
+            else:
+                l_user.custom_invite_message = msg
+                l_user.updated_at = timezone.now()
+                l_user.save()
+
             return JsonResponse({'success': True, 'message': 'Your custom invitation message has been saved successfully.'})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=400)

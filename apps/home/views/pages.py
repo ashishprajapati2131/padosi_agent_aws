@@ -20,7 +20,7 @@ def favicon(request):
         return redirect(url)
     return redirect(staticfiles_storage.url('favicon.ico'))
 from apps.admin_panel.models.contact_submission import ContactSubmission
-from apps.agents.models import Agent, AgentPortfolio, AgentReview, City
+from apps.agents.models import Agent, AgentPortfolio, AgentReview, City, FavoriteAgent
 from apps.home.models import Pincode, PincodeCache
 from apps.home.services.distance import DistanceService
 from apps.home.services.geocoding import GeocodingService
@@ -830,8 +830,16 @@ def find_agents(request):
         params['page'] = agents_page.next_page_number()
         next_page_url = f"?{params.urlencode()}"
 
+    if request.user.is_authenticated:
+        favorite_ids = set(
+            FavoriteAgent.objects.filter(user=request.user).values_list('agent_id', flat=True)
+        )
+    else:
+        favorite_ids = set()
+
     context = {
         'agents': agents_page,
+        'favorite_ids': favorite_ids,
         'sort_by': sort_by,
         'shouldGateGuest': should_gate_guest,
         'shouldRequireFilterSelection': should_require_filter_selection,
@@ -875,53 +883,234 @@ def pincode_fetch(request, pincode):
             }
         })
 
+    record = _get_or_create_pincode(pincode)
+    if not record:
+        return JsonResponse({'success': False, 'message': 'Pincode not found.'})
+
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'office_name': record.office_name,
+            'district': record.district,
+            'state': record.state,
+            'latitude': str(record.latitude),
+            'longitude': str(record.longitude),
+        }
+    })
+
+
+def _get_or_create_pincode(pincode):
+    """Upserts the pincodes table from the postalpincode.in API (PincodeService::getOrCreatePincode)."""
     try:
         resp = http_requests.get(f'https://api.postalpincode.in/pincode/{pincode}', timeout=10)
         resp.raise_for_status()
         body = resp.json()
         if not body or body[0].get('Status') != 'Success' or not body[0].get('PostOffice'):
-            return JsonResponse({'success': False, 'message': 'Pincode not found.'})
+            return None
 
         po = body[0]['PostOffice'][0]
-        state = po.get('State', '')
-        district = po.get('District', '')
-        office_name = po.get('Name', '')
-        lat = po.get('Latitude', '0.0')
-        lng = po.get('Longitude', '0.0')
-
         try:
-            Pincode.objects.update_or_create(
+            record, _ = Pincode.objects.update_or_create(
                 pincode=pincode,
                 defaults={
-                    'office_name': office_name or '',
-                    'district': district or '',
-                    'state': state or '',
-                    'latitude': float(lat) if lat else 0.0,
-                    'longitude': float(lng) if lng else 0.0,
+                    'office_name': (po.get('Name') or '')[:150],
+                    'district': (po.get('District') or '')[:100],
+                    'state': (po.get('State') or '')[:50],
+                    'latitude': float(po.get('Latitude') or 0.0),
+                    'longitude': float(po.get('Longitude') or 0.0),
                     'division': (po.get('Division') or '')[:100],
                     'region': (po.get('Region') or '')[:100],
                     'circle': (po.get('Circle') or '')[:100],
                     'taluk': (po.get('Taluk') or '')[:100],
                 }
             )
+            return record
+        except Exception:
+            return None
+    except Exception:
+        return None
+
+
+def _pincode_matching_agents(pincode):
+    """Count/fetch agents servicing a pincode — mirrors HomeController@checkPincode:
+    agents.agent_pincode match OR agent_profiles.service_pincodes JSON contains the pin,
+    restricted to registered (non-rejected/non-inactive) statuses."""
+    return Agent.objects.filter(
+        status__in=['active', 'pending_manager_approval', 'pending_accounts_payment', 'pending_admin_approval']
+    ).filter(
+        Q(agent_pincode=pincode)
+        | Q(profile__service_pincodes__contains=pincode)
+        | Q(profile__service_pincodes__contains=int(pincode))
+    )
+
+
+def check_pincode(request):
+    """Public PIN-code competition checker — port of HomeController@checkPincode
+    (route 'check.pincode', restrict.agent middleware → agents are redirected away)."""
+    if request.user.is_authenticated:
+        try:
+            if Agent.objects.filter(user=request.user).exists():
+                return redirect('agents:agent_dashboard')
         except Exception:
             pass
 
-        return JsonResponse({
-            'success': True,
-            'data': {
-                'office_name': office_name,
-                'district': district,
-                'state': state,
-                'latitude': lat,
-                'longitude': lng,
+    pincode = (request.GET.get('pincode') or '').strip()
+    results = None
+
+    if pincode:
+        if re.match(r'^[1-9]\d{5}$', pincode):
+            details = _get_or_create_pincode(pincode)
+            matching = _pincode_matching_agents(pincode)
+            agents_count = matching.count()
+            agents = matching.select_related('profile').prefetch_related('insuranceSegments')[:3]
+            results = {
+                'pincode': pincode,
+                'details': details,
+                'count': agents_count,
+                'agents': agents,
+                'invalid': False,
             }
-        })
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Could not verify pincode: {str(e)}'
-        })
+        else:
+            results = {'pincode': pincode, 'invalid': True}
+
+    if request.headers.get('HX-Request') or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return render(request, 'partials/pincode-check-results.html', {'results': results})
+
+    return render(request, 'check-pincode.html', {'results': results})
+
+
+def marketing(request):
+    """Agent marketing landing page — port of Frontend\\HomeController@agentMarketing
+    (route 'agent.marketing', restrict.agent → agent users redirected to their dashboard).
+
+    Captures pincode / location / GPS coords into the session (same keys as find-agents),
+    resolves a human-readable area name, then redirects to the clean URL."""
+    if request.user.is_authenticated:
+        try:
+            if Agent.objects.filter(user=request.user).exists():
+                return redirect('agents:agent_dashboard')
+        except Exception:
+            pass
+
+    if request.GET.get('pincode') or request.GET.get('location'):
+        if request.GET.get('pincode'):
+            pincode_value = (request.GET.get('pincode') or '').strip()
+            request.session['last_pincode'] = pincode_value
+
+            detected_area = None
+            if re.match(r'^[1-9][0-9]{5}$', pincode_value):
+                try:
+                    pincode_match = Pincode.objects.filter(pincode=pincode_value).first()
+                    if pincode_match:
+                        detected_area = pincode_match.formatted_location
+                    else:
+                        geo_svc = GeocodingService()
+                        coords = geo_svc.resolve_coordinates(pincode_value)
+                        if coords:
+                            detected_area = geo_svc.reverse_geocode(float(coords['lat']), float(coords['lng']))
+                        else:
+                            coords = DistanceService.get_pincode_coordinates(pincode_value)
+                            if coords:
+                                detected_area = geo_svc.reverse_geocode(float(coords['lat']), float(coords['lng']))
+                except Exception as e:
+                    logger.warning(f"marketing: failed to resolve pincode {pincode_value}: {e}")
+
+            request.session['detected_area'] = detected_area or f"PIN: {pincode_value}"
+
+        if request.GET.get('location'):
+            request.session['last_location'] = request.GET.get('location')
+            request.session['detected_area'] = request.GET.get('location')
+
+        for k in ['last_lat', 'last_lng', 'lat', 'lng']:
+            request.session.pop(k, None)
+    elif request.GET.get('lat') and request.GET.get('lng'):
+        user_lat = request.GET.get('lat')
+        user_lng = request.GET.get('lng')
+        request.session['last_lat'] = user_lat
+        request.session['last_lng'] = user_lng
+
+        for k in ['last_pincode', 'last_location', 'pincode', 'location', 'detected_area']:
+            request.session.pop(k, None)
+
+        detected_area = None
+        try:
+            u_lat = float(user_lat)
+            u_lng = float(user_lng)
+            pincode_match = Pincode.objects.annotate(
+                distance=RawSQL(
+                    "(6371 * acos(cos(radians(%s)) * cos(radians(latitude)) * cos(radians(longitude) - radians(%s)) + sin(radians(%s)) * sin(radians(latitude))))",
+                    (u_lat, u_lng, u_lat)
+                )
+            ).order_by('distance').first()
+
+            if pincode_match and pincode_match.distance < 50:
+                detected_area = pincode_match.formatted_location
+            else:
+                geo_svc = GeocodingService()
+                detected_area = geo_svc.reverse_geocode(u_lat, u_lng)
+        except Exception as e:
+            logger.warning(f"marketing: reverse geocoding failed: {e}")
+
+        if detected_area:
+            request.session['detected_area'] = detected_area
+
+    if any(k in request.GET for k in ('pincode', 'location', 'lat')):
+        return redirect(request.path)
+
+    return render(request, 'public/marketing.html', {'hide_header': True})
+
+
+def calculator(request):
+    """Insurance premium calculator (client-side) — port of routes/web.php:88 inline
+    closure + restrict.agent (agent users redirected to their dashboard)."""
+    if request.user.is_authenticated:
+        try:
+            if Agent.objects.filter(user=request.user).exists():
+                return redirect('agents:agent_dashboard')
+        except Exception:
+            pass
+    return render(request, 'public/calculator.html')
+
+
+def coming_soon(request):
+    """Coming-soon contest landing page — port of ComingSoonController@index
+    (route 'coming.soon', standalone document, no variables)."""
+    return render(request, 'public/coming-soon.html')
+
+
+def lic_event(request):
+    """LIC agent recruitment event page — port of Frontend\\HomeController@licEvent
+    (route 'lic.event', standalone document)."""
+    mobile_stats = [
+        {'icon': '🛡️', 'phrase': '"Buy Insurance"', 'daily': '3.8L–4.7L', 'monthly': '1.15Cr–1.42Cr', 'yearly': '13.8Cr–17Cr', 'growth': '+14.2%'},
+        {'icon': '🔄', 'phrase': '"Insurance Portability"', 'daily': '5K–8.5K', 'monthly': '1.5L–2.6L', 'yearly': '18L–31L', 'growth': '+8.5%'},
+        {'icon': '🎧', 'phrase': '"Claims Services"', 'daily': '80K–1.2L', 'monthly': '24L–36L', 'yearly': '2.9Cr–4.3Cr', 'growth': '+11.8%'},
+        {'icon': '👥', 'phrase': '"Insurance Agents"', 'daily': '45K–70K', 'monthly': '14L–21L', 'yearly': '1.7Cr–2.5Cr', 'growth': '+21.4%'},
+    ]
+    trust_cards = [
+        {'icon': '🛡️', 'title': 'Verified Platform', 'sub': 'Trusted by LIC DOs', 'bg': 'var(--blue-lt)'},
+        {'icon': '📈', 'title': 'More Leads', 'sub': 'Grow your business', 'bg': 'var(--green-lt)'},
+        {'icon': '🎧', 'title': '24/7 Support', 'sub': 'Always here for you', 'bg': 'var(--teal-lt)'},
+        {'icon': '🔒', 'title': 'Secure & Private', 'sub': 'Your data is safe', 'bg': '#FDF2F8'},
+    ]
+    return render(request, 'public/lic-event.html', {
+        'mobile_stats': mobile_stats,
+        'trust_cards': trust_cards,
+    })
+
+
+def cancellation_refund_policy(request):
+    """Cancellation & refund policy — port of routes/web.php:500-502 inline closure."""
+    return render(request, 'public/cancellation-refund-policy.html')
+
+
+def check_pincode_agents(request, pincode):
+    """AJAX agent-count for a pincode — port of Api.PincodeController@checkAgents:
+    GET /api/pincode/check-agents/{pincode} → {success, pincode, count}."""
+    if not pincode or not pincode.isdigit() or len(pincode) != 6:
+        return JsonResponse({'success': False, 'message': 'Invalid pincode format'}, status=400)
+    count = Agent.objects.filter(agent_pincode=pincode).count()
+    return JsonResponse({'success': True, 'pincode': pincode, 'count': count})
 
 
 def custom_page(request, slug):

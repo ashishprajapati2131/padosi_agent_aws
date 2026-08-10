@@ -1,0 +1,582 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Event Registration — PadosiAgent</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #1d7d5d;
+            --primary-dark: #12543e;
+            --accent: #f59e0b;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-gradient);
+            color: #1e293b;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .register-container { width: 100%; max-width: 650px; }
+
+        .brand-header { text-align: center; margin-bottom: 30px; }
+        .brand-header h2 { font-weight: 800; color: var(--primary); letter-spacing: -0.5px; margin-top: 10px; }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: var(--card-shadow);
+            padding: 40px;
+        }
+
+        .progress-indicator { display: flex; justify-content: space-between; margin-bottom: 55px; position: relative; }
+        .progress-indicator::before {
+            content: '';
+            position: absolute;
+            top: 15px; left: 10%; right: 10%;
+            height: 2px; background: #cbd5e1; z-index: 1;
+        }
+        .progress-step {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: #cbd5e1; color: #64748b;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px;
+            position: relative; z-index: 2;
+            box-shadow: 0 0 0 4px #fff; transition: all 0.3s;
+        }
+        .progress-step.active { background: var(--primary); color: #fff; box-shadow: 0 0 0 4px #fff, 0 4px 10px rgba(29, 125, 93, 0.3); }
+        .progress-step.completed { background: #10b981; color: #fff; }
+        .step-label {
+            position: absolute; top: 38px;
+            font-size: 11px; font-weight: 600;
+            width: 100px; text-align: center; color: #64748b;
+        }
+        .progress-step.active .step-label { color: var(--primary); font-weight: 700; }
+
+        .form-label { font-weight: 600; font-size: 14px; color: #334155; margin-bottom: 8px; }
+        .form-control, .form-select {
+            padding: 12px 16px; border-radius: 10px;
+            border: 1px solid #cbd5e1; font-size: 14px; font-weight: 500;
+            transition: all 0.2s;
+        }
+        .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(29, 125, 93, 0.1); }
+
+        .segment-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        .segment-item { position: relative; }
+        .segment-item input { position: absolute; opacity: 0; cursor: pointer; }
+        .segment-box {
+            border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px;
+            text-align: center; cursor: pointer; font-weight: 600; font-size: 13px;
+            color: #475569; transition: all 0.2s ease;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            background: #fff;
+        }
+        .segment-box i { font-size: 20px; color: #94a3b8; transition: all 0.2s; }
+        .segment-item input:checked + .segment-box { border-color: var(--primary); background: rgba(29, 125, 93, 0.05); color: var(--primary); }
+        .segment-item input:checked + .segment-box i { color: var(--primary); }
+        .segment-item:hover .segment-box { border-color: #cbd5e1; transform: translateY(-2px); }
+
+        .btn-continue {
+            background: var(--primary); border: none; color: #fff;
+            font-weight: 700; font-size: 15px; width: 100%;
+            transition: all 0.2s; box-shadow: 0 4px 12px rgba(29, 125, 93, 0.2);
+        }
+        .btn-continue:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(29, 125, 93, 0.3); }
+
+        .text-gujarati-hint { font-size: 11px; color: #64748b; font-weight: 500; margin-top: 4px; }
+
+        .promo-input-group:focus-within { border-color: var(--primary) !important; box-shadow: 0 0 0 4px rgba(29, 125, 93, 0.1); }
+        .promo-input-group.success-border { border-color: #10b981 !important; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1) !important; background-color: rgba(16, 185, 129, 0.02) !important; }
+        .promo-input-group.error-border { border-color: #f59e0b !important; box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1) !important; background-color: rgba(245, 158, 11, 0.02) !important; animation: shake 0.3s ease-in-out; }
+
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+    </style>
+</head>
+
+<body>
+
+    <div class="register-container">
+        <div class="brand-header">
+            <img src="{% static 'img/logo.png' %}" alt="PadosiAgent Logo" style="max-height: 80px; width: auto; margin-bottom: 10px;">
+            <p class="text-muted">Dynamic Event Registration Funnel</p>
+        </div>
+
+        <div class="glass-card">
+            <!-- Progress Steps -->
+            <div class="progress-indicator">
+                <div class="progress-step active" style="margin-left: 0;">
+                    1
+                    <span class="step-label">Event Details</span>
+                </div>
+                <div class="progress-step" style="margin-left: auto; margin-right: auto;">
+                    2
+                    <span class="step-label">Choose Plan</span>
+                </div>
+                <div class="progress-step" style="margin-right: 0;">
+                    3
+                    <span class="step-label">Checkout</span>
+                </div>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% else %}alert-warning{% endif %} border-0 rounded-3 mb-4 shadow-sm" style="font-size:14px;">
+                        <i class="fa-solid fa-circle-exclamation me-2"></i> {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form action="{% url 'events:register.submit' %}" method="POST" id="registerForm" autocomplete="off">
+                {% csrf_token %}
+
+                <!-- Full Name -->
+                <div class="mb-4">
+                    <label for="fullname" class="form-label">1. Full Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="fullname" name="fullname" value="{{ request.POST.fullname }}" placeholder="Enter your full name" required>
+                    <div class="text-gujarati-hint"><i class="fa-solid fa-lightbulb text-warning me-1"></i>Enter your full name as it will appear in the attendance sheet.</div>
+                </div>
+
+                <!-- Email Address & Mobile Grid -->
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <label for="email" class="form-label">2. Email Address <span class="text-danger">*</span></label>
+                        <div class="d-flex gap-2">
+                            <input type="email" class="form-control" id="email" name="email" value="{% if is_verified %}{{ verified_email }}{% else %}{{ request.POST.email }}{% endif %}" placeholder="name@example.com" required style="flex: 1;" {% if is_verified %}readonly{% endif %}>
+                            {% if is_verified %}
+                                <span class="badge bg-success d-flex align-items-center" style="white-space: nowrap;">
+                                    <i class="fa-solid fa-circle-check me-1"></i> Verified
+                                </span>
+                            {% else %}
+                                <button type="button" id="sendOtpBtn" class="btn btn-outline-success px-3 py-2 border-2 fw-bold" style="font-size: 12px; white-space: nowrap;">Send OTP</button>
+                            {% endif %}
+                        </div>
+                        <div id="emailVerifiedBadge" class="mt-2 badge bg-success d-flex align-items-center gap-1" style="display: none;">
+                            <i class="fa-solid fa-circle-check"></i> Email verified
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <label for="mobile" class="form-label">3. Mobile Number <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" id="mobile" name="mobile" value="{{ request.POST.mobile }}" placeholder="10-digit mobile number" required maxlength="10" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    </div>
+                </div>
+
+                <!-- Pincode & Experience Row -->
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <label for="pincode" class="form-label">4. Pincode <span class="text-muted">(Optional)</span></label>
+                        <input type="text" class="form-control" id="pincode" name="pincode" value="{{ request.POST.pincode|default:pincode }}" placeholder="e.g. 380001" maxlength="6" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        <div id="pincode-feedback" class="mt-2" style="font-size: 13px; display: none; transition: all 0.3s ease;"></div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <label for="experience" class="form-label">5. Experience (in years) <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="experience" name="experience" value="{{ request.POST.experience }}" placeholder="e.g. 5" required min="0" max="99">
+                    </div>
+                </div>
+
+                <!-- Insurance segments (Multi choice) -->
+                <div class="mb-4">
+                    <label class="form-label d-block">6. Select Your Insurance Segments <span class="text-danger">*</span> <span class="text-muted" style="font-size: 11px;">(You can select multiple)</span></label>
+                    <div class="segment-grid">
+                        <div class="segment-item">
+                            <input type="checkbox" name="insurance_segments[]" id="seg_life" value="Life">
+                            <label for="seg_life" class="segment-box"><i class="fa-solid fa-umbrella"></i><span>Life</span></label>
+                        </div>
+                        <div class="segment-item">
+                            <input type="checkbox" name="insurance_segments[]" id="seg_health" value="Health">
+                            <label for="seg_health" class="segment-box"><i class="fa-solid fa-heart-pulse"></i><span>Health</span></label>
+                        </div>
+                        <div class="segment-item">
+                            <input type="checkbox" name="insurance_segments[]" id="seg_motor" value="Motor">
+                            <label for="seg_motor" class="segment-box"><i class="fa-solid fa-car-side"></i><span>Motor</span></label>
+                        </div>
+                        <div class="segment-item">
+                            <input type="checkbox" name="insurance_segments[]" id="seg_sme" value="SME">
+                            <label for="seg_sme" class="segment-box"><i class="fa-solid fa-briefcase"></i><span>SME</span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Promo Code (Optional) -->
+                <div class="mb-4">
+                    <label class="form-label" for="promocode">7. Promo Code <span class="text-muted">(Optional)</span></label>
+                    <div class="input-group promo-input-group position-relative" id="promoWrapper" style="border: 1.5px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #fff; transition: all 0.2s; display: flex; align-items: center; padding: 0 4px;">
+                        <span class="ps-2 pe-1" style="color: #94a3b8; display: flex; align-items: center;">
+                            <i class="fa-solid fa-ticket-simple text-secondary" id="promo-icon" style="font-size: 16px; transition: all 0.2s;"></i>
+                        </span>
+                        <input type="text" class="form-control border-0 bg-transparent py-2 shadow-none" id="promocode" name="promocode" value="{{ request.POST.promocode }}" placeholder="Enter Code (e.g TOT)" style="font-size: 14px; font-weight: 500; outline: none; box-shadow: none;">
+                        <button class="btn btn-primary px-3 py-1 border-0 fw-bold d-flex align-items-center justify-content-center" type="button" id="applyPromoCodeBtn" style="background: var(--primary); font-size: 12px; letter-spacing: 0.5px; border-radius: 8px; transition: all 0.2s; white-space: nowrap; height: 34px;">
+                            APPLY
+                        </button>
+                    </div>
+                    <div id="promo-feedback" class="mt-2" style="font-size: 12px; display: none; transition: all 0.3s ease; font-weight: 600;"></div>
+                </div>
+
+                <!-- Submit Button / Navigation -->
+                <div class="d-flex flex-column-reverse flex-sm-row gap-3 mt-4">
+                    <a href="/check-pincode" class="btn btn-outline-secondary py-3 px-4 rounded-3 fw-bold d-flex align-items-center justify-content-center" style="border-width: 2px; font-size: 15px;">
+                        <i class="fa-solid fa-arrow-left me-2"></i> Previous
+                    </a>
+                    <button type="submit" class="btn btn-continue py-3 px-4 rounded-3 fw-bold flex-grow-1 d-flex align-items-center justify-content-center">
+                        Continue to Choose Plan <i class="fa-solid fa-arrow-right ms-2"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        var isEmailVerified = {{ is_verified|yesno:'true,false' }};
+
+        var CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // Frontend Validation using SweetAlert2
+        document.getElementById('registerForm').addEventListener('submit', function (e) {
+            var fullname = document.getElementById('fullname').value.trim();
+            if (fullname === '') {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Name Required', text: 'Please enter your full name.', confirmButtonColor: '#1d7d5d' });
+                document.getElementById('fullname').focus();
+                return;
+            }
+
+            var mobile = document.getElementById('mobile').value.trim();
+            if (!/^[6-9]\d{9}$/.test(mobile)) {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Invalid Mobile Number', text: 'Please enter a valid 10-digit Indian mobile number starting with 6-9.', confirmButtonColor: '#1d7d5d' });
+                document.getElementById('mobile').focus();
+                return;
+            }
+
+            var checkboxes = document.querySelectorAll('input[name="insurance_segments[]"]:checked');
+            if (checkboxes.length === 0) {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Segment Required', text: 'Please select at least one Insurance Segment before proceeding.', confirmButtonColor: '#1d7d5d' });
+                return;
+            }
+
+            var pincode = document.getElementById('pincode').value.trim();
+            if (pincode !== '' && !/^[1-9]\d{5}$/.test(pincode)) {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Invalid Pincode', text: 'Please enter a valid 6-digit pincode.', confirmButtonColor: '#1d7d5d' });
+                document.getElementById('pincode').focus();
+                return;
+            }
+
+            var experience = document.getElementById('experience').value.trim();
+            if (experience === '') {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Experience Required', text: 'Please enter your years of experience.', confirmButtonColor: '#1d7d5d' });
+                document.getElementById('experience').focus();
+                return;
+            }
+            if (isNaN(experience) || parseInt(experience) < 0) {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Invalid Experience', text: 'Please enter a valid non-negative number for experience.', confirmButtonColor: '#1d7d5d' });
+                document.getElementById('experience').focus();
+                return;
+            }
+        });
+
+        // Promo Code Verification
+        const promoInput = document.getElementById('promocode');
+        const applyPromoBtn = document.getElementById('applyPromoCodeBtn');
+        const promoFeedback = document.getElementById('promo-feedback');
+        const promoWrapper = document.getElementById('promoWrapper');
+        const promoIcon = document.getElementById('promo-icon');
+
+        async function verifyPromoCode() {
+            const code = promoInput.value.trim();
+            if (!code) {
+                promoFeedback.style.display = 'block';
+                promoFeedback.className = 'mt-2 text-danger';
+                promoFeedback.innerHTML = '<i class="fa-solid fa-circle-exclamation me-1"></i> Please enter a promo code.';
+                promoWrapper.className = 'input-group promo-input-group position-relative error-border';
+                return;
+            }
+
+            applyPromoBtn.disabled = true;
+            applyPromoBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            promoFeedback.style.display = 'block';
+            promoFeedback.className = 'mt-2 text-muted';
+            promoFeedback.innerHTML = 'Verifying code...';
+
+            try {
+                const response = await fetch('{% url "events:verify.promo" %}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFTOKEN': CSRF_TOKEN, 'X-CSRF-Token': CSRF_TOKEN },
+                    body: JSON.stringify({ promo_code: code })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    promoWrapper.className = 'input-group promo-input-group position-relative success-border';
+                    promoFeedback.className = 'mt-2 text-success';
+                    promoFeedback.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> ${data.message}`;
+                    promoIcon.className = 'fa-solid fa-ticket-simple text-success';
+                    applyPromoBtn.style.background = '#10b981';
+                    applyPromoBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                } else {
+                    promoWrapper.className = 'input-group promo-input-group position-relative error-border';
+                    promoFeedback.className = 'mt-2 text-warning';
+                    promoFeedback.innerHTML = `<i class="fa-solid fa-circle-exclamation me-1"></i> ${data.message || 'Invalid promo code.'}`;
+                    promoIcon.className = 'fa-solid fa-ticket-simple text-warning';
+                    applyPromoBtn.style.background = '#f59e0b';
+                    applyPromoBtn.innerHTML = 'APPLY';
+                }
+            } catch (err) {
+                console.error('Error verifying promo code:', err);
+                promoFeedback.style.display = 'none';
+                applyPromoBtn.style.background = 'var(--primary)';
+                applyPromoBtn.innerHTML = 'APPLY';
+            } finally {
+                applyPromoBtn.disabled = false;
+            }
+        }
+
+        applyPromoBtn.addEventListener('click', verifyPromoCode);
+
+        promoInput.addEventListener('input', function () {
+            promoWrapper.className = 'input-group promo-input-group position-relative';
+            promoIcon.className = 'fa-solid fa-ticket-simple text-secondary';
+            promoFeedback.style.display = 'none';
+            applyPromoBtn.style.background = 'var(--primary)';
+            applyPromoBtn.innerHTML = 'APPLY';
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('ref') && promoInput.value.trim() === '') {
+            const rawRef = urlParams.get('ref') || '';
+            const safeRef = rawRef.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 50);
+            if (safeRef) {
+                promoInput.value = safeRef;
+                verifyPromoCode();
+            }
+        } else if (promoInput.value.trim() !== '') {
+            verifyPromoCode();
+        }
+
+        // Pincode dynamic feedback
+        const pincodeInput = document.getElementById('pincode');
+        const pincodeFeedback = document.getElementById('pincode-feedback');
+
+        function checkPincodeAgents(val) {
+            const cleanedVal = val.trim();
+            if (cleanedVal.length === 6 && /^\d+$/.test(cleanedVal)) {
+                pincodeFeedback.style.display = 'block';
+                pincodeFeedback.className = 'mt-2 text-muted';
+                pincodeFeedback.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Checking area agents...';
+
+                fetch(`/api/pincode/check-agents/${cleanedVal}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (data.count === 0) {
+                                pincodeFeedback.className = 'mt-2 text-success fw-bold';
+                                pincodeFeedback.innerHTML = '<i class="fa-solid fa-medal text-warning me-1"></i> You are the first agent from your area';
+                            } else {
+                                pincodeFeedback.className = 'mt-2 text-secondary fw-semibold';
+                                pincodeFeedback.innerHTML = `<i class="fa-solid fa-users text-primary me-1"></i> In Your Area <strong class="text-primary">${data.count}</strong> ${data.count === 1 ? 'Agent is' : 'Agents are'} registered`;
+                            }
+                        } else {
+                            pincodeFeedback.style.display = 'none';
+                        }
+                    })
+                    .catch(err => { console.error('Error checking pincode agents:', err); pincodeFeedback.style.display = 'none'; });
+            } else {
+                pincodeFeedback.style.display = 'none';
+            }
+        }
+
+        pincodeInput.addEventListener('input', function () { checkPincodeAgents(this.value); });
+        if (pincodeInput.value) { checkPincodeAgents(pincodeInput.value); }
+
+        // OTP Popup State
+        var _otpResendInterval = null;
+
+        function showOtpPopup(email) {
+            if (_otpResendInterval) { clearInterval(_otpResendInterval); }
+
+            Swal.fire({
+                html: `
+                <div style="text-align:center; padding: 10px 0 5px;">
+                    <i class="fas fa-envelope-open-text" style="font-size:40px; color:var(--primary); margin-bottom:12px;"></i>
+                    <h3 style="font-size:18px; font-weight:700; color:#1a1a1a; margin-bottom:6px;">Verify With OTP</h3>
+                    <p style="font-size:13px; color:#64748b; margin-bottom:16px;">${email}</p>
+
+                    <input id="swal-otp-input" type="text" inputmode="numeric" maxlength="6"
+                        placeholder="● ● ● ● ● ●"
+                        style="width: 220px; font-size: 30px; font-weight: 700; letter-spacing: 10px; text-align: center; border: none; border-bottom: 3px solid var(--primary); outline: none; padding: 8px 0; color: #1a1a1a; background: transparent; display: block; margin: 0 auto 20px;"
+                        oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length===6) document.getElementById('swal-otp-verify-btn').click();" />
+
+                    <div id="swal-otp-error" style="color:#ef4444;font-size:13px;margin-bottom:10px;display:none;"></div>
+
+                    <button id="swal-otp-verify-btn" onclick="verifySwalOTP('${email}')"
+                        style="background:var(--primary); color:white; border:none; padding:12px 40px; border-radius:50px; font-size:15px; font-weight:600; cursor:pointer; width:100%; max-width:220px; transition:all 0.2s;">Verify OTP</button>
+
+                    <div id="swal-otp-timer" style="margin-top:16px;font-size:13px;color:#94a3b8;"></div>
+                    <button id="swal-resend-btn" onclick="resendSwalOTP('${email}')"
+                        style="background:none;border:none;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;margin-top:6px;display:none;text-decoration:underline;">Resend OTP</button>
+                </div>
+            `,
+                showConfirmButton: false,
+                showCloseButton: true,
+                allowOutsideClick: false,
+                backdrop: 'rgba(0,0,0,0.55)',
+                width: '360px',
+                padding: '1.5rem',
+                didOpen: () => { document.getElementById('swal-otp-input').focus(); startOtpTimer(); }
+            });
+        }
+
+        function startOtpTimer() {
+            if (_otpResendInterval) clearInterval(_otpResendInterval);
+            var timeLeft = 60;
+            _otpResendInterval = setInterval(function () {
+                var timerEl = document.getElementById('swal-otp-timer');
+                var resendBtn = document.getElementById('swal-resend-btn');
+                if (!timerEl) { clearInterval(_otpResendInterval); return; }
+                if (timeLeft <= 0) {
+                    clearInterval(_otpResendInterval);
+                    timerEl.textContent = '';
+                    if (resendBtn) resendBtn.style.display = 'inline-block';
+                } else {
+                    timerEl.textContent = 'Resend OTP in ' + timeLeft + 's';
+                    timeLeft--;
+                }
+            }, 1000);
+        }
+
+        window.resendSwalOTP = async function (email) {
+            var resendBtn = document.getElementById('swal-resend-btn');
+            var timerEl = document.getElementById('swal-otp-timer');
+            if (resendBtn) resendBtn.style.display = 'none';
+            if (timerEl) timerEl.textContent = 'Sending...';
+            try {
+                const res = await fetch('{% url "agents:agent_send_otp" %}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN, 'Accept': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (timerEl) timerEl.textContent = 'OTP resent!';
+                    startOtpTimer();
+                } else {
+                    if (timerEl) timerEl.textContent = 'Failed to resend.';
+                    if (resendBtn) resendBtn.style.display = 'inline-block';
+                }
+            } catch (e) {
+                if (timerEl) timerEl.textContent = 'Network error.';
+                if (resendBtn) resendBtn.style.display = 'inline-block';
+            }
+        };
+
+        window.verifySwalOTP = async function (email) {
+            const otp = (document.getElementById('swal-otp-input').value || '').trim();
+            const errEl = document.getElementById('swal-otp-error');
+            const btn = document.getElementById('swal-otp-verify-btn');
+            if (otp.length !== 6) {
+                if (errEl) { errEl.textContent = 'Please enter a valid 6-digit OTP.'; errEl.style.display = 'block'; }
+                return;
+            }
+            if (errEl) errEl.style.display = 'none';
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+            try {
+                const response = await fetch('{% url "agents:agent_verify_otp" %}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN, 'Accept': 'application/json' },
+                    body: JSON.stringify({ otp: otp, email: email })
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    if (_otpResendInterval) clearInterval(_otpResendInterval);
+                    Swal.close();
+                    document.getElementById('email').readOnly = true;
+                    document.getElementById('sendOtpBtn').style.display = 'none';
+                    document.getElementById('emailVerifiedBadge').style.display = 'flex';
+                    isEmailVerified = true;
+                    Swal.fire({ icon: 'success', title: 'Verified!', text: 'Email verified successfully!', timer: 2000, showConfirmButton: false });
+                } else {
+                    if (errEl) { errEl.textContent = data.message || 'Invalid OTP. Please try again.'; errEl.style.display = 'block'; }
+                    btn.disabled = false;
+                    btn.innerHTML = origHtml;
+                }
+            } catch (err) {
+                if (errEl) { errEl.textContent = 'Network error. Please try again.'; errEl.style.display = 'block'; }
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        };
+
+        async function sendOTP() {
+            const email = document.getElementById('email').value.trim();
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                Swal.fire({ icon: 'warning', title: 'Invalid Email', text: 'Please enter a valid email address first.' });
+                return;
+            }
+
+            const btn = document.getElementById('sendOtpBtn');
+            const originalText = btn.textContent;
+            const controller = new AbortController();
+            const requestTimeout = setTimeout(() => controller.abort(), 15000);
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+
+            try {
+                const response = await fetch('{% url "agents:agent_send_otp" %}', {
+                    method: 'POST',
+                    signal: controller.signal,
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN, 'Accept': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+                const data = await response.json().catch(() => ({ success: false, message: 'Unexpected server response while sending OTP.' }));
+
+                if (response.ok && data.success) {
+                    btn.textContent = 'Resend';
+                    btn.disabled = false;
+                    showOtpPopup(email);
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Failed', text: data.message || 'Failed to send OTP.' });
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: error.name === 'AbortError' ? 'Timeout' : 'Error',
+                    text: error.name === 'AbortError' ? 'OTP service timed out. Please try again.' : 'Network error. Please try again.'
+                });
+            } finally {
+                clearTimeout(requestTimeout);
+                btn.disabled = false;
+                if (btn.textContent === 'Sending...') { btn.textContent = originalText; }
+            }
+        }
+
+        if (document.getElementById('sendOtpBtn')) {
+            document.getElementById('sendOtpBtn').addEventListener('click', sendOTP);
+        }
+    </script>
+
+</body>
+</html>
