@@ -539,6 +539,12 @@ class AdminPermissionMiddleware:
             'admin_error_logs_delete':                  'error_logs',
             'security_threat_logs':                     'analytics',
             'security_threat_logs_delete':              'analytics',
+            # ── Investment Types ──────────────────────────────────────────
+            'admin_investment_types_index':             'content',
+            'admin_investment_types_store':             'content',
+            'admin_investment_types_update':            'content',
+            'admin_investment_types_delete':            'content',
+            'admin_investment_types_toggle':            'content',
             # ── Site Settings / Security (blocked IPs) ────────────────────
             'admin_settings_general':                   'site_settings',
             'admin_settings_seo':                       'site_settings',
