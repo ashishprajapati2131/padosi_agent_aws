@@ -71,6 +71,14 @@ def participants_create(request):
     return redirect('home:coming_soon')
 
 
+def participants_router(request):
+    """Method dispatch for /participants — POST → store, GET → index (Laravel routes
+    web.php:548-549 share the same path with different HTTP verbs)."""
+    if request.method == 'POST':
+        return participants_store(request)
+    return participants_index(request)
+
+
 @require_GET
 def participants_index(request):
     """GET /participants — plain JSON listing (no blade exists on the Laravel side)."""
@@ -86,7 +94,6 @@ def participants_index(request):
 def participants_store(request):
     """POST /participants — contest registration (ParticipantController@store)."""
     logger.info("PARTICIPANT REGISTRATION - Received data: %s", dict(request.POST))
-
     full_name = (request.POST.get('full_name') or '').strip()
     email = (request.POST.get('email') or '').strip()
     phone_number = (request.POST.get('phone_number') or '').strip()
@@ -135,7 +142,7 @@ def participants_store(request):
         }
 
         if have_insurance == 'yes':
-            participant_data['insurance_products'] = request.POST.getlist('products') or []
+            participant_data['insurance_products'] = request.POST.getlist('products[]') or request.POST.getlist('products') or []
             participant_data['insurance_planning'] = None
         else:
             participant_data['insurance_products'] = None

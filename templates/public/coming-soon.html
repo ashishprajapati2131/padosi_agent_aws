@@ -15,7 +15,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/logo-icon.png' %}">
 
       <!-- Add CSRF Token Meta Tag HERE in HEAD -->
-    <meta name="csrf-token" content="{% csrf_token %}">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="description"
         content="PadosiAgent - We are working on something awesome. Launching December 1st, 2025. Join us as an agent or customer!">
     <meta name="author" content="PadosiAgent">
@@ -451,7 +451,7 @@
 
                         <!-- Contact Form -->
                         <form id="contactForm">
-                            <input type="hidden" name="csrfmiddlewaretoken" value="{% csrf_token %}">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
                             
                             <div class="form-group">
                                 <label>Full Name *</label>
@@ -638,7 +638,7 @@
                                 </div>
 
                                 <form id="agentForm2">
-                                    <input type="hidden" name="csrfmiddlewaretoken" value="{% csrf_token %}">
+                                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
                                     
                                         <div class="form-group">
                                         <label>Client Leads You Want *</label>
@@ -1025,7 +1025,7 @@
                 <div id="errorAlert_p" class="alert alert-error"></div>              
 
                 <form id="participantForm" data-no-google-auth="true">
-                    <input type="hidden" name="csrfmiddlewaretoken" value="{% csrf_token %}">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
                     <div class="form-group full-width">
                         <label>Full Name *</label>
                         <input type="text" id="full_name" name="full_name" required>
