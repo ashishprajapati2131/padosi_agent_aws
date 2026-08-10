@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You, {{ participant.full_name }}! — PadosiAgent Contest</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% load static %}{% static 'img/logo-icon.png' %}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #0B1F3A 0%, #122848 50%, #0d9488 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; color: #0f172a; }
+        .card { background: #fff; border-radius: 20px; max-width: 520px; width: 100%; padding: 40px 32px; text-align: center; box-shadow: 0 25px 60px rgba(0,0,0,.35); }
+        .trophy { font-size: 56px; line-height: 1; }
+        h1 { font-size: 24px; margin: 16px 0 8px; color: #0B1F3A; }
+        .sub { color: #64748b; font-size: 14px; margin-bottom: 24px; }
+        .badge { display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; border-radius: 999px; padding: 6px 16px; font-size: 13px; font-weight: 700; margin-bottom: 20px; }
+        .buttons { display: flex; flex-direction: column; gap: 12px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 20px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; transition: transform .15s ease, box-shadow .15s ease; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,.15); }
+        .btn-wa { background: #25D366; color: #fff; }
+        .btn-fb { background: #1877F2; color: #fff; }
+        .btn-copy { background: #f1f5f9; color: #0f172a; }
+        .copied { background: #10b981 !important; color: #fff !important; }
+        .note { margin-top: 20px; font-size: 12px; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="trophy">🏆</div>
+        <h1>Thank You, {{ participant.full_name }}!</h1>
+        <p class="sub">Your participation in the PadosiAgent contest has been registered successfully.</p>
+        <div class="badge">{{ participant.participant_shared|yesno:"Participation Shared,Pending Share Confirmation" }}</div>
+        <div class="buttons">
+            <a class="btn btn-fb" target="_blank" rel="noopener"
+               href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}">Share on Facebook</a>
+            <a class="btn btn-wa" target="_blank" rel="noopener"
+               href="https://wa.me/?text={{ request.build_absolute_uri|urlencode }}">Share on WhatsApp</a>
+            <button type="button" class="btn btn-copy" id="copyBtn">Copy Share Link</button>
+        </div>
+        <p class="note">Top participants with the highest engagement win amazing prizes!</p>
+    </div>
+    <script>
+        document.getElementById('copyBtn').addEventListener('click', function () {
+            const url = window.location.href;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(markCopied).catch(fallbackCopy);
+            } else {
+                fallbackCopy();
+            }
+            function fallbackCopy() {
+                const ta = document.createElement('textarea');
+                ta.value = url;
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); markCopied(); } catch (e) {}
+                document.body.removeChild(ta);
+            }
+            function markCopied() {
+                const btn = document.getElementById('copyBtn');
+                btn.textContent = 'Link Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => { btn.textContent = 'Copy Share Link'; btn.classList.remove('copied'); }, 2000);
+            }
+        });
+    </script>
+</body>
+</html>

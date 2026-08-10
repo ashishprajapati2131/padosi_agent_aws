@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites, career_timeline as career_timeline_views
+from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites, participants, career_timeline as career_timeline_views
 
 app_name = 'agents'
 
@@ -55,8 +55,35 @@ urlpatterns = [
     path('agent/generate-bio/', bio_generator.generate_professional_bio, name='agent_generate_bio'),
     path('agent/toggle-favorite/', favorites.toggle_favorite, name='agent_toggle_favorite'),
 
+    # ── Participants + Facebook share (mirrors routes/web.php:547-569) ─────────
+    path('participants/', participants.participants_store, name='participants_store'),
+    path('participants/create/', participants.participants_create, name='participants_create'),
+    path('participants/home/', participants.participants_index, name='participants_home'),
+    path('participants/share/<str:shareable_id>/', participants.participant_share, name='participant_share'),
+    path('participants/<int:participant_id>/', participants.participant_show, name='participants_show'),
+    path('participants/<str:shareable_id>/mark-shared/', participants.mark_as_shared, name='participants_mark_shared'),
+
+    # ── Facebook auto-post API ───────────────────────────────────────────────
+    path('api/facebook/auto-post/', participants.facebook_auto_post, name='facebook_auto_post'),
+    path('api/facebook/verify-post/', participants.facebook_verify_post, name='facebook_verify_post'),
+    path('api/facebook/store-token/', participants.facebook_store_token, name='facebook_store_token'),
+    path('api/facebook/connection-status/<int:participant_id>/', participants.facebook_connection_status, name='facebook_connection_status'),
+    path('api/facebook/confirm-manual-share/', participants.facebook_confirm_manual_share, name='facebook_confirm_manual_share'),
+
     # ── Career Timeline API (read-only) ──────────────────────────────────────
     path('agent/career-timeline/suggestions/', career_timeline_views.career_timeline_suggestions, name='agent_career_timeline_suggestions'),
+
+    # ── Participants (contest) + Facebook share ───────────────────────────────
+    path('participants/create/', participants.participants_create, name='participants_create'),
+    path('participants/', participants.participants_index, name='participants_index'),
+    path('participants/share/<str:shareable_id>/', participants.participant_share, name='participants_share'),
+    path('participants/<int:participant_id>/', participants.participant_show, name='participants_show'),
+    path('participants/<str:shareable_id>/mark-shared/', participants.mark_as_shared, name='participants_mark_shared'),
+    path('api/facebook/auto-post/', participants.facebook_auto_post, name='facebook_auto_post'),
+    path('api/facebook/verify-post/', participants.facebook_verify_post, name='facebook_verify_post'),
+    path('api/facebook/store-token/', participants.facebook_store_token, name='facebook_store_token'),
+    path('api/facebook/connection-status/<int:participant_id>/', participants.facebook_connection_status, name='facebook_connection_status'),
+    path('api/facebook/confirm-manual-share/', participants.facebook_confirm_manual_share, name='facebook_confirm_manual_share'),
 
     # ── Catch-all public agent profile share route ────────────────────────────
     path('agent/<str:slug>/',   dashboard.agent_public_share_profile, name='agent_public_share_profile'),

@@ -314,48 +314,19 @@ platform.{% endblock %}
                     <label>Investment Types <span style="font-weight:400;color:#64748b;">(Select if
                             applicable)</span></label>
                     <div class="segment-grid">
+                        {% for inv_type in active_investment_types %}
                         <div class="segment-checkbox">
-                            <input type="checkbox" id="inv_sip_stp_swp" name="investment_types[]" value="SIP/STP/SWP" {% if 'sip/stp/swp' in draft.investment_types or 'sip' in draft.investment_types or 'stp' in draft.investment_types or 'swp' in draft.investment_types %}checked{% endif %}>
-                            <label for="inv_sip_stp_swp">
+                            <input type="checkbox" id="inv_{{ inv_type.id }}" name="investment_types[]" value="{{ inv_type.name }}" {% if inv_type.name in draft.investment_types %}checked{% endif %}>
+                            <label for="inv_{{ inv_type.id }}">
                                 <i class="fas fa-chart-line"></i>
-                                <span>SIP/STP/SWP</span>
+                                <span>{{ inv_type.name|upper }}</span>
                             </label>
                         </div>
-                        <div class="segment-checkbox">
-                            <input type="checkbox" id="inv_lumpsum" name="investment_types[]" value="Lumpsum" {% if 'lumpsum' in draft.investment_types or 'Lumpsum' in draft.investment_types %}checked{% endif %}>
-                            <label for="inv_lumpsum">
-                                <i class="fas fa-money-bill-wave"></i>
-                                <span>Lumpsum</span>
-                            </label>
+                        {% empty %}
+                        <div class="text-center text-muted" style="grid-column: span 2;">
+                            <small>No investment types configured yet.</small>
                         </div>
-                        <div class="segment-checkbox">
-                            <input type="checkbox" id="inv_elss" name="investment_types[]" value="ELSS" {% if 'elss' in draft.investment_types or 'ELSS' in draft.investment_types %}checked{% endif %}>
-                            <label for="inv_elss">
-                                <i class="fas fa-percentage"></i>
-                                <span>ELSS</span>
-                            </label>
-                        </div>
-                        <div class="segment-checkbox">
-                            <input type="checkbox" id="inv_pms" name="investment_types[]" value="PMS" {% if 'pms' in draft.investment_types or 'PMS' in draft.investment_types %}checked{% endif %}>
-                            <label for="inv_pms">
-                                <i class="fas fa-user-tie"></i>
-                                <span>PMS</span>
-                            </label>
-                        </div>
-                        <div class="segment-checkbox">
-                            <input type="checkbox" id="inv_nps" name="investment_types[]" value="NPS" {% if 'nps' in draft.investment_types or 'NPS' in draft.investment_types %}checked{% endif %}>
-                            <label for="inv_nps">
-                                <i class="fas fa-piggy-bank"></i>
-                                <span>NPS</span>
-                            </label>
-                        </div>
-                        <div class="segment-checkbox">
-                            <input type="checkbox" id="inv_aif" name="investment_types[]" value="AIF" {% if 'aif' in draft.investment_types or 'AIF' in draft.investment_types %}checked{% endif %}>
-                            <label for="inv_aif">
-                                <i class="fas fa-briefcase"></i>
-                                <span>AIF</span>
-                            </label>
-                        </div>
+                        {% endfor %}
                     </div>
                 </div>
 

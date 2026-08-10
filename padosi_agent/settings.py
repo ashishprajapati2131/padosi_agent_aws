@@ -260,6 +260,10 @@ GOOGLE_REDIRECT_URI  = os.environ.get('GOOGLE_REDIRECT_URI', '')
 # registered in Google Cloud Console alongside GOOGLE_REDIRECT_URI)
 GBP_REDIRECT_URI     = os.environ.get('GBP_REDIRECT_URI', '')
 
+# ─── Facebook (participant auto-post module) ─────────────────────────────────
+FACEBOOK_APP_ID     = os.environ.get('FACEBOOK_APP_ID', '759405373797845')
+FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')
+
 # ─── Logging ─────────────────────────────────────────────────────────────────
 # Keep Python logs inside the project media folder so they can be managed
 # (viewed/downloaded/archived) alongside the other media assets.

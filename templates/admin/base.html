@@ -557,6 +557,11 @@
         {% if is_super_admin or 'content' in admin_permissions %}
         <div class="menu-label">Content Control</div>
 
+        <a href="{% url 'admin_investment_types_index' %}"
+           class="menu-item {% if '/admin/investment-types/' in request.path %}active{% endif %}">
+            <i class="fa-solid fa-chart-pie"></i> Investment Types
+        </a>
+
         <a href="/admin/settings/homepage/"
            class="menu-item {% if '/admin/settings/homepage/' in request.path %}active{% endif %}">
             <i class="fa-solid fa-house-laptop"></i> Homepage Dynamic

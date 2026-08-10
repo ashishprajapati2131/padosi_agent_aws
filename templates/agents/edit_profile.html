@@ -401,6 +401,17 @@ Overview
                                     placeholder="Society/Building Name, Area, City, Pincode">{{ profile.address|default:'' }}</textarea>
                             </div>
                         </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">Date of Birth <i
+                                        class="fas fa-info-circle text-muted" data-toggle="tooltip"
+                                        title="Your Date of Birth for verification purposes"
+                                        style="font-size: 12px; cursor: help;"></i></label>
+                                <input type="date" class="form-control" name="date_of_birth"
+                                    value="{{ profile.date_of_birth|date:'Y-m-d'|default:'' }}">
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Step 2: Professional Details -->
@@ -930,85 +941,25 @@ Overview
                             <p class="font-weight-bold mb-3 text-dark text-center"
                                 style="font-size: 14px; color: #1e293b;">Select your Investment Types:</p>
                             <div class="row mx-n2">
+                                {% for inv_type in active_investment_types %}
                                 <div class="col-4 px-2 mb-2">
                                     <div class="segment-db-checkbox">
                                         <input type="checkbox" class="investment-db-toggle d-none"
-                                            id="db_inv_sip_stp_swp" name="investment_types[]" value="SIP/STP/SWP">
-                                        <label for="db_inv_sip_stp_swp"
+                                            id="db_inv_{{ inv_type.id }}" name="investment_types[]" value="{{ inv_type.name }}">
+                                        <label for="db_inv_{{ inv_type.id }}"
                                             class="d-flex flex-column align-items-center justify-content-center p-2 border rounded text-center mb-0"
                                             style="cursor: pointer; min-height: 80px; border-radius: 12px !important; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); background-color: #ffffff; border-color: #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03); width: 100%;">
                                             <i class="fas fa-chart-line mb-2 text-muted" style="font-size: 20px;"></i>
                                             <span class="font-weight-bold text-dark"
-                                                style="font-size: 11.5px;">SIP/STP/SWP</span>
+                                                style="font-size: 11.5px;">{{ inv_type.name|upper }}</span>
                                         </label>
                                     </div>
                                 </div>
-                                <div class="col-4 px-2 mb-2">
-                                    <div class="segment-db-checkbox">
-                                        <input type="checkbox" class="investment-db-toggle d-none" id="db_inv_lumpsum"
-                                            name="investment_types[]" value="Lumpsum">
-                                        <label for="db_inv_lumpsum"
-                                            class="d-flex flex-column align-items-center justify-content-center p-2 border rounded text-center mb-0"
-                                            style="cursor: pointer; min-height: 80px; border-radius: 12px !important; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); background-color: #ffffff; border-color: #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03); width: 100%;">
-                                            <i class="fas fa-money-bill-wave mb-2 text-muted"
-                                                style="font-size: 20px;"></i>
-                                            <span class="font-weight-bold text-dark"
-                                                style="font-size: 11.5px;">LUMPSUM</span>
-                                        </label>
-                                    </div>
+                                {% empty %}
+                                <div class="col-12 text-center text-muted">
+                                    <small>No investment types configured yet.</small>
                                 </div>
-                                <div class="col-4 px-2 mb-2">
-                                    <div class="segment-db-checkbox">
-                                        <input type="checkbox" class="investment-db-toggle d-none" id="db_inv_elss"
-                                            name="investment_types[]" value="ELSS">
-                                        <label for="db_inv_elss"
-                                            class="d-flex flex-column align-items-center justify-content-center p-2 border rounded text-center mb-0"
-                                            style="cursor: pointer; min-height: 80px; border-radius: 12px !important; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); background-color: #ffffff; border-color: #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03); width: 100%;">
-                                            <i class="fas fa-percentage mb-2 text-muted" style="font-size: 20px;"></i>
-                                            <span class="font-weight-bold text-dark"
-                                                style="font-size: 11.5px;">ELSS</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-4 px-2 mb-2">
-                                    <div class="segment-db-checkbox">
-                                        <input type="checkbox" class="investment-db-toggle d-none" id="db_inv_pms"
-                                            name="investment_types[]" value="PMS">
-                                        <label for="db_inv_pms"
-                                            class="d-flex flex-column align-items-center justify-content-center p-2 border rounded text-center mb-0"
-                                            style="cursor: pointer; min-height: 80px; border-radius: 12px !important; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); background-color: #ffffff; border-color: #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03); width: 100%;">
-                                            <i class="fas fa-user-tie mb-2 text-muted" style="font-size: 20px;"></i>
-                                            <span class="font-weight-bold text-dark"
-                                                style="font-size: 11.5px;">PMS</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-4 px-2 mb-2">
-                                    <div class="segment-db-checkbox">
-                                        <input type="checkbox" class="investment-db-toggle d-none" id="db_inv_nps"
-                                            name="investment_types[]" value="NPS">
-                                        <label for="db_inv_nps"
-                                            class="d-flex flex-column align-items-center justify-content-center p-2 border rounded text-center mb-0"
-                                            style="cursor: pointer; min-height: 80px; border-radius: 12px !important; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); background-color: #ffffff; border-color: #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03); width: 100%;">
-                                            <i class="fas fa-piggy-bank mb-2 text-muted" style="font-size: 20px;"></i>
-                                            <span class="font-weight-bold text-dark"
-                                                style="font-size: 11.5px;">NPS</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-4 px-2 mb-2">
-                                    <div class="segment-db-checkbox">
-                                        <input type="checkbox" class="investment-db-toggle d-none" id="db_inv_aif"
-                                            name="investment_types[]" value="AIF">
-                                        <label for="db_inv_aif"
-                                            class="d-flex flex-column align-items-center justify-content-center p-2 border rounded text-center mb-0"
-                                            style="cursor: pointer; min-height: 80px; border-radius: 12px !important; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); background-color: #ffffff; border-color: #e2e8f0; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03); width: 100%;">
-                                            <i class="fas fa-briefcase mb-2 text-muted" style="font-size: 20px;"></i>
-                                            <span class="font-weight-bold text-dark"
-                                                style="font-size: 11.5px;">AIF</span>
-                                        </label>
-                                    </div>
-                                </div>
+                                {% endfor %}
                             </div>
                         </div>
 

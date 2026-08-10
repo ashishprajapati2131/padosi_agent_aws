@@ -129,6 +129,9 @@ def _get_registration_context(request):
     if request.user.is_authenticated and is_distributor(request.user):
         layout_template = 'distributors/layout.html'
 
+    from apps.agents.models import InvestmentType
+    active_investment_types = InvestmentType.objects.filter(is_active=True)
+
     return {
         'layout_template': layout_template,
         'reg_step': reg_step,
@@ -140,6 +143,7 @@ def _get_registration_context(request):
         'language_options': LANGUAGE_OPTIONS,
         'agent_segments': draft.segments if draft else [],
         'agent_languages': draft.languages if draft else [],
+        'active_investment_types': active_investment_types,
     }
 
 

@@ -729,6 +729,9 @@ def edit_profile(request):
     years_range = list(range(current_year, 1979, -1))
     months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
             
+    from apps.agents.models import InvestmentType
+    investment_types = InvestmentType.objects.filter(is_active=True)
+
     context = {
         'agent': agent,
         'profile': profile,
@@ -739,6 +742,7 @@ def edit_profile(request):
         'extra_cities': extra_cities,
         'years_range': years_range,
         'months': months,
+        'active_investment_types': investment_types,
     }
     return render(request, 'agents/edit_profile.html', context)
 
@@ -799,6 +803,7 @@ def update_profile(request):
                 whatsapp = (request.POST.get('whatsapp') or '').strip()
                 languages = (request.POST.get('languages') or '').strip()
                 address = (request.POST.get('address') or '').strip()
+                date_of_birth = request.POST.get('date_of_birth')
                 
                 # Basic validation
                 errors = {}
@@ -866,6 +871,10 @@ def update_profile(request):
                 profile.whatsapp = whatsapp
                 profile.languages = languages
                 profile.address = address
+                if date_of_birth:
+                    profile.date_of_birth = date_of_birth
+                else:
+                    profile.date_of_birth = None
                 
                 # Profile Photo upload
                 profile_photo = request.FILES.get('profile_photo')

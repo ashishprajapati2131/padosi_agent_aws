@@ -21,6 +21,19 @@ def format_indian_number(num):
     return f"{int(num) if num.is_integer() else num:,}"
 
 
+class InvestmentType(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'investment_types'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
 def clean_investment_types(types):
     if not types:
         return []
@@ -98,6 +111,9 @@ class AgentDraft(models.Model):
     investment_valid_till = models.DateField(null=True, blank=True)
     investment_types = models.JSONField(default=list, blank=True)
     pan_number = models.CharField(max_length=20, blank=True, default='')
+    date_of_birth = models.DateField(null=True, blank=True)
+
+    # Step 3 — Registration Mode
     life_insurance = models.IntegerField(null=True, blank=True)
     health_insurance = models.IntegerField(null=True, blank=True)
     general_insurance = models.IntegerField(null=True, blank=True)
@@ -551,6 +567,7 @@ class AgentProfile(models.Model):
     languages = models.CharField(max_length=255, blank=True, null=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     state = models.CharField(max_length=100, blank=True, null=True)
+    date_of_birth = models.DateField(null=True, blank=True)
     pan_number = models.CharField(max_length=20, blank=True, default='')
     license_number = models.CharField(max_length=255, blank=True, default='')
     license_valid_till = models.DateField(null=True, blank=True)

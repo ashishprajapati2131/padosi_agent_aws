@@ -193,6 +193,13 @@ from apps.admin_panel.views.error_logs import (
     error_logs_show,
     error_logs_delete,
 )
+from apps.admin_panel.views.investment_types import (
+    index as investment_types_index,
+    store as investment_types_store,
+    update as investment_types_update,
+    delete as investment_types_delete,
+    toggle_status as investment_types_toggle,
+)
 from apps.admin_panel.views.blacklisted import (
     blacklisted_agents_view,
     ajax_blacklist_approve,
@@ -472,6 +479,13 @@ urlpatterns = [
     path("admin/advanced/error-logs/", error_logs_index, name="admin_error_logs_index"),
     path("admin/advanced/error-logs/<int:id>/", error_logs_show, name="admin_error_logs_show"),
     path("admin/advanced/error-logs/delete/", error_logs_delete, name="admin_error_logs_delete"),
+
+    # Investment Types
+    path("admin/investment-types/", investment_types_index, name="admin_investment_types_index"),
+    path("admin/investment-types/store/", investment_types_store, name="admin_investment_types_store"),
+    path("admin/investment-types/<int:pk>/update/", investment_types_update, name="admin_investment_types_update"),
+    path("admin/investment-types/<int:pk>/delete/", investment_types_delete, name="admin_investment_types_delete"),
+    path("admin/investment-types/<int:pk>/toggle/", investment_types_toggle, name="admin_investment_types_toggle"),
 
     # Search
     path("admin/search/", admin_search, name="admin_search"),

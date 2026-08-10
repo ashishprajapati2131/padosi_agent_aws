@@ -2318,7 +2318,7 @@ function clearGoogleSession() {
     fetch('/auth/google/clear-session', {
         method: 'POST',
         headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').value
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').value
         }
     }).then(() => {
         const emailInput = document.querySelector('input[name="email"]');
@@ -2368,7 +2368,7 @@ document.getElementById('agentForm1').addEventListener('submit', async function 
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').value,
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').value,
                 'Accept': 'application/json'
             }
         });
@@ -2587,7 +2587,7 @@ document.addEventListener('DOMContentLoaded', function() {
 //             method: 'POST',
 //             body: formData,
 //             headers: {
-//                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').value
+//                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').value
 //             }
 //         });
 
@@ -2629,7 +2629,7 @@ document.addEventListener('DOMContentLoaded', function() {
         //             method: 'POST',
         //             body: formData,
         //             headers: {
-        //                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').value
+        //                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').value
         //             }
         //         });
 
@@ -2823,7 +2823,7 @@ document.getElementById('agentForm2').addEventListener('submit', async function 
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').value
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').value
             }
         });
 
@@ -2883,7 +2883,7 @@ document.getElementById('agentForm2').addEventListener('submit', async function 
 //             method: 'POST',
 //             body: formData,
 //             headers: {
-//                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').value
+//                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').value
 //             }
 //         });
 
@@ -2919,7 +2919,7 @@ document.getElementById('agentForm2').addEventListener('submit', async function 
         //             method: 'POST',
         //             body: formData,
         //             headers: {
-        //                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').value
+        //                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').value
         //             }
         //         });
 
@@ -2987,7 +2987,7 @@ document.getElementById('participantForm').addEventListener('submit', async func
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').value,
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').value,
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
             }
@@ -3094,7 +3094,7 @@ if (becomeCustomerModal) {
 //         const response = await fetch(`/participants/${shareableId}/mark-shared`, {
 //             method: 'POST',
 //             headers: {
-//                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+//                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
 //                 'Accept': 'application/json'
 //             }
 //         });
@@ -3200,7 +3200,7 @@ document.getElementById('contactForm').addEventListener('submit', async function
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').value,
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').value,
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
             }
@@ -3525,7 +3525,7 @@ async function handlePayment() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             }
         });
 
@@ -3622,7 +3622,7 @@ async function handlePayment() {
         //             method: 'POST',
         //             headers: {
         //                 'Content-Type': 'application/json',
-        //                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').value
+        //                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').value
         //             }
         //         });
 
@@ -3699,7 +3699,7 @@ async function handlePayment() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').value
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').value
                     },
                     body: JSON.stringify({
                         razorpay_payment_id: paymentResponse.razorpay_payment_id,
@@ -7276,7 +7276,7 @@ async function handleConfirmPostClick() {
         const response = await fetch(`/participants/${shareableId}/mark-shared`, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 'Accept': 'application/json'
             }
         });

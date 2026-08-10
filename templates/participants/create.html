@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Participate – PadosiAgent Contest{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h3 class="card-title text-center mb-4">Participate Now</h3>
+                    <p class="text-center text-muted">Share a PadosiMoment and win amazing prizes!</p>
+
+                    <form id="participantForm" method="post" action="{% url 'agents:participants_home' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" name="full_name" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email *</label>
+                            <input type="email" name="email" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone Number *</label>
+                            <input type="tel" name="phone_number" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Do you have Insurance? *</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="have_insurance" value="yes" required>
+                                <label class="form-check-label">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="have_insurance" value="no" required>
+                                <label class="form-check-label">No</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Do you invest in Mutual Funds? *</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="mutual_fund" value="yes" required>
+                                <label class="form-check-label">Yes</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="mutual_fund" value="no" required>
+                                <label class="form-check-label">No</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Thank My Padosi</label>
+                            <input type="text" name="thank_my_Padosi" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">...for</label>
+                            <textarea name="thank_my_Padosi_for" class="form-control" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Submit Participation</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
