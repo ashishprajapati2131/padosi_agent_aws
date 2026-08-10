@@ -32,3 +32,4 @@ email-validator==2.3.0
 a2wsgi==1.10.8
 psutil==5.9.8
 curl_cffi==0.7.1
+openai
