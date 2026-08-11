@@ -10,6 +10,7 @@ Handles:
 """
 
 import os
+import base64
 import logging
 import requests
 from datetime import datetime
@@ -22,6 +23,24 @@ from apps.home.models import SiteSetting
 
 logger = logging.getLogger(__name__)
 
+def get_logo_data_uri():
+    """Embed the PadosiAgent logo as a base64 data URI."""
+    try:
+        from django.contrib.staticfiles import finders
+    except Exception:
+        finders = None
+    for name in ('img/logo.webp', 'img/logo.png'):
+        path = finders.find(name) if finders else None
+        if path and os.path.exists(path):
+            ext = 'png' if name.endswith('.png') else 'webp'
+            with open(path, 'rb') as f:
+                return f"data:image/{ext};base64,{base64.b64encode(f.read()).decode()}"
+    return ''
+
+def get_pdf_absolute_path(pdf_path):
+    if not pdf_path:
+        return None
+    return os.path.join(settings.MEDIA_ROOT, 'app', 'private', pdf_path)
 
 def generate_invoice_number() -> str:
     """
@@ -218,15 +237,31 @@ class InvoiceService:
             # Prepare context for the template
             half_gst = round(float(invoice.gst_amount) / 2, 2)
             
-            if invoice.plan_type == 'free_trial':
-                plan_desc = "Trial listing on PadosiAgent platform"
-            else:
-                plan_desc = "Annual listing on PadosiAgent platform"
-
             item_name = invoice.plan_name
-            if item_name and not item_name.startswith("Agent Subscription Fee"):
-                item_name = f"Agent Subscription Fee ({item_name})"
+            
+            if invoice.plan_type == 'free_trial':
+                plan_desc = "PadosiAgent Subscription – 30 Day Trial"
+            elif invoice.plan_type == 'basic':
+                plan_desc = "PadosiAgent Subscription – 1 Year Starter"
+            else:
+                plan_desc = "PadosiAgent Subscription – 1 Year Professional"
 
+            # Attach GST template variables dynamically to the ORM object
+            agent_state = str(invoice.agent_state or '').strip()
+            is_igst = 'gujarat' not in agent_state.lower()
+            invoice.is_igst = is_igst
+            if is_igst:
+                invoice.gst_amount_igst = invoice.gst_amount
+                invoice.gst_amount_cgst = 0
+                invoice.gst_amount_sgst = 0
+            else:
+                invoice.gst_amount_igst = 0
+                invoice.gst_amount_cgst = half_gst
+                invoice.gst_amount_sgst = half_gst
+
+            font_path = (settings.BASE_DIR / 'static' / 'fonts' / 'DejaVuSans.ttf').as_posix()
+            font_path_bold = (settings.BASE_DIR / 'static' / 'fonts' / 'DejaVuSans-Bold.ttf').as_posix()
+            
             context = {
                 'invoice': invoice,
                 'items': [
@@ -238,6 +273,9 @@ class InvoiceService:
                 ],
                 'is_gujarat': str(invoice.agent_state or '').strip().lower() == 'gujarat',
                 'half_gst': half_gst,
+                'logo_src': get_logo_data_uri(),
+                'font_path': font_path,
+                'font_path_bold': font_path_bold,
             }
 
             # Render HTML to string

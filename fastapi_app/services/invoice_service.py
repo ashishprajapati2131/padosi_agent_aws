@@ -136,11 +136,16 @@ class InvoiceService:
         
         is_gujarat = "gujarat" in (invoice.agent_state or "").lower()
         
+        font_path = os.path.abspath(os.path.join(base_dir, "..", "static", "fonts", "DejaVuSans.ttf")).replace('\\', '/')
+        font_path_bold = os.path.abspath(os.path.join(base_dir, "..", "static", "fonts", "DejaVuSans-Bold.ttf")).replace('\\', '/')
+        
         rendered_html = template.render(
             invoice=invoice,
             invoice_date=invoice_date_str,
             logo_src=logo_base64,
-            is_gujarat=is_gujarat
+            is_gujarat=is_gujarat,
+            font_path=font_path,
+            font_path_bold=font_path_bold
         )
 
         # Define destination paths matching Laravel structure
@@ -152,18 +157,49 @@ class InvoiceService:
         pdf_filename = f"{invoice.invoice_number}.pdf"
         target_pdf_path = os.path.join(invoice_dir, pdf_filename)
         
-        if WEASYPRINT_AVAILABLE:
+        try:
+            from xhtml2pdf import pisa
+            import tempfile
+            
+            # Temporary monkey-patch for xhtml2pdf Windows file-lock bug
+            original_named_temp_file = tempfile.NamedTemporaryFile
+            class ClosedNamedTemporaryFile:
+                def __init__(self, *args, **kwargs):
+                    kwargs['delete'] = False
+                    self._file = original_named_temp_file(*args, **kwargs)
+                    self.name = self._file.name
+                    self._closed = False
+                def write(self, data):
+                    if not self._closed:
+                        self._file.write(data)
+                def flush(self):
+                    if not self._closed:
+                        self._file.flush()
+                        self._file.close()
+                        self._closed = True
+                def close(self): pass
+                def __del__(self):
+                    try:
+                        if os.path.exists(self.name):
+                            os.remove(self.name)
+                    except Exception:
+                        pass
+            tempfile.NamedTemporaryFile = ClosedNamedTemporaryFile
+            
             try:
-                # Compile using WeasyPrint
-                html_doc = weasyprint.HTML(string=rendered_html)
-                html_doc.write_pdf(target_pdf_path)
-                logger.info(f"Successfully compiled WeasyPrint PDF: {target_pdf_path}")
-            except Exception as e:
-                logger.error(f"WeasyPrint PDF rendering failed, writing fallback: {e}")
-                # Fallback to saving HTML with PDF extension or simple plain text
+                with open(target_pdf_path, "w+b") as result_file:
+                    pisa_status = pisa.CreatePDF(rendered_html, dest=result_file, encoding='utf-8')
+            finally:
+                tempfile.NamedTemporaryFile = original_named_temp_file
+                
+            if pisa_status.err:
+                logger.error(f"xhtml2pdf PDF rendering failed for {invoice.invoice_number}")
                 InvoiceService._write_fallback_file(target_pdf_path, rendered_html, invoice)
-        else:
-            # Fallback when WeasyPrint or GTK is not installed
+            else:
+                logger.info(f"Successfully compiled xhtml2pdf PDF: {target_pdf_path}")
+                
+        except Exception as e:
+            logger.error(f"xhtml2pdf PDF rendering failed, writing fallback: {e}")
             InvoiceService._write_fallback_file(target_pdf_path, rendered_html, invoice)
             
         # Return path relative to storage root for database logging matching Laravel

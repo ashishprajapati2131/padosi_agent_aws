@@ -8,10 +8,9 @@ import os
 from django.core.mail import EmailMessage
 from django.conf import settings
 from apps.agents.models import Agent, Invoice, PromoCode
-from apps.agents.services.invoice import generate_invoice_number
+from apps.agents.services.invoice import generate_invoice_number, get_pdf_absolute_path, get_logo_data_uri, InvoiceService
 
 from .dashboard import _get_admin_from_session
-from ..services.pdf_generator import generate_invoice_pdf, get_pdf_absolute_path, get_logo_data_uri
 from ..services.google_sheet_sync import sync_all_pending
 
 def get_folder_label(folder):
@@ -164,7 +163,11 @@ def preview_invoice(request, invoice_id):
         invoice = dict(zip(columns, row))
         
     if not invoice.get('pdf_path'):
-        generate_invoice_pdf(invoice_id)
+        try:
+            inv_obj = Invoice.objects.get(id=invoice_id)
+            InvoiceService().generate_pdf(inv_obj)
+        except Invoice.DoesNotExist:
+            pass
         # Re-fetch after generation
         with connection.cursor() as cursor:
             cursor.execute("SELECT * FROM invoices WHERE id = %s", [invoice_id])
@@ -220,11 +223,15 @@ def download_invoice(request, invoice_id):
     
     # Generate if missing or not physically present
     if not pdf_path or not abs_path or not os.path.exists(abs_path):
-        result = generate_invoice_pdf(invoice_id)
-        if not result.get('success'):
-            raise Http404("Could not generate PDF")
-        abs_path = result.get('absolute_path')
-        invoice_number = result.get('invoice_number')
+        try:
+            inv_obj = Invoice.objects.get(id=invoice_id)
+            pdf_path = InvoiceService().generate_pdf(inv_obj)
+            if not pdf_path:
+                raise Http404("Could not generate PDF")
+            abs_path = get_pdf_absolute_path(pdf_path)
+            invoice_number = inv_obj.invoice_number
+        except Invoice.DoesNotExist:
+            raise Http404("Invoice not found")
     else:
         invoice_number = invoice.get('invoice_number')
         
@@ -368,12 +375,26 @@ def create_manual_invoice(request):
     except ValueError:
         return back_with_error('Invalid amounts provided.')
 
+    from apps.home.models import SiteSetting
+    pricing_config = SiteSetting.get_value('pricing_config') or {}
+    
+    plan_name_lower = plan_name.lower()
+    full_price = 0
+    if 'trial' in plan_name_lower:
+        full_price = 0
+    elif 'starter' in plan_name_lower or 'basic' in plan_name_lower:
+        full_price = float(pricing_config.get('starter', {}).get('full_price', 2359))
+    elif 'professional' in plan_name_lower:
+        full_price = float(pricing_config.get('professional', {}).get('full_price', 8258))
+
     discount_percent = 0
-    if promo_code_str:
+    if full_price > 0 and total_amount < full_price:
+        discount_percent = round(((full_price - total_amount) / full_price) * 100, 1)
+        discount_percent = max(0, discount_percent)
+    elif promo_code_str:
         try:
             pc = PromoCode.objects.get(code=promo_code_str, is_active=True)
             if pc.is_valid():
-                # In real scenario we might calculate discount exactly
                 discount_percent = pc.discount_value
         except PromoCode.DoesNotExist:
             pass
@@ -421,8 +442,8 @@ def create_manual_invoice(request):
     )
 
     # Generate PDF
-    result = generate_invoice_pdf(invoice.id)
-    if not (result and result.get('success')):
+    pdf_path = InvoiceService().generate_pdf(invoice)
+    if not pdf_path:
         # The invoice row was already created; remove it (and any partially
         # written PDF) so a custom invoice number/folder is not consumed by a
         # failed creation. Without this, retrying with the same number fails
@@ -436,8 +457,8 @@ def create_manual_invoice(request):
             pass
         return back_with_error("Failed to generate Invoice PDF.")
 
-    pdf_path = result.get('absolute_path')
-    if not pdf_path or not os.path.exists(pdf_path):
+    abs_pdf_path = get_pdf_absolute_path(pdf_path)
+    if not abs_pdf_path or not os.path.exists(abs_pdf_path):
         invoice.delete()
         return back_with_error("Failed to locate generated PDF.")
 
@@ -452,7 +473,7 @@ def create_manual_invoice(request):
                 to_name=name,
                 subject=email_subject,
                 html_content=body,
-                attachment_path=pdf_path
+                attachment_path=abs_pdf_path
             )
             if not success:
                 return back_with_error(f"Invoice {invoice_number} created but failed to send email via Brevo or SMTP.")

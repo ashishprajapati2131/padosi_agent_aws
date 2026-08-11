@@ -3,33 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>{{ invoice.invoice_number or 'Invoice' }}</title>
+    <title>Invoice</title>
     <style>
-        /* Base Styling */
+        @font-face {
+            font-family: 'DejaVu Sans';
+            src: url('{{ font_path }}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'DejaVu Sans';
+            src: url('{{ font_path_bold }}') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+
         @page {
-            margin: 0.5cm;
+            margin: 0.8cm;
+            margin-bottom: 2.5cm;
+            @frame footer {
+                -pdf-frame-content: footer_content;
+                bottom: 1cm;
+                margin-left: 0.8cm;
+                margin-right: 0.8cm;
+                height: 3.5cm;
+            }
         }
         body {
             font-family: 'DejaVu Sans', sans-serif;
             color: #2a2a2a;
             margin: 0;
-            padding: 10px 20px;
-            font-size: 13.5px;
-            line-height: 1.4;
+            padding: 0;
+            font-size: 12px;
+            line-height: 1.3;
         }
 
-        /* Variables */
-        :root {
-            --primary: #18529d;
-            --secondary: #2a2a2a;
-            --accent: #0f5634;
-            --text-muted: #6a6a6a;
-            --border-color: #e5e5e5;
-            --bg-light: #f8f9fa;
-            --green: #1d724f;
-        }
-
-        /* Table Resets */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -39,16 +47,6 @@
             vertical-align: top;
         }
 
-        /* Header Section */
-        .invoice-header {
-            margin-bottom: 20px;
-        }
-
-        .company-logo {
-            max-width: 160px;
-            height: auto;
-        }
-
         .company-details {
             text-align: right;
             font-size: 13px;
@@ -56,29 +54,27 @@
         }
 
         .company-details strong {
-            font-size: 20px;
+            font-size: 15px;
             color: #18529d;
             display: block;
             margin-bottom: 5px;
+            white-space: nowrap;
         }
 
-        /* Divider */
-        .header-divider {
-            border-top: 2px solid #18529d;
-            margin: 15px 0 20px 0;
-            opacity: 0.8;
-        }
 
-        /* Meta & Bill To Section */
-        .invoice-info-section {
-            margin-bottom: 20px;
-        }
-
-        .bill-to h4, .invoice-meta h4 {
+        .bill-to h4 {
             margin: 0 0 10px 0;
             font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 1px;
+            color: #6a6a6a;
+        }
+
+        .invoice-meta h4 {
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0;
             color: #6a6a6a;
         }
 
@@ -106,22 +102,24 @@
             color: #1a1a1a;
         }
 
-        /* Status Badge */
         .status-badge {
             display: inline-block;
             padding: 4px 12px;
             background-color: #e6f4ea;
             color: #1d724f;
             border: 1px solid #cce8d6;
-            border-radius: 4px;
             font-weight: bold;
             font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-top: 5px;
         }
+        .status-badge.unpaid {
+            background-color: #fce8e8;
+            color: #e53935;
+            border: 1px solid #fad4d4;
+        }
 
-        /* Invoice Table */
         .invoice-table {
             margin-bottom: 30px;
         }
@@ -139,7 +137,7 @@
         }
 
         .invoice-table td {
-            padding: 10px 15px;
+            padding: 8px 12px;
             border-bottom: 1px solid #e5e5e5;
             color: #2a2a2a;
         }
@@ -157,17 +155,15 @@
         }
 
         .text-right {
-            text-align: right !important;
+            text-align: right;
         }
 
         .text-center {
-            text-align: center !important;
+            text-align: center;
         }
 
-        /* Pricing Breakdown */
         .totals-table {
             width: 300px;
-            float: right;
         }
 
         .totals-table td {
@@ -180,27 +176,11 @@
             padding-top: 15px;
         }
 
-        .total-amount {
-            font-size: 20px;
-            font-weight: bold;
-            color: #18529d;
-            background-color: #f0f5fc;
-            padding: 8px 12px;
-            border-radius: 6px;
-            display: inline-block;
-            white-space: nowrap;
-            line-height: normal;
-        }
-
-        /* Footer */
-        .invoice-footer {
-            clear: both;
-            margin-top: 40px;
-            padding-top: 15px;
-            border-top: 1px solid #e5e5e5;
+        #footer_content {
             text-align: center;
             color: #6a6a6a;
-            font-size: 12px;
+            font-size: 11px;
+            width: 100%;
         }
 
         .thank-you {
@@ -219,165 +199,169 @@
         
         .footer-branding strong {
             color: #18529d;
-        }
-        
-        .clear {
-            clear: both;
-        }
-
-        /* Status Stamp */
-        .stamp { 
-            position: absolute; top: 160px; right: 44px; transform: rotate(-20deg); 
-            border: 4px solid #22c55e; border-radius: 8px; padding: 6px 14px; 
-            color: #16a34a; font-size: 24px; font-weight: 900; letter-spacing: 3px; 
-            opacity: 0.2; 
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
 
-    <div style="position:relative;">
-        <div class="stamp">PAID</div>
-
-        <!-- Header -->
-        <table class="invoice-header">
-            <tr>
-                <td style="width: 50%;">
-                    {% if logo_src %}
-                        <img src="{{ logo_src }}" alt="PadosiAgent Logo" class="company-logo">
-                    {% else %}
-                        <h2 style="color: #18529d; margin: 0;">PadosiAgent</h2>
-                    {% endif %}
-                </td>
-                <td class="company-details">
-                    <strong>PadosiAgent ServTech Private Limited</strong>
-                    <p style="margin: 0;">Your Trusted Technology</p>
-                    <p style="margin: 0;">support@padosiagent.com | +91 9876543210</p>
-                    <p style="margin: 0;">GSTIN: 24AAPCP4222R1ZV</p>
-                </td>
-            </tr>
-        </table>
-
-        <div class="header-divider"></div>
-
-        <!-- Meta Info & Bill To -->
-        <table class="invoice-info-section">
-            <tr>
-                <td class="bill-to" style="width: 50%;">
-                    <h4>Bill To</h4>
-                    <p><strong>{{ invoice.agent_name }}</strong></p>
-                    <p>{{ invoice.agent_email }}</p>
-                    {% if invoice.agent_mobile %}
-                        <p>+91 {{ invoice.agent_mobile }}</p>
-                    {% endif %}
-                    {% if invoice.agent_address %}
-                        <p>{{ invoice.agent_address }}</p>
-                    {% endif %}
-                    {% if invoice.agent_state %}
-                        <p>{{ invoice.agent_state }}</p>
-                    {% endif %}
-                </td>
-                <td class="invoice-meta">
-                    <h4>Invoice Details</h4>
-                    <p><span class="meta-label">Invoice Number:</span> <span class="meta-value">{{ invoice.invoice_number }}</span></p>
-                    <p><span class="meta-label">Invoice Date:</span> <span class="meta-value">{{ invoice_date }}</span></p>
-                    
-                    {% if invoice.razorpay_payment_id %}
-                    <p><span class="meta-label">Payment ID:</span> <span class="meta-value">{{ invoice.razorpay_payment_id }}</span></p>
-                    {% endif %}
-                    
-                    <div style="margin-top: 8px;">
-                        <span class="status-badge">PAID</span>
-                    </div>
-                </td>
-            </tr>
-        </table>
-
-        <!-- Services Table -->
-        <table class="invoice-table">
-            <thead>
-                <tr>
-                    <th style="width: 5%;">#</th>
-                    <th style="width: 52%;">Service Details</th>
-                    <th class="text-right" style="width: 22%;">Base Price (excl. GST)</th>
-                    <th class="text-right" style="width: 21%;">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="text-center">1</td>
-                    <td>
-                        <p class="item-name">{{ invoice.plan_name }}</p>
-                        <p class="item-desc">
-                            PadosiAgent Subscription – 
-                            {% if invoice.plan_type == 'free_trial' %} 30 Day Trial
-                            {% elif invoice.plan_type == 'basic' %} 1 Year Starter
-                            {% else %} 1 Year Professional
-                            {% endif %}
-                        </p>
-                        {% if invoice.promo_code %}
-                            <p style="font-size:12px; color:#059669; font-weight:bold; margin-top:5px;">✨ Promo Applied: {{ invoice.promo_code }}</p>
-                        {% endif %}
-                    </td>
-                    <td class="text-right">&#8377;{{ "%.2f" | format(invoice.base_amount) }}</td>
-                    <td class="text-right">&#8377;{{ "%.2f" | format(invoice.base_amount) }}</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <!-- Pricing Breakdown -->
-        <div style="width: 100%;">
-            <table class="totals-table">
-                <tr>
-                    <td class="text-right" style="color: #6a6a6a;">Base Amount:</td>
-                    <td class="text-right" style="width: 130px;">&#8377;{{ "%.2f" | format(invoice.base_amount) }}</td>
-                </tr>
-
-                {% if not is_gujarat %}
-                    <tr>
-                        <td class="text-right" style="color: #6a6a6a;">GST @ 18% (IGST):</td>
-                        <td class="text-right">&#8377;{{ "%.2f" | format(invoice.gst_amount) }}</td>
-                    </tr>
+    <table class="invoice-header">
+        <tr>
+            <td width="50%">
+                {% if logo_src %}
+                    <img src="{{ logo_src }}" alt="PadosiAgent Logo" width="140">
                 {% else %}
-                    <tr>
-                        <td class="text-right" style="color: #6a6a6a;">CGST @ 9%:</td>
-                        <td class="text-right">&#8377;{{ "%.2f" | format(invoice.gst_amount/2) }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-right" style="color: #6a6a6a;">SGST @ 9%:</td>
-                        <td class="text-right">&#8377;{{ "%.2f" | format(invoice.gst_amount/2) }}</td>
-                    </tr>
+                    <h2 style="color: #18529d; margin: 0;">PadosiAgent</h2>
                 {% endif %}
+            </td>
+            <td class="company-details" width="50%">
+                <strong>PadosiAgent ServTech Private Limited</strong>
+                <p style="margin: 0;">Your Trusted Technology</p>
+                <p style="margin: 0;">support@padosiagent.com | +91 9876543210</p>
+                <p style="margin: 0;">GSTIN: 24AAPCP4222R1ZV</p>
+            </td>
+        </tr>
+    </table>
 
-                <tr>
-                    <td colspan="2" style="padding: 0 15px;"><div style="border-top: 1.5px solid #18529d; margin: 4px 0;"></div></td>
-                </tr>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin: 15px 0;">
+        <tr><td style="border-top: 2px solid #18529d; line-height: 1px;">&nbsp;</td></tr>
+    </table>
 
-                <tr class="total-row">
-                    <td class="text-right" style="font-weight: bold; font-size: 16px; color: #1a1a1a;">Total Amount:</td>
-                    <td class="text-right">
-                        <span class="total-amount">&#8377;{{ "%.2f" | format(invoice.total_amount) }}</span>
-                    </td>
-                </tr>
+    <table class="invoice-info-section">
+        <tr>
+            <td class="bill-to" width="50%">
+                <h4>Bill To</h4>
+                <p><strong>{{ invoice.agent_name or "Agent Name" }}</strong></p>
+                <p>{{ invoice.agent_email or "agent@example.com" }}</p>
+                {% if invoice.agent_mobile %}
+                    <p>+91 {{ invoice.agent_mobile }}</p>
+                {% endif %}
+                {% if invoice.agent_address %}
+                    <p>{{ invoice.agent_address }}</p>
+                {% endif %}
+                {% if invoice.agent_state %}
+                    <p>{{ invoice.agent_state }}</p>
+                {% endif %}
+            </td>
+            <td class="invoice-meta" width="50%">
+                <h4>Invoice Details</h4>
+                <p><span class="meta-label">Invoice Number:</span> <span class="meta-value">{{ invoice.invoice_number or "PA/26-27/00001" }}</span></p>
+                <p><span class="meta-label">Invoice Date:</span> <span class="meta-value">{{ invoice_date }}</span></p>
+                
+                {% if invoice.razorpay_payment_id %}
+                <p><span class="meta-label">Payment ID:</span> <span class="meta-value">{{ invoice.razorpay_payment_id }}</span></p>
+                {% endif %}
+                
+                <div style="margin-top: 8px; text-align: right;">
+                    {% if invoice.payment_status == "paid" or invoice.payment_status == "completed" or invoice.razorpay_payment_id %}
+                        <span class="status-badge">PAID</span>
+                    {% else %}
+                        <span class="status-badge unpaid">{{ invoice.payment_status|upper }}</span>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+    </table>
 
-                <tr>
-                    <td colspan="2" class="text-right" style="font-size: 10px; color: #999;">
-                        *Inclusive of GST &#8377;{{ "%.2f" | format(invoice.gst_amount) }}
-                    </td>
-                </tr>
-            </table>
-            <div class="clear"></div>
-        </div>
-
-        <!-- Footer -->
-        <div class="invoice-footer">
-            <p class="thank-you">Thank you for choosing PadosiAgent.</p>
-            <p>If you have any questions concerning this invoice, please contact support@padosiagent.com</p>
+    <table class="invoice-table">
+        <thead>
+            <tr style="background-color: #f0f5fc;">
+                <th width="5%" style="padding: 10px; color: #18529d; font-weight: bold; text-align: center; border-bottom: 2px solid #18529d;">#</th>
+                <th width="37%" style="padding: 10px; color: #18529d; font-weight: bold; text-align: left; border-bottom: 2px solid #18529d;">Service Details</th>
+                <th width="15%" style="padding: 10px; color: #18529d; font-weight: bold; text-align: left; border-bottom: 2px solid #18529d; white-space: nowrap;">SAC&nbsp;Code</th>
+                <th width="23%" style="padding: 10px; color: #18529d; font-weight: bold; text-align: right; border-bottom: 2px solid #18529d; white-space: nowrap;">Base Price<br><span style="font-weight: normal;">(excl. GST)</span></th>
+                <th width="20%" style="padding: 10px; color: #18529d; font-weight: bold; text-align: right; border-bottom: 2px solid #18529d;">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
             
-            <p class="footer-branding">
-                Powered by <strong>PadosiAgent ServTech Pvt Ltd</strong>
-            </p>
-        </div>
+            <tr>
+                <td class="text-center">{{ forloop.counter }}</td>
+                <td>
+                    <p class="item-name">{{ invoice.plan_name }}</p>
+                    <p class="item-desc">
+                        PadosiAgent Subscription – 
+                        {% if invoice.plan_type == 'free_trial' %} 30 Day Trial
+                        {% elif invoice.plan_type == 'basic' %} 1 Year Starter
+                        {% else %} 1 Year Professional
+                        {% endif %}
+                    </p>
+                    {% if invoice.promo_code %}
+                        <p style="font-size:12px; color:#059669; font-weight:bold; margin-top:5px;">✨ Promo Applied: {{ invoice.promo_code }}</p>
+                    {% endif %}
+                </td>
+                <td>9983</td>
+                <td class="text-right">&#8377; {{ "%.2f"|format(invoice.base_amount or 0) }}</td>
+                <td class="text-right">&#8377; {{ "%.2f"|format(invoice.base_amount or 0) }}</td>
+            </tr>
+            
+        </tbody>
+    </table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border: 0;">
+        <tr>
+            <td width="50%"></td>
+            <td width="50%" align="right">
+                <table class="totals-table" align="right">
+                    <tr>
+                        <td class="text-right" style="color: #6a6a6a; padding: 8px 15px;">Base Amount:</td>
+                        <td class="text-right" style="width: 150px; padding: 8px 15px;">&#8377;&nbsp;{{ "%.2f"|format(invoice.base_amount or 0) }}</td>
+                    </tr>
+
+                    {% if is_gujarat == False %}
+                        <tr>
+                            <td class="text-right" style="color: #6a6a6a; padding: 8px 15px;">GST @ 18% (IGST):</td>
+                            <td class="text-right" style="padding: 8px 15px;">&#8377; {{ "%.2f"|format(invoice.gst_amount_igst or 0) }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td class="text-right" style="color: #6a6a6a; padding: 8px 15px;">CGST @ 9%:</td>
+                            <td class="text-right" style="padding: 8px 15px;">&#8377; {{ "%.2f"|format(invoice.gst_amount_cgst or 0) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-right" style="color: #6a6a6a; padding: 8px 15px;">SGST @ 9%:</td>
+                            <td class="text-right" style="padding: 8px 15px;">&#8377; {{ "%.2f"|format(invoice.gst_amount_sgst or 0) }}</td>
+                        </tr>
+                    {% endif %}
+
+                    <tr>
+                        <td colspan="2" style="padding: 5px 15px 0 15px;">
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin: 0;">
+                                <tr><td style="border-top: 1.5px solid #18529d; line-height: 1px;">&nbsp;</td></tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <tr class="total-row">
+                        <td class="text-right" style="font-weight: bold; font-size: 15px; padding: 12px 15px; color: #1a1a1a; vertical-align: middle;">Total Amount:</td>
+                        <td class="text-right" style="background-color: #f0f5fc; padding: 12px 15px; font-size: 18px; font-weight: bold; color: #18529d; white-space: nowrap; vertical-align: middle;">
+                            &#8377;&nbsp;{{ "%.2f"|format(invoice.total_amount or 0) }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td colspan="2" class="text-right" style="font-size: 10px; color: #999; padding: 4px 15px;">
+                            {% if is_gujarat == False %}
+                                *Inclusive of IGST &#8377; {{ "%.2f"|format(invoice.gst_amount_igst or 0) }}
+                            {% else %}
+                                *Inclusive of CGST &#8377; {{ "%.2f"|format(invoice.gst_amount_cgst or 0) }} + SGST &#8377; {{ "%.2f"|format(invoice.gst_amount_sgst or 0) }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div id="footer_content">
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 15px;">
+            <tr><td style="border-top: 1px solid #e5e5e5; line-height: 1px;">&nbsp;</td></tr>
+        </table>
+        <p class="thank-you">Thank you for choosing PadosiAgent.</p>
+        <p>If you have any questions concerning this invoice, please contact support@padosiagent.com</p>
+        <p class="footer-branding">
+            Powered by <strong>PadosiAgent ServTech Pvt Ltd</strong>
+        </p>
     </div>
 
 </body>
