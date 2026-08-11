@@ -243,7 +243,6 @@
 <body>
     {% with rs='<span style="font-family: DejaVu Sans; font-weight: normal; display: inline-block; vertical-align: middle; margin-right: 4px;">&#8377;</span>' %}
     <div style="position:relative;">
-        <div class="stamp">PAID</div>
 
         <!-- Header -->
         <table class="invoice-header">
@@ -288,14 +287,17 @@
                 <td class="invoice-meta">
                     <h4>Invoice Details</h4>
                     <p><span class="meta-label">Invoice Number:</span> <span class="meta-value">{{ invoice.invoice_number }}</span></p>
-                    <p><span class="meta-label">Invoice Date:</span> <span class="meta-value">{{ invoice.created_at|date:'d M, Y'|default:'' }}</span></p>
-
+                    <p><span class="meta-label">Invoice Date:</span> <span class="meta-value">{{ invoice.created_at|date:"d M, Y" }}</span></p>
                     {% if invoice.razorpay_payment_id %}
                     <p><span class="meta-label">Payment ID:</span> <span class="meta-value">{{ invoice.razorpay_payment_id }}</span></p>
                     {% endif %}
 
                     <div style="margin-top: 8px;">
-                        <span class="status-badge">PAID</span>
+                        {% if invoice.payment_status == 'paid' or invoice.payment_status == 'completed' or invoice.razorpay_payment_id %}
+                            <span class="status-badge">PAID</span>
+                        {% else %}
+                            <span class="status-badge unpaid">{{ invoice.payment_status|upper|default:'UNPAID' }}</span>
+                        {% endif %}
                     </div>
                 </td>
             </tr>
@@ -343,19 +345,19 @@
                     <td class="text-right" style="width: 130px;">{{ rs|safe }}{{ invoice.base_amount|floatformat:2 }}</td>
                 </tr>
 
-                {% if not is_gujarat %}
+                {% if invoice.is_igst %}
                     <tr>
                         <td class="text-right" style="color: #6a6a6a;">GST @ 18% (IGST):</td>
-                        <td class="text-right">{{ rs|safe }}{{ invoice.gst_amount|floatformat:2 }}</td>
+                        <td class="text-right">{{ rs|safe }}{{ invoice.gst_amount_igst|floatformat:2 }}</td>
                     </tr>
                 {% else %}
                     <tr>
                         <td class="text-right" style="color: #6a6a6a;">CGST @ 9%:</td>
-                        <td class="text-right">{{ rs|safe }}{{ half_gst|floatformat:2 }}</td>
+                        <td class="text-right">{{ rs|safe }}{{ invoice.gst_amount_cgst|floatformat:2 }}</td>
                     </tr>
                     <tr>
                         <td class="text-right" style="color: #6a6a6a;">SGST @ 9%:</td>
-                        <td class="text-right">{{ rs|safe }}{{ half_gst|floatformat:2 }}</td>
+                        <td class="text-right">{{ rs|safe }}{{ invoice.gst_amount_sgst|floatformat:2 }}</td>
                     </tr>
                 {% endif %}
 
@@ -372,10 +374,10 @@
 
                 <tr>
                     <td colspan="2" class="text-right" style="font-size: 10px; color: #999;">
-                        {% if not is_gujarat %}
-                            *Inclusive of IGST {{ rs|safe }}{{ invoice.gst_amount|floatformat:2 }}
+                        {% if invoice.is_igst %}
+                            *Inclusive of IGST {{ rs|safe }}{{ invoice.gst_amount_igst|floatformat:2 }}
                         {% else %}
-                            *Inclusive of CGST {{ rs|safe }}{{ half_gst|floatformat:2 }} + SGST {{ rs|safe }}{{ half_gst|floatformat:2 }}
+                            *Inclusive of CGST {{ rs|safe }}{{ invoice.gst_amount_cgst|floatformat:2 }} + SGST {{ rs|safe }}{{ invoice.gst_amount_sgst|floatformat:2 }}
                         {% endif %}
                     </td>
                 </tr>

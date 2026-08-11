@@ -134,12 +134,24 @@ def generate_invoice_pdf(invoice_id):
             "status": "reused"
         }
     
+    # Bill-to state fallback to the agent profile state
+    if not invoice_data.get('agent_state') and invoice_data.get('agent_id'):
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT state FROM agent_profiles WHERE agent_id = %s LIMIT 1", [invoice_data['agent_id']])
+            prow = cursor.fetchone()
+            if prow and prow[0]:
+                invoice_data['agent_state'] = prow[0]
+
     agent_state = str(invoice_data.get('agent_state') or '').strip().lower()
-    is_gujarat = ('gujarat' in agent_state)
-    invoice_data['is_gujarat'] = is_gujarat
+    is_igst = 'gujarat' not in agent_state
+    invoice_data['is_igst'] = is_igst
     
     gst_amount = float(invoice_data.get('gst_amount') or 0)
-    half_gst = gst_amount / 2 if is_gujarat else 0
+    if is_igst:
+        invoice_data['gst_amount_igst'] = gst_amount
+    else:
+        invoice_data['gst_amount_cgst'] = gst_amount / 2
+        invoice_data['gst_amount_sgst'] = gst_amount / 2
     
     plan_name = invoice_data.get('plan_name') or "Custom Plan"
     plan_type = invoice_data.get('plan_type')
@@ -163,8 +175,6 @@ def generate_invoice_pdf(invoice_id):
     context = {
         'invoice': invoice_data,
         'items': items,
-        'is_gujarat': is_gujarat,
-        'half_gst': half_gst,
         'logo_src': get_logo_data_uri(),
     }
 
