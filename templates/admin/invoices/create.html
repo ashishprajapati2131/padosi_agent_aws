@@ -98,7 +98,7 @@
                 <div class="row mb-4">
                     <div class="col-md-12 mb-3">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" name="send_email" id="sendEmail" value="on" {% if old.send_email or not old %}checked{% endif %} onchange="updateSubmitBtn()">
+                            <input class="form-check-input" type="checkbox" name="send_email" id="sendEmail" value="on" {% if old.send_email %}checked{% endif %} onchange="updateSubmitBtn()">
                             <label class="form-check-label fw-bold" for="sendEmail">Send invoice via email (attaches the PDF)</label>
                             <small class="text-muted d-block mt-1">Uncheck to only generate the invoice without sending any email.</small>
                         </div>

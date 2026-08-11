@@ -334,7 +334,11 @@ def create_manual_invoice(request):
     base_amount_str = request.POST.get('base_amount', '0')
     gst_amount_str = request.POST.get('gst_amount', '0')
     total_amount_str = request.POST.get('total_amount', '0')
-    promo_code_str = request.POST.get('promo_code', '').strip()
+    # Uppercase to stay consistent with admin_verify_promo, which looks up
+    # codes in upper case. Otherwise a lowercase-typed promo verifies and
+    # discounts the amounts client-side but is never found on the server,
+    # leaving discount_percent=0 / discount_folder='no_discount'.
+    promo_code_str = request.POST.get('promo_code', '').strip().upper()
     custom_invoice_number = request.POST.get('invoice_number', '').strip()
     payment_id = request.POST.get('razorpay_payment_id', '').strip()
     send_email = request.POST.get('send_email') in ('on', '1', 'true')
@@ -419,10 +423,22 @@ def create_manual_invoice(request):
     # Generate PDF
     result = generate_invoice_pdf(invoice.id)
     if not (result and result.get('success')):
+        # The invoice row was already created; remove it (and any partially
+        # written PDF) so a custom invoice number/folder is not consumed by a
+        # failed creation. Without this, retrying with the same number fails
+        # with "already exists" and an orphan row stays in the DB.
+        invoice.delete()
+        guess_path = get_pdf_absolute_path(f"invoices/{folder}/{invoice_number}.pdf")
+        try:
+            if guess_path and os.path.exists(guess_path):
+                os.remove(guess_path)
+        except OSError:
+            pass
         return back_with_error("Failed to generate Invoice PDF.")
 
     pdf_path = result.get('absolute_path')
     if not pdf_path or not os.path.exists(pdf_path):
+        invoice.delete()
         return back_with_error("Failed to locate generated PDF.")
 
     # Send email only when requested

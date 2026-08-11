@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load humanize %}
 
 {% block title %}Invoices{% endblock %}
 
@@ -6,7 +7,7 @@
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
         <h2 class="fw-bold mb-1" style="color:#1e293b;">🧾 Invoices</h2>
-        <p class="text-muted mb-0" style="font-size:14px;">All {{ totalCount }} invoices · Total Revenue: <strong class="text-success">₹{{ totalRevenue }}</strong></p>
+        <p class="text-muted mb-0" style="font-size:14px;">All {{ totalCount|intcomma }} invoices · Total Revenue: <strong class="text-success">₹{{ totalRevenue|intcomma }}</strong></p>
     </div>
     <div class="d-flex gap-2">
         {% if unsynced_invoice_count > 0 %}
@@ -187,7 +188,7 @@
                                     {{ inv.plan_name }}
                                 </span>
                             </td>
-                            <td><strong>₹{{ inv.total_amount }}</strong></td>
+                            <td><strong>₹{{ inv.total_amount|intcomma }}</strong></td>
                             <td>
                                 {% if inv.total_amount <= 1 %}
                                     <span class="badge" style="background:#f3e8ff; color:#7e22ce;">₹1</span>
