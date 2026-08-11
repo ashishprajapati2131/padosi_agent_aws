@@ -9,11 +9,11 @@
             margin: 0.5cm;
         }
         body {
-            font-family: 'DejaVu Sans', sans-serif;
+            font-family: 'Helvetica', 'Arial', sans-serif;
             color: #2a2a2a;
             margin: 0;
             padding: 10px 20px;
-            font-size: 13.5px;
+            font-size: 12px;
             line-height: 1.4;
         }
 
@@ -30,12 +30,12 @@
         .company-details {
             text-align: right;
             color: #6a6a6a;
-            font-size: 13px;
+            font-size: 12px;
         }
         
         .company-details strong {
             color: #18529d;
-            font-size: 16px;
+            font-size: 15px;
         }
 
         .company-logo {
@@ -49,19 +49,19 @@
 
         .bill-to h4, .invoice-meta h4 {
             margin: 0 0 10px 0;
-            font-size: 13px;
+            font-size: 12px;
             letter-spacing: 1px;
             color: #6a6a6a;
         }
 
         .bill-to p, .invoice-meta p {
             margin: 0 0 5px 0;
-            font-size: 14px;
+            font-size: 12px;
         }
 
         .bill-to strong {
             color: #1a1a1a;
-            font-size: 16px;
+            font-size: 14px;
         }
 
         .invoice-meta {
@@ -90,7 +90,7 @@
             padding: 12px 15px;
             text-align: left;
             border-bottom: 2px solid #e5e5e5;
-            font-size: 11px;
+            font-size: 10px;
             letter-spacing: 0.5px;
         }
 
@@ -116,7 +116,7 @@
 
         .item-desc {
             color: #6a6a6a;
-            font-size: 12px;
+            font-size: 11px;
             margin: 0;
         }
 
@@ -127,7 +127,7 @@
 
         .totals-table td {
             padding: 8px 15px;
-            border-bottom: 1px solid #f8f9fa;
+            border-bottom: 1px solid #e5e5e5;
         }
 
         .totals-table .total-row td {
@@ -142,11 +142,11 @@
             border-top: 1px solid #e5e5e5;
             text-align: center;
             color: #6a6a6a;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .thank-you {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             color: #1a1a1a;
             margin-bottom: 5px;
@@ -154,7 +154,7 @@
 
         .footer-branding {
             margin-top: 15px;
-            font-size: 11px;
+            font-size: 10px;
             letter-spacing: 0.5px;
             color: #999;
         }
@@ -165,7 +165,7 @@
     </style>
 </head>
 <body>
-    {% with rs='<span style="font-family: DejaVu Sans; font-weight: bold; margin-right: 2px;">Rs.</span>' %}
+    {% with rs='<span style="font-weight: bold; margin-right: 2px;">Rs.</span>' %}
     <div>
 
         <!-- Header -->
@@ -301,8 +301,8 @@
                         </tr>
 
                         <tr class="total-row">
-                            <td class="text-right" style="font-weight: bold; font-size: 16px; color: #1a1a1a; vertical-align: middle;">Total Amount:</td>
-                            <td class="text-right" style="background-color: #f0f5fc; color: #18529d; font-size: 20px; font-weight: bold; padding: 8px 12px; border-radius: 6px; text-align: center; width: 130px;">
+                            <td class="text-right" style="font-weight: bold; font-size: 14px; color: #1a1a1a; vertical-align: middle;">Total Amount:</td>
+                            <td class="text-right" style="background-color: #f0f5fc; color: #18529d; font-size: 18px; font-weight: bold; padding: 8px 12px; border-radius: 6px; text-align: right; width: 130px;">
                                 {{ rs|safe }}{{ invoice.total_amount|floatformat:2 }}
                             </td>
                         </tr>
