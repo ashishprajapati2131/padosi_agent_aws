@@ -14,6 +14,7 @@ from django.db import connection
 from django.conf import settings
 from datetime import datetime
 import logging
+import collections
 
 logger = logging.getLogger(__name__)
 
@@ -85,30 +86,33 @@ def logs(request):
         try:
             with open(log_path, 'r', encoding='utf-8') as f:
                 # Regex for format: [2026-08-08 19:40:39,000] INFO apps.module — message
-                # Group 1: timestamp, Group 2: level, Group 3: module, Group 4: message
-                # Handle varying or corrupted separators between module name and message
                 log_pattern = re.compile(r'^\[(.*?)\]\s+(\w+)\s+(\S+)\s+(?:—|-|.*?)\s+(.*)')
+                ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
                 current_log = None
                 
-                # Reading all lines or a reasonable chunk. For very large logs, better to read backwards,
-                # but standard log files shouldn't exceed 10MB due to RotatingFileHandler.
-                lines = f.readlines()
+                # Use deque to efficiently get the last 1000 lines without loading the whole file in memory
+                lines = collections.deque(f, maxlen=1000)
                 
-                # Take last 2000 lines to ensure performance
-                for line in lines[-2000:]:
+                for line in lines:
                     line = line.rstrip('\n')
                     if not line:
                         continue
+                        
+                    # Strip ANSI color codes
+                    line = ansi_escape.sub('', line)
                         
                     match = log_pattern.match(line)
                     if match:
                         if current_log:
                             logs_data.append(current_log)
                             
+                        # Format timestamp (remove milliseconds if present)
+                        timestamp_str = match.group(1).split(',')[0] if ',' in match.group(1) else match.group(1)
+                            
                         current_log = {
-                            'timestamp': match.group(1),
+                            'timestamp': timestamp_str,
                             'level': match.group(2),
-                            'env': match.group(3),
+                            'env': 'local' if getattr(settings, 'DEBUG', True) else 'production',
                             'message': match.group(4),
                             'stack': ''
                         }
@@ -129,7 +133,7 @@ def logs(request):
     
     level_filter = request.GET.get('level', 'all')
     if level_filter != 'all':
-        logs_data = [l for l in logs_data if level_filter.lower() in l['level'].lower()]
+        logs_data = [l for l in logs_data if level_filter.lower() == l['level'].lower()]
 
     return render(request, 'admin/system/logs.html', {'logs': logs_data, 'levelFilter': level_filter})
 
@@ -145,6 +149,7 @@ def api_logs(request):
     table_missing = False
     
     try:
+        from django.db import OperationalError, ProgrammingError
         query = ApiLog.objects.all().order_by('-created_at')
         if service_filter:
             query = query.filter(service=service_filter)
@@ -158,7 +163,7 @@ def api_logs(request):
                 indent=2, ensure_ascii=False, default=str
             )
                 
-    except Exception as e:
+    except (OperationalError, ProgrammingError) as e:
         logger.error(f"API Logs error: {e}")
         table_missing = True
         

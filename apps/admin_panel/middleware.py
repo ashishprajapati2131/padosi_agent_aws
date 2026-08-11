@@ -41,12 +41,13 @@ class ThreatMonitorMiddleware:
         # Check if user is an authenticated Admin (to allow safe HTML saving)
         is_admin = False
         try:
-            if hasattr(request, 'session') and request.session and request.session.get('admin_id'):
+            from apps.admin_panel.views.dashboard import _get_admin_from_session
+            if _get_admin_from_session(request):
                 is_admin = True
         except Exception:
             pass
         
-        safe_html_fields = ['file_content', 'content', 'html_content', 'template']
+        safe_html_fields = ['file_content', 'content', 'html_content', 'template', 'email_body', 'email_header']
         
         # Collect request input fields
         payload_dict = {}
