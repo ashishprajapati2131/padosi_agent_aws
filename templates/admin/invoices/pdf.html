@@ -44,7 +44,7 @@
 
         /* Meta & Bill To Section */
         .invoice-info-section {
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         .bill-to h4, .invoice-meta h4 {
@@ -80,7 +80,7 @@
 
         /* Invoice Table */
         .invoice-table {
-            margin-bottom: 30px;
+            margin-bottom: 15px;
         }
 
         .invoice-table th {
@@ -132,13 +132,13 @@
 
         .totals-table .total-row td {
             border-bottom: none;
-            padding-top: 15px;
+            padding-top: 5px;
         }
 
         /* Footer */
         .invoice-footer {
-            margin-top: 10px;
-            padding-top: 10px;
+            margin-top: 5px;
+            padding-top: 5px;
             border-top: 1px solid #e5e5e5;
             text-align: center;
             color: #6a6a6a;
@@ -187,7 +187,7 @@
             </tr>
         </table>
 
-        <div style="border-top: 2px solid #18529d; margin: 15px 0 20px 0; opacity: 0.8;"></div>
+        <div style="border-top: 2px solid #18529d; margin: 10px 0 10px 0; opacity: 0.8;"></div>
 
         <!-- Meta Info & Bill To -->
         <table class="invoice-info-section">
@@ -214,17 +214,19 @@
                     <p><span class="meta-label">Payment ID:</span> <span class="meta-value">{{ invoice.razorpay_payment_id }}</span></p>
                     {% endif %}
 
-                    <div style="margin-top: 8px;">
+                    <div style="margin-top: 5px;">
                         {% if invoice.payment_status == 'paid' or invoice.payment_status == 'completed' or invoice.razorpay_payment_id %}
-                            <table align="right">
+                            <table align="right" width="100%">
                                 <tr>
-                                    <td style="background-color: #e6f4ea; color: #1d724f; border: 1px solid #cce8d6; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">PAID</td>
+                                    <td width="70%"></td>
+                                    <td width="30%" style="background-color: #e6f4ea; color: #1d724f; border: 1px solid #cce8d6; padding: 4px 0px; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">PAID</td>
                                 </tr>
                             </table>
                         {% else %}
-                            <table align="right">
+                            <table align="right" width="100%">
                                 <tr>
-                                    <td style="background-color: #fce8e8; color: #e53935; border: 1px solid #fad4d4; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">{{ invoice.payment_status|upper|default:'UNPAID' }}</td>
+                                    <td width="60%"></td>
+                                    <td width="40%" style="background-color: #fce8e8; color: #e53935; border: 1px solid #fad4d4; padding: 4px 0px; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">{{ invoice.payment_status|upper|default:'UNPAID' }}</td>
                                 </tr>
                             </table>
                         {% endif %}
@@ -300,14 +302,8 @@
 
                         <tr class="total-row">
                             <td class="text-right" style="font-weight: bold; font-size: 16px; color: #1a1a1a; vertical-align: middle;">Total Amount:</td>
-                            <td class="text-right">
-                                <table align="right">
-                                    <tr>
-                                        <td style="background-color: #f0f5fc; color: #18529d; font-size: 20px; font-weight: bold; padding: 8px 12px; border-radius: 6px; text-align: center;">
-                                            {{ rs|safe }}{{ invoice.total_amount|floatformat:2 }}
-                                        </td>
-                                    </tr>
-                                </table>
+                            <td class="text-right" style="background-color: #f0f5fc; color: #18529d; font-size: 20px; font-weight: bold; padding: 8px 12px; border-radius: 6px; text-align: center; width: 130px;">
+                                {{ rs|safe }}{{ invoice.total_amount|floatformat:2 }}
                             </td>
                         </tr>
 
