@@ -2,11 +2,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>{{ invoice.invoice_number|default:'Invoice' }}</title>
     <style>
-        /* Base Styling */
         @page {
             margin: 0.5cm;
         }
@@ -19,18 +17,6 @@
             line-height: 1.4;
         }
 
-        /* Variables */
-        :root {
-            --primary: #18529d;
-            --secondary: #2a2a2a;
-            --accent: #0f5634;
-            --text-muted: #6a6a6a;
-            --border-color: #e5e5e5;
-            --bg-light: #f8f9fa;
-            --green: #1d724f;
-        }
-
-        /* Table Resets */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -40,34 +26,20 @@
             vertical-align: top;
         }
 
-        /* Header Section */
-        .invoice-header {
-            margin-bottom: 20px;
+        /* Header */
+        .company-details {
+            text-align: right;
+            color: #6a6a6a;
+            font-size: 13px;
+        }
+        
+        .company-details strong {
+            color: #18529d;
+            font-size: 16px;
         }
 
         .company-logo {
-            max-width: 160px;
-            height: auto;
-        }
-
-        .company-details {
-            text-align: right;
-            font-size: 13px;
-            color: #6a6a6a;
-        }
-
-        .company-details strong {
-            font-size: 20px;
-            color: #18529d;
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        /* Divider */
-        .header-divider {
-            border-top: 2px solid #18529d;
-            margin: 15px 0 20px 0;
-            opacity: 0.8;
+            max-height: 60px;
         }
 
         /* Meta & Bill To Section */
@@ -78,7 +50,6 @@
         .bill-to h4, .invoice-meta h4 {
             margin: 0 0 10px 0;
             font-size: 13px;
-            text-transform: uppercase;
             letter-spacing: 1px;
             color: #6a6a6a;
         }
@@ -107,28 +78,6 @@
             color: #1a1a1a;
         }
 
-        /* Status Badge */
-        .status-badge {
-            display: block;
-            width: 80px;
-            text-align: center;
-            padding: 4px 0px;
-            background-color: #e6f4ea;
-            color: #1d724f;
-            border: 1px solid #cce8d6;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 5px;
-        }
-        .status-badge.unpaid {
-            background-color: #fce8e8;
-            color: #e53935;
-            border-color: #fad4d4;
-        }
-
         /* Invoice Table */
         .invoice-table {
             margin-bottom: 30px;
@@ -137,19 +86,26 @@
         .invoice-table th {
             background-color: #f8f9fa;
             color: #18529d;
-            font-weight: bold;
-            text-align: left;
+            font-weight: 700;
             padding: 12px 15px;
-            font-size: 13px;
-            text-transform: uppercase;
+            text-align: left;
+            border-bottom: 2px solid #e5e5e5;
+            font-size: 11px;
             letter-spacing: 0.5px;
-            border-bottom: 2px solid #18529d;
         }
 
         .invoice-table td {
             padding: 10px 15px;
             border-bottom: 1px solid #e5e5e5;
             color: #2a2a2a;
+        }
+
+        .text-right {
+            text-align: right !important;
+        }
+
+        .text-center {
+            text-align: center !important;
         }
 
         .item-name {
@@ -164,18 +120,9 @@
             margin: 0;
         }
 
-        .text-right {
-            text-align: right !important;
-        }
-
-        .text-center {
-            text-align: center !important;
-        }
-
         /* Pricing Breakdown */
         .totals-table {
             width: 300px;
-            float: right;
         }
 
         .totals-table td {
@@ -188,21 +135,8 @@
             padding-top: 15px;
         }
 
-        .total-amount {
-            font-size: 20px;
-            font-weight: bold;
-            color: #18529d;
-            background-color: #f0f5fc;
-            padding: 8px 12px;
-            border-radius: 6px;
-            display: inline-block;
-            white-space: nowrap;
-            line-height: normal;
-        }
-
         /* Footer */
         .invoice-footer {
-            clear: both;
             margin-top: 10px;
             padding-top: 10px;
             border-top: 1px solid #e5e5e5;
@@ -228,30 +162,23 @@
         .footer-branding strong {
             color: #18529d;
         }
-
-        .clear {
-            clear: both;
-        }
-
     </style>
 </head>
 <body>
     {% with rs='<span style="font-family: DejaVu Sans; font-weight: bold; margin-right: 2px;">Rs.</span>' %}
-    <div style="position:relative;">
+    <div>
 
         <!-- Header -->
         <table class="invoice-header">
             <tr>
                 <td style="width: 40%;">
-                    {% load static %}
                     {% if logo_src %}
                         <img src="{{ logo_src }}" alt="PadosiAgent Logo" class="company-logo">
                     {% else %}
-                        <img src="{% static 'img/logo.webp' %}" alt="PadosiAgent Logo" class="company-logo" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+                        <h2 style="color: #18529d; margin: 0;">PadosiAgent</h2>
                     {% endif %}
-                    <h2 style="color: #18529d; margin: 0; display: none;">PadosiAgent</h2>
                 </td>
-                <td class="company-details">
+                <td class="company-details" style="width: 60%;">
                     <strong>PadosiAgent ServTech Private Limited</strong>
                     <p style="margin: 0;">Your Trusted Technology</p>
                     <p style="margin: 0;">support@padosiagent.com | +91 9876543210</p>
@@ -260,7 +187,7 @@
             </tr>
         </table>
 
-        <div class="header-divider"></div>
+        <div style="border-top: 2px solid #18529d; margin: 15px 0 20px 0; opacity: 0.8;"></div>
 
         <!-- Meta Info & Bill To -->
         <table class="invoice-info-section">
@@ -279,7 +206,7 @@
                         <p>{{ invoice.agent_state }}</p>
                     {% endif %}
                 </td>
-                <td class="invoice-meta">
+                <td class="invoice-meta" style="width: 50%;">
                     <h4>INVOICE DETAILS</h4>
                     <p><span class="meta-label">Invoice Number:</span> <span class="meta-value">{{ invoice.invoice_number }}</span></p>
                     <p><span class="meta-label">Invoice Date:</span> <span class="meta-value">{{ invoice.created_at|date:"d M, Y" }}</span></p>
@@ -289,9 +216,17 @@
 
                     <div style="margin-top: 8px;">
                         {% if invoice.payment_status == 'paid' or invoice.payment_status == 'completed' or invoice.razorpay_payment_id %}
-                            <div class="status-badge">PAID</div>
+                            <table align="right">
+                                <tr>
+                                    <td style="background-color: #e6f4ea; color: #1d724f; border: 1px solid #cce8d6; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">PAID</td>
+                                </tr>
+                            </table>
                         {% else %}
-                            <div class="status-badge unpaid">{{ invoice.payment_status|upper|default:'UNPAID' }}</div>
+                            <table align="right">
+                                <tr>
+                                    <td style="background-color: #fce8e8; color: #e53935; border: 1px solid #fad4d4; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">{{ invoice.payment_status|upper|default:'UNPAID' }}</td>
+                                </tr>
+                            </table>
                         {% endif %}
                     </div>
                 </td>
@@ -305,7 +240,7 @@
                     <th style="width: 5%;">#</th>
                     <th style="width: 42%;">SERVICE DETAILS</th>
                     <th style="width: 15%;">SAC CODE</th>
-                    <th class="text-right" style="width: 18%;">BASE PRICE<br><span style="font-size:10px;font-weight:normal">(EXCL. GST)</span></th>
+                    <th class="text-right" style="width: 18%;">BASE PRICE</th>
                     <th class="text-right" style="width: 20%;">AMOUNT</th>
                 </tr>
             </thead>
@@ -332,53 +267,63 @@
             </tbody>
         </table>
 
-        <!-- Pricing Breakdown -->
-        <div style="width: 100%;">
-            <table class="totals-table">
-                <tr>
-                    <td class="text-right" style="color: #6a6a6a;">Base Amount:</td>
-                    <td class="text-right" style="width: 130px;">{{ rs|safe }}{{ invoice.base_amount|floatformat:2 }}</td>
-                </tr>
+        <!-- Pricing Breakdown & Footer Layout Table -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="border: 0;">
+            <tr>
+                <td style="width: 50%;"></td>
+                <td style="width: 50%;" align="right">
+                    <table class="totals-table" align="right">
+                        <tr>
+                            <td class="text-right" style="color: #6a6a6a;">Base Amount:</td>
+                            <td class="text-right" style="width: 130px;">{{ rs|safe }}{{ invoice.base_amount|floatformat:2 }}</td>
+                        </tr>
 
-                {% if invoice.is_igst %}
-                    <tr>
-                        <td class="text-right" style="color: #6a6a6a;">GST @ 18% (IGST):</td>
-                        <td class="text-right">{{ rs|safe }}{{ invoice.gst_amount_igst|floatformat:2 }}</td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td class="text-right" style="color: #6a6a6a;">CGST @ 9%:</td>
-                        <td class="text-right">{{ rs|safe }}{{ invoice.gst_amount_cgst|floatformat:2 }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-right" style="color: #6a6a6a;">SGST @ 9%:</td>
-                        <td class="text-right">{{ rs|safe }}{{ invoice.gst_amount_sgst|floatformat:2 }}</td>
-                    </tr>
-                {% endif %}
-
-                <tr>
-                    <td colspan="2" style="padding: 0 15px;"><div style="border-top: 1.5px solid #18529d; margin: 4px 0;"></div></td>
-                </tr>
-
-                <tr class="total-row">
-                    <td class="text-right" style="font-weight: bold; font-size: 16px; color: #1a1a1a;">Total Amount:</td>
-                    <td class="text-right">
-                        <div class="total-amount" style="width: 110px; float: right; text-align: center;">{{ rs|safe }}{{ invoice.total_amount|floatformat:2 }}</div>
-                    </td>
-                </tr>
-
-                <tr>
-                    <td colspan="2" class="text-right" style="font-size: 10px; color: #999;">
                         {% if invoice.is_igst %}
-                            *Inclusive of IGST {{ rs|safe }}{{ invoice.gst_amount_igst|floatformat:2 }}
+                            <tr>
+                                <td class="text-right" style="color: #6a6a6a;">GST @ 18% (IGST):</td>
+                                <td class="text-right">{{ rs|safe }}{{ invoice.gst_amount_igst|floatformat:2 }}</td>
+                            </tr>
                         {% else %}
-                            *Inclusive of CGST {{ rs|safe }}{{ invoice.gst_amount_cgst|floatformat:2 }} + SGST {{ rs|safe }}{{ invoice.gst_amount_sgst|floatformat:2 }}
+                            <tr>
+                                <td class="text-right" style="color: #6a6a6a;">CGST @ 9%:</td>
+                                <td class="text-right">{{ rs|safe }}{{ invoice.gst_amount_cgst|floatformat:2 }}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-right" style="color: #6a6a6a;">SGST @ 9%:</td>
+                                <td class="text-right">{{ rs|safe }}{{ invoice.gst_amount_sgst|floatformat:2 }}</td>
+                            </tr>
                         {% endif %}
-                    </td>
-                </tr>
-            </table>
-            <div class="clear"></div>
-        </div>
+
+                        <tr>
+                            <td colspan="2" style="padding: 0 15px;"><div style="border-top: 1.5px solid #18529d; margin: 4px 0;"></div></td>
+                        </tr>
+
+                        <tr class="total-row">
+                            <td class="text-right" style="font-weight: bold; font-size: 16px; color: #1a1a1a; vertical-align: middle;">Total Amount:</td>
+                            <td class="text-right">
+                                <table align="right">
+                                    <tr>
+                                        <td style="background-color: #f0f5fc; color: #18529d; font-size: 20px; font-weight: bold; padding: 8px 12px; border-radius: 6px; text-align: center;">
+                                            {{ rs|safe }}{{ invoice.total_amount|floatformat:2 }}
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td colspan="2" class="text-right" style="font-size: 10px; color: #999;">
+                                {% if invoice.is_igst %}
+                                    *Inclusive of IGST {{ rs|safe }}{{ invoice.gst_amount_igst|floatformat:2 }}
+                                {% else %}
+                                    *Inclusive of CGST {{ rs|safe }}{{ invoice.gst_amount_cgst|floatformat:2 }} + SGST {{ rs|safe }}{{ invoice.gst_amount_sgst|floatformat:2 }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
 
         <!-- Footer -->
         <div class="invoice-footer">
