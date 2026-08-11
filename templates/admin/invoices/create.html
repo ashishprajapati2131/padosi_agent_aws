@@ -209,9 +209,10 @@ Team Padosi' }}</textarea>
     function calculateTotal() {
         const base = parseFloat(document.getElementById('baseAmount').value) || 0;
         const gst = parseFloat((base * 0.18).toFixed(2));
-        const total = (base + gst).toFixed(2);
+        const rawTotal = base + gst;
+        const total = Math.round(rawTotal).toFixed(2);
         
-        document.getElementById('gstAmount').value = gst;
+        document.getElementById('gstAmount').value = gst.toFixed(2);
         document.getElementById('totalAmount').value = total;
     }
 
