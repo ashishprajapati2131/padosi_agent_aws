@@ -75,7 +75,7 @@
                             </td>
                             <td class="text-end">
                                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="viewLogPayload({{ log.id }})">View Data</button>
-                                <textarea id="payload-{{ log.id }}" style="display:none;">Data preview not loaded in this view.</textarea>
+                                <textarea id="payload-{{ log.id }}" style="display:none;">{{ log.payload_json }}</textarea>
                             </td>
                         </tr>
                         {% empty %}
@@ -93,7 +93,48 @@
             </div>
         </div>
     </div>
+
+    {% if logs.paginator and logs.has_other_pages %}
+    <div class="mt-4 d-flex justify-content-center">
+        <nav>
+            <ul class="pagination mb-0">
+                {% if logs.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?service={{ serviceFilter }}&page={{ logs.previous_page_number }}">&laquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                {% endif %}
+
+                {% for num in logs.paginator.page_range %}
+                    {% if logs.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > logs.number|add:'-3' and num < logs.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?service={{ serviceFilter }}&page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if logs.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?service={{ serviceFilter }}&page={{ logs.next_page_number }}">&raquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
 </div>
+
+<style>
+.pagination { margin-bottom: 0; flex-wrap: wrap; justify-content: center; gap: 5px; }
+.pagination .page-item .page-link { border-radius: 8px; padding: 8px 16px; color: var(--primary); border: 1px solid var(--border-color); font-weight: 500; transition: all 0.2s; }
+.pagination .page-item.active .page-link { background-color: var(--primary); border-color: var(--primary); color: white; }
+.pagination .page-item.disabled .page-link { color: var(--text-muted); background-color: var(--bg-body); }
+</style>
 
 <!-- Modal for viewing JSON data -->
 <div class="modal fade" id="logModal" tabindex="-1" aria-hidden="true">
@@ -112,7 +153,7 @@
 
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
     function viewLogPayload(id) {
         const data = $('#payload-' + id).val();

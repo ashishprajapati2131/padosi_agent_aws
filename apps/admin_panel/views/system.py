@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import psutil
 import platform
 import sys
@@ -8,6 +9,7 @@ from pathlib import Path
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.core.cache import cache
+from django.core.paginator import Paginator
 from django.db import connection
 from django.conf import settings
 from datetime import datetime
@@ -143,11 +145,18 @@ def api_logs(request):
     table_missing = False
     
     try:
-        query = ApiLog.objects.all()
+        query = ApiLog.objects.all().order_by('-created_at')
         if service_filter:
             query = query.filter(service=service_filter)
             
-        logs = query.order_by('-created_at')[:50]
+        paginator = Paginator(query, 20)
+        logs = paginator.get_page(request.GET.get('page'))
+        
+        for log in logs:
+            log.payload_json = json.dumps(
+                {'payload': log.payload, 'response': log.response},
+                indent=2, ensure_ascii=False, default=str
+            )
                 
     except Exception as e:
         logger.error(f"API Logs error: {e}")

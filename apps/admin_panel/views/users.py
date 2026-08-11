@@ -72,6 +72,8 @@ def user_list(request):
     context = {
         'users': users,
         'search': request.GET.get('search', ''),
+        'role': request.GET.get('role', ''),
+        'status': request.GET.get('status', ''),
         'page': page,
         'total_pages': total_pages,
         'total_users': total,

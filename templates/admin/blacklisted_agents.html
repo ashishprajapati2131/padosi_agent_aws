@@ -132,19 +132,10 @@
             <form method="GET" action="{% url 'admin_blacklisted_agents' %}">
                 <input type="hidden" name="tab" value="master">
                 <div class="row gx-2 gy-2">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <input type="text" name="q" class="form-control" placeholder="Search..." value="{{ irdai_query }}">
                     </div>
-                    <div class="col-md-3">
-                        <select name="field" class="form-select">
-                            <option value="all" {% if irdai_field == 'all' %}selected{% endif %}>All Fields</option>
-                            <option value="pan" {% if irdai_field == 'pan' %}selected{% endif %}>PAN</option>
-                            <option value="agent_name" {% if irdai_field == 'agent_name' %}selected{% endif %}>Agent Name</option>
-                            <option value="agency_code" {% if irdai_field == 'agency_code' %}selected{% endif %}>Agency Code</option>
-                            <option value="insurer" {% if irdai_field == 'insurer' %}selected{% endif %}>Insurer</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <select name="type" class="form-select">
                             <option value="">All Insurer Types</option>
                             {% for itype in insurer_types %}
@@ -206,11 +197,11 @@
                 <nav aria-label="Page navigation">
                     <ul class="pagination justify-content-center mb-0">
                         {% if irdai_page_obj.has_previous %}
-                        <li class="page-item"><a class="page-link" href="?tab=master&q={{ irdai_query }}&field={{ irdai_field }}&type={{ irdai_type }}&page={{ irdai_page_obj.previous_page_number }}">Previous</a></li>
+                        <li class="page-item"><a class="page-link" href="?tab=master&q={{ irdai_query }}&type={{ irdai_type }}&page={{ irdai_page_obj.previous_page_number }}">Previous</a></li>
                         {% endif %}
                         <li class="page-item active"><span class="page-link">Page {{ irdai_page_obj.number }} of {{ irdai_page_obj.paginator.num_pages }}</span></li>
                         {% if irdai_page_obj.has_next %}
-                        <li class="page-item"><a class="page-link" href="?tab=master&q={{ irdai_query }}&field={{ irdai_field }}&type={{ irdai_type }}&page={{ irdai_page_obj.next_page_number }}">Next</a></li>
+                        <li class="page-item"><a class="page-link" href="?tab=master&q={{ irdai_query }}&type={{ irdai_type }}&page={{ irdai_page_obj.next_page_number }}">Next</a></li>
                         {% endif %}
                     </ul>
                 </nav>

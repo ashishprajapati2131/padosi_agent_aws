@@ -1436,7 +1436,8 @@ no spam calls, only trusted licensed agents.{% endblock %}
             <button type="button" class="compact-filter-btn position-relative" id="toggle-compact-filter"
                 title="Toggle Sidebar Filters">
                 <i class="fas fa-sliders-h"></i>
-                {% if request.GET.ServiceType or request.GET.pincode or request.GET.InsuranceType or request.GET.InsuranceCompany %}
+                {% if request.GET.ServiceType or request.GET.pincode or request.GET.InsuranceType or
+                request.GET.InsuranceCompany %}
                 <div class="filter-badge-dot" style="position: absolute; top: 6px; right: 6px;"></div>
                 {% endif %}
             </button>
@@ -1506,7 +1507,8 @@ no spam calls, only trusted licensed agents.{% endblock %}
                                     style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #64748b;">
                                     Location</div>
                                 <div class="text-dark font-weight-bold truncate"
-                                    style="font-size: 13px; color: #0f172a;">{{ detectedArea|default:"Current Location" }}</div>
+                                    style="font-size: 13px; color: #0f172a;">{{ detectedArea|default:"Current Location"
+                                    }}</div>
                             </div>
                             <button type="button" onclick="window.showLocationPopup('{% url 'home:find_agents' %}')"
                                 class="btn btn-sm text-blue p-0 ms-2"
@@ -1565,10 +1567,18 @@ no spam calls, only trusted licensed agents.{% endblock %}
                                 <select class="selectbox" name="ComplaintType" id="ComplaintType"
                                     style="background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; border-radius: 8px; width: 100%; padding: 10px 12px; font-family: 'Outfit', sans-serif;">
                                     <option value="" style="background: #f8fafc; color: #334155;">All Types</option>
-                                    <option value="Claim Rejection" {% if request.GET.ComplaintType == 'Claim Rejection' %}selected{% endif %} style="background: #f8fafc; color: #334155;">Claim Rejection</option>
-                                    <option value="Claim Delay" {% if request.GET.ComplaintType == 'Claim Delay' %}selected{% endif %} style="background: #f8fafc; color: #334155;">Claim Delay</option>
-                                    <option value="Claim Short settled" {% if request.GET.ComplaintType == 'Claim Short settled' %}selected{% endif %} style="background: #f8fafc; color: #334155;">Claim Short settled</option>
-                                    <option value="Mis-selling" {% if request.GET.ComplaintType == 'Mis-selling' %}selected{% endif %} style="background: #f8fafc; color: #334155;">Mis-selling</option>
+                                    <option value="Claim Rejection" {% if request.GET.ComplaintType=='Claim Rejection'
+                                        %}selected{% endif %} style="background: #f8fafc; color: #334155;">Claim
+                                        Rejection</option>
+                                    <option value="Claim Delay" {% if request.GET.ComplaintType=='Claim Delay'
+                                        %}selected{% endif %} style="background: #f8fafc; color: #334155;">Claim Delay
+                                    </option>
+                                    <option value="Claim Short settled" {% if
+                                        request.GET.ComplaintType=='Claim Short settled' %}selected{% endif %}
+                                        style="background: #f8fafc; color: #334155;">Claim Short settled</option>
+                                    <option value="Mis-selling" {% if request.GET.ComplaintType=='Mis-selling'
+                                        %}selected{% endif %} style="background: #f8fafc; color: #334155;">Mis-selling
+                                    </option>
                                 </select>
                             </div>
 
@@ -1794,7 +1804,9 @@ no spam calls, only trusted licensed agents.{% endblock %}
         </div>
     </div>
 </section>
+{% endblock %}
 
+{% block modals %}
 <!-- Comparison Bar -->
 <div id="compare-bar" class="compare-bar">
     <div class="compare-bar-header w-100 d-flex align-items-center justify-content-between mb-2 d-sm-none">
@@ -1829,7 +1841,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
 </div>
 
 <!-- Comparison Modal -->
-<div class="modal fade" id="comparisonModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="comparisonModal" tabindex="-1" aria-hidden="true" data-focus="false" data-bs-focus="false">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content" style="border-radius: 20px; overflow: hidden; border: none;">
             <div class="modal-header border-0 bg-light p-4">
@@ -1856,7 +1868,8 @@ no spam calls, only trusted licensed agents.{% endblock %}
 </div>
 
 <!-- AI Picks Modal -->
-<div class="modal fade" id="aiPicksModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+<div class="modal fade" id="aiPicksModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;" data-focus="false"
+    data-bs-focus="false">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content"
             style="border-radius: 20px; overflow: hidden; border: none; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); border: 1px solid rgba(255, 255, 255, 0.2);">
@@ -2817,13 +2830,13 @@ no spam calls, only trusted licensed agents.{% endblock %}
         if (!hasLocation && isFindAgentsPage()) {
             const triggerPincodePopup = () => {
                 if (typeof window.showLocationPopup === 'function' && isFindAgentsPage()) {
-                    window.showLocationPopup('{% url 'home:find_agents' %}');
+                    window.showLocationPopup('{% url 'home: find_agents' %}');
                 }
             };
 
             if (typeof window.showGpsPopup === 'function') {
                 // Show GPS popup first
-                window.showGpsPopup('{% url 'home:find_agents' %}', () => {
+                window.showGpsPopup('{% url 'home: find_agents' %}', () => {
                     // On dismiss or fail: wait 5 seconds, then show pincode popup
                     if (locationPopupTimer) {
                         clearTimeout(locationPopupTimer);
@@ -3280,8 +3293,9 @@ no spam calls, only trusted licensed agents.{% endblock %}
     window.compareContactAgent = function (agentId, destination, interactionType, serviceType, insuranceType) {
         window.closeComparisonModal();
 
-        const isAuth = {{ request.user.is_authenticated|yesno:"true,false" }};
-        const hasGuestSession = {% if request.session.quick_lead_user %}true{% else %}false{% endif %};
+        const isAuth = {{ request.user.is_authenticated| yesno: "true,false"
+    }};
+    const hasGuestSession = {% if request.session.quick_lead_user %}true{% else %} false{% endif %};
     const csrfToken = "{{ csrf_token }}";
 
     const fireLead = function (guestData) {
@@ -3689,7 +3703,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
             const selectEl = document.getElementById('sort_by_select');
             if (selectEl) selectEl.value = 'match';
             if (typeof window.showLocationPopup === 'function') {
-                window.showLocationPopup('{% url 'home:find_agents' %}');
+                window.showLocationPopup('{% url 'home: find_agents' %}');
             } else {
                 alert('Please set your location first to sort by distance.');
             }
@@ -3969,12 +3983,15 @@ no spam calls, only trusted licensed agents.{% endblock %}
         if (Swal.isVisible()) return;
 
         // Disable Bootstrap's enforceFocus to prevent it from stealing focus from SweetAlert
-        if (typeof $ !== 'undefined' && $.fn && $.fn.modal && $.fn.modal.Constructor) {
-            if ($.fn.modal.Constructor.prototype._enforceFocus) {
-                $.fn.modal.Constructor.prototype._enforceFocus = function() {};
-            }
-            if ($.fn.modal.Constructor.prototype.enforceFocus) {
-                $.fn.modal.Constructor.prototype.enforceFocus = function() {};
+        if (typeof $ !== 'undefined') {
+            $(document).off('focusin.modal focusin.bs.modal');
+            if ($.fn && $.fn.modal && $.fn.modal.Constructor) {
+                if ($.fn.modal.Constructor.prototype._enforceFocus) {
+                    $.fn.modal.Constructor.prototype._enforceFocus = function () { };
+                }
+                if ($.fn.modal.Constructor.prototype.enforceFocus) {
+                    $.fn.modal.Constructor.prototype.enforceFocus = function () { };
+                }
             }
         }
 
@@ -4032,6 +4049,12 @@ no spam calls, only trusted licensed agents.{% endblock %}
             showCancelButton: false,
             confirmButtonText: 'Get Started',
             confirmButtonColor: '#273c8e',
+            focusConfirm: false,
+            didOpen: () => {
+                setTimeout(() => {
+                    document.getElementById('swal-fullname').focus();
+                }, 100);
+            },
             padding: isMobilePopup ? '0.75rem' : '1.25rem',
             width: isMobilePopup ? '88vw' : '430px',
             customClass: {
@@ -4135,8 +4158,9 @@ no spam calls, only trusted licensed agents.{% endblock %}
         if (!element) return true;
         event.preventDefault();
 
-        const isAuth = {{ request.user.is_authenticated|yesno:"true,false" }};
-        const hasGuestSession = {% if request.session.quick_lead_user %}true{% else %}false{% endif %};
+        const isAuth = {{ request.user.is_authenticated| yesno: "true,false"
+    }};
+    const hasGuestSession = {% if request.session.quick_lead_user %}true{% else %} false{% endif %};
     const href = element.getAttribute('href');
     const agentId = element.getAttribute('data-agent-id');
     const urlParams = new URLSearchParams(window.location.search);

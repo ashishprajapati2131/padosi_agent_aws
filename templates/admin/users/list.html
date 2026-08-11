@@ -10,10 +10,27 @@
 
         <div class="card mb-4 p-3">
              <form method="GET" action="{% url 'admin_users' %}" class="row g-3">
-                <div class="col-md-6">
-                     <input type="text" name="search" class="form-control" placeholder="Search..." value="{{ search }}">
+                <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12">
+                     <input type="text" name="search" class="form-control" placeholder="Search by name or email..." value="{{ search }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6">
+                    <select name="role" class="form-select">
+                        <option value="all" {% if role == 'all' or not role %}selected{% endif %}>All Roles</option>
+                        <option value="admin" {% if role == 'admin' %}selected{% endif %}>Admin</option>
+                        <option value="agent" {% if role == 'agent' %}selected{% endif %}>Agent</option>
+                        <option value="client" {% if role == 'client' %}selected{% endif %}>Client</option>
+                        <option value="distributor" {% if role == 'distributor' %}selected{% endif %}>Distributor</option>
+                    </select>
+                </div>
+                <div class="col-xl-3 col-lg-3 col-md-6 col-sm-6">
+                    <select name="status" class="form-select">
+                        <option value="all" {% if status == 'all' or not status %}selected{% endif %}>All Status</option>
+                        <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+                        <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+                        <option value="suspended" {% if status == 'suspended' %}selected{% endif %}>Suspended</option>
+                    </select>
+                </div>
+                <div class="col-xl-2 col-lg-2 col-md-6 col-sm-12">
                      <button type="submit" class="btn btn-primary w-100">Search</button>
                 </div>
              </form>
@@ -74,7 +91,7 @@
                              </li>
                          {% else %}
                              <li class="page-item">
-                                 <a class="page-link" href="?page={{ page|add:'-1' }}{% if search %}&search={{ search|urlencode }}{% endif %}" rel="prev" aria-label="Previous">
+                                 <a class="page-link" href="?page={{ page|add:'-1' }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if role %}&role={{ role|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}" rel="prev" aria-label="Previous">
                                      <span aria-hidden="true">&lsaquo;</span>
                                  </a>
                              </li>
@@ -86,7 +103,7 @@
                                  {% if p == page %}
                                      <li class="page-item active" aria-current="page"><span class="page-link">{{ p }}</span></li>
                                  {% else %}
-                                     <li class="page-item"><a class="page-link" href="?page={{ p }}{% if search %}&search={{ search|urlencode }}{% endif %}">{{ p }}</a></li>
+                                     <li class="page-item"><a class="page-link" href="?page={{ p }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if role %}&role={{ role|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">{{ p }}</a></li>
                                  {% endif %}
                              {% endfor %}
                          {% else %}
@@ -96,32 +113,32 @@
                                          {% if p == page %}
                                              <li class="page-item active" aria-current="page"><span class="page-link">{{ p }}</span></li>
                                          {% else %}
-                                             <li class="page-item"><a class="page-link" href="?page={{ p }}{% if search %}&search={{ search|urlencode }}{% endif %}">{{ p }}</a></li>
+                                             <li class="page-item"><a class="page-link" href="?page={{ p }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if role %}&role={{ role|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">{{ p }}</a></li>
                                          {% endif %}
                                      {% endif %}
                                  {% endfor %}
                                  <li class="page-item disabled" aria-disabled="true"><span class="page-link">...</span></li>
-                                 <li class="page-item"><a class="page-link" href="?page={{ total_pages }}{% if search %}&search={{ search|urlencode }}{% endif %}">{{ total_pages }}</a></li>
+                                 <li class="page-item"><a class="page-link" href="?page={{ total_pages }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if role %}&role={{ role|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">{{ total_pages }}</a></li>
                              {% elif page >= total_pages|add:"-3" %}
-                                 <li class="page-item"><a class="page-link" href="?page=1{% if search %}&search={{ search|urlencode }}{% endif %}">1</a></li>
+                                 <li class="page-item"><a class="page-link" href="?page=1{% if search %}&search={{ search|urlencode }}{% endif %}{% if role %}&role={{ role|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">1</a></li>
                                  <li class="page-item disabled" aria-disabled="true"><span class="page-link">...</span></li>
                                  {% for p in page_range %}
                                      {% if p >= total_pages|add:"-4" %}
                                          {% if p == page %}
                                              <li class="page-item active" aria-current="page"><span class="page-link">{{ p }}</span></li>
                                          {% else %}
-                                             <li class="page-item"><a class="page-link" href="?page={{ p }}{% if search %}&search={{ search|urlencode }}{% endif %}">{{ p }}</a></li>
+                                             <li class="page-item"><a class="page-link" href="?page={{ p }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if role %}&role={{ role|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">{{ p }}</a></li>
                                          {% endif %}
                                      {% endif %}
                                  {% endfor %}
                              {% else %}
-                                 <li class="page-item"><a class="page-link" href="?page=1{% if search %}&search={{ search|urlencode }}{% endif %}">1</a></li>
+                                 <li class="page-item"><a class="page-link" href="?page=1{% if search %}&search={{ search|urlencode }}{% endif %}{% if role %}&role={{ role|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">1</a></li>
                                  <li class="page-item disabled" aria-disabled="true"><span class="page-link">...</span></li>
-                                 <li class="page-item"><a class="page-link" href="?page={{ page|add:'-1' }}{% if search %}&search={{ search|urlencode }}{% endif %}">{{ page|add:'-1' }}</a></li>
+                                 <li class="page-item"><a class="page-link" href="?page={{ page|add:'-1' }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if role %}&role={{ role|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">{{ page|add:'-1' }}</a></li>
                                  <li class="page-item active" aria-current="page"><span class="page-link">{{ page }}</span></li>
-                                 <li class="page-item"><a class="page-link" href="?page={{ page|add:'1' }}{% if search %}&search={{ search|urlencode }}{% endif %}">{{ page|add:'1' }}</a></li>
+                                 <li class="page-item"><a class="page-link" href="?page={{ page|add:'1' }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if role %}&role={{ role|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">{{ page|add:'1' }}</a></li>
                                  <li class="page-item disabled" aria-disabled="true"><span class="page-link">...</span></li>
-                                 <li class="page-item"><a class="page-link" href="?page={{ total_pages }}{% if search %}&search={{ search|urlencode }}{% endif %}">{{ total_pages }}</a></li>
+                                 <li class="page-item"><a class="page-link" href="?page={{ total_pages }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if role %}&role={{ role|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">{{ total_pages }}</a></li>
                              {% endif %}
                          {% endif %}
                          
@@ -132,7 +149,7 @@
                              </li>
                          {% else %}
                              <li class="page-item">
-                                 <a class="page-link" href="?page={{ page|add:'1' }}{% if search %}&search={{ search|urlencode }}{% endif %}" rel="next" aria-label="Next">
+                                 <a class="page-link" href="?page={{ page|add:'1' }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if role %}&role={{ role|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}" rel="next" aria-label="Next">
                                      <span aria-hidden="true">&rsaquo;</span>
                                  </a>
                              </li>

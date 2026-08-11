@@ -45,28 +45,18 @@ def blacklisted_agents_view(request):
 
     # Tab 3 — IRDAI Master List with search and filter
     irdai_query = request.GET.get('q', '').strip()
-    irdai_field = request.GET.get('field', 'all')
     irdai_type = request.GET.get('type', '').strip()
     irdai_page = request.GET.get('page', 1)
 
     irdai_list = BlacklistedAgent.objects.all()
 
     if irdai_query:
-        if irdai_field == 'pan':
-            irdai_list = irdai_list.filter(pan__icontains=irdai_query)
-        elif irdai_field == 'agent_name':
-            irdai_list = irdai_list.filter(agent_name__icontains=irdai_query)
-        elif irdai_field == 'agency_code':
-            irdai_list = irdai_list.filter(agency_code__icontains=irdai_query)
-        elif irdai_field == 'insurer':
-            irdai_list = irdai_list.filter(insurer__icontains=irdai_query)
-        else:
-            irdai_list = irdai_list.filter(
-                Q(agent_name__icontains=irdai_query) |
-                Q(pan__icontains=irdai_query) |
-                Q(agency_code__icontains=irdai_query) |
-                Q(insurer__icontains=irdai_query)
-            )
+        irdai_list = irdai_list.filter(
+            Q(agent_name__icontains=irdai_query) |
+            Q(pan__icontains=irdai_query) |
+            Q(agency_code__icontains=irdai_query) |
+            Q(insurer__icontains=irdai_query)
+        )
 
     if irdai_type:
         irdai_list = irdai_list.filter(insurer_type__iexact=irdai_type)
@@ -102,7 +92,6 @@ def blacklisted_agents_view(request):
         'registered_pans': registered_pans,
         'insurer_types': insurer_types,
         'irdai_query': irdai_query,
-        'irdai_field': irdai_field,
         'irdai_type': irdai_type,
         'flagged_count': flagged_count,
     })
