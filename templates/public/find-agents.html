@@ -2821,13 +2821,13 @@ no spam calls, only trusted licensed agents.{% endblock %}
         if (!hasLocation && isFindAgentsPage()) {
             const triggerPincodePopup = () => {
                 if (typeof window.showLocationPopup === 'function' && isFindAgentsPage()) {
-                    window.showLocationPopup('{% url 'home: find_agents' %}');
+                    window.showLocationPopup('{% url 'home:find_agents' %}');
                 }
             };
 
             if (typeof window.showGpsPopup === 'function') {
                 // Show GPS popup first
-                window.showGpsPopup('{% url 'home: find_agents' %}', () => {
+                window.showGpsPopup('{% url 'home:find_agents' %}', () => {
                     // On dismiss or fail: wait 5 seconds, then show pincode popup
                     if (locationPopupTimer) {
                         clearTimeout(locationPopupTimer);
@@ -3694,7 +3694,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
             const selectEl = document.getElementById('sort_by_select');
             if (selectEl) selectEl.value = 'match';
             if (typeof window.showLocationPopup === 'function') {
-                window.showLocationPopup('{% url 'home: find_agents' %}');
+                window.showLocationPopup('{% url 'home:find_agents' %}');
             } else {
                 alert('Please set your location first to sort by distance.');
             }
