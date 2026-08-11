@@ -662,7 +662,9 @@ def store_review(request, slug):
                 'user': None,
                 'reviewer_name': fullname,
                 'reviewer_mobile': mobile_digits,
-        'is_approved': True
+                'rating': rating_val,
+                'review': review_val,
+                'is_approved': True
             }
         )
     message = 'Review submitted successfully!' if created else 'Review updated successfully!'
