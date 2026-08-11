@@ -59,10 +59,15 @@ class APILoggingMiddleware(BaseHTTPMiddleware):
             url_path += f"?{request.url.query}"
             
         client_host = request.client.host if request.client else None
-        
+
+        # Webhook endpoints log their own rows with the full payload (body
+        # cannot be read here without consuming the request stream).
+        if "/payment/webhook" in url_path:
+            return await call_next(request)
+
         # Determine service
         service = "fastapi"
-        if "/razorpay/" in url_path:
+        if "/razorpay/" in url_path or url_path.endswith("/payment/webhook"):
             service = "razorpay"
         elif "/fcm/" in url_path:
             service = "fcm"

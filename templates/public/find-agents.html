@@ -1436,8 +1436,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
             <button type="button" class="compact-filter-btn position-relative" id="toggle-compact-filter"
                 title="Toggle Sidebar Filters">
                 <i class="fas fa-sliders-h"></i>
-                {% if request.GET.ServiceType or request.GET.pincode or request.GET.InsuranceType or
-                request.GET.InsuranceCompany %}
+                {% if request.GET.ServiceType or request.GET.pincode or request.GET.InsuranceType or request.GET.InsuranceCompany %}
                 <div class="filter-badge-dot" style="position: absolute; top: 6px; right: 6px;"></div>
                 {% endif %}
             </button>

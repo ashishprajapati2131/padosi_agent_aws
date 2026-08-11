@@ -417,13 +417,19 @@ async def razorpay_webhook_endpoint(
     payload = await request.body()
     signature = request.headers.get("X-Razorpay-Signature")
 
-    # Verify webhook signature
-    sig_ok = PaymentService.verify_webhook_signature(payload, signature)
-    if not sig_ok:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid webhook signature")
+    from app.middleware.api_logger import log_request_to_db
+
+    client_host = request.client.host if request.client else None
+    payload_text = payload.decode("utf-8", errors="replace")[:100000]
 
     try:
-        event_data = json.loads(payload.decode("utf-8"))
+        # Verify webhook signature
+        sig_ok = PaymentService.verify_webhook_signature(payload, signature)
+        if not sig_ok:
+            await log_request_to_db("razorpay", str(request.url), "POST", payload_text, 400, client_host)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid webhook signature")
+
+        event_data = json.loads(payload_text)
         event = event_data.get("event")
         if event in ["order.paid", "payment.captured"]:
             # Extract payment context
@@ -444,8 +450,12 @@ async def razorpay_webhook_endpoint(
                     )
                     registration_service.verify_and_activate(db, success_req)
 
+        await log_request_to_db("razorpay", str(request.url), "POST", payload_text, 200, client_host)
         return {"status": "success"}
+    except HTTPException:
+        raise
     except Exception as e:
+        await log_request_to_db("razorpay", str(request.url), "POST", payload_text, 500, client_host)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Webhook processing error: {str(e)}"
