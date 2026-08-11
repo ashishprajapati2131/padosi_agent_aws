@@ -96,7 +96,6 @@
 
         .invoice-table td {
             padding: 10px 15px;
-            border-bottom: 1px solid #e5e5e5;
             color: #2a2a2a;
         }
 
@@ -127,7 +126,6 @@
 
         .totals-table td {
             padding: 8px 15px;
-            border-bottom: 1px solid #e5e5e5;
         }
 
         .totals-table .total-row td {
@@ -187,7 +185,11 @@
             </tr>
         </table>
 
-        <div style="border-top: 2px solid #18529d; margin: 10px 0 10px 0; opacity: 0.8;"></div>
+        <table width="100%" style="margin: 10px 0 15px 0;">
+            <tr>
+                <td style="border-top: 2px solid #18529d;"></td>
+            </tr>
+        </table>
 
         <!-- Meta Info & Bill To -->
         <table class="invoice-info-section">
@@ -214,21 +216,11 @@
                     <p><span class="meta-label">Payment ID:</span> <span class="meta-value">{{ invoice.razorpay_payment_id }}</span></p>
                     {% endif %}
 
-                    <div style="margin-top: 5px;">
+                    <div style="margin-top: 5px; text-align: right;">
                         {% if invoice.payment_status == 'paid' or invoice.payment_status == 'completed' or invoice.razorpay_payment_id %}
-                            <table align="right" width="100%">
-                                <tr>
-                                    <td width="70%"></td>
-                                    <td width="30%" style="background-color: #e6f4ea; color: #1d724f; border: 1px solid #cce8d6; padding: 4px 0px; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">PAID</td>
-                                </tr>
-                            </table>
+                            <span style="background-color: #e6f4ea; color: #1d724f; border: 1px solid #cce8d6; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">PAID</span>
                         {% else %}
-                            <table align="right" width="100%">
-                                <tr>
-                                    <td width="60%"></td>
-                                    <td width="40%" style="background-color: #fce8e8; color: #e53935; border: 1px solid #fad4d4; padding: 4px 0px; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; text-align: center;">{{ invoice.payment_status|upper|default:'UNPAID' }}</td>
-                                </tr>
-                            </table>
+                            <span style="background-color: #fce8e8; color: #e53935; border: 1px solid #fad4d4; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">{{ invoice.payment_status|upper|default:'UNPAID' }}</span>
                         {% endif %}
                     </div>
                 </td>
