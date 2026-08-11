@@ -196,7 +196,7 @@ Team Padosi' }}</textarea>
                 }
             }
             
-            const base = (fullPrice / 1.18).toFixed(2);
+            const base = Math.round(fullPrice / 1.18).toFixed(2);
             baseAmountInput.value = base;
             baseAmountInput.readOnly = true;
         } else {
@@ -207,13 +207,13 @@ Team Padosi' }}</textarea>
     }
 
     function calculateTotal() {
-        const base = parseFloat(document.getElementById('baseAmount').value) || 0;
-        const gst = parseFloat((base * 0.18).toFixed(2));
-        const rawTotal = base + gst;
-        const total = Math.round(rawTotal).toFixed(2);
+        const base = Math.round(parseFloat(document.getElementById('baseAmount').value) || 0);
+        const gst = Math.round(base * 0.18);
+        const total = base + gst;
         
+        document.getElementById('baseAmount').value = base.toFixed(2);
         document.getElementById('gstAmount').value = gst.toFixed(2);
-        document.getElementById('totalAmount').value = total;
+        document.getElementById('totalAmount').value = total.toFixed(2);
     }
 
     document.addEventListener('DOMContentLoaded', function () {
