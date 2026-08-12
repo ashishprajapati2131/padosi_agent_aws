@@ -107,9 +107,12 @@ def dashboard(request):
             raw_message = default_message
 
     share_message = raw_message.replace('{LINK}', referral_url)
+    
+    distributor_first_name = (l_user.fullname if l_user else distributor.first_name).split(' ')[0]
 
     context = {
         'distributor': distributor,
+        'distributorFirstName': distributor_first_name,
         'totalAgents': total_agents,
         'activeAgents': active_agents,
         'totalLeads': total_leads,

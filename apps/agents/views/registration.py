@@ -17,6 +17,7 @@ import re
 
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.views.decorators.http import require_POST, require_http_methods
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.utils import timezone
@@ -132,6 +133,8 @@ def _get_registration_context(request):
     from apps.agents.models import InvestmentType
     active_investment_types = InvestmentType.objects.filter(is_active=True)
 
+    prefilled_promo = request.GET.get('promo') or request.GET.get('ref') or request.session.get('ref_code', '')
+
     return {
         'layout_template': layout_template,
         'reg_step': reg_step,
@@ -144,6 +147,7 @@ def _get_registration_context(request):
         'agent_segments': draft.segments if draft else [],
         'agent_languages': draft.languages if draft else [],
         'active_investment_types': active_investment_types,
+        'prefilledPromo': prefilled_promo,
     }
 
 
@@ -276,6 +280,14 @@ def register_step1(request):
     address = request.POST.get('address', '').strip()
     client_base = request.POST.get('client_base', '').strip()
 
+    distributor_id = None
+    from apps.distributors.views.dashboard import is_distributor
+    if request.user.is_authenticated and is_distributor(request.user):
+        from apps.admin_panel.models import User as LaravelUser
+        l_user = LaravelUser.objects.filter(email=request.user.email).first()
+        distributor_id = l_user.id if l_user else request.user.id
+        request.session['distributor_id'] = distributor_id
+
     # Validation
     errors = []
     if not fullname:
@@ -310,7 +322,6 @@ def register_step1(request):
     if existing_agent:
         # Case 4 (network lost): try to verify Razorpay payment directly first!
         if verify_and_activate_pending_payment(existing_agent):
-            from django.urls import reverse
             return JsonResponse({
                 'success': True,
                 'message': 'Payment verified successfully! Redirecting to dashboard...',
@@ -337,7 +348,8 @@ def register_step1(request):
         if promo_code:
             request.session['applied_promo_code'] = promo_code
         else:
-            request.session.pop('applied_promo_code', None)
+            if not request.session.get('distributor_led_registration') and not request.session.get('distributor_id'):
+                request.session.pop('applied_promo_code', None)
         draft.address = address
         draft.client_base = client_base
         draft.email_verified = True
@@ -391,7 +403,8 @@ def register_step1(request):
     if promo_code:
         request.session['applied_promo_code'] = promo_code
     else:
-        request.session.pop('applied_promo_code', None)
+        if not request.session.get('distributor_led_registration') and not request.session.get('distributor_id'):
+            request.session.pop('applied_promo_code', None)
     draft.address = address
     draft.client_base = client_base
     draft.registration_step = 1
@@ -1008,12 +1021,16 @@ def agent_register_complete(request):
             ).first()
         
         if already_paid or has_paid_invoice:
-            from django.urls import reverse
+            redirect_url = reverse('agents:agent_dashboard')
+            from apps.distributors.views.dashboard import is_distributor
+            if request.user.is_authenticated and is_distributor(request.user):
+                redirect_url = reverse('distributors:agents_index')
+
             return JsonResponse({
                 'success': True,
                 'already_completed': True,
                 'agent_id': existing_agent.id if existing_agent else None,
-                'redirect_url': reverse('agents:agent_dashboard'),
+                'redirect_url': redirect_url,
             })
 
     try:
@@ -1021,16 +1038,25 @@ def agent_register_complete(request):
             # Create/get Agent record from DB
             agent = create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment')
             
-            # Capture referral code from session
-            ref_code = request.session.get('ref_code') or request.session.get('applied_promo_code')
-            if ref_code:
+            # Capture distributor/referral binding
+            dist_id_from_session = request.session.get('distributor_id')
+            if dist_id_from_session:
+                agent.distributor_id = dist_id_from_session
                 from apps.admin_panel.models.referral_code import ReferralCode
-                ref_obj = ReferralCode.objects.filter(code=ref_code, is_active=True).first()
+                ref_obj = ReferralCode.objects.filter(distributor_id=dist_id_from_session, is_active=True).first()
                 if ref_obj:
-                    agent.referred_by_code = ref_code
-                    if ref_obj.distributor_id:
-                        agent.distributor_id = ref_obj.distributor_id
-                    agent.save()
+                    agent.referred_by_code = ref_obj.code
+                agent.save()
+            else:
+                ref_code = request.session.get('ref_code') or request.session.get('applied_promo_code')
+                if ref_code:
+                    from apps.admin_panel.models.referral_code import ReferralCode
+                    ref_obj = ReferralCode.objects.filter(code=ref_code, is_active=True).first()
+                    if ref_obj:
+                        agent.referred_by_code = ref_code
+                        if ref_obj.distributor_id:
+                            agent.distributor_id = ref_obj.distributor_id
+                        agent.save()
             
             # Calculate subscription duration
             trial_days = int(trial_config.get('duration_days', 30))
@@ -1146,11 +1172,14 @@ def agent_register_complete(request):
                 request.session.pop('reg_step', None)
                 request.session.pop('ref_code', None)
                 
-                from django.urls import reverse
+                redirect_url = reverse('agents:agent_dashboard')
+                if request.user.is_authenticated and is_distributor(request.user):
+                    redirect_url = reverse('distributors:agents_index')
+
                 return JsonResponse({
                     'success': True,
                     'message': 'Registration completed successfully! Welcome to PadosiAgent.',
-                    'redirect_url': reverse('agents:agent_dashboard'),
+                    'redirect_url': redirect_url,
                 })
     except Exception as db_err:
         logger.error(f"Database transaction error in agent_register_complete: {db_err}")
@@ -1207,7 +1236,6 @@ def payment_success(request):
         
         if existing_sub or existing_invoice:
             from django.contrib.auth import login
-            from django.urls import reverse
             agent_obj = existing_sub.agent if existing_sub else existing_invoice.agent
             user = create_or_link_django_user(agent_obj)
             if not request.user.is_authenticated:
@@ -1390,11 +1418,14 @@ def payment_success(request):
             request.session.pop('reg_step', None)
             request.session.pop('ref_code', None)
 
-            from django.urls import reverse
+            redirect_url = reverse('agents:agent_dashboard')
+            if request.user.is_authenticated and is_distributor(request.user):
+                redirect_url = reverse('distributors:agents_index')
+
             return JsonResponse({
                 'success': True,
                 'message': 'Payment successful and account activated.',
-                'redirect_url': reverse('agents:agent_dashboard'),
+                'redirect_url': redirect_url,
             })
     except Exception as e:
         logger.error(f"Error activating account in payment_success: {str(e)}")
@@ -1456,7 +1487,6 @@ def referral_join(request, ref_code):
         request.session['ref_code'] = code.code
     
     # Redirect to registration page with query params
-    from django.urls import reverse
     url = reverse('agents:agent_registration') + f"?ref={code_val}&show_trial=1"
     return redirect(url)
 
@@ -1626,8 +1656,6 @@ def payment_failure(request):
 
             agent.status = 'pending_payment'
             agent.save()
-
-        from django.urls import reverse
         return JsonResponse({
             'success': True,
             'message': 'Payment failure logged.',
@@ -1880,7 +1908,6 @@ def test_real_webhook(request):
         
     from apps.agents.models import Agent, AgentSubscription
     from django.http import HttpResponse
-    from django.urls import reverse
     
     # Get most recent pending subscription
     subscription = AgentSubscription.objects.filter(payment_status='pending').order_by('-created_at').first()

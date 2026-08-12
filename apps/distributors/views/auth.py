@@ -47,10 +47,19 @@ def distributor_login(request):
                 if is_valid:
                     # Authentication successful! 
                     # Sync with Django's auth system so sessions/decorators work seamlessly.
+                    name_parts = laravel_user.fullname.strip().split(' ', 1)
+                    first_name = name_parts[0]
+                    last_name = name_parts[1] if len(name_parts) > 1 else ''
+
                     django_user, created = DjangoUser.objects.get_or_create(
                         username=email, 
-                        defaults={'email': email, 'first_name': laravel_user.fullname}
+                        defaults={'email': email, 'first_name': first_name, 'last_name': last_name}
                     )
+                    if not created:
+                        # Sync name on every login
+                        django_user.first_name = first_name
+                        django_user.last_name = last_name
+                        django_user.save(update_fields=['first_name', 'last_name'])
                     
                     dist_group, _ = Group.objects.get_or_create(name='distributor')
                     django_user.groups.add(dist_group)

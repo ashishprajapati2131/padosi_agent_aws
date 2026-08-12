@@ -53,7 +53,9 @@ def referral_join(request, ref_code):
             request.session['ref_code'] = code_upper
 
     # Redirect to agent registration with query params matching Laravel
-    return redirect(f'/?ref={code_upper}&show_trial=1')
+    from django.urls import reverse
+    url = reverse('agents:agent_registration') + f"?ref={code_upper}&show_trial=1"
+    return redirect(url)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

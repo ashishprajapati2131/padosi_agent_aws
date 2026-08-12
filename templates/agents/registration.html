@@ -334,19 +334,19 @@ platform.{% endblock %}
 
                 <div class="form-group mb-4">
                     <a href="javascript:void(0)" id="togglePromoBtn"
-                        style="color: #273C8E; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-size: 15px;">
+                        style="color: #273C8E; font-weight: 600; text-decoration: none; display: {% if prefilledPromo %}none{% else %}inline-flex{% endif %}; align-items: center; gap: 8px; font-size: 15px;">
                         <i class="fas fa-tag"></i> I Have a promo code
                     </a>
-                    <div id="promoFieldContainer" style="display: none; margin-top: 15px;">
+                    <div id="promoFieldContainer" style="display: {% if prefilledPromo %}block{% else %}none{% endif %}; margin-top: 15px;">
                         <div class="d-flex gap-2">
                             <input type="text" id="promoCodeInput" class="form-control-input"
-                                placeholder="Enter promo code">
+                                placeholder="Enter promo code" value="{{ prefilledPromo|default:'' }}">
                             <button type="button" id="verifyPromoBtn" class="btn-verify"
                                 onclick="verifyPromoCode()">Verify</button>
                         </div>
                         <div id="promoMessage" class="mt-2" style="font-weight: 500; font-size: 13px;"></div>
                     </div>
-                    <input type="hidden" name="promo_code" id="appliedPromoCode">
+                    <input type="hidden" name="promo_code" id="appliedPromoCode" value="{{ prefilledPromo|default:'' }}">
                 </div>
 
                 <button type="submit" id="mainSubmitBtn" class="btn-submit">Continue to Plans</button>
@@ -515,5 +515,11 @@ platform.{% endblock %}
             submitBtn.textContent = 'Continue to Plans';
         }
     });
+    
+    {% if prefilledPromo %}
+    document.addEventListener('DOMContentLoaded', function() {
+        verifyPromoCode();
+    });
+    {% endif %}
 </script>
 {% endblock %}

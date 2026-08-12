@@ -5,16 +5,14 @@
 {% block content %}
 <!-- Welcome Banner -->
 <div class="mb-4">
-    <h4 class="fw-bold mb-2">👋 Welcome back, {{ request.user.first_name }}!</h4>
+    <h4 class="fw-bold mb-2">👋 Welcome back, {{ distributorFirstName }}!</h4>
     <div class="text-muted small mb-3">
         Your referral code: <span class="fw-bold text-success">{{ referralCode.code }}</span> — share the registration link: 
         <a href="{% url 'agents:referral_join' referralCode.code %}" target="_blank" style="color: #db2777; text-decoration: none;" id="refLinkText">{{ referralUrl }}</a>
         <button class="btn btn-sm btn-link text-muted p-0 ms-1" onclick="copyRefCode()" title="Copy Link"><i class="fa-solid fa-copy"></i></button>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'distributors:agents_create'  %}" class="btn btn-primary shadow-sm" style="background: #10b981; border: none; border-radius: 6px;">
-            <i class="fa-solid fa-user-plus me-2"></i> Register New Agent
-        </a>
+
         <a href="{% url 'distributors:agents_index'  %}" class="btn shadow-sm" style="background: #115e59; color: white; border: none; border-radius: 6px;">
             <i class="fa-solid fa-users me-2"></i> View All Agents
         </a>

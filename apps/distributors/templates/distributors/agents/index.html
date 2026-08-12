@@ -89,7 +89,14 @@
                         {% elif agent.status == 'pending_approval' %}
                             <span class="badge" style="background: #fef3c7; color: #b45309; border-radius: 6px;">Pending</span>
                         {% else %}
-                            <span class="badge bg-secondary rounded-2">{{ agent.status|title }}</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-secondary rounded-2">{{ agent.status|title }}</span>
+                                {% if agent.status == 'pending_payment' or agent.status == 'incomplete' %}
+                                    <a href="{% url 'distributors:agents_resume_payment' agent.id %}" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px;" title="Resume Payment">
+                                        <i class="fa-solid fa-credit-card"></i> Pay
+                                    </a>
+                                {% endif %}
+                            </div>
                         {% endif %}
                     </td>
                     <td class="py-3">
