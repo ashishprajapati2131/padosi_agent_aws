@@ -734,10 +734,31 @@ def edit_profile(request):
     from apps.agents.models import InvestmentType
     investment_types = InvestmentType.objects.filter(is_active=True)
 
+    logged_in_admin = None
+    is_super_admin = False
+    admin_permissions = []
+
+    if is_admin_view:
+        if admin_session_id:
+            from apps.admin_panel.models.admin_auth import Admin
+            logged_in_admin = Admin.objects.filter(id=admin_session_id).first()
+            if logged_in_admin:
+                is_super_admin = (logged_in_admin.role == 'super')
+                admin_permissions = logged_in_admin.permissions.values_list('name', flat=True) if logged_in_admin.role == 'manager' else []
+        elif request.user.is_staff:
+            is_super_admin = request.user.is_superuser
+            class MockAdmin:
+                name = request.user.get_full_name() or request.user.username
+                role = 'super' if request.user.is_superuser else 'manager'
+            logged_in_admin = MockAdmin()
+
     context = {
         'agent': agent,
         'profile': profile,
         'isAdminView': is_admin_view,
+        'logged_in_admin': logged_in_admin,
+        'is_super_admin': is_super_admin,
+        'admin_permissions': admin_permissions,
         'base_template': 'admin/base.html' if is_admin_view else 'base.html',
         'main_cities': main_cities,
         'agent_cities': agent_cities,
