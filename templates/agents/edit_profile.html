@@ -1384,8 +1384,8 @@ Overview
 
                             <!-- Timeline List -->
                             <div class="timeline-container px-2" id="timeline-list">
-                                {% if agent.careerTimelines.all %}
-                                {% for timeline in agent.careerTimelines.all %}
+                                {% if agent.sorted_career_timelines %}
+                                {% for timeline in agent.sorted_career_timelines %}
                                 <div class="timeline-item-row mb-3 p-3 bg-white border rounded shadow-sm position-relative"
                                     id="timeline-row-{{ forloop.counter0 }}">
                                     <button type="button"
@@ -3535,7 +3535,37 @@ Overview
     }
 
     // Career Timeline Logic
-    let timelineIndex = {{ agent.careerTimelines.all.count|default:0 }};
+    let timelineIndex = {{ agent.sorted_career_timelines|length|default:0 }};
+
+    window.sortTimeline = function () {
+        const months = {
+            'January': 1, 'February': 2, 'March': 3, 'April': 4,
+            'May': 5, 'June': 6, 'July': 7, 'August': 8,
+            'September': 9, 'October': 10, 'November': 11, 'December': 12
+        };
+
+        const $list = $('#timeline-list');
+        const $rows = $list.children('.timeline-item-row').detach();
+
+        $rows.sort(function (a, b) {
+            const yearA = parseInt($(a).find('input[name$="[year]"]').val()) || 0;
+            const yearB = parseInt($(b).find('input[name$="[year]"]').val()) || 0;
+            
+            if (yearA !== yearB) {
+                return yearA - yearB;
+            }
+
+            const monthStrA = $(a).find('input[name$="[month]"]').val();
+            const monthStrB = $(b).find('input[name$="[month]"]').val();
+            
+            const monthA = months[monthStrA] || 0;
+            const monthB = months[monthStrB] || 0;
+
+            return monthA - monthB;
+        });
+
+        $list.append($rows);
+    };
 
     jQuery(document).ready(function ($) {
         if (typeof window.sortTimeline === 'function') {
@@ -3744,35 +3774,7 @@ Overview
             $newItem.slideDown();
         };
 
-        window.sortTimeline = function () {
-            const months = {
-                'January': 1, 'February': 2, 'March': 3, 'April': 4,
-                'May': 5, 'June': 6, 'July': 7, 'August': 8,
-                'September': 9, 'October': 10, 'November': 11, 'December': 12
-            };
-
-            const $list = $('#timeline-list');
-            const $rows = $list.children('.timeline-item-row').detach();
-
-            $rows.sort(function (a, b) {
-                const yearA = parseInt($(a).find('input[name$="[year]"]').val()) || 0;
-                const yearB = parseInt($(b).find('input[name$="[year]"]').val()) || 0;
-                
-                if (yearA !== yearB) {
-                    return yearA - yearB;
-                }
-
-                const monthStrA = $(a).find('input[name$="[month]"]').val();
-                const monthStrB = $(b).find('input[name$="[month]"]').val();
-                
-                const monthA = months[monthStrA] || 0;
-                const monthB = months[monthStrB] || 0;
-
-                return monthA - monthB;
-            });
-
-            $list.append($rows);
-        };
+        // window.sortTimeline moved to top level
 
         // Number to Words (Indian System)
         window.numToWordsIndian = function (number) {

@@ -139,6 +139,17 @@ class InvoiceService:
         font_path = os.path.abspath(os.path.join(base_dir, "..", "static", "fonts", "DejaVuSans.ttf")).replace('\\', '/')
         font_path_bold = os.path.abspath(os.path.join(base_dir, "..", "static", "fonts", "DejaVuSans-Bold.ttf")).replace('\\', '/')
         
+        # Ensure GST amounts are dynamically available on the invoice for the Jinja template
+        half_gst = round(float(invoice.gst_amount or 0) / 2, 2)
+        if not is_gujarat:
+            invoice.gst_amount_igst = float(invoice.gst_amount or 0)
+            invoice.gst_amount_cgst = 0.0
+            invoice.gst_amount_sgst = 0.0
+        else:
+            invoice.gst_amount_igst = 0.0
+            invoice.gst_amount_cgst = half_gst
+            invoice.gst_amount_sgst = half_gst
+        
         rendered_html = template.render(
             invoice=invoice,
             invoice_date=invoice_date_str,

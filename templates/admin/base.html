@@ -1045,8 +1045,7 @@
                 <!-- Admin Avatar -->
                 <div style="display:flex;align-items:center;gap:10px;">
                     <div style="text-align:right;line-height:1;" class="d-none d-md-block">
-                        <div style="font-weight:600;font-size:14px;color:var(--text-primary);">{{
-                            logged_in_admin.name|default:"Administrator" }}</div>
+                        <div style="font-weight:600;font-size:14px;color:var(--text-primary);">{{ logged_in_admin.name|default:"Administrator" }}</div>
                         <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
                             {% if is_super_admin %}Super Admin{% else %}Staff Admin{% endif %}
                         </div>
