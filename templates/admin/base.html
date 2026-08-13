@@ -800,7 +800,7 @@
             {% endif %}
 
             <!-- Developer & API -->
-            {% if is_super_admin %}
+            {% if is_super_admin or 'fastapi_services' in admin_permissions %}
             <div class="menu-label">Developer &amp; API</div>
 
             <a href="/api/docs" target="_blank" class="menu-item {% if '/api/' in request.path %}active{% endif %}">
@@ -836,7 +836,7 @@
             {% endif %}
 
             <!-- System -->
-            {% if is_super_admin or 'site_settings' in admin_permissions or 'email_templates' in admin_permissions %}
+            {% if is_super_admin or 'site_settings' in admin_permissions or 'email_templates' in admin_permissions or 'server_health' in admin_permissions or 'logs' in admin_permissions or 'api_logs' in admin_permissions or 'backups' in admin_permissions %}
             <div class="menu-label">System</div>
 
             <a href="/admin/settings/general/"
@@ -862,25 +862,33 @@
             {% endif %}
             {% endif %}
 
+            {% if is_super_admin or 'server_health' in admin_permissions %}
             <a href="{% url 'admin_system_health' %}"
                 class="menu-item {% if '/admin/system/health/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-server"></i> Server Health
             </a>
+            {% endif %}
 
+            {% if is_super_admin or 'logs' in admin_permissions %}
             <a href="{% url 'admin_system_logs' %}"
                 class="menu-item {% if '/admin/system/logs/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-bug"></i> Error Logs
             </a>
+            {% endif %}
 
+            {% if is_super_admin or 'api_logs' in admin_permissions %}
             <a href="{% url 'admin_system_api_logs' %}"
                 class="menu-item {% if '/admin/system/api-logs/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-network-wired"></i> API Logs
             </a>
+            {% endif %}
 
+            {% if is_super_admin or 'backups' in admin_permissions %}
             <a href="{% url 'admin_system_backups' %}"
                 class="menu-item {% if '/admin/system/backups/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-database"></i> Database Backups
             </a>
+            {% endif %}
 
             <div style="margin-top:40px; border-top:1px solid var(--border-light); padding-top:20px;">
                 <a href="/admin/logout/" class="menu-item text-danger">
