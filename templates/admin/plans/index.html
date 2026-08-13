@@ -1,0 +1,134 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}Subscription Plans — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}Subscriptions &rsaquo; Plans{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h5 class="fw-bold mb-1">Subscription Plans</h5>
+        <span class="text-muted" style="font-size: 13px;">Manage subscription plans and their visibility configurations.</span>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'admin_plan_create' %}" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-plus me-1"></i> Add New Plan
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h6 class="m-0 fw-bold">
+                <i class="fa-solid fa-list-ul me-2 text-primary"></i>
+                All Plans
+            </h6>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Plan Name</th>
+                        <th>Actual Price</th>
+                        <th>Discounted Price</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for plan in plans %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold">{{ plan.name }}</div>
+                        </td>
+                        <td>₹{{ plan.actual_price }}</td>
+                        <td>₹{{ plan.discounted_price }}</td>
+                        <td>
+                            {% if plan.is_active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'admin_plan_edit' plan.id %}" class="btn btn-sm btn-light border" style="font-size: 11px;">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                            </a>
+                            <button type="button" class="btn btn-danger btn-sm delete-btn" data-id="{{ plan.id }}" title="Delete" style="padding: 4px 8px;"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-folder-open fa-3x mb-3 opacity-25"></i>
+                            <p class="mb-0">No plans configured yet.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).on('click', '.delete-btn', function(e) {
+    e.preventDefault();
+    
+    const button = $(this);
+    const id = button.data('id');
+    const row = button.closest('tr');
+    
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "This will permanently delete the plan!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+            
+            $.ajax({
+                url: '{% url "admin_plan_delete" %}',
+                type: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                data: {
+                    id: id
+                },
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: response.message,
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                        
+                        row.fadeOut(300, function() {
+                            $(this).remove();
+                        });
+                    } else {
+                        Swal.fire('Error', response.message || 'Failed to delete record', 'error');
+                        button.prop('disabled', false).html('<i class="fas fa-trash"></i>');
+                    }
+                },
+                error: function(xhr) {
+                    Swal.fire('Error', 'Failed to delete record: ' + (xhr.responseJSON?.message || 'Server error'), 'error');
+                    button.prop('disabled', false).html('<i class="fas fa-trash"></i>');
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

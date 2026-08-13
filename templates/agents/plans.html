@@ -491,287 +491,10 @@
             </div>
             {% endif %}
 
-            {# STARTER CARD #}
-            <div class="plan-card starter-theme">
-                {% with st_badge=pricing_config.starter.badge|default:'' %}
-                {% if st_badge %}
-                <div class="recommended-ribbon" style="background:#f59e0b;">{{ st_badge }}</div>
-                {% endif %}
-                {% endwith %}
-                <div class="plan-header">
-                    <div class="plan-name">{{ starter_name }}</div>
-                    <div class="plan-price">
-                        ₹{{ starter_base|floatformat:2 }}/-<span>1st Year Only</span>
-                    </div>
-                    <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
-                        18% GST applicable at checkout</div>
-                    <div class="plan-subtitle">{{ starter_desc }}</div>
-                </div>
-
-                <!-- Categories Checklist -->
-                <div class="plan-features">
-                    <!-- Category 1: Sales Kit -->
-                    <div class="category-block">
-                        <div class="category-header">
-                            <i class="fa-solid fa-briefcase"></i> Sales Kit
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Organic Lead Inquiries</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green"
-                                style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Standard</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Service Lead Inquiries*</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green"
-                                style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Standard</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Referral Lead Inquiries</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                        </div>
-                    </div>
-
-                    <!-- Category 2: Asset & Marketing -->
-                    <div class="category-block">
-                        <div class="category-header">
-                            <i class="fa-solid fa-bullhorn"></i> Asset & Marketing
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Webpage</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Social Media Integration</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Digital Business Card</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Digital Gallery</span>
-                            </div>
-                            <span class="badge-capsule badge-filled-green">5 Images</span>
-                        </div>
-                    </div>
-
-                    <!-- Category 3: Business Support -->
-                    <div class="category-block">
-                        <div class="category-header">
-                            <i class="fa-solid fa-headset"></i> Business Support
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Profile Review & Rating</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Profile Analytics</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green"
-                                style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Basic</span>
-                        </div>
-                        <div class="feature-row">
-                            <div class="feature-name">
-                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                <span>Retention Tools</span>
-                            </div>
-                            <span class="badge-capsule badge-outline-green"
-                                style="border-color: #94a3b8; color: #94a3b8;">Limited Access</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <button onclick="selectPlanForPayment('basic')" class="btn-select-plan starter-btn">
-                        <i class="fa-solid fa-circle-check"></i> Select Starter's Plan
-                    </button>
-                    <div class="footer-note">Special Launch Price</div>
-                </div>
-            </div>
-
-            {# PROFESSIONAL CARD #}
-            <div class="plan-card recommended-theme">
-                {% with prof_badge=pricing_config.professional.badge|default:'RECOMMENDED' %}
-                <div class="recommended-ribbon">{{ prof_badge }}</div>
-                {% endwith %}
-
-                <div class="plan-header">
-                    <div class="plan-name">{{ prof_name }}</div>
-                    <div class="plan-price">
-                        {% if has_prof_promo and prof_final < prof_full %} <span
-                            style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">
-                            ₹{{ prof_full|floatformat:2 }}</span>
-                            ₹{{ prof_base|floatformat:2 }}/-<span>1st Year Only</span>
-                            {% else %}
-                            ₹{{ prof_base|floatformat:2 }}/-<span>1st Year Only</span>
-                            {% endif %}
-                    </div>
-                    {% if has_prof_promo and prof_final < prof_full %} <div style="text-align:center; margin-top:6px;">
-                        <span
-                            style="background:#d1fae5; color:#059669; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #6ee7b7;">
-                            <i class="fa-solid fa-tag me-1"></i> {{ pricing_config.promo_discount_label|default:'Promo Applied' }} — You Save ₹{{ prof_save_amount|floatformat:2 }}
-                        </span>
-                </div>
-                {% endif %}
-                <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+ 18%
-                    GST applicable at checkout</div>
-                <div class="plan-subtitle">{{ prof_desc }}</div>
-            </div>
-
-            <!-- Categories Checklist -->
-            <div class="plan-features">
-                <!-- Category 1: Sales Kit -->
-                <div class="category-block">
-                    <div class="category-header">
-                        <i class="fa-solid fa-briefcase"></i> Sales Kit
-                    </div>
-                    <div class="feature-row">
-                        <div class="feature-name">
-                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                            <span>Organic Lead Inquiries</span>
-                        </div>
-                        <span class="badge-capsule badge-filled-green">Priority</span>
-                    </div>
-                    <div class="feature-row">
-                        <div class="feature-name">
-                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                            <span>Service Lead Inquiries*</span>
-                        </div>
-                        <span class="badge-capsule badge-filled-green">Priority</span>
-                    </div>
-                    <div class="feature-row">
-                        <div class="feature-name">
-                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                            <span>Referral Lead Inquiries</span>
-                        </div>
-                        <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                    </div>
-                </div>
-
-                <!-- Category 2: Asset & Marketing -->
-                <div class="category-block">
-                    <div class="category-header">
-                        <i class="fa-solid fa-bullhorn"></i> Asset & Marketing
-                    </div>
-                    <div class="feature-row">
-                        <div class="feature-name">
-                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                            <span>Webpage</span>
-                        </div>
-                        <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                    </div>
-                    <div class="feature-row">
-                        <div class="feature-name">
-                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                            <span>Social Media Integration</span>
-                        </div>
-                        <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                    </div>
-                    <div class="feature-row">
-                        <div class="feature-name">
-                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                            <span>Digital Business Card</span>
-                        </div>
-                        <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                    </div>
-                    <div class="feature-row">
-                        <div class="feature-name">
-                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                            <span>Digital Gallery</span>
-                        </div>
-                        <span class="badge-capsule badge-filled-green">10 Images</span>
-                    </div>
-                </div>
-
-                <!-- Category 3: Business Support -->
-                <div class="category-block">
-                    <div class="category-header">
-                        <i class="fa-solid fa-headset"></i> Business Support
-                    </div>
-                    <div class="feature-row">
-                        <div class="feature-name">
-                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                            <span>Profile Review & Rating</span>
-                        </div>
-                        <span class="badge-capsule badge-outline-green">Lifetime*</span>
-                    </div>
-                    <div class="feature-row">
-                        <div class="feature-name">
-                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                            <span>Trusted Badge</span>
-                        </div>
-                        <span class="badge-capsule badge-filled-green">Yes</span>
-                    </div>
-                    <div class="feature-row">
-                        <div class="feature-name">
-                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                            <span>Profile Analytics</span>
-                        </div>
-                        <span class="badge-capsule badge-filled-green">Advanced</span>
-                    </div>
-                    <div class="feature-row">
-                        <div class="feature-name">
-                            <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                            <span>Retention Tools</span>
-                        </div>
-                        <span class="badge-capsule badge-filled-green">Full Access</span>
-                    </div>
-                </div>
-
-                <!-- Category 4: Coming Soon -->
-                <div class="coming-soon-panel">
-                    <div class="coming-soon-title">
-                        <i class="fa-solid fa-bolt"></i> More Features Coming Soon
-                    </div>
-                    <div class="coming-soon-item">
-                        <i class="fa-regular fa-folder-closed"></i>
-                        <span>Business Ops Kit</span>
-                    </div>
-                    <div class="coming-soon-item">
-                        <i class="fa-solid fa-cubes"></i>
-                        <span>Cross Sell Products</span>
-                    </div>
-                    <div class="coming-soon-item">
-                        <i class="fa-solid fa-rocket"></i>
-                        <span>Many More...</span>
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <button onclick="selectPlanForPayment('professional')" class="btn-select-plan">
-                    <i class="fa-solid fa-crown"></i> Select Professional's Plan
-                </button>
-                <div class="footer-note">Special Pre-Launch Price</div>
-            </div>
+            {% for plan in dynamic_plans %}
+                {{ plan.parsed_html|safe }}
+            {% endfor %}
         </div>
-
-    </div>
 
     {# Dynamic Merged Secure Checkout UI #}
     <div class="checkout-box" id="selectedPlanSummary" style="display:none;">
@@ -824,17 +547,12 @@
     var isUpgradeFlow = {{ is_upgrade_flow|yesno:"true,false" }};
     var trialBase = {{ trial_base_price }};
     var trialTotal = {{ trial_final }};
+    
+    var dynamicPlansData = {{ dynamic_plans_json|safe }};
+    var selectedPlan = null;
 
-    var selectedPlan = {
-        type: 'professional',
-        name: '{{ prof_name|escapejs }}',
-        price: {{ prof_base }},
-        gst: {{ prof_gst }},
-        total: {{ prof_final }}
-    };
-
-    window.selectPlanForPayment = function (planType) {
-        if (planType === 'free_trial') {
+    window.selectPlanForPayment = function (planId) {
+        if (planId === 'free_trial') {
             selectedPlan = {
                 type: 'free_trial',
                 name: 'Trial Plan ({{ trial_duration }} Days)',
@@ -842,25 +560,23 @@
                 gst: {{ trial_gst }},
                 total: trialTotal
             };
-        } else if (planType === 'basic') {
-            selectedPlan = {
-                type: 'basic',
-                name: '{{ starter_name|escapejs }}',
-                price: {{ starter_base }},
-                gst: {{ starter_gst }},
-                total: {{ starter_final }}
-            };
         } else {
-            selectedPlan = {
-                type: 'professional',
-                name: '{{ prof_name|escapejs }}',
-                price: {{ prof_base }},
-                gst: {{ prof_gst }},
-                total: {{ prof_final }}
-            };
+            // Find in dynamicPlansData
+            var planObj = dynamicPlansData.find(p => p.id === String(planId));
+            if (planObj) {
+                selectedPlan = {
+                    type: planObj.id,
+                    name: planObj.name,
+                    price: planObj.price,
+                    gst: planObj.gst,
+                    total: planObj.total
+                };
+            }
         }
 
-        updateSelectedPlanSummary();
+        if (selectedPlan) {
+            updateSelectedPlanSummary();
+        }
     }
 
     function updateSelectedPlanSummary() {

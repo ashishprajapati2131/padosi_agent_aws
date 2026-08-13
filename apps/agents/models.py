@@ -1351,8 +1351,33 @@ def clear_og_image_on_agent_change(sender, instance, **kwargs):
     cache.delete(f'og_image_agent_card_{instance.id}')
 
 
+class SubscriptionPlan(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    html_code = models.TextField(blank=True, default='')
+    actual_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    discounted_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    
+    # Visibility toggles for agent features
+    show_agent_certificate = models.BooleanField(default=True)
+    show_career_timeline = models.BooleanField(default=True)
+    show_professional_bio = models.BooleanField(default=True)
+    show_social_media = models.BooleanField(default=True)
+    show_new_business_leads = models.BooleanField(default=True)
+    show_portfolio = models.BooleanField(default=True)
+    show_claim_support = models.BooleanField(default=True)
+    show_companies = models.BooleanField(default=True)
+    show_achievement = models.BooleanField(default=True)
+    show_lead_status = models.BooleanField(default=True)
+    show_sales_insights = models.BooleanField(default=True)
+    show_recent_leads = models.BooleanField(default=True)
+    
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-
-
-
-
+    class Meta:
+        db_table = 'subscription_plans'
+        managed = True
+        
+    def __str__(self):
+        return self.name

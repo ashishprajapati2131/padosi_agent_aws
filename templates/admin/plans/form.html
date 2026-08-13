@@ -1,0 +1,239 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}Subscriptions &rsaquo; <a href="{% url 'admin_plans_index' %}">Plans</a> &rsaquo; {{ title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h5 class="fw-bold mb-1">{{ title }}</h5>
+        <span class="text-muted" style="font-size: 13px;">Configure plan details, html display, and agent feature visibility.</span>
+    </div>
+    <div>
+        <a href="{% url 'admin_plans_index' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Plans
+        </a>
+    </div>
+</div>
+
+<form method="POST" action="">
+    {% csrf_token %}
+    <div class="row">
+        <!-- Left Column: Basic Details & HTML Preview -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="m-0 fw-bold">Plan Configuration</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold">Plan Name</label>
+                            <input type="text" name="name" class="form-control" value="{{ plan.name|default:'' }}" required placeholder="e.g. Professional Plan">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end pb-1">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="is_active" id="isActive" {% if not plan or plan.is_active %}checked{% endif %}>
+                                <label class="form-check-label fw-bold ms-2" for="isActive">Plan is Active</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-bold m-0">Plan Display HTML</label>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="toggleHtmlBtn">
+                                <i class="fa-solid fa-eye me-1"></i> View Live Preview
+                            </button>
+                        </div>
+                        
+                        <!-- Editor view -->
+                        <div id="htmlEditorWrapper">
+                            <textarea name="html_code" id="htmlCodeInput" class="form-control font-monospace" rows="12" placeholder="<!-- Enter plan display HTML here -->">{{ plan.html_code|default:'' }}</textarea>
+                            <div class="form-text">This HTML will be rendered in the agent portal's plan selection page. You can use <strong>{{ actual_price }}</strong> and <strong>{{ discounted_price }}</strong> as placeholders which will be automatically replaced with the pricing setup below.</div>
+                        </div>
+                        
+                        <!-- Preview view -->
+                        <div id="htmlPreviewWrapper" class="d-none border rounded p-3 bg-light" style="min-height: 300px;">
+                            <!-- The preview will be injected here via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="m-0 fw-bold">Pricing Setup</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Actual Price (₹)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" name="actual_price" class="form-control" value="{{ plan.actual_price|default:'0.00' }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Discounted Price (₹)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" name="discounted_price" class="form-control" value="{{ plan.discounted_price|default:'0.00' }}" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Visibility Toggles -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="m-0 fw-bold"><i class="fa-solid fa-eye text-primary me-2"></i>Feature Visibility</h6>
+                    <div class="form-text mt-1">If toggled off, a lock icon will be shown to the agent for this section.</div>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <!-- Helper macro-like approach for repetitive toggles -->
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
+                            <span><i class="fa-solid fa-certificate text-muted me-2" style="width:16px;"></i> Agent Certificate</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_agent_certificate" {% if not plan or plan.show_agent_certificate %}checked{% endif %}>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
+                            <span><i class="fa-solid fa-timeline text-muted me-2" style="width:16px;"></i> Career Timeline</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_career_timeline" {% if not plan or plan.show_career_timeline %}checked{% endif %}>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
+                            <span><i class="fa-solid fa-user-tie text-muted me-2" style="width:16px;"></i> Professional Bio</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_professional_bio" {% if not plan or plan.show_professional_bio %}checked{% endif %}>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
+                            <span><i class="fa-brands fa-twitter text-muted me-2" style="width:16px;"></i> Social Media</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_social_media" {% if not plan or plan.show_social_media %}checked{% endif %}>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
+                            <span><i class="fa-solid fa-briefcase text-muted me-2" style="width:16px;"></i> New Business Leads</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_new_business_leads" {% if not plan or plan.show_new_business_leads %}checked{% endif %}>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
+                            <span><i class="fa-solid fa-folder-open text-muted me-2" style="width:16px;"></i> Portfolio</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_portfolio" {% if not plan or plan.show_portfolio %}checked{% endif %}>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
+                            <span><i class="fa-solid fa-handshake-angle text-muted me-2" style="width:16px;"></i> Claim Support</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_claim_support" {% if not plan or plan.show_claim_support %}checked{% endif %}>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
+                            <span><i class="fa-solid fa-building text-muted me-2" style="width:16px;"></i> Companies</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_companies" {% if not plan or plan.show_companies %}checked{% endif %}>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
+                            <span><i class="fa-solid fa-trophy text-muted me-2" style="width:16px;"></i> Achievement</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_achievement" {% if not plan or plan.show_achievement %}checked{% endif %}>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
+                            <span><i class="fa-solid fa-list-check text-muted me-2" style="width:16px;"></i> Lead Status</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_lead_status" {% if not plan or plan.show_lead_status %}checked{% endif %}>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
+                            <span><i class="fa-solid fa-chart-line text-muted me-2" style="width:16px;"></i> Sales Insights</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_sales_insights" {% if not plan or plan.show_sales_insights %}checked{% endif %}>
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2 border-bottom">
+                            <span><i class="fa-solid fa-clock-rotate-left text-muted me-2" style="width:16px;"></i> Recent Leads</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" name="show_recent_leads" {% if not plan or plan.show_recent_leads %}checked{% endif %}>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="fa-solid fa-save me-1"></i> Save Plan Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    let showingPreview = false;
+    const btn = $('#toggleHtmlBtn');
+    const editor = $('#htmlEditorWrapper');
+    const preview = $('#htmlPreviewWrapper');
+    const input = $('#htmlCodeInput');
+    const actualPriceInput = $('input[name="actual_price"]');
+    const discountedPriceInput = $('input[name="discounted_price"]');
+    
+    function updatePreviewContent() {
+        let htmlContent = input.val();
+        const actualPrice = actualPriceInput.val() || '0.00';
+        const discountedPrice = discountedPriceInput.val() || '0.00';
+        
+        // Replace placeholders globally
+        htmlContent = htmlContent.replace(/\{\{\s*actual_price\s*\}\}/g, actualPrice);
+        htmlContent = htmlContent.replace(/\{\{\s*discounted_price\s*\}\}/g, discountedPrice);
+        
+        preview.html(htmlContent);
+    }
+    
+    btn.on('click', function() {
+        showingPreview = !showingPreview;
+        
+        if (showingPreview) {
+            updatePreviewContent();
+            
+            // Switch UI
+            editor.addClass('d-none');
+            preview.removeClass('d-none');
+            btn.html('<i class="fa-solid fa-code me-1"></i> Edit HTML Code');
+            btn.removeClass('btn-outline-primary').addClass('btn-primary');
+        } else {
+            // Switch UI
+            preview.addClass('d-none');
+            editor.removeClass('d-none');
+            btn.html('<i class="fa-solid fa-eye me-1"></i> View Live Preview');
+            btn.removeClass('btn-primary').addClass('btn-outline-primary');
+        }
+    });
+    
+    // Update preview live when prices change
+    actualPriceInput.on('input', function() {
+        if (showingPreview) updatePreviewContent();
+    });
+    
+    discountedPriceInput.on('input', function() {
+        if (showingPreview) updatePreviewContent();
+    });
+});
+</script>
+{% endblock %}

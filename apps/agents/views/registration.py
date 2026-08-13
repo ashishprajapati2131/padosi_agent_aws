@@ -465,9 +465,11 @@ def register_step2(request):
 def chooseplan(request):
     """Render the plan selection page."""
     if request.user.is_authenticated:
-        from apps.agents.models import Agent
+        from apps.agents.models import Agent, SubscriptionPlan
         if Agent.objects.filter(user=request.user).exists() or request.user.is_staff or request.user.is_superuser:
             return redirect('agents:agent_dashboard')
+    else:
+        from apps.agents.models import SubscriptionPlan
 
     draft_id = request.session.get('current_draft_id')
     if not draft_id:
@@ -601,6 +603,36 @@ def chooseplan(request):
         'prof_name': prof_name,
         'prof_desc': prof_desc,
     }
+
+    # Load dynamic Subscription Plans
+    active_plans = SubscriptionPlan.objects.filter(is_active=True).order_by('actual_price')
+    dynamic_plans_data = []
+    
+    for plan in active_plans:
+        # Generate parsed HTML replacing placeholders
+        plan_html = plan.html_code
+        plan_html = plan_html.replace('{{ actual_price }}', str(plan.actual_price))
+        plan_html = plan_html.replace('{{ discounted_price }}', str(plan.discounted_price))
+        plan_html = plan_html.replace('{{ plan_id }}', str(plan.id))
+        plan.parsed_html = plan_html
+        
+        # Calculate Base & GST from the discounted price (which acts as the final total)
+        # Assumes discounted_price is the total price including 18% GST.
+        final_price = float(plan.discounted_price)
+        base_price = round(final_price / 1.18, 0)
+        gst = round(base_price * 0.18, 2)
+        total = round(base_price + gst, 2)
+        
+        dynamic_plans_data.append({
+            'id': str(plan.id),
+            'name': plan.name,
+            'price': base_price,
+            'gst': gst,
+            'total': total
+        })
+    
+    context['dynamic_plans'] = active_plans
+    context['dynamic_plans_json'] = json.dumps(dynamic_plans_data)
 
     return render(request, 'agents/plans.html', context)
 
@@ -964,18 +996,15 @@ def agent_register_complete(request):
             if float(promo_obj.discount_value) > 0:
                 trial_base_price = max(0.0, trial_base_price - promo_obj.calculate_discount(trial_base_price))
         total_amount = trial_base_price + (trial_base_price * 0.18)
-    elif plan_type == 'basic':
-        starter_final = starter_full
-        if not has_free_trial_promo and promo_obj and promo_obj.is_valid('basic'):
-            starter_final = starter_full - promo_obj.calculate_discount(starter_full)
-        starter_base = round(starter_final / 1.18, 0)
-        total_amount = round(starter_base + round(starter_base * 0.18, 2), 2)
     else:
-        prof_final = prof_full
-        if not has_free_trial_promo and promo_obj and promo_obj.is_valid('professional'):
-            prof_final = prof_full - promo_obj.calculate_discount(prof_full)
-        prof_base = round(prof_final / 1.18, 0)
-        total_amount = round(prof_base + round(prof_base * 0.18, 2), 2)
+        from apps.agents.models import SubscriptionPlan
+        try:
+            plan = SubscriptionPlan.objects.get(id=plan_type)
+            final_price = float(plan.discounted_price)
+            base_price = round(final_price / 1.18, 0)
+            total_amount = round(base_price + round(base_price * 0.18, 2), 2)
+        except (SubscriptionPlan.DoesNotExist, ValueError):
+            return JsonResponse({'success': False, 'message': 'Invalid plan selected.'}, status=400)
 
     # Initialize Razorpay Client and create Order
     import razorpay

@@ -689,8 +689,8 @@
                 <i class="fa-solid fa-circle-question"></i> FAQ Manager
             </a>
 
-            <a href="/admin/content/plans/"
-                class="menu-item {% if '/admin/content/plans/' in request.path %}active{% endif %}">
+            <a href="{% url 'admin_plans_index' %}"
+                class="menu-item {% if '/admin/plans/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-tags"></i> Plans &amp; Pricing
             </a>
 

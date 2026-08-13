@@ -159,6 +159,12 @@ from .views.qr_files import (
     qr_files_destroy,
     qr_files_download,
 )
+from .views.plans import (
+    plans_index,
+    plan_create,
+    plan_edit,
+    plan_delete,
+)
 from .views.admins import (
     admins_index,
     admins_create,
@@ -494,6 +500,12 @@ urlpatterns = [
     path("admin/system/health/", health, name="admin_system_health"),
     path("admin/system/clear-cache/", clear_cache, name="admin_system_clear_cache"),
     path("admin/system/logs/", logs, name="admin_system_logs"),
+
+    # Subscription Plans
+    path("admin/plans/", plans_index, name="admin_plans_index"),
+    path("admin/plans/add/", plan_create, name="admin_plan_create"),
+    path("admin/plans/<int:plan_id>/edit/", plan_edit, name="admin_plan_edit"),
+    path("admin/plans/delete/", plan_delete, name="admin_plan_delete"),
     path("admin/system/api-logs/", api_logs, name="admin_system_api_logs"),
     path("admin/system/backups/", backups, name="admin_system_backups"),
     path("admin/system/backups/run/", run_backup, name="admin_system_run_backup"),
