@@ -44,7 +44,12 @@ def get_permissions_list():
         {'key': 'analytics', 'label': 'Analytics, Activity Logs & Threat Intelligence'},
         {'key': 'error_logs', 'label': 'Error Logs'},
         {'key': 'site_settings', 'label': 'Site Settings, SEO & Security Rules'},
-        {'key': 'email_templates', 'label': 'Email & PDF Templates'}
+        {'key': 'email_templates', 'label': 'Email & PDF Templates'},
+        {'key': 'server_health', 'label': 'Server Health'},
+        {'key': 'logs', 'label': 'Logs'},
+        {'key': 'api_logs', 'label': 'API Logs'},
+        {'key': 'backups', 'label': 'Backups'},
+        {'key': 'fastapi_services', 'label': 'FastAPI Services'}
     ]
 
 def admins_index(request):

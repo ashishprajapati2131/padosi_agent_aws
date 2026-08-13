@@ -129,12 +129,15 @@
     <div class="card-body p-4">
         <h6 class="fw-bold mb-3"><i class="fa-solid fa-bolt me-2" style="color: var(--primary);"></i>Quick Actions</h6>
         <div class="d-flex flex-wrap gap-2">
+            {% if is_super_admin or 'approvals' in admin_permissions %}
             <a href="/admin/approvals/" class="btn btn-sm btn-outline-warning">
                 <i class="fa-solid fa-user-clock me-1"></i> Review Approvals
                 {% if pending_agents_count > 0 %}
                     <span class="badge bg-warning text-dark ms-1">{{ pending_agents_count }}</span>
                 {% endif %}
             </a>
+            {% endif %}
+            {% if is_super_admin or 'reviews' in admin_permissions %}
             <a href="/admin/reviews/?status=pending" class="btn btn-sm btn-outline-secondary"
                 style="border-color: #8b5cf6; color: #8b5cf6;">
                 <i class="fa-solid fa-star-half-stroke me-1"></i> Moderate Reviews
@@ -142,21 +145,30 @@
                     <span class="badge ms-1" style="background:#8b5cf6;">{{ pending_reviews }}</span>
                 {% endif %}
             </a>
+            {% endif %}
+            {% if is_super_admin or 'subscriptions' in admin_permissions %}
             <a href="/admin/subscriptions/?filter=expiring_soon" class="btn btn-sm btn-outline-danger">
                 <i class="fa-solid fa-hourglass-half me-1"></i> Expiring Subscriptions
             </a>
+            {% endif %}
+            {% if is_super_admin or 'notifications' in admin_permissions %}
             <a href="/admin/broadcast/" class="btn btn-sm btn-outline-primary">
                 <i class="fa-solid fa-paper-plane me-1"></i> Send Broadcast
             </a>
+            {% endif %}
+            {% if is_super_admin or 'analytics' in admin_permissions %}
             <a href="/admin/advanced/analytics/" class="btn btn-sm btn-outline-success">
                 <i class="fa-solid fa-chart-line me-1"></i> Analytics Report
             </a>
+            {% endif %}
+            {% if is_super_admin or 'contacts' in admin_permissions %}
             <a href="/admin/contacts/?status=pending" class="btn btn-sm btn-outline-info">
                 <i class="fa-solid fa-inbox me-1"></i> Contact Inbox
                 {% if pending_contacts > 0 %}
                     <span class="badge bg-info ms-1">{{ pending_contacts }}</span>
                 {% endif %}
             </a>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -242,6 +254,7 @@
         </div>
     </div>
 </div>
+
 
 <!-- Bottom Row: Top Agents + Recent Leads -->
 <div class="row">

@@ -301,7 +301,11 @@ class AdminPermissionMiddleware:
 
         # 1. DELETE ACTION PROTECTION:
         # Staff admins can never delete records.
-        url_name = request.resolver_match.url_name if request.resolver_match else ''
+        try:
+            from django.urls import resolve
+            url_name = resolve(request.path_info).url_name
+        except Exception:
+            url_name = ''
         is_delete_request = (
             request.method == 'DELETE' or
             'delete' in url_name.lower() or
@@ -556,6 +560,14 @@ class AdminPermissionMiddleware:
             'security_blocked_ips':                     'site_settings',
             'security_block_ip':                        'site_settings',
             'security_unblock_ip':                      'site_settings',
+            # ── System ────────────────────────────────────────────────────
+            'admin_system_health':                      'server_health',
+            'admin_system_logs':                        'logs',
+            'admin_system_api_logs':                    'api_logs',
+            'admin_system_backups':                     'backups',
+            'admin_system_run_backup':                  'backups',
+            'admin_system_download_backup':             'backups',
+            'admin_system_clear_cache':                 'server_health',
         }.get(url_name)
 
     def get_first_allowed_route(self, admin):
@@ -592,6 +604,11 @@ class AdminPermissionMiddleware:
             'error_logs': 'admin_dashboard',
             'site_settings': 'admin_dashboard',
             'email_templates': 'admin_dashboard',
+            'server_health': 'admin_system_health',
+            'logs': 'admin_system_logs',
+            'api_logs': 'admin_system_api_logs',
+            'backups': 'admin_system_backups',
+            'fastapi_services': 'admin_dashboard',
         }
         
         permissions_list = admin.permissions if isinstance(admin.permissions, list) else []
