@@ -25,6 +25,7 @@ def plan_create(request):
             discounted_price = request.POST.get('discounted_price', 0.0)
             is_active = request.POST.get('is_active') == 'on'
             
+            show_profile_section = request.POST.get('show_profile_section') == 'on'
             show_agent_certificate = request.POST.get('show_agent_certificate') == 'on'
             show_career_timeline = request.POST.get('show_career_timeline') == 'on'
             show_professional_bio = request.POST.get('show_professional_bio') == 'on'
@@ -38,12 +39,26 @@ def plan_create(request):
             show_sales_insights = request.POST.get('show_sales_insights') == 'on'
             show_recent_leads = request.POST.get('show_recent_leads') == 'on'
             
+            # New Plan-Based Feature Access Control fields
+            show_performance_stats = request.POST.get('show_performance_stats') == 'on'
+            show_rank_boost_tips = request.POST.get('show_rank_boost_tips') == 'on'
+            show_view_public_profile_btn = request.POST.get('show_view_public_profile_btn') == 'on'
+            show_edit_profile_full = request.POST.get('show_edit_profile_full') == 'on'
+            show_edit_profile_basic = request.POST.get('show_edit_profile_basic') == 'on'
+            show_edit_profile_professional = request.POST.get('show_edit_profile_professional') == 'on'
+            show_edit_profile_portfolio = request.POST.get('show_edit_profile_portfolio') == 'on'
+            show_edit_profile_additional = request.POST.get('show_edit_profile_additional') == 'on'
+            show_review_management = request.POST.get('show_review_management') == 'on'
+            is_listed_in_directory = request.POST.get('is_listed_in_directory') == 'on'
+            premium_priority_support = request.POST.get('premium_priority_support') == 'on'
+            
             plan = SubscriptionPlan.objects.create(
                 name=name,
                 html_code=html_code,
                 actual_price=actual_price,
                 discounted_price=discounted_price,
                 is_active=is_active,
+                show_profile_section=show_profile_section,
                 show_agent_certificate=show_agent_certificate,
                 show_career_timeline=show_career_timeline,
                 show_professional_bio=show_professional_bio,
@@ -55,7 +70,18 @@ def plan_create(request):
                 show_achievement=show_achievement,
                 show_lead_status=show_lead_status,
                 show_sales_insights=show_sales_insights,
-                show_recent_leads=show_recent_leads
+                show_recent_leads=show_recent_leads,
+                show_performance_stats=show_performance_stats,
+                show_rank_boost_tips=show_rank_boost_tips,
+                show_view_public_profile_btn=show_view_public_profile_btn,
+                show_edit_profile_full=show_edit_profile_full,
+                show_edit_profile_basic=show_edit_profile_basic,
+                show_edit_profile_professional=show_edit_profile_professional,
+                show_edit_profile_portfolio=show_edit_profile_portfolio,
+                show_edit_profile_additional=show_edit_profile_additional,
+                show_review_management=show_review_management,
+                is_listed_in_directory=is_listed_in_directory,
+                premium_priority_support=premium_priority_support
             )
             
             AdminActivityLog.log('Create Plan', 'SubscriptionPlan', plan.id, request=request)
@@ -81,6 +107,7 @@ def plan_edit(request, plan_id):
             plan.discounted_price = request.POST.get('discounted_price', 0.0)
             plan.is_active = request.POST.get('is_active') == 'on'
             
+            plan.show_profile_section = request.POST.get('show_profile_section') == 'on'
             plan.show_agent_certificate = request.POST.get('show_agent_certificate') == 'on'
             plan.show_career_timeline = request.POST.get('show_career_timeline') == 'on'
             plan.show_professional_bio = request.POST.get('show_professional_bio') == 'on'
@@ -93,6 +120,19 @@ def plan_edit(request, plan_id):
             plan.show_lead_status = request.POST.get('show_lead_status') == 'on'
             plan.show_sales_insights = request.POST.get('show_sales_insights') == 'on'
             plan.show_recent_leads = request.POST.get('show_recent_leads') == 'on'
+            
+            # New Plan-Based Feature Access Control fields
+            plan.show_performance_stats = request.POST.get('show_performance_stats') == 'on'
+            plan.show_rank_boost_tips = request.POST.get('show_rank_boost_tips') == 'on'
+            plan.show_view_public_profile_btn = request.POST.get('show_view_public_profile_btn') == 'on'
+            plan.show_edit_profile_full = request.POST.get('show_edit_profile_full') == 'on'
+            plan.show_edit_profile_basic = request.POST.get('show_edit_profile_basic') == 'on'
+            plan.show_edit_profile_professional = request.POST.get('show_edit_profile_professional') == 'on'
+            plan.show_edit_profile_portfolio = request.POST.get('show_edit_profile_portfolio') == 'on'
+            plan.show_edit_profile_additional = request.POST.get('show_edit_profile_additional') == 'on'
+            plan.show_review_management = request.POST.get('show_review_management') == 'on'
+            plan.is_listed_in_directory = request.POST.get('is_listed_in_directory') == 'on'
+            plan.premium_priority_support = request.POST.get('premium_priority_support') == 'on'
             
             plan.save()
             

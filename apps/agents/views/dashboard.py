@@ -231,11 +231,24 @@ def agent_dashboard(request):
             
     plan_name = raw_plan.replace('_', ' ').replace('-', ' ').title()
 
+    # Resolve SubscriptionPlan
+    from apps.agents.models import SubscriptionPlan
+    agent_plan = None
+    if agent.plan_type:
+        try:
+            if agent.plan_type.isdigit():
+                agent_plan = SubscriptionPlan.objects.filter(id=agent.plan_type).first()
+            else:
+                agent_plan = SubscriptionPlan.objects.filter(name__iexact=agent.plan_type).first()
+        except Exception:
+            pass
+
     favorite_ids = set(
         FavoriteAgent.objects.filter(user=request.user).values_list('agent_id', flat=True)
     )
 
     context = {
+        'agent_plan': agent_plan,
         'agent': agent,
         'profile': profile,
         'favorite_ids': favorite_ids,
@@ -751,8 +764,21 @@ def edit_profile(request):
                 name = request.user.get_full_name() or request.user.username
                 role = 'super' if request.user.is_superuser else 'manager'
             logged_in_admin = MockAdmin()
+            
+    # Resolve SubscriptionPlan
+    from apps.agents.models import SubscriptionPlan
+    agent_plan = None
+    if agent.plan_type:
+        try:
+            if agent.plan_type.isdigit():
+                agent_plan = SubscriptionPlan.objects.filter(id=agent.plan_type).first()
+            else:
+                agent_plan = SubscriptionPlan.objects.filter(name__iexact=agent.plan_type).first()
+        except Exception:
+            pass
 
     context = {
+        'agent_plan': agent_plan,
         'agent': agent,
         'profile': profile,
         'isAdminView': is_admin_view,
@@ -2331,6 +2357,17 @@ def agent_public_share_profile(request, slug):
         desc_parts.append(f"Serving: {agent.agent_city_display}")
     seo_description = " · ".join(desc_parts) or "Licensed PadosiAgent Insurance & Investment Advisor."
 
+    agent_plan = None
+    if agent.plan_type:
+        from apps.agents.models import SubscriptionPlan
+        try:
+            if str(agent.plan_type).isdigit():
+                agent_plan = SubscriptionPlan.objects.filter(id=agent.plan_type).first()
+            else:
+                agent_plan = SubscriptionPlan.objects.filter(name__iexact=agent.plan_type).first()
+        except Exception:
+            pass
+
     context = {
         'agent': agent,
         'profile': profile,
@@ -2340,6 +2377,7 @@ def agent_public_share_profile(request, slug):
         'agentDisplayName': display_name,
         'agentInitial': agent_initial,
         'seoDescription': seo_description,
+        'agent_plan': agent_plan,
     }
     return render(request, 'agents/profile_share.html', context)
 

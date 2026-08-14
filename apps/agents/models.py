@@ -1358,6 +1358,7 @@ class SubscriptionPlan(models.Model):
     discounted_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     
     # Visibility toggles for agent features
+    show_profile_section = models.BooleanField(default=True)
     show_agent_certificate = models.BooleanField(default=True)
     show_career_timeline = models.BooleanField(default=True)
     show_professional_bio = models.BooleanField(default=True)
@@ -1370,6 +1371,19 @@ class SubscriptionPlan(models.Model):
     show_lead_status = models.BooleanField(default=True)
     show_sales_insights = models.BooleanField(default=True)
     show_recent_leads = models.BooleanField(default=True)
+    
+    # New Plan-Based Feature Access Control fields
+    show_performance_stats = models.BooleanField(default=True)
+    show_rank_boost_tips = models.BooleanField(default=True)
+    show_view_public_profile_btn = models.BooleanField(default=True)
+    show_edit_profile_full = models.BooleanField(default=True)
+    show_edit_profile_basic = models.BooleanField(default=True)
+    show_edit_profile_professional = models.BooleanField(default=True)
+    show_edit_profile_portfolio = models.BooleanField(default=True)
+    show_edit_profile_additional = models.BooleanField(default=True)
+    show_review_management = models.BooleanField(default=True)
+    is_listed_in_directory = models.BooleanField(default=True)
+    premium_priority_support = models.BooleanField(default=True)
     
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

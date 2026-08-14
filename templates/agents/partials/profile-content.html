@@ -474,23 +474,30 @@
         <!-- Career Timeline -->
         <div class="section-card">
             <h2 class="section-title"><i class="far fa-calendar-alt"></i> Career Timeline</h2>
-            <div class="timeline">
-                {% for timeline in agent.sorted_career_timelines %}
-                    <div class="timeline-item">
-                        <i class="{% if timeline.event_type == 'Award' %}fas fa-trophy{% elif timeline.event_type == 'Achievement' %}fas fa-medal{% elif timeline.event_type == 'Certification' %}fas fa-award{% elif timeline.event_type == 'Career Event' %}fas fa-calendar-check{% elif timeline.event_type == 'Experience' %}fas fa-briefcase{% else %}fas fa-circle{% endif %} timeline-custom-icon"></i>
-                        <div class="timeline-year">{{ timeline.month }} {{ timeline.year }}</div>
-                        <div class="timeline-text">{{ timeline.event_text }}</div>
-                    </div>
-                {% empty %}
-                    <div class="text-muted small">No timeline events recorded.</div>
-                {% endfor %}
-            </div>
+            {% if agent_plan.show_career_timeline != False %}
+                <div class="timeline">
+                    {% for timeline in agent.sorted_career_timelines %}
+                        <div class="timeline-item">
+                            <i class="{% if timeline.event_type == 'Award' %}fas fa-trophy{% elif timeline.event_type == 'Achievement' %}fas fa-medal{% elif timeline.event_type == 'Certification' %}fas fa-award{% elif timeline.event_type == 'Career Event' %}fas fa-calendar-check{% elif timeline.event_type == 'Experience' %}fas fa-briefcase{% else %}fas fa-circle{% endif %} timeline-custom-icon"></i>
+                            <div class="timeline-year">{{ timeline.month }} {{ timeline.year }}</div>
+                            <div class="timeline-text">{{ timeline.event_text }}</div>
+                        </div>
+                    {% empty %}
+                        <div class="text-muted small">No timeline events recorded.</div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-lock text-muted mb-2" style="font-size: 24px;"></i>
+                    <p class="text-muted mb-0">Career Timeline is set to private by the administrator.</p>
+                </div>
+            {% endif %}
         </div>
 
         <!-- Certifications -->
         <div class="section-card">
             <h2 class="section-title"><i class="fas fa-award"></i> Certifications & Licenses</h2>
-            {% if profile.show_certificates %}
+            {% if profile.show_certificates and agent_plan.show_agent_certificate != False %}
                 {% if profile.license_number %}
                     <div class="icon-list-item" style="align-items: flex-start; gap: 10px; margin-bottom: 12px;">
                         <i class="fas fa-certificate item-icon" style="color: #0d9488; font-size: 20px;"></i>
@@ -546,7 +553,7 @@
         <!-- Achievements -->
         <div class="section-card">
             <h2 class="section-title"><i class="fas fa-trophy"></i> Achievements</h2>
-            {% if profile.show_achievements %}
+            {% if profile.show_achievements and agent_plan.show_achievement != False %}
                 {% if agent.achievement_entries %}
                     <div class="achievements-row">
                         {% for achievement in agent.achievement_entries %}

@@ -21,7 +21,7 @@
     {% csrf_token %}
     <div class="row">
         <!-- Left Column: Basic Details & HTML Preview -->
-        <div class="col-lg-8">
+        <div class="col-lg-7">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white py-3">
                     <h6 class="m-0 fw-bold">Plan Configuration</h6>
@@ -88,15 +88,135 @@
         </div>
         
         <!-- Right Column: Visibility Toggles -->
-        <div class="col-lg-4">
+        <div class="col-lg-5">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white py-3">
-                    <h6 class="m-0 fw-bold"><i class="fa-solid fa-eye text-primary me-2"></i>Feature Visibility</h6>
-                    <div class="form-text mt-1">If toggled off, a lock icon will be shown to the agent for this section.</div>
+                    <h6 class="m-0 fw-bold"><i class="fa-solid fa-lock text-primary me-2"></i>Plan-Based Feature Access Control</h6>
+                    <div class="form-text mt-1">Select which features are available to agents based on their plan.</div>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="border-0 ps-4 text-muted small fw-bold">FEATURE</th>
+                                <th class="border-0 pe-4 text-end text-muted small fw-bold">ACCESS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="ps-4">Dashboard Performance & Stats</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_performance_stats" {% if not plan or plan.show_performance_stats %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4">Lead Management & Recent Leads</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_recent_leads" {% if not plan or plan.show_recent_leads %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4">Sales Insights Widget</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_sales_insights" {% if not plan or plan.show_sales_insights %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4">Rank Boost Tips Modal</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_rank_boost_tips" {% if not plan or plan.show_rank_boost_tips %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4">View Public Profile Button</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_view_public_profile_btn" {% if not plan or plan.show_view_public_profile_btn %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4">Edit Profile (Full Access)</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_edit_profile_full" {% if not plan or plan.show_edit_profile_full %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4" style="padding-left: 2rem !important; color: #6c757d;">— Edit Profile: Basic Details</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_edit_profile_basic" {% if not plan or plan.show_edit_profile_basic %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4" style="padding-left: 2rem !important; color: #6c757d;">— Edit Profile: Professional</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_edit_profile_professional" {% if not plan or plan.show_edit_profile_professional %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4" style="padding-left: 2rem !important; color: #6c757d;">— Edit Profile: Product Portfolio</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_edit_profile_portfolio" {% if not plan or plan.show_edit_profile_portfolio %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4" style="padding-left: 2rem !important; color: #6c757d;">— Edit Profile: Additional Details</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_edit_profile_additional" {% if not plan or plan.show_edit_profile_additional %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4">Product Portfolio / Services</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_portfolio" {% if not plan or plan.show_portfolio %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4">Gallery / Achievement Photos</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_achievement" {% if not plan or plan.show_achievement %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4">Review Management</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_review_management" {% if not plan or plan.show_review_management %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4">Public Profile Customization</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_profile_section" {% if not plan or plan.show_profile_section %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4">Listed in Find Agents Directory</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="is_listed_in_directory" {% if not plan or plan.is_listed_in_directory %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4">Eligible to Receive New Leads</td>
+                                <td class="pe-4 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="show_new_business_leads" {% if not plan or plan.show_new_business_leads %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4 border-bottom-0">Premium Priority Support</td>
+                                <td class="pe-4 border-bottom-0 text-end">
+                                    <div class="form-check form-switch d-inline-block m-0"><input class="form-check-input" type="checkbox" name="premium_priority_support" {% if not plan or plan.premium_priority_support %}checked{% endif %}></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="m-0 fw-bold"><i class="fa-solid fa-list text-primary me-2"></i>Legacy Options</h6>
+                    <div class="form-text mt-1">Other configuration options.</div>
                 </div>
                 <div class="card-body">
                     <ul class="list-group list-group-flush">
-                        <!-- Helper macro-like approach for repetitive toggles -->
                         <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
                             <span><i class="fa-solid fa-certificate text-muted me-2" style="width:16px;"></i> Agent Certificate</span>
                             <div class="form-check form-switch m-0">
@@ -122,18 +242,6 @@
                             </div>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
-                            <span><i class="fa-solid fa-briefcase text-muted me-2" style="width:16px;"></i> New Business Leads</span>
-                            <div class="form-check form-switch m-0">
-                                <input class="form-check-input" type="checkbox" name="show_new_business_leads" {% if not plan or plan.show_new_business_leads %}checked{% endif %}>
-                            </div>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
-                            <span><i class="fa-solid fa-folder-open text-muted me-2" style="width:16px;"></i> Portfolio</span>
-                            <div class="form-check form-switch m-0">
-                                <input class="form-check-input" type="checkbox" name="show_portfolio" {% if not plan or plan.show_portfolio %}checked{% endif %}>
-                            </div>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
                             <span><i class="fa-solid fa-handshake-angle text-muted me-2" style="width:16px;"></i> Claim Support</span>
                             <div class="form-check form-switch m-0">
                                 <input class="form-check-input" type="checkbox" name="show_claim_support" {% if not plan or plan.show_claim_support %}checked{% endif %}>
@@ -146,27 +254,9 @@
                             </div>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
-                            <span><i class="fa-solid fa-trophy text-muted me-2" style="width:16px;"></i> Achievement</span>
-                            <div class="form-check form-switch m-0">
-                                <input class="form-check-input" type="checkbox" name="show_achievement" {% if not plan or plan.show_achievement %}checked{% endif %}>
-                            </div>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
-                            <span><i class="fa-solid fa-list-check text-muted me-2" style="width:16px;"></i> Lead Status</span>
+                            <span><i class="fa-solid fa-clipboard-check text-muted me-2" style="width:16px;"></i> Lead Status</span>
                             <div class="form-check form-switch m-0">
                                 <input class="form-check-input" type="checkbox" name="show_lead_status" {% if not plan or plan.show_lead_status %}checked{% endif %}>
-                            </div>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2">
-                            <span><i class="fa-solid fa-chart-line text-muted me-2" style="width:16px;"></i> Sales Insights</span>
-                            <div class="form-check form-switch m-0">
-                                <input class="form-check-input" type="checkbox" name="show_sales_insights" {% if not plan or plan.show_sales_insights %}checked{% endif %}>
-                            </div>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0 py-2 border-bottom">
-                            <span><i class="fa-solid fa-clock-rotate-left text-muted me-2" style="width:16px;"></i> Recent Leads</span>
-                            <div class="form-check form-switch m-0">
-                                <input class="form-check-input" type="checkbox" name="show_recent_leads" {% if not plan or plan.show_recent_leads %}checked{% endif %}>
                             </div>
                         </li>
                     </ul>

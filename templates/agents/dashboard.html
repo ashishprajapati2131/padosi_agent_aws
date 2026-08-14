@@ -170,6 +170,7 @@
                     <div class="card premium-dashboard-card h-100">
                         <div class="card-body p-4">
                             <h5 class="card-section-title mb-4">Performance Overview</h5>
+                            <div class="performance-stats-content">
                             
                             <div class="performance-item mb-4">
                                 <div class="d-flex justify-content-between mb-2">
@@ -198,6 +199,7 @@
                             <div class="d-flex justify-content-between stats-item">
                                 <span class="stats-label">Contact Requests</span>
                                 <span class="stats-value">{{ dashboardStats.contactRequests }}</span>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -442,6 +444,10 @@
                     </div>
 
                     <style>
+                        .profile-visibility-content {
+                            position: relative;
+                            min-height: 200px; /* Make sure there's enough height for the lock UI */
+                        }
                         .visibility-row {
                             display: flex;
                             justify-content: space-between;
@@ -479,7 +485,8 @@
 
 
 
-                    <div class="visibility-row">
+                    <div class="profile-visibility-content">
+                        <div class="visibility-row">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <i class="fas fa-briefcase visibility-icon"></i>
                             <div>
@@ -599,7 +606,7 @@
                         </div>
                         <button type="button" class="toggle {% if profile.show_contact_info %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_contact_info', this)"></button>
                     </div>
-
+                    </div>
                 </div>
             </div>
 
@@ -1190,6 +1197,106 @@
                 showPopups();
             }
         }
-    });
+
+    // Handle SubscriptionPlan Feature Locks Dynamically for Dashboard
+    const planPermissions = {
+      recentLeads: {% if not agent_plan or agent_plan.show_recent_leads %}true{% else %}false{% endif %},
+      salesInsights: {% if not agent_plan or agent_plan.show_sales_insights %}true{% else %}false{% endif %},
+      profileSection: {% if not agent_plan or agent_plan.show_profile_section %}true{% else %}false{% endif %},
+      agentCertificate: {% if not agent_plan or agent_plan.show_agent_certificate %}true{% else %}false{% endif %},
+      achievement: {% if not agent_plan or agent_plan.show_achievement %}true{% else %}false{% endif %},
+      careerTimeline: {% if not agent_plan or agent_plan.show_career_timeline %}true{% else %}false{% endif %},
+      professionalBio: {% if not agent_plan or agent_plan.show_professional_bio %}true{% else %}false{% endif %},
+      socialMedia: {% if not agent_plan or agent_plan.show_social_media %}true{% else %}false{% endif %},
+      performanceStats: {% if not agent_plan or agent_plan.show_performance_stats %}true{% else %}false{% endif %},
+      rankBoostTips: {% if not agent_plan or agent_plan.show_rank_boost_tips %}true{% else %}false{% endif %},
+      viewPublicProfileBtn: {% if not agent_plan or agent_plan.show_view_public_profile_btn %}true{% else %}false{% endif %},
+      reviewManagement: {% if not agent_plan or agent_plan.show_review_management %}true{% else %}false{% endif %},
+      leadStatus: {% if not agent_plan or agent_plan.show_lead_status %}true{% else %}false{% endif %}
+    };
+
+    function lockSection($el, sectionName) {
+      if ($el.length === 0) return;
+      
+      let $target = $el;
+      
+      // Attempt to locate a title to keep it visible, but prefer blurring just the card-body if it exists
+      let $body = $el.find('.card-body').length ? $el.find('.card-body').first() : $el;
+      
+      // If we are operating on the full card, let's just wrap everything except the header/title
+      if ($body.find('.locked-content-wrapper').length === 0) {
+          $body.wrapInner('<div class="locked-content-wrapper" style="position:relative; min-height: 150px; flex-grow: 1; display: flex; flex-direction: column;"></div>');
+      }
+      $target = $body.find('.locked-content-wrapper');
+
+      $target.css({
+          'position': 'relative',
+          'pointer-events': 'none',
+          'opacity': '1'
+      });
+      if ($target.find('.locked-plan-overlay').length === 0) {
+        let name = sectionName || "This feature";
+        $target.append(`
+          <div class="locked-plan-overlay" style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:auto; text-align:center; border-radius: 12px;">
+            <i class="fas fa-lock mb-3" style="font-size: 32px; color: #475569;"></i>
+            <p style="font-size: 18px; color: #475569; font-weight: 600; margin: 0; max-width: 80%; line-height: 1.5; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">${name} is set to private by the administrator.</p>
+          </div>
+        `);
+      }
+    }
+
+    if (!planPermissions.recentLeads) {
+      lockSection($('h5:contains("Recent Leads")').closest('.card'), "Recent Leads");
+    }
+    
+    if (!planPermissions.salesInsights) {
+      lockSection($('h5:contains("Sales Insights")').closest('.card'), "Sales Insights");
+    }
+    
+    if (!planPermissions.performanceStats) {
+      lockSection($('h5:contains("Performance Overview")').closest('.card'), "Dashboard Performance");
+      lockSection($('h5:contains("Lead Stats")').closest('.card'), "Lead Stats");
+    }
+    
+    if (!planPermissions.rankBoostTips) {
+      $('button[data-target="#rankingGuideModal"]').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', 'Locked by Admin Plan').html('<i class="fas fa-lock me-2"></i>Locked');
+    }
+    
+    if (!planPermissions.viewPublicProfileBtn) {
+      $('.btn-profile-view').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', 'Locked by Admin Plan').html('<i class="fas fa-lock me-2"></i>Locked');
+    }
+    
+    if (!planPermissions.leadStatus) {
+      $('.lead-status-select').prop('disabled', true).css({'opacity': '0.7', 'cursor': 'not-allowed'}).attr('title', 'Lead Status updates are locked by your Admin Plan');
+    }
+    
+    // Add lock for the profile section visibility card if restricted
+    if (!planPermissions.profileSection) {
+      lockSection($('.profile-visibility-content'), "Profile Section Visibility");
+    }
+    
+    // We can also disable individual toggles if their plan counterparts are disabled
+    if (planPermissions.profileSection) {
+        if (!planPermissions.agentCertificate) lockToggleRow('Certifications');
+        if (!planPermissions.achievement) lockToggleRow('Achievements');
+        if (!planPermissions.careerTimeline) lockToggleRow('Experience');
+        if (!planPermissions.professionalBio) lockToggleRow('Professional Bio');
+        if (!planPermissions.socialMedia) lockToggleRow('Social Media Buttons');
+        if (!planPermissions.reviewManagement) lockToggleRow('Comments & Reviews');
+    }
+    
+    function lockToggleRow(title) {
+        let $row = $('.visibility-title:contains("' + title + '")').closest('.visibility-row');
+        if ($row.length > 0) {
+            $row.css({'opacity': '0.5', 'pointer-events': 'none', 'background': '#f8fafc'});
+            let $btn = $row.find('button.toggle');
+            if ($btn.hasClass('on')) {
+                $btn.removeClass('on').addClass('off');
+            }
+            $row.append('<div class="small text-danger mt-1" style="width: 100%;"><i class="fas fa-lock text-muted mr-1"></i> Disabled by Admin Plan</div>');
+        }
+    }
+  });
 </script>
+
 {% endblock %}
