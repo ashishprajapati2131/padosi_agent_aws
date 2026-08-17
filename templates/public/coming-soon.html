@@ -3557,7 +3557,7 @@ async function handlePayment() {
                     "currency": data.currency || "INR",
                     "name": "Padosi Agent Registration",
                     "description": "Agent Registration Fee",
-                    "image": "{% static 'images/logo.png' %}", // Make sure you have a logo
+                    "image": "https://aciaindia.org/static/img/logo.webp", // Make sure you have a logo
                     "order_id": data.order_id,
                     "handler": function (response) {
                         console.log('Payment successful:', response);
