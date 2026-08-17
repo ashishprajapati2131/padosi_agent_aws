@@ -616,10 +616,8 @@ def chooseplan(request):
         plan_html = plan_html.replace('{{ plan_id }}', str(plan.id))
         plan.parsed_html = plan_html
         
-        # Calculate Base & GST from the discounted price (which acts as the final total)
-        # Assumes discounted_price is the total price including 18% GST.
-        final_price = float(plan.discounted_price)
-        base_price = round(final_price / 1.18, 0)
+        # Calculate Base & GST from the discounted price (exclusive of GST)
+        base_price = float(plan.discounted_price)
         gst = round(base_price * 0.18, 2)
         total = round(base_price + gst, 2)
         
@@ -1000,8 +998,7 @@ def agent_register_complete(request):
         from apps.agents.models import SubscriptionPlan
         try:
             plan = SubscriptionPlan.objects.get(id=plan_type)
-            final_price = float(plan.discounted_price)
-            base_price = round(final_price / 1.18, 0)
+            base_price = float(plan.discounted_price)
             total_amount = round(base_price + round(base_price * 0.18, 2), 2)
         except (SubscriptionPlan.DoesNotExist, ValueError):
             return JsonResponse({'success': False, 'message': 'Invalid plan selected.'}, status=400)
