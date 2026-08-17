@@ -47,7 +47,7 @@ class ThreatMonitorMiddleware:
         except Exception:
             pass
         
-        safe_html_fields = ['file_content', 'content', 'html_content', 'template', 'email_body', 'email_header']
+        safe_html_fields = ['file_content', 'content', 'html_content', 'template', 'email_body', 'email_header', 'html_code']
         
         # Collect request input fields
         payload_dict = {}
