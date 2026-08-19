@@ -486,7 +486,7 @@ def referral(request):
     return render(request, 'agents/referral.html', context)
 
 
-def agent_public_profile(request, slug):
+def agent_public_profile(request, slug, state_code=None):
     from django.http import Http404
     from django.conf import settings
     from apps.agents.models import Agent, AgentProfileView, AgentReview
@@ -565,9 +565,22 @@ def agent_public_profile(request, slug):
             except ValueError:
                 pass
                 
+    # Resolve agent_plan for public profile
+    agent_plan = None
+    if agent.plan_type:
+        from apps.agents.models import SubscriptionPlan
+        try:
+            if str(agent.plan_type).isdigit():
+                agent_plan = SubscriptionPlan.objects.filter(id=agent.plan_type).first()
+            else:
+                agent_plan = SubscriptionPlan.objects.filter(name__iexact=agent.plan_type).first()
+        except Exception:
+            pass
+
     context = {
         'agent': agent,
         'profile': profile,
+        'agent_plan': agent_plan,
         'isOwnerView': is_owner,
         'reviews': reviews,
         'existingReview': existing_review,
@@ -584,7 +597,7 @@ def agent_public_profile(request, slug):
 from django.views.decorators.http import require_POST
 
 @require_POST
-def store_review(request, slug):
+def store_review(request, slug, state_code=None):
     from django.http import JsonResponse
     from apps.agents.models import Agent, AgentReview
     import re
@@ -1437,6 +1450,10 @@ def update_profile(request):
                 if not is_admin_edit:
                     agent.status = 'pending_approval'
                     agent.save()
+                    
+            # Clear OG image cache so changes (like WhatsApp, Photo, Name) reflect immediately
+            from django.core.cache import cache
+            cache.delete(f'og_image_agent_card_{agent.id}')
                     
             return JsonResponse({
                 'status': 'success',

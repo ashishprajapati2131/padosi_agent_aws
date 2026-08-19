@@ -312,8 +312,73 @@ def plans(request):
     pricing.setdefault('professional', _DEFAULT_PRICING['professional'])
     pricing.setdefault('promo_discount_label', _DEFAULT_PRICING['promo_discount_label'])
     pricing.setdefault('standard_label', _DEFAULT_PRICING['standard_label'])
+    
+    exclusive_config = SiteSetting.get_value('exclusive_plan_config', {
+        'is_active': False,
+        'name': 'Exclusive Partner Plan',
+        'base_price': 8258,
+        'discounted_price': 1000,
+        'scratch_threshold_percent': 40,
+        'gift_title': 'Surprise! Special Plan Unlocked!',
+        'gift_subtitle': 'Follow our social handles to reveal your secret discounted price.',
+        'discount_rule': 'ALL_LINKS',
+        'required_follow_count': 1,
+        'emoji_main': '🎁',
+        'emoji_top_left': '🎊',
+        'emoji_top_right': '✨',
+        'emoji_bottom_left': '🎉',
+        'title_prefix': 'Surprise!',
+        'title_main': 'Exclusive Plan',
+        'title_suffix': 'Unlocked!',
+        'old_price': 1999,
+        'total_seats': 1000,
+        'base_claimed_seats': 964,
+        'urgency_line_1': '🔥 Hurry! Offer valid only for the first {total_seats} users!',
+        'urgency_line_2': '🔥 <span style="color: #ef4444;">{claimed_seats}/{total_seats}</span> Claimed – <span style="color: #ef4444;">Only {spots_left} Spots Left!</span>',
+        'before_discount_val': '85%',
+        'after_discount_val': '95%',
+        'discount_text_label': 'OFF',
+        'extra_discount_msg': 'Extra Follower Discount Applied!',
+        'features_header': "What You'll Get",
+        'social_header': 'Follow on',
+        'checkout_btn_text': 'Claim Offer',
+        'social_links': [],
+        'premium_features': [],
+    })
 
-    return render(request, 'admin/content/plans.html', {'pricing': pricing})
+    plan_features_config = SiteSetting.get_value('plan_features_config', {
+        'free_trial': ['dashboard_stats', 'edit_profile'],
+        'starter': ['dashboard_stats', 'edit_profile', 'lead_management'],
+        'professional': ['dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights', 'manage_portfolio', 'upload_achievements', 'view_reviews', 'public_profile'],
+        'exclusive': ['dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights']
+    })
+
+    available_features = [
+        ('dashboard_stats', 'Dashboard Performance & Stats'),
+        ('lead_management', 'Lead Management & Recent Leads'),
+        ('sales_insights', 'Sales Insights Widget'),
+        ('rank_boost_tips', 'Rank Boost Tips Modal'),
+        ('view_public_profile', 'View Public Profile Button'),
+        ('edit_profile', 'Edit Profile (Full Access)'),
+        ('edit_profile_basic', '— Edit Profile: Basic Details'),
+        ('edit_profile_professional', '— Edit Profile: Professional'),
+        ('edit_profile_portfolio', '— Edit Profile: Product Portfolio'),
+        ('edit_profile_additional', '— Edit Profile: Additional Details'),
+        ('manage_portfolio', 'Product Portfolio / Services'),
+        ('upload_achievements', 'Gallery / Achievement Photos'),
+        ('view_reviews', 'Review Management'),
+        ('public_profile', 'Public Profile Customization'),
+        ('agent_directory_visibility', 'Listed in Find Agents Directory'),
+        ('receive_leads', 'Eligible to Receive New Leads'),
+        ('premium_support', 'Premium Priority Support'),
+    ]
+
+    return render(request, 'admin/content/plans.html', {
+        'pricing': pricing,
+        'exclusive_config': exclusive_config,
+        'features_config': plan_features_config,
+        'available_features': available_features,
+    })
 
 
 def update_plans(request):
@@ -346,4 +411,117 @@ def update_plans(request):
         AdminActivityLog.log('Updated agent pricing plans', 'SiteSetting', request=request)
         messages.success(request, 'Pricing configuration updated successfully.')
 
+    return redirect('admin_content_plans')
+
+
+def update_exclusive_config(request):
+    """Save exclusive plan config."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect('admin_login')
+    
+    if request.method == 'POST':
+        # Parse dynamic social links
+        social_platforms = request.POST.getlist('social_platform[]')
+        social_urls = request.POST.getlist('social_url[]')
+        social_icons = request.POST.getlist('social_icon[]')
+        social_links = []
+        for i in range(len(social_platforms)):
+            social_links.append({
+                'platform': social_platforms[i],
+                'url': social_urls[i] if i < len(social_urls) else '',
+                'icon': social_icons[i] if i < len(social_icons) else '',
+            })
+            
+        # Parse dynamic premium features
+        pf_names = request.POST.getlist('pf_name[]')
+        pf_icons = request.POST.getlist('pf_icon[]')
+        pf_colors = request.POST.getlist('pf_color[]')
+        pf_bg_colors = request.POST.getlist('pf_bg_color[]')
+        premium_features = []
+        for i in range(len(pf_names)):
+            premium_features.append({
+                'name': pf_names[i],
+                'icon': pf_icons[i] if i < len(pf_icons) else '',
+                'color': pf_colors[i] if i < len(pf_colors) else '#000000',
+                'bg_color': pf_bg_colors[i] if i < len(pf_bg_colors) else '#ffffff',
+            })
+
+        config = {
+            'is_active': request.POST.get('exc_is_active') == 'on',
+            'name': request.POST.get('exclusive_name', 'Exclusive Plan'),
+            'base_price': int(request.POST.get('exclusive_base_price', 199) or 199),
+            'discounted_price': int(request.POST.get('exclusive_discounted_price', 99) or 99),
+            'scratch_threshold_percent': int(request.POST.get('scratch_threshold_percent', 40) or 40),
+            'gift_title': request.POST.get('gift_title', 'Surprise! Special Plan Unlocked!'),
+            'gift_subtitle': request.POST.get('gift_subtitle', 'Follow our social handles to reveal your secret discounted price.'),
+            'discount_rule': request.POST.get('discount_rule', 'ALL_LINKS'),
+            'required_follow_count': int(request.POST.get('required_follow_count', 1) or 1),
+            'emoji_main': request.POST.get('emoji_main', '🎁'),
+            'emoji_top_left': request.POST.get('emoji_top_left', '🎊'),
+            'emoji_top_right': request.POST.get('emoji_top_right', '✨'),
+            'emoji_bottom_left': request.POST.get('emoji_bottom_left', '🎉'),
+            'title_prefix': request.POST.get('title_prefix', 'Surprise!'),
+            'title_main': request.POST.get('title_main', 'Exclusive Plan'),
+            'title_suffix': request.POST.get('title_suffix', 'Unlocked!'),
+            'old_price': int(request.POST.get('old_price', 1999) or 1999),
+            'total_seats': int(request.POST.get('total_seats', 1000) or 1000),
+            'base_claimed_seats': int(request.POST.get('base_claimed_seats', 964) or 964),
+            'urgency_line_1': request.POST.get('urgency_line_1', '🔥 Hurry! Offer valid only for the first {total_seats} users!'),
+            'urgency_line_2': request.POST.get('urgency_line_2', '🔥 <span style="color: #ef4444;">{claimed_seats}/{total_seats}</span> Claimed – <span style="color: #ef4444;">Only {spots_left} Spots Left!</span>'),
+            'before_discount_val': request.POST.get('before_discount_val', '85%'),
+            'after_discount_val': request.POST.get('after_discount_val', '95%'),
+            'discount_text_label': request.POST.get('discount_text_label', 'OFF'),
+            'extra_discount_msg': request.POST.get('extra_discount_msg', 'Extra Follower Discount Applied!'),
+            'features_header': request.POST.get('features_header', 'What You\'ll Get'),
+            'social_header': request.POST.get('social_header', 'Follow on'),
+            'checkout_btn_text': request.POST.get('checkout_btn_text', 'BUY'),
+            
+            # Advanced Text & Badge Labels
+            'plan_badge': request.POST.get('plan_badge', '👑'),
+            'badge_text': request.POST.get('badge_text', 'Top Pick!'),
+            'ribbon_text': request.POST.get('ribbon_text', 'Exclusive Deal'),
+            'ribbon_color': request.POST.get('ribbon_color', '#8A2BE2'),
+            'price_suffix': request.POST.get('price_suffix', '/mo'),
+            'total_value_amount': request.POST.get('total_value_amount', 15000),
+            'savings_text': request.POST.get('savings_text', '🔥 Save 80% with this super exclusive secret deal!'),
+            'old_price_tooltip': request.POST.get('old_price_tooltip', 'Actual market value of all these premium services combined.'),
+            'strikeout_price': request.POST.get('strikeout_price', 15000),
+            'discount_amount_label': request.POST.get('discount_amount_label', '14801'),
+            
+            # Action Button Setup
+            'locked_btn_text': request.POST.get('locked_btn_text', 'LOCKED'),
+            'locked_reason_text': request.POST.get('locked_reason_text', 'Follow Social Media to Unlock'),
+            
+            # Locked Screen Instructions
+            'locked_heading': request.POST.get('locked_heading', 'Please Follow Us First'),
+            'locked_desc': request.POST.get('locked_desc', 'Please Follow'),
+            
+            'social_links': social_links,
+            'premium_features': premium_features,
+        }
+        SiteSetting.set_value('exclusive_plan_config', config, 'pricing')
+        AdminActivityLog.log('Updated exclusive gamified plan', 'SiteSetting', request=request)
+        messages.success(request, 'Exclusive Gamified Plan updated successfully.')
+        
+    return redirect('admin_content_plans')
+
+
+def update_plan_features(request):
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect('admin_login')
+
+    if request.method == 'POST':
+        config = {
+            'free_trial': request.POST.getlist('features_free_trial[]'),
+            'starter': request.POST.getlist('features_starter[]'),
+            'professional': request.POST.getlist('features_professional[]'),
+            'exclusive': request.POST.getlist('features_exclusive[]'),
+        }
+        
+        SiteSetting.set_value('plan_features_config', config, 'pricing')
+        AdminActivityLog.log('Update plan feature access config', 'SiteSetting', request=request)
+        messages.success(request, 'Plan Feature Permissions updated successfully.')
+        
     return redirect('admin_content_plans')

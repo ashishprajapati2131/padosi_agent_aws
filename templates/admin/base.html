@@ -602,6 +602,11 @@
             {% if is_super_admin or 'subscriptions' in admin_permissions %}
             <div class="menu-label">Subscriptions</div>
 
+            <a href="{% url 'admin_plans_index' %}"
+                class="menu-item {% if '/admin/plans/' in request.path and 'content' not in request.path %}active{% endif %}">
+                <i class="fa-solid fa-list-check"></i> Subscription Plans
+            </a>
+
             <a href="/admin/subscriptions/"
                 class="menu-item {% if '/admin/subscriptions/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-shield-halved"></i> Renewal Tracker
@@ -689,8 +694,8 @@
                 <i class="fa-solid fa-circle-question"></i> FAQ Manager
             </a>
 
-            <a href="{% url 'admin_plans_index' %}"
-                class="menu-item {% if '/admin/plans/' in request.path %}active{% endif %}">
+            <a href="{% url 'admin_content_plans' %}"
+                class="menu-item {% if '/admin/content/plans/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-tags"></i> Plans &amp; Pricing
             </a>
 

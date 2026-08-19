@@ -4829,25 +4829,41 @@ Overview
 
     if (!planPermissions.editProfileFull) {
         $('.nav-link').addClass('disabled').css('pointer-events', 'none');
-    }
+        $('.steps-header').hide();
+        
+        let $card = $('.edit-profile-card');
+        $card.addClass('locked-plan-section').css({
+            'position': 'relative',
+            'pointer-events': 'none',
+            'opacity': '1'
+        });
+        
+        if ($card.find('.locked-plan-overlay').length === 0) {
+            $card.append(`
+              <div class="locked-plan-overlay" style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:auto; text-align:center; border-radius: 8px;">
+                <i class="fas fa-lock mb-3" style="font-size: 32px; color: #475569;"></i>
+                <p style="font-size: 18px; color: #475569; font-weight: 600; margin: 0; max-width: 80%; line-height: 1.5; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">Edit Profile is set to private by the administrator.</p>
+              </div>
+            `);
+        }
+    } else {
+        if (!planPermissions.editProfileBasic) lockSection($('#step-1'), "Basic Details");
+        if (!planPermissions.editProfileProfessional) lockSection($('#step-2'), "Professional Details");
+        if (!planPermissions.editProfilePortfolio) lockSection($('#step-3'), "Product Portfolio");
+        if (!planPermissions.editProfileAdditional) lockSection($('#step-4'), "Additional Details");
 
-    if (!planPermissions.editProfileFull || !planPermissions.editProfileBasic) lockSection($('#step-1'), "Basic Details");
-    if (!planPermissions.editProfileFull || !planPermissions.editProfileProfessional) lockSection($('#step-2'), "Professional Details");
-    if (!planPermissions.editProfileFull || !planPermissions.editProfilePortfolio) lockSection($('#step-3'), "Product Portfolio");
-    if (!planPermissions.editProfileFull || !planPermissions.editProfileAdditional) lockSection($('#step-4'), "Additional Details");
-    if (!planPermissions.editProfileFull) lockSection($('#step-5'), "Social & Account settings");
-
-    if (!planPermissions.agentCertificate) lockSection($('#step-2'), "Certifications & Licenses");
-    if (!planPermissions.portfolio) lockSection($('#step-3'), "Product Portfolio");
-    if (!planPermissions.careerTimeline) lockSection($('.career-timeline-section'), "Career Timeline");
-    if (!planPermissions.professionalBio) {
-        $('#ai-generate-bio-btn').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', 'Locked by Admin Plan').html('<i class="fas fa-lock"></i><span>Locked by Plan</span>');
+        if (!planPermissions.agentCertificate) lockSection($('#step-2'), "Certifications & Licenses");
+        if (!planPermissions.portfolio) lockSection($('#step-3'), "Product Portfolio");
+        if (!planPermissions.careerTimeline) lockSection($('.career-timeline-section'), "Career Timeline");
+        if (!planPermissions.professionalBio) {
+            $('#ai-generate-bio-btn').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', 'Locked by Admin Plan').html('<i class="fas fa-lock"></i><span>Locked by Plan</span>');
+        }
+        
+        if (!planPermissions.achievement) lockSection($('.achievement-photos-section'), "Achievement Photos");
+        if (!planPermissions.claimSupport) lockSection($('#claims_processed').closest('.row').parent(), "Claim Support Statistics");
+        if (!planPermissions.companies) lockSection($('.step-subtitle:contains("company partnerships")').parent(), "Company Portfolio");
+        if (!planPermissions.socialMedia) lockSection($('.digital-presence-section'), "Social Media Settings");
     }
-    
-    if (!planPermissions.achievement) lockSection($('.achievement-photos-section'), "Achievement Photos");
-    if (!planPermissions.claimSupport) lockSection($('#claims_processed').closest('.row').parent(), "Claim Support Statistics");
-    if (!planPermissions.companies) lockSection($('.step-subtitle:contains("company partnerships")').parent(), "Company Portfolio");
-    if (!planPermissions.socialMedia) lockSection($('.digital-presence-section'), "Social Media Settings");
 
 </script>
 

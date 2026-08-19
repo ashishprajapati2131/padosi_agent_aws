@@ -66,47 +66,7 @@ def _get_client_ip(request):
         return x_forwarded_for.split(',')[0].strip()
     return request.META.get('REMOTE_ADDR', '')
 
-def _check_otp_send_rate_limit(ip):
-    # Limit: 3 requests per 5 minutes per IP
-    key = f"otp_send_limit_{ip}"
-    attempts = cache.get(key, 0)
-    if attempts >= 3:
-        return False
-    return True
-
-def _record_otp_send_attempt(ip):
-    key = f"otp_send_limit_{ip}"
-    attempts = cache.get(key, 0)
-    if attempts == 0:
-        cache.set(key, 1, timeout=300)  # 5 minutes
-    else:
-        cache.incr(key)
-
-def _check_otp_verify_rate_limit(ip):
-    # Limit: 10 verify attempts per 10 minutes per IP
-    key = f"otp_verify_limit_{ip}"
-    attempts = cache.get(key, 0)
-    if attempts >= 10:
-        return False
-    return True
-
-def _record_otp_verify_attempt(ip):
-    key = f"otp_verify_limit_{ip}"
-    attempts = cache.get(key, 0)
-    if attempts == 0:
-        cache.set(key, 1, timeout=600)  # 10 minutes
-    else:
-        cache.incr(key)
-
-def _clear_otp_verify_limit(ip):
-    cache.delete(f"otp_verify_limit_{ip}")
-    cache.delete(f"otp_send_limit_{ip}")
-
-
 # ─── Helper ─────────────────────────────────────────────────────────────────────
-def _generate_otp():
-    """Generate a 6-digit OTP code."""
-    return str(random.randint(100000, 999999))
 
 
 def _get_registration_context(request):
@@ -165,102 +125,36 @@ def agent_registration(request):
     return render(request, 'agents/registration.html', context)
 
 
-@require_POST
-@csrf_protect
-def send_otp(request):
-    """Generate OTP, store in session, send via Brevo."""
-    ip = _get_client_ip(request)
-    if not _check_otp_send_rate_limit(ip):
-        return JsonResponse({'success': False, 'message': 'Too many OTP requests. Please try again after 5 minutes.'}, status=429)
-    _record_otp_send_attempt(ip)
 
-    try:
-        data = json.loads(request.body)
-        email = data.get('email', '').strip().lower()
-    except (json.JSONDecodeError, AttributeError):
-        email = request.POST.get('email', '').strip().lower()
-
-    if not email or '@' not in email:
-        return JsonResponse({'success': False, 'message': 'Please enter a valid email address.'}, status=400)
-
-    from django.contrib.auth.models import User
-    from apps.agents.models import Agent
-    if User.objects.filter(email=email).exists() or Agent.objects.filter(email=email).exclude(status='incomplete').exists():
-        return JsonResponse({
-            'success': False,
-            'message': 'This email is already associated with an active Agent account. Please login to access your dashboard.'
-        }, status=422)
-
-    otp = _generate_otp()
-
-    # Store in session
-    request.session['otp_code'] = otp
-    request.session['otp_email'] = email
-    request.session['otp_expires'] = time.time() + OTP_EXPIRY_SECONDS
-
-    # Send via Brevo
-    success = send_otp_email(email, '', otp)
-
-    if success:
+@require_http_methods(["GET"])
+def check_slug_availability(request):
+    """Check if a custom slug is available for an agent profile."""
+    from django.utils.text import slugify
+    from apps.agents.models import AgentProfile
+    
+    raw_slug = request.GET.get('slug', '').strip()
+    if not raw_slug:
+        return JsonResponse({'success': False, 'message': 'Slug is required.'})
+        
+    slug = slugify(raw_slug)
+    
+    # Check if slug exists in AgentProfile
+    exists = AgentProfile.objects.filter(slug=slug).exists()
+    
+    if exists:
         return JsonResponse({
             'success': True,
-            'message': 'OTP sent to your email. Please check your inbox.',
+            'available': False,
+            'slug': slug,
+            'message': 'This URL is already taken.'
         })
     else:
         return JsonResponse({
-            'success': False,
-            'message': 'Failed to send OTP. Please try again.',
-        }, status=500)
-
-
-@require_POST
-@csrf_protect
-def verify_otp(request):
-    """Verify OTP against session data."""
-    ip = _get_client_ip(request)
-    if not _check_otp_verify_rate_limit(ip):
-        return JsonResponse({'success': False, 'message': 'Too many verification attempts. Please request a new OTP.'}, status=429)
-    _record_otp_verify_attempt(ip)
-
-    try:
-        data = json.loads(request.body)
-        submitted_otp = data.get('otp', '').strip()
-    except (json.JSONDecodeError, AttributeError):
-        submitted_otp = request.POST.get('otp', '').strip()
-
-    stored_otp = request.session.get('otp_code', '')
-    otp_email = request.session.get('otp_email', '')
-    otp_expires = request.session.get('otp_expires', 0)
-
-    if not stored_otp:
-        return JsonResponse({'success': False, 'message': 'No OTP found. Please request a new one.'}, status=400)
-
-    if time.time() > otp_expires:
-        # Clean up expired OTP
-        for key in ['otp_code', 'otp_email', 'otp_expires']:
-            request.session.pop(key, None)
-        return JsonResponse({'success': False, 'message': 'OTP has expired. Please request a new one.'}, status=400)
-
-    if submitted_otp != stored_otp:
-        return JsonResponse({'success': False, 'message': 'Invalid OTP. Please try again.'}, status=400)
-
-    # Mark as verified
-    request.session['email_verified'] = True
-    request.session['verified_email'] = otp_email
-    request.session['reg_step'] = 1
-    
-    # Clear rate limits on success
-    _clear_otp_verify_limit(ip)
-
-    # Clean up OTP from session
-    for key in ['otp_code', 'otp_expires']:
-        request.session.pop(key, None)
-
-    return JsonResponse({
-        'success': True,
-        'message': 'Email verified successfully!',
-        'email': otp_email,
-    })
+            'success': True,
+            'available': True,
+            'slug': slug,
+            'message': 'URL is available!'
+        })
 
 
 @require_POST
@@ -279,6 +173,7 @@ def register_step1(request):
     promo_code = request.POST.get('promo_code', '').strip()
     address = request.POST.get('address', '').strip()
     client_base = request.POST.get('client_base', '').strip()
+    slug = request.POST.get('slug', '').strip()
 
     distributor_id = None
     from apps.distributors.views.dashboard import is_distributor
@@ -352,6 +247,7 @@ def register_step1(request):
                 request.session.pop('applied_promo_code', None)
         draft.address = address
         draft.client_base = client_base
+        draft.slug = slug
         draft.email_verified = True
         draft.registration_step = 1
         draft.save()
@@ -407,6 +303,7 @@ def register_step1(request):
             request.session.pop('applied_promo_code', None)
     draft.address = address
     draft.client_base = client_base
+    draft.slug = slug
     draft.registration_step = 1
     draft.save()
 
@@ -462,26 +359,109 @@ def register_step2(request):
     })
 
 
+@require_POST
+def record_social_follow(request):
+    """Record that the user successfully followed social accounts for gamified plan."""
+    import json
+    try:
+        data = json.loads(request.body)
+        platform = data.get('platform')
+        agent_id = data.get('agent_id') # actually draft_id
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON.'}, status=400)
+
+    if not agent_id or not platform:
+        return JsonResponse({'success': False, 'message': 'Missing data.'}, status=400)
+    
+    from apps.home.models import SiteSetting
+    exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
+    discounted_price = float(exclusive_config.get('discounted_price', 199))
+
+    session_key = f'followed_platforms_{agent_id}'
+    followed = request.session.get(session_key, [])
+    if platform not in followed:
+        followed.append(platform)
+        request.session[session_key] = followed
+        
+    discount_unlocked = len(followed) > 0
+    
+    # Save to DB so agent_register_complete can read it
+    if discount_unlocked:
+        from apps.agents.models import AgentDraft, UserPlanProgress
+        try:
+            draft = AgentDraft.objects.get(pk=agent_id)
+            progress, _ = UserPlanProgress.objects.get_or_create(draft=draft, plan_key='exclusive_gamified')
+            progress.discount_unlocked = True
+            progress.save()
+            logger.info(f"Saved discount_unlocked=True for draft {draft.id}")
+        except Exception as e:
+            logger.error(f"Failed to save UserPlanProgress in social_follow: {e}")
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Follow recorded successfully!',
+        'discount_unlocked': discount_unlocked,
+        'current_price': discounted_price,
+        'followed_platforms': followed
+    })
+
+def exclusive_discount_status(request):
+    """Get the current discount status and followed platforms."""
+    agent_id = request.GET.get('agent_id')
+    if not agent_id:
+        return JsonResponse({'success': False, 'message': 'Missing agent_id'}, status=400)
+    
+    session_key = f'followed_platforms_{agent_id}'
+    followed = request.session.get(session_key, [])
+    discount_unlocked = len(followed) > 0
+    
+    from apps.home.models import SiteSetting
+    exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
+    
+    if discount_unlocked:
+        current_price = float(exclusive_config.get('discounted_price', 199))
+        
+        # Sync session state to database to heal any mismatched states
+        from apps.agents.models import AgentDraft, UserPlanProgress
+        try:
+            draft = AgentDraft.objects.get(pk=agent_id)
+            progress, _ = UserPlanProgress.objects.get_or_create(draft=draft, plan_key='exclusive_gamified')
+            progress.discount_unlocked = True
+            progress.save()
+            logger.info(f"Healed and saved discount_unlocked=True for draft {draft.id}")
+        except Exception as e:
+            logger.error(f"Failed to heal UserPlanProgress in discount_status: {e}")
+    else:
+        current_price = float(exclusive_config.get('base_price', 1999))
+        
+    return JsonResponse({
+        'success': True,
+        'discount_unlocked': discount_unlocked,
+        'current_price': current_price,
+        'followed_platforms': followed
+    })
+
+
+
 def chooseplan(request):
     """Render the plan selection page."""
     if request.user.is_authenticated:
         from apps.agents.models import Agent, SubscriptionPlan
         if Agent.objects.filter(user=request.user).exists() or request.user.is_staff or request.user.is_superuser:
             return redirect('agents:agent_dashboard')
-    else:
-        from apps.agents.models import SubscriptionPlan
 
     draft_id = request.session.get('current_draft_id')
     if not draft_id:
         return redirect('agents:agent_registration')
 
     try:
-        draft = AgentDraft.objects.get(pk=draft_id)
+        from apps.agents.models import AgentDraft
+        agent = AgentDraft.objects.get(pk=draft_id)
     except AgentDraft.DoesNotExist:
         request.session.pop('current_draft_id', None)
         return redirect('agents:agent_registration')
 
-    # Load site settings pricing config from DB only — no static fallback prices
+    # Load site settings pricing config from DB only
     pricing_config = SiteSetting.get_value('pricing_config')
     if not pricing_config or not isinstance(pricing_config, dict):
         return render(request, '500.html', status=500)
@@ -500,7 +480,7 @@ def chooseplan(request):
     trial_duration = trial_config.get('duration_days', 30)
 
     # Promo codes
-    applied_promo_code = request.session.get('applied_promo_code') or draft.promo_code or ''
+    applied_promo_code = request.session.get('applied_promo_code') or ''
     applied_promo_code = applied_promo_code.strip().upper()
 
     has_promo = False
@@ -543,9 +523,9 @@ def chooseplan(request):
     else:
         starter_final = starter_full
 
-    starter_base = round(starter_final / 1.18, 0)
+    starter_base = int(round(starter_final / 1.18, 0))
     starter_gst = round(starter_base * 0.18, 2)
-    starter_final = round(starter_base + starter_gst, 2)
+    starter_final = int(round(starter_base + starter_gst, 0))
     starter_discount_percent = 0
     if starter_full > 0 and starter_final < starter_full:
         starter_discount_percent = round((1 - (starter_final / starter_full)) * 100)
@@ -558,9 +538,9 @@ def chooseplan(request):
     else:
         prof_final = prof_full
 
-    prof_base = round(prof_final / 1.18, 0)
+    prof_base = int(round(prof_final / 1.18, 0))
     prof_gst = round(prof_base * 0.18, 2)
-    prof_final = round(prof_base + prof_gst, 2)
+    prof_final = int(round(prof_base + prof_gst, 0))
     prof_discount_percent = 0
     if prof_full > 0 and prof_final < prof_full:
         prof_discount_percent = round((1 - (prof_final / prof_full)) * 100)
@@ -572,67 +552,103 @@ def chooseplan(request):
 
     trial_gst = round(trial_base_price * 0.18, 2)
 
+    # Fetch Gamification Config
+    exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
+    is_exclusive_active = exclusive_config.get('is_active', False)
+    discount_unlocked = False
+    
+    # Calculate dynamic percentages for UI based on base price
+    exc_strikeout = float(exclusive_config.get('strikeout_price', 6999))
+    exc_base = float(exclusive_config.get('base_price', 1999))
+    exc_discounted = float(exclusive_config.get('discounted_price', 199))
+    
+    if exc_strikeout > 0 and exc_base < exc_strikeout:
+        exclusive_config['before_discount_val'] = f"{int(round((exc_strikeout - exc_base) / exc_strikeout * 100))}%"
+    else:
+        exclusive_config['before_discount_val'] = "0%"
+        
+    if exc_base > 0 and exc_discounted < exc_base:
+        exclusive_config['after_discount_val'] = f"{int(round((exc_base - exc_discounted) / exc_base * 100))}%"
+    else:
+        exclusive_config['after_discount_val'] = "0%"
+
+    # Fetch Subscription Plan IDs
+    from apps.agents.models import SubscriptionPlan
+    starter_plan = SubscriptionPlan.objects.filter(name__icontains='starter').first()
+    prof_plan = SubscriptionPlan.objects.filter(name__icontains='professional').first()
+    starter_id = starter_plan.id if starter_plan else 2
+    prof_id = prof_plan.id if prof_plan else 1
+
+    # Prepare Gamification UI Context Variables
+    default_features = [
+        {'name': 'Permanent<br>Website', 'icon': 'fa-globe', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
+        {'name': 'Digital<br>Card', 'icon': 'fa-id-card-clip', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
+        {'name': 'Licensed<br>Badge', 'icon': 'fa-shield-halved', 'color': '#f59e0b', 'bg_color': '#fffbeb'},
+        {'name': 'Call &<br>WhatsApp', 'icon': 'fa-phone-volume', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
+        {'name': 'Customer<br>Reviews', 'icon': 'fa-star', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
+        {'name': 'Product<br>Showcase', 'icon': 'fa-store', 'color': '#3b82f6', 'bg_color': '#eff6ff'}
+    ]
+    premium_features = exclusive_config.get('premium_features', default_features)
+    if not premium_features:
+        premium_features = default_features
+        
+    social_links = exclusive_config.get('social_links', [])
+    for link in social_links:
+        platform = link.get('platform', '').lower()
+        if platform in ('x', 'twitter'):
+            link['iconClass'] = 'fa-x-twitter'
+        elif platform == 'linkedin':
+            link['iconClass'] = 'fa-linkedin'
+        elif platform == 'facebook':
+            link['iconClass'] = 'fa-facebook'
+        elif platform == 'youtube':
+            link['iconClass'] = 'fa-youtube'
+        else:
+            link['iconClass'] = 'fa-instagram'
+
     context = {
-        'draft': draft,
+        'draft': agent,  # Pass agent as draft to avoid template changes
+        'agent': agent,
         'pricing_config': pricing_config,
         'trial_config': trial_config,
         'trial_active': trial_active,
         'trial_base_price': trial_base_price,
-        'trial_final': trial_final,
         'trial_gst': trial_gst,
+        'trial_final': trial_final,
         'trial_duration': trial_duration,
+        
+        'starter_id': starter_id,
+        'starter_name': starter_name,
+        'starter_desc': starter_desc,
         'starter_full': starter_full,
-        'starter_base': starter_base,
         'starter_final': starter_final,
         'starter_gst': starter_gst,
+        'starter_base': starter_base,
         'starter_discount_percent': starter_discount_percent,
+        
+        'prof_id': prof_id,
+        'prof_name': prof_name,
+        'prof_desc': prof_desc,
         'prof_full': prof_full,
-        'prof_base': prof_base,
         'prof_final': prof_final,
         'prof_gst': prof_gst,
+        'prof_base': prof_base,
         'prof_discount_percent': prof_discount_percent,
-        'prof_save_amount': (prof_full - prof_final) / 1.18,
-        'has_promo': has_promo,
+
         'applied_promo_code': applied_promo_code,
+        'has_promo': has_promo,
         'has_free_trial_promo': has_free_trial_promo,
         'has_starter_promo': has_starter_promo,
         'has_prof_promo': has_prof_promo,
-        'is_upgrade_flow': False,
-        'starter_name': starter_name,
-        'starter_desc': starter_desc,
-        'prof_name': prof_name,
-        'prof_desc': prof_desc,
+
+        'exclusive_config': exclusive_config,
+        'is_exclusive_active': is_exclusive_active,
+        'discount_unlocked': discount_unlocked,
+        'premiumFeatures': premium_features,
     }
 
-    # Load dynamic Subscription Plans
-    active_plans = SubscriptionPlan.objects.filter(is_active=True).order_by('actual_price')
-    dynamic_plans_data = []
-    
-    for plan in active_plans:
-        # Generate parsed HTML replacing placeholders
-        plan_html = plan.html_code
-        plan_html = plan_html.replace('{{ actual_price }}', str(plan.actual_price))
-        plan_html = plan_html.replace('{{ discounted_price }}', str(plan.discounted_price))
-        plan_html = plan_html.replace('{{ plan_id }}', str(plan.id))
-        plan.parsed_html = plan_html
-        
-        # Calculate Base & GST from the discounted price (exclusive of GST)
-        base_price = float(plan.discounted_price)
-        gst = round(base_price * 0.18, 2)
-        total = round(base_price + gst, 2)
-        
-        dynamic_plans_data.append({
-            'id': str(plan.id),
-            'name': plan.name,
-            'price': base_price,
-            'gst': gst,
-            'total': total
-        })
-    
-    context['dynamic_plans'] = active_plans
-    context['dynamic_plans_json'] = json.dumps(dynamic_plans_data)
-
     return render(request, 'agents/plans.html', context)
+
 
 
 def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment'):
@@ -994,14 +1010,44 @@ def agent_register_complete(request):
             if float(promo_obj.discount_value) > 0:
                 trial_base_price = max(0.0, trial_base_price - promo_obj.calculate_discount(trial_base_price))
         total_amount = trial_base_price + (trial_base_price * 0.18)
+    elif plan_type == 'exclusive':
+        exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
+        
+        from apps.agents.models import UserPlanProgress
+        discount_unlocked = False
+        progress = UserPlanProgress.objects.filter(draft=draft, plan_key='exclusive_gamified').first()
+        if progress and progress.discount_unlocked:
+            discount_unlocked = True
+            
+        base_price = float(exclusive_config.get('discounted_price', 0)) if discount_unlocked else float(exclusive_config.get('base_price', 0))
+        total_amount = round(base_price + round(base_price * 0.18, 2), 2)
+        logger.info(f"Exclusive Checkout: discount_unlocked={discount_unlocked}, base_price={base_price}, total_amount={total_amount}")
     else:
         from apps.agents.models import SubscriptionPlan
         try:
             plan = SubscriptionPlan.objects.get(id=plan_type)
+        except (SubscriptionPlan.DoesNotExist, ValueError):
+            logger.error(f"Invalid plan selected. plan_type received: {repr(plan_type)}")
+            return JsonResponse({'success': False, 'message': 'Invalid plan selected.'}, status=400)
+
+        plan_name_lower = plan.name.lower()
+        if 'starter' in plan_name_lower:
+            final = starter_full
+            if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('basic'):
+                final = starter_full - promo_obj.calculate_discount(starter_full)
+            base = int(round(final / 1.18, 0))
+            gst = round(base * 0.18, 2)
+            total_amount = int(round(base + gst, 0))
+        elif 'professional' in plan_name_lower:
+            final = prof_full
+            if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('professional'):
+                final = prof_full - promo_obj.calculate_discount(prof_full)
+            base = int(round(final / 1.18, 0))
+            gst = round(base * 0.18, 2)
+            total_amount = int(round(base + gst, 0))
+        else:
             base_price = float(plan.discounted_price)
             total_amount = round(base_price + round(base_price * 0.18, 2), 2)
-        except (SubscriptionPlan.DoesNotExist, ValueError):
-            return JsonResponse({'success': False, 'message': 'Invalid plan selected.'}, status=400)
 
     # Initialize Razorpay Client and create Order
     import razorpay

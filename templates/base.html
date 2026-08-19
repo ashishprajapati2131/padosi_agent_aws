@@ -28,7 +28,7 @@
 
     {% if request.path|slice:':6' == '/agent' %}
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="apple-touch-icon" href="/pwa/pwa-192.png">
+    <link rel="apple-touch-icon" href="{% static 'pwa/pwa-192.png' %}">
     {% endif %}
 
     <!-- Critical inline CSS: eliminates FOUC, zero render-blocking for above-fold -->

@@ -301,6 +301,8 @@ urlpatterns = [
     path('admin/content/banners/update/',  content.update_banners,  name='admin_content_banners_update'),
     path('admin/content/plans/',           content.plans,           name='admin_content_plans'),
     path('admin/content/plans/update/',    content.update_plans,    name='admin_content_plans_update'),
+    path('admin/content/plans/exclusive/update/', content.update_exclusive_config, name='admin_content_exclusive_plans_update'),
+    path('admin/content/plans/update-features/', content.update_plan_features, name='admin_content_plans_update_features'),
 
     # Phase 7B: CMS Static Pages
     path('admin/pages/',                          pages_index,  name='admin_pages_index'),

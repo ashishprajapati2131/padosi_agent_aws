@@ -1395,3 +1395,18 @@ class SubscriptionPlan(models.Model):
         
     def __str__(self):
         return self.name
+
+class UserPlanProgress(models.Model):
+    draft = models.ForeignKey(AgentDraft, on_delete=models.CASCADE, null=True, blank=True)
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, null=True, blank=True, db_constraint=False)
+    plan_key = models.CharField(max_length=50) # e.g., 'exclusive_gamified'
+    discount_unlocked = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'user_plan_progress'
+        managed = True
+
+    def __str__(self):
+        return f"UserPlanProgress({self.plan_key}, unlocked={self.discount_unlocked})"

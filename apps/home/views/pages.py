@@ -871,21 +871,26 @@ def pincode_fetch(request, pincode):
         return JsonResponse({'success': False, 'message': 'Invalid pincode format.'})
 
     record = Pincode.objects.filter(pincode=pincode).first()
-    if record:
-        return JsonResponse({
-            'success': True,
-            'data': {
-                'office_name': record.office_name,
-                'district': record.district,
-                'state': record.state,
-                'latitude': str(record.latitude),
-                'longitude': str(record.longitude),
-            }
-        })
+    if not record:
+        record = _get_or_create_pincode(pincode)
 
-    record = _get_or_create_pincode(pincode)
     if not record:
         return JsonResponse({'success': False, 'message': 'Pincode not found.'})
+
+    formatted_location = record.formatted_location
+    
+    # Try to enhance the location name using GeocodingService (mirrors PHP behavior)
+    from apps.home.services.geocoding import GeocodingService
+    geo_svc = GeocodingService()
+    resolved = geo_svc.resolve_coordinates(pincode)
+    
+    if resolved and resolved.get('display_name'):
+        formatted_location = resolved['display_name']
+        # Optionally update the database record to cache this better name
+        if record.office_name != formatted_location and not re.match(r'^(Area|Region)\s+\d', record.office_name, re.IGNORECASE):
+            record.office_name = formatted_location
+            record.district = ''
+            record.save()
 
     return JsonResponse({
         'success': True,
@@ -893,6 +898,7 @@ def pincode_fetch(request, pincode):
             'office_name': record.office_name,
             'district': record.district,
             'state': record.state,
+            'formatted_location': formatted_location,
             'latitude': str(record.latitude),
             'longitude': str(record.longitude),
         }
@@ -902,7 +908,12 @@ def pincode_fetch(request, pincode):
 def _get_or_create_pincode(pincode):
     """Upserts the pincodes table from the postalpincode.in API (PincodeService::getOrCreatePincode)."""
     try:
-        resp = http_requests.get(f'https://api.postalpincode.in/pincode/{pincode}', timeout=10)
+        resp = http_requests.get(
+            f'https://api.postalpincode.in/pincode/{pincode}',
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
+            verify=False,
+            timeout=10
+        )
         resp.raise_for_status()
         body = resp.json()
         if not body or body[0].get('Status') != 'Success' or not body[0].get('PostOffice'):
@@ -910,22 +921,32 @@ def _get_or_create_pincode(pincode):
 
         po = body[0]['PostOffice'][0]
         try:
+            lat_val = po.get('Latitude')
+            lng_val = po.get('Longitude')
+            try:
+                lat = float(lat_val) if lat_val and str(lat_val).lower() != 'na' else 0.0
+                lng = float(lng_val) if lng_val and str(lng_val).lower() != 'na' else 0.0
+            except ValueError:
+                lat, lng = 0.0, 0.0
+
+            taluk = po.get('Taluk') or po.get('Block') or ''
             record, _ = Pincode.objects.update_or_create(
                 pincode=pincode,
                 defaults={
                     'office_name': (po.get('Name') or '')[:150],
                     'district': (po.get('District') or '')[:100],
                     'state': (po.get('State') or '')[:50],
-                    'latitude': float(po.get('Latitude') or 0.0),
-                    'longitude': float(po.get('Longitude') or 0.0),
+                    'latitude': lat,
+                    'longitude': lng,
                     'division': (po.get('Division') or '')[:100],
                     'region': (po.get('Region') or '')[:100],
                     'circle': (po.get('Circle') or '')[:100],
-                    'taluk': (po.get('Taluk') or '')[:100],
+                    'taluk': taluk[:100],
                 }
             )
             return record
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error saving pincode {pincode}: {e}")
             return None
     except Exception:
         return None
