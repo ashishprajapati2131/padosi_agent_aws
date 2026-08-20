@@ -1,0 +1,878 @@
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+
+        /* ============================================================
+       React-style Agent Card — PHP Laravel version
+       Mobile card  : .rac-mobile-card   (shown < 992px)
+       Desktop card : .rac-desktop-card  (shown ≥ 992px)
+       ============================================================ */
+
+        /* Reset legacy styles inherited from .find-agents-list-item wrapper */
+        .react-agent-card.find-agents-list-item {
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            display: block !important;
+            width: 100% !important;
+        }
+
+        /* ── Shared card shell ─────────────────────────────────── */
+        .rac-card {
+            background: #fff;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            transition: box-shadow 0.25s ease, transform 0.25s ease;
+        }
+
+        .rac-card:hover {
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+            transform: translateY(-1px);
+        }
+
+        /* Visibility toggles */
+        .rac-mobile-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .rac-desktop-card {
+            display: none;
+            flex-direction: column;
+        }
+
+        @media (min-width: 992px) {
+            .rac-mobile-card {
+                display: none;
+            }
+
+            .rac-desktop-card {
+                display: flex;
+            }
+        }
+
+        /* ── Shared badge styles ───────────────────────────────── */
+        .rac-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .rac-badge--trusted {
+            background: #1e3a8a;
+            color: #fff;
+        }
+
+        .rac-badge--licensed {
+            background: #059669;
+            color: #fff;
+        }
+
+        .rac-badge svg {
+            flex-shrink: 0;
+        }
+
+        /* ── Premium Agent Recognition Badges ─────────────────── */
+        .agent-recognition-badge {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+            padding: 3px 8px !important;
+            border-radius: 9999px !important;
+            font-size: 10px !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
+            margin: 0 !important;
+            white-space: nowrap !important;
+            font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+            border-width: 1px !important;
+        }
+
+        .agent-recognition-badge i {
+            font-size: 10px !important;
+        }
+
+        /* Verified Badge - Teal/Cyan */
+        .badge-verified-official {
+            background: #f0fdfa !important;
+            color: #0d9488 !important;
+            border: 1px solid #ccfbf1 !important;
+        }
+
+        /* IRDAI Badge - Indigo */
+        .badge-irdai-official {
+            background: #eff6ff !important;
+            color: #1e40af !important;
+            border: 1px solid #dbeafe !important;
+        }
+
+        /* Trusted Badge - Emerald Green */
+        .badge-trusted-official {
+            background: #f0fdf4 !important;
+            color: #16a34a !important;
+            border: 1px solid #bbf7d0 !important;
+        }
+
+        .agent-recognition-badge:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.06) !important;
+        }
+
+        /* ── Shared star styles ────────────────────────────────── */
+        .rac-stars {
+            display: inline-flex;
+            align-items: center;
+            gap: 1px;
+        }
+
+        .rac-star {
+            display: block;
+        }
+
+        .rac-star--full {
+            fill: #f59e0b;
+            color: #f59e0b;
+        }
+
+        .rac-star--half {
+            fill: #e5e7eb;
+            color: #e5e7eb;
+        }
+
+        .rac-star--empty {
+            fill: #e5e7eb;
+            color: #e5e7eb;
+        }
+
+        .rac-star {
+            width: 13px;
+            height: 13px;
+        }
+
+        .rac-star--lg {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* ── Shared tag colours ────────────────────────────────── */
+        .rac-tag--health {
+            background: #fff1f2;
+            color: #be123c;
+            border-color: #fecdd3;
+        }
+
+        .rac-tag--life {
+            background: #f5f3ff;
+            color: #7c3aed;
+            border-color: #ddd6fe;
+        }
+
+        .rac-tag--motor {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-color: #bfdbfe;
+        }
+
+        .rac-tag--sme {
+            background: #fffbeb;
+            color: #b45309;
+            border-color: #fde68a;
+        }
+
+        .rac-tag--default {
+            background: #f3f4f6;
+            color: #374151;
+            border-color: #e5e7eb;
+        }
+
+        /* ── Shared icon-button ────────────────────────────────── */
+        .rac-icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            color: #6b7280;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            padding: 0;
+            font-size: 11px;
+            font-weight: 600;
+            gap: 4px;
+        }
+
+        .rac-icon-btn:hover {
+            background: #f3f4f6;
+            color: #111827;
+        }
+
+        .rac-icon-btn.is-favorited {
+            color: #ef4444;
+        }
+
+        .rac-icon-btn.is-favorited svg {
+            fill: #ef4444;
+        }
+
+        /* ── Match colour helpers ──────────────────────────────── */
+        .rac-match--green {
+            color: #15803d !important;
+        }
+
+        .rac-match--amber {
+            color: #b45309 !important;
+        }
+
+        .rac-match--red {
+            color: #b91c1c !important;
+        }
+
+
+        /* ════════════════════════════════════════════════════════
+       MOBILE CARD
+       ════════════════════════════════════════════════════════ */
+        .rac-mobile-card .rac-top {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            flex: 1;
+        }
+
+        .rac-mobile-card .rac-photo-col {
+            position: relative;
+            width: 110px;
+            flex-shrink: 0;
+            overflow: hidden;
+            background: #e5e7eb;
+            align-self: stretch;
+        }
+
+        .rac-photo-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .rac-photo-fade {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 32px;
+            background: linear-gradient(to right, transparent 0%, #fff 100%);
+            pointer-events: none;
+        }
+
+        .rac-info-col {
+            flex: 1;
+            min-width: 0;
+            padding: 10px 8px 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .rac-name-row {
+            display: flex;
+            flex-direction: row !important;
+            align-items: center !important;
+            flex-wrap: wrap !important;
+            gap: 6px !important;
+        }
+
+        .rac-name {
+            font-size: 15px;
+            font-weight: 800;
+            color: #111827;
+            line-height: 1.2;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 140px;
+        }
+
+        .rac-badges {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap !important;
+            align-items: center;
+        }
+
+        .rac-rating {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .rac-rating-val {
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .rac-rating-count {
+            font-weight: 400;
+            color: #6b7280;
+            font-size: 10px;
+        }
+
+        .rac-location {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            color: #6b7280;
+            font-size: 11px;
+            flex-wrap: nowrap;
+            min-width: 0;
+        }
+
+        .rac-location svg {
+            flex-shrink: 0;
+        }
+
+        .rac-location span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ── Distance pill (mobile) ── */
+                .rac-match-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 3px 6px;
+            border-radius: 12px;
+            font-size: 9.5px;
+            font-weight: 700;
+            line-height: 1;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+        .rac-match--green { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+        .rac-match--amber { background: #fffbeb; color: #d97706; border-color: #fde68a; }
+        .rac-match--red { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+
+        .rac-dist-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            color: #ffffff !important;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 999px;
+            white-space: nowrap;
+            letter-spacing: 0.2px;
+            box-shadow: 0 1px 4px rgba(22, 163, 74, 0.35);
+            width: fit-content;
+        }
+
+        .rac-dist-pill svg {
+            flex-shrink: 0;
+            opacity: 0.95;
+            color: #ffffff !important;
+        }
+
+        .rac-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+
+        .rac-tag { display: inline-flex; align-items: center; justify-content: center; padding: 4px 10px; border-radius: 999px; border: 1px solid; font-size: 10px; font-weight: 700; line-height: 1; white-space: nowrap; }
+
+        /* Mobile stats sidebar */
+        .rac-stats-col {
+            flex-shrink: 0;
+            width: 68px;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(to left, #f9fafb 0%, rgba(249, 250, 251, 0.4) 100%);
+        }
+
+        .rac-stat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 5px 3px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            text-align: center;
+            gap: 1px;
+        }
+
+        .rac-stat:last-child {
+            border-bottom: none;
+        }
+
+        .rac-stat--match {
+            flex-direction: row;
+            flex-wrap: nowrap;
+            gap: 2px;
+            padding: 5px 3px;
+        }
+
+        .rac-stat--match.rac-match--green {
+            background: linear-gradient(to left, rgba(187, 247, 208, 0.9) 0%, rgba(187, 247, 208, 0) 100%);
+        }
+
+        .rac-stat--match.rac-match--amber {
+            background: linear-gradient(to left, rgba(253, 230, 138, 0.9) 0%, rgba(253, 230, 138, 0) 100%);
+        }
+
+        .rac-stat--match.rac-match--red {
+            background: linear-gradient(to left, rgba(254, 202, 202, 0.9) 0%, rgba(254, 202, 202, 0) 100%);
+        }
+
+        .rac-stat--match .rac-stat-num,
+        .rac-stat--match .rac-stat-lbl {
+            display: inline;
+        }
+
+        .rac-stat-num {
+            font-size: 11px;
+            font-weight: 800;
+            color: #111827;
+            line-height: 1;
+        }
+
+        .rac-stat-lbl {
+            font-size: 8px;
+            color: #6b7280;
+            line-height: 1;
+            margin-top: 1px;
+        }
+
+        /* Mobile actions */
+        .rac-mobile-card .rac-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+            background: #fafafa;
+            flex-wrap: nowrap;
+        }
+
+        .rac-btn {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 7px 4px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif !important;
+            text-decoration: none !important;
+            white-space: nowrap;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .rac-btn:hover {
+            opacity: 0.88;
+            transform: translateY(-1px);
+        }
+
+        .rac-btn svg {
+            flex-shrink: 0;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .rac-btn--profile {
+            background: #1e3a8a;
+            color: #fff !important;
+        }
+
+        .rac-btn--whatsapp {
+            background: #22c55e;
+            color: #fff !important;
+        }
+
+        .rac-btn--call {
+            background: #1d4ed8;
+            color: #fff !important;
+        }
+
+        .rac-actions-right {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .rac-mobile-card .rac-icon-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            padding: 0;
+        }
+
+        .rac-mobile-card .rac-icon-btn svg {
+            width: 12px;
+            height: 12px;
+        }
+
+        @media (max-width: 400px) {
+            .rac-mobile-card .rac-photo-col {
+                width: 88px;
+            }
+
+            .rac-stat-num {
+                font-size: 10px;
+            }
+
+            .rac-btn {
+                font-size: 10px;
+                padding: 7px 2px;
+                gap: 3px;
+            }
+
+            .rac-btn svg {
+                width: 11px;
+                height: 11px;
+                display: inline-block !important;
+            }
+        }
+
+
+        /* ════════════════════════════════════════════════════════
+       DESKTOP CARD  (≥ 992px)
+       ════════════════════════════════════════════════════════ */
+        .rac-d-row {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            flex: 1;
+        }
+
+        /* Photo */
+        .rac-d-photo {
+            position: relative;
+            width: 200px;
+            flex-shrink: 0;
+            overflow: hidden;
+            background: #e5e7eb;
+            align-self: stretch;
+        }
+
+        .rac-d-photo-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .rac-d-trusted-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: linear-gradient(135deg, #10b981, #0f766e);
+            color: #fff;
+            border-radius: 50%;
+            padding: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border: 2px solid #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Middle info */
+        .rac-d-info {
+            flex: 1;
+            min-width: 0;
+            padding: 20px 20px 18px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Desktop name row */
+        .rac-d-name-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .rac-d-name {
+            font-size: 18px;
+            font-weight: 800;
+            color: #111827;
+            line-height: 1.2;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 280px;
+        }
+
+        /* Desktop rating */
+        .rac-d-rating {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .rac-stars--lg {
+            gap: 2px;
+        }
+
+        .rac-d-rating-val {
+            font-size: 14px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .rac-d-rating-count {
+            font-size: 12px;
+            font-weight: 400;
+            color: #6b7280;
+        }
+
+        /* Desktop location */
+        .rac-d-location {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: #6b7280;
+            font-size: 12px;
+            flex-wrap: nowrap;
+        }
+
+        .rac-d-location svg {
+            flex-shrink: 0;
+        }
+
+        .rac-d-location span {
+            white-space: nowrap;
+        }
+
+        /* ── Distance pill (desktop) ── */
+        .rac-d-dist-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 5px 12px;
+            border-radius: 999px;
+            white-space: nowrap;
+            letter-spacing: 0.2px;
+            box-shadow: 0 2px 8px rgba(22, 163, 74, 0.35);
+            width: fit-content;
+        }
+
+        .rac-d-dist-pill svg {
+            flex-shrink: 0;
+            opacity: 0.9;
+        }
+
+        /* Desktop stats grid (4 cols: Years · Clients · Claims · Settled) */
+        .rac-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 2px;
+        }
+
+        .rac-stat-box {
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.07);
+            border-radius: 8px;
+            padding: 8px 4px;
+            text-align: center;
+        }
+
+        .rac-stat-num {
+            font-size: 14px;
+            font-weight: 800;
+            color: #111827;
+            line-height: 1;
+        }
+
+        .rac-stat-lbl {
+            font-size: 8px;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-top: 3px;
+        }
+
+        /* Desktop product tags with icon circles */
+        .rac-d-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 2px;
+        }
+
+        .rac-d-tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .rac-d-tag-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+
+        /* Desktop right column */
+        .rac-d-right {
+            width: 220px;
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.015);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Match % fade panel — bleeds left */
+        .rac-d-match {
+            width: calc(100% + 56px);
+            margin-left: -56px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 14px 16px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: default;
+            border-radius: 0 8px 0 0;
+        }
+
+        .rac-d-match.rac-match--green {
+            background: linear-gradient(to left, rgba(187, 247, 208, 0.95) 0%, rgba(187, 247, 208, 0) 100%);
+        }
+
+        .rac-d-match.rac-match--amber {
+            background: linear-gradient(to left, rgba(253, 230, 138, 0.95) 0%, rgba(253, 230, 138, 0) 100%);
+        }
+
+        .rac-d-match.rac-match--red {
+            background: linear-gradient(to left, rgba(254, 202, 202, 0.95) 0%, rgba(254, 202, 202, 0) 100%);
+        }
+
+        /* Stacked action buttons */
+        .rac-d-actions {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 20px;
+        }
+
+        .rac-d-btn {
+            width: 100%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, sans-serif !important;
+            text-decoration: none !important;
+            white-space: nowrap;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .rac-d-btn:hover {
+            opacity: 0.88;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+        }
+
+        .rac-d-btn svg {
+            flex-shrink: 0;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .rac-d-btn--profile {
+            background: #1e3a8a;
+            color: #fff !important;
+        }
+
+        .rac-d-btn--whatsapp {
+            background: #22c55e;
+            color: #fff !important;
+        }
+
+        .rac-d-btn--call {
+            background: #1d4ed8;
+            color: #fff !important;
+        }
+
+        /* Desktop compare + save row */
+        .rac-d-icon-row {
+            display: flex;
+            gap: 6px;
+            padding-top: 4px;
+        }
+
+        .rac-d-icon-row .rac-icon-btn {
+            flex: 1;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            gap: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rac-icon-btn--fav.is-favorited {
+            color: #ef4444;
+        }
+
+        .rac-icon-btn--fav.is-favorited svg {
+            fill: #ef4444;
+        }

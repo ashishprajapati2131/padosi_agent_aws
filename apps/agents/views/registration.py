@@ -588,23 +588,27 @@ def chooseplan(request):
         {'name': 'Customer<br>Reviews', 'icon': 'fa-star', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
         {'name': 'Product<br>Showcase', 'icon': 'fa-store', 'color': '#3b82f6', 'bg_color': '#eff6ff'}
     ]
-    premium_features = exclusive_config.get('premium_features', default_features)
-    if not premium_features:
+    premium_features = exclusive_config.get('premium_features', None)
+    if premium_features is None:
         premium_features = default_features
         
     social_links = exclusive_config.get('social_links', [])
     for link in social_links:
-        platform = link.get('platform', '').lower()
-        if platform in ('x', 'twitter'):
-            link['iconClass'] = 'fa-x-twitter'
-        elif platform == 'linkedin':
-            link['iconClass'] = 'fa-linkedin'
-        elif platform == 'facebook':
-            link['iconClass'] = 'fa-facebook'
-        elif platform == 'youtube':
-            link['iconClass'] = 'fa-youtube'
+        user_icon = link.get('icon', '').strip()
+        if user_icon:
+            link['iconClass'] = user_icon
         else:
-            link['iconClass'] = 'fa-instagram'
+            platform = link.get('platform', '').lower()
+            if platform in ('x', 'twitter'):
+                link['iconClass'] = 'fa-x-twitter'
+            elif platform == 'linkedin':
+                link['iconClass'] = 'fa-linkedin'
+            elif platform == 'facebook':
+                link['iconClass'] = 'fa-facebook'
+            elif platform == 'youtube':
+                link['iconClass'] = 'fa-youtube'
+            else:
+                link['iconClass'] = 'fa-instagram'
 
     context = {
         'draft': agent,  # Pass agent as draft to avoid template changes
@@ -1935,29 +1939,6 @@ def razorpay_webhook(request):
 
 from django.contrib.auth.decorators import login_required
 
-@login_required(login_url='agents:agent_login')
-def agent_register_success(request):
-    """
-    Render payment success / registration completed page.
-    """
-    from apps.agents.models import Agent
-    agent = Agent.objects.filter(user=request.user).first()
-    if not agent:
-        return redirect('agents:agent_registration')
-    
-    # Check if this agent actually has a completed subscription
-    sub = agent.activeSubscription
-    invoice = None
-    if sub:
-        from apps.agents.models import Invoice
-        invoice = Invoice.objects.filter(agent=agent, razorpay_order_id=sub.razorpay_order_id).first()
-
-    return render(request, 'agents/success.html', {
-        'agent': agent,
-        'invoice': invoice
-    })
-
-
 def agent_register_failed(request):
     """
     Render payment failed page.
@@ -1967,80 +1948,6 @@ def agent_register_failed(request):
     agent = Agent.objects.filter(id=agent_id).first() if agent_id else None
     
     return render(request, 'agents/failed.html', {'agent': agent})
-
-
-def test_real_webhook(request):
-    """
-    Simulates a payment.captured webhook from Razorpay for the most recent pending subscription.
-    Enables local testing of the complete payment success workflow.
-    """
-    if not settings.DEBUG:
-        from django.http import Http404
-        raise Http404("Page not found")
-        
-    from apps.agents.models import Agent, AgentSubscription
-    from django.http import HttpResponse
-    
-    # Get most recent pending subscription
-    subscription = AgentSubscription.objects.filter(payment_status='pending').order_by('-created_at').first()
-    if not subscription:
-        return HttpResponse("No pending subscriptions found in the database to simulate. Please select a plan first.")
-        
-    agent = subscription.agent
-    
-    # Mock payment payload
-    import json
-    import time
-    from django.test import RequestFactory
-    
-    webhook_data = {
-        "event": "payment.captured",
-        "payload": {
-            "payment": {
-                "entity": {
-                    "id": f"pay_sim_{int(time.time())}",
-                    "entity": "payment",
-                    "amount": int(subscription.registration_amount * 100),
-                    "currency": "INR",
-                    "status": "captured",
-                    "order_id": subscription.razorpay_order_id,
-                    "email": agent.email,
-                    "contact": agent.mobile,
-                    "notes": {
-                        "agent_id": agent.id
-                    }
-                }
-            }
-        }
-    }
-    
-    factory = RequestFactory()
-    mock_request = factory.post(
-        reverse('agents:razorpay_webhook'),
-        data=json.dumps(webhook_data),
-        content_type='application/json',
-        HTTP_X_RAZORPAY_SIGNATURE='test_signature_skip_verification'
-    )
-    
-    # Process the webhook
-    response = razorpay_webhook(mock_request)
-    
-    if response.status_code == 200:
-        # Success! Log in the user to simulate success redirect
-        from django.contrib.auth import login
-        user = create_or_link_django_user(agent)
-        from apps.distributors.views.dashboard import is_distributor
-        if not (request.user.is_authenticated and is_distributor(request.user)):
-            login(request, user)
-        
-        # Clear session
-        request.session.pop('current_draft_id', None)
-        request.session.pop('reg_step', None)
-        request.session.pop('ref_code', None)
-        
-        return redirect('agents:agent_register_success')
-    else:
-        return HttpResponse(f"Webhook simulation failed. Status code: {response.status_code}, Body: {response.content.decode('utf-8')}")
 
 
 def fb_ad_signup(request):
