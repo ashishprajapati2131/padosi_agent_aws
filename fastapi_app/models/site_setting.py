@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class SiteSetting(Base):
     __tablename__ = "site_settings"

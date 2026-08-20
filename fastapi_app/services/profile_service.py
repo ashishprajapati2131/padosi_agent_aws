@@ -1,8 +1,8 @@
 from fastapi import HTTPException
 import json
-from app.repositories.agent_repository import AgentRepository
-from app.schemas.profile import AgentProfileResponse, AgentProfileUpdateRequest
-from app.config import settings
+from fastapi_app.repositories.agent_repository import AgentRepository
+from fastapi_app.schemas.profile import AgentProfileResponse, AgentProfileUpdateRequest
+from fastapi_app.config import settings
 
 def clean_investment_types(types):
     if not types:
@@ -42,19 +42,19 @@ def clean_investment_types(types):
     return normalized
 
 # Database models for updates
-from app.models.agent import Agent
-from app.models.agent_profile import AgentProfile
-from app.models.agent_service_pincode import AgentServicePincode
-from app.models.agent_serviceable_city import AgentServiceableCity
-from app.models.city import City
-from app.models.agent_family_license import AgentFamilyLicense
-from app.models.agent_performance_stat import AgentPerformanceStat
-from app.models.agent_insurance_segment import AgentInsuranceSegment
-from app.models.agent_product_expertise import AgentProductExpertise
-from app.models.agent_portfolio import AgentPortfolio
-from app.models.agent_achievement_photo import AgentAchievementPhoto
-from app.models.agent_career_timeline import AgentCareerTimeline
-from app.models.agent_lead_preference import AgentLeadPreference
+from fastapi_app.models.agent import Agent
+from fastapi_app.models.agent_profile import AgentProfile
+from fastapi_app.models.agent_service_pincode import AgentServicePincode
+from fastapi_app.models.agent_serviceable_city import AgentServiceableCity
+from fastapi_app.models.city import City
+from fastapi_app.models.agent_family_license import AgentFamilyLicense
+from fastapi_app.models.agent_performance_stat import AgentPerformanceStat
+from fastapi_app.models.agent_insurance_segment import AgentInsuranceSegment
+from fastapi_app.models.agent_product_expertise import AgentProductExpertise
+from fastapi_app.models.agent_portfolio import AgentPortfolio
+from fastapi_app.models.agent_achievement_photo import AgentAchievementPhoto
+from fastapi_app.models.agent_career_timeline import AgentCareerTimeline
+from fastapi_app.models.agent_lead_preference import AgentLeadPreference
 
 class ProfileService:
     def __init__(self, agent_repo: AgentRepository):
@@ -456,10 +456,10 @@ class ProfileService:
                 if p_obj.id not in payload_photo_ids and p_obj.photo_path not in payload_photo_urls:
                     try:
                         if "res.cloudinary.com" in p_obj.photo_path:
-                            from app.services.cloudinary_service import CloudinaryService
+                            from fastapi_app.services.cloudinary_service import CloudinaryService
                             CloudinaryService.delete_image(p_obj.photo_path)
                         elif "/static/uploads/" in p_obj.photo_path or "/media/uploads/" in p_obj.photo_path:
-                            from app.services.local_storage_service import LocalStorageService
+                            from fastapi_app.services.local_storage_service import LocalStorageService
                             LocalStorageService.delete_file(p_obj.photo_path)
                     except Exception:
                         pass

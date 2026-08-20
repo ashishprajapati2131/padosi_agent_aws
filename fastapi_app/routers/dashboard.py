@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.dependencies.auth import get_current_agent
-from app.models.agent import Agent
-from app.services.dashboard_service import DashboardService
-from app.schemas.dashboard import DashboardResponse
+from fastapi_app.database import get_db
+from fastapi_app.dependencies.auth import get_current_agent
+from fastapi_app.models.agent import Agent
+from fastapi_app.services.dashboard_service import DashboardService
+from fastapi_app.schemas.dashboard import DashboardResponse
 
 router = APIRouter(
     prefix="/api/v1/agents",

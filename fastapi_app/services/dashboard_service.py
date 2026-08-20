@@ -5,21 +5,21 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.models.agent import Agent
-from app.models.agent_profile import AgentProfile
-from app.models.agent_subscription import AgentSubscription
-from app.models.agent_insurance_segment import AgentInsuranceSegment
-from app.models.referral_code import ReferralCode
+from fastapi_app.models.agent import Agent
+from fastapi_app.models.agent_profile import AgentProfile
+from fastapi_app.models.agent_subscription import AgentSubscription
+from fastapi_app.models.agent_insurance_segment import AgentInsuranceSegment
+from fastapi_app.models.referral_code import ReferralCode
 
-from app.repositories.agent_lead_repository import AgentLeadRepository
-from app.repositories.agent_profile_view_repository import AgentProfileViewRepository
-from app.repositories.agent_portfolio_repository import AgentPortfolioRepository
-from app.repositories.agent_lead_preference_repository import AgentLeadPreferenceRepository
-from app.repositories.agent_serviceable_city_repository import AgentServiceableCityRepository
-from app.repositories.referral_code_repository import ReferralCodeRepository
-from app.repositories.site_setting_repository import SiteSettingRepository
+from fastapi_app.repositories.agent_lead_repository import AgentLeadRepository
+from fastapi_app.repositories.agent_profile_view_repository import AgentProfileViewRepository
+from fastapi_app.repositories.agent_portfolio_repository import AgentPortfolioRepository
+from fastapi_app.repositories.agent_lead_preference_repository import AgentLeadPreferenceRepository
+from fastapi_app.repositories.agent_serviceable_city_repository import AgentServiceableCityRepository
+from fastapi_app.repositories.referral_code_repository import ReferralCodeRepository
+from fastapi_app.repositories.site_setting_repository import SiteSettingRepository
 
-from app.schemas.dashboard import (
+from fastapi_app.schemas.dashboard import (
     AgentSummary, SubscriptionInfo, TrialInfo,
     LeadStats, PerformanceOverview, RecentLead,
     ProfileCompletion, ReferralInfo, TierInfo, DashboardResponse

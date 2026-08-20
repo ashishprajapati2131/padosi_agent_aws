@@ -1,7 +1,7 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
 from fastapi.responses import JSONResponse, RedirectResponse
-from app.database import engine
+from fastapi_app.database import engine
 from sqlalchemy import text
 from datetime import datetime
 import logging

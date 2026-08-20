@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.repositories.agent_repository import AgentRepository
-from app.services.public_profile_service import PublicProfileService
-from app.schemas.public_profile import PublicProfileResponse
-from app.dependencies.auth import get_current_agent
-from app.models.agent import Agent
+from fastapi_app.database import get_db
+from fastapi_app.repositories.agent_repository import AgentRepository
+from fastapi_app.services.public_profile_service import PublicProfileService
+from fastapi_app.schemas.public_profile import PublicProfileResponse
+from fastapi_app.dependencies.auth import get_current_agent
+from fastapi_app.models.agent import Agent
 
 router = APIRouter(
     prefix="/api/v1/agents/public-profile",

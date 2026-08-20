@@ -1,7 +1,7 @@
 from datetime import date
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.models.agent_profile_view import AgentProfileView
+from fastapi_app.models.agent_profile_view import AgentProfileView
 
 class AgentProfileViewRepository:
     def __init__(self, db: Session):

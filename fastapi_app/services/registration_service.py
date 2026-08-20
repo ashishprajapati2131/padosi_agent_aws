@@ -6,28 +6,28 @@ import string
 import os
 from typing import Optional, Tuple, Dict, Any
 
-from app.schemas.registration import RegistrationBasicRequest, PaymentSuccessRequest
-from app.repositories.agent_repository import AgentRepository
-from app.repositories.user_repository import UserRepository
-from app.repositories.subscription_repository import SubscriptionRepository
-from app.repositories.profile_repository import ProfileRepository
-from app.repositories.invoice_repository import InvoiceRepository
-from app.repositories.promo_code_repository import PromoCodeRepository
-from app.repositories.referral_repository import ReferralRepository
+from fastapi_app.schemas.registration import RegistrationBasicRequest, PaymentSuccessRequest
+from fastapi_app.repositories.agent_repository import AgentRepository
+from fastapi_app.repositories.user_repository import UserRepository
+from fastapi_app.repositories.subscription_repository import SubscriptionRepository
+from fastapi_app.repositories.profile_repository import ProfileRepository
+from fastapi_app.repositories.invoice_repository import InvoiceRepository
+from fastapi_app.repositories.promo_code_repository import PromoCodeRepository
+from fastapi_app.repositories.referral_repository import ReferralRepository
 
-from app.models.agent import Agent
-from app.models.user import User
-from app.models.agent_subscription import AgentSubscription
-from app.models.agent_profile import AgentProfile
-from app.models.invoice import Invoice
-from app.models.referral_code import ReferralCode
-from app.models.referral_usage import ReferralUsage
+from fastapi_app.models.agent import Agent
+from fastapi_app.models.user import User
+from fastapi_app.models.agent_subscription import AgentSubscription
+from fastapi_app.models.agent_profile import AgentProfile
+from fastapi_app.models.invoice import Invoice
+from fastapi_app.models.referral_code import ReferralCode
+from fastapi_app.models.referral_usage import ReferralUsage
 
-from app.services.payment_service import PaymentService
-from app.services.email_service import EmailService
-from app.services.invoice_service import InvoiceService
-from app.utils.auth import get_password_hash, create_access_token, create_refresh_token, decode_promo_validation_token, generate_and_register_token
-from app.config import settings
+from fastapi_app.services.payment_service import PaymentService
+from fastapi_app.services.email_service import EmailService
+from fastapi_app.services.invoice_service import InvoiceService
+from fastapi_app.utils.auth import get_password_hash, create_access_token, create_refresh_token, decode_promo_validation_token, generate_and_register_token
+from fastapi_app.config import settings
 
 def parse_experience_years(experience_range: Optional[str]) -> Optional[int]:
     if not experience_range:
@@ -82,7 +82,7 @@ class RegistrationService:
                                 custom_message = f"payment done. so check your {agent_email} for user id & password."
                                 is_payment_done = True
                             else:
-                                from app.services.payment_verification import check_order_payment_status
+                                from fastapi_app.services.payment_verification import check_order_payment_status
                                 payment_info = check_order_payment_status(subscription.razorpay_order_id)
                                 if payment_info.get("status") == "paid":
                                     success_req = PaymentSuccessRequest(

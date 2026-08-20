@@ -11,21 +11,21 @@ FlexibleUploadFile = Annotated[
     BeforeValidator(validate_upload_or_str),
     WithJsonSchema({"type": "string", "format": "binary"})
 ]
-from app.database import get_db
-from app.dependencies.auth import get_current_agent
-from app.models.agent import Agent
-from app.schemas.profile import AgentProfileResponse, AgentProfileUpdateRequest
-from app.repositories.agent_repository import AgentRepository
-from app.services.profile_service import ProfileService
-from app.services.cloudinary_service import CloudinaryService
-from app.utils.image_validation import validate_image_file, validate_document_file
-from app.models.agent_profile import AgentProfile
-from app.models.agent_achievement_photo import AgentAchievementPhoto
+from fastapi_app.database import get_db
+from fastapi_app.dependencies.auth import get_current_agent
+from fastapi_app.models.agent import Agent
+from fastapi_app.schemas.profile import AgentProfileResponse, AgentProfileUpdateRequest
+from fastapi_app.repositories.agent_repository import AgentRepository
+from fastapi_app.services.profile_service import ProfileService
+from fastapi_app.services.cloudinary_service import CloudinaryService
+from fastapi_app.utils.image_validation import validate_image_file, validate_document_file
+from fastapi_app.models.agent_profile import AgentProfile
+from fastapi_app.models.agent_achievement_photo import AgentAchievementPhoto
 import logging
 import hashlib
 
-from app.services.local_storage_service import LocalStorageService
-from app.utils.companies import INSURANCE_COMPANIES
+from fastapi_app.services.local_storage_service import LocalStorageService
+from fastapi_app.utils.companies import INSURANCE_COMPANIES
 
 logger = logging.getLogger(__name__)
 
@@ -334,7 +334,7 @@ def get_companies(current_agent: Agent = Depends(get_current_agent), db: Session
     Locked using authentication token for the agent.
     Fetched from the database table (seeded with initial list if empty).
     """
-    from app.models.insurance_company import InsuranceCompany
+    from fastapi_app.models.insurance_company import InsuranceCompany
     import re
     
     # Check if table is empty

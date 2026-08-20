@@ -2,8 +2,8 @@ import json
 import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
-from app.database import SessionLocal
-from app.models.api_log import ApiLog
+from fastapi_app.database import SessionLocal
+from fastapi_app.models.api_log import ApiLog
 import asyncio
 import logging
 

@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlalchemy.orm import Session
-from app.models.agent_subscription import AgentSubscription
+from fastapi_app.models.agent_subscription import AgentSubscription
 
 class AgentSubscriptionRepository:
     def __init__(self, db: Session):

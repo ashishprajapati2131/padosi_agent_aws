@@ -39,7 +39,7 @@ urlpatterns = [
     path('', include('apps.admin_panel.urls')),
     path('', include('apps.agents.urls')),
     path('events/', include('apps.agents.urls_events')),
-    path('chatbot-api/', include('chatbot.urls')),
+    path('chatbot-api/', include('apps.chatbot.urls')),
     path('', include('apps.distributors.urls')),
     path('', include('apps.home.urls')),
     path('insurance/', include('apps.insurance.urls')),

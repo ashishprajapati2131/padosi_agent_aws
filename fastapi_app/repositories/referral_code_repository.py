@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlalchemy.orm import Session
-from app.models.referral_code import ReferralCode
+from fastapi_app.models.referral_code import ReferralCode
 
 class ReferralCodeRepository:
     def __init__(self, db: Session):

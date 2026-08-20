@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from app.models.referral_code import ReferralCode
-from app.models.referral_usage import ReferralUsage
+from fastapi_app.models.referral_code import ReferralCode
+from fastapi_app.models.referral_usage import ReferralUsage
 import random
 import string
 

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, BigInteger, ForeignKey, Index
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class AgentLead(Base):
     __tablename__ = "agent_leads"

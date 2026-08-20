@@ -1,7 +1,7 @@
 from typing import List
 from sqlalchemy.orm import Session
-from app.models.agent_serviceable_city import AgentServiceableCity
-from app.models.city import City
+from fastapi_app.models.agent_serviceable_city import AgentServiceableCity
+from fastapi_app.models.city import City
 
 class AgentServiceableCityRepository:
     def __init__(self, db: Session):

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, Boolean
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class Invoice(Base):
     __tablename__ = "invoices"

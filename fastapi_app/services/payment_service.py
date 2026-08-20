@@ -5,7 +5,7 @@ import base64
 import urllib.request
 import urllib.error
 from typing import Optional, Dict
-from app.config import settings
+from fastapi_app.config import settings
 
 class PaymentService:
     @staticmethod

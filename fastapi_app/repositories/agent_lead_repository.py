@@ -1,7 +1,7 @@
 from typing import List
 from datetime import datetime
 from sqlalchemy.orm import Session
-from app.models.agent_lead import AgentLead
+from fastapi_app.models.agent_lead import AgentLead
 
 class AgentLeadRepository:
     def __init__(self, db: Session):

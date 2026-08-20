@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, Numeric, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
-from app.database import Base
+from fastapi_app.database import Base
 from sqlalchemy.sql import func
 
 class AgentPerformanceStat(Base):

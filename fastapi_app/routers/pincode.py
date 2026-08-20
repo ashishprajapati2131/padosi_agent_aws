@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
-from app.schemas.pincode import PincodeResponse
-from app.services.pincode_service import PincodeService
+from fastapi_app.schemas.pincode import PincodeResponse
+from fastapi_app.services.pincode_service import PincodeService
 
 router = APIRouter(
     prefix="/api/v1/pincode",

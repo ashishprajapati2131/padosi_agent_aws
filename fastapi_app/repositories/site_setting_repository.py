@@ -1,7 +1,7 @@
 import json
 from typing import Any, Optional
 from sqlalchemy.orm import Session
-from app.models.site_setting import SiteSetting
+from fastapi_app.models.site_setting import SiteSetting
 
 class SiteSettingRepository:
     def __init__(self, db: Session):

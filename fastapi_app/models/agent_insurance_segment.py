@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class AgentInsuranceSegment(Base):
     __tablename__ = "agent_insurance_segments"

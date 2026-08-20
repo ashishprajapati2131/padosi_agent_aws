@@ -1,7 +1,7 @@
 import logging
 import cloudinary
 import cloudinary.uploader
-from app.config import settings
+from fastapi_app.config import settings
 
 logger = logging.getLogger(__name__)
 

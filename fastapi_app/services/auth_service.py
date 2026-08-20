@@ -1,11 +1,11 @@
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from app.schemas.auth import LoginRequest, LoginResponse
-from app.repositories.user_repository import UserRepository
-from app.repositories.agent_repository import AgentRepository
-from app.utils.auth import verify_password, generate_and_register_token
-from app.config import settings
+from fastapi_app.schemas.auth import LoginRequest, LoginResponse
+from fastapi_app.repositories.user_repository import UserRepository
+from fastapi_app.repositories.agent_repository import AgentRepository
+from fastapi_app.utils.auth import verify_password, generate_and_register_token
+from fastapi_app.config import settings
 from datetime import datetime
 import time
 
@@ -92,7 +92,7 @@ class AuthService:
                     else:
                         # Create missing user entry in users table based on auth_user
                         try:
-                            from app.models.user import User as UserModel
+                            from fastapi_app.models.user import User as UserModel
                             user = UserModel(
                                 fullname=auth_username,
                                 email=auth_email,

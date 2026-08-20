@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, Boolean, Text
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class PromoCode(Base):
     __tablename__ = "promo_codes"

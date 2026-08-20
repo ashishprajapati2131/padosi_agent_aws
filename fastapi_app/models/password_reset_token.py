@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, DateTime
-from app.database import Base
+from fastapi_app.database import Base
 from datetime import datetime
 
 class PasswordResetToken(Base):

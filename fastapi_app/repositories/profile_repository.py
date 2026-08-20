@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.agent_profile import AgentProfile
+from fastapi_app.models.agent_profile import AgentProfile
 
 class ProfileRepository:
     def __init__(self, db: Session):

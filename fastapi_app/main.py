@@ -4,28 +4,23 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from app.middleware.security_headers import SecurityHeadersMiddleware
-from app.middleware.threat_monitor import ThreatMonitorMiddleware
-from app.middleware.rate_limiter import RateLimitMiddleware
-from app.middleware.admin_auth import AdminAuthMiddleware
-from app.middleware.api_logger import APILoggingMiddleware
+from fastapi_app.middleware.security_headers import SecurityHeadersMiddleware
+from fastapi_app.middleware.threat_monitor import ThreatMonitorMiddleware
+from fastapi_app.middleware.rate_limiter import RateLimitMiddleware
+from fastapi_app.middleware.admin_auth import AdminAuthMiddleware
+from fastapi_app.middleware.api_logger import APILoggingMiddleware
 import os
-
-
-templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates"))
 import logging
-import time
-from app.config import settings
-from sqlalchemy.exc import OperationalError
 
-from app.routers import (
+from fastapi_app.config import settings
+from fastapi_app.routers import (
     registration, promo_code, email,
     auth, dashboard, profile, public_profile,
     pincode, leads, find_agents
 )
+import fastapi_app.models
 
-from app.database import Base, engine
-import app.models
+templates = Jinja2Templates(directory=os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates"))
 
 logger = logging.getLogger(__name__)
 

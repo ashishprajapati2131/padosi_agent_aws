@@ -313,8 +313,47 @@
                     <input type="text" name="gift_subtitle" value="{{ exclusive_config.gift_subtitle|default:'Follow our social handles to reveal your secret discounted price.' }}" class="form-control" required>
                 </div>
             </div>
+            
+            <!-- Dynamic Follow Tiers -->
+            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Dynamic Follow Tiers (Discounts)</h6>
+            <p class="text-muted small">Configure dynamic pricing tiers based on how many accounts the user follows. The system will apply the price of the highest reached tier.</p>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm" id="followTiersTable">
+                    <thead class="bg-light">
+                        <tr>
+                            <th style="width: 40%;">Required Follow Count</th>
+                            <th style="width: 40%;">Discounted Price (₹)</th>
+                            <th style="width: 20%; text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if exclusive_config.follow_tiers %}
+                            {% for tier in exclusive_config.follow_tiers %}
+                            <tr>
+                                <td><input type="number" name="tier_follows[]" value="{{ tier.follows }}" min="1" class="form-control form-control-sm" required></td>
+                                <td><input type="number" name="tier_prices[]" value="{{ tier.price }}" min="0" class="form-control form-control-sm" required></td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-follow-tier"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td><input type="number" name="tier_follows[]" value="1" min="1" class="form-control form-control-sm" required></td>
+                                <td><input type="number" name="tier_prices[]" value="99" min="0" class="form-control form-control-sm" required></td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-follow-tier"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-success mt-2" id="addFollowTierBtn">
+                <i class="fa-solid fa-plus me-1"></i> Add Follow Tier
+            </button>
+
             <!-- Advanced Text & Badges (New!) -->
-            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Advanced Text & Badges (New!)</h6>
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label fw-bold" style="font-size: 13px;">Plan Badge</label>
@@ -609,6 +648,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    const tiersTableBody = document.querySelector('#followTiersTable tbody');
+    
+    document.getElementById('addFollowTierBtn').addEventListener('click', function() {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="number" name="tier_follows[]" min="1" placeholder="e.g. 2" class="form-control form-control-sm" required></td>
+            <td><input type="number" name="tier_prices[]" min="0" placeholder="e.g. 599" class="form-control form-control-sm" required></td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-follow-tier"><i class="fa-solid fa-trash"></i></button></td>
+        `;
+        tiersTableBody.appendChild(row);
+    });
+    
+    tiersTableBody.addEventListener('click', function(e) {
+        if(e.target.closest('.remove-follow-tier')) {
+            if(tiersTableBody.querySelectorAll('tr').length > 1) {
+                e.target.closest('tr').remove();
+            } else {
+                alert('You must have at least one discount tier.');
+            }
+        }
+    });
+
     const featuresTableBody = document.querySelector('#premiumFeaturesTable tbody');
     
     document.getElementById('addPremiumFeatureBtn').addEventListener('click', function() {

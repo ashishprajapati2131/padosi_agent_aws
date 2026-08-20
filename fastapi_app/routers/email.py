@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from app.services.email_service import EmailService
+from fastapi_app.services.email_service import EmailService
 
 router = APIRouter(prefix="/api/v1/email", tags=["Email Service"])
 

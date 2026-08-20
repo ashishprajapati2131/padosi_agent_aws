@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class AgentServicePincode(Base):
     __tablename__ = 'agent_service_pincodes'

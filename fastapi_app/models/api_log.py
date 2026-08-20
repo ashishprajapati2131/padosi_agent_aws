@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, JSON, DateTime
-from app.database import Base
+from fastapi_app.database import Base
 from datetime import datetime, timezone
 
 class ApiLog(Base):

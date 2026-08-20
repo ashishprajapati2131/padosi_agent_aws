@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.promo_code import PromoCode
+from fastapi_app.models.promo_code import PromoCode
 
 class PromoCodeRepository:
     def __init__(self, db: Session):

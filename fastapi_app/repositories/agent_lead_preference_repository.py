@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlalchemy.orm import Session
-from app.models.agent_lead_preference import AgentLeadPreference
+from fastapi_app.models.agent_lead_preference import AgentLeadPreference
 
 class AgentLeadPreferenceRepository:
     def __init__(self, db: Session):

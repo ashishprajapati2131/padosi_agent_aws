@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, JSON, DateTime, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class Agent(Base):
     __tablename__ = "agents"

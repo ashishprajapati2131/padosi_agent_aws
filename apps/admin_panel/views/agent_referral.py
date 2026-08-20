@@ -4,7 +4,7 @@ apps/admin_panel/views/agent_referral.py
 Agent-facing Referral Dashboard.
 Mirrors AgentDashboardController::referral() from Laravel.
 
-Routes (registered in padosiagent/urls.py):
+Routes (registered in padosi_agent/urls.py via apps.admin_panel.urls):
     GET /join/<code>/               → referral_join   (capture code in session → redirect to registration)
     GET /agent/referral/            → agent_referral_dashboard
 """

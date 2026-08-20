@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import json
 
-from app.database import get_db
-from app.utils.auth import decode_token
-from app.schemas.registration import (
+from fastapi_app.database import get_db
+from fastapi_app.utils.auth import decode_token
+from fastapi_app.schemas.registration import (
     RegistrationBasicRequest, 
     RegistrationBasicResponse,
     PricingResponse,
@@ -17,10 +17,10 @@ from app.schemas.registration import (
     PaymentSuccessResponse,
     PricingRequest
 )
-from app.repositories.agent_repository import AgentRepository
-from app.repositories.user_repository import UserRepository
-from app.services.registration_service import RegistrationService
-from app.services.payment_service import PaymentService
+from fastapi_app.repositories.agent_repository import AgentRepository
+from fastapi_app.repositories.user_repository import UserRepository
+from fastapi_app.services.registration_service import RegistrationService
+from fastapi_app.services.payment_service import PaymentService
 
 router = APIRouter(prefix="/api/v1/agents/registration", tags=["Agent Registration"])
 security = HTTPBearer(auto_error=False)
@@ -193,7 +193,7 @@ def post_pricing_endpoint(
             applied_promo = agent.registration_draft.get("applied_promo")
             
         from datetime import timedelta
-        from app.utils.auth import create_access_token
+        from fastapi_app.utils.auth import create_access_token
         new_token = create_access_token({"sub": agent.email, "role": "agent"}, expires_delta=timedelta(minutes=5))
         return PricingResponse(
             success=True,
@@ -299,7 +299,7 @@ def create_payment_order_endpoint(
         
         # 6. Generate fresh token with 16-minute expiry
         from datetime import timedelta
-        from app.utils.auth import create_access_token
+        from fastapi_app.utils.auth import create_access_token
         new_token = create_access_token({"sub": agent.email, "role": "agent"}, expires_delta=timedelta(minutes=16))
         
         checkout_data["jwt_token"] = new_token
@@ -417,7 +417,7 @@ async def razorpay_webhook_endpoint(
     payload = await request.body()
     signature = request.headers.get("X-Razorpay-Signature")
 
-    from app.middleware.api_logger import log_request_to_db
+    from fastapi_app.middleware.api_logger import log_request_to_db
 
     client_host = request.client.host if request.client else None
     payload_text = payload.decode("utf-8", errors="replace")[:100000]
@@ -438,7 +438,7 @@ async def razorpay_webhook_endpoint(
             payment_id = payment_entity.get("id")
             
             if order_id and payment_id:
-                from app.repositories.subscription_repository import SubscriptionRepository
+                from fastapi_app.repositories.subscription_repository import SubscriptionRepository
                 sub_repo = SubscriptionRepository(db)
                 sub = sub_repo.get_by_order_id(order_id)
                 if sub:

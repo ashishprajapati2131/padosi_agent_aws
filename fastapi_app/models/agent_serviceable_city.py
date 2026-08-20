@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, BigInteger, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class AgentServiceableCity(Base):
     """Pivot table: agent_serviceable_cities"""

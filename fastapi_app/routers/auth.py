@@ -1,17 +1,17 @@
 from fastapi import APIRouter, Depends, status, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.schemas.auth import LoginRequest, LoginResponse, AgentMeResponse, LogoutResponse, ForgotPasswordRequest, ForgotPasswordResponse, ResetPasswordRequest, ResetPasswordResponse
-from app.services.auth_service import AuthService
-from app.services.password_reset_service import PasswordResetService
-from app.repositories.user_repository import UserRepository
-from app.repositories.agent_repository import AgentRepository
-from app.dependencies.auth import get_current_agent, security
-from app.models.agent import Agent
+from fastapi_app.database import get_db
+from fastapi_app.schemas.auth import LoginRequest, LoginResponse, AgentMeResponse, LogoutResponse, ForgotPasswordRequest, ForgotPasswordResponse, ResetPasswordRequest, ResetPasswordResponse
+from fastapi_app.services.auth_service import AuthService
+from fastapi_app.services.password_reset_service import PasswordResetService
+from fastapi_app.repositories.user_repository import UserRepository
+from fastapi_app.repositories.agent_repository import AgentRepository
+from fastapi_app.dependencies.auth import get_current_agent, security
+from fastapi_app.models.agent import Agent
 from fastapi.security import HTTPAuthorizationCredentials
-from app.utils.auth import decode_access_token
-from app.models.user_token import UserToken
+from fastapi_app.utils.auth import decode_access_token
+from fastapi_app.models.user_token import UserToken
 
 router = APIRouter(
     prefix="/api/v1/agents",

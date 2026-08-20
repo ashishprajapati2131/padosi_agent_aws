@@ -375,7 +375,6 @@ def record_social_follow(request):
     
     from apps.home.models import SiteSetting
     exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
-    discounted_price = float(exclusive_config.get('discounted_price', 199))
 
     session_key = f'followed_platforms_{agent_id}'
     followed = request.session.get(session_key, [])
@@ -383,7 +382,20 @@ def record_social_follow(request):
         followed.append(platform)
         request.session[session_key] = followed
         
-    discount_unlocked = len(followed) > 0
+    follow_count = len(followed)
+    discount_unlocked = follow_count > 0
+    
+    base_price = float(exclusive_config.get('base_price', 1999))
+    current_price = base_price
+    follow_tiers = exclusive_config.get('follow_tiers', [])
+    
+    if follow_tiers:
+        for tier in follow_tiers:
+            if follow_count >= tier.get('follows', 0):
+                current_price = float(tier.get('price', current_price))
+                break
+    elif discount_unlocked:
+        current_price = float(exclusive_config.get('discounted_price', 199))
     
     # Save to DB so agent_register_complete can read it
     if discount_unlocked:
@@ -401,7 +413,7 @@ def record_social_follow(request):
         'success': True,
         'message': 'Follow recorded successfully!',
         'discount_unlocked': discount_unlocked,
-        'current_price': discounted_price,
+        'current_price': current_price,
         'followed_platforms': followed
     })
 
@@ -418,8 +430,20 @@ def exclusive_discount_status(request):
     from apps.home.models import SiteSetting
     exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
     
-    if discount_unlocked:
+    follow_count = len(followed)
+    base_price = float(exclusive_config.get('base_price', 1999))
+    current_price = base_price
+    follow_tiers = exclusive_config.get('follow_tiers', [])
+    
+    if follow_tiers:
+        for tier in follow_tiers:
+            if follow_count >= tier.get('follows', 0):
+                current_price = float(tier.get('price', current_price))
+                break
+    elif discount_unlocked:
         current_price = float(exclusive_config.get('discounted_price', 199))
+        
+    if discount_unlocked:
         
         # Sync session state to database to heal any mismatched states
         from apps.agents.models import AgentDraft, UserPlanProgress
@@ -431,9 +455,7 @@ def exclusive_discount_status(request):
             logger.info(f"Healed and saved discount_unlocked=True for draft {draft.id}")
         except Exception as e:
             logger.error(f"Failed to heal UserPlanProgress in discount_status: {e}")
-    else:
-        current_price = float(exclusive_config.get('base_price', 1999))
-        
+
     return JsonResponse({
         'success': True,
         'discount_unlocked': discount_unlocked,
@@ -555,12 +577,30 @@ def chooseplan(request):
     # Fetch Gamification Config
     exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
     is_exclusive_active = exclusive_config.get('is_active', False)
-    discount_unlocked = False
+    session_key = f'followed_platforms_{draft_id}'
+    followed = request.session.get(session_key, [])
+    follow_count = len(followed)
+    discount_unlocked = follow_count > 0
     
-    # Calculate dynamic percentages for UI based on base price
     exc_strikeout = float(exclusive_config.get('strikeout_price', 6999))
     exc_base = float(exclusive_config.get('base_price', 1999))
-    exc_discounted = float(exclusive_config.get('discounted_price', 199))
+    
+    exc_discounted = exc_base
+    follow_tiers = exclusive_config.get('follow_tiers', [])
+    
+    if discount_unlocked:
+        if follow_tiers:
+            for tier in follow_tiers:
+                if follow_count >= tier.get('follows', 0):
+                    exc_discounted = float(tier.get('price', exc_discounted))
+                    break
+        else:
+            exc_discounted = float(exclusive_config.get('discounted_price', 199))
+    else:
+        if follow_tiers:
+            exc_discounted = float(follow_tiers[0].get('price', exc_base))
+        else:
+            exc_discounted = float(exclusive_config.get('discounted_price', 199))
     
     if exc_strikeout > 0 and exc_base < exc_strikeout:
         exclusive_config['before_discount_val'] = f"{int(round((exc_strikeout - exc_base) / exc_strikeout * 100))}%"

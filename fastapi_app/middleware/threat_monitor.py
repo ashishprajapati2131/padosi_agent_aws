@@ -8,12 +8,12 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
 
-from app.config import settings
-from app.database import SessionLocal
-from app.models.blocked_ip import BlockedIp
-from app.models.security_threat_log import SecurityThreatLog
-from app.models.user import User
-from app.models.agent import Agent
+from fastapi_app.config import settings
+from fastapi_app.database import SessionLocal
+from fastapi_app.models.blocked_ip import BlockedIp
+from fastapi_app.models.security_threat_log import SecurityThreatLog
+from fastapi_app.models.user import User
+from fastapi_app.models.agent import Agent
 
 class ThreatMonitorMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -83,7 +83,7 @@ class ThreatMonitorMiddleware(BaseHTTPMiddleware):
                 if auth_header and auth_header.startswith("Bearer "):
                     token = auth_header.split(" ")[1]
                     try:
-                        from app.utils.auth import decode_token
+                        from fastapi_app.utils.auth import decode_token
                         payload = decode_token(token)
                         if payload and payload.get("sub"):
                             email = payload.get("sub")

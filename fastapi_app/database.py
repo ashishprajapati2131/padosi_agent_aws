@@ -1,15 +1,10 @@
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, declarative_base
-from app.config import settings
+import os
 import urllib.parse
 
-print("=" * 50)
-print("DB_HOST:", settings.DB_HOST)
-print("DB_PORT:", settings.DB_PORT)
-print("DB_NAME:", settings.DB_NAME)
-print("DB_USER:", settings.DB_USER)
-print(f"PASSWORD_LENGTH: {len(settings.DB_PASSWORD) if settings.DB_PASSWORD else 0}")
-print("=" * 50)
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+
+from fastapi_app.config import settings
 
 encoded_password = urllib.parse.quote_plus(settings.DB_PASSWORD) if settings.DB_PASSWORD else ""
 
@@ -21,29 +16,23 @@ DATABASE_URL = (
     f"{settings.DB_NAME}"
 )
 
+# Passenger/cPanel typically runs several workers against a shared MySQL
+# connection limit. Keep the pool small and configurable.
+_pool_size = int(os.environ.get("DB_POOL_SIZE", "5"))
+_max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "10"))
+_pool_recycle = int(os.environ.get("DB_POOL_RECYCLE", "1800"))
+
 engine = create_engine(
     DATABASE_URL,
-    pool_size=50,
-    max_overflow=20,
-    pool_recycle=3600,
+    pool_size=_pool_size,
+    max_overflow=_max_overflow,
+    pool_recycle=_pool_recycle,
     pool_timeout=30,
-    pool_pre_ping=True
+    pool_pre_ping=True,
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-import sys
-try:
-    sys.stdout.reconfigure(encoding='utf-8')
-except Exception:
-    pass
-
-try:
-    with engine.connect() as conn:
-        conn.execute(text("SELECT 1"))
-    print("✓ Successfully connected to MySQL")
-except Exception as e:
-    print(f"Database connection failed: {e}")
 
 def get_db():
     db = SessionLocal()

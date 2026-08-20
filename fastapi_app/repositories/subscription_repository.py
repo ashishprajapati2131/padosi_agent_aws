@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.agent_subscription import AgentSubscription
+from fastapi_app.models.agent_subscription import AgentSubscription
 
 class SubscriptionRepository:
     def __init__(self, db: Session):

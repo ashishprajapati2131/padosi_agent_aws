@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
-from app.repositories.user_repository import UserRepository
-from app.repositories.password_reset_token_repository import PasswordResetTokenRepository
-from app.services.email_service import EmailService
-from app.config import settings
-from app.utils.auth import generate_reset_token, get_password_hash, verify_password, decode_access_token
-from app.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
+from fastapi_app.repositories.user_repository import UserRepository
+from fastapi_app.repositories.password_reset_token_repository import PasswordResetTokenRepository
+from fastapi_app.services.email_service import EmailService
+from fastapi_app.config import settings
+from fastapi_app.utils.auth import generate_reset_token, get_password_hash, verify_password, decode_access_token
+from fastapi_app.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from typing import Optional
@@ -127,7 +127,7 @@ class PasswordResetService:
                 jti = payload.get("jti")
                 if email and jti:
                     # Validate token is not revoked in DB
-                    from app.models.user_token import UserToken
+                    from fastapi_app.models.user_token import UserToken
                     token_record = self.db.query(UserToken).filter(UserToken.jti == jti).first()
                     if token_record and not token_record.is_revoked:
                         user = self.user_repo.get_by_email(email)

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship as orm_relationship
-from app.database import Base
+from fastapi_app.database import Base
 from sqlalchemy.sql import func
 
 class AgentFamilyLicense(Base):

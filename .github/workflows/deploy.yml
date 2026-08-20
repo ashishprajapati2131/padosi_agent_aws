@@ -26,6 +26,14 @@ jobs:
       - name: Django system check
         env:
           DJANGO_SETTINGS_MODULE: padosi_agent.settings
+          SECRET_KEY: ci-check-only
+          DEBUG: "True"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          DB_NAME: ci
+          DB_USER: ci
+          DB_PASSWORD: ci
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
         run: |
           python manage.py check
 

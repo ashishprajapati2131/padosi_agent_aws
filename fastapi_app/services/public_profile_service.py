@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 import json
-from app.repositories.agent_repository import AgentRepository
-from app.schemas.public_profile import (
+from fastapi_app.repositories.agent_repository import AgentRepository
+from fastapi_app.schemas.public_profile import (
     PublicProfileResponse, BadgeSchema, SocialLinksSchema, 
     InsuranceSegmentSchema, TimelineSchema, 
     PerformanceStatsSchema, ServiceFeeSchema, ReviewSchema

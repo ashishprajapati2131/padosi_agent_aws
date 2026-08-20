@@ -344,6 +344,7 @@ def plans(request):
         'checkout_btn_text': 'Claim Offer',
         'social_links': [],
         'premium_features': [],
+        'follow_tiers': [],
     })
 
     plan_features_config = SiteSetting.get_value('plan_features_config', {
@@ -446,6 +447,24 @@ def update_exclusive_config(request):
                 'color': pf_colors[i] if i < len(pf_colors) else '#000000',
                 'bg_color': pf_bg_colors[i] if i < len(pf_bg_colors) else '#ffffff',
             })
+            
+        # Parse dynamic follow tiers
+        tier_follows_list = request.POST.getlist('tier_follows[]')
+        tier_prices_list = request.POST.getlist('tier_prices[]')
+        follow_tiers = []
+        for i in range(len(tier_follows_list)):
+            try:
+                f_count = int(tier_follows_list[i])
+                f_price = int(tier_prices_list[i])
+                follow_tiers.append({
+                    'follows': f_count,
+                    'price': f_price
+                })
+            except ValueError:
+                pass
+        
+        # Sort follow_tiers descending by follows so we can easily pick the highest tier reached
+        follow_tiers.sort(key=lambda x: x['follows'], reverse=True)
 
         config = {
             'is_active': request.POST.get('exc_is_active') == 'on',
@@ -499,6 +518,7 @@ def update_exclusive_config(request):
             
             'social_links': social_links,
             'premium_features': premium_features,
+            'follow_tiers': follow_tiers,
         }
         SiteSetting.set_value('exclusive_plan_config', config, 'pricing')
         AdminActivityLog.log('Updated exclusive gamified plan', 'SiteSetting', request=request)

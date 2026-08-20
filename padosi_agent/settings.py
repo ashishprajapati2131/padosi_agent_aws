@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -27,16 +29,20 @@ CSRF_COOKIE_NAME = "padosi_csrf_token"
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
 # ─── Core Security ──────────────────────────────────────────────────────────
-# In production: set SECRET_KEY in environment variable, never commit it.
-SECRET_KEY = os.environ.get(
-    'SECRET_KEY',
-    'django-insecure-u5n+gf_rt4&sgf%p8atp)#=b*129@9tyqfi)sz6v46nyd@+796'
-)
-
-# DEBUG must be False in production. Controlled via .env
+# DEBUG defaults True for local development. Production .env MUST set DEBUG=False.
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
+
+# Production must set SECRET_KEY in the environment. The insecure fallback is
+# local-only so a missing production secret fails closed instead of shipping
+# a committed key.
+_INSECURE_DEV_SECRET = 'django-insecure-u5n+gf_rt4&sgf%p8atp)#=b*129@9tyqfi)sz6v46nyd@+796'
+SECRET_KEY = os.environ.get('SECRET_KEY', '')
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = _INSECURE_DEV_SECRET
+    else:
+        raise ImproperlyConfigured('SECRET_KEY must be set when DEBUG is False')
 
 # In production: set ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com in .env
 _allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
@@ -44,16 +50,22 @@ ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
 if DEBUG and not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ['*']
 
-CSRF_TRUSTED_ORIGINS = [
-    'https://catfish-rebirth-uproar.ngrok-free.dev',
-    'https://*.ngrok-free.dev',
-    'http://127.0.0.1:8000',
-    'http://localhost:8000',
-    'http://127.0.0.1:1234',
-    'http://localhost:1234',
-    'https://aciaindia.org',
-    'https://www.aciaindia.org',
-]
+_csrf_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if _csrf_env:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in _csrf_env.split(',') if origin.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        'https://catfish-rebirth-uproar.ngrok-free.dev',
+        'https://*.ngrok-free.dev',
+        'http://127.0.0.1:8000',
+        'http://localhost:8000',
+        'http://127.0.0.1:1234',
+        'http://localhost:1234',
+        'https://aciaindia.org',
+        'https://www.aciaindia.org',
+        'https://padosiagent.com',
+        'https://www.padosiagent.com',
+    ]
 
 
 # Application definition
@@ -74,9 +86,9 @@ INSTALLED_APPS = [
     'apps.agents',
     'apps.insurance',
     'apps.distributors',
+    'apps.chatbot',
     'rest_framework',
     'django.contrib.humanize',
-    'chatbot',
 ]
 
 MIDDLEWARE = [
@@ -128,6 +140,8 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD'),
         'HOST': os.environ.get('DB_HOST'),
         'PORT': os.environ.get('DB_PORT'),
+        'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 

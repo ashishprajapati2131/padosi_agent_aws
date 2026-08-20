@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
 from apps.agents.models import Agent, AgentProfile, AgentBioGenerationLog
-from chatbot.llm_client import call_llm_with_fallback
+from apps.chatbot.llm_client import call_llm_with_fallback
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 from fastapi import Request, HTTPException, status
 import logging
-from app.config import settings
+from fastapi_app.config import settings
 
 logger = logging.getLogger("security")
 

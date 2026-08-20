@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.core.cache import cache
-from chatbot.llm_client import generate_suggestion_chips
+from apps.chatbot.llm_client import generate_suggestion_chips
 
 class Command(BaseCommand):
     help = 'Fetches new suggestion chips from Groq API and caches them'

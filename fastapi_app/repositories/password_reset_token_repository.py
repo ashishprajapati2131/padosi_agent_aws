@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import text, func
-from app.models.password_reset_token import PasswordResetToken
+from fastapi_app.models.password_reset_token import PasswordResetToken
 from datetime import datetime
 
 class PasswordResetTokenRepository:

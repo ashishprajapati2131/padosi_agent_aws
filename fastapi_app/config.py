@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     DB_PORT: int = 3306
     DB_NAME: str = "padosiagent"
     DB_USER: str = "root"
-    DB_PASSWORD: str = "12PassworD!@"
+    DB_PASSWORD: str = ""
 
     @model_validator(mode="before")
     @classmethod

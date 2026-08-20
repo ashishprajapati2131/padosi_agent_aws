@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.dependencies.auth import get_current_agent
-from app.models.agent import Agent
-from app.repositories.agent_lead_repository import AgentLeadRepository
-from app.schemas.leads import LeadsListResponse, LeadStatusUpdate, LeadDetail
+from fastapi_app.database import get_db
+from fastapi_app.dependencies.auth import get_current_agent
+from fastapi_app.models.agent import Agent
+from fastapi_app.repositories.agent_lead_repository import AgentLeadRepository
+from fastapi_app.schemas.leads import LeadsListResponse, LeadStatusUpdate, LeadDetail
 
 router = APIRouter(
     prefix="/api/v1/agents/leads",

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class ReferralCode(Base):
     __tablename__ = "referral_codes"

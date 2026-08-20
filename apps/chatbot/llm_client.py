@@ -6,7 +6,7 @@ import traceback
 import concurrent.futures
 from groq import Groq, BadRequestError
 from openai import OpenAI
-from chatbot.models import ChatSession, ChatMessage, LatencyLog
+from apps.chatbot.models import ChatSession, ChatMessage, LatencyLog
 from apps.home.views.pages import build_agent_query
 import time
 from django.utils.timezone import now

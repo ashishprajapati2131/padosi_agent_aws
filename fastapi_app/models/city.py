@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class City(Base):
     __tablename__ = "cities"

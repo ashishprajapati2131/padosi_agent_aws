@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, BigInteger, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class AgentReview(Base):
     __tablename__ = "agent_reviews"

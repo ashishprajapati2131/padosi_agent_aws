@@ -3,7 +3,7 @@ from typing import Optional, Union, Any
 from uuid import uuid4
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-from app.config import settings
+from fastapi_app.config import settings
 
 # Setup password hashing context
 pwd_context = CryptContext(schemes=["bcrypt", "django_pbkdf2_sha256"], deprecated="auto")
@@ -51,7 +51,7 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
 
 from sqlalchemy.orm import Session
 def generate_and_register_token(db: Session, email: str, role: str, user_id: int, expires_delta: Optional[timedelta] = None) -> str:
-    from app.models.user_token import UserToken
+    from fastapi_app.models.user_token import UserToken
     jti = str(uuid4())
     token_version = 1
     now = datetime.utcnow()

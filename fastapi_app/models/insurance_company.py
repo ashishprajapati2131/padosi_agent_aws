@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from datetime import datetime
-from app.database import Base
+from fastapi_app.database import Base
 
 class InsuranceCompany(Base):
     __tablename__ = "insurance_companies"

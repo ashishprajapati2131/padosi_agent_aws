@@ -6,11 +6,11 @@ from typing import Optional
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy.orm import Session
 
-from app.models.invoice import Invoice
-from app.models.agent import Agent
-from app.models.agent_subscription import AgentSubscription
-from app.models.agent_profile import AgentProfile
-from app.config import settings
+from fastapi_app.models.invoice import Invoice
+from fastapi_app.models.agent import Agent
+from fastapi_app.models.agent_subscription import AgentSubscription
+from fastapi_app.models.agent_profile import AgentProfile
+from fastapi_app.config import settings
 
 logger = logging.getLogger("invoice_service")
 
@@ -520,7 +520,7 @@ class InvoiceService:
             discount_folder = InvoiceService.resolve_discount_folder(discount_percent, total_amount)
 
             # Query agent profile to retrieve address and state
-            from app.repositories.profile_repository import ProfileRepository
+            from fastapi_app.repositories.profile_repository import ProfileRepository
             profile_repo = ProfileRepository(db)
             profile = profile_repo.get_by_agent_id(agent.id)
 

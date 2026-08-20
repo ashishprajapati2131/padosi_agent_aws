@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.agent_portfolio import AgentPortfolio
+from fastapi_app.models.agent_portfolio import AgentPortfolio
 
 class AgentPortfolioRepository:
     def __init__(self, db: Session):

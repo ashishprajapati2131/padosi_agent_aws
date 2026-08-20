@@ -1,6 +1,6 @@
 from sqlalchemy import Column, BigInteger, String, Boolean, JSON, Text, Integer, DateTime, Date
 from sqlalchemy.sql import func
-from app.database import Base
+from fastapi_app.database import Base
 
 class AgentDraft(Base):
     __tablename__ = 'agent_drafts'

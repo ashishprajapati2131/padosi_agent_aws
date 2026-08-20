@@ -1,12 +1,12 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.utils.auth import decode_access_token
-from app.repositories.user_repository import UserRepository
-from app.repositories.agent_repository import AgentRepository
-from app.models.agent import Agent
-from app.models.user import User
+from fastapi_app.database import get_db
+from fastapi_app.utils.auth import decode_access_token
+from fastapi_app.repositories.user_repository import UserRepository
+from fastapi_app.repositories.agent_repository import AgentRepository
+from fastapi_app.models.agent import Agent
+from fastapi_app.models.user import User
 from jose.exceptions import ExpiredSignatureError, JWTError
 
 security = HTTPBearer()
@@ -28,7 +28,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             raise credentials_exception
             
         if jti:
-            from app.models.user_token import UserToken
+            from fastapi_app.models.user_token import UserToken
             token_record = db.query(UserToken).filter(UserToken.jti == jti).first()
             if not token_record or token_record.is_revoked:
                 raise HTTPException(

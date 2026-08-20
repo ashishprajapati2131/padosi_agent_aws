@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.schemas.registration import PromoCodeValidateRequest, PromoCodeValidateResponse
-from app.repositories.promo_code_repository import PromoCodeRepository
-from app.utils.auth import create_promo_validation_token
+from fastapi_app.database import get_db
+from fastapi_app.schemas.registration import PromoCodeValidateRequest, PromoCodeValidateResponse
+from fastapi_app.repositories.promo_code_repository import PromoCodeRepository
+from fastapi_app.utils.auth import create_promo_validation_token
 
 router = APIRouter(prefix="/api/v1/promo-code", tags=["Promo Code Validation"])
 

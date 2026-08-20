@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.invoice import Invoice
+from fastapi_app.models.invoice import Invoice
 
 class InvoiceRepository:
     def __init__(self, db: Session):

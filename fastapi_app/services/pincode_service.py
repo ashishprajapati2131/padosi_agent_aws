@@ -1,6 +1,6 @@
 import httpx
 from fastapi import HTTPException, status
-from app.schemas.pincode import PincodeResponse
+from fastapi_app.schemas.pincode import PincodeResponse
 
 class PincodeService:
     @staticmethod

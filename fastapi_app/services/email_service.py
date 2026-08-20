@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 import asyncio
 import logging
 from typing import Optional, List, Dict, Any
-from app.config import settings
+from fastapi_app.config import settings
 
 logger = logging.getLogger("email_service")
 
@@ -28,7 +28,7 @@ class EmailService:
         import os
         from jinja2 import Environment, FileSystemLoader
         from datetime import datetime
-        from app.database import SessionLocal
+        from fastapi_app.database import SessionLocal
         from sqlalchemy import text
 
         # Retrieve site logo from database site_settings if available

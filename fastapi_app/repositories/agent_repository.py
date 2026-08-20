@@ -1,19 +1,19 @@
 from sqlalchemy.orm import Session, selectinload
-from app.models.agent import Agent
-from app.models.agent_insurance_segment import AgentInsuranceSegment
-from app.models.agent_profile import AgentProfile
-from app.models.agent_subscription import AgentSubscription
-from app.models.agent_serviceable_city import AgentServiceableCity
-from app.models.agent_portfolio import AgentPortfolio
-from app.models.agent_lead_preference import AgentLeadPreference
-from app.models.agent_family_license import AgentFamilyLicense
-from app.models.agent_performance_stat import AgentPerformanceStat
-from app.models.agent_achievement_photo import AgentAchievementPhoto
-from app.models.agent_career_timeline import AgentCareerTimeline
-from app.models.agent_service_pincode import AgentServicePincode
-from app.models.agent_product_expertise import AgentProductExpertise
-from app.models.city import City
-from app.models.agent_review import AgentReview
+from fastapi_app.models.agent import Agent
+from fastapi_app.models.agent_insurance_segment import AgentInsuranceSegment
+from fastapi_app.models.agent_profile import AgentProfile
+from fastapi_app.models.agent_subscription import AgentSubscription
+from fastapi_app.models.agent_serviceable_city import AgentServiceableCity
+from fastapi_app.models.agent_portfolio import AgentPortfolio
+from fastapi_app.models.agent_lead_preference import AgentLeadPreference
+from fastapi_app.models.agent_family_license import AgentFamilyLicense
+from fastapi_app.models.agent_performance_stat import AgentPerformanceStat
+from fastapi_app.models.agent_achievement_photo import AgentAchievementPhoto
+from fastapi_app.models.agent_career_timeline import AgentCareerTimeline
+from fastapi_app.models.agent_service_pincode import AgentServicePincode
+from fastapi_app.models.agent_product_expertise import AgentProductExpertise
+from fastapi_app.models.city import City
+from fastapi_app.models.agent_review import AgentReview
 
 class AgentRepository:
     def __init__(self, db: Session):
