@@ -630,3 +630,17 @@
 .swal2-container.swal-chatbot-zindex {
     z-index: 9999999999 !important;
 }
+
+/* Waiting / disabled state */
+.chatbot-input:disabled {
+    color: #94a3b8;
+    background: #f1f5f9;
+    cursor: not-allowed;
+}
+
+.chatbot-send-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+    background-color: #78a594;
+}
