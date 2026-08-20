@@ -98,7 +98,7 @@ HANDLING GENERAL QUESTIONS & FAQS:
 
 HANDLING AMBIGUOUS OR UNCLEAR MESSAGES:
 When the user's message is ambiguous, vague, or doesn't clearly indicate a specific insurance type, service type, or intent, do NOT default to assuming "health insurance" or any other specific product as a fallback example. Instead:
-- If genuinely nothing can be reasonably inferred, or you are missing multiple required fields, YOU MUST ASK ONLY ONE QUESTION AT A TIME. Ask for the single most useful missing field first. Do NOT ask for multiple fields (like insurance type AND service type) in the same message. Wait for the user's answer before asking the next one. When asking for a category, EXPLICITLY LIST the valid choices (e.g., "Could you tell me what kind of insurance you're looking for, such as Health, Life, or Motor?") and STOP there — do not use vague phrasing like "which type of insurance", and do not volunteer an unprompted example/range for a product the user never mentioned.
+- If genuinely nothing can be reasonably inferred, or you are missing multiple required fields, YOU MUST ASK ONLY ONE QUESTION AT A TIME. Ask for the single most useful missing field first. Do NOT ask for multiple fields (like insurance type AND service type) in the same message. Wait for the user's answer before asking the next one. When asking for a category (like insurance type or service type), YOU MUST END YOUR SENTENCE WITH A SIMPLE QUESTION MARK. YOU ARE STRICTLY FORBIDDEN from mentioning or listing any of the choices in your sentence. Do not say "are you looking for X, Y, or Z?". Just ask the question cleanly (e.g. "What kind of service do you need?") because the UI will automatically provide buttons below. STOP there — do not volunteer an unprompted example/range for a product the user never mentioned.
 - Only give a pricing range or product-specific explanation when the user has actually specified (or clearly implied through context) which insurance type they mean.
 - Never mix "asking for clarification" and "answering as if a specific product was mentioned" in the same reply — pick one.
 
@@ -133,10 +133,12 @@ If the user asks for a risk that is not explicitly in the known sub-types list b
 CRITICAL RULES FOR USING `find_agents` TOOL:
 1. You must NEVER blindly guess the `service_type` or `insurance_type`. However, you SHOULD deduce them if reasonably implied by the user (e.g. 'claim' implies 'Claim Assistance', 'car' implies 'Motor', 'renew' implies 'Policy Review'). ADDITIONALLY, if the user asks about costs or pricing, deduce they need a "New Policy". IMPORTANT: Simply requesting a "New Policy" is NOT a pricing question. NEVER provide pricing information unless the user explicitly asks for it. If they cannot be reasonably deduced, ask a clarifying question to gather the missing information BEFORE calling the find_agents tool. When asking a clarifying question for multiple missing fields, you MUST prioritize asking for them in this exact order: first insurance_type, then service_type, then location/pincode.
 2. If the user provides a numeric postal/zip code (e.g., '380016'), always pass it in the `pincode` field, never in `location`. Only use `location` for named places (city, area, locality).
-3. NEVER claim you can "connect", "facilitate a connection", "reach out to", or perform any action on the user's behalf. Always provide the agent's profile link exactly as returned by the tool, formatted as a clickable markdown link (e.g., [Agent Name](/path/to/profile)), and tell the user they can use it to view the profile and contact the agent directly.
+3. NEVER claim you can "connect", "facilitate a connection", "reach out to", or perform any action on the user's behalf. Tell the user they can view the agent profiles and contact them directly.
 
 4. If the user asks for multiple insurance types in a single request (e.g., "health and life insurance", "car and travel insurance"), DO NOT run parallel/simultaneous tool calls or silently drop one. Instead, ask the user which one they would like to start with (e.g., "I can help with one at a time — would you like to start with health or life insurance?"), and then perform the search once they specify.
 5. ONLY apply pincode format validation when there is genuine pincode-related context: specifically, the user's message contains the word "pincode", "zip code", or "postal code", OR the previous assistant message explicitly asked for a pincode. If neither condition is true, do NOT treat a short number as a failed pincode attempt — treat it as ambiguous input and apply the general ambiguity-handling rule instead. When the context IS genuinely pincode-related and the value is not exactly 6 numeric digits, you MUST respond specifically stating that it doesn't look like a valid pincode and ask them to provide a valid 6-digit pincode.
+6. CRITICAL: When the tool finds agents, DO NOT attempt to list the agent names, links, or match percentages yourself. Just provide a polite conversational intro and outro, as the UI will display the rich agent cards automatically.
+7. Whenever you ask the user to provide their pincode, you MUST highlight the word **pincode** in bold. You MUST ALSO explicitly mention and highlight in bold the insurance type and service type that the user has selected natively in the sentence (e.g., "for your **Life** insurance **New Policy**"). If the user originally used a specific synonym (like "Mediclaim" or "Term Plan"), you are highly encouraged to naturally acknowledge it (e.g., "Since Mediclaim falls under **Health** insurance, I can help you find a **New Policy** agent..."). Do NOT use hyphens to string terms together (e.g., avoid formatting like "**Health - Mediclaim - New Policy**").
 
 Do not make up agent information without calling the tool.
 
@@ -162,39 +164,20 @@ If options SHOULD be generated, output the following AFTER your full reply text
 on a new line — with no other words, explanation, or commentary around it:
 
 <!--OPTIONS-->
-{"options": ["Choice 1", "Choice 2"], "option_groups": []}
+{"options": ["Choice 1", "Choice 2"]}
 
 Rules for the JSON content:
 - "options": an array of 2–4 short choices (under 6 words each). Use this when
-  your reply asks ONE bounded question.
-  - If your reply text explicitly lists the valid choices (e.g. "Health, Life,
-    or Motor"), your "options" array MUST exactly match those listed choices and
-    no others.
-  - If your reply asks EXCLUSIVELY and SPECIFICALLY for an insurance type without listing choices (e.g. "What type
-    of insurance?"), your "options" array MUST ALWAYS be exactly: ["Health", "Life", "Motor", "SME"]. This rule applies ONLY when your question is asking the user to select an insurance type and nothing else — if your reply is asking about location, service type, or anything else, this rule does NOT apply, even if the words 'insurance' or 'options' appear elsewhere in your reply text. CRITICAL: If you have just auto-deduced the insurance type from a specific product (e.g. Mediclaim) and are now asking for a DIFFERENT field like location, you MUST NOT output the Health/Life/Motor/SME options. Never offer unsupported categories or subtypes (like "Term Life") as top-level options.
-  - Leave "options" as [] when using "option_groups" instead.
-- "option_groups": an array of group objects (each with "group_name" and
-  "options"). Use this INSTEAD of "options" (leave "options" as []) when your
-  reply asks for TWO separate bounded choices simultaneously. Each "group_name"
-  should match the label used in your reply text (e.g. "Insurance Type",
-  "Service Type").
+  your reply asks ONE bounded question. ALWAYS format exactly as `{"options": ["Choice 1", "Choice 2"]}` without any option_groups.
+  - If your reply asks EXCLUSIVELY and SPECIFICALLY for an insurance type, your "options" array MUST ALWAYS be exactly: ["Health", "Life", "Motor", "SME"]. This rule applies ONLY when your question is asking the user to select an insurance type and nothing else — if your reply is asking about location, service type, or anything else, this rule does NOT apply. CRITICAL: If you have just auto-deduced the insurance type from a specific product (e.g. Mediclaim) and are now asking for a DIFFERENT field like location, you MUST NOT output the Health/Life/Motor/SME options. Never offer unsupported categories or subtypes (like "Term Life") as top-level options.
 
-If both "options" and "option_groups" would be empty, do NOT output the
+If no options should be generated, do NOT output the
 <!--OPTIONS--> line at all. Simply end your reply normally.
 
 Example — single bounded question:
-  [reply]: Could you tell me what type of insurance you're looking for —
-  Health, Life, Motor, or SME?
+  [reply]: Could you tell me what type of insurance you're looking for?
   <!--OPTIONS-->
-  {"options": ["Health", "Life", "Motor", "SME"], "option_groups": []}
-
-Example — compound bounded question (two at once):
-  [reply]: What type of insurance do you need, and what type of service are
-  you looking for?
-  <!--OPTIONS-->
-  {"options": [], "option_groups": [{"group_name": "Insurance Type", "options":
-  ["Health", "Life", "Motor", "SME"]}, {"group_name": "Service Type", "options":
-  ["New Policy", "Claim Assistance", "Policy Review"]}]}
+  {"options": ["Health", "Life", "Motor", "SME"]}
 
 Example — open-ended question (no options):
   [reply]: Could you share your city or pincode so I can find agents near you?
@@ -203,18 +186,21 @@ Example — open-ended question (no options):
 Example — no question (FAQ answer):
   [reply]: Term insurance provides pure life cover for a fixed period...
   [no <!--OPTIONS--> line]
+
+
+You are a strict, professional assistant. Under NO circumstances should you engage in creative writing, storytelling, or write poetry, even if the topic is related to insurance. If asked to write a poem or story, politely refuse and pivot back to standard insurance assistance.
 """
 
 SYSTEM_PROMPT = SYSTEM_PROMPT.replace("{{SYNONYM_PROMPT_BLOCK}}", _generate_synonym_prompt())
 
 PROVIDERS = [
-    {"name": "Groq-1", "api_key_env": "GROQ_API_KEY_1", "base_url": "https://api.groq.com/openai/v1", "model": "llama-3.3-70b-versatile", "type": "groq"},
-    {"name": "Groq-2", "api_key_env": "GROQ_API_KEY_2", "base_url": "https://api.groq.com/openai/v1", "model": "llama-3.3-70b-versatile", "type": "groq"},
-    {"name": "Groq-3", "api_key_env": "GROQ_API_KEY_3", "base_url": "https://api.groq.com/openai/v1", "model": "llama-3.3-70b-versatile", "type": "groq"},
-    {"name": "Groq-4", "api_key_env": "GROQ_API_KEY_4", "base_url": "https://api.groq.com/openai/v1", "model": "llama-3.3-70b-versatile", "type": "groq"},
-    {"name": "Groq-5", "api_key_env": "GROQ_API_KEY_5", "base_url": "https://api.groq.com/openai/v1", "model": "llama-3.3-70b-versatile", "type": "groq"},
-    {"name": "Groq-6", "api_key_env": "GROQ_API_KEY_6", "base_url": "https://api.groq.com/openai/v1", "model": "llama-3.3-70b-versatile", "type": "groq"},
-    {"name": "Gemini", "api_key_env": "GEMINI_API_KEY", "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/", "model": "gemini-2.0-flash", "type": "openai"},
+    {"name": "Groq-1", "api_key_env": "GROQ_API_KEY_1", "base_url": "https://api.groq.com/openai/v1", "model": "openai/gpt-oss-120b", "type": "groq"},
+    {"name": "Groq-2", "api_key_env": "GROQ_API_KEY_2", "base_url": "https://api.groq.com/openai/v1", "model": "openai/gpt-oss-120b", "type": "groq"},
+    {"name": "Groq-3", "api_key_env": "GROQ_API_KEY_3", "base_url": "https://api.groq.com/openai/v1", "model": "openai/gpt-oss-120b", "type": "groq"},
+    {"name": "Groq-4", "api_key_env": "GROQ_API_KEY_4", "base_url": "https://api.groq.com/openai/v1", "model": "openai/gpt-oss-120b", "type": "groq"},
+    {"name": "Groq-5", "api_key_env": "GROQ_API_KEY_5", "base_url": "https://api.groq.com/openai/v1", "model": "openai/gpt-oss-120b", "type": "groq"},
+    {"name": "Groq-6", "api_key_env": "GROQ_API_KEY_6", "base_url": "https://api.groq.com/openai/v1", "model": "openai/gpt-oss-120b", "type": "groq"},
+    {"name": "Gemini", "api_key_env": "GEMINI_API_KEY", "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/", "model": "gemini-3.1-flash-lite", "type": "openai"},
     {"name": "OpenRouter", "api_key_env": "OPENROUTER_API_KEY", "base_url": "https://openrouter.ai/api/v1", "model": "openrouter/free", "type": "openai"}
 ]
 
@@ -267,13 +253,36 @@ def _get_client(provider: dict, api_key: str):
     return _client_cache[name]
 
 
-def _log_latency_async(endpoint: str, total_time: float, time_to_first_token: float = 0.0) -> None:
+def _log_latency_async(
+    endpoint: str, 
+    total_time: float, 
+    time_to_first_token: float = 0.0,
+    provider_name: str = None,
+    used_prompt_tokens: int = 0,
+    used_completion_tokens: int = 0,
+    groq_limit_tokens: int = 0,
+    groq_remaining_tokens: int = 0,
+    groq_reset_time: str = None
+) -> None:
     """Write a LatencyLog row in a daemon thread — off the critical response path."""
     def _write():
         try:
-            LatencyLog.objects.create(endpoint=endpoint, total_time=total_time, time_to_first_token=time_to_first_token)
+            LatencyLog.objects.create(
+                endpoint=endpoint,
+                total_time=total_time,
+                time_to_first_token=time_to_first_token,
+                provider_name=provider_name,
+                used_prompt_tokens=used_prompt_tokens,
+                used_completion_tokens=used_completion_tokens,
+                groq_limit_tokens=groq_limit_tokens,
+                groq_remaining_tokens=groq_remaining_tokens,
+                groq_reset_time=groq_reset_time
+            )
         except Exception:
             pass  # never let a logging failure surface to the user
+        finally:
+            from django.db import connection
+            connection.close()
     threading.Thread(target=_write, daemon=True).start()
 
 
@@ -308,15 +317,37 @@ def call_llm_with_fallback(messages, tools=None, tool_choice=None, **extra_kwarg
             kwargs.update(extra_kwargs)
             
             executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-            future = executor.submit(client.chat.completions.create, **kwargs)
+            future = executor.submit(client.chat.completions.with_raw_response.create, **kwargs)
             try:
-                response = future.result(timeout=12.0)
+                raw_response = future.result(timeout=12.0)
             finally:
                 executor.shutdown(wait=False, cancel_futures=True)
             
+            response = raw_response.parse()
+            headers = raw_response.headers
+            
+            used_prompt_tokens = 0
+            used_completion_tokens = 0
+            if hasattr(response, 'usage') and response.usage:
+                used_prompt_tokens = getattr(response.usage, 'prompt_tokens', 0)
+                used_completion_tokens = getattr(response.usage, 'completion_tokens', 0)
+            
+            groq_limit_tokens = int(headers.get('x-ratelimit-limit-tokens', 0)) if headers.get('x-ratelimit-limit-tokens') else 0
+            groq_remaining_tokens = int(headers.get('x-ratelimit-remaining-tokens', 0)) if headers.get('x-ratelimit-remaining-tokens') else 0
+            groq_reset_time = headers.get('x-ratelimit-reset-tokens', None)
+            
             total_time = time.time() - start_time
             logger.info(f"Successfully called LLM via {provider['name']}")
-            _log_latency_async(f"chat_completion_{provider['name']}", total_time)
+            _log_latency_async(
+                endpoint=f"chat_completion_{provider['name']}", 
+                total_time=total_time,
+                provider_name=provider['name'],
+                used_prompt_tokens=used_prompt_tokens,
+                used_completion_tokens=used_completion_tokens,
+                groq_limit_tokens=groq_limit_tokens,
+                groq_remaining_tokens=groq_remaining_tokens,
+                groq_reset_time=groq_reset_time
+            )
             return response, provider
         except Exception as e:
             last_error = e
@@ -328,14 +359,37 @@ def call_llm_with_fallback(messages, tools=None, tool_choice=None, **extra_kwarg
                 try:
                     start_time = time.time()
                     executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-                    future = executor.submit(client.chat.completions.create, **kwargs)
+                    future = executor.submit(client.chat.completions.with_raw_response.create, **kwargs)
                     try:
-                        response = future.result(timeout=12.0)
+                        raw_response = future.result(timeout=12.0)
                     finally:
                         executor.shutdown(wait=False, cancel_futures=True)
+                        
+                    response = raw_response.parse()
+                    headers = raw_response.headers
+                    
+                    used_prompt_tokens = 0
+                    used_completion_tokens = 0
+                    if hasattr(response, 'usage') and response.usage:
+                        used_prompt_tokens = getattr(response.usage, 'prompt_tokens', 0)
+                        used_completion_tokens = getattr(response.usage, 'completion_tokens', 0)
+                    
+                    groq_limit_tokens = int(headers.get('x-ratelimit-limit-tokens', 0)) if headers.get('x-ratelimit-limit-tokens') else 0
+                    groq_remaining_tokens = int(headers.get('x-ratelimit-remaining-tokens', 0)) if headers.get('x-ratelimit-remaining-tokens') else 0
+                    groq_reset_time = headers.get('x-ratelimit-reset-tokens', None)
+                        
                     total_time = time.time() - start_time
                     logger.info(f"Successfully called LLM via {provider['name']} (retried without tools)")
-                    _log_latency_async(f"chat_completion_{provider['name']}_retry", total_time)
+                    _log_latency_async(
+                        endpoint=f"chat_completion_{provider['name']}_retry", 
+                        total_time=total_time,
+                        provider_name=provider['name'],
+                        used_prompt_tokens=used_prompt_tokens,
+                        used_completion_tokens=used_completion_tokens,
+                        groq_limit_tokens=groq_limit_tokens,
+                        groq_remaining_tokens=groq_remaining_tokens,
+                        groq_reset_time=groq_reset_time
+                    )
                     return response, provider
                 except Exception as retry_e:
                     logger.warning(f"Provider {provider['name']} retry without tools also failed: {retry_e}")
@@ -392,7 +446,10 @@ CRITICAL RULE:
 ONLY generate options if the question is asking for something from a limited, well-known set of choices (e.g. Insurance type, Yes/No, or a specific list of categories).
 DO NOT generate options if the question is strictly open-ended or asking for free-text information (e.g. City/Location, Name, Phone number). Return empty.
 DO NOT generate options for generic conversational closers (e.g. "How else can I help?"). 
-If the assistant explicitly lists choices in the text (e.g. "Health, Life, Motor"), your options MUST strictly match those provided choices. If the assistant asks for a category but doesn't list choices (e.g. "What type of insurance?"), generate 2-4 sensible, common options for that category.
+If the assistant explicitly lists choices in the text (e.g. "Health, Life, Motor"), your options MUST strictly match those provided choices. If the assistant asks for a category but doesn't list choices, use these STRICT constraints:
+- If asking about the "type of insurance", the ONLY valid options are: ["Health", "Life", "Motor", "SME"].
+- If asking about the "kind of service" or "type of service", the ONLY valid options are: ["New Policy", "Claim Assistance", "Policy Review"].
+- For any other category, generate 2-4 sensible, common options.
 
 If the question is a SINGLE bounded choice (e.g., "What type of insurance?"), return an array of 2-4 options in the `options` field.
 If the question asks for TWO separate bounded choices at once (e.g., BOTH insurance type AND service type), return them in the `option_groups` array. Each group must have a `group_name` and an array of `options`.
@@ -418,7 +475,11 @@ Reply to analyze:
             response_format={"type": "json_object"}
         )
         
-        content = response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        if not content:
+            return {"options": [], "option_groups": []}
+            
+        content = content.strip()
         data = json.loads(content)
         if data.get("is_question"):
             options = data.get("options", [])
@@ -427,9 +488,11 @@ Reply to analyze:
             else: options = []
             if not isinstance(option_groups, list): option_groups = []
             return {"options": options, "option_groups": option_groups}
+
     except Exception as e:
-        import traceback
-        logger.error(f"Error generating quick options: {e}\n{traceback.format_exc()}")
+        import logging
+        logging.getLogger(__name__).warning(f"Silently caught options generator error: {type(e).__name__} - {str(e)}")
+
     return {"options": [], "option_groups": []}
 
 def extract_agent_links(content):
@@ -456,10 +519,10 @@ def _finalize_response(session, final_content, agent_cards=None):
                 json_str = json_str[:-1]
             options_data = json.loads(json_str)
         except Exception:
-            options_data = {}
+            options_data = generate_quick_options(reply_text)
     else:
         reply_text = final_content.strip()
-        options_data = {}
+        options_data = generate_quick_options(reply_text)
 
     # Save bot message to history (save the original raw content)
     ChatMessage.objects.create(session=session, role="assistant", content=reply_text, agent_cards=agent_cards if agent_cards else None)
@@ -713,7 +776,7 @@ def _execute_find_agents(function_args, messages):
                         "insurance_type": insurance_type,
                         "service_type": service_type,
                     })
-                return "Found these top agents:\n" + "\n".join(result_parts), agent_cards
+                return "SUCCESS: Found top agents. Their rich profile cards are already displayed in the UI below. Simply reply with a conversational intro natively incorporating the details without hyphens (e.g. 'Here are some highly-matched agents for your SME Policy Review in 380002. You can view their profiles below.') DO NOT output a numbered list, DO NOT use hyphens to list the services, and DO NOT try to list the agents yourself.", agent_cards
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
@@ -864,7 +927,7 @@ def get_chat_completion(session_id, user_message=None, prefilled_response_messag
             
     except Exception as e:
         logger.error(f"Error generating chat completion: {e}")
-        return {"success": False, "reply": "I'm having trouble connecting right now. Please try again later.", "quick_options": [], "agent_links": [], "total_time": time.time() - t_start}
+        return {"success": False, "reply": f"I am here to help you with insurance and investment related queries. Please try again. (DEBUG: {type(e).__name__} - {str(e)})", "quick_options": [], "agent_links": [], "total_time": time.time() - t_start}
 
 
 def stream_plain_text_completion(session_id, user_message):
@@ -927,75 +990,86 @@ def stream_plain_text_completion(session_id, user_message):
             client = _get_client(provider, api_key)
             stream_start = time.time()
 
-            stream = client.chat.completions.create(
-                model=provider["model"],
-                messages=messages,
-                tools=tools,
-                tool_choice="auto",
-                max_tokens=_MAX_TOKENS_CHAT,
-                stream=True,
-            )
+            kwargs = {
+                "model": provider["model"],
+                "messages": messages,
+                "tools": tools,
+                "tool_choice": "auto",
+                "max_tokens": _MAX_TOKENS_CHAT,
+            }
+            if provider.get("type") == "groq" or provider.get("type") == "openai":
+                pass # stream_options unsupported in this SDK version
 
-            # Inspect the chunks to detect tool call vs plain text.
-            # If the provider raises before yielding anything, we fall through silently.
-            full_text = ""
-            is_tool_call = False
-            first_content_seen = False
-            ttft = 0.0
+            used_prompt_tokens = 0
+            used_completion_tokens = 0
             
-            DELIMITER = "<!--OPTIONS-->"
-            pending = ""
-            options_buf = ""
-            found_options = False
-
-            tc_id = None
-            tc_name = None
-            tc_args_buf = ""
-
-            for chunk in stream:
-                if time.time() - stream_start > 12.0:
-                    raise TimeoutError("Total elapsed time exceeded 12s limit")
-                    
-                delta = chunk.choices[0].delta if chunk.choices else None
-                if delta is None:
-                    continue
-
-                if delta.tool_calls:
-                    is_tool_call = True
-                    tc_chunk = delta.tool_calls[0]
-                    if tc_chunk.id: tc_id = tc_chunk.id
-                    if tc_chunk.function and tc_chunk.function.name: tc_name = tc_chunk.function.name
-                    if tc_chunk.function and tc_chunk.function.arguments: tc_args_buf += tc_chunk.function.arguments
-                    continue
+            with client.chat.completions.with_streaming_response.create(**kwargs, stream=True) as raw_response:
+                headers = raw_response.headers
+                groq_limit_tokens = int(headers.get('x-ratelimit-limit-tokens', 0)) if headers.get('x-ratelimit-limit-tokens') else 0
+                groq_remaining_tokens = int(headers.get('x-ratelimit-remaining-tokens', 0)) if headers.get('x-ratelimit-remaining-tokens') else 0
+                groq_reset_time = headers.get('x-ratelimit-reset-tokens', None)
                 
-                if not first_content_seen:
-                    if delta.content:
-                        first_content_seen = True
-                        if ttft == 0.0:
-                            ttft = time.time() - t_start
+                # Inspect the chunks to detect tool call vs plain text.
+                # If the provider raises before yielding anything, we fall through silently.
+                full_text = ""
+                is_tool_call = False
+                first_content_seen = False
+                ttft = 0.0
                 
-                if delta.content:
-                    if found_options:
-                        options_buf += delta.content
-                        continue
+                DELIMITER = "<!--OPTIONS-->"
+                pending = ""
+                options_buf = ""
+                found_options = False
+
+                tc_id = None
+                tc_name = None
+                tc_args_buf = ""
+
+                for chunk in raw_response.parse():
+                    if hasattr(chunk, 'usage') and chunk.usage:
+                        used_prompt_tokens += getattr(chunk.usage, 'prompt_tokens', 0)
+                        used_completion_tokens += getattr(chunk.usage, 'completion_tokens', 0)
                         
-                    pending += delta.content
-                    if DELIMITER in pending:
-                        idx = pending.index(DELIMITER)
-                        chunk_to_emit = pending[:idx]
-                        if chunk_to_emit:
-                            yield {"type": "chunk", "delta": chunk_to_emit}
-                            full_text += chunk_to_emit
-                        options_buf = pending[idx + len(DELIMITER):]
-                        found_options = True
-                        pending = ""
-                    else:
-                        safe = len(pending) - (len(DELIMITER) - 1)
-                        if safe > 0:
-                            chunk_to_emit = pending[:safe]
-                            yield {"type": "chunk", "delta": chunk_to_emit}
-                            full_text += chunk_to_emit
-                            pending = pending[safe:]
+                    delta = chunk.choices[0].delta if chunk.choices else None
+                    if delta is None:
+                        continue
+    
+                    if delta.tool_calls:
+                        is_tool_call = True
+                        tc_chunk = delta.tool_calls[0]
+                        if tc_chunk.id: tc_id = tc_chunk.id
+                        if tc_chunk.function and tc_chunk.function.name: tc_name = tc_chunk.function.name
+                        if tc_chunk.function and tc_chunk.function.arguments: tc_args_buf += tc_chunk.function.arguments
+                        continue
+                    
+                    if not first_content_seen:
+                        if delta.content:
+                            first_content_seen = True
+                            if ttft == 0.0:
+                                ttft = time.time() - t_start
+                    
+                    if delta.content:
+                        if found_options:
+                            options_buf += delta.content
+                            continue
+                            
+                        pending += delta.content
+                        if DELIMITER in pending:
+                            idx = pending.index(DELIMITER)
+                            chunk_to_emit = pending[:idx]
+                            if chunk_to_emit:
+                                yield {"type": "chunk", "delta": chunk_to_emit}
+                                full_text += chunk_to_emit
+                            options_buf = pending[idx + len(DELIMITER):]
+                            found_options = True
+                            pending = ""
+                        else:
+                            safe = len(pending) - (len(DELIMITER) - 1)
+                            if safe > 0:
+                                chunk_to_emit = pending[:safe]
+                                yield {"type": "chunk", "delta": chunk_to_emit}
+                                full_text += chunk_to_emit
+                                pending = pending[safe:]
 
             # Stream finished. Was it a tool call?
             if is_tool_call:
@@ -1037,47 +1111,52 @@ def stream_plain_text_completion(session_id, user_message):
                     
                     # Spin up a SECOND stream to get the final text and yield it directly
                     dynamic_max_tokens = 250 if isinstance(result_msg, str) and result_msg.startswith("ERROR:") else _MAX_TOKENS_CHAT
-                    second_stream = client.chat.completions.create(
-                        model=provider["model"],
-                        messages=messages,
-                        max_tokens=dynamic_max_tokens,
-                        stream=True,
-                    )
+                    kwargs2 = {
+                        "model": provider["model"],
+                        "messages": messages,
+                        "max_tokens": dynamic_max_tokens,
+                    }
+                    if provider.get("type") == "groq" or provider.get("type") == "openai":
+                        pass # stream_options unsupported in this SDK version
                     
-                    # Reuse tail-buffer logic for second stream
-                    for chunk in second_stream:
-                        if time.time() - stream_start > 12.0:
-                            raise TimeoutError("Total elapsed time exceeded 12s limit in second stream")
-                            
-                        delta = chunk.choices[0].delta if chunk.choices else None
-                        if delta is None: continue
-                        if not first_content_seen:
+                    with client.chat.completions.with_streaming_response.create(**kwargs2, stream=True) as raw_response2:
+                        # Reuse tail-buffer logic for second stream
+                        for chunk in raw_response2.parse():
+                            if hasattr(chunk, 'usage') and chunk.usage:
+                                used_prompt_tokens += getattr(chunk.usage, 'prompt_tokens', 0)
+                                used_completion_tokens += getattr(chunk.usage, 'completion_tokens', 0)
+                            if time.time() - stream_start > 12.0:
+                                raise TimeoutError("Total elapsed time exceeded 12s limit in second stream")
+                                
+                            delta = chunk.choices[0].delta if chunk.choices else None
+                            if delta is None: continue
+                            if not first_content_seen:
+                                if delta.content:
+                                    first_content_seen = True
+                                    if ttft == 0.0:
+                                        ttft = time.time() - t_start
+                                        
                             if delta.content:
-                                first_content_seen = True
-                                if ttft == 0.0:
-                                    ttft = time.time() - t_start
-                                    
-                        if delta.content:
-                            if found_options:
-                                options_buf += delta.content
-                                continue
-                            pending += delta.content
-                            if DELIMITER in pending:
-                                idx = pending.index(DELIMITER)
-                                chunk_to_emit = pending[:idx]
-                                if chunk_to_emit:
-                                    yield {"type": "chunk", "delta": chunk_to_emit}
-                                    full_text += chunk_to_emit
-                                options_buf = pending[idx + len(DELIMITER):]
-                                found_options = True
-                                pending = ""
-                            else:
-                                safe = len(pending) - (len(DELIMITER) - 1)
-                                if safe > 0:
-                                    chunk_to_emit = pending[:safe]
-                                    yield {"type": "chunk", "delta": chunk_to_emit}
-                                    full_text += chunk_to_emit
-                                    pending = pending[safe:]
+                                if found_options:
+                                    options_buf += delta.content
+                                    continue
+                                pending += delta.content
+                                if DELIMITER in pending:
+                                    idx = pending.index(DELIMITER)
+                                    chunk_to_emit = pending[:idx]
+                                    if chunk_to_emit:
+                                        yield {"type": "chunk", "delta": chunk_to_emit}
+                                        full_text += chunk_to_emit
+                                    options_buf = pending[idx + len(DELIMITER):]
+                                    found_options = True
+                                    pending = ""
+                                else:
+                                    safe = len(pending) - (len(DELIMITER) - 1)
+                                    if safe > 0:
+                                        chunk_to_emit = pending[:safe]
+                                        yield {"type": "chunk", "delta": chunk_to_emit}
+                                        full_text += chunk_to_emit
+                                        pending = pending[safe:]
 
                 except Exception as e:
                     # Accumulation or parsing failed, or execution threw unexpected error. 
@@ -1103,7 +1182,17 @@ def stream_plain_text_completion(session_id, user_message):
 
             # Stream completed successfully — save to DB and generate metadata
             logger.info(f"Streamed plain-text response via {provider['name']}")
-            _log_latency_async(f"stream_{provider['name']}", time.time() - stream_start, ttft)
+            _log_latency_async(
+                endpoint=f"stream_{provider['name']}", 
+                total_time=time.time() - stream_start, 
+                time_to_first_token=ttft,
+                provider_name=provider['name'],
+                used_prompt_tokens=used_prompt_tokens,
+                used_completion_tokens=used_completion_tokens,
+                groq_limit_tokens=groq_limit_tokens,
+                groq_remaining_tokens=groq_remaining_tokens,
+                groq_reset_time=groq_reset_time
+            )
 
             # Parse options
             if found_options:
@@ -1119,11 +1208,13 @@ def stream_plain_text_completion(session_id, user_message):
                     option_groups = opts.get("option_groups", [])
                     if not isinstance(option_groups, list): option_groups = []
                 except Exception:
-                    options = []
-                    option_groups = []
+                    options_data = generate_quick_options(full_text)
+                    options = options_data.get("options", [])
+                    option_groups = options_data.get("option_groups", [])
             else:
-                options = []
-                option_groups = []
+                options_data = generate_quick_options(full_text)
+                options = options_data.get("options", [])
+                option_groups = options_data.get("option_groups", [])
 
             full_text = full_text.strip()
             
@@ -1156,6 +1247,5 @@ def stream_plain_text_completion(session_id, user_message):
             if not is_last_provider:
                 cache.set(f"llm_cooldown_{provider['name']}", True, timeout=60)
             continue  # Try next provider — no partial text has been yielded yet
-
-    yield {"type": "error", "message": "I'm having trouble connecting right now. Please try again later."}
+    yield {"type": "error", "message": f"I am here to help you with insurance and investment related queries. Please try again. (DEBUG: {type(last_error).__name__} - {str(last_error)})"}
 

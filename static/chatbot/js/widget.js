@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (msg.role === 'assistant') {
                         let htmlContent = msg.content.replace(/\n/g, '<br>');
                         htmlContent = htmlContent.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 500;">$1</a>');
+                        htmlContent = htmlContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
                         msgDiv.innerHTML = htmlContent;
                     } else {
                         msgDiv.textContent = msg.content;
@@ -306,12 +307,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const toDisplayHtml = (text) => {
         let html = text.replace(/\n/g, '<br>');
         html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 500;">$1</a>');
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         return html;
+    };
+
+    // ---- Input lock helpers (Issue 2: disable while waiting) ----
+    let isWaiting = false;
+    const setWaiting = (waiting) => {
+        isWaiting = waiting;
+        input.disabled = waiting;
+        sendBtn.disabled = waiting;
+        if (waiting) {
+            input.placeholder = 'Waiting for response...';
+        } else {
+            input.placeholder = 'Ask a question...';
+        }
     };
 
     // Send message functionality
     const sendMessage = async (text) => {
         if (!text || text.trim() === '') return;
+        if (isWaiting) return;  // drop rapid re-sends while a response is in-flight
+
+        setWaiting(true);
 
         // Hide suggestions if they exist
         const currentSuggestions = document.getElementById('chatbot-suggestions');
@@ -357,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.status === 429) {
                     botMsgDiv.textContent = "You're sending messages too quickly, please wait a moment and try again.";
                 } else {
-                    botMsgDiv.textContent = "Something went wrong, please try again.";
+                    botMsgDiv.textContent = "Hi! I'm PadosiAgent Assistant. Ask me anything about insurance, investments, or finding the right agent.";
                 }
                 scrollToBottom();
                 return;
@@ -412,7 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         scrollToBottom();
 
                     } else if (event.type === 'error') {
-                        botMsgDiv.textContent = event.message || 'Something went wrong.';
+                        botMsgDiv.textContent = event.message || "Hi! I'm PadosiAgent Assistant. Ask me anything about insurance, investments, or finding the right agent.";
                         scrollToBottom();
                     }
                 }
@@ -425,7 +443,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!messagesContainer.contains(botMsgDiv)) {
                 messagesContainer.appendChild(botMsgDiv);
             }
-            botMsgDiv.textContent = 'Error connecting to assistant.';
+            botMsgDiv.textContent = "Hi! I'm PadosiAgent Assistant. Ask me anything about insurance, investments, or finding the right agent.";
+        } finally {
+            setWaiting(false);
         }
         scrollToBottom();
     };

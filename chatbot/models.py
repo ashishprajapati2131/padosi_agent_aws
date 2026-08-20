@@ -39,6 +39,15 @@ class LatencyLog(models.Model):
     endpoint = models.CharField(max_length=255)
     time_to_first_token = models.FloatField(blank=True, null=True)
     total_time = models.FloatField()
+    
+    # Token Tracking
+    provider_name = models.CharField(max_length=255, blank=True, null=True)
+    used_prompt_tokens = models.IntegerField(default=0, blank=True, null=True)
+    used_completion_tokens = models.IntegerField(default=0, blank=True, null=True)
+    groq_limit_tokens = models.IntegerField(default=0, blank=True, null=True)
+    groq_remaining_tokens = models.IntegerField(default=0, blank=True, null=True)
+    groq_reset_time = models.CharField(max_length=255, blank=True, null=True)
+    
     created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
