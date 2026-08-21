@@ -53,7 +53,7 @@ def pages_store(request):
         slug    = request.POST.get('slug', '').strip()
         content = request.POST.get('content', '').strip()
 
-        reserved_slugs = ['admin', 'api', 'login', 'logout', 'register', 'home', 'find-agents', 'profile', 'free-trial', 'invoices', 'settings', 'plans', 'faq', 'about', 'contact', 'assets', 'images', 'js', 'css']
+        reserved_slugs = ['admin', 'api', 'login', 'logout', 'register', 'home', 'find-agents', 'profile', 'free-trial', 'invoices', 'settings', 'plans', 'faq', 'about', 'contact', 'assets', 'images', 'js', 'css', 'calculator', 'calculators']
 
         if not title:
             messages.error(request, 'Title is required.')
@@ -116,7 +116,7 @@ def pages_update(request, page_id):
         slug    = request.POST.get('slug', '').strip()
         content = request.POST.get('content', '').strip()
 
-        reserved_slugs = ['admin', 'api', 'login', 'logout', 'register', 'home', 'find-agents', 'profile', 'free-trial', 'invoices', 'settings', 'plans', 'faq', 'about', 'contact', 'assets', 'images', 'js', 'css']
+        reserved_slugs = ['admin', 'api', 'login', 'logout', 'register', 'home', 'find-agents', 'profile', 'free-trial', 'invoices', 'settings', 'plans', 'faq', 'about', 'contact', 'assets', 'images', 'js', 'css', 'calculator', 'calculators']
 
         if not title:
             messages.error(request, 'Title is required.')

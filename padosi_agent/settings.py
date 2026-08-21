@@ -123,6 +123,7 @@ TEMPLATES = [
                 'apps.admin_panel.context_processors.admin_badge_counts',
                 'apps.home.context_processors.footer_settings',
                 'apps.home.context_processors.seo_context',
+                'apps.home.context_processors.calculator_nav',
             ],
         },
     },

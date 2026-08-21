@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ meta_title }}{% endblock %}
+{% block meta_description %}{{ meta_description }}{% endblock %}
+{% block og_title %}{{ meta_title }}{% endblock %}
+{% block og_description %}{{ meta_description }}{% endblock %}
+{% block canonical_url %}{{ canonical_url }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/calculators.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="calc-hub">
+    <div class="container">
+        <div class="calc-hub-head">
+            <h1>{% if is_category_page %}{{ active_category.name }} Calculators{% else %}Financial Calculators{% endif %}</h1>
+            <p>{% if is_category_page %}{{ active_category.meta_description|default:meta_description }}{% else %}Plan SIPs, EMIs, insurance cover and more. Estimates only — talk to a licensed PadosiAgent.{% endif %}</p>
+        </div>
+
+        {% if tabs %}
+        {% include 'public/calculators/_tabs.html' %}
+        <div class="calc-hub-grid-wrap">
+            {% for tab in tabs %}
+            <div class="row" {% if not active_category or tab.category.id != active_category.id %}hidden{% endif %} data-cat-panel="{{ tab.category.slug }}">
+                {% for calc in tab.items %}
+                <div class="col-6 col-md-4 col-xl-3 mb-3">
+                    <a class="calc-hub-card" href="{% url 'home:calculator_detail' calc.slug %}">
+                        <div class="calc-hub-icon"><i class="{{ calc.icon_class }}"></i></div>
+                        <div style="min-width:0;">
+                            <h3>{{ calc.title }}</h3>
+                            <p>{{ calc.short_description }}</p>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted">Calculators will appear here once they are activated.</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

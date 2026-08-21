@@ -53,3 +53,18 @@ def seo_context(request):
         'default_meta_description': 'Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent.',
         'default_og_image': request.build_absolute_uri('/static/img/logo.png'),
     }
+
+
+def calculator_nav(request):
+    """Show Calculators in header/footer only when at least one is live."""
+    from apps.home.models.calculator import Calculator, NAV_CACHE_KEY
+
+    cached = cache.get(NAV_CACHE_KEY)
+    if cached is None:
+        try:
+            cached = Calculator.objects.filter(is_active=True, engine_ready=True).exists()
+        except Exception:
+            cached = False
+        cache.set(NAV_CACHE_KEY, cached, timeout=None)
+    return {'show_calculators_nav': bool(cached)}
+

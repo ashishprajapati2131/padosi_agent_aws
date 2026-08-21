@@ -250,6 +250,7 @@
             });
         };
     </script>
+    {% block extra_head %}{% endblock %}
     {% block extra_css %}{% endblock %}
 
     <!-- Microsoft Clarity – behaviour tracking -->
@@ -271,7 +272,9 @@
         
         {% block content %}{% endblock %}
         
+        {% if not hide_footer %}
         {% include 'partials/footer.html' %}
+        {% endif %}
     </div>
     
     <script src="{% static 'js/preloader.js' %}" defer></script>

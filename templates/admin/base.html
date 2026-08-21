@@ -674,6 +674,11 @@
                 <i class="fa-solid fa-chart-pie"></i> Investment Types
             </a>
 
+            <a href="{% url 'admin_content_calculators' %}"
+                class="menu-item {% if '/admin/content/calculators/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-calculator"></i> Calculators
+            </a>
+
             <a href="/admin/settings/homepage/"
                 class="menu-item {% if '/admin/settings/homepage/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-house-laptop"></i> Homepage Dynamic

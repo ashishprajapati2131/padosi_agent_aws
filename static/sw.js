@@ -1,4 +1,4 @@
-const CACHE_NAME = 'padosi-agent-pwa-v4';
+const CACHE_NAME = 'padosi-agent-pwa-v5';
 const STATIC_ASSETS = [
   '/offline.html'
 ];
@@ -28,6 +28,22 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
+  // Calculator JS/CSS must not be served cache-first or renamed engines stay broken.
+  if (requestUrl.pathname.startsWith('/static/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
     return;
   }
 

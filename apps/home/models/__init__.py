@@ -7,3 +7,5 @@ from .homepage import (
     HeroSlide, DidYouKnowSlide, QuickPickItem, WhyChooseCard, HowItWorksStep
 )
 from .blacklisted_agent import BlacklistedAgent
+from .calculator import Calculator
+from .calculator_category import CalculatorCategory

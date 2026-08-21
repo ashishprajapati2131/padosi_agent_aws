@@ -1,5 +1,6 @@
 from django.urls import path
-from .views import pages, seo
+from django.views.generic import RedirectView
+from .views import pages, seo, calculators
 
 app_name = 'home'
 
@@ -19,7 +20,9 @@ urlpatterns = [
     path('api/pincode/check-agents/<str:pincode>', pages.check_pincode_agents, name='check_pincode_agents'),
     path('check-pincode', pages.check_pincode, name='check_pincode'),
     path('marketing/', pages.marketing, name='marketing'),
-    path('calculator/', pages.calculator, name='calculator'),
+    path('calculators/', calculators.hub, name='calculators'),
+    path('calculators/<slug:slug>/', calculators.detail_or_category, name='calculator_detail'),
+    path('calculator/', RedirectView.as_view(url='/calculators/health-insurance-calculator/', permanent=True), name='calculator'),
     path('coming-soon/', pages.coming_soon, name='coming_soon'),
     path('lic-agent/', pages.lic_event, name='lic_event'),
     path('cancellation-refund-policy/', pages.cancellation_refund_policy, name='cancellation_refund'),

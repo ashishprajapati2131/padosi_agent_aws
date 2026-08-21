@@ -31,7 +31,7 @@ messaging.onBackgroundMessage((payload) => {
 {% endif %}
 
 // ─── Cache Setup ───
-const CACHE_NAME   = 'padosi-agent-pwa-v6';
+const CACHE_NAME   = 'padosi-agent-pwa-v7';
 const STATIC_ASSETS = ['/offline.html'];
 
 self.addEventListener('install', (event) => {
@@ -79,7 +79,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Determine if it is a static asset request
+  // Calculator/theme CSS+JS must be network-first so engine updates are not stuck.
+  const isFreshStatic =
+    requestUrl.pathname.indexOf('/static/js/calculators/') !== -1 ||
+    requestUrl.pathname.indexOf('/static/css/calculators') !== -1;
+
   const isStaticAsset =
     event.request.destination === 'style' ||
     event.request.destination === 'script' ||
@@ -87,6 +91,23 @@ self.addEventListener('fetch', (event) => {
     event.request.destination === 'font' ||
     requestUrl.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webmanifest)$/) ||
     requestUrl.pathname.startsWith('/pwa/');
+
+  if (isFreshStatic) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
   // 2. Static assets - Cache-First strategy with Network fallback
   if (isStaticAsset) {

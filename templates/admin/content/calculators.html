@@ -1,0 +1,295 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Calculators — PadosiAgent Admin{% endblock %}
+{% block breadcrumb_title %}Content Control › Calculators{% endblock %}
+
+{% block content %}
+
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-1">Financial Calculators</h5>
+        <span style="font-size:13px;color:var(--text-muted);">Toggle visibility on public pages. Formula engines stay in code. Categories control hub tabs.</span>
+    </div>
+    <div class="d-flex gap-2">
+        <span class="badge bg-success">{{ active_count }} active</span>
+        <span class="badge bg-secondary">{{ hidden_count }} hidden</span>
+        <span class="badge bg-info text-dark">{{ ready_count }}/{{ total_count }} engines ready</span>
+        <span class="badge bg-primary">{{ category_count }} categories</span>
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link {% if active_tab != 'categories' %}active{% endif %}" href="?tab=calculators">Calculators</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if active_tab == 'categories' %}active{% endif %}" href="?tab=categories">Categories</a>
+    </li>
+</ul>
+
+{% if active_tab == 'categories' %}
+<div class="row">
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size:13px;">
+                    <thead>
+                        <tr>
+                            <th class="px-3">Name</th>
+                            <th>Slug</th>
+                            <th>Sort</th>
+                            <th>Tools</th>
+                            <th>Active</th>
+                            <th class="text-end px-3">Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categories %}
+                        <tr>
+                            <td class="px-3 fw-semibold">
+                                <i class="{{ cat.icon_class }} me-2 text-muted"></i>{{ cat.name }}
+                            </td>
+                            <td><code>{{ cat.slug }}</code></td>
+                            <td>{{ cat.sort_order }}</td>
+                            <td>{{ cat.calculators.count }}</td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input category-toggle" type="checkbox"
+                                           data-id="{{ cat.id }}" {% if cat.is_active %}checked{% endif %}>
+                                </div>
+                            </td>
+                            <td class="text-end px-3">
+                                <form method="POST" action="{% url 'admin_content_calculator_categories_delete' cat.id %}" class="d-inline"
+                                      onsubmit="return confirm('Delete this category? Only empty categories can be removed.');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" {% if cat.calculators.count %}disabled title="Reassign calculators first"{% endif %}>
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center py-4 text-muted">No categories yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3"><strong>Add or update category</strong></div>
+            <div class="card-body">
+                <form method="POST" action="{% url 'admin_content_calculator_categories_save' %}">
+                    {% csrf_token %}
+                    <div class="mb-2">
+                        <label class="form-label" style="font-size:12px;">Existing (leave blank to add new)</label>
+                        <select name="id" class="form-select form-select-sm">
+                            <option value="">Add new category</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}">{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" style="font-size:12px;">Name</label>
+                        <input type="text" name="name" class="form-control form-control-sm" required maxlength="80">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" style="font-size:12px;">Slug (SEO URL)</label>
+                        <input type="text" name="slug" class="form-control form-control-sm" maxlength="64" placeholder="auto from name">
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-2">
+                            <label class="form-label" style="font-size:12px;">Sort</label>
+                            <input type="number" name="sort_order" class="form-control form-control-sm" value="90">
+                        </div>
+                        <div class="col-6 mb-2">
+                            <label class="form-label" style="font-size:12px;">Icon class</label>
+                            <input type="text" name="icon_class" class="form-control form-control-sm" value="fa-solid fa-folder">
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" style="font-size:12px;">Meta title</label>
+                        <input type="text" name="meta_title" class="form-control form-control-sm" maxlength="255">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:12px;">Meta description</label>
+                        <textarea name="meta_description" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Save category</button>
+                </form>
+                <p class="text-muted small mt-2 mb-0">Public hub shows only active categories that still have live calculators. Deleting requires an empty category.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<form method="GET" class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-3 d-flex flex-wrap gap-2 align-items-center">
+        <input type="hidden" name="tab" value="calculators">
+        <a href="?tab=calculators&status=all{% if filter_category != 'all' %}&category={{ filter_category }}{% endif %}"
+           class="btn btn-sm {% if filter_status == 'all' %}btn-primary{% else %}btn-outline-secondary{% endif %}">All</a>
+        <a href="?tab=calculators&status=active{% if filter_category != 'all' %}&category={{ filter_category }}{% endif %}"
+           class="btn btn-sm {% if filter_status == 'active' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Active</a>
+        <a href="?tab=calculators&status=hidden{% if filter_category != 'all' %}&category={{ filter_category }}{% endif %}"
+           class="btn btn-sm {% if filter_status == 'hidden' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Hidden</a>
+        <select name="category" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+            <option value="all">All categories</option>
+            {% for cat in categories %}
+            <option value="{{ cat.slug }}" {% if filter_category == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
+            {% endfor %}
+        </select>
+        <input type="hidden" name="status" value="{{ filter_status }}">
+    </div>
+</form>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:13px;">
+            <thead>
+                <tr>
+                    <th class="px-3">Title</th>
+                    <th>Slug</th>
+                    <th>Category</th>
+                    <th>Engine</th>
+                    <th>Public URL</th>
+                    <th>Active</th>
+                    <th class="text-end px-3">Edit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for calc in calculators %}
+                <tr>
+                    <td class="px-3 fw-semibold">
+                        <i class="{{ calc.icon_class }} me-2 text-muted"></i>{{ calc.title }}
+                    </td>
+                    <td><code>{{ calc.slug }}</code></td>
+                    <td>
+                        <select class="form-select form-select-sm calc-category" data-id="{{ calc.id }}" style="min-width:140px;">
+                            {% for cat in categories %}
+                            <option value="{{ cat.id }}" {% if calc.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        {% if calc.engine_ready %}
+                        <span class="badge" style="background:#dcfce7;color:#15803d;">Ready</span>
+                        {% else %}
+                        <span class="badge" style="background:#fef9c3;color:#92400e;">Not shipped</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'home:calculator_detail' calc.slug %}" target="_blank" class="text-muted text-decoration-none" style="font-family:monospace;font-size:12px;">
+                            /calculators/{{ calc.slug }}/
+                        </a>
+                    </td>
+                    <td>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input status-toggle" type="checkbox"
+                                   id="status_{{ calc.id }}" data-id="{{ calc.id }}"
+                                   {% if calc.is_active %}checked{% endif %}
+                                   {% if not calc.engine_ready %}disabled title="Engine not shipped yet"{% endif %}>
+                            <label class="form-check-label" for="status_{{ calc.id }}">
+                                {% if calc.is_active %}Active{% else %}Inactive{% endif %}
+                            </label>
+                        </div>
+                    </td>
+                    <td class="text-end px-3">
+                        <a href="{% url 'admin_content_calculators_edit' calc.id %}" class="btn btn-sm btn-info">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-4 text-muted">No calculators found. Run <code>python manage.py seed_calculators</code>.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const csrf = '{{ csrf_token }}';
+    document.querySelectorAll('.status-toggle').forEach(function (toggle) {
+        toggle.addEventListener('change', function () {
+            const id = this.getAttribute('data-id');
+            const label = document.querySelector('label[for="status_' + id + '"]');
+            fetch('/admin/content/calculators/' + id + '/toggle/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' }
+            })
+            .then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
+            .then(function (result) {
+                if (result.data && result.data.success) {
+                    label.textContent = result.data.is_active ? 'Active' : 'Inactive';
+                } else {
+                    toggle.checked = !toggle.checked;
+                    alert((result.data && result.data.message) || 'Error updating status');
+                }
+            })
+            .catch(function () {
+                toggle.checked = !toggle.checked;
+                alert('An error occurred');
+            });
+        });
+    });
+
+    document.querySelectorAll('.calc-category').forEach(function (select) {
+        select.addEventListener('change', function () {
+            const id = this.getAttribute('data-id');
+            const body = new FormData();
+            body.append('category_id', this.value);
+            fetch('/admin/content/calculators/' + id + '/category/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf },
+                body: body
+            })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data.success) alert(data.message || 'Could not change category');
+            })
+            .catch(function () { alert('An error occurred'); });
+        });
+    });
+
+    document.querySelectorAll('.category-toggle').forEach(function (toggle) {
+        toggle.addEventListener('change', function () {
+            fetch('/admin/content/calculators/categories/' + this.getAttribute('data-id') + '/toggle/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf }
+            })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data.success) {
+                    toggle.checked = !toggle.checked;
+                    alert(data.message || 'Error');
+                }
+            })
+            .catch(function () {
+                toggle.checked = !toggle.checked;
+                alert('An error occurred');
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

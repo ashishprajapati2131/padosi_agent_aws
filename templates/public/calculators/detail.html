@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ calc.meta_title|default:calc.title }}{% endblock %}
+{% block meta_description %}{{ calc.meta_description|default:calc.short_description }}{% endblock %}
+{% block og_title %}{{ calc.meta_title|default:calc.title }}{% endblock %}
+{% block og_description %}{{ calc.meta_description|default:calc.short_description }}{% endblock %}
+{% block canonical_url %}{{ canonical_url }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/calculators.css' %}">
+{% endblock %}
+
+{% block extra_head %}
+{% if json_ld %}
+<script type="application/ld+json">{{ json_ld|safe }}</script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="calc-page">
+    <div class="container">
+        <nav class="calc-crumb">
+            <a href="{% url 'home:calculators' %}">Calculators</a>
+            {% if calc.category_id %}
+            <span> / </span>
+            <a href="{% url 'home:calculator_detail' calc.category.slug %}">{{ category_label }}</a>
+            {% endif %}
+            <span> / {{ calc.title }}</span>
+        </nav>
+
+        {% if is_preview %}
+        <div class="alert alert-warning py-2 px-3 mb-3 small">Preview only — this calculator is inactive on the public site.</div>
+        {% endif %}
+
+        <div class="calc-page-head">
+            <h1>{{ calc.title }}</h1>
+            <p>{{ calc.short_description }}</p>
+        </div>
+
+        <div class="calc-workspace">
+            <div class="calc-inputs">
+                <form id="calc-form" onsubmit="return false;">
+                    {% for field in fields %}
+                    <div class="form-group" data-field="{{ field.id }}">
+                        {% if field.type == 'radio' %}
+                        <label class="d-block font-weight-bold text-dark mb-1">{{ field.label }}</label>
+                        <div class="toggle-group row no-gutters">
+                            {% for opt in field.options %}
+                            <div class="col px-1 mb-1">
+                                <input type="radio" id="f-{{ field.id }}-{{ opt.value }}" name="{{ field.id }}" value="{{ opt.value }}" {% if opt.selected %}checked{% endif %}>
+                                <label for="f-{{ field.id }}-{{ opt.value }}" class="toggle-btn w-100 mb-0">{{ opt.label }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% elif field.type == 'select' %}
+                        <label class="d-block font-weight-bold text-dark mb-1">{{ field.label }}</label>
+                        <select class="form-control form-control-sm" name="{{ field.id }}" id="f-{{ field.id }}">
+                            {% for opt in field.options %}
+                            <option value="{{ opt.value }}" {% if opt.selected %}selected{% endif %}>{{ opt.label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% elif field.type == 'date' %}
+                        <label class="d-block font-weight-bold text-dark mb-1" for="f-{{ field.id }}">{{ field.label }}</label>
+                        <input class="form-control form-control-sm" type="date" id="f-{{ field.id }}" name="{{ field.id }}" value="{{ field.current }}">
+                        {% else %}
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="font-weight-bold text-dark mb-0" for="f-{{ field.id }}">{{ field.label }}</label>
+                            <input class="form-control form-control-sm calc-twin" type="number" step="{{ field.step|default:1 }}"
+                                   min="{{ field.min }}" max="{{ field.max }}" value="{{ field.current }}"
+                                   data-twin="{{ field.id }}" aria-label="{{ field.label }} value">
+                        </div>
+                        <input type="range" class="custom-range" id="f-{{ field.id }}" name="{{ field.id }}"
+                               min="{{ field.min }}" max="{{ field.max }}" step="{{ field.step|default:1 }}" value="{{ field.current }}">
+                        <div class="d-flex justify-content-between text-muted small calc-range-ends">
+                            <span data-format="{{ field.format }}" data-min-label>{{ field.min }}</span>
+                            <span data-format="{{ field.format }}" data-max-label>{{ field.max }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </form>
+            </div>
+            <div class="calc-result">
+                <div id="calc-error" class="calc-error" hidden></div>
+                <p class="calc-result-kicker" id="primary-label">Result</p>
+                <div class="calc-result-value" id="primary-value">—</div>
+                {% if spec.outputs.period_toggle %}
+                <div class="period-toggle">
+                    <button type="button" class="toggle-premium-period active" data-period="monthly">Monthly</button>
+                    <button type="button" class="toggle-premium-period" data-period="yearly">Yearly</button>
+                </div>
+                {% endif %}
+                <div id="chart-wrap" {% if spec.outputs.chart == 'none' %}style="display:none;"{% endif %}>
+                    <canvas id="calc-chart" width="120" height="120"></canvas>
+                </div>
+                <ul id="result-rows"></ul>
+                <p class="calc-disclaimer">{{ disclaimer }}</p>
+                <a href="{{ calc.cta_url }}" class="calc-cta">{{ calc.cta_text }}</a>
+            </div>
+        </div>
+
+        {% if faqs %}
+        <div class="calc-faq">
+            <h2>Frequently asked questions</h2>
+            {% for faq in faqs %}
+            <details>
+                <summary>{{ faq.q }}</summary>
+                <p class="text-muted">{{ faq.a }}</p>
+            </details>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if related %}
+        <div class="related-wrap">
+            <h2>Related calculators</h2>
+            <div class="related-chips">
+                {% for item in related %}
+                <a class="related-chip" href="{% url 'home:calculator_detail' item.slug %}">{{ item.title }}</a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{{ config|json_script:"calc-config" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/calculators/engines.js' %}"></script>
+<script src="{% static 'js/calculators/core.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,8 @@
+<nav class="calc-tabs" aria-label="Calculator categories">
+    {% for tab in tabs %}
+    <a class="calc-tab {% if active_category and tab.category.id == active_category.id %}is-active{% endif %}"
+       href="{% url 'home:calculator_detail' tab.category.slug %}">
+        {{ tab.category.name }}
+    </a>
+    {% endfor %}
+</nav>
