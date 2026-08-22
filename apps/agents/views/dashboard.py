@@ -18,6 +18,146 @@ from apps.admin_panel.models.referral_usage import ReferralUsage
 from apps.agents.utils.file_validation import validate_magic_bytes
 logger = logging.getLogger(__name__)
 
+class PlanFeatureProxy:
+    """
+    Lightweight proxy that exposes .show_* attributes from plan_features_config
+    (the Plans & Pricing admin checkbox grid).  Allows the dashboard template to
+    use the same {{ agent_plan.show_X }} syntax regardless of which backend
+    (SiteSetting JSON or SubscriptionPlan model) resolved the plan.
+
+    Feature string → show_* attribute mapping:
+      dashboard_stats       → show_performance_stats
+      lead_management       → show_recent_leads + show_new_business_leads
+      sales_insights        → show_sales_insights
+      rank_boost_tips       → show_rank_boost_tips
+      view_public_profile   → show_view_public_profile_btn
+      edit_profile          → show_edit_profile_full
+      edit_profile_basic    → show_edit_profile_basic
+      edit_profile_professional → show_edit_profile_professional
+      edit_profile_portfolio    → show_edit_profile_portfolio
+      edit_profile_additional   → show_edit_profile_additional
+      manage_portfolio      → show_portfolio
+      upload_achievements   → show_achievement
+      view_reviews          → show_review_management
+      public_profile        → show_profile_section
+      agent_directory_visibility → is_listed_in_directory
+      receive_leads         → show_new_business_leads
+      premium_support       → premium_priority_support
+    """
+    # Maps feature slug → list of show_* attr names it enables
+    FEATURE_MAP = {
+        'dashboard_stats':          ['show_performance_stats'],
+        'lead_management':          ['show_recent_leads', 'show_new_business_leads'],
+        'legacy_lead_status':       ['show_lead_status'],
+        'sales_insights':           ['show_sales_insights'],
+        'rank_boost_tips':          ['show_rank_boost_tips'],
+        'view_public_profile':      ['show_view_public_profile_btn'],
+        'edit_profile':             ['show_edit_profile_full'],
+        'edit_profile_basic':       ['show_edit_profile_basic'],
+        'edit_profile_professional':['show_edit_profile_professional'],
+        'edit_profile_career_timeline': ['show_career_timeline'],
+        'edit_profile_social_media': ['show_social_media'],
+        'edit_profile_certifications': ['show_agent_certificate'],
+        'edit_profile_professional_bio': ['show_professional_bio'],
+        'edit_profile_claim_support': ['show_claim_support'],
+        'edit_profile_portfolio':   ['show_edit_profile_portfolio'],
+        'edit_profile_companies':   ['show_companies'],
+        'edit_profile_additional':  ['show_edit_profile_additional'],
+        'manage_portfolio':         ['show_portfolio'],
+        'upload_achievements':      ['show_achievement'],
+        'view_reviews':             ['show_review_management'],
+        'public_profile':           ['show_profile_section'],
+        'agent_directory_visibility':['is_listed_in_directory'],
+        'receive_leads':            ['show_new_business_leads'],
+        'premium_support':          ['premium_priority_support'],
+    }
+
+    def __init__(self, enabled_features):
+        """
+        enabled_features: list of feature slugs from plan_features_config,
+        e.g. ['dashboard_stats', 'lead_management', 'sales_insights']
+        """
+        self._enabled = set()
+        for feat in (enabled_features or []):
+            for attr in self.FEATURE_MAP.get(feat, []):
+                self._enabled.add(attr)
+
+    def __getattr__(self, name):
+        # Any show_* attribute returns True only if it is in enabled set
+        if name.startswith('show_') or name in ('is_listed_in_directory', 'premium_priority_support'):
+            return name in self._enabled
+        raise AttributeError(name)
+
+
+def _resolve_agent_plan(plan_type):
+    """
+    Dual-system plan resolver.
+
+    Priority 1 — plan_features_config (Plans & Pricing admin checkbox grid):
+      Reads the SiteSetting JSON keyed by plan_type slug.
+      Returns a PlanFeatureProxy exposing .show_* attributes.
+
+    Priority 2 — SubscriptionPlan model (Subscription Plans admin):
+      Multi-tier DB lookup: numeric ID → exact name → keyword-contains.
+      Returns the SubscriptionPlan instance directly (has real .show_* fields).
+
+    Returns None when nothing matches → template shows all features (fail-safe).
+    """
+    if not plan_type:
+        return None
+    pt = str(plan_type).strip()
+    if not pt:
+        return None
+
+    # ── Priority 1: plan_features_config (Plans & Pricing admin) ─────────────
+    try:
+        from apps.home.models import SiteSetting
+        features_config = SiteSetting.get_value('plan_features_config') or {}
+        # Normalise slug: 'free_trial', 'starter', 'professional', 'exclusive'
+        SLUG_NORMALISE = {
+            'basic': 'starter',
+            'free trial': 'free_trial',
+        }
+        slug = pt.lower().replace(' ', '_')
+        slug = SLUG_NORMALISE.get(slug, slug)
+        if slug in features_config:
+            enabled = features_config[slug]
+            if isinstance(enabled, list):
+                return PlanFeatureProxy(enabled)
+    except Exception:
+        pass
+
+    # ── Priority 2: SubscriptionPlan model ───────────────────────────────────
+    try:
+        from apps.agents.models import SubscriptionPlan
+        # Tier 2a: numeric ID
+        if pt.isdigit():
+            plan = SubscriptionPlan.objects.filter(id=int(pt)).first()
+            if plan:
+                return plan
+        # Tier 2b: exact name match
+        plan = SubscriptionPlan.objects.filter(name__iexact=pt, is_active=True).first()
+        if plan:
+            return plan
+        # Tier 2c: keyword-contains fallback
+        SLUG_KEYWORDS = {
+            'free_trial': ['free', 'trial'],
+            'basic':      ['basic', 'starter'],
+            'professional': ['professional', 'pro'],
+            'standard':   ['standard'],
+            'exclusive':  ['exclusive'],
+        }
+        keywords = SLUG_KEYWORDS.get(pt.lower(), [pt])
+        for kw in keywords:
+            plan = SubscriptionPlan.objects.filter(name__icontains=kw, is_active=True).first()
+            if plan:
+                return plan
+    except Exception:
+        pass
+
+    return None
+
+
 @login_required(login_url='agents:agent_login')
 def agent_dashboard(request):
     """
@@ -231,11 +371,15 @@ def agent_dashboard(request):
             
     plan_name = raw_plan.replace('_', ' ').replace('-', ' ').title()
 
+    # Resolve SubscriptionPlan using robust multi-tier helper
+    agent_plan = _resolve_agent_plan(agent.plan_type)
+
     favorite_ids = set(
         FavoriteAgent.objects.filter(user=request.user).values_list('agent_id', flat=True)
     )
 
     context = {
+        'agent_plan': agent_plan,
         'agent': agent,
         'profile': profile,
         'favorite_ids': favorite_ids,
@@ -473,7 +617,7 @@ def referral(request):
     return render(request, 'agents/referral.html', context)
 
 
-def agent_public_profile(request, slug):
+def agent_public_profile(request, slug, state_code=None):
     from django.http import Http404
     from django.conf import settings
     from apps.agents.models import Agent, AgentProfileView, AgentReview
@@ -552,9 +696,13 @@ def agent_public_profile(request, slug):
             except ValueError:
                 pass
                 
+    # Resolve agent_plan for public profile
+    agent_plan = _resolve_agent_plan(agent.plan_type)
+
     context = {
         'agent': agent,
         'profile': profile,
+        'agent_plan': agent_plan,
         'isOwnerView': is_owner,
         'reviews': reviews,
         'existingReview': existing_review,
@@ -571,7 +719,7 @@ def agent_public_profile(request, slug):
 from django.views.decorators.http import require_POST
 
 @require_POST
-def store_review(request, slug):
+def store_review(request, slug, state_code=None):
     from django.http import JsonResponse
     from apps.agents.models import Agent, AgentReview
     import re
@@ -751,8 +899,12 @@ def edit_profile(request):
                 name = request.user.get_full_name() or request.user.username
                 role = 'super' if request.user.is_superuser else 'manager'
             logged_in_admin = MockAdmin()
+            
+    # Resolve SubscriptionPlan using robust multi-tier helper
+    agent_plan = _resolve_agent_plan(agent.plan_type)
 
     context = {
+        'agent_plan': agent_plan,
         'agent': agent,
         'profile': profile,
         'isAdminView': is_admin_view,
@@ -1411,6 +1563,10 @@ def update_profile(request):
                 if not is_admin_edit:
                     agent.status = 'pending_approval'
                     agent.save()
+                    
+            # Clear OG image cache so changes (like WhatsApp, Photo, Name) reflect immediately
+            from django.core.cache import cache
+            cache.delete(f'og_image_agent_card_{agent.id}')
                     
             return JsonResponse({
                 'status': 'success',
@@ -2331,6 +2487,8 @@ def agent_public_share_profile(request, slug):
         desc_parts.append(f"Serving: {agent.agent_city_display}")
     seo_description = " · ".join(desc_parts) or "Licensed PadosiAgent Insurance & Investment Advisor."
 
+    agent_plan = _resolve_agent_plan(agent.plan_type)
+
     context = {
         'agent': agent,
         'profile': profile,
@@ -2340,6 +2498,7 @@ def agent_public_share_profile(request, slug):
         'agentDisplayName': display_name,
         'agentInitial': agent_initial,
         'seoDescription': seo_description,
+        'agent_plan': agent_plan,
     }
     return render(request, 'agents/profile_share.html', context)
 

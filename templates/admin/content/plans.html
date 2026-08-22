@@ -242,9 +242,363 @@
     </div>
 </form>
 
+<hr class="my-5">
+
+<!-- Exclusive Gamified Plan Editor -->
+<form method="POST" action="{% url 'admin_content_exclusive_plans_update' %}">
+    {% csrf_token %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h5 class="fw-bold mb-1">🎮 Exclusive Gamified Plan</h5>
+            <span style="font-size:13px;color:var(--text-muted);">Configure the "Follow & Scratch" special plan.</span>
+        </div>
+    </div>
+    
+    <div class="plan-editor-card mb-4" style="border-top: 4px solid #8b5cf6;">
+        <div class="plan-editor-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <div class="m-0 fw-bold"><i class="fa-solid fa-gem me-2" style="color: #8b5cf6;"></i>Exclusive Plan Configuration (Gamified)</div>
+            <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" name="exc_is_active" id="isActiveSwitch" {% if exclusive_config.is_active %}checked{% endif %}>
+                <label class="form-check-label fw-bold text-primary" for="isActiveSwitch">Enable Scratch Trigger</label>
+            </div>
+        </div>
+        <div class="p-4">
+            <!-- Basic Settings -->
+            <h6 class="fw-bold mb-3 text-secondary border-bottom pb-2">Basic Settings</h6>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Plan Name</label>
+                    <input type="text" name="exclusive_name" value="{{ exclusive_config.name|default:'Exclusive Plan' }}" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Base Price (₹) <small>(Revealed after scratch)</small></label>
+                    <input type="number" name="exclusive_base_price" value="{{ exclusive_config.base_price|default:199 }}" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Discounted Price (₹) <small>(Secret)</small></label>
+                    <input type="number" name="exclusive_discounted_price" value="{{ exclusive_config.discounted_price|default:99 }}" class="form-control" required>
+                </div>
+            </div>
+
+            <!-- Gamification Rules -->
+            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Gamification Rules</h6>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Scratch Threshold %</label>
+                    <input type="number" name="scratch_threshold_percent" value="{{ exclusive_config.scratch_threshold_percent|default:40 }}" min="1" max="100" class="form-control" required>
+                    <small class="text-muted">How much of the card needs to be scratched to trigger popup.</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Discount Rule</label>
+                    <select name="discount_rule" class="form-select">
+                        <option value="ALL_LINKS" {% if exclusive_config.discount_rule == 'ALL_LINKS' %}selected{% endif %}>Follow All Links Required</option>
+                        <option value="ANY_N_OF_M" {% if exclusive_config.discount_rule == 'ANY_N_OF_M' %}selected{% endif %}>Follow ANY 'N' Links</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Required Follows (N)</label>
+                    <input type="number" name="required_follow_count" value="{{ exclusive_config.required_follow_count|default:1 }}" min="1" class="form-control" required>
+                </div>
+            </div>
+
+            <!-- Popup Copy -->
+            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Popup Copy</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Gift Title</label>
+                    <input type="text" name="gift_title" value="{{ exclusive_config.gift_title|default:'Surprise! Special Plan Unlocked!' }}" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Gift Subtitle</label>
+                    <input type="text" name="gift_subtitle" value="{{ exclusive_config.gift_subtitle|default:'Follow our social handles to reveal your secret discounted price.' }}" class="form-control" required>
+                </div>
+            </div>
+            <!-- Advanced Text & Badges (New!) -->
+            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Advanced Text & Badges (New!)</h6>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Plan Badge</label>
+                    <input type="text" name="plan_badge" value="{{ exclusive_config.plan_badge|default:'👑' }}" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Badge Text</label>
+                    <input type="text" name="badge_text" value="{{ exclusive_config.badge_text|default:'Top Pick!' }}" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Ribbon Text</label>
+                    <input type="text" name="ribbon_text" value="{{ exclusive_config.ribbon_text|default:'Exclusive Deal' }}" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Ribbon Color</label>
+                    <input type="text" name="ribbon_color" value="{{ exclusive_config.ribbon_color|default:'#8A2BE2' }}" class="form-control">
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Price Suffix</label>
+                    <input type="text" name="price_suffix" value="{{ exclusive_config.price_suffix|default:'/mo' }}" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Total Value Amount</label>
+                    <input type="number" name="total_value_amount" value="{{ exclusive_config.total_value_amount|default:15000 }}" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Savings Text</label>
+                    <input type="text" name="savings_text" value="{{ exclusive_config.savings_text|default:'🔥 Save 80% with this super exclusive secret deal!' }}" class="form-control">
+                </div>
+                
+                <div class="col-md-6">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Original Price Label (Tooltip)</label>
+                    <input type="text" name="old_price_tooltip" value="{{ exclusive_config.old_price_tooltip|default:'Actual market value of all these premium services combined.' }}" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Strikeout Price</label>
+                    <input type="number" name="strikeout_price" value="{{ exclusive_config.strikeout_price|default:15000 }}" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Discount Amount Label</label>
+                    <input type="text" name="discount_amount_label" value="{{ exclusive_config.discount_amount_label|default:'14801' }}" class="form-control">
+                </div>
+            </div>
+
+            <!-- Action Button Setup -->
+            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Action Button Setup</h6>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Active Button Text</label>
+                    <input type="text" name="checkout_btn_text" value="{{ exclusive_config.checkout_btn_text|default:'BUY' }}" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Locked Button Text</label>
+                    <input type="text" name="locked_btn_text" value="{{ exclusive_config.locked_btn_text|default:'LOCKED' }}" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Default Reason Text (Locked)</label>
+                    <input type="text" name="locked_reason_text" value="{{ exclusive_config.locked_reason_text|default:'Follow Social Media to Unlock' }}" class="form-control">
+                </div>
+            </div>
+
+            <!-- Locked Screen Instructions -->
+            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Locked Screen Instructions</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Heading (When locked)</label>
+                    <input type="text" name="locked_heading" value="{{ exclusive_config.locked_heading|default:'Please Follow Us First' }}" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold" style="font-size: 13px;">Description (When locked)</label>
+                    <input type="text" name="locked_desc" value="{{ exclusive_config.locked_desc|default:'Please Follow' }}" class="form-control">
+                </div>
+            </div>
+            
+            <!-- Gamification Social Links -->
+            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Social Media Links</h6>
+            <p class="text-muted small">Add the platforms you want users to follow. These will appear in the Gamified Gift Modal.</p>
+            
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm" id="socialLinksTable">
+                    <thead class="bg-light">
+                        <tr>
+                            <th style="width: 25%;">Platform (e.g., instagram, youtube)</th>
+                            <th style="width: 45%;">URL</th>
+                            <th style="width: 20%;">Icon Class (e.g., fa-instagram)</th>
+                            <th style="width: 10%; text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if exclusive_config.social_links %}
+                            {% for link in exclusive_config.social_links %}
+                            <tr>
+                                <td><input type="text" name="social_platform[]" value="{{ link.platform }}" class="form-control form-control-sm" required></td>
+                                <td><input type="url" name="social_url[]" value="{{ link.url }}" class="form-control form-control-sm" required></td>
+                                <td><input type="text" name="social_icon[]" value="{{ link.icon|default:'' }}" class="form-control form-control-sm" required></td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-social-link"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td><input type="text" name="social_platform[]" value="instagram" class="form-control form-control-sm" required></td>
+                                <td><input type="url" name="social_url[]" value="https://instagram.com/padosiagent" class="form-control form-control-sm" required></td>
+                                <td><input type="text" name="social_icon[]" value="fa-instagram" class="form-control form-control-sm" required></td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-social-link"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-success mt-2" id="addSocialLinkBtn">
+                <i class="fa-solid fa-plus me-1"></i> Add Social Link
+            </button>
+
+            <!-- Premium Feature Strip -->
+            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Premium Feature Strip Tiles</h6>
+            <p class="text-muted small">Configure the horizontal icon feature strip on the Gift Modal.</p>
+            
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm" id="premiumFeaturesTable">
+                    <thead class="bg-light">
+                        <tr>
+                            <th style="width: 30%;">Title (use &lt;br&gt; for line breaks)</th>
+                            <th style="width: 25%;">Icon (e.g., fa-globe)</th>
+                            <th style="width: 15%;">Icon Color</th>
+                            <th style="width: 15%;">Icon BG Color</th>
+                            <th style="width: 15%; text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if exclusive_config.premium_features %}
+                            {% for feature in exclusive_config.premium_features %}
+                            <tr>
+                                <td><input type="text" name="pf_name[]" value="{{ feature.name }}" class="form-control form-control-sm" required></td>
+                                <td><input type="text" name="pf_icon[]" value="{{ feature.icon|default:'' }}" class="form-control form-control-sm" required></td>
+                                <td><input type="color" name="pf_color[]" value="{{ feature.color|default:'#000000' }}" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
+                                <td><input type="color" name="pf_bg_color[]" value="{{ feature.bg_color|default:'#ffffff' }}" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-premium-feature"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td><input type="text" name="pf_name[]" value="Permanent<br>Website" class="form-control form-control-sm" required></td>
+                                <td><input type="text" name="pf_icon[]" value="fa-globe" class="form-control form-control-sm" required></td>
+                                <td><input type="color" name="pf_color[]" value="#10b981" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
+                                <td><input type="color" name="pf_bg_color[]" value="#e6f7f0" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-premium-feature"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="text" name="pf_name[]" value="Digital<br>Card" class="form-control form-control-sm" required></td>
+                                <td><input type="text" name="pf_icon[]" value="fa-id-card" class="form-control form-control-sm" required></td>
+                                <td><input type="color" name="pf_color[]" value="#8b5cf6" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
+                                <td><input type="color" name="pf_bg_color[]" value="#f3e8ff" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-premium-feature"><i class="fa-solid fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-success mt-2" id="addPremiumFeatureBtn">
+                <i class="fa-solid fa-plus me-1"></i> Add Feature Tile
+            </button>
+
+            <div class="text-end mt-4">
+                <button type="submit" class="btn btn-primary px-5" style="background-color: #8b5cf6; border-color: #8b5cf6;">
+                    <i class="fa-solid fa-save me-2"></i> Save Exclusive Config
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<hr class="my-5">
+
+<!-- Plan Feature Permissions -->
+<form method="POST" action="{% url 'admin_content_plans_update_features' %}">
+    {% csrf_token %}
+    <div class="plan-editor-card mb-4" style="border-top: 4px solid #0284c7;">
+        <div class="plan-editor-header bg-white py-3">
+            <div class="m-0 fw-bold"><i class="fa-solid fa-lock me-2" style="color: #0284c7;"></i>Plan-Based Feature Access Control</div>
+            <p class="text-muted mb-0 mt-1 fw-normal" style="font-size:12px;">Select which features are available to agents based on their active subscription plan.</p>
+        </div>
+        <div class="p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered mb-0" style="font-size: 13px;">
+                    <thead style="background: #f8fafc;">
+                        <tr>
+                            <th style="width: 280px;" class="px-4 py-3">Feature</th>
+                            <th class="text-center px-2 py-3">Free Trial / Expired</th>
+                            <th class="text-center px-2 py-3">Starter Plan</th>
+                            <th class="text-center px-2 py-3">Professional Plan</th>
+                            <th class="text-center px-2 py-3">Exclusive Plan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f_key, f_label in available_features %}
+                            <tr>
+                                <td class="px-4 align-middle fw-medium text-dark">{{ f_label }}</td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_free_trial[]" value="{{ f_key }}" {% if f_key in features_config.free_trial %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_starter[]" value="{{ f_key }}" {% if f_key in features_config.starter %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_professional[]" value="{{ f_key }}" {% if f_key in features_config.professional %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_exclusive[]" value="{{ f_key }}" {% if f_key in features_config.exclusive %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+
+                        <tr style="background: #f8fafc; border-top: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0;">
+                            <td colspan="5" class="px-4 py-3">
+                                <div class="fw-bold text-dark d-flex align-items-center" style="font-size: 15px;">
+                                    <i class="fa-solid fa-list-ul me-2" style="color: #0284c7;"></i> Legacy Options
+                                </div>
+                                <div class="text-muted fw-normal mt-1" style="font-size: 13px;">Other configuration options.</div>
+                            </td>
+                        </tr>
+
+                        {% for f_key, f_label in legacy_features %}
+                            <tr>
+                                <td class="px-4 align-middle fw-medium text-dark">
+                                    <i class="fa-solid fa-cog me-2 text-secondary" style="font-size: 12px;"></i> {{ f_label }}
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_free_trial[]" value="{{ f_key }}" {% if f_key in features_config.free_trial %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_starter[]" value="{{ f_key }}" {% if f_key in features_config.starter %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_professional[]" value="{{ f_key }}" {% if f_key in features_config.professional %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_exclusive[]" value="{{ f_key }}" {% if f_key in features_config.exclusive %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="text-end p-4 bg-white border-top">
+                <button type="submit" class="btn btn-primary px-5" style="background-color: #0284c7; border-color: #0284c7;">
+                    <i class="fa-solid fa-save me-2"></i> Save Feature Permissions
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
 {% endblock %}
 
 {% block extra_js %}
+{{ block.super }}
 <script>
 // Live preview bindings
 function bind(inputId, previewId, prefix) {
@@ -267,5 +621,83 @@ bind('professional_badge', 'prev-pro-badge');
 bind('professional_description', 'prev-pro-desc');
 bind('professional_full_price', 'prev-pro-full', '₹');
 bind('professional_promo_price', 'prev-pro-promo', '₹');
+
+document.addEventListener('DOMContentLoaded', function() {
+    const tableBody = document.querySelector('#socialLinksTable tbody');
+    
+    document.getElementById('addSocialLinkBtn').addEventListener('click', function() {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" name="social_platform[]" placeholder="e.g. facebook" class="form-control form-control-sm" required></td>
+            <td><input type="url" name="social_url[]" placeholder="https://..." class="form-control form-control-sm" required></td>
+            <td><input type="text" name="social_icon[]" placeholder="e.g. fa-facebook" class="form-control form-control-sm" required></td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-social-link"><i class="fa-solid fa-trash"></i></button></td>
+        `;
+        tableBody.appendChild(row);
+    });
+    
+    tableBody.addEventListener('click', function(e) {
+        if(e.target.closest('.remove-social-link')) {
+            if(tableBody.querySelectorAll('tr').length > 1) {
+                e.target.closest('tr').remove();
+            } else {
+                alert('You must have at least one social link.');
+            }
+        }
+    });
+    
+    const featuresTableBody = document.querySelector('#premiumFeaturesTable tbody');
+    
+    document.getElementById('addPremiumFeatureBtn').addEventListener('click', function() {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" name="pf_name[]" placeholder="Feature Name" class="form-control form-control-sm" required></td>
+            <td><input type="text" name="pf_icon[]" placeholder="e.g. fa-star" class="form-control form-control-sm" required></td>
+            <td><input type="color" name="pf_color[]" value="#3b82f6" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
+            <td><input type="color" name="pf_bg_color[]" value="#dbeafe" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-premium-feature"><i class="fa-solid fa-trash"></i></button></td>
+        `;
+        featuresTableBody.appendChild(row);
+    });
+    
+    featuresTableBody.addEventListener('click', function(e) {
+        if(e.target.closest('.remove-premium-feature')) {
+            e.target.closest('tr').remove();
+        }
+    });
+
+    // Edit Profile Dependency Logic (Column-based)
+    const masterInputs = document.querySelectorAll('input[value="edit_profile"]');
+    const childValues = [
+        'edit_profile_basic',
+        'edit_profile_professional',
+        'edit_profile_portfolio',
+        'edit_profile_additional'
+    ];
+    
+    function syncEditProfileChildren(masterInput) {
+        const isChecked = masterInput.checked;
+        const colName = masterInput.name; // e.g. features_starter[]
+        
+        childValues.forEach(val => {
+            const childInput = document.querySelector(`input[name="${colName}"][value="${val}"]`);
+            if (childInput) {
+                childInput.disabled = !isChecked;
+                if (!isChecked) {
+                    childInput.closest('td').style.opacity = '0.4';
+                } else {
+                    childInput.closest('td').style.opacity = '1';
+                }
+            }
+        });
+    }
+
+    masterInputs.forEach(master => {
+        master.addEventListener('change', function() {
+            syncEditProfileChildren(this);
+        });
+        syncEditProfileChildren(master); // Run on load
+    });
+});
 </script>
 {% endblock %}
