@@ -354,6 +354,7 @@
             </button>
 
             <!-- Advanced Text & Badges (New!) -->
+            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Advanced Text & Badges (New!)</h6>
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label fw-bold" style="font-size: 13px;">Plan Badge</label>
@@ -584,6 +585,43 @@
                                 </td>
                             </tr>
                         {% endfor %}
+
+                        <tr style="background: #f8fafc; border-top: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0;">
+                            <td colspan="5" class="px-4 py-3">
+                                <div class="fw-bold text-dark d-flex align-items-center" style="font-size: 15px;">
+                                    <i class="fa-solid fa-list-ul me-2" style="color: #0284c7;"></i> Legacy Options
+                                </div>
+                                <div class="text-muted fw-normal mt-1" style="font-size: 13px;">Other configuration options.</div>
+                            </td>
+                        </tr>
+
+                        {% for f_key, f_label in legacy_features %}
+                            <tr>
+                                <td class="px-4 align-middle fw-medium text-dark">
+                                    <i class="fa-solid fa-cog me-2 text-secondary" style="font-size: 12px;"></i> {{ f_label }}
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_free_trial[]" value="{{ f_key }}" {% if f_key in features_config.free_trial %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_starter[]" value="{{ f_key }}" {% if f_key in features_config.starter %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_professional[]" value="{{ f_key }}" {% if f_key in features_config.professional %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center m-0">
+                                        <input class="form-check-input" type="checkbox" name="features_exclusive[]" value="{{ f_key }}" {% if f_key in features_config.exclusive %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -670,6 +708,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+
     const featuresTableBody = document.querySelector('#premiumFeaturesTable tbody');
     
     document.getElementById('addPremiumFeatureBtn').addEventListener('click', function() {
@@ -688,6 +727,39 @@ document.addEventListener('DOMContentLoaded', function() {
         if(e.target.closest('.remove-premium-feature')) {
             e.target.closest('tr').remove();
         }
+    });
+
+    // Edit Profile Dependency Logic (Column-based)
+    const masterInputs = document.querySelectorAll('input[value="edit_profile"]');
+    const childValues = [
+        'edit_profile_basic',
+        'edit_profile_professional',
+        'edit_profile_portfolio',
+        'edit_profile_additional'
+    ];
+    
+    function syncEditProfileChildren(masterInput) {
+        const isChecked = masterInput.checked;
+        const colName = masterInput.name; // e.g. features_starter[]
+        
+        childValues.forEach(val => {
+            const childInput = document.querySelector(`input[name="${colName}"][value="${val}"]`);
+            if (childInput) {
+                childInput.disabled = !isChecked;
+                if (!isChecked) {
+                    childInput.closest('td').style.opacity = '0.4';
+                } else {
+                    childInput.closest('td').style.opacity = '1';
+                }
+            }
+        });
+    }
+
+    masterInputs.forEach(master => {
+        master.addEventListener('change', function() {
+            syncEditProfileChildren(this);
+        });
+        syncEditProfileChildren(master); // Run on load
     });
 });
 </script>

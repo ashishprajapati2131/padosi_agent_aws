@@ -374,11 +374,22 @@ def plans(request):
         ('premium_support', 'Premium Priority Support'),
     ]
 
+    legacy_features = [
+        ('edit_profile_certifications', 'Agent Certificate'),
+        ('edit_profile_career_timeline', 'Career Timeline'),
+        ('edit_profile_professional_bio', 'Professional Bio'),
+        ('edit_profile_social_media', 'Social Media'),
+        ('edit_profile_claim_support', 'Claim Support'),
+        ('edit_profile_companies', 'Companies'),
+        ('legacy_lead_status', 'Lead Status'),
+    ]
+
     return render(request, 'admin/content/plans.html', {
         'pricing': pricing,
         'exclusive_config': exclusive_config,
         'features_config': plan_features_config,
         'available_features': available_features,
+        'legacy_features': legacy_features,
     })
 
 
@@ -447,7 +458,7 @@ def update_exclusive_config(request):
                 'color': pf_colors[i] if i < len(pf_colors) else '#000000',
                 'bg_color': pf_bg_colors[i] if i < len(pf_bg_colors) else '#ffffff',
             })
-            
+
         # Parse dynamic follow tiers
         tier_follows_list = request.POST.getlist('tier_follows[]')
         tier_prices_list = request.POST.getlist('tier_prices[]')

@@ -875,7 +875,7 @@ Overview
                         </div>
 
                         <!-- Segment Selector (Always Visible) -->
-                        <div class="mb-4 p-3 border rounded"
+                        <div class="mb-4 p-3 border rounded" id="segment-selector-section"
                             style="border-radius: 12px !important; background-color: #f8fafc; border-color: #e2e8f0;">
                             <p class="font-weight-bold mb-3 text-dark text-center"
                                 style="font-size: 14px; color: #1e293b;">Select your Insurance Segments:</p>
@@ -4783,13 +4783,17 @@ Overview
       if ($el.length === 0) return;
       
       let $target = $el;
-      // Intelligently wrap contents of the step so the title is not blurred
-      let $header = $el.find('.d-flex.align-items-center.justify-content-between, .card-header').first();
-      if ($header.length > 0) {
-          if ($el.find('.locked-content-wrapper').length === 0) {
-              $header.siblings().wrapAll('<div class="locked-content-wrapper" style="position:relative; min-height: 150px; flex-grow: 1; display: flex; flex-direction: column;"></div>');
+      
+      if ($target.hasClass('form-step')) {
+          if ($target.find('.locked-content-wrapper').length === 0) {
+              $target.children().not('.step-header').wrapAll('<div class="locked-content-wrapper" style="position:relative; min-height: 100%; display: flex; flex-direction: column;"></div>');
           }
-          $target = $el.find('.locked-content-wrapper');
+          $target = $target.find('.locked-content-wrapper');
+      } else if ($target.hasClass('card-body')) {
+          if ($target.find('.locked-content-wrapper').length === 0) {
+              $target.wrapInner('<div class="locked-content-wrapper" style="position:relative; min-height: 100%; display: flex; flex-direction: column;"></div>');
+          }
+          $target = $target.find('.locked-content-wrapper');
       }
 
       $target.addClass('locked-plan-section').css({
@@ -4824,7 +4828,8 @@ Overview
       editProfileAdditional: {% if not agent_plan or agent_plan.show_edit_profile_additional %}true{% else %}false{% endif %},
       achievement: {% if not agent_plan or agent_plan.show_achievement %}true{% else %}false{% endif %},
       companies: {% if not agent_plan or agent_plan.show_companies %}true{% else %}false{% endif %},
-      socialMedia: {% if not agent_plan or agent_plan.show_social_media %}true{% else %}false{% endif %}
+      socialMedia: {% if not agent_plan or agent_plan.show_social_media %}true{% else %}false{% endif %},
+      newBusinessLeads: {% if not agent_plan or agent_plan.show_new_business_leads %}true{% else %}false{% endif %}
     };
 
     if (!planPermissions.editProfileFull) {
@@ -4847,22 +4852,32 @@ Overview
             `);
         }
     } else {
-        if (!planPermissions.editProfileBasic) lockSection($('#step-1'), "Basic Details");
-        if (!planPermissions.editProfileProfessional) lockSection($('#step-2'), "Professional Details");
-        if (!planPermissions.editProfilePortfolio) lockSection($('#step-3'), "Product Portfolio");
-        if (!planPermissions.editProfileAdditional) lockSection($('#step-4'), "Additional Details");
+        let step1Locked = false, step2Locked = false, step3Locked = false, step4Locked = false;
 
-        if (!planPermissions.agentCertificate) lockSection($('#step-2'), "Certifications & Licenses");
-        if (!planPermissions.portfolio) lockSection($('#step-3'), "Product Portfolio");
-        if (!planPermissions.careerTimeline) lockSection($('.career-timeline-section'), "Career Timeline");
-        if (!planPermissions.professionalBio) {
-            $('#ai-generate-bio-btn').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', 'Locked by Admin Plan').html('<i class="fas fa-lock"></i><span>Locked by Plan</span>');
+        if (!planPermissions.editProfileBasic) { lockSection($('#step-1'), "Basic Details"); step1Locked = true; }
+        if (!planPermissions.editProfileProfessional) { lockSection($('#step-2'), "Professional Details"); step2Locked = true; }
+        if (!planPermissions.editProfilePortfolio) { lockSection($('#step-3'), "Product Portfolio"); step3Locked = true; }
+        if (!planPermissions.editProfileAdditional) { lockSection($('#step-4'), "Additional Details"); step4Locked = true; }
+
+        if (!step2Locked) {
+            if (!planPermissions.agentCertificate) lockSection($('#step-2 .step-subtitle:contains("licenses")').closest('.row').parent(), "Certifications & Licenses");
+            if (!planPermissions.careerTimeline) lockSection($('.career-timeline-section'), "Career Timeline");
+            if (!planPermissions.professionalBio) {
+                $('#ai-generate-bio-btn').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', 'Locked by Admin Plan').html('<i class="fas fa-lock"></i><span>Locked by Plan</span>');
+            }
+            if (!planPermissions.claimSupport) lockSection($('#claims_processed').closest('.row').parent(), "Claim Support Statistics");
+        }
+
+        if (!step3Locked) {
+            if (!planPermissions.portfolio) lockSection($('#segment-selector-section'), "Product Portfolio");
+            if (!planPermissions.companies) lockSection($('#portfolio-content'), "Company Portfolio");
         }
         
-        if (!planPermissions.achievement) lockSection($('.achievement-photos-section'), "Achievement Photos");
-        if (!planPermissions.claimSupport) lockSection($('#claims_processed').closest('.row').parent(), "Claim Support Statistics");
-        if (!planPermissions.companies) lockSection($('.step-subtitle:contains("company partnerships")').parent(), "Company Portfolio");
-        if (!planPermissions.socialMedia) lockSection($('.digital-presence-section'), "Social Media Settings");
+        if (!step4Locked) {
+            if (!planPermissions.achievement) lockSection($('.achievement-photos-section'), "Achievement Photos");
+            if (!planPermissions.socialMedia) lockSection($('.digital-presence-section'), "Social Media Settings");
+            if (!planPermissions.newBusinessLeads) lockSection($('#lead-new-business'), "New Business Leads");
+        }
     }
 
 </script>

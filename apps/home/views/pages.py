@@ -613,8 +613,16 @@ def fetch_filtered_agents_list(request):
 
     query = query.annotate(padosi_smart_rank=RawSQL(smart_rank_expr, filter_match_params))
 
+    from apps.agents.views.dashboard import _resolve_agent_plan
+
     # Fetch and process/sort in memory
-    all_agents = list(query)
+    raw_agents = list(query)
+    all_agents = []
+    for agent in raw_agents:
+        plan = _resolve_agent_plan(agent.plan_type)
+        if plan and getattr(plan, 'is_listed_in_directory', True) == False:
+            continue
+        all_agents.append(agent)
 
     for agent in all_agents:
         agent.distance = None

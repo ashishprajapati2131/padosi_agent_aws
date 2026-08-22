@@ -43,6 +43,15 @@
                 <button type="button" class="btn text-white shadow-sm px-4 d-flex align-items-center mb-2 mb-sm-0" data-toggle="modal" data-target="#rankingGuideModal" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; font-weight: 700; border-radius: 8px; margin-right: 12px; height: 42px;">
                     <i class="fas fa-rocket mr-2"></i> Rank Boost Tips
                 </button>
+                {% if agent_plan and agent_plan.premium_priority_support %}
+                <button type="button" class="btn text-white shadow-sm px-4 d-flex align-items-center mb-2 mb-sm-0" onclick="window.open('https://wa.me/919999999999?text=Hi%2C%20I%20am%20a%20Priority%20Support%20agent%20needing%20assistance.', '_blank')" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); border: none; font-weight: 700; border-radius: 8px; margin-right: 12px; height: 42px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); animation: shine 2.5s infinite;"></div>
+                    <i class="fab fa-whatsapp mr-2" style="font-size: 1.2rem;"></i> Priority Support
+                </button>
+                <style>
+                    @keyframes shine { 100% { left: 200%; } }
+                </style>
+                {% endif %}
                 <a href="{% url 'agents:agent_public_profile' slug=profile.slug|default:agent.id %}" class="btn btn-profile-view mb-2 mb-sm-0" style="height: 42px; display: inline-flex; align-items: center;">View My Profile</a>
             </div>
         </div>
@@ -1212,7 +1221,8 @@
       rankBoostTips: {% if not agent_plan or agent_plan.show_rank_boost_tips %}true{% else %}false{% endif %},
       viewPublicProfileBtn: {% if not agent_plan or agent_plan.show_view_public_profile_btn %}true{% else %}false{% endif %},
       reviewManagement: {% if not agent_plan or agent_plan.show_review_management %}true{% else %}false{% endif %},
-      leadStatus: {% if not agent_plan or agent_plan.show_lead_status %}true{% else %}false{% endif %}
+      leadStatus: {% if not agent_plan or agent_plan.show_lead_status %}true{% else %}false{% endif %},
+      editProfileFull: {% if not agent_plan or agent_plan.show_edit_profile_full %}true{% else %}false{% endif %}
     };
 
     function lockSection($el, sectionName) {
@@ -1264,6 +1274,11 @@
     
     if (!planPermissions.viewPublicProfileBtn) {
       $('.btn-profile-view').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', 'Locked by Admin Plan').html('<i class="fas fa-lock me-2"></i>Locked');
+    }
+    
+    if (!planPermissions.editProfileFull) {
+      let editProfileUrl = "{% url 'agents:agent_edit_profile' %}";
+      $('a[href="' + editProfileUrl + '"]').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', 'Locked by Admin Plan').html('<i class="fas fa-lock mr-2"></i>Locked');
     }
     
     if (!planPermissions.leadStatus) {

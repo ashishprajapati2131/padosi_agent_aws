@@ -324,6 +324,34 @@ $(document).ready(function() {
     discountedPriceInput.on('input', function() {
         if (showingPreview) updatePreviewContent();
     });
+
+    // Edit Profile Dependency Logic
+    const $editProfileFull = $('input[name="show_edit_profile_full"]');
+    const editProfileChildren = [
+        'input[name="show_edit_profile_basic"]',
+        'input[name="show_edit_profile_professional"]',
+        'input[name="show_edit_profile_portfolio"]',
+        'input[name="show_edit_profile_additional"]'
+    ];
+    
+    function toggleEditProfileChildren() {
+        const isChecked = $editProfileFull.is(':checked');
+        editProfileChildren.forEach(selector => {
+            const $child = $(selector);
+            $child.prop('disabled', !isChecked);
+            if (!isChecked) {
+                // Optional: visually fade them or their containers
+                $child.closest('tr').css('opacity', '0.6');
+            } else {
+                $child.closest('tr').css('opacity', '1');
+            }
+        });
+    }
+
+    if ($editProfileFull.length > 0) {
+        $editProfileFull.on('change', toggleEditProfileChildren);
+        toggleEditProfileChildren(); // Run on load
+    }
 });
 </script>
 {% endblock %}
