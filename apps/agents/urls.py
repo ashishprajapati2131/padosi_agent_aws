@@ -24,10 +24,13 @@ urlpatterns = [
     path('logout/',             auth.logout_view,                name='logout'),
     path('agent/dashboard/',    dashboard.agent_dashboard,       name='agent_dashboard'),
     path('agent/referral/',     dashboard.referral,              name='agent_referral'),
-    path('profile/<str:slug>/', dashboard.agent_public_profile,  name='agent_public_profile'),
-    path('profile/<str:state_code>/<str:slug>/', dashboard.agent_public_profile,  name='agent_public_profile_state'),
+    # Review routes must come before profile/<state>/<slug>/, otherwise
+    # POST /profile/<slug>/review/ is captured as state_code=slug, slug="review"
+    # and agent_public_profile 404s looking up slug "review".
     path('profile/<str:slug>/review/', dashboard.store_review,   name='agent_store_review'),
     path('profile/<str:state_code>/<str:slug>/review/', dashboard.store_review,   name='agent_store_review_state'),
+    path('profile/<str:slug>/', dashboard.agent_public_profile,  name='agent_public_profile'),
+    path('profile/<str:state_code>/<str:slug>/', dashboard.agent_public_profile,  name='agent_public_profile_state'),
     path('agent/edit-profile/', dashboard.edit_profile,         name='agent_edit_profile'),
     path('agent/update-profile/', dashboard.update_profile,     name='agent_update_profile'),
     path('agent/push-token/',   dashboard.agent_push_token,      name='agent_push_token'),

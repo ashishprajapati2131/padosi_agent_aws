@@ -4779,7 +4779,17 @@ Overview
         }
     }
 
-    function lockSection($el, sectionName) {
+    const featureUnlockHints = {{ feature_unlock_hints_json|default:"{}"|safe }};
+
+    function lockReason(name, hintKey) {
+      const fragment = (hintKey && featureUnlockHints[hintKey]) || '';
+      if (fragment) {
+        return 'Unlock ' + name + ' by: ' + fragment;
+      }
+      return name + ' is set to private by the administrator.';
+    }
+
+    function lockSection($el, sectionName, hintKey) {
       if ($el.length === 0) return;
       
       let $target = $el;
@@ -4807,7 +4817,7 @@ Overview
         $target.append(`
           <div class="locked-plan-overlay" style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:auto; text-align:center; border-radius: 8px;">
             <i class="fas fa-lock mb-3" style="font-size: 32px; color: #475569;"></i>
-            <p style="font-size: 18px; color: #475569; font-weight: 600; margin: 0; max-width: 80%; line-height: 1.5; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">${name} is set to private by the administrator.</p>
+            <p style="font-size: 18px; color: #475569; font-weight: 600; margin: 0; max-width: 80%; line-height: 1.5; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">${lockReason(name, hintKey)}</p>
           </div>
         `);
       }
@@ -4847,36 +4857,36 @@ Overview
             $card.append(`
               <div class="locked-plan-overlay" style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:auto; text-align:center; border-radius: 8px;">
                 <i class="fas fa-lock mb-3" style="font-size: 32px; color: #475569;"></i>
-                <p style="font-size: 18px; color: #475569; font-weight: 600; margin: 0; max-width: 80%; line-height: 1.5; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">Edit Profile is set to private by the administrator.</p>
+                <p style="font-size: 18px; color: #475569; font-weight: 600; margin: 0; max-width: 80%; line-height: 1.5; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">${lockReason('Edit Profile', 'show_edit_profile_full')}</p>
               </div>
             `);
         }
     } else {
         let step1Locked = false, step2Locked = false, step3Locked = false, step4Locked = false;
 
-        if (!planPermissions.editProfileBasic) { lockSection($('#step-1'), "Basic Details"); step1Locked = true; }
-        if (!planPermissions.editProfileProfessional) { lockSection($('#step-2'), "Professional Details"); step2Locked = true; }
-        if (!planPermissions.editProfilePortfolio) { lockSection($('#step-3'), "Product Portfolio"); step3Locked = true; }
-        if (!planPermissions.editProfileAdditional) { lockSection($('#step-4'), "Additional Details"); step4Locked = true; }
+        if (!planPermissions.editProfileBasic) { lockSection($('#step-1'), "Basic Details", "show_edit_profile_basic"); step1Locked = true; }
+        if (!planPermissions.editProfileProfessional) { lockSection($('#step-2'), "Professional Details", "show_edit_profile_professional"); step2Locked = true; }
+        if (!planPermissions.editProfilePortfolio) { lockSection($('#step-3'), "Product Portfolio", "show_edit_profile_portfolio"); step3Locked = true; }
+        if (!planPermissions.editProfileAdditional) { lockSection($('#step-4'), "Additional Details", "show_edit_profile_additional"); step4Locked = true; }
 
         if (!step2Locked) {
-            if (!planPermissions.agentCertificate) lockSection($('#step-2 .step-subtitle:contains("licenses")').closest('.row').parent(), "Certifications & Licenses");
-            if (!planPermissions.careerTimeline) lockSection($('.career-timeline-section'), "Career Timeline");
+            if (!planPermissions.agentCertificate) lockSection($('#step-2 .step-subtitle:contains("licenses")').closest('.row').parent(), "Certifications & Licenses", "show_agent_certificate");
+            if (!planPermissions.careerTimeline) lockSection($('.career-timeline-section'), "Career Timeline", "show_career_timeline");
             if (!planPermissions.professionalBio) {
-                $('#ai-generate-bio-btn').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', 'Locked by Admin Plan').html('<i class="fas fa-lock"></i><span>Locked by Plan</span>');
+                $('#ai-generate-bio-btn').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', lockReason('Professional Bio', 'show_professional_bio')).html('<i class="fas fa-lock"></i><span>Locked by Plan</span>');
             }
-            if (!planPermissions.claimSupport) lockSection($('#claims_processed').closest('.row').parent(), "Claim Support Statistics");
+            if (!planPermissions.claimSupport) lockSection($('#claims_processed').closest('.row').parent(), "Claim Support Statistics", "show_claim_support");
         }
 
         if (!step3Locked) {
-            if (!planPermissions.portfolio) lockSection($('#segment-selector-section'), "Product Portfolio");
-            if (!planPermissions.companies) lockSection($('#portfolio-content'), "Company Portfolio");
+            if (!planPermissions.portfolio) lockSection($('#segment-selector-section'), "Product Portfolio", "show_portfolio");
+            if (!planPermissions.companies) lockSection($('#portfolio-content'), "Company Portfolio", "show_companies");
         }
         
         if (!step4Locked) {
-            if (!planPermissions.achievement) lockSection($('.achievement-photos-section'), "Achievement Photos");
-            if (!planPermissions.socialMedia) lockSection($('.digital-presence-section'), "Social Media Settings");
-            if (!planPermissions.newBusinessLeads) lockSection($('#lead-new-business'), "New Business Leads");
+            if (!planPermissions.achievement) lockSection($('.achievement-photos-section'), "Achievement Photos", "show_achievement");
+            if (!planPermissions.socialMedia) lockSection($('.digital-presence-section'), "Social Media Settings", "show_social_media");
+            if (!planPermissions.newBusinessLeads) lockSection($('#lead-new-business'), "New Business Leads", "show_new_business_leads");
         }
     }
 

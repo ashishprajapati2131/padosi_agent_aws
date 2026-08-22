@@ -22,7 +22,7 @@ def favicon(request):
 from apps.admin_panel.models.contact_submission import ContactSubmission
 from apps.agents.models import Agent, AgentPortfolio, AgentReview, City, FavoriteAgent
 from apps.home.models import Pincode, PincodeCache
-from apps.home.services.distance import DistanceService
+from apps.home.services.distance import DistanceService, apply_search_proximity
 from apps.home.services.geocoding import GeocodingService
 from apps.home.services.ai_picks import AIPicksService
 from django.db.models import Avg, Q
@@ -408,7 +408,7 @@ def fetch_filtered_agents_list(request):
     # Core query build
     query = Agent.objects.filter(status='active', user__isnull=False).exclude(profile__is_card_visible=False)
     query = query.select_related('profile', 'performanceStats').prefetch_related(
-        'insuranceSegments', 'reviews', 'serviceableCities', 'productExpertise'
+        'insuranceSegments', 'reviews', 'serviceableCities', 'productExpertise', 'servicePincodes'
     )
 
     type_mapping = {
@@ -494,21 +494,19 @@ def fetch_filtered_agents_list(request):
         if not re.match(r'^[1-9]\d{5}$', pincode):
             invalid_pincode = True
         else:
+            coords = None
             try:
                 geo_svc = GeocodingService()
                 coords = geo_svc.resolve_coordinates(pincode)
-                if coords:
-                    user_lat = coords['lat']
-                    user_lng = coords['lng']
-                else:
-                    invalid_pincode = True
             except Exception:
+                coords = None
+            if not coords:
                 coords = DistanceService.get_pincode_coordinates(pincode)
-                if coords:
-                    user_lat = coords['lat']
-                    user_lng = coords['lng']
-                else:
-                    invalid_pincode = True
+            if coords:
+                user_lat = coords['lat']
+                user_lng = coords['lng']
+            # Valid 6-digit pins still match agents who list that service pincode
+            # even when geocoding cannot produce coordinates.
 
     if invalid_pincode:
         query = query.none()
@@ -614,6 +612,10 @@ def fetch_filtered_agents_list(request):
     query = query.annotate(padosi_smart_rank=RawSQL(smart_rank_expr, filter_match_params))
 
     from apps.agents.views.dashboard import _resolve_agent_plan
+    from apps.agents.services.feature_unlock import (
+        needs_activity_eval_for_directory,
+        normalize_plan_slug,
+    )
 
     # Fetch and process/sort in memory
     raw_agents = list(query)
@@ -621,38 +623,18 @@ def fetch_filtered_agents_list(request):
     for agent in raw_agents:
         plan = _resolve_agent_plan(agent.plan_type)
         if plan and getattr(plan, 'is_listed_in_directory', True) == False:
-            continue
+            slug = normalize_plan_slug(agent.plan_type)
+            if needs_activity_eval_for_directory(plan, slug):
+                plan = _resolve_agent_plan(agent.plan_type, agent=agent)
+            if plan and getattr(plan, 'is_listed_in_directory', True) == False:
+                continue
         all_agents.append(agent)
 
     for agent in all_agents:
         agent.distance = None
-        # Proximity distance calculation
-        if user_lat is not None and user_lng is not None:
-            agent_coords = None
-            if agent.latitude and agent.longitude:
-                agent_coords = {'lat': float(agent.latitude), 'lng': float(agent.longitude)}
-            
-            if not agent_coords and agent.profile:
-                agent_pincodes = agent.profile.service_pincodes
-                if agent_pincodes and isinstance(agent_pincodes, list):
-                    agent_pincode = agent_pincodes[0]
-                    if isinstance(agent_pincode, dict):
-                        agent_pincode = agent_pincode.get('pincode', '')
-                    agent_coords = DistanceService.get_pincode_coordinates(agent_pincode)
-            
-            if not agent_coords and agent.profile:
-                first_city = agent.serviceableCities.first()
-                if first_city:
-                    agent_coords = DistanceService.get_city_coordinates(first_city.name)
 
-            if agent_coords:
-                agent.distance = DistanceService.calculate(user_lat, user_lng, agent_coords['lat'], agent_coords['lng'])
-            else:
-                agent.distance = 999999
-
-    # Filter to 50km radius if user coords are present
-    if user_lat is not None and user_lng is not None:
-        all_agents = [a for a in all_agents if a.distance is not None and a.distance <= 50]
+    # Exact service-pincode matches stay visible even outside the 50km geo radius.
+    all_agents = apply_search_proximity(all_agents, user_lat, user_lng, search_pincode=pincode)
 
     # In-memory sorting matching Laravel's logic
     if user_lat is not None and user_lng is not None and sort_by == 'distance':
@@ -962,15 +944,19 @@ def _get_or_create_pincode(pincode):
 
 def _pincode_matching_agents(pincode):
     """Count/fetch agents servicing a pincode — mirrors HomeController@checkPincode:
-    agents.agent_pincode match OR agent_profiles.service_pincodes JSON contains the pin,
-    restricted to registered (non-rejected/non-inactive) statuses."""
+    agents.agent_pincode match OR agent_profiles.service_pincodes JSON contains the pin
+    OR agent_service_pincodes rows, restricted to registered statuses."""
+    pin = str(pincode or '').strip()
+    q = (
+        Q(agent_pincode=pin)
+        | Q(profile__service_pincodes__contains=pin)
+        | Q(servicePincodes__service_pincode=pin)
+    )
+    if pin.isdigit():
+        q |= Q(profile__service_pincodes__contains=int(pin))
     return Agent.objects.filter(
         status__in=['active', 'pending_manager_approval', 'pending_accounts_payment', 'pending_admin_approval']
-    ).filter(
-        Q(agent_pincode=pincode)
-        | Q(profile__service_pincodes__contains=pincode)
-        | Q(profile__service_pincodes__contains=int(pincode))
-    )
+    ).filter(q).distinct()
 
 
 def check_pincode(request):
@@ -1226,7 +1212,7 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
     # Core query build
     query = Agent.objects.filter(status='active', user__isnull=False).exclude(profile__is_card_visible=False)
     query = query.select_related('profile', 'performanceStats').prefetch_related(
-        'insuranceSegments', 'reviews', 'serviceableCities', 'productExpertise'
+        'insuranceSegments', 'reviews', 'serviceableCities', 'productExpertise', 'servicePincodes'
     )
     
     type_mapping = {
@@ -1311,21 +1297,18 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
         if not re.match(r'^[1-9]\d{5}$', pincode):
             invalid_pincode = True
         else:
+            coords = None
             try:
                 geo_svc = GeocodingService()
                 coords = geo_svc.resolve_coordinates(pincode)
-                if coords:
-                    user_lat = coords['lat']
-                    user_lng = coords['lng']
-                else:
-                    invalid_pincode = True
             except Exception:
+                coords = None
+            if not coords:
                 coords = DistanceService.get_pincode_coordinates(pincode)
-                if coords:
-                    user_lat = coords['lat']
-                    user_lng = coords['lng']
-                else:
-                    invalid_pincode = True
+            if coords:
+                user_lat = coords['lat']
+                user_lng = coords['lng']
+            # Valid 6-digit pins still match agents who list that service pincode.
     
     if invalid_pincode:
         query = query.none()
@@ -1435,33 +1418,8 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
     
     for agent in all_agents:
         agent.distance = None
-        # Proximity distance calculation
-        if user_lat is not None and user_lng is not None:
-            agent_coords = None
-            if agent.latitude and agent.longitude:
-                agent_coords = {'lat': float(agent.latitude), 'lng': float(agent.longitude)}
-            
-            if not agent_coords and agent.profile:
-                agent_pincodes = agent.profile.service_pincodes
-                if agent_pincodes and isinstance(agent_pincodes, list):
-                    agent_pincode = agent_pincodes[0]
-                    if isinstance(agent_pincode, dict):
-                        agent_pincode = agent_pincode.get('pincode', '')
-                    agent_coords = DistanceService.get_pincode_coordinates(agent_pincode)
-            
-            if not agent_coords and agent.profile:
-                first_city = agent.serviceableCities.first()
-                if first_city:
-                    agent_coords = DistanceService.get_city_coordinates(first_city.name)
-    
-            if agent_coords:
-                agent.distance = DistanceService.calculate(user_lat, user_lng, agent_coords['lat'], agent_coords['lng'])
-            else:
-                agent.distance = 999999
-    
-    # Filter to 50km radius if user coords are present
-    if user_lat is not None and user_lng is not None:
-        all_agents = [a for a in all_agents if a.distance is not None and a.distance <= 50]
+
+    all_agents = apply_search_proximity(all_agents, user_lat, user_lng, search_pincode=pincode)
     
     # In-memory sorting matching Laravel's logic
     if user_lat is not None and user_lng is not None and sort_by == 'distance':

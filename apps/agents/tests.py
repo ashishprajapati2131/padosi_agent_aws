@@ -141,3 +141,30 @@ class AgentPublicProfileTests(TestCase):
         )
         response = self.client.get(reverse('agents:agent_public_profile', args=[str(incomplete.id)]))
         self.assertEqual(response.status_code, 404)
+
+    def test_guest_review_post_does_not_404_as_state_profile(self):
+        """POST /profile/<slug>/review/ must hit store_review, not profile/<state>/<slug>."""
+        from django.urls import resolve
+        match = resolve('/profile/ravi-kumar/review/')
+        self.assertEqual(match.url_name, 'agent_store_review')
+        self.assertEqual(match.kwargs.get('slug'), 'ravi-kumar')
+
+        response = self.client.post(
+            reverse('agents:agent_store_review', kwargs={'slug': 'ravi-kumar'}),
+            {
+                'rating': '5',
+                'review': 'Very helpful and professional agent.',
+                'fullname': 'Guest Reviewer',
+                'email': 'guest.reviewer@example.com',
+                'mobile': '9876543210',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json().get('status'), 'success')
+        self.assertTrue(
+            AgentReview.objects.filter(
+                agent=self.agent,
+                reviewer_email='guest.reviewer@example.com',
+                is_approved=True,
+            ).exists()
+        )

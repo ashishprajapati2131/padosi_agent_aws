@@ -1,10 +1,16 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
+import json
 from apps.home.models.site_setting import SiteSetting
 from apps.home.models.faq import Faq
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
 from apps.admin_panel.views.dashboard import _get_admin_from_session
+from apps.agents.services.feature_unlock import (
+    METRIC_CATALOG,
+    get_unlock_rules,
+    sanitize_unlock_rules,
+)
 
 
 # ─── ABOUT ───────────────────────────────────────────────────────────────────
@@ -384,12 +390,48 @@ def plans(request):
         ('legacy_lead_status', 'Lead Status'),
     ]
 
+    unlock_rules = get_unlock_rules()
+    unlock_rule_features = list(available_features) + list(legacy_features)
+    unlock_plan_slugs = [
+        ('free_trial', 'Free Trial / Expired'),
+        ('starter', 'Starter'),
+        ('professional', 'Professional'),
+        ('exclusive', 'Exclusive'),
+    ]
+    unlock_builder = {
+        'rules': unlock_rules,
+        'features': [{'key': k, 'label': l} for k, l in unlock_rule_features],
+        'metrics': {
+            key: {
+                'label': spec['label'],
+                'type': spec['type'],
+                'operators': list(spec['operators']),
+                'widget': spec['widget'],
+                'default_op': spec['default_op'],
+            }
+            for key, spec in METRIC_CATALOG.items()
+        },
+        'plans': [{'key': k, 'label': l} for k, l in unlock_plan_slugs],
+        'opLabels': {'gte': '≥', 'gt': '>', 'lte': '≤', 'lt': '<', 'eq': '=', 'neq': '≠'},
+        'segments': [
+            {'key': 'health', 'label': 'Health'},
+            {'key': 'life', 'label': 'Life'},
+            {'key': 'motor', 'label': 'Motor'},
+            {'key': 'sme', 'label': 'SME'},
+        ],
+    }
+
     return render(request, 'admin/content/plans.html', {
         'pricing': pricing,
         'exclusive_config': exclusive_config,
         'features_config': plan_features_config,
         'available_features': available_features,
         'legacy_features': legacy_features,
+        'unlock_rules': unlock_rules,
+        'unlock_rule_features': unlock_rule_features,
+        'unlock_metric_catalog': METRIC_CATALOG,
+        'unlock_plan_slugs': unlock_plan_slugs,
+        'unlock_builder': unlock_builder,
     })
 
 
@@ -555,4 +597,33 @@ def update_plan_features(request):
         AdminActivityLog.log('Update plan feature access config', 'SiteSetting', request=request)
         messages.success(request, 'Plan Feature Permissions updated successfully.')
         
+    return redirect('admin_content_plans')
+
+
+def update_feature_unlock_rules(request):
+    """Save activity unlock rules from the Plans & Pricing editor."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect('admin_login')
+
+    if request.method == 'POST':
+        raw = request.POST.get('unlock_rules_json', '{"rules":[]}')
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            messages.error(request, 'Could not save unlock rules. Please try again.')
+            return redirect('admin_content_plans')
+
+        if isinstance(data, list):
+            raw_rules = data
+        elif isinstance(data, dict):
+            raw_rules = data.get('rules') or []
+        else:
+            raw_rules = []
+
+        rules = sanitize_unlock_rules(raw_rules)
+        SiteSetting.set_value('feature_unlock_rules', {'rules': rules}, 'pricing')
+        AdminActivityLog.log('Updated activity feature unlock rules', 'SiteSetting', request=request)
+        messages.success(request, 'Activity unlock rules updated successfully.')
+
     return redirect('admin_content_plans')

@@ -1,8 +1,39 @@
 import math
+import re
+import json
 import logging
 from apps.home.models import Pincode
 
 logger = logging.getLogger(__name__)
+
+_PIN_RE = re.compile(r'^[1-9]\d{5}$')
+
+EXACT_PINCODE_COORDS = {
+    '380001': {'lat': 23.0225, 'lng': 72.5714},  # Ahmedabad Center
+    '380013': {'lat': 23.0645, 'lng': 72.5312},  # Naranpura
+    '380015': {'lat': 23.0200, 'lng': 72.5100},  # Satellite
+    '380051': {'lat': 23.0333, 'lng': 72.5000},  # Jodhpur
+    '380052': {'lat': 23.0531, 'lng': 72.5029},  # Bodakdev
+    '380054': {'lat': 23.0500, 'lng': 72.5300},  # Memnagar
+    '380058': {'lat': 23.0130, 'lng': 72.5410},  # Ambawadi
+    '380059': {'lat': 23.0450, 'lng': 72.4890},  # Bopal
+    '380061': {'lat': 23.0729, 'lng': 72.5407},  # Ghatlodia
+    '380063': {'lat': 23.0600, 'lng': 72.5100},  # Thaltej
+    '382421': {'lat': 23.0900, 'lng': 72.5800},  # Motera
+    '382424': {'lat': 23.1090, 'lng': 72.5850},  # Sabarmati
+    '382481': {'lat': 23.1200, 'lng': 72.5400},  # Chandkheda
+    '383001': {'lat': 23.6000, 'lng': 72.9500},  # Himatnagar
+    '384240': {'lat': 23.8500, 'lng': 72.3500},  # Patan/Sidhpur
+    '110001': {'lat': 28.6353, 'lng': 77.2250},  # Delhi Center
+    '110060': {'lat': 28.6430, 'lng': 77.1850},  # Karol Bagh / Delhi
+    '400001': {'lat': 18.9220, 'lng': 72.8347},  # Mumbai Center
+    '400013': {'lat': 18.9950, 'lng': 72.8250},  # Worli / Mumbai
+    '560001': {'lat': 12.9716, 'lng': 77.5946},  # Bangalore Center
+    '600001': {'lat': 13.0827, 'lng': 80.2707},  # Chennai Center
+    '700001': {'lat': 22.5726, 'lng': 88.3639},  # Kolkata Center
+    '500001': {'lat': 17.3850, 'lng': 78.4867},  # Hyderabad Center
+}
+
 
 class DistanceService:
     @staticmethod
@@ -35,39 +66,16 @@ class DistanceService:
     def get_hardcoded_coordinates(pincode):
         """
         Hardcoded coordinates for major Indian pincodes and regional prefixes.
+        Exact pins first; 2-digit/1-digit prefixes only as last-resort regional fallback.
         """
-        pincode = str(pincode).strip()
-        
-        fallbacks = {
-            '380001': {'lat': 23.0225, 'lng': 72.5714},  # Ahmedabad Center
-            '380013': {'lat': 23.0645, 'lng': 72.5312},  # Naranpura
-            '380015': {'lat': 23.0200, 'lng': 72.5100},  # Satellite
-            '380051': {'lat': 23.0333, 'lng': 72.5000},  # Jodhpur
-            '380052': {'lat': 23.0531, 'lng': 72.5029},  # Bodakdev
-            '380054': {'lat': 23.0500, 'lng': 72.5300},  # Memnagar
-            '380058': {'lat': 23.0130, 'lng': 72.5410},  # Ambawadi
-            '380059': {'lat': 23.0450, 'lng': 72.4890},  # Bopal
-            '380061': {'lat': 23.0729, 'lng': 72.5407},  # Ghatlodia
-            '380063': {'lat': 23.0600, 'lng': 72.5100},  # Thaltej
-            '382421': {'lat': 23.0900, 'lng': 72.5800},  # Motera
-            '382424': {'lat': 23.1090, 'lng': 72.5850},  # Sabarmati
-            '382481': {'lat': 23.1200, 'lng': 72.5400},  # Chandkheda
-            '383001': {'lat': 23.6000, 'lng': 72.9500},  # Himatnagar
-            '384240': {'lat': 23.8500, 'lng': 72.3500},  # Patan/Sidhpur
-            '110001': {'lat': 28.6353, 'lng': 77.2250},  # Delhi Center
-            '110060': {'lat': 28.6430, 'lng': 77.1850},  # Karol Bagh / Delhi
-            '400001': {'lat': 18.9220, 'lng': 72.8347},  # Mumbai Center
-            '400013': {'lat': 18.9950, 'lng': 72.8250},  # Worli / Mumbai
-            '560001': {'lat': 12.9716, 'lng': 77.5946},  # Bangalore Center
-            '600001': {'lat': 13.0827, 'lng': 80.2707},  # Chennai Center
-            '700001': {'lat': 22.5726, 'lng': 88.3639},  # Kolkata Center
-            '500001': {'lat': 17.3850, 'lng': 78.4867},  # Hyderabad Center
-        }
+        pincode = str(pincode or '').strip()
+        if pincode in EXACT_PINCODE_COORDS:
+            return EXACT_PINCODE_COORDS[pincode]
+        return DistanceService.get_regional_fallback_coordinates(pincode)
 
-        if pincode in fallbacks:
-            return fallbacks[pincode]
-
-        # Broad regional fallbacks by 2-digit prefixes
+    @staticmethod
+    def get_regional_fallback_coordinates(pincode):
+        pincode = str(pincode or '').strip()
         prefix_map = {
             '11': {'lat': 28.6139, 'lng': 77.2090},  # Delhi
             '12': {'lat': 29.0588, 'lng': 76.0856},  # Haryana
@@ -143,7 +151,6 @@ class DistanceService:
         if prefix in prefix_map:
             return prefix_map[prefix]
 
-        # Broad regional fallbacks by 1-digit prefixes
         major_region = pincode[:1]
         region_map = {
             '1': {'lat': 28.6139, 'lng': 77.2090},  # Delhi/North
@@ -155,22 +162,22 @@ class DistanceService:
             '7': {'lat': 22.5726, 'lng': 88.3639},  # WB/East
             '8': {'lat': 25.5941, 'lng': 85.1376},  # Bihar/East
         }
-
         return region_map.get(major_region)
 
     @classmethod
     def get_pincode_coordinates(cls, pincode):
         """
-        Get coordinates for a given pincode from hardcoded fallbacks or local database.
+        Resolve coordinates for a pincode: exact hardcoded → local DB → regional fallback.
+        Prefix fallbacks must not run before the database, or every 38xxxx pin maps to Ahmedabad.
         """
-        pincode = str(pincode).strip()
-        
-        # 1. Check hardcoded fallbacks first (Instant results)
-        hardcoded = cls.get_hardcoded_coordinates(pincode)
-        if hardcoded:
-            return hardcoded
+        pincode = str(pincode or '').strip()
+        if not pincode:
+            return None
 
-        # 2. Check the database
+        exact = EXACT_PINCODE_COORDS.get(pincode)
+        if exact:
+            return exact
+
         try:
             record = Pincode.objects.filter(pincode=pincode).first()
             if record and record.latitude and record.longitude:
@@ -180,8 +187,8 @@ class DistanceService:
                 }
         except Exception as e:
             logger.warning(f"DistanceService.get_pincode_coordinates database lookup failed: {e}")
-            
-        return None
+
+        return cls.get_regional_fallback_coordinates(pincode)
 
     @staticmethod
     def get_city_coordinates(city):
@@ -215,3 +222,106 @@ class DistanceService:
             'chandigarh': {'lat': 30.7333, 'lng': 76.7794},
         }
         return cities.get(city)
+
+
+def _normalize_pin(value):
+    pin = str(value or '').strip()
+    return pin if _PIN_RE.match(pin) else ''
+
+
+def iter_agent_service_pincodes(agent):
+    """Collect every 6-digit pin this agent covers (profile JSON + servicePincodes table)."""
+    pins = []
+    seen = set()
+
+    def add(value):
+        pin = _normalize_pin(value)
+        if pin and pin not in seen:
+            seen.add(pin)
+            pins.append(pin)
+
+    add(getattr(agent, 'agent_pincode', None))
+
+    profile = getattr(agent, 'profile', None)
+    raw = getattr(profile, 'service_pincodes', None) if profile else None
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (TypeError, ValueError):
+            raw = [raw]
+    if isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, dict):
+                add(item.get('pincode') or item.get('pin') or item.get('service_pincode'))
+            else:
+                add(item)
+
+    try:
+        for row in agent.servicePincodes.all():
+            add(getattr(row, 'service_pincode', None))
+    except Exception:
+        pass
+
+    return pins
+
+
+def agent_serves_pincode(agent, pincode):
+    target = _normalize_pin(pincode)
+    if not target:
+        return False
+    return target in iter_agent_service_pincodes(agent)
+
+
+def apply_search_proximity(agents, user_lat, user_lng, search_pincode=None, radius_km=50):
+    """
+    Attach .distance and keep agents who either:
+    - explicitly service the searched pincode, or
+    - are within radius_km of the search coordinates.
+    """
+    search_pin = _normalize_pin(search_pincode)
+    filtered = []
+
+    for agent in agents:
+        serves = bool(search_pin) and agent_serves_pincode(agent, search_pin)
+        agent.serves_search_pincode = serves
+        agent.distance = None
+
+        if serves:
+            agent.distance = 0
+            filtered.append(agent)
+            continue
+
+        if user_lat is None or user_lng is None:
+            filtered.append(agent)
+            continue
+
+        best = None
+        if agent.latitude and agent.longitude:
+            best = DistanceService.calculate(user_lat, user_lng, agent.latitude, agent.longitude)
+
+        for pin in iter_agent_service_pincodes(agent):
+            coords = DistanceService.get_pincode_coordinates(pin)
+            if not coords:
+                continue
+            dist = DistanceService.calculate(user_lat, user_lng, coords['lat'], coords['lng'])
+            if dist is None:
+                continue
+            if best is None or dist < best:
+                best = dist
+
+        if best is None:
+            profile = getattr(agent, 'profile', None)
+            if profile:
+                first_city = agent.serviceableCities.first() if hasattr(agent, 'serviceableCities') else None
+                if first_city:
+                    city_coords = DistanceService.get_city_coordinates(first_city.name)
+                    if city_coords:
+                        best = DistanceService.calculate(
+                            user_lat, user_lng, city_coords['lat'], city_coords['lng']
+                        )
+
+        agent.distance = best if best is not None else 999999
+        if agent.distance <= radius_km:
+            filtered.append(agent)
+
+    return filtered
