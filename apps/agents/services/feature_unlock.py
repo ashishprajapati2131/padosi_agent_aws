@@ -12,6 +12,20 @@ logger = logging.getLogger(__name__)
 
 PLAN_SLUGS = ('free_trial', 'starter', 'professional', 'exclusive')
 
+PLAN_LABELS = {
+    'free_trial': 'Free Trial / Expired',
+    'starter': 'Starter Plan',
+    'professional': 'Professional Plan',
+    'exclusive': 'Exclusive Plan',
+}
+
+EDIT_PROFILE_CHILD_FEATURES = (
+    'edit_profile_basic',
+    'edit_profile_professional',
+    'edit_profile_portfolio',
+    'edit_profile_additional',
+)
+
 SLUG_NORMALISE = {
     'basic': 'starter',
     'free trial': 'free_trial',
@@ -620,3 +634,118 @@ def sanitize_unlock_rules(raw_rules):
             'conditions': conditions,
         })
     return cleaned
+
+
+def copy_plan_features_config(config):
+    """Shallow-copy plan feature lists so callers cannot mutate SiteSetting data in place."""
+    copied = {}
+    source = config if isinstance(config, dict) else {}
+    for slug in PLAN_SLUGS:
+        raw = source.get(slug) or []
+        copied[slug] = list(raw) if isinstance(raw, (list, tuple)) else []
+    return copied
+
+
+def toggle_plan_feature(config, plan_slug, feature, locked):
+    """
+    Enable or disable one feature on a single plan slug.
+
+    Returns a new config dict. Other plan lists are copied unchanged.
+    Locking edit_profile also drops its four child keys for that plan.
+    """
+    slug = normalize_plan_slug(plan_slug)
+    if slug not in PLAN_SLUGS:
+        raise ValueError('Unknown plan slug')
+    if feature not in FEATURE_ATTR_MAP:
+        raise ValueError('Unknown feature')
+
+    new_config = copy_plan_features_config(config)
+    features = list(new_config[slug])
+    if locked:
+        drop = {feature}
+        if feature == 'edit_profile':
+            drop.update(EDIT_PROFILE_CHILD_FEATURES)
+        features = [item for item in features if item not in drop]
+    else:
+        if feature not in features:
+            features.append(feature)
+        if feature == 'edit_profile':
+            for child in EDIT_PROFILE_CHILD_FEATURES:
+                if child not in features:
+                    features.append(child)
+    new_config[slug] = features
+    return new_config
+
+
+def _rule_plans(rule):
+    plans = [p for p in (rule.get('plans') or []) if p in PLAN_SLUGS]
+    return plans or list(PLAN_SLUGS)
+
+
+def upsert_plan_unlock_rule(rules, plan_slug, feature, conditions, match='all'):
+    """
+    Attach or update an unlock rule for one plan + feature.
+
+    If an existing rule covers this feature and other plans, that rule is split
+    so the other plans keep their original conditions.
+    """
+    slug = normalize_plan_slug(plan_slug)
+    if slug not in PLAN_SLUGS or feature not in FEATURE_ATTR_MAP:
+        return list(rules or [])
+
+    updated_this_plan = False
+    next_rules = []
+    for rule in rules or []:
+        if not isinstance(rule, dict) or rule.get('feature') != feature:
+            next_rules.append(rule)
+            continue
+        plans = _rule_plans(rule)
+        if slug not in plans:
+            next_rules.append(rule)
+            continue
+        others = [p for p in plans if p != slug]
+        if others:
+            split = dict(rule)
+            split['plans'] = others
+            next_rules.append(split)
+            this_id = f'rule_{slug}_{feature}'
+        else:
+            this_id = str(rule.get('id') or '').strip() or f'rule_{slug}_{feature}'
+        if not updated_this_plan:
+            next_rules.append({
+                'id': this_id,
+                'enabled': True,
+                'feature': feature,
+                'plans': [slug],
+                'match': match,
+                'conditions': conditions,
+            })
+            updated_this_plan = True
+
+    if not updated_this_plan:
+        next_rules.append({
+            'id': f'rule_{slug}_{feature}',
+            'enabled': True,
+            'feature': feature,
+            'plans': [slug],
+            'match': match,
+            'conditions': conditions,
+        })
+    return sanitize_unlock_rules(next_rules)
+
+
+def remove_plan_only_unlock_rule(rules, plan_slug, feature):
+    """On unlock, drop rules that apply only to this plan+feature. Keep multi-plan rules."""
+    slug = normalize_plan_slug(plan_slug)
+    kept = []
+    for rule in rules or []:
+        if not isinstance(rule, dict):
+            continue
+        if rule.get('feature') != feature:
+            kept.append(rule)
+            continue
+        plans = _rule_plans(rule)
+        if plans == [slug]:
+            continue
+        kept.append(rule)
+    return kept

@@ -1,16 +1,31 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseBadRequest
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from types import SimpleNamespace
+from datetime import datetime, timedelta
 import json
 from apps.home.models.site_setting import SiteSetting
 from apps.home.models.faq import Faq
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.agents.services.feature_unlock import (
+    FEATURE_ATTR_MAP,
+    FEATURE_LABELS,
     METRIC_CATALOG,
+    PLAN_LABELS,
+    PLAN_SLUGS,
+    build_unlock_hints,
+    copy_plan_features_config,
     get_unlock_rules,
+    normalize_plan_slug,
+    remove_plan_only_unlock_rule,
     sanitize_unlock_rules,
+    toggle_plan_feature,
+    upsert_plan_unlock_rule,
 )
+from apps.agents.views.dashboard import PlanFeatureProxy
 
 
 # ─── ABOUT ───────────────────────────────────────────────────────────────────
@@ -627,3 +642,361 @@ def update_feature_unlock_rules(request):
         messages.success(request, 'Activity unlock rules updated successfully.')
 
     return redirect('admin_content_plans')
+
+
+DEFAULT_PLAN_FEATURES = {
+    'free_trial': ['dashboard_stats', 'edit_profile'],
+    'starter': ['dashboard_stats', 'edit_profile', 'lead_management'],
+    'professional': [
+        'dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights',
+        'manage_portfolio', 'upload_achievements', 'view_reviews', 'public_profile',
+    ],
+    'exclusive': ['dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights'],
+}
+
+
+class _EmptyRelated:
+    def all(self):
+        return []
+
+    def exists(self):
+        return False
+
+    def count(self):
+        return 0
+
+    def first(self):
+        return None
+
+    def filter(self, **kwargs):
+        return self
+
+    def values_list(self, *args, **kwargs):
+        return []
+
+
+def _preview_unlock_builder():
+    features = [{'key': key, 'label': FEATURE_LABELS.get(key, key)} for key in FEATURE_ATTR_MAP]
+    return {
+        'features': features,
+        'metrics': {
+            key: {
+                'label': spec['label'],
+                'type': spec['type'],
+                'operators': list(spec['operators']),
+                'widget': spec['widget'],
+                'default_op': spec['default_op'],
+            }
+            for key, spec in METRIC_CATALOG.items()
+        },
+        'opLabels': {'gte': '≥', 'gt': '>', 'lte': '≤', 'lt': '<', 'eq': '=', 'neq': '≠'},
+        'segments': [
+            {'key': 'health', 'label': 'Health'},
+            {'key': 'life', 'label': 'Life'},
+            {'key': 'motor', 'label': 'Motor'},
+            {'key': 'sme', 'label': 'SME'},
+        ],
+    }
+
+
+def _sample_manage_agent_context(plan_slug):
+    """Dummy agent/profile so the real dashboard and edit-profile templates render."""
+    now = datetime.now()
+    profile = SimpleNamespace(
+        display_name='Sample Agent',
+        slug='sample-agent',
+        city='Unjha',
+        profile_photo_path='',
+        profile_photo_url='/static/img/avatar-icon.webp',
+        address='Sample Area, Unjha, Gujarat',
+        languages='Gujarati, Hindi, English',
+        whatsapp='9876543210',
+        whatsapp_digits='9876543210',
+        date_of_birth=None,
+        pan_number='',
+        license_number='',
+        license_valid_till=None,
+        irdai_license_doc='',
+        amfi_license_doc='',
+        arn_number='',
+        euin_number='',
+        investment_valid_till=None,
+        agency_name='Sample Agency',
+        office_address='Unjha',
+        service_pincode='384285',
+        website_url='',
+        career_highlights='',
+        social_links=SimpleNamespace(
+            google_business='', linkedin='', instagram='', facebook='', youtube='',
+        ),
+        show_experience=True,
+        show_claims_stats=True,
+        show_client_base=True,
+        show_ratings=True,
+        show_reviews=True,
+        show_certificates=True,
+        show_achievements=True,
+        show_social_links=True,
+        show_languages=True,
+        show_gallery=True,
+        show_contact_info=True,
+        has_pos_license=False,
+        investment_types=[],
+    )
+    performance = SimpleNamespace(
+        claims_processed=150,
+        claims_settled=140,
+        claims_amount=2500000,
+        success_rate=93,
+        formatted_claims_processed='150',
+        formatted_claims_amount='25L',
+    )
+    agent = SimpleNamespace(
+        id=1,
+        fullname='Sample Agent',
+        display_name='Sample Agent',
+        mobile='9876543210',
+        email='sample@example.com',
+        status='active',
+        plan_type=plan_slug,
+        experience_range='5-10',
+        experience_years=8,
+        client_base=120,
+        formatted_client_base='120',
+        agent_pincode='384285',
+        agent_slug='sample-agent',
+        review_count=12,
+        star_rating_list=['full', 'full', 'full', 'full', 'empty'],
+        average_rating=4.2,
+        padosi_smart_rank=8,
+        calculated_match_percent=80,
+        badge='verified',
+        agent_city_display='Unjha',
+        is_trusted=True,
+        is_approved_by_admin=True,
+        is_verified_agent=True,
+        whatsapp_raw='9876543210',
+        distance=0,
+        has_distance=False,
+        ordered_insurance_segments=['health', 'life'],
+        sorted_career_timelines=[],
+        insuranceSegments=_EmptyRelated(),
+        portfolios=_EmptyRelated(),
+        productExpertise=_EmptyRelated(),
+        serviceableCities=_EmptyRelated(),
+        leads=_EmptyRelated(),
+        activeSubscription=None,
+        leadPreferences=SimpleNamespace(
+            leads_new_business=True,
+            portfolio_charging='',
+            portfolio_fee=0,
+            claims_charging='',
+            claims_fee_amount=0,
+            claims_percent=0,
+        ),
+        performanceStats=performance,
+        profile=profile,
+    )
+    recent_leads = [
+        SimpleNamespace(
+            id=1,
+            customer_name='Asha Patel',
+            customer_mobile='9000000001',
+            customer_email='asha@example.com',
+            customer_pincode='384285',
+            insurance_type='Health',
+            enquiry_requirements='Family floater',
+            interaction_type='profile',
+            lead_status='new',
+            created_at=now - timedelta(hours=3),
+        ),
+        SimpleNamespace(
+            id=2,
+            customer_name='Ravi Shah',
+            customer_mobile='9000000002',
+            customer_email='ravi@example.com',
+            customer_pincode='384001',
+            insurance_type='Life',
+            enquiry_requirements='Term plan',
+            interaction_type='whatsapp',
+            lead_status='contacted',
+            created_at=now - timedelta(days=1),
+        ),
+    ]
+    return {
+        'agent': agent,
+        'profile': profile,
+        'dashboardStats': {
+            'conversionRate': 24,
+            'monthlyTarget': 60,
+            'totalPageViews': 128,
+            'contactRequests': 9,
+            'monthlyLeads': 4,
+            'newLeads': 6,
+            'contactedLeads': 3,
+            'followUpLeads': 2,
+            'closedLeads': 1,
+            'totalLeads': 12,
+            'activeLeads': 5,
+            'monthlyVisits': 86,
+        },
+        'recentLeads': recent_leads,
+        'allLeads': recent_leads,
+        'showReferral': False,
+        'unreadNotifications': [],
+        'unread_notifications_json': '[]',
+        'completion': 72,
+        'isOnTrial': False,
+        'daysLeft': 0,
+        'discountPct': 0,
+        'starterFull': 2359,
+        'starterDisc': 589,
+        'profFull': 8258,
+        'profDisc': 2359,
+        'planName': PLAN_LABELS.get(plan_slug, plan_slug.replace('_', ' ').title()),
+        'favorite_ids': set(),
+        'fcm_api_key': '',
+        'fcm_auth_domain': '',
+        'fcm_project_id': '',
+        'fcm_storage_bucket': '',
+        'fcm_messaging_sender_id': '',
+        'fcm_app_id': '',
+        'fcm_vapid_key': '',
+        'isAdminView': False,
+        'base_template': 'admin/base.html',
+        'main_cities': ['Ahmedabad', 'Unjha', 'Patan', 'Mehsana'],
+        'agent_cities': ['Unjha'],
+        'extra_cities': [],
+        'years_range': list(range(datetime.now().year, 1979, -1)),
+        'months': [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December',
+        ],
+        'active_investment_types': [],
+    }
+
+
+def _manage_agent_common_context(plan_slug):
+    features_config = copy_plan_features_config(
+        SiteSetting.get_value('plan_features_config', DEFAULT_PLAN_FEATURES) or DEFAULT_PLAN_FEATURES
+    )
+    enabled = features_config.get(plan_slug) or []
+    rules = get_unlock_rules()
+    hints = build_unlock_hints(None, plan_slug, metrics={}, rules=rules)
+    context = _sample_manage_agent_context(plan_slug)
+    context.update({
+        'admin_lock_preview': True,
+        'preview_plan_slug': plan_slug,
+        'preview_plan_label': PLAN_LABELS.get(plan_slug, plan_slug),
+        'agent_plan': PlanFeatureProxy(enabled),
+        'feature_unlock_hints_json': json.dumps(hints),
+        'preview_enabled_features': enabled,
+        'preview_enabled_features_json': json.dumps(enabled),
+        'preview_unlock_builder': _preview_unlock_builder(),
+        'preview_unlock_builder_json': json.dumps(_preview_unlock_builder()),
+        'preview_feature_labels_json': json.dumps(FEATURE_LABELS),
+        'hide_header': True,
+        'hide_footer': True,
+    })
+    # Let admin_badge_counts keep the real session admin so the sidebar renders.
+    context.pop('logged_in_admin', None)
+    context.pop('is_super_admin', None)
+    context.pop('admin_permissions', None)
+    return context, features_config, rules
+
+
+@ensure_csrf_cookie
+def manage_agent_preview(request, plan_slug):
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect('admin_login')
+
+    slug = normalize_plan_slug(plan_slug)
+    if slug not in PLAN_SLUGS:
+        messages.error(request, 'Unknown plan.')
+        return redirect('admin_content_plans')
+
+    tab = (request.GET.get('tab') or 'dashboard').strip()
+    if tab not in ('dashboard', 'edit_profile', 'other'):
+        tab = 'dashboard'
+
+    context, _, _ = _manage_agent_common_context(slug)
+    context['preview_tab'] = tab
+
+    if tab == 'edit_profile':
+        template = 'agents/edit_profile.html'
+    elif tab == 'other':
+        template = 'admin/content/manage_agent_other.html'
+    else:
+        template = 'agents/dashboard.html'
+    return render(request, template, context)
+
+
+@require_POST
+@csrf_protect
+def manage_agent_toggle(request, plan_slug):
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'ok': False, 'error': 'Unauthorized'}, status=403)
+
+    slug = normalize_plan_slug(plan_slug)
+    if slug not in PLAN_SLUGS:
+        return JsonResponse({'ok': False, 'error': 'Unknown plan'}, status=400)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        return HttpResponseBadRequest('Invalid JSON')
+
+    feature = (payload.get('feature') or '').strip()
+    if feature not in FEATURE_ATTR_MAP:
+        return JsonResponse({'ok': False, 'error': 'Unknown feature'}, status=400)
+
+    locked = bool(payload.get('locked'))
+    add_condition = bool(payload.get('add_condition'))
+    if locked and add_condition:
+        trial_rules = upsert_plan_unlock_rule(
+            [], slug, feature, payload.get('conditions') or [],
+            match='any' if payload.get('match') == 'any' else 'all',
+        )
+        if not trial_rules:
+            return JsonResponse({
+                'ok': False,
+                'error': 'Add a valid unlock condition (choose a metric and a value).',
+            }, status=400)
+
+    features_config = copy_plan_features_config(
+        SiteSetting.get_value('plan_features_config', DEFAULT_PLAN_FEATURES) or DEFAULT_PLAN_FEATURES
+    )
+    new_config = toggle_plan_feature(features_config, slug, feature, locked)
+    SiteSetting.set_value('plan_features_config', new_config, 'pricing')
+
+    rules = get_unlock_rules()
+    if locked and add_condition:
+        match = 'any' if payload.get('match') == 'any' else 'all'
+        rules = upsert_plan_unlock_rule(
+            rules, slug, feature, payload.get('conditions') or [], match=match,
+        )
+        SiteSetting.set_value('feature_unlock_rules', {'rules': rules}, 'pricing')
+    elif not locked:
+        trimmed = remove_plan_only_unlock_rule(rules, slug, feature)
+        if trimmed != rules:
+            rules = trimmed
+            SiteSetting.set_value('feature_unlock_rules', {'rules': rules}, 'pricing')
+
+    try:
+        AdminActivityLog.log(
+            f"{'Locked' if locked else 'Unlocked'} {feature} on {slug}",
+            'SiteSetting',
+            request=request,
+        )
+    except Exception:
+        pass
+    return JsonResponse({
+        'ok': True,
+        'plan_slug': slug,
+        'feature': feature,
+        'locked': locked,
+        'enabled_features': new_config.get(slug) or [],
+        'rules': rules,
+    })

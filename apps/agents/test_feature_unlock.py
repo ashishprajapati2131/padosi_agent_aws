@@ -5,7 +5,10 @@ from apps.agents.services.feature_unlock import (
     evaluate_unlock_rules,
     needs_activity_eval_for_directory,
     overlay_plan,
+    remove_plan_only_unlock_rule,
     sanitize_unlock_rules,
+    toggle_plan_feature,
+    upsert_plan_unlock_rule,
 )
 from apps.agents.views.dashboard import PlanFeatureProxy, _resolve_agent_plan
 
@@ -178,3 +181,105 @@ class SanitizeUnlockRulesTests(SimpleTestCase):
         self.assertEqual(len(cleaned), 1)
         self.assertEqual(cleaned[0]['plans'], ['free_trial', 'starter', 'professional', 'exclusive'])
         self.assertEqual(cleaned[0]['conditions'][0]['value'], 10.0)
+
+
+SHARED_CONFIG = {
+    'free_trial': ['dashboard_stats'],
+    'starter': ['dashboard_stats', 'edit_profile', 'edit_profile_basic', 'sales_insights'],
+    'professional': ['dashboard_stats', 'lead_management'],
+    'exclusive': ['premium_support'],
+}
+
+
+class PlanFeatureToggleTests(SimpleTestCase):
+    def test_lock_starter_does_not_change_other_plans(self):
+        updated = toggle_plan_feature(SHARED_CONFIG, 'starter', 'sales_insights', locked=True)
+        self.assertNotIn('sales_insights', updated['starter'])
+        self.assertEqual(updated['free_trial'], ['dashboard_stats'])
+        self.assertEqual(updated['professional'], ['dashboard_stats', 'lead_management'])
+        self.assertEqual(updated['exclusive'], ['premium_support'])
+
+    def test_unlock_restores_feature_on_that_slug_only(self):
+        locked = toggle_plan_feature(SHARED_CONFIG, 'starter', 'sales_insights', locked=True)
+        restored = toggle_plan_feature(locked, 'starter', 'sales_insights', locked=False)
+        self.assertIn('sales_insights', restored['starter'])
+        self.assertEqual(restored['professional'], SHARED_CONFIG['professional'])
+
+    def test_lock_edit_profile_drops_child_keys(self):
+        updated = toggle_plan_feature(SHARED_CONFIG, 'starter', 'edit_profile', locked=True)
+        self.assertNotIn('edit_profile', updated['starter'])
+        self.assertNotIn('edit_profile_basic', updated['starter'])
+        self.assertIn('dashboard_stats', updated['starter'])
+
+    def test_unlock_edit_profile_restores_child_keys(self):
+        locked = toggle_plan_feature(SHARED_CONFIG, 'starter', 'edit_profile', locked=True)
+        restored = toggle_plan_feature(locked, 'starter', 'edit_profile', locked=False)
+        self.assertIn('edit_profile', restored['starter'])
+        for child in (
+            'edit_profile_basic',
+            'edit_profile_professional',
+            'edit_profile_portfolio',
+            'edit_profile_additional',
+        ):
+            self.assertIn(child, restored['starter'])
+
+    def test_source_config_is_not_mutated(self):
+        original = list(SHARED_CONFIG['starter'])
+        toggle_plan_feature(SHARED_CONFIG, 'starter', 'sales_insights', locked=True)
+        self.assertEqual(SHARED_CONFIG['starter'], original)
+
+
+class PlanUnlockRuleUpsertTests(SimpleTestCase):
+    def test_lock_with_conditions_splits_multi_plan_rule(self):
+        rules = [{
+            'id': 'shared',
+            'enabled': True,
+            'feature': 'sales_insights',
+            'plans': ['starter', 'professional'],
+            'match': 'all',
+            'conditions': [{'metric': 'reviews', 'op': 'gte', 'value': 3}],
+        }]
+        updated = upsert_plan_unlock_rule(
+            rules, 'starter', 'sales_insights',
+            [{'metric': 'leads', 'op': 'gte', 'value': 5}],
+            match='all',
+        )
+        by_plans = {tuple(rule['plans']): rule for rule in updated}
+        self.assertEqual(by_plans[('professional',)]['conditions'][0]['metric'], 'reviews')
+        self.assertEqual(by_plans[('starter',)]['conditions'][0]['metric'], 'leads')
+        self.assertEqual(by_plans[('starter',)]['conditions'][0]['value'], 5.0)
+
+    def test_unlock_removes_rule_only_for_that_plan_feature(self):
+        rules = [
+            {
+                'id': 'only_starter',
+                'enabled': True,
+                'feature': 'sales_insights',
+                'plans': ['starter'],
+                'match': 'all',
+                'conditions': [{'metric': 'reviews', 'op': 'gte', 'value': 2}],
+            },
+            {
+                'id': 'shared',
+                'enabled': True,
+                'feature': 'sales_insights',
+                'plans': ['starter', 'professional'],
+                'match': 'all',
+                'conditions': [{'metric': 'leads', 'op': 'gte', 'value': 1}],
+            },
+        ]
+        kept = remove_plan_only_unlock_rule(rules, 'starter', 'sales_insights')
+        self.assertEqual(len(kept), 1)
+        self.assertEqual(kept[0]['id'], 'shared')
+        self.assertEqual(kept[0]['plans'], ['starter', 'professional'])
+
+
+class AdminLockPreviewDoesNotChangeProxyTests(SimpleTestCase):
+    def test_plan_feature_proxy_still_fail_open_and_additive(self):
+        proxy = PlanFeatureProxy(['dashboard_stats'])
+        self.assertTrue(proxy.show_performance_stats)
+        self.assertFalse(proxy.show_sales_insights)
+        self.assertIsNone(overlay_plan(None, {'show_sales_insights'}))
+        wrapped = overlay_plan(proxy, {'show_sales_insights'})
+        self.assertTrue(wrapped.show_sales_insights)
+        self.assertTrue(wrapped.show_performance_stats)

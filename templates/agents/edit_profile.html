@@ -2,12 +2,16 @@
 {% load static %}
 
 {% block title %}
-{% if isAdminView %}
+{% if admin_lock_preview %}
+{{ preview_plan_label }} — Manage Agent
+{% elif isAdminView %}
 Edit Full Profile: {{ agent.fullname }}
 {% else %}
 Edit Profile — PadosiAgent
 {% endif %}
 {% endblock %}
+
+{% block breadcrumb_title %}{% if admin_lock_preview %}Content › Plans › {{ preview_plan_label }}{% elif isAdminView %}Agents › Edit Profile{% endif %}{% endblock %}
 
 {% block breadcrumb %}
 {% if isAdminView %}
@@ -152,6 +156,7 @@ Overview
 {% endblock %}
 
 {% block content %}
+{% include 'admin/content/_manage_agent_chrome.html' %}
 <script>
     window.$ = window.jQuery; // Ensure $ is defined
     const IS_ADMIN_VIEW = {% if isAdminView %}true{% else %} false{% endif %};
@@ -195,13 +200,13 @@ Overview
         </div>
 
         <!-- Form Card -->
-        <div class="card edit-profile-card">
+        <div class="card edit-profile-card" data-feature="edit_profile">
             <div class="card-body p-4 p-md-5">
                 <form id="edit-profile-form">
                     {% csrf_token %}
 
                     <!-- Step 1: Basic Details -->
-                    <div class="form-step active" id="step-1">
+                    <div class="form-step active" id="step-1" data-feature="edit_profile_basic">
                         <div class="step-header mb-4">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
@@ -415,7 +420,7 @@ Overview
                     </div>
 
                     <!-- Step 2: Professional Details -->
-                    <div class="form-step" id="step-2">
+                    <div class="form-step" id="step-2" data-feature="edit_profile_professional">
                         <div class="step-header mb-4">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
@@ -486,7 +491,7 @@ Overview
                         </div>
 
                         <!-- Professional License Upload Module -->
-                        <div class="row mb-4">
+                        <div class="row mb-4" data-feature="edit_profile_certifications">
                             <div class="col-12 mb-3">
                                 <h6 class="text-primary font-weight-bold mb-1">
                                     <i class="fas fa-file-contract mr-2"></i>Professional License Documents
@@ -763,7 +768,7 @@ Overview
                         </div>
 
                         <!-- Performance Statistics Section -->
-                        <div class="performance-stats-section">
+                        <div class="performance-stats-section" data-feature="edit_profile_claim_support">
                             <h5 class="mb-3">
                                 <i class="fas fa-chart-line mr-2"></i>Performance Statistics
                                 <i class="fas fa-info-circle text-muted" data-toggle="tooltip"
@@ -860,7 +865,7 @@ Overview
                     </div>
 
                     <!-- Step 3: Product Portfolio -->
-                    <div class="form-step" id="step-3">
+                    <div class="form-step" id="step-3" data-feature="edit_profile_portfolio">
                         <div class="step-header mb-4">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
@@ -876,6 +881,7 @@ Overview
 
                         <!-- Segment Selector (Always Visible) -->
                         <div class="mb-4 p-3 border rounded" id="segment-selector-section"
+                            data-feature="manage_portfolio"
                             style="border-radius: 12px !important; background-color: #f8fafc; border-color: #e2e8f0;">
                             <p class="font-weight-bold mb-3 text-dark text-center"
                                 style="font-size: 14px; color: #1e293b;">Select your Insurance Segments:</p>
@@ -973,7 +979,7 @@ Overview
                         </div>
 
                         <!-- Portfolio Content (Hidden by default) -->
-                        <div id="portfolio-content" style="display: none;">
+                        <div id="portfolio-content" style="display: none;" data-feature="edit_profile_companies">
                             <div class="mb-4">
                                 <h4 class="segment-title mb-2">
                                     <i class="fas fa-briefcase"></i>
@@ -994,7 +1000,7 @@ Overview
                     </div>
 
                     <!-- Step 4: Additional Information -->
-                    <div class="form-step" id="step-4">
+                    <div class="form-step" id="step-4" data-feature="edit_profile_additional">
                         <div class="step-header mb-4">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
@@ -1007,7 +1013,7 @@ Overview
 
 
                         <!-- Achievement Photos Section -->
-                        <div class="achievement-photos-section mb-5">
+                        <div class="achievement-photos-section mb-5" data-feature="upload_achievements">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <div class="d-flex align-items-center">
                                     <h5 class="mb-0 mr-3"><i class="far fa-images mr-2"></i>Achievement Photos</h5>
@@ -1035,7 +1041,7 @@ Overview
                         </div>
 
                         <!-- Digital Presence Section -->
-                        <div class="digital-presence-section mb-5">
+                        <div class="digital-presence-section mb-5" data-feature="edit_profile_social_media">
                             <h5 class="mb-4"><i class="fas fa-globe mr-2"></i>Digital Presence (Optional) <i
                                     class="fas fa-info-circle text-muted" data-toggle="tooltip"
                                     title="Links to your professional profiles to help customers find you online"
@@ -1185,7 +1191,7 @@ Overview
                         </div>
 
                         <!-- Career Timeline Section -->
-                        <div class="career-timeline-section mb-5">
+                        <div class="career-timeline-section mb-5" data-feature="edit_profile_career_timeline">
                             <h5 class="mb-3"><i class="fas fa-history mr-2"></i>Career Timeline <i
                                     class="fas fa-info-circle text-muted" data-toggle="tooltip"
                                     title="Add key milestones in your career"
@@ -1426,7 +1432,7 @@ Overview
                         </div>
 
                         <!-- Professional Bio Section -->
-                        <div class="career-highlights-section mb-4">
+                        <div class="career-highlights-section mb-4" data-feature="edit_profile_professional_bio">
                             <h5 class="mb-3"><i class="fas fa-ribbon mr-2"></i>Professional Bio <i
                                     class="fas fa-info-circle text-muted" data-toggle="tooltip"
                                     title="Share notable achievements, awards (like MDRT/COT/TOT), and milestones"
@@ -1484,7 +1490,7 @@ Overview
 
                                     <div class="lead-preferences-container">
                                         <!-- New Business Leads (All Agents) -->
-                                        <div class="lead-preference-card" id="lead-new-business">
+                                        <div class="lead-preference-card" id="lead-new-business" data-feature="receive_leads">
                                             <div class="lead-card-header">
                                                 <div class="lead-info">
                                                     <div class="lead-icon">
@@ -2100,6 +2106,11 @@ Overview
     }
 
     function showStep(step) {
+        {% if admin_lock_preview %}
+        $('.form-step').addClass('active').css('display', 'block');
+        $('.form-navigation, .btn-prev, .btn-next, .btn-submit').hide();
+        return;
+        {% endif %}
         // Hide all steps
         $('.form-step').removeClass('active');
 
@@ -2631,7 +2642,9 @@ Overview
     });
 
     // Initialize tooltips
-    $('[data-toggle="tooltip"]').tooltip();
+    if ($.fn.tooltip) {
+        $('[data-toggle="tooltip"]').tooltip();
+    }
 
     // Initialize
     showStep(currentStep);
@@ -4779,6 +4792,7 @@ Overview
         }
     }
 
+    {% if not admin_lock_preview %}
     const featureUnlockHints = {{ feature_unlock_hints_json|default:"{}"|safe }};
 
     function lockReason(name, hintKey) {
@@ -4870,12 +4884,13 @@ Overview
         if (!planPermissions.editProfileAdditional) { lockSection($('#step-4'), "Additional Details", "show_edit_profile_additional"); step4Locked = true; }
 
         if (!step2Locked) {
-            if (!planPermissions.agentCertificate) lockSection($('#step-2 .step-subtitle:contains("licenses")').closest('.row').parent(), "Certifications & Licenses", "show_agent_certificate");
+            if (!planPermissions.agentCertificate) lockSection($('[data-feature="edit_profile_certifications"]'), "Certifications & Licenses", "show_agent_certificate");
             if (!planPermissions.careerTimeline) lockSection($('.career-timeline-section'), "Career Timeline", "show_career_timeline");
             if (!planPermissions.professionalBio) {
+                lockSection($('.career-highlights-section'), "Professional Bio", "show_professional_bio");
                 $('#ai-generate-bio-btn').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', lockReason('Professional Bio', 'show_professional_bio')).html('<i class="fas fa-lock"></i><span>Locked by Plan</span>');
             }
-            if (!planPermissions.claimSupport) lockSection($('#claims_processed').closest('.row').parent(), "Claim Support Statistics", "show_claim_support");
+            if (!planPermissions.claimSupport) lockSection($('.performance-stats-section'), "Claim Support Statistics", "show_claim_support");
         }
 
         if (!step3Locked) {
@@ -4889,6 +4904,7 @@ Overview
             if (!planPermissions.newBusinessLeads) lockSection($('#lead-new-business'), "New Business Leads", "show_new_business_leads");
         }
     }
+    {% endif %}
 
 </script>
 
@@ -4919,4 +4935,5 @@ Overview
     </div>
   </div>
 </div>
+{% include 'admin/content/_manage_agent_preview_js.html' %}
 {% endblock %}

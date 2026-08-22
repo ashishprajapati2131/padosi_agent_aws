@@ -1,0 +1,239 @@
+{% if admin_lock_preview %}
+<style>
+body.admin-lock-preview { padding-top: 0; }
+body.admin-lock-preview .header,
+body.admin-lock-preview .site-header,
+body.admin-lock-preview footer,
+body.admin-lock-preview .footer,
+body.admin-lock-preview .loader-mask,
+body.admin-lock-preview .chatbot-widget,
+body.admin-lock-preview #chatbot-widget { display: none !important; }
+body.admin-lock-preview .agent-dashboard-wrapper,
+body.admin-lock-preview .edit-profile-wrapper {
+    min-height: 0;
+    padding-bottom: 16px;
+    background: transparent;
+}
+body.admin-lock-preview .content-body {
+    padding: 16px 20px;
+    overflow-x: hidden;
+}
+body.admin-lock-preview .agent-dashboard-wrapper > .container,
+body.admin-lock-preview .edit-profile-wrapper > .container {
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+}
+body.admin-lock-preview .form-step {
+    display: block !important;
+    margin-bottom: 28px;
+    padding: 16px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+    background: #fff;
+}
+body.admin-lock-preview .form-navigation,
+body.admin-lock-preview .btn-prev,
+body.admin-lock-preview .btn-next,
+body.admin-lock-preview .btn-submit,
+body.admin-lock-preview .dashboard-main-tabs { display: none !important; }
+body.admin-lock-preview #profile-content,
+body.admin-lock-preview #overview-content,
+body.admin-lock-preview #portfolio-content { display: block !important; }
+body.admin-lock-preview [data-feature] { overflow: visible !important; }
+body.admin-lock-preview [data-feature].is-feature-locked {
+    outline: 2px dashed #38bdf8;
+    outline-offset: 2px;
+}
+body.admin-lock-preview .dashboard-header-con,
+body.admin-lock-preview .dashboard-top-actions,
+body.admin-lock-preview .steps-header {
+    flex-wrap: wrap;
+}
+.manage-agent-chrome {
+    position: static;
+    margin-bottom: 16px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+.manage-agent-chrome-inner {
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.manage-agent-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.manage-agent-tab {
+    display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 8px;
+    font-size: 13px; font-weight: 700; text-decoration: none; color: #0284c7; border: 1px solid #bae6fd; background: #fff;
+}
+.manage-agent-tab.active { background: #0284c7; color: #fff; border-color: #0284c7; }
+.manage-agent-lock-btn {
+    position: absolute; top: 10px; right: 10px; z-index: 300;
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid #cbd5e1;
+    background: rgba(255,255,255,0.95); color: #64748b; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 4px rgba(15,23,42,0.12);
+    pointer-events: auto !important;
+}
+.manage-agent-lock-btn.is-locked { color: #0284c7; border-color: #0284c7; }
+[data-feature] { position: relative; }
+[data-feature] [data-feature] > .manage-agent-lock-btn { right: 48px; }
+[data-feature] [data-feature] [data-feature] > .manage-agent-lock-btn { right: 86px; }
+.manage-agent-overlay {
+    position: fixed; inset: 0; z-index: 20000;
+    background: rgba(15, 23, 42, 0.45);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow: auto;
+}
+.manage-agent-overlay.is-open { display: flex; }
+.manage-agent-dialog {
+    background: #fff;
+    width: min(560px, 100%);
+    margin: auto;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+    overflow: visible;
+}
+.manage-agent-dialog input[type="number"],
+.manage-agent-dialog input[type="text"] {
+    display: block !important;
+    width: 100% !important;
+    min-height: 42px !important;
+    height: auto !important;
+    padding: 8px 12px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background: #fff !important;
+    color: #0f172a !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+.ma-dd { position: relative; width: 100%; }
+.ma-dd-toggle {
+    display: block;
+    width: 100%;
+    min-height: 42px;
+    text-align: left;
+    padding: 8px 36px 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%230f172a' d='M1.4.6L6 5.2 10.6.6 12 2 6 8 0 2z'/%3E%3C/svg%3E") no-repeat right 12px center;
+    color: #0f172a;
+    font-size: 14px;
+    line-height: 1.4;
+    cursor: pointer;
+}
+.ma-dd-menu {
+    display: none;
+    position: fixed;
+    z-index: 30000;
+    max-height: 240px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+}
+.ma-dd.is-open .ma-dd-menu { display: block; }
+.ma-dd-option {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    border: 0;
+    background: #fff;
+    color: #0f172a;
+    font-size: 14px;
+    cursor: pointer;
+}
+.ma-dd-option:hover,
+.ma-dd-option.is-selected { background: #e0f2fe; }
+.manage-agent-dialog .unlock-cond-row {
+    display: grid;
+    grid-template-columns: 1.5fr 0.8fr 1fr auto;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+@media (max-width: 768px) {
+    .manage-agent-dialog .unlock-cond-row { grid-template-columns: 1fr; }
+    .manage-agent-tabs { width: 100%; }
+    .manage-agent-tab { flex: 1 1 auto; justify-content: center; }
+    body.admin-lock-preview .content-body { padding: 12px !important; }
+    body.admin-lock-preview .dashboard-header-con { gap: 12px; }
+    body.admin-lock-preview .agent-name-text { font-size: 20px; }
+    body.admin-lock-preview .form-step { padding: 12px; }
+    body.admin-lock-preview .edit-profile-card .card-body { padding: 16px !important; }
+    body.admin-lock-preview .steps-header { gap: 4px; }
+}
+</style>
+<script>document.body.classList.add('admin-lock-preview');</script>
+<div class="manage-agent-chrome">
+    <div class="manage-agent-chrome-inner">
+        <div>
+            <a href="{% url 'admin_content_plans' %}" style="font-size:13px;font-weight:700;color:#0284c7;text-decoration:none;">
+                <i class="fas fa-arrow-left me-1"></i> Back to Plans
+            </a>
+            <div style="font-size:15px;font-weight:800;color:#0f172a;">{{ preview_plan_label }} — sample layout, not a real agent</div>
+        </div>
+        <div class="manage-agent-tabs">
+            <a class="manage-agent-tab {% if preview_tab == 'dashboard' %}active{% endif %}" href="{% url 'admin_content_plans_manage_agent' plan_slug=preview_plan_slug %}?tab=dashboard">Dashboard</a>
+            <a class="manage-agent-tab {% if preview_tab == 'edit_profile' %}active{% endif %}" href="{% url 'admin_content_plans_manage_agent' plan_slug=preview_plan_slug %}?tab=edit_profile">Edit Profile</a>
+            <a class="manage-agent-tab {% if preview_tab == 'other' %}active{% endif %}" href="{% url 'admin_content_plans_manage_agent' plan_slug=preview_plan_slug %}?tab=other">Other features</a>
+        </div>
+    </div>
+</div>
+<div class="manage-agent-overlay" id="manageAgentLockModal">
+    <div class="manage-agent-dialog" role="dialog" aria-modal="true" aria-labelledby="manageAgentLockTitle">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+            <h5 class="modal-title fw-bold mb-0" id="manageAgentLockTitle" style="font-size:16px;">Lock feature</h5>
+            <button type="button" class="manage-agent-overlay-close" aria-label="Close" style="background:none;border:none;font-size:22px;line-height:1;color:#64748b;">&times;</button>
+        </div>
+        <div style="padding:20px;">
+            <p class="text-muted mb-3" id="manageAgentLockCopy" style="font-size:13px;"></p>
+            <div id="manageAgentLockOptions">
+                <label class="d-block mb-2" style="font-size:13px;font-weight:600;">
+                    <input type="radio" name="manage_agent_add_condition" value="no" checked> Lock only
+                </label>
+                <label class="d-block mb-3" style="font-size:13px;font-weight:600;">
+                    <input type="radio" name="manage_agent_add_condition" value="yes"> Lock and add unlock condition
+                </label>
+                <div id="manageAgentConditionBox" style="display:none;">
+                    <label class="form-label fw-bold mb-1" style="font-size:12px;">Match</label>
+                    <div id="manageAgentMatch" class="ma-dd" data-value="all">
+                        <button type="button" class="ma-dd-toggle">All conditions (AND)</button>
+                        <div class="ma-dd-menu">
+                            <button type="button" class="ma-dd-option is-selected" data-value="all">All conditions (AND)</button>
+                            <button type="button" class="ma-dd-option" data-value="any">Any condition (OR)</button>
+                        </div>
+                    </div>
+                    <label class="form-label fw-bold mb-2 mt-3" style="font-size:12px;">Conditions</label>
+                    <div id="manageAgentConditions"></div>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="manageAgentAddCond">
+                        <i class="fas fa-plus me-1"></i> Add condition
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 20px 20px;border-top:1px solid #e2e8f0;">
+            <button type="button" class="btn btn-light manage-agent-overlay-close">Cancel</button>
+            <button type="button" class="btn text-white" id="manageAgentLockConfirm" style="background:#0284c7;border-color:#0284c7;font-weight:700;">Save</button>
+        </div>
+    </div>
+</div>
+<script>
+window.MANAGE_AGENT = {
+    planSlug: "{{ preview_plan_slug|escapejs }}",
+    planLabel: "{{ preview_plan_label|escapejs }}",
+    toggleUrl: "{% url 'admin_content_plans_manage_agent_toggle' plan_slug=preview_plan_slug %}",
+    csrfToken: "{{ csrf_token }}",
+    csrfCookieName: "padosi_csrf_token",
+    enabled: {{ preview_enabled_features_json|default:"[]"|safe }},
+    labels: {{ preview_feature_labels_json|default:"{}"|safe }},
+    builder: {{ preview_unlock_builder_json|default:"{}"|safe }}
+};
+</script>
+{% endif %}

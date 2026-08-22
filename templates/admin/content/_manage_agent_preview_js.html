@@ -1,0 +1,441 @@
+{% if admin_lock_preview %}
+<script>
+(function() {
+    const cfg = window.MANAGE_AGENT;
+    if (!cfg) return;
+    document.body.classList.add('admin-lock-preview');
+
+    const builder = cfg.builder || {};
+    const metrics = builder.metrics && Object.keys(builder.metrics).length ? builder.metrics : {
+        reviews: { label: 'Reviews', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'number', default_op: 'gte' },
+        leads: { label: 'Leads', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'number', default_op: 'gte' },
+        total_leads: { label: 'Total Leads', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'number', default_op: 'gte' },
+        closed_leads: { label: 'Closed Leads', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'number', default_op: 'gte' },
+        referrals: { label: 'Referrals', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'number', default_op: 'gte' },
+        profile_completion: { label: 'Profile Completion %', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'percent', default_op: 'gte' },
+        irdai_certificate: { label: 'IRDAI Certificate', operators: ['eq', 'neq'], widget: 'boolean', default_op: 'eq' },
+        amfi_certificate: { label: 'AMFI Certificate', operators: ['eq', 'neq'], widget: 'boolean', default_op: 'eq' },
+        experience: { label: 'Experience (years)', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'number', default_op: 'gte' },
+        client_base: { label: 'Client Base', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'number', default_op: 'gte' },
+        claim_settle_rate: { label: 'Claim Settle Rate %', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'percent', default_op: 'gte' },
+        total_claim_amount: { label: 'Total Claim Amount (₹)', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'currency', default_op: 'gte' },
+        portfolio_products: { label: 'Product Portfolio (N products)', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'number', default_op: 'gte' },
+        portfolio_segments: { label: 'Product Portfolio Segments (count)', operators: ['gte', 'gt', 'lte', 'lt', 'eq'], widget: 'number', default_op: 'gte' },
+        portfolio_segment: { label: 'Product Portfolio Segment', operators: ['eq', 'neq'], widget: 'segment', default_op: 'eq' }
+    };
+    const opLabels = builder.opLabels || { gte: '≥', gt: '>', lte: '≤', lt: '<', eq: '=', neq: '≠' };
+    const segments = builder.segments || [
+        { key: 'health', label: 'Health' },
+        { key: 'life', label: 'Life' },
+        { key: 'motor', label: 'Motor' },
+        { key: 'sme', label: 'SME' }
+    ];
+    const enabled = new Set(cfg.enabled || []);
+    let pendingFeature = '';
+    let pendingLocked = true;
+    const overlay = document.getElementById('manageAgentLockModal');
+    if (overlay && overlay.parentElement !== document.body) {
+        document.body.appendChild(overlay);
+    }
+
+    function csrfToken() {
+        if (cfg.csrfToken) return cfg.csrfToken;
+        const name = cfg.csrfCookieName || 'padosi_csrf_token';
+        const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.$?*|{}()[\]\\/+^]/g, '\\$&') + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    function isLocked(feature) {
+        return !enabled.has(feature);
+    }
+
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function dropdownItems(items) {
+        return (items || []).map(function(item) {
+            if (item && typeof item === 'object') {
+                return { value: String(item.value != null ? item.value : item.key), label: item.label || item.key || item.value };
+            }
+            return { value: String(item), label: String(item) };
+        });
+    }
+
+    function buildDropdown(className, items, selected) {
+        const list = dropdownItems(items);
+        const current = list.find(function(item) { return item.value === String(selected); }) || list[0] || { value: '', label: 'Select' };
+        const wrap = document.createElement('div');
+        wrap.className = 'ma-dd ' + className;
+        wrap.setAttribute('data-value', current.value);
+        wrap.innerHTML =
+            '<button type="button" class="ma-dd-toggle">' + escapeHtml(current.label) + '</button>' +
+            '<div class="ma-dd-menu">' + list.map(function(item) {
+                return '<button type="button" class="ma-dd-option' + (item.value === current.value ? ' is-selected' : '') + '" data-value="' + escapeHtml(item.value) + '">' + escapeHtml(item.label) + '</button>';
+            }).join('') + '</div>';
+        return wrap;
+    }
+
+    function closeDropdowns(except) {
+        document.querySelectorAll('.ma-dd.is-open').forEach(function(dd) {
+            if (dd !== except) dd.classList.remove('is-open');
+        });
+    }
+
+    function positionMenu(dd) {
+        const toggle = dd.querySelector('.ma-dd-toggle');
+        const menu = dd.querySelector('.ma-dd-menu');
+        if (!toggle || !menu) return;
+        const rect = toggle.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        menu.style.left = rect.left + 'px';
+        menu.style.width = rect.width + 'px';
+        if (spaceBelow < 180 && rect.top > 180) {
+            menu.style.top = 'auto';
+            menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+        } else {
+            menu.style.bottom = 'auto';
+            menu.style.top = (rect.bottom + 4) + 'px';
+        }
+    }
+
+    function setDropdownValue(dd, value) {
+        if (!dd) return;
+        const option = Array.prototype.find.call(dd.querySelectorAll('.ma-dd-option'), function(btn) {
+            return btn.getAttribute('data-value') === String(value);
+        });
+        const label = option ? option.textContent : value;
+        dd.setAttribute('data-value', String(value));
+        const toggle = dd.querySelector('.ma-dd-toggle');
+        if (toggle) toggle.textContent = label;
+        dd.querySelectorAll('.ma-dd-option').forEach(function(btn) {
+            btn.classList.toggle('is-selected', btn.getAttribute('data-value') === String(value));
+        });
+        dd.classList.remove('is-open');
+        dd.dispatchEvent(new CustomEvent('ma-change', { bubbles: true, detail: { value: String(value) } }));
+    }
+
+    function metricChoices() {
+        return Object.keys(metrics).map(function(key) {
+            return { value: key, label: metrics[key].label || key };
+        });
+    }
+
+    function operatorChoices(metricKey) {
+        const spec = metrics[metricKey] || { operators: ['gte'] };
+        return (spec.operators || ['gte']).map(function(op) {
+            return { value: op, label: opLabels[op] || op };
+        });
+    }
+
+    function valueControl(metricKey, value) {
+        const spec = metrics[metricKey] || { widget: 'number' };
+        if (spec.widget === 'boolean') {
+            const yes = value === true || value === 'true';
+            return buildDropdown('unlock-cond-value', [
+                { value: 'true', label: 'Present' },
+                { value: 'false', label: 'Absent' }
+            ], yes ? 'true' : 'false');
+        }
+        if (spec.widget === 'segment') {
+            return buildDropdown('unlock-cond-value', segments, value || 'health');
+        }
+        const wrap = document.createElement('div');
+        const min = spec.widget === 'percent' ? ' min="0" max="100"' : ' min="0"';
+        const step = spec.widget === 'currency' ? ' step="0.01"' : ' step="1"';
+        const val = (value === 0 || value) ? value : '10';
+        wrap.innerHTML = '<input type="number" class="unlock-cond-value" value="' + val + '"' + min + step + ' placeholder="Value">';
+        return wrap.firstChild;
+    }
+
+    function renderCondition(cond) {
+        const metric = (cond && cond.metric) || 'reviews';
+        const spec = metrics[metric] || {};
+        const wrap = document.createElement('div');
+        wrap.className = 'unlock-cond-row';
+        wrap.appendChild(buildDropdown('unlock-cond-metric', metricChoices(), metric));
+        wrap.appendChild(buildDropdown('unlock-cond-op', operatorChoices(metric), (cond && cond.op) || spec.default_op || 'gte'));
+        const valueWrap = document.createElement('div');
+        valueWrap.className = 'unlock-cond-value-wrap';
+        valueWrap.appendChild(valueControl(metric, cond && cond.value));
+        wrap.appendChild(valueWrap);
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn btn-sm btn-outline-danger manage-agent-remove-cond';
+        remove.innerHTML = '<i class="fas fa-trash"></i>';
+        wrap.appendChild(remove);
+        return wrap;
+    }
+
+    function showModal() {
+        if (!overlay) return;
+        overlay.classList.add('is-open');
+    }
+
+    function hideModal() {
+        if (!overlay) return;
+        closeDropdowns();
+        overlay.classList.remove('is-open');
+    }
+
+    function readValue(row, metric) {
+        const spec = metrics[metric] || {};
+        const dd = row.querySelector('.unlock-cond-value-wrap .ma-dd');
+        if (dd) {
+            const raw = dd.getAttribute('data-value');
+            if (spec.widget === 'boolean') return raw === 'true';
+            return raw;
+        }
+        const input = row.querySelector('.unlock-cond-value');
+        if (!input) return '';
+        if (spec.widget === 'boolean') return input.value === 'true';
+        if (spec.widget === 'segment') return input.value;
+        if (input.value === '') return '';
+        const number = Number(input.value);
+        return Number.isNaN(number) ? '' : number;
+    }
+
+    function collectConditions() {
+        const rows = document.querySelectorAll('#manageAgentConditions .unlock-cond-row');
+        const conditions = [];
+        rows.forEach(function(row) {
+            const metricEl = row.querySelector('.unlock-cond-metric');
+            const opEl = row.querySelector('.unlock-cond-op');
+            if (!metricEl || !opEl) return;
+            const metric = metricEl.getAttribute('data-value');
+            const spec = metrics[metric] || {};
+            const value = readValue(row, metric);
+            if (spec.widget !== 'boolean' && spec.widget !== 'segment' && (value === '' || Number.isNaN(value))) return;
+            conditions.push({ metric: metric, op: opEl.getAttribute('data-value'), value: value });
+        });
+        return conditions;
+    }
+
+    function resetMatch() {
+        setDropdownValue(document.getElementById('manageAgentMatch'), 'all');
+    }
+
+    function openLockDialog(feature, locked) {
+        pendingFeature = feature;
+        pendingLocked = locked;
+        const label = (cfg.labels && cfg.labels[feature]) || feature;
+        document.getElementById('manageAgentLockTitle').textContent = locked ? ('Lock ' + label) : ('Unlock ' + label);
+        document.getElementById('manageAgentLockCopy').textContent = locked
+            ? ('This will lock ' + label + ' for ' + cfg.planLabel + ' only.')
+            : ('This will unlock ' + label + ' for ' + cfg.planLabel + ' only.');
+        document.getElementById('manageAgentLockOptions').style.display = locked ? 'block' : 'none';
+        const noRadio = document.querySelector('input[name="manage_agent_add_condition"][value="no"]');
+        if (noRadio) noRadio.checked = true;
+        document.getElementById('manageAgentConditionBox').style.display = 'none';
+        resetMatch();
+        const list = document.getElementById('manageAgentConditions');
+        list.innerHTML = '';
+        list.appendChild(renderCondition({ metric: 'reviews', op: 'gte', value: 10 }));
+        showModal();
+    }
+
+    function postToggle(payload) {
+        return fetch(cfg.toggleUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken()
+            },
+            body: JSON.stringify(payload)
+        }).then(function(res) {
+            const contentType = res.headers.get('content-type') || '';
+            if (contentType.indexOf('application/json') === -1) {
+                return {
+                    ok: false,
+                    error: res.status === 403 ? 'Session expired. Refresh and try again.' : 'Could not update this feature.',
+                    _status: res.status
+                };
+            }
+            return res.json().then(function(data) {
+                data._status = res.status;
+                return data;
+            });
+        });
+    }
+
+    function attachButtons() {
+        const overview = document.getElementById('overview-content');
+        const profile = document.getElementById('profile-content');
+        const portfolio = document.getElementById('portfolio-content');
+        if (overview) overview.style.setProperty('display', 'block', 'important');
+        if (profile) profile.style.setProperty('display', 'block', 'important');
+        if (portfolio) portfolio.style.setProperty('display', 'block', 'important');
+
+        document.querySelectorAll('.form-step').forEach(function(step) {
+            step.classList.add('active');
+            step.style.setProperty('display', 'block', 'important');
+        });
+        document.querySelectorAll('.form-navigation').forEach(function(nav) {
+            nav.style.setProperty('display', 'none', 'important');
+        });
+        if (window.jQuery) {
+            window.jQuery('.step-item').off('click');
+            window.jQuery('.btn-next, .btn-prev, .btn-submit').hide();
+        }
+
+        document.querySelectorAll('[data-feature]').forEach(function(el) {
+            const feature = el.getAttribute('data-feature');
+            if (!feature) return;
+            el.classList.toggle('is-feature-locked', isLocked(feature));
+            if (el.querySelector(':scope > .manage-agent-lock-btn')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'manage-agent-lock-btn' + (isLocked(feature) ? ' is-locked' : '');
+            btn.setAttribute('data-manage-feature', feature);
+            btn.title = isLocked(feature) ? 'Unlock this feature' : 'Lock this feature';
+            btn.innerHTML = '<i class="fas fa-lock"></i>';
+            el.appendChild(btn);
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        const option = e.target.closest('.ma-dd-option');
+        if (option) {
+            e.preventDefault();
+            e.stopPropagation();
+            setDropdownValue(option.closest('.ma-dd'), option.getAttribute('data-value'));
+            return;
+        }
+        const toggle = e.target.closest('.ma-dd-toggle');
+        if (toggle) {
+            e.preventDefault();
+            e.stopPropagation();
+            const dd = toggle.closest('.ma-dd');
+            const willOpen = !dd.classList.contains('is-open');
+            closeDropdowns();
+            if (willOpen) {
+                dd.classList.add('is-open');
+                positionMenu(dd);
+            }
+            return;
+        }
+        closeDropdowns();
+
+        const btn = e.target.closest('.manage-agent-lock-btn');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openLockDialog(btn.getAttribute('data-manage-feature'), !isLocked(btn.getAttribute('data-manage-feature')));
+    }, true);
+
+    document.addEventListener('ma-change', function(e) {
+        if (!e.target || !e.target.classList.contains('unlock-cond-metric')) return;
+        const row = e.target.closest('.unlock-cond-row');
+        if (!row) return;
+        const metric = e.target.getAttribute('data-value');
+        const spec = metrics[metric] || {};
+        const opWrap = row.querySelector('.unlock-cond-op');
+        if (opWrap) {
+            const replacement = buildDropdown('unlock-cond-op', operatorChoices(metric), spec.default_op);
+            opWrap.replaceWith(replacement);
+        }
+        const valueWrap = row.querySelector('.unlock-cond-value-wrap');
+        if (valueWrap) {
+            valueWrap.innerHTML = '';
+            valueWrap.appendChild(valueControl(metric, spec.widget === 'boolean' ? true : (spec.widget === 'segment' ? 'health' : 10)));
+        }
+    });
+
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.name === 'manage_agent_add_condition') {
+            document.getElementById('manageAgentConditionBox').style.display = e.target.value === 'yes' ? 'block' : 'none';
+        }
+    });
+
+    const addCond = document.getElementById('manageAgentAddCond');
+    if (addCond) {
+        addCond.addEventListener('click', function() {
+            document.getElementById('manageAgentConditions').appendChild(renderCondition({ metric: 'reviews', op: 'gte', value: 10 }));
+        });
+    }
+
+    const condList = document.getElementById('manageAgentConditions');
+    if (condList) {
+        condList.addEventListener('click', function(e) {
+            const remove = e.target.closest('.manage-agent-remove-cond');
+            if (!remove) return;
+            const rows = document.querySelectorAll('#manageAgentConditions .unlock-cond-row');
+            if (rows.length <= 1) return;
+            remove.closest('.unlock-cond-row').remove();
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay || e.target.closest('.manage-agent-overlay-close')) {
+                hideModal();
+            }
+        });
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && overlay && overlay.classList.contains('is-open')) {
+            hideModal();
+        }
+    });
+
+    const confirmBtn = document.getElementById('manageAgentLockConfirm');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            const addRadio = document.querySelector('input[name="manage_agent_add_condition"]:checked');
+            const addCondition = pendingLocked && addRadio && addRadio.value === 'yes';
+            const conditions = addCondition ? collectConditions() : [];
+            if (addCondition && !conditions.length) {
+                alert('Choose a metric and enter a value for the unlock condition.');
+                return;
+            }
+            const matchEl = document.getElementById('manageAgentMatch');
+            const payload = {
+                feature: pendingFeature,
+                locked: pendingLocked,
+                add_condition: addCondition,
+                match: matchEl ? matchEl.getAttribute('data-value') : 'all',
+                conditions: conditions
+            };
+            postToggle(payload).then(function(data) {
+                if (!data || !data.ok) {
+                    alert((data && data.error) || 'Could not update this feature.');
+                    return;
+                }
+                hideModal();
+                window.location.reload();
+            }).catch(function() {
+                alert('Could not update this feature.');
+            });
+        });
+    }
+
+    document.addEventListener('submit', function(e) {
+        if (e.target && e.target.closest('.agent-dashboard-wrapper, .edit-profile-wrapper')) {
+            e.preventDefault();
+        }
+    }, true);
+
+    document.querySelectorAll('.agent-dashboard-wrapper a[href], .edit-profile-wrapper a[href]').forEach(function(a) {
+        const href = a.getAttribute('href') || '';
+        if (!href || href === '#' || href.charAt(0) === '#' || href.indexOf('javascript:') === 0) return;
+        if (href.indexOf('/admin/content/plans') === 0) return;
+        a.addEventListener('click', function(ev) {
+            ev.preventDefault();
+        });
+    });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachButtons);
+    } else {
+        attachButtons();
+    }
+    setTimeout(attachButtons, 50);
+})();
+</script>
+{% endif %}

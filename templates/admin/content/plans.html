@@ -17,6 +17,7 @@
     font-size: 14px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
     border-bottom: 1px solid var(--border-color);
 }
@@ -575,8 +576,13 @@
     {% csrf_token %}
     <div class="plan-editor-card mb-4" style="border-top: 4px solid #0284c7;">
         <div class="plan-editor-header bg-white py-3">
-            <div class="m-0 fw-bold"><i class="fa-solid fa-lock me-2" style="color: #0284c7;"></i>Plan-Based Feature Access Control</div>
-            <p class="text-muted mb-0 mt-1 fw-normal" style="font-size:12px;">Select which features are available to agents based on their active subscription plan.</p>
+            <div class="flex-grow-1">
+                <div class="m-0 fw-bold"><i class="fa-solid fa-lock me-2" style="color: #0284c7;"></i>Plan-Based Feature Access Control</div>
+                <p class="text-muted mb-0 mt-1 fw-normal" style="font-size:12px;">Select which features are available to agents based on their active subscription plan.</p>
+            </div>
+            <button type="button" class="btn btn-sm px-3" id="manageAgentBtn" data-bs-toggle="modal" data-bs-target="#manageAgentPlanModal" style="background-color: #0284c7; border-color: #0284c7; color: #fff; font-weight: 600;">
+                <i class="fa-solid fa-user-gear me-1"></i> Manage Agent
+            </button>
         </div>
         <div class="p-0">
             <div class="table-responsive">
@@ -584,10 +590,30 @@
                     <thead style="background: #f8fafc;">
                         <tr>
                             <th style="width: 280px;" class="px-4 py-3">Feature</th>
-                            <th class="text-center px-2 py-3">Free Trial / Expired</th>
-                            <th class="text-center px-2 py-3">Starter Plan</th>
-                            <th class="text-center px-2 py-3">Professional Plan</th>
-                            <th class="text-center px-2 py-3">Exclusive Plan</th>
+                            <th class="text-center px-2 py-3">
+                                Free Trial / Expired
+                                <div class="mt-2">
+                                    <a href="{% url 'admin_content_plans_manage_agent' plan_slug='free_trial' %}" class="btn btn-sm btn-outline-primary" style="font-size:11px; font-weight:600; color:#0284c7; border-color:#0284c7;">Manage</a>
+                                </div>
+                            </th>
+                            <th class="text-center px-2 py-3">
+                                Starter Plan
+                                <div class="mt-2">
+                                    <a href="{% url 'admin_content_plans_manage_agent' plan_slug='starter' %}" class="btn btn-sm btn-outline-primary" style="font-size:11px; font-weight:600; color:#0284c7; border-color:#0284c7;">Manage</a>
+                                </div>
+                            </th>
+                            <th class="text-center px-2 py-3">
+                                Professional Plan
+                                <div class="mt-2">
+                                    <a href="{% url 'admin_content_plans_manage_agent' plan_slug='professional' %}" class="btn btn-sm btn-outline-primary" style="font-size:11px; font-weight:600; color:#0284c7; border-color:#0284c7;">Manage</a>
+                                </div>
+                            </th>
+                            <th class="text-center px-2 py-3">
+                                Exclusive Plan
+                                <div class="mt-2">
+                                    <a href="{% url 'admin_content_plans_manage_agent' plan_slug='exclusive' %}" class="btn btn-sm btn-outline-primary" style="font-size:11px; font-weight:600; color:#0284c7; border-color:#0284c7;">Manage</a>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -688,6 +714,28 @@
     </div>
 </form>
 {{ unlock_builder|json_script:"unlock-builder-data" }}
+
+<div class="modal fade" id="manageAgentPlanModal" tabindex="-1" aria-labelledby="manageAgentPlanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px; border: none;">
+            <div class="modal-header" style="border-bottom: 1px solid #e2e8f0;">
+                <h5 class="modal-title fw-bold" id="manageAgentPlanModalLabel" style="font-size: 16px;">
+                    <i class="fa-solid fa-user-gear me-2" style="color: #0284c7;"></i>Manage Agent
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3" style="font-size: 13px;">Choose a plan to preview the agent dashboard and lock or unlock features for that plan only.</p>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'admin_content_plans_manage_agent' plan_slug='free_trial' %}" class="btn btn-outline-primary text-start" style="border-color: #0284c7; color: #0284c7; font-weight: 600;">Free Trial / Expired</a>
+                    <a href="{% url 'admin_content_plans_manage_agent' plan_slug='starter' %}" class="btn btn-outline-primary text-start" style="border-color: #0284c7; color: #0284c7; font-weight: 600;">Starter Plan</a>
+                    <a href="{% url 'admin_content_plans_manage_agent' plan_slug='professional' %}" class="btn btn-outline-primary text-start" style="border-color: #0284c7; color: #0284c7; font-weight: 600;">Professional Plan</a>
+                    <a href="{% url 'admin_content_plans_manage_agent' plan_slug='exclusive' %}" class="btn btn-outline-primary text-start" style="border-color: #0284c7; color: #0284c7; font-weight: 600;">Exclusive Plan</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
 

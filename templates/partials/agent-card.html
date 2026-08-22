@@ -164,7 +164,7 @@
                     </svg>
                 </button>
             </div>
-            <a href="{% url 'agents:agent_public_profile' slug=agent_slug %}" class="rac-btn rac-btn--profile" target="_blank">
+            <a href="{% if agent_slug %}{% url 'agents:agent_public_profile' slug=agent_slug %}{% else %}#{% endif %}" class="rac-btn rac-btn--profile" target="_blank">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -319,7 +319,7 @@
                 {% endif %}
 
                 <div class="rac-d-actions">
-                    <a href="{% url 'agents:agent_public_profile' slug=agent_slug %}" class="rac-d-btn rac-d-btn--profile" target="_blank">
+                    <a href="{% if agent_slug %}{% url 'agents:agent_public_profile' slug=agent_slug %}{% else %}#{% endif %}" class="rac-d-btn rac-d-btn--profile" target="_blank">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />

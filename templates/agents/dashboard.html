@@ -1,7 +1,8 @@
-{% extends 'base.html' %}
+{% extends base_template|default:'base.html' %}
 {% load static %}
 
-{% block title %}Agent Dashboard — PadosiAgent{% endblock %}
+{% block title %}{% if admin_lock_preview %}{{ preview_plan_label }} — Manage Agent{% else %}Agent Dashboard — PadosiAgent{% endif %}{% endblock %}
+{% block breadcrumb_title %}Content › Plans › {{ preview_plan_label }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/agent-dashboard.css' %}">
@@ -14,6 +15,7 @@
 {% endblock %}
 
 {% block content %}
+{% include 'admin/content/_manage_agent_chrome.html' %}
 {% with display_name=profile.display_name|default:agent.fullname|default:"Agent" %}
 {% with display_initial=display_name|slice:":1"|upper %}
 <div class="agent-dashboard-wrapper">
@@ -40,11 +42,11 @@
                 </div>
             </div>
             <div class="dashboard-top-actions mt-3 mt-md-0 d-flex flex-wrap gap-2 align-items-center">
-                <button type="button" class="btn text-white shadow-sm px-4 d-flex align-items-center mb-2 mb-sm-0" data-toggle="modal" data-target="#rankingGuideModal" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; font-weight: 700; border-radius: 8px; margin-right: 12px; height: 42px;">
+                <button type="button" class="btn text-white shadow-sm px-4 d-flex align-items-center mb-2 mb-sm-0" data-feature="rank_boost_tips" data-toggle="modal" data-target="#rankingGuideModal" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; font-weight: 700; border-radius: 8px; margin-right: 12px; height: 42px; position: relative;">
                     <i class="fas fa-rocket mr-2"></i> Rank Boost Tips
                 </button>
-                {% if agent_plan and agent_plan.premium_priority_support %}
-                <button type="button" class="btn text-white shadow-sm px-4 d-flex align-items-center mb-2 mb-sm-0" onclick="window.open('https://wa.me/919999999999?text=Hi%2C%20I%20am%20a%20Priority%20Support%20agent%20needing%20assistance.', '_blank')" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); border: none; font-weight: 700; border-radius: 8px; margin-right: 12px; height: 42px; position: relative; overflow: hidden;">
+                {% if not admin_lock_preview and agent_plan and agent_plan.premium_priority_support %}
+                <button type="button" class="btn text-white shadow-sm px-4 d-flex align-items-center mb-2 mb-sm-0" data-feature="premium_support" onclick="window.open('https://wa.me/919999999999?text=Hi%2C%20I%20am%20a%20Priority%20Support%20agent%20needing%20assistance.', '_blank')" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); border: none; font-weight: 700; border-radius: 8px; margin-right: 12px; height: 42px; position: relative; overflow: hidden;">
                     <div style="position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); animation: shine 2.5s infinite;"></div>
                     <i class="fab fa-whatsapp mr-2" style="font-size: 1.2rem;"></i> Priority Support
                 </button>
@@ -52,7 +54,7 @@
                     @keyframes shine { 100% { left: 200%; } }
                 </style>
                 {% endif %}
-                <a href="{% url 'agents:agent_public_profile' slug=profile.slug|default:agent.id %}" class="btn btn-profile-view mb-2 mb-sm-0" style="height: 42px; display: inline-flex; align-items: center;">View My Profile</a>
+                <a href="{% if admin_lock_preview %}#{% elif profile.slug %}{% url 'agents:agent_public_profile' slug=profile.slug %}{% elif agent.agent_slug %}{% url 'agents:agent_public_profile' slug=agent.agent_slug %}{% else %}#{% endif %}" class="btn btn-profile-view mb-2 mb-sm-0" data-feature="view_public_profile" style="height: 42px; display: inline-flex; align-items: center; position: relative;">View My Profile</a>
             </div>
         </div>
 
@@ -176,7 +178,7 @@
             <div class="row px-2">
                 <!-- Performance Card -->
                 <div class="col-lg-4 mb-4">
-                    <div class="card premium-dashboard-card h-100">
+                    <div class="card premium-dashboard-card h-100" data-feature="dashboard_stats">
                         <div class="card-body p-4">
                             <h5 class="card-section-title mb-4">Performance Overview</h5>
                             <div class="performance-stats-content">
@@ -216,7 +218,7 @@
     
                 <!-- Lead Stats Grid Card -->
                 <div class="col-lg-4 mb-4">
-                    <div class="card premium-dashboard-card h-100">
+                    <div class="card premium-dashboard-card h-100" data-feature="dashboard_stats">
                         <div class="card-body p-4">
                             <h5 class="card-section-title mb-4">Lead Stats</h5>
                             <div class="row lead-stats-grid">
@@ -267,7 +269,7 @@
     
                 <!-- Sales Insights / Empty State -->
                 <div class="col-lg-4 mb-4">
-                    <div class="card premium-dashboard-card h-100">
+                    <div class="card premium-dashboard-card h-100" data-feature="sales_insights">
                         <div class="card-body p-4 d-flex flex-column">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h5 class="card-section-title mb-0">Sales Insights</h5>
@@ -304,7 +306,7 @@
     
             <!-- Recent Leads List -->
             <div class="px-2 mt-2 pb-5">
-                <div class="card premium-dashboard-card">
+                <div class="card premium-dashboard-card" data-feature="lead_management">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <div>
@@ -342,7 +344,8 @@
                                                 <td>{{ lead.enquiry_requirements|default:'-' }}</td>
                                                 <td style="text-transform: capitalize;">{{ lead.interaction_type }}</td>
                                                 <td>
-                                                    <select class="form-select form-select-sm lead-status-dropdown"
+                                                    <select class="form-select form-select-sm lead-status-dropdown lead-status-select"
+                                                            data-feature="legacy_lead_status"
                                                             data-lead-id="{{ lead.id }}"
                                                             style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; width: 120px; cursor: pointer; display: inline-block;
                                                                    {% if lead.lead_status == 'new' %}background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca;{% elif lead.lead_status == 'contacted' %}background-color: #fffbeb; color: #d97706; border: 1px solid #fde68a;{% elif lead.lead_status == 'follow_up' %}background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;{% elif lead.lead_status == 'closed' %}background-color: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;{% else %}background-color: #f8fafc; color: #475569; border: 1px solid #cbd5e1;{% endif %}">
@@ -425,7 +428,7 @@
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h5 class="card-section-title mb-0">Profile Completion <span class="badge badge-warning text-white rounded-pill ml-2" style="background-color: #f59e0b; font-size: 11px; padding: 4px 10px;">{{ completion }}%</span></h5>
-                        <a href="{% url 'agents:agent_edit_profile' %}" class="btn btn-add-lead-top"><i class="fas fa-edit mr-2"></i>Edit Profile</a>
+                        <a href="{% url 'agents:agent_edit_profile' %}" class="btn btn-add-lead-top" data-feature="edit_profile" style="position:relative;"><i class="fas fa-edit mr-2"></i>Edit Profile</a>
                     </div>
                     <p class="text-muted small mb-3">Complete your profile to improve visibility and receive more leads</p>
                     
@@ -494,8 +497,8 @@
 
 
 
-                    <div class="profile-visibility-content">
-                        <div class="visibility-row">
+                    <div class="profile-visibility-content" data-feature="public_profile">
+                    <div class="visibility-row" data-feature="edit_profile_career_timeline">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <i class="fas fa-briefcase visibility-icon"></i>
                             <div>
@@ -506,7 +509,7 @@
                         <button type="button" class="toggle {% if profile.show_experience %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_experience', this)"></button>
                     </div>
 
-                    <div class="visibility-row">
+                    <div class="visibility-row" data-feature="edit_profile_claim_support">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <i class="fas fa-chart-line visibility-icon"></i>
                             <div>
@@ -539,7 +542,7 @@
                         <button type="button" class="toggle {% if profile.show_ratings %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_ratings', this)"></button>
                     </div>
 
-                    <div class="visibility-row">
+                    <div class="visibility-row" data-feature="view_reviews">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <i class="fas fa-comments visibility-icon"></i>
                             <div>
@@ -550,7 +553,7 @@
                         <button type="button" class="toggle {% if profile.show_reviews %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_reviews', this)"></button>
                     </div>
 
-                    <div class="visibility-row">
+                    <div class="visibility-row" data-feature="edit_profile_certifications">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <i class="fas fa-certificate visibility-icon"></i>
                             <div>
@@ -561,7 +564,7 @@
                         <button type="button" class="toggle {% if profile.show_certificates %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_certificates', this)"></button>
                     </div>
 
-                    <div class="visibility-row">
+                    <div class="visibility-row" data-feature="upload_achievements">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <i class="fas fa-trophy visibility-icon"></i>
                             <div>
@@ -572,7 +575,7 @@
                         <button type="button" class="toggle {% if profile.show_achievements %}on{% else %}off{% endif %}" onclick="updateVisibility({{ agent.id }}, 'show_achievements', this)"></button>
                     </div>
 
-                    <div class="visibility-row">
+                    <div class="visibility-row" data-feature="edit_profile_social_media">
                         <div style="display:flex; align-items:center; gap:12px;">
                             <i class="fas fa-share-alt visibility-icon"></i>
                             <div>
@@ -1208,6 +1211,7 @@
         }
 
     // Handle SubscriptionPlan Feature Locks Dynamically for Dashboard
+    {% if not admin_lock_preview %}
     const featureUnlockHints = {{ feature_unlock_hints_json|default:"{}"|safe }};
     const planPermissions = {
       recentLeads: {% if not agent_plan or agent_plan.show_recent_leads %}true{% else %}false{% endif %},
@@ -1223,7 +1227,8 @@
       viewPublicProfileBtn: {% if not agent_plan or agent_plan.show_view_public_profile_btn %}true{% else %}false{% endif %},
       reviewManagement: {% if not agent_plan or agent_plan.show_review_management %}true{% else %}false{% endif %},
       leadStatus: {% if not agent_plan or agent_plan.show_lead_status %}true{% else %}false{% endif %},
-      editProfileFull: {% if not agent_plan or agent_plan.show_edit_profile_full %}true{% else %}false{% endif %}
+      editProfileFull: {% if not agent_plan or agent_plan.show_edit_profile_full %}true{% else %}false{% endif %},
+      premiumSupport: {% if not agent_plan or agent_plan.premium_priority_support %}true{% else %}false{% endif %}
     };
 
     function lockReason(name, hintKey) {
@@ -1291,7 +1296,11 @@
     }
     
     if (!planPermissions.leadStatus) {
-      $('.lead-status-select').prop('disabled', true).css({'opacity': '0.7', 'cursor': 'not-allowed'}).attr('title', lockReason('Lead Status', 'show_lead_status') || 'Lead Status updates are locked by your Admin Plan');
+      $('.lead-status-select, .lead-status-dropdown').prop('disabled', true).css({'opacity': '0.7', 'cursor': 'not-allowed'}).attr('title', lockReason('Lead Status', 'show_lead_status') || 'Lead Status updates are locked by your Admin Plan');
+    }
+
+    if (!planPermissions.premiumSupport) {
+      $('[data-feature="premium_support"]').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', lockReason('Priority Support', 'premium_priority_support'));
     }
     
     // Add lock for the profile section visibility card if restricted
@@ -1320,7 +1329,9 @@
             $row.append('<div class="small text-danger mt-1" style="width: 100%;"><i class="fas fa-lock text-muted mr-1"></i> ' + (hintKey && featureUnlockHints[hintKey] ? ('Unlock by: ' + featureUnlockHints[hintKey]) : 'Disabled by Admin Plan') + '</div>');
         }
     }
-  });
+    {% endif %}
+    });
 </script>
+{% include 'admin/content/_manage_agent_preview_js.html' %}
 
 {% endblock %}
