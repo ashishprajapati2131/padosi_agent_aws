@@ -17,6 +17,7 @@ import re
 
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.views.decorators.http import require_POST, require_http_methods
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.utils import timezone
@@ -65,47 +66,7 @@ def _get_client_ip(request):
         return x_forwarded_for.split(',')[0].strip()
     return request.META.get('REMOTE_ADDR', '')
 
-def _check_otp_send_rate_limit(ip):
-    # Limit: 3 requests per 5 minutes per IP
-    key = f"otp_send_limit_{ip}"
-    attempts = cache.get(key, 0)
-    if attempts >= 3:
-        return False
-    return True
-
-def _record_otp_send_attempt(ip):
-    key = f"otp_send_limit_{ip}"
-    attempts = cache.get(key, 0)
-    if attempts == 0:
-        cache.set(key, 1, timeout=300)  # 5 minutes
-    else:
-        cache.incr(key)
-
-def _check_otp_verify_rate_limit(ip):
-    # Limit: 10 verify attempts per 10 minutes per IP
-    key = f"otp_verify_limit_{ip}"
-    attempts = cache.get(key, 0)
-    if attempts >= 10:
-        return False
-    return True
-
-def _record_otp_verify_attempt(ip):
-    key = f"otp_verify_limit_{ip}"
-    attempts = cache.get(key, 0)
-    if attempts == 0:
-        cache.set(key, 1, timeout=600)  # 10 minutes
-    else:
-        cache.incr(key)
-
-def _clear_otp_verify_limit(ip):
-    cache.delete(f"otp_verify_limit_{ip}")
-    cache.delete(f"otp_send_limit_{ip}")
-
-
 # ─── Helper ─────────────────────────────────────────────────────────────────────
-def _generate_otp():
-    """Generate a 6-digit OTP code."""
-    return str(random.randint(100000, 999999))
 
 
 def _get_registration_context(request):
@@ -132,6 +93,8 @@ def _get_registration_context(request):
     from apps.agents.models import InvestmentType
     active_investment_types = InvestmentType.objects.filter(is_active=True)
 
+    prefilled_promo = request.GET.get('promo') or request.GET.get('ref') or request.session.get('ref_code', '')
+
     return {
         'layout_template': layout_template,
         'reg_step': reg_step,
@@ -144,6 +107,7 @@ def _get_registration_context(request):
         'agent_segments': draft.segments if draft else [],
         'agent_languages': draft.languages if draft else [],
         'active_investment_types': active_investment_types,
+        'prefilledPromo': prefilled_promo,
     }
 
 
@@ -161,102 +125,36 @@ def agent_registration(request):
     return render(request, 'agents/registration.html', context)
 
 
-@require_POST
-@csrf_protect
-def send_otp(request):
-    """Generate OTP, store in session, send via Brevo."""
-    ip = _get_client_ip(request)
-    if not _check_otp_send_rate_limit(ip):
-        return JsonResponse({'success': False, 'message': 'Too many OTP requests. Please try again after 5 minutes.'}, status=429)
-    _record_otp_send_attempt(ip)
 
-    try:
-        data = json.loads(request.body)
-        email = data.get('email', '').strip().lower()
-    except (json.JSONDecodeError, AttributeError):
-        email = request.POST.get('email', '').strip().lower()
-
-    if not email or '@' not in email:
-        return JsonResponse({'success': False, 'message': 'Please enter a valid email address.'}, status=400)
-
-    from django.contrib.auth.models import User
-    from apps.agents.models import Agent
-    if User.objects.filter(email=email).exists() or Agent.objects.filter(email=email).exclude(status='incomplete').exists():
-        return JsonResponse({
-            'success': False,
-            'message': 'This email is already associated with an active Agent account. Please login to access your dashboard.'
-        }, status=422)
-
-    otp = _generate_otp()
-
-    # Store in session
-    request.session['otp_code'] = otp
-    request.session['otp_email'] = email
-    request.session['otp_expires'] = time.time() + OTP_EXPIRY_SECONDS
-
-    # Send via Brevo
-    success = send_otp_email(email, '', otp)
-
-    if success:
+@require_http_methods(["GET"])
+def check_slug_availability(request):
+    """Check if a custom slug is available for an agent profile."""
+    from django.utils.text import slugify
+    from apps.agents.models import AgentProfile
+    
+    raw_slug = request.GET.get('slug', '').strip()
+    if not raw_slug:
+        return JsonResponse({'success': False, 'message': 'Slug is required.'})
+        
+    slug = slugify(raw_slug)
+    
+    # Check if slug exists in AgentProfile
+    exists = AgentProfile.objects.filter(slug=slug).exists()
+    
+    if exists:
         return JsonResponse({
             'success': True,
-            'message': 'OTP sent to your email. Please check your inbox.',
+            'available': False,
+            'slug': slug,
+            'message': 'This URL is already taken.'
         })
     else:
         return JsonResponse({
-            'success': False,
-            'message': 'Failed to send OTP. Please try again.',
-        }, status=500)
-
-
-@require_POST
-@csrf_protect
-def verify_otp(request):
-    """Verify OTP against session data."""
-    ip = _get_client_ip(request)
-    if not _check_otp_verify_rate_limit(ip):
-        return JsonResponse({'success': False, 'message': 'Too many verification attempts. Please request a new OTP.'}, status=429)
-    _record_otp_verify_attempt(ip)
-
-    try:
-        data = json.loads(request.body)
-        submitted_otp = data.get('otp', '').strip()
-    except (json.JSONDecodeError, AttributeError):
-        submitted_otp = request.POST.get('otp', '').strip()
-
-    stored_otp = request.session.get('otp_code', '')
-    otp_email = request.session.get('otp_email', '')
-    otp_expires = request.session.get('otp_expires', 0)
-
-    if not stored_otp:
-        return JsonResponse({'success': False, 'message': 'No OTP found. Please request a new one.'}, status=400)
-
-    if time.time() > otp_expires:
-        # Clean up expired OTP
-        for key in ['otp_code', 'otp_email', 'otp_expires']:
-            request.session.pop(key, None)
-        return JsonResponse({'success': False, 'message': 'OTP has expired. Please request a new one.'}, status=400)
-
-    if submitted_otp != stored_otp:
-        return JsonResponse({'success': False, 'message': 'Invalid OTP. Please try again.'}, status=400)
-
-    # Mark as verified
-    request.session['email_verified'] = True
-    request.session['verified_email'] = otp_email
-    request.session['reg_step'] = 1
-    
-    # Clear rate limits on success
-    _clear_otp_verify_limit(ip)
-
-    # Clean up OTP from session
-    for key in ['otp_code', 'otp_expires']:
-        request.session.pop(key, None)
-
-    return JsonResponse({
-        'success': True,
-        'message': 'Email verified successfully!',
-        'email': otp_email,
-    })
+            'success': True,
+            'available': True,
+            'slug': slug,
+            'message': 'URL is available!'
+        })
 
 
 @require_POST
@@ -275,6 +173,15 @@ def register_step1(request):
     promo_code = request.POST.get('promo_code', '').strip()
     address = request.POST.get('address', '').strip()
     client_base = request.POST.get('client_base', '').strip()
+    slug = request.POST.get('slug', '').strip()
+
+    distributor_id = None
+    from apps.distributors.views.dashboard import is_distributor
+    if request.user.is_authenticated and is_distributor(request.user):
+        from apps.admin_panel.models import User as LaravelUser
+        l_user = LaravelUser.objects.filter(email=request.user.email).first()
+        distributor_id = l_user.id if l_user else request.user.id
+        request.session['distributor_id'] = distributor_id
 
     # Validation
     errors = []
@@ -310,7 +217,6 @@ def register_step1(request):
     if existing_agent:
         # Case 4 (network lost): try to verify Razorpay payment directly first!
         if verify_and_activate_pending_payment(existing_agent):
-            from django.urls import reverse
             return JsonResponse({
                 'success': True,
                 'message': 'Payment verified successfully! Redirecting to dashboard...',
@@ -337,9 +243,11 @@ def register_step1(request):
         if promo_code:
             request.session['applied_promo_code'] = promo_code
         else:
-            request.session.pop('applied_promo_code', None)
+            if not request.session.get('distributor_led_registration') and not request.session.get('distributor_id'):
+                request.session.pop('applied_promo_code', None)
         draft.address = address
         draft.client_base = client_base
+        draft.slug = slug
         draft.email_verified = True
         draft.registration_step = 1
         draft.save()
@@ -391,9 +299,11 @@ def register_step1(request):
     if promo_code:
         request.session['applied_promo_code'] = promo_code
     else:
-        request.session.pop('applied_promo_code', None)
+        if not request.session.get('distributor_led_registration') and not request.session.get('distributor_id'):
+            request.session.pop('applied_promo_code', None)
     draft.address = address
     draft.client_base = client_base
+    draft.slug = slug
     draft.registration_step = 1
     draft.save()
 
@@ -449,10 +359,116 @@ def register_step2(request):
     })
 
 
+@require_POST
+def record_social_follow(request):
+    """Record that the user successfully followed social accounts for gamified plan."""
+    import json
+    try:
+        data = json.loads(request.body)
+        platform = data.get('platform')
+        agent_id = data.get('agent_id') # actually draft_id
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON.'}, status=400)
+
+    if not agent_id or not platform:
+        return JsonResponse({'success': False, 'message': 'Missing data.'}, status=400)
+    
+    from apps.home.models import SiteSetting
+    exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
+
+    session_key = f'followed_platforms_{agent_id}'
+    followed = request.session.get(session_key, [])
+    if platform not in followed:
+        followed.append(platform)
+        request.session[session_key] = followed
+        
+    follow_count = len(followed)
+    discount_unlocked = follow_count > 0
+    
+    base_price = float(exclusive_config.get('base_price', 1999))
+    current_price = base_price
+    follow_tiers = exclusive_config.get('follow_tiers', [])
+    
+    if follow_tiers:
+        for tier in follow_tiers:
+            if follow_count >= tier.get('follows', 0):
+                current_price = float(tier.get('price', current_price))
+                break
+    elif discount_unlocked:
+        current_price = float(exclusive_config.get('discounted_price', 199))
+    
+    # Save to DB so agent_register_complete can read it
+    if discount_unlocked:
+        from apps.agents.models import AgentDraft, UserPlanProgress
+        try:
+            draft = AgentDraft.objects.get(pk=agent_id)
+            progress, _ = UserPlanProgress.objects.get_or_create(draft=draft, plan_key='exclusive_gamified')
+            progress.discount_unlocked = True
+            progress.save()
+            logger.info(f"Saved discount_unlocked=True for draft {draft.id}")
+        except Exception as e:
+            logger.error(f"Failed to save UserPlanProgress in social_follow: {e}")
+    
+    return JsonResponse({
+        'success': True,
+        'message': 'Follow recorded successfully!',
+        'discount_unlocked': discount_unlocked,
+        'current_price': current_price,
+        'followed_platforms': followed
+    })
+
+def exclusive_discount_status(request):
+    """Get the current discount status and followed platforms."""
+    agent_id = request.GET.get('agent_id')
+    if not agent_id:
+        return JsonResponse({'success': False, 'message': 'Missing agent_id'}, status=400)
+    
+    session_key = f'followed_platforms_{agent_id}'
+    followed = request.session.get(session_key, [])
+    discount_unlocked = len(followed) > 0
+    
+    from apps.home.models import SiteSetting
+    exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
+    
+    follow_count = len(followed)
+    base_price = float(exclusive_config.get('base_price', 1999))
+    current_price = base_price
+    follow_tiers = exclusive_config.get('follow_tiers', [])
+    
+    if follow_tiers:
+        for tier in follow_tiers:
+            if follow_count >= tier.get('follows', 0):
+                current_price = float(tier.get('price', current_price))
+                break
+    elif discount_unlocked:
+        current_price = float(exclusive_config.get('discounted_price', 199))
+        
+    if discount_unlocked:
+        
+        # Sync session state to database to heal any mismatched states
+        from apps.agents.models import AgentDraft, UserPlanProgress
+        try:
+            draft = AgentDraft.objects.get(pk=agent_id)
+            progress, _ = UserPlanProgress.objects.get_or_create(draft=draft, plan_key='exclusive_gamified')
+            progress.discount_unlocked = True
+            progress.save()
+            logger.info(f"Healed and saved discount_unlocked=True for draft {draft.id}")
+        except Exception as e:
+            logger.error(f"Failed to heal UserPlanProgress in discount_status: {e}")
+
+    return JsonResponse({
+        'success': True,
+        'discount_unlocked': discount_unlocked,
+        'current_price': current_price,
+        'followed_platforms': followed
+    })
+
+
+
 def chooseplan(request):
     """Render the plan selection page."""
     if request.user.is_authenticated:
-        from apps.agents.models import Agent
+        from apps.agents.models import Agent, SubscriptionPlan
         if Agent.objects.filter(user=request.user).exists() or request.user.is_staff or request.user.is_superuser:
             return redirect('agents:agent_dashboard')
 
@@ -461,44 +477,27 @@ def chooseplan(request):
         return redirect('agents:agent_registration')
 
     try:
-        draft = AgentDraft.objects.get(pk=draft_id)
+        from apps.agents.models import AgentDraft
+        agent = AgentDraft.objects.get(pk=draft_id)
     except AgentDraft.DoesNotExist:
         request.session.pop('current_draft_id', None)
         return redirect('agents:agent_registration')
 
-    # Load site settings pricing config from DB only — no static fallback prices
-    pricing_config = SiteSetting.get_value('pricing_config')
-    if not pricing_config or not isinstance(pricing_config, dict):
-        return render(request, '500.html', status=500)
-
-    starter_cfg = pricing_config.get('starter')
-    prof_cfg = pricing_config.get('professional')
-    if not starter_cfg or not prof_cfg or not starter_cfg.get('full_price') or not prof_cfg.get('full_price'):
-        return render(request, '500.html', status=500)
-
-    trial_config = SiteSetting.get_value('trial_plan_config')
-    if not trial_config or not isinstance(trial_config, dict) or not trial_config.get('price'):
-        return render(request, '500.html', status=500)
-
-    trial_active = trial_config.get('is_active', True)
-    trial_base_price = float(trial_config['price'])
-    trial_duration = trial_config.get('duration_days', 30)
-
+    from apps.agents.models import PromoCode
+    from apps.home.models import SiteSetting
+    
     # Promo codes
-    applied_promo_code = request.session.get('applied_promo_code') or draft.promo_code or ''
+    applied_promo_code = request.session.get('applied_promo_code') or ''
     applied_promo_code = applied_promo_code.strip().upper()
 
     has_promo = False
     has_free_trial_promo = False
-    has_starter_promo = False
-    has_prof_promo = False
-
     promo_obj = None
 
     if applied_promo_code:
         try:
             promo_obj = PromoCode.objects.filter(code=applied_promo_code).first()
-            if promo_obj and promo_obj.is_valid():
+            if promo_obj and promo_obj.is_valid(name_for_promo):
                 has_promo = True
             else:
                 promo_obj = None
@@ -507,6 +506,11 @@ def chooseplan(request):
 
     if has_promo and promo_obj and promo_obj.is_free_trial_code():
         has_free_trial_promo = True
+
+    trial_config = SiteSetting.get_value('trial_plan_config') or {}
+    trial_active = trial_config.get('is_active', True)
+    trial_base_price = float(trial_config.get('price', 0))
+    trial_duration = trial_config.get('duration_days', 30)
 
     # Calculate Trial plan price
     if has_free_trial_promo and promo_obj:
@@ -520,76 +524,121 @@ def chooseplan(request):
 
     trial_final = trial_base_price + (trial_base_price * 0.18)
 
-    # Calculate Starter/Basic price
-    starter_full = float(starter_cfg['full_price'])
-    if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('basic'):
-        starter_final = starter_full - promo_obj.calculate_discount(starter_full)
-        has_starter_promo = True
-    else:
-        starter_final = starter_full
+    from apps.agents.models import SubscriptionPlan
+    # Fetch all active plans ordered by sort_order
+    db_plans = SubscriptionPlan.objects.filter(is_active=True).order_by('sort_order')
+    
+    dynamic_plans = []
+    
+    for plan in db_plans:
+        # Base pricing
+        plan_full = float(plan.actual_price)
+        plan_discounted = float(plan.discounted_price)
+        
+        # Handle promo codes dynamically based on plan slug
+        # Note: If promo code applies, override plan_discounted
+        plan_final = plan_discounted
+        has_plan_promo = False
+        
+        if has_promo and promo_obj:
+            # We map 'starter' to 'basic' for backward compat in promos, or just check slug
+            name_for_promo = 'basic' if 'starter' in plan.name.lower() else plan.name.lower()
+            if promo_obj.is_valid(name_for_promo):
+                plan_final = plan_full - promo_obj.calculate_discount(plan_full)
+                has_plan_promo = True
 
-    starter_base = round(starter_final / 1.18, 0)
-    starter_gst = round(starter_base * 0.18, 2)
-    starter_final = round(starter_base + starter_gst, 2)
-    starter_discount_percent = 0
-    if starter_full > 0 and starter_final < starter_full:
-        starter_discount_percent = round((1 - (starter_final / starter_full)) * 100)
+        # Calculate GST
+        plan_base = int(round(plan_final / 1.18, 0))
+        plan_gst = round(plan_base * 0.18, 2)
+        plan_final = int(round(plan_base + plan_gst, 0))
+        
+        # Calculate Discount %
+        discount_percent = 0
+        if plan_full > 0 and plan_final < plan_full:
+            discount_percent = round((1 - (plan_final / plan_full)) * 100)
+            
+        # Parse HTML
+        rendered_html = plan.html_code
+        if rendered_html:
+            rendered_html = rendered_html.replace('{{ actual_price }}', f'₹{int(plan_full)}')
+            rendered_html = rendered_html.replace('{{ discounted_price }}', f'₹{int(plan_final)}')
+            
+        # Compile UI plan object
+        dynamic_plans.append({
+            'model': plan,
+            'id': plan.id,
+            'slug': plan.slug,
+            'name': plan.name,
+            'description': plan.description,
+            'badge': plan.badge_text,
+            'color_theme': plan.color_theme,
+            'full_price': plan_full,
+            'final_price': plan_final,
+            'base_price': plan_base,
+            'gst': plan_gst,
+            'discount_percent': discount_percent,
+            'has_promo': has_plan_promo,
+            'rendered_html': rendered_html
+        })
 
-    # Calculate Professional price
-    prof_full = float(prof_cfg['full_price'])
-    if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('professional'):
-        prof_final = prof_full - promo_obj.calculate_discount(prof_full)
-        has_prof_promo = True
-    else:
-        prof_final = prof_full
+    # Keep exclusive_config logic for the gamified specific text/emojis on frontend
+    exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
+    is_exclusive_active = exclusive_config.get('is_active', False)
+    session_key = f'followed_platforms_{draft_id}'
+    followed = request.session.get(session_key, [])
+    follow_count = len(followed)
+    discount_unlocked = follow_count > 0
 
-    prof_base = round(prof_final / 1.18, 0)
-    prof_gst = round(prof_base * 0.18, 2)
-    prof_final = round(prof_base + prof_gst, 2)
-    prof_discount_percent = 0
-    if prof_full > 0 and prof_final < prof_full:
-        prof_discount_percent = round((1 - (prof_final / prof_full)) * 100)
-
-    starter_name = starter_cfg.get('name', '')
-    starter_desc = starter_cfg.get('description', '')
-    prof_name = prof_cfg.get('name', '')
-    prof_desc = prof_cfg.get('description', '')
-
-    trial_gst = round(trial_base_price * 0.18, 2)
+    premium_features = exclusive_config.get('premium_features', None)
+    if premium_features is None:
+        premium_features = [
+            {'name': 'Permanent<br>Website', 'icon': 'fa-globe', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
+            {'name': 'Digital<br>Card', 'icon': 'fa-id-card-clip', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
+            {'name': 'Licensed<br>Badge', 'icon': 'fa-shield-halved', 'color': '#f59e0b', 'bg_color': '#fffbeb'},
+            {'name': 'Call &<br>WhatsApp', 'icon': 'fa-phone-volume', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
+            {'name': 'Customer<br>Reviews', 'icon': 'fa-star', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
+            {'name': 'Product<br>Showcase', 'icon': 'fa-store', 'color': '#3b82f6', 'bg_color': '#eff6ff'}
+        ]
+        
+    social_links = exclusive_config.get('social_links', [])
+    for link in social_links:
+        user_icon = link.get('icon', '').strip()
+        if user_icon:
+            link['iconClass'] = user_icon
+        else:
+            platform = link.get('platform', '').lower()
+            if platform in ('x', 'twitter'):
+                link['iconClass'] = 'fa-x-twitter'
+            elif platform == 'linkedin':
+                link['iconClass'] = 'fa-linkedin'
+            elif platform == 'facebook':
+                link['iconClass'] = 'fa-facebook'
+            elif platform == 'youtube':
+                link['iconClass'] = 'fa-youtube'
+            else:
+                link['iconClass'] = 'fa-instagram'
 
     context = {
-        'draft': draft,
-        'pricing_config': pricing_config,
-        'trial_config': trial_config,
+        'draft': agent,  # Pass agent as draft to avoid template changes
+        'agent': agent,
+        'dynamic_plans': dynamic_plans,
+        
+        'applied_promo_code': applied_promo_code,
+        'has_promo': has_promo,
+        'has_free_trial_promo': has_free_trial_promo,
         'trial_active': trial_active,
         'trial_base_price': trial_base_price,
-        'trial_final': trial_final,
-        'trial_gst': trial_gst,
         'trial_duration': trial_duration,
-        'starter_full': starter_full,
-        'starter_base': starter_base,
-        'starter_final': starter_final,
-        'starter_gst': starter_gst,
-        'starter_discount_percent': starter_discount_percent,
-        'prof_full': prof_full,
-        'prof_base': prof_base,
-        'prof_final': prof_final,
-        'prof_gst': prof_gst,
-        'prof_discount_percent': prof_discount_percent,
-        'prof_save_amount': (prof_full - prof_final) / 1.18,
-        'has_promo': has_promo,
-        'applied_promo_code': applied_promo_code,
-        'has_free_trial_promo': has_free_trial_promo,
-        'has_starter_promo': has_starter_promo,
-        'has_prof_promo': has_prof_promo,
-        'is_upgrade_flow': False,
-        'starter_name': starter_name,
-        'starter_desc': starter_desc,
-        'prof_name': prof_name,
-        'prof_desc': prof_desc,
+        'trial_final': trial_final,
+
+        'exclusive_config': exclusive_config,
+        'is_exclusive_active': is_exclusive_active,
+        'discount_unlocked': discount_unlocked,
+        'premiumFeatures': premium_features,
     }
 
     return render(request, 'agents/plans.html', context)
+
 
 
 def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment'):
@@ -951,18 +1000,62 @@ def agent_register_complete(request):
             if float(promo_obj.discount_value) > 0:
                 trial_base_price = max(0.0, trial_base_price - promo_obj.calculate_discount(trial_base_price))
         total_amount = trial_base_price + (trial_base_price * 0.18)
-    elif plan_type == 'basic':
-        starter_final = starter_full
-        if not has_free_trial_promo and promo_obj and promo_obj.is_valid('basic'):
-            starter_final = starter_full - promo_obj.calculate_discount(starter_full)
-        starter_base = round(starter_final / 1.18, 0)
-        total_amount = round(starter_base + round(starter_base * 0.18, 2), 2)
+    elif plan_type == 'exclusive':
+        exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
+        
+        from apps.agents.models import UserPlanProgress
+        discount_unlocked = False
+        progress = UserPlanProgress.objects.filter(draft=draft, plan_key='exclusive_gamified').first()
+        if progress and progress.discount_unlocked:
+            discount_unlocked = True
+            
+        base_price = float(exclusive_config.get('discounted_price', 0)) if discount_unlocked else float(exclusive_config.get('base_price', 0))
+        total_amount = round(base_price + round(base_price * 0.18, 2), 2)
+        logger.info(f"Exclusive Checkout: discount_unlocked={discount_unlocked}, base_price={base_price}, total_amount={total_amount}")
     else:
-        prof_final = prof_full
-        if not has_free_trial_promo and promo_obj and promo_obj.is_valid('professional'):
-            prof_final = prof_full - promo_obj.calculate_discount(prof_full)
-        prof_base = round(prof_final / 1.18, 0)
-        total_amount = round(prof_base + round(prof_base * 0.18, 2), 2)
+        # For paid plans, handle the slugs
+        if plan_type in ['starter', 'professional', 'basic']:
+            plan_name_lower = plan_type
+            if plan_name_lower == 'basic': 
+                plan_name_lower = 'starter'
+                plan_type = 'starter'
+                
+            if plan_name_lower == 'starter':
+                final = starter_full
+                if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('basic'):
+                    final = starter_full - promo_obj.calculate_discount(starter_full)
+                base = int(round(final / 1.18, 0))
+                gst = round(base * 0.18, 2)
+                total_amount = int(round(base + gst, 0))
+            elif plan_name_lower == 'professional':
+                final = prof_full
+                if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('professional'):
+                    final = prof_full - promo_obj.calculate_discount(prof_full)
+                base = int(round(final / 1.18, 0))
+                gst = round(base * 0.18, 2)
+                total_amount = int(round(base + gst, 0))
+        else:
+            # Fallback for old clients/apps sending numeric IDs, and new dynamic slugs
+            from apps.agents.models import SubscriptionPlan
+            try:
+                if str(plan_type).isdigit():
+                    plan = SubscriptionPlan.objects.get(id=plan_type)
+                else:
+                    plan = SubscriptionPlan.objects.get(slug=plan_type)
+                    
+                base_price = float(plan.discounted_price)
+                total_amount = round(base_price + round(base_price * 0.18, 2), 2)
+                
+                # Normalize legacy plan_type back to slugs so downstream feature unlock works
+                if 'starter' in plan.name.lower():
+                    plan_type = 'starter'
+                elif 'professional' in plan.name.lower():
+                    plan_type = 'professional'
+                else:
+                    plan_type = plan.slug or str(plan.id)
+            except (SubscriptionPlan.DoesNotExist, ValueError):
+                logger.error(f"Invalid plan selected. plan_type received: {repr(plan_type)}")
+                return JsonResponse({'success': False, 'message': 'Invalid plan selected.'}, status=400)
 
     # Initialize Razorpay Client and create Order
     import razorpay
@@ -1008,12 +1101,16 @@ def agent_register_complete(request):
             ).first()
         
         if already_paid or has_paid_invoice:
-            from django.urls import reverse
+            redirect_url = reverse('agents:agent_dashboard')
+            from apps.distributors.views.dashboard import is_distributor
+            if request.user.is_authenticated and is_distributor(request.user):
+                redirect_url = reverse('distributors:agents_index')
+
             return JsonResponse({
                 'success': True,
                 'already_completed': True,
                 'agent_id': existing_agent.id if existing_agent else None,
-                'redirect_url': reverse('agents:agent_dashboard'),
+                'redirect_url': redirect_url,
             })
 
     try:
@@ -1021,16 +1118,25 @@ def agent_register_complete(request):
             # Create/get Agent record from DB
             agent = create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment')
             
-            # Capture referral code from session
-            ref_code = request.session.get('ref_code') or request.session.get('applied_promo_code')
-            if ref_code:
+            # Capture distributor/referral binding
+            dist_id_from_session = request.session.get('distributor_id')
+            if dist_id_from_session:
+                agent.distributor_id = dist_id_from_session
                 from apps.admin_panel.models.referral_code import ReferralCode
-                ref_obj = ReferralCode.objects.filter(code=ref_code, is_active=True).first()
+                ref_obj = ReferralCode.objects.filter(distributor_id=dist_id_from_session, is_active=True).first()
                 if ref_obj:
-                    agent.referred_by_code = ref_code
-                    if ref_obj.distributor_id:
-                        agent.distributor_id = ref_obj.distributor_id
-                    agent.save()
+                    agent.referred_by_code = ref_obj.code
+                agent.save()
+            else:
+                ref_code = request.session.get('ref_code') or request.session.get('applied_promo_code')
+                if ref_code:
+                    from apps.admin_panel.models.referral_code import ReferralCode
+                    ref_obj = ReferralCode.objects.filter(code=ref_code, is_active=True).first()
+                    if ref_obj:
+                        agent.referred_by_code = ref_code
+                        if ref_obj.distributor_id:
+                            agent.distributor_id = ref_obj.distributor_id
+                        agent.save()
             
             # Calculate subscription duration
             trial_days = int(trial_config.get('duration_days', 30))
@@ -1146,11 +1252,14 @@ def agent_register_complete(request):
                 request.session.pop('reg_step', None)
                 request.session.pop('ref_code', None)
                 
-                from django.urls import reverse
+                redirect_url = reverse('agents:agent_dashboard')
+                if request.user.is_authenticated and is_distributor(request.user):
+                    redirect_url = reverse('distributors:agents_index')
+
                 return JsonResponse({
                     'success': True,
                     'message': 'Registration completed successfully! Welcome to PadosiAgent.',
-                    'redirect_url': reverse('agents:agent_dashboard'),
+                    'redirect_url': redirect_url,
                 })
     except Exception as db_err:
         logger.error(f"Database transaction error in agent_register_complete: {db_err}")
@@ -1207,7 +1316,6 @@ def payment_success(request):
         
         if existing_sub or existing_invoice:
             from django.contrib.auth import login
-            from django.urls import reverse
             agent_obj = existing_sub.agent if existing_sub else existing_invoice.agent
             user = create_or_link_django_user(agent_obj)
             if not request.user.is_authenticated:
@@ -1390,11 +1498,14 @@ def payment_success(request):
             request.session.pop('reg_step', None)
             request.session.pop('ref_code', None)
 
-            from django.urls import reverse
+            redirect_url = reverse('agents:agent_dashboard')
+            if request.user.is_authenticated and is_distributor(request.user):
+                redirect_url = reverse('distributors:agents_index')
+
             return JsonResponse({
                 'success': True,
                 'message': 'Payment successful and account activated.',
-                'redirect_url': reverse('agents:agent_dashboard'),
+                'redirect_url': redirect_url,
             })
     except Exception as e:
         logger.error(f"Error activating account in payment_success: {str(e)}")
@@ -1456,7 +1567,6 @@ def referral_join(request, ref_code):
         request.session['ref_code'] = code.code
     
     # Redirect to registration page with query params
-    from django.urls import reverse
     url = reverse('agents:agent_registration') + f"?ref={code_val}&show_trial=1"
     return redirect(url)
 
@@ -1626,8 +1736,6 @@ def payment_failure(request):
 
             agent.status = 'pending_payment'
             agent.save()
-
-        from django.urls import reverse
         return JsonResponse({
             'success': True,
             'message': 'Payment failure logged.',
@@ -1835,29 +1943,6 @@ def razorpay_webhook(request):
 
 from django.contrib.auth.decorators import login_required
 
-@login_required(login_url='agents:agent_login')
-def agent_register_success(request):
-    """
-    Render payment success / registration completed page.
-    """
-    from apps.agents.models import Agent
-    agent = Agent.objects.filter(user=request.user).first()
-    if not agent:
-        return redirect('agents:agent_registration')
-    
-    # Check if this agent actually has a completed subscription
-    sub = agent.activeSubscription
-    invoice = None
-    if sub:
-        from apps.agents.models import Invoice
-        invoice = Invoice.objects.filter(agent=agent, razorpay_order_id=sub.razorpay_order_id).first()
-
-    return render(request, 'agents/success.html', {
-        'agent': agent,
-        'invoice': invoice
-    })
-
-
 def agent_register_failed(request):
     """
     Render payment failed page.
@@ -1867,81 +1952,6 @@ def agent_register_failed(request):
     agent = Agent.objects.filter(id=agent_id).first() if agent_id else None
     
     return render(request, 'agents/failed.html', {'agent': agent})
-
-
-def test_real_webhook(request):
-    """
-    Simulates a payment.captured webhook from Razorpay for the most recent pending subscription.
-    Enables local testing of the complete payment success workflow.
-    """
-    if not settings.DEBUG:
-        from django.http import Http404
-        raise Http404("Page not found")
-        
-    from apps.agents.models import Agent, AgentSubscription
-    from django.http import HttpResponse
-    from django.urls import reverse
-    
-    # Get most recent pending subscription
-    subscription = AgentSubscription.objects.filter(payment_status='pending').order_by('-created_at').first()
-    if not subscription:
-        return HttpResponse("No pending subscriptions found in the database to simulate. Please select a plan first.")
-        
-    agent = subscription.agent
-    
-    # Mock payment payload
-    import json
-    import time
-    from django.test import RequestFactory
-    
-    webhook_data = {
-        "event": "payment.captured",
-        "payload": {
-            "payment": {
-                "entity": {
-                    "id": f"pay_sim_{int(time.time())}",
-                    "entity": "payment",
-                    "amount": int(subscription.registration_amount * 100),
-                    "currency": "INR",
-                    "status": "captured",
-                    "order_id": subscription.razorpay_order_id,
-                    "email": agent.email,
-                    "contact": agent.mobile,
-                    "notes": {
-                        "agent_id": agent.id
-                    }
-                }
-            }
-        }
-    }
-    
-    factory = RequestFactory()
-    mock_request = factory.post(
-        reverse('agents:razorpay_webhook'),
-        data=json.dumps(webhook_data),
-        content_type='application/json',
-        HTTP_X_RAZORPAY_SIGNATURE='test_signature_skip_verification'
-    )
-    
-    # Process the webhook
-    response = razorpay_webhook(mock_request)
-    
-    if response.status_code == 200:
-        # Success! Log in the user to simulate success redirect
-        from django.contrib.auth import login
-        user = create_or_link_django_user(agent)
-        from apps.distributors.views.dashboard import is_distributor
-        if not (request.user.is_authenticated and is_distributor(request.user)):
-            login(request, user)
-        
-        # Clear session
-        request.session.pop('current_draft_id', None)
-        request.session.pop('reg_step', None)
-        request.session.pop('ref_code', None)
-        
-        return redirect('agents:agent_register_success')
-    else:
-        return HttpResponse(f"Webhook simulation failed. Status code: {response.status_code}, Body: {response.content.decode('utf-8')}")
 
 
 def fb_ad_signup(request):

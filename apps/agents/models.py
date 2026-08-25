@@ -1351,8 +1351,68 @@ def clear_og_image_on_agent_change(sender, instance, **kwargs):
     cache.delete(f'og_image_agent_card_{instance.id}')
 
 
+class SubscriptionPlan(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    slug = models.SlugField(max_length=50, unique=True, null=True, blank=True)
+    description = models.TextField(blank=True, default='')
+    color_theme = models.CharField(max_length=50, default='starter-theme')
+    badge_text = models.CharField(max_length=50, blank=True, null=True)
+    sort_order = models.IntegerField(default=0)
+    
+    html_code = models.TextField(blank=True, default='')
+    actual_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    discounted_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    
+    # Visibility toggles for agent features
+    show_profile_section = models.BooleanField(default=True)
+    show_agent_certificate = models.BooleanField(default=True)
+    show_career_timeline = models.BooleanField(default=True)
+    show_professional_bio = models.BooleanField(default=True)
+    show_social_media = models.BooleanField(default=True)
+    show_new_business_leads = models.BooleanField(default=True)
+    show_portfolio = models.BooleanField(default=True)
+    show_claim_support = models.BooleanField(default=True)
+    show_companies = models.BooleanField(default=True)
+    show_achievement = models.BooleanField(default=True)
+    show_lead_status = models.BooleanField(default=True)
+    show_sales_insights = models.BooleanField(default=True)
+    show_recent_leads = models.BooleanField(default=True)
+    
+    # New Plan-Based Feature Access Control fields
+    show_performance_stats = models.BooleanField(default=True)
+    show_rank_boost_tips = models.BooleanField(default=True)
+    show_view_public_profile_btn = models.BooleanField(default=True)
+    show_edit_profile_full = models.BooleanField(default=True)
+    show_edit_profile_basic = models.BooleanField(default=True)
+    show_edit_profile_professional = models.BooleanField(default=True)
+    show_edit_profile_portfolio = models.BooleanField(default=True)
+    show_edit_profile_additional = models.BooleanField(default=True)
+    show_review_management = models.BooleanField(default=True)
+    is_listed_in_directory = models.BooleanField(default=True)
+    premium_priority_support = models.BooleanField(default=True)
+    
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        db_table = 'subscription_plans'
+        managed = True
+        
+    def __str__(self):
+        return self.name
 
+class UserPlanProgress(models.Model):
+    draft = models.ForeignKey(AgentDraft, on_delete=models.CASCADE, null=True, blank=True)
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, null=True, blank=True, db_constraint=False)
+    plan_key = models.CharField(max_length=50) # e.g., 'exclusive_gamified'
+    discount_unlocked = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        db_table = 'user_plan_progress'
+        managed = True
 
-
+    def __str__(self):
+        return f"UserPlanProgress({self.plan_key}, unlocked={self.discount_unlocked})"

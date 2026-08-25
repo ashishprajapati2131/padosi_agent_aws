@@ -16,6 +16,14 @@ from apps.home.models import SiteSetting
 from apps.admin_panel.models.referral_code import ReferralCode
 from apps.admin_panel.models.referral_usage import ReferralUsage
 from apps.agents.utils.file_validation import validate_magic_bytes
+from apps.agents.services.feature_unlock import (
+    FEATURE_ATTR_MAP,
+    build_unlock_hints,
+    evaluate_unlock_rules,
+    normalize_plan_slug,
+    overlay_plan,
+    profile_completion_percent,
+)
 logger = logging.getLogger(__name__)
 
 class PlanFeatureProxy:
@@ -45,32 +53,7 @@ class PlanFeatureProxy:
       premium_support       → premium_priority_support
     """
     # Maps feature slug → list of show_* attr names it enables
-    FEATURE_MAP = {
-        'dashboard_stats':          ['show_performance_stats'],
-        'lead_management':          ['show_recent_leads', 'show_new_business_leads'],
-        'legacy_lead_status':       ['show_lead_status'],
-        'sales_insights':           ['show_sales_insights'],
-        'rank_boost_tips':          ['show_rank_boost_tips'],
-        'view_public_profile':      ['show_view_public_profile_btn'],
-        'edit_profile':             ['show_edit_profile_full'],
-        'edit_profile_basic':       ['show_edit_profile_basic'],
-        'edit_profile_professional':['show_edit_profile_professional'],
-        'edit_profile_career_timeline': ['show_career_timeline'],
-        'edit_profile_social_media': ['show_social_media'],
-        'edit_profile_certifications': ['show_agent_certificate'],
-        'edit_profile_professional_bio': ['show_professional_bio'],
-        'edit_profile_claim_support': ['show_claim_support'],
-        'edit_profile_portfolio':   ['show_edit_profile_portfolio'],
-        'edit_profile_companies':   ['show_companies'],
-        'edit_profile_additional':  ['show_edit_profile_additional'],
-        'manage_portfolio':         ['show_portfolio'],
-        'upload_achievements':      ['show_achievement'],
-        'view_reviews':             ['show_review_management'],
-        'public_profile':           ['show_profile_section'],
-        'agent_directory_visibility':['is_listed_in_directory'],
-        'receive_leads':            ['show_new_business_leads'],
-        'premium_support':          ['premium_priority_support'],
-    }
+    FEATURE_MAP = FEATURE_ATTR_MAP
 
     def __init__(self, enabled_features):
         """
@@ -89,19 +72,9 @@ class PlanFeatureProxy:
         raise AttributeError(name)
 
 
-def _resolve_agent_plan(plan_type):
+def _resolve_base_agent_plan(plan_type):
     """
-    Dual-system plan resolver.
-
-    Priority 1 — plan_features_config (Plans & Pricing admin checkbox grid):
-      Reads the SiteSetting JSON keyed by plan_type slug.
-      Returns a PlanFeatureProxy exposing .show_* attributes.
-
-    Priority 2 — SubscriptionPlan model (Subscription Plans admin):
-      Multi-tier DB lookup: numeric ID → exact name → keyword-contains.
-      Returns the SubscriptionPlan instance directly (has real .show_* fields).
-
-    Returns None when nothing matches → template shows all features (fail-safe).
+    Resolves the agent's base plan directly from the SubscriptionPlan model.
     """
     if not plan_type:
         return None
@@ -109,53 +82,43 @@ def _resolve_agent_plan(plan_type):
     if not pt:
         return None
 
-    # ── Priority 1: plan_features_config (Plans & Pricing admin) ─────────────
-    try:
-        from apps.home.models import SiteSetting
-        features_config = SiteSetting.get_value('plan_features_config') or {}
-        # Normalise slug: 'free_trial', 'starter', 'professional', 'exclusive'
-        SLUG_NORMALISE = {
-            'basic': 'starter',
-            'free trial': 'free_trial',
-        }
-        slug = pt.lower().replace(' ', '_')
-        slug = SLUG_NORMALISE.get(slug, slug)
-        if slug in features_config:
-            enabled = features_config[slug]
-            if isinstance(enabled, list):
-                return PlanFeatureProxy(enabled)
-    except Exception:
-        pass
-
-    # ── Priority 2: SubscriptionPlan model ───────────────────────────────────
     try:
         from apps.agents.models import SubscriptionPlan
-        # Tier 2a: numeric ID
+        
+        # Tier 1: exact slug match
+        slug = normalize_plan_slug(pt)
+        plan = SubscriptionPlan.objects.filter(slug=slug).first()
+        if plan:
+            return plan
+
+        # Tier 2: numeric ID
         if pt.isdigit():
             plan = SubscriptionPlan.objects.filter(id=int(pt)).first()
             if plan:
                 return plan
-        # Tier 2b: exact name match
-        plan = SubscriptionPlan.objects.filter(name__iexact=pt, is_active=True).first()
+        # Tier 3: Keyword fallback match
+        plan = SubscriptionPlan.objects.filter(name__icontains=pt, is_active=True).first()
         if plan:
             return plan
-        # Tier 2c: keyword-contains fallback
-        SLUG_KEYWORDS = {
-            'free_trial': ['free', 'trial'],
-            'basic':      ['basic', 'starter'],
-            'professional': ['professional', 'pro'],
-            'standard':   ['standard'],
-            'exclusive':  ['exclusive'],
-        }
-        keywords = SLUG_KEYWORDS.get(pt.lower(), [pt])
-        for kw in keywords:
-            plan = SubscriptionPlan.objects.filter(name__icontains=kw, is_active=True).first()
-            if plan:
-                return plan
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Error resolving plan {pt}: {e}")
 
     return None
+
+
+def _resolve_agent_plan(plan_type, agent=None):
+    """
+    Resolve plan entitlements, then optionally overlay activity-unlock extras.
+
+    Passing agent=None keeps the original plan-only behaviour (used by the
+    Find Agents directory short-circuit). Unknown plans still return None
+    (fail-open) and are never wrapped.
+    """
+    base = _resolve_base_agent_plan(plan_type)
+    if base is None or agent is None:
+        return base
+    extra = evaluate_unlock_rules(agent, normalize_plan_slug(plan_type))
+    return overlay_plan(base, extra)
 
 
 @login_required(login_url='agents:agent_login')
@@ -192,7 +155,7 @@ def agent_dashboard(request):
             plan_name = (completed_sub.selected_plan or '').lower()
             plan_type = 'free_trial' if 'trial' in plan_name else (
                 'professional' if ('professional' in plan_name or 'pro' in plan_name) else (
-                'basic' if ('starter' in plan_name or 'basic' in plan_name) else 'standard'
+                'starter' if ('starter' in plan_name or 'basic' in plan_name or 'standard' in plan_name) else 'starter'
             ))
 
             agent.status = 'active'
@@ -283,30 +246,9 @@ def agent_dashboard(request):
         except Exception as e:
             logger.warning(f"Dashboard notifications unavailable for agent #{agent.id}: {e}")
 
-    # Profile Completion Check
-    completion = 15
+    # Profile Completion Check (shared rubric with activity-unlock rules)
     profile = getattr(agent, 'profile', None)
-    if profile:
-        if profile.address and profile.languages:
-            completion += 15
-        if getattr(profile, 'service_pincodes', None) and agent.serviceableCities.exists():
-            completion += 15
-        if agent.insuranceSegments.exists():
-            completion += 15
-        # Portfolios and preferences fallback check
-        # Laravel: if ($agent->portfolios->count() > 0) $completion += 15;
-        # Laravel: if ($agent->leadPreferences) $completion += 15;
-        # For compatibility: check related managers exists
-        if hasattr(agent, 'portfolios') and agent.portfolios.exists():
-            completion += 15
-        if profile.profile_photo_path:
-            completion += 10
-        if hasattr(agent, 'leadPreferences') and agent.leadPreferences:
-            completion += 15
-
-    if agent.status == 'pending':
-        completion = 100
-    completion = min(completion, 100)
+    completion = profile_completion_percent(agent)
 
     # Free Trial Upgrade Discount Calculation
     is_on_trial = agent.isOnFreeTrial()
@@ -372,7 +314,7 @@ def agent_dashboard(request):
     plan_name = raw_plan.replace('_', ' ').replace('-', ' ').title()
 
     # Resolve SubscriptionPlan using robust multi-tier helper
-    agent_plan = _resolve_agent_plan(agent.plan_type)
+    agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
 
     favorite_ids = set(
         FavoriteAgent.objects.filter(user=request.user).values_list('agent_id', flat=True)
@@ -401,6 +343,9 @@ def agent_dashboard(request):
         'profFull': prof_full,
         'profDisc': prof_disc,
         'planName': plan_name,
+        'feature_unlock_hints_json': json.dumps(
+            build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
+        ),
         'fcm_api_key': getattr(settings, 'FCM_API_KEY', ''),
         'fcm_auth_domain': getattr(settings, 'FCM_AUTH_DOMAIN', ''),
         'fcm_project_id': getattr(settings, 'FCM_PROJECT_ID', ''),
@@ -697,7 +642,7 @@ def agent_public_profile(request, slug, state_code=None):
                 pass
                 
     # Resolve agent_plan for public profile
-    agent_plan = _resolve_agent_plan(agent.plan_type)
+    agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
 
     context = {
         'agent': agent,
@@ -901,7 +846,7 @@ def edit_profile(request):
             logged_in_admin = MockAdmin()
             
     # Resolve SubscriptionPlan using robust multi-tier helper
-    agent_plan = _resolve_agent_plan(agent.plan_type)
+    agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
 
     context = {
         'agent_plan': agent_plan,
@@ -918,6 +863,9 @@ def edit_profile(request):
         'years_range': years_range,
         'months': months,
         'active_investment_types': investment_types,
+        'feature_unlock_hints_json': json.dumps(
+            build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
+        ),
     }
     return render(request, 'agents/edit_profile.html', context)
 
@@ -1702,13 +1650,20 @@ def agent_upgrade_plan(request):
             data = request.POST
 
         plan_type = data.get('plan_type')
-        if plan_type not in ['basic', 'professional']:
+
+        from apps.agents.models import SubscriptionPlan
+        try:
+            if str(plan_type).isdigit():
+                plan = SubscriptionPlan.objects.get(id=plan_type)
+            else:
+                plan = SubscriptionPlan.objects.get(slug=plan_type)
+        except (SubscriptionPlan.DoesNotExist, ValueError):
             return JsonResponse({'success': False, 'message': 'Invalid plan selection.'}, status=400)
 
         promo_code = data.get('promo_code', '').strip()
         promo_obj = None
         if promo_code:
-            from apps.admin_panel.models.promo_code import PromoCode
+            from apps.agents.models import PromoCode
             promo_obj = PromoCode.objects.filter(code=promo_code, is_active=True).first()
 
         # Re-compute prices
@@ -1724,46 +1679,31 @@ def agent_upgrade_plan(request):
 
         discount_pct = max(int(admin_default), int(agent_specific), int(referral_discount))
 
-        pricing_config = SiteSetting.get_value('pricing_config', {
-            'starter': {'name': "Starter's Plan", 'full_price': 2359},
-            'professional': {'name': "Professional's Plan", 'full_price': 8258},
-        })
-
-        starter_full = float(pricing_config.get('starter', {}).get('full_price', 2359))
-        prof_full = float(pricing_config.get('professional', {}).get('full_price', 8258))
-
-        starter_final = starter_full
-        if promo_obj and promo_obj.is_valid('basic'):
-            starter_final = starter_full - promo_obj.calculate_discount(starter_full)
+        plan_full = float(plan.actual_price)
+        plan_final = plan_full
+        
+        # We pass the plan name to is_valid for promo codes
+        name_for_promo = 'basic' if 'starter' in plan.name.lower() else plan.name.lower()
+        if promo_obj and promo_obj.is_valid(name_for_promo):
+            plan_final = plan_full - promo_obj.calculate_discount(plan_full)
 
         discount_factor = (100 - discount_pct) / 100
-        starter_final = round(starter_final * discount_factor)
-        starter_base = round(starter_final / 1.18, 0)
-        starter_disc = starter_base + round(starter_base * 0.18, 0)
-
-        prof_final = prof_full
-        if promo_obj and promo_obj.is_valid('professional'):
-            prof_final = prof_full - promo_obj.calculate_discount(prof_full)
-
-        prof_final = round(prof_final * discount_factor)
-        if agent.referral_reward_type == 'pro_plan_1rs':
-            prof_final = 1
+        plan_final = round(plan_final * discount_factor)
+        
+        if agent.referral_reward_type == 'pro_plan_1rs' and ('professional' in plan.name.lower() or 'pro' in plan.name.lower()):
+            plan_final = 1
             discount_pct = 99.99
 
-        prof_base = round(prof_final / 1.18, 0)
-        if agent.referral_reward_type == 'pro_plan_1rs':
-            prof_disc = 1.00
+        plan_base = round(plan_final / 1.18, 0)
+        
+        if agent.referral_reward_type == 'pro_plan_1rs' and ('professional' in plan.name.lower() or 'pro' in plan.name.lower()):
+            plan_disc = 1.00
         else:
-            prof_disc = prof_base + round(prof_base * 0.18, 0)
+            plan_disc = plan_base + round(plan_base * 0.18, 0)
 
-        if plan_type == 'basic':
-            total_amount = starter_disc
-            plan_amount = starter_base
-            plan_name = pricing_config.get('starter', {}).get('name', "Starter's Plan")
-        else:
-            total_amount = prof_disc
-            plan_amount = prof_base
-            plan_name = pricing_config.get('professional', {}).get('name', "Professional's Plan")
+        total_amount = plan_disc
+        plan_amount = plan_base
+        plan_name = plan.name
 
         # Check duplicate paid subscription
         already_paid = AgentSubscription.objects.filter(
@@ -2487,7 +2427,7 @@ def agent_public_share_profile(request, slug):
         desc_parts.append(f"Serving: {agent.agent_city_display}")
     seo_description = " · ".join(desc_parts) or "Licensed PadosiAgent Insurance & Investment Advisor."
 
-    agent_plan = _resolve_agent_plan(agent.plan_type)
+    agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
 
     context = {
         'agent': agent,
