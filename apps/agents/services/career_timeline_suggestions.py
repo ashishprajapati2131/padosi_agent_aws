@@ -54,7 +54,7 @@ def get_career_timeline_suggestions(agent):
 
     # ── 2. IRDAI License (no issue-date stored → both blank) ─────────────────
     try:
-        profile = getattr(agent, 'profile', None)
+        profile = agent.get_primary_profile()
         if profile and profile.license_number:
             suggestions.append({
                 'key': 'licensed_agent',
@@ -70,7 +70,7 @@ def get_career_timeline_suggestions(agent):
 
     # ── 3. AMFI ARN (no registration-date stored → both blank) ──────────────
     try:
-        profile = getattr(agent, 'profile', None)
+        profile = agent.get_primary_profile()
         if profile and profile.arn_number:
             suggestions.append({
                 'key': 'arn_distributor',

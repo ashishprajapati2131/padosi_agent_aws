@@ -50,7 +50,7 @@ def career_timeline_suggestions(request):
     # ── Auth: support both regular agent session and admin-acting-as-agent ──
     from apps.admin_panel.views.dashboard import _get_admin_from_session
     admin_id = _get_admin_from_session(request)
-    is_admin = bool(admin_id) or getattr(request.user, 'is_staff', False) or getattr(request.user, 'is_superuser', False)
+    is_admin = bool(admin_id)
 
     if not is_admin and not request.user.is_authenticated:
         return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)

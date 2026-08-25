@@ -102,6 +102,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'apps.admin_panel.middleware.ThreatMonitorMiddleware',
     # 'apps.admin_panel.middleware.AdminIpWhitelistMiddleware',
+    'apps.admin_panel.middleware.IsolateAdminAgentSessionsMiddleware',
     'apps.admin_panel.middleware.AdminPermissionMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.admin_panel.middleware.ExceptionLoggerMiddleware',

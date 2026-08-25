@@ -173,10 +173,29 @@ class PublicProfileService:
                 audit_fee = f"₹{prefs.portfolio_fee}"
             service_fees.append(ServiceFeeSchema(label="Review", value=audit_fee))
             
+        from apps.agents.models import resolve_stored_file_url
+
+        def get_media_url(path: str) -> str:
+            return resolve_stored_file_url(
+                path,
+                fallback_subdirs=(
+                    'app/public/profile',
+                    'agent/profiles',
+                    'app/public/achievement',
+                    'agent/achievements',
+                ),
+                missing='',
+            )
+
         # Media
         media_urls = []
         if agent.achievement_photos:
-            media_urls = [p.photo_path for p in agent.achievement_photos if p.photo_path]
+            media_urls = [
+                get_media_url(p.photo_path)
+                for p in agent.achievement_photos
+                if p.photo_path
+            ]
+            media_urls = [url for url in media_urls if url]
             
         # Reviews Mapping
         review_schemas = []
@@ -190,33 +209,6 @@ class PublicProfileService:
                 text=r.review or "",
                 date=r.created_at.strftime('%b %d, %Y') if r.created_at else "N/A"
             ))
-
-        def get_media_url(path: str) -> str:
-            if not path:
-                return ""
-            if path.startswith(('http://', 'https://')):
-                if any(k in path.lower() for k in ['localhost', '127.0.0.1', 'ngrok']):
-                    from urllib.parse import urlparse
-                    parsed = urlparse(path)
-                    normalized = parsed.path.lstrip('/')
-                    if "image/upload/" in normalized and "agent_profiles" in normalized:
-                        filename = normalized.split('/')[-1]
-                        return f"/media/uploads/profile/2026/07/{filename}"
-                    if normalized.startswith("media/"):
-                        return f"/{normalized}"
-                    if normalized.startswith("static/"):
-                        return f"/media/{normalized[7:]}"
-                    return f"/media/{normalized}"
-                return path
-            normalized = path.lstrip('/')
-            if "image/upload/" in normalized and "agent_profiles" in normalized:
-                filename = normalized.split('/')[-1]
-                return f"/media/uploads/profile/2026/07/{filename}"
-            if normalized.startswith("media/"):
-                return f"/{normalized}"
-            if normalized.startswith("static/"):
-                return f"/media/{normalized[7:]}"
-            return f"/media/{normalized}"
 
         return PublicProfileResponse(
             agent_id=agent.id,

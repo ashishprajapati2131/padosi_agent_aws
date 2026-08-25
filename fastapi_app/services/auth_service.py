@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from fastapi_app.schemas.auth import LoginRequest, LoginResponse
 from fastapi_app.repositories.user_repository import UserRepository
 from fastapi_app.repositories.agent_repository import AgentRepository
-from fastapi_app.utils.auth import verify_password, generate_and_register_token
+from fastapi_app.utils.auth import verify_password, generate_and_register_token, get_password_hash
 from fastapi_app.config import settings
 from datetime import datetime
 import time
@@ -64,8 +64,9 @@ class AuthService:
 
         # 1. Fetch User by email from primary `users` table
         user = self.user_repo.get_by_email(request.email)
+        agent = self.agent_repo.get_by_email(request.email)
 
-        # 2. Verify password against `users` table
+        # 2. Verify password against `users` table (bcrypt, same as admin login)
         password_valid = False
         if user and user.password:
             password_valid = verify_password(request.password, user.password)
@@ -104,6 +105,31 @@ class AuthService:
                             self.db.commit()
                         except Exception:
                             self.db.rollback()
+
+        # Orphan incomplete/pending_payment agents have no users row. Temp password is the email.
+        if not password_valid and agent and agent.status in ('incomplete', 'pending_payment'):
+            stored = user.password if user and user.password else None
+            if not stored and request.password and agent.email and request.password.lower() == agent.email.lower():
+                password_valid = True
+                if not user:
+                    try:
+                        from fastapi_app.models.user import User as UserModel
+                        user = UserModel(
+                            fullname=agent.fullname or agent.email,
+                            email=agent.email,
+                            password=get_password_hash(agent.email),
+                            role='agent',
+                            status='active',
+                            email_verified_at=datetime.utcnow(),
+                        )
+                        self.db.add(user)
+                        self.db.flush()
+                        if not agent.user_id:
+                            agent.user_id = user.id
+                        self.db.commit()
+                    except Exception:
+                        self.db.rollback()
+                        user = self.user_repo.get_by_email(request.email)
 
         if not user or not password_valid:
             record_login_attempt(ip)
@@ -146,13 +172,13 @@ class AuthService:
             )
 
         # Check Agent status specifically matching Django
-        if agent.status == 'incomplete':
+        if agent.status in ('incomplete', 'pending_payment'):
             record_login_attempt(ip)
             return JSONResponse(
                 status_code=200,
                 content={"success": False, "message": "Please complete plan selection and payment to activate your account."}
             )
-        elif agent.status == 'pending':
+        elif agent.status in ('pending', 'pending_approval'):
             record_login_attempt(ip)
             return JSONResponse(
                 status_code=200,

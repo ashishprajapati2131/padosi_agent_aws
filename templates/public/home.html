@@ -36,9 +36,9 @@
                         <path d="M9 18h6" />
                         <path d="M10 22h4" />
                     </svg>
-                    Did you know?
+                    {{ settings.dyk_label|default:"Did you know?" }}
                 </p>
-                <h2 class="dyk-title">Insights from the Padosi network</h2>
+                <h2 class="dyk-title">{{ settings.dyk_title|default:"Insights from the Padosi network" }}</h2>
             </div>
             <div class="d-none d-sm-flex align-items-center" style="gap: 8px;">
                 <button id="dyk-prev-btn" aria-label="Previous" class="dyk-nav-btn">
@@ -149,8 +149,8 @@
                             {{ settings.why_choose_description|default:"No Spam / No Platform Fee / Licensed PadosiAgents" }}
                         </p>
                         <div>
-                            <a href="/find-agents?openFilter=1" class="find-agent-btn text-decoration-none">
-                                Find My PadosiAgent
+                            <a href="{{ settings.why_choose_button_url|default:'/find-agents?openFilter=1' }}" class="find-agent-btn text-decoration-none">
+                                {{ settings.why_choose_button_text|default:"Find My PadosiAgent" }}
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
                                     stroke-linejoin="round" class="ml-2">
@@ -220,8 +220,8 @@
                 <p class="why-mobile-description">{{ settings.why_choose_description|default:"No Spam / No Platform Fee / Licensed PadosiAgents" }}</p>
             </div>
             <div class="text-center mt-3">
-                <a href="/find-agents?openFilter=1" class="find-agent-btn text-decoration-none">
-                    Find My PadosiAgent
+                <a href="{{ settings.why_choose_button_url|default:'/find-agents?openFilter=1' }}" class="find-agent-btn text-decoration-none">
+                    {{ settings.why_choose_button_text|default:"Find My PadosiAgent" }}
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
                         class="ml-2">

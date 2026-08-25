@@ -63,7 +63,7 @@ class AIPicksService:
 
             # 8. Verified Licenses (5% weight)
             # 100 if both IRDAI and AMFI credentials are valid/non-empty. 50 if one.
-            profile = getattr(agent, 'profile', None)
+            profile = agent.get_primary_profile()
             has_irdai = bool(profile.license_number) if profile else False
             has_amfi = bool(profile.arn_number) if profile else False
             license_score = 0.0
@@ -170,7 +170,7 @@ class AIPicksService:
             reasons.append("a high claim settlement record")
 
         # 7. Licenses
-        profile = getattr(agent, 'profile', None)
+        profile = agent.get_primary_profile()
         has_irdai = bool(profile.license_number) if profile else False
         has_amfi = bool(profile.arn_number) if profile else False
         if has_irdai and has_amfi:

@@ -2,7 +2,6 @@ import re
 import json
 import logging
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.services.irdai_scraper import IRDAIScraperService
@@ -11,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 PAN_REGEX = re.compile(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$')
 
-@csrf_exempt
 @require_POST
 def verify_irdai_license(request):
     """
@@ -19,8 +17,7 @@ def verify_irdai_license(request):
     """
     # 1. Auth and permission checks
     admin_id = _get_admin_from_session(request)
-    is_admin = bool(admin_id) or request.user.is_staff or request.user.is_superuser
-    if not is_admin:
+    if not admin_id:
         return JsonResponse({'status': 'ERROR', 'message': 'Unauthorized. Admin session required.'}, status=401)
 
     try:

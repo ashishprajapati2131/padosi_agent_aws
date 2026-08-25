@@ -99,41 +99,19 @@ class ProfileService:
                     pass
             return {}
 
+        from apps.agents.models import resolve_stored_file_url
+
         def get_media_url(path: str) -> str:
-            if not path:
-                return ""
-            if path.startswith(('http://', 'https://')):
-                if any(k in path.lower() for k in ['localhost', '127.0.0.1', 'ngrok']):
-                    from urllib.parse import urlparse
-                    parsed = urlparse(path)
-                    normalized = parsed.path.lstrip('/')
-                    if "image/upload/" in normalized and "agent_profiles" in normalized:
-                        filename = normalized.split('/')[-1]
-                        return f"/media/uploads/profile/2026/07/{filename}"
-                    if normalized.startswith("media/"):
-                        return f"/{normalized}"
-                    if normalized.startswith("static/"):
-                        return f"/media/{normalized[7:]}" # map old static uploads to media
-                    return f"/media/{normalized}"
-                return path
-
-            normalized = path.lstrip('/')
-            # If the path contains the Cloudinary upload segment (e.g., dsj8cvdhe/image/upload/v1784117464/agent_profiles/155/profile.png)
-            # but is requesting a local asset (which looks like /dsj8cvdhe/image/upload/...), map it to the local fallback.
-            if "image/upload/" in normalized and "agent_profiles" in normalized:
-                # Extracts filename (e.g. profile.png -> profile.png)
-                # Usually matches structure: dsj8cvdhe/image/upload/v1784117464/agent_profiles/155/profile.png
-                # Let's map it to media/uploads/profile/2026/07/
-                # We can dynamically fallback to media/uploads/profile/2026/07/ plus whatever files exist or the default file
-                # But to make it robust, we serve from media/uploads/profile/2026/07/
-                filename = normalized.split('/')[-1]
-                return f"/media/uploads/profile/2026/07/{filename}"
-
-            if normalized.startswith("media/"):
-                return f"/{normalized}"
-            if normalized.startswith("static/"):
-                return f"/media/{normalized[7:]}"
-            return f"/media/{normalized}"
+            return resolve_stored_file_url(
+                path,
+                fallback_subdirs=(
+                    'app/public/profile',
+                    'agent/profiles',
+                    'app/public/achievement',
+                    'agent/achievements',
+                ),
+                missing='',
+            )
 
         def safe_float(val):
             if not val:

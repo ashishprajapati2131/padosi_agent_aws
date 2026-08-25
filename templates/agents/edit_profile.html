@@ -161,7 +161,11 @@ Overview
     window.$ = window.jQuery; // Ensure $ is defined
     const IS_ADMIN_VIEW = {% if isAdminView %}true{% else %} false{% endif %};
     const ADMIN_AGENT_ID = '{{ agent.id|default:0 }}';
+    {% if isAdminView %}
+    const SUBMIT_PROFILE_URL = "{% url 'admin_agents_full_update_profile' agent.id %}";
+    {% else %}
     const SUBMIT_PROFILE_URL = "{% url 'agents:agent_update_profile' %}";
+    {% endif %}
 </script>
 
 {% if isAdminView %}

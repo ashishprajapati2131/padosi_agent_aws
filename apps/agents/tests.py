@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
 from apps.agents.models import Agent, AgentProfile, AgentPerformanceStat, AgentReview
@@ -168,3 +168,31 @@ class AgentPublicProfileTests(TestCase):
                 is_approved=True,
             ).exists()
         )
+
+
+class AchievementPhotoUrlTests(SimpleTestCase):
+    def test_laravel_path_resolves_to_uploaded_django_folder(self):
+        import os
+        from apps.agents.models import AgentAchievementPhoto, resolve_stored_file_url
+
+        with self.settings(MEDIA_ROOT=self._media_root()):
+            dest_dir = os.path.join(self._tmp, 'app', 'public', 'achievement')
+            os.makedirs(dest_dir, exist_ok=True)
+            filename = 'HASHFILE123.jpg'
+            with open(os.path.join(dest_dir, filename), 'wb') as fh:
+                fh.write(b'fake-image')
+
+            url = resolve_stored_file_url(
+                f'agent/achievements/{filename}',
+                fallback_subdirs=('app/public/achievement', 'agent/achievements'),
+            )
+            self.assertEqual(url, f'/media/app/public/achievement/{filename}')
+
+            photo = AgentAchievementPhoto(photo_path=f'agent/achievements/{filename}')
+            self.assertEqual(photo.photo_url, f'/media/app/public/achievement/{filename}')
+
+    def _media_root(self):
+        import tempfile
+        self._tmp = tempfile.mkdtemp()
+        return self._tmp
+

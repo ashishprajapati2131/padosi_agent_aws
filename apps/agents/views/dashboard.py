@@ -150,22 +150,14 @@ def agent_dashboard(request):
     Includes self-healing logic and pricing calculation.
     """
     user = request.user
-    agent = Agent.objects.filter(user=user).first()
-
-    # ── Self-Heal 1: Try to find & link an orphaned agent record by email ──
+    from apps.agents.services.account_auth import resolve_agent_for_user
+    agent = resolve_agent_for_user(user)
     if not agent:
-        agent_by_email = Agent.objects.filter(email__iexact=user.email).order_by('-created_at').first()
-        if agent_by_email:
-            agent_by_email.user = user
-            agent_by_email.save()
-            logger.info(f"AgentDashboard: Linked orphaned agent #{agent_by_email.id} to user #{user.id} ({user.email})")
-            agent = agent_by_email
-        else:
-            messages.error(request, "Please complete your registration.")
-            return redirect('agents:agent_registration')
+        messages.error(request, "Please complete your registration.")
+        return redirect('agents:agent_registration')
 
     # ── Self-Heal 2: Stuck in pending_payment but subscription completed ──
-    if agent.status in ['pending_payment', 'incomplete'] or agent.registration_step < 2:
+    if agent.status in ['pending_payment', 'pending_accounts_payment', 'incomplete'] or agent.registration_step < 2:
         completed_sub = AgentSubscription.objects.filter(
             agent=agent,
             payment_status='completed',
@@ -268,7 +260,7 @@ def agent_dashboard(request):
             logger.warning(f"Dashboard notifications unavailable for agent #{agent.id}: {e}")
 
     # Profile Completion Check (shared rubric with activity-unlock rules)
-    profile = getattr(agent, 'profile', None)
+    profile = agent.get_primary_profile()
     completion = profile_completion_percent(agent)
 
     # Free Trial Upgrade Discount Calculation
@@ -636,7 +628,7 @@ def agent_public_profile(request, slug, state_code=None):
     if request.user.is_authenticated and not is_owner:
         existing_review = agent.reviews.filter(user=request.user).first()
         
-    profile = getattr(agent, 'profile', None)
+    profile = agent.get_primary_profile()
     if profile is None:
         raise Http404("Agent profile not found")
     is_admin = request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
@@ -790,61 +782,45 @@ def store_review(request, slug, state_code=None):
 
 @never_cache
 def edit_profile(request):
-    from apps.admin_panel.views.dashboard import _get_admin_from_session
-
-    # Determine if this is a legitimate admin request.
-    # An admin is someone who has a valid admin session cookie OR
-    # is a Django staff/superuser.
-    admin_session_id = _get_admin_from_session(request)
-    is_admin = bool(admin_session_id) or (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser))
-
-    # Gate: regular agents must be authenticated via Django auth.
-    if not is_admin and not request.user.is_authenticated:
+    if not request.user.is_authenticated:
         return redirect('agents:agent_login')
 
-    agent_id = request.GET.get('agent_id')
-    
-    if is_admin and agent_id:
-        agent = Agent.objects.filter(id=agent_id).first()
-        is_admin_view = True
-    else:
-        agent = Agent.objects.filter(user=request.user).first()
-        is_admin_view = False
-        
+    agent = Agent.objects.filter(user=request.user).first()
     if not agent:
-        if is_admin:
-            messages.error(request, "Agent not found.")
-            return redirect('admin_dashboard')
-        else:
-            messages.error(request, "Please complete your registration.")
-            return redirect('agents:agent_registration')
-            
+        messages.error(request, "Please complete your registration.")
+        return redirect('agents:agent_registration')
+
+    return render_edit_profile(request, agent, is_admin_view=False)
+
+
+def render_edit_profile(request, agent, is_admin_view=False):
     from apps.agents.models import AgentProfile
+
     profile, _ = AgentProfile.objects.get_or_create(agent=agent)
-            
+
     # Load serviceable cities
     agent_cities = list(agent.serviceableCities.values_list('name', flat=True))
-    
+
     main_cities = sorted(list(set([
-        'Ahmedabad', 'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Surat', 
-        'Jaipur', 'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad', 
-        'Patna', 'Vadodara', 'Ghaziabad', 'Ludhiana', 'Coimbatore', 'Agra', 'Madurai', 'Nashik', 'Vijayawada', 
-        'Faridabad', 'Meerut', 'Rajkot', 'Kalyan-Dombivli', 'Vasai-Virar', 'Varanasi', 'Srinagar', 'Aurangabad', 
-        'Dhanbad', 'Amritsar', 'Navi Mumbai', 'Allahabad', 'Howrah', 'Ranchi', 'Gwalior', 'Jabalpur', 
-        'Jodhpur', 'Raipur', 'Chandigarh', 'Guntur', 'Guwahati', 'Solapur', 'Noida', 'Mysuru', 'Gurgaon', 
-        'Bhubaneswar', 'Thiruvananthapuram', 'Dehradun', 'Jammu', 'Jamnagar', 'Ujjain', 'Jhansi', 'Kochi', 
-        'Mangalore', 'Udaipur', 'Ajmer', 'Tiruppur', 'Nellore', 'Kurnool', 'Gaya', 'Hoshiarpur', 'Muzaffarpur', 
-        'Vellore', 'Shimla', 'Rohtak', 'Ambala', 'Gandhinagar', 'Pondicherry', 'Siliguri', 'Raurkela', 
+        'Ahmedabad', 'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Surat',
+        'Jaipur', 'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad',
+        'Patna', 'Vadodara', 'Ghaziabad', 'Ludhiana', 'Coimbatore', 'Agra', 'Madurai', 'Nashik', 'Vijayawada',
+        'Faridabad', 'Meerut', 'Rajkot', 'Kalyan-Dombivli', 'Vasai-Virar', 'Varanasi', 'Srinagar', 'Aurangabad',
+        'Dhanbad', 'Amritsar', 'Navi Mumbai', 'Allahabad', 'Howrah', 'Ranchi', 'Gwalior', 'Jabalpur',
+        'Jodhpur', 'Raipur', 'Chandigarh', 'Guntur', 'Guwahati', 'Solapur', 'Noida', 'Mysuru', 'Gurgaon',
+        'Bhubaneswar', 'Thiruvananthapuram', 'Dehradun', 'Jammu', 'Jamnagar', 'Ujjain', 'Jhansi', 'Kochi',
+        'Mangalore', 'Udaipur', 'Ajmer', 'Tiruppur', 'Nellore', 'Kurnool', 'Gaya', 'Hoshiarpur', 'Muzaffarpur',
+        'Vellore', 'Shimla', 'Rohtak', 'Ambala', 'Gandhinagar', 'Pondicherry', 'Siliguri', 'Raurkela',
         'Durgapur', 'Asansol'
     ])))
-    
+
     extra_cities = [c for c in agent_cities if c not in main_cities]
-            
+
     import datetime
     current_year = datetime.datetime.now().year
     years_range = list(range(current_year, 1979, -1))
     months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-            
+
     from apps.agents.models import InvestmentType
     investment_types = InvestmentType.objects.filter(is_active=True)
 
@@ -853,19 +829,16 @@ def edit_profile(request):
     admin_permissions = []
 
     if is_admin_view:
+        from apps.admin_panel.views.dashboard import _get_admin_from_session
+        admin_session_id = _get_admin_from_session(request)
         if admin_session_id:
             from apps.admin_panel.models.admin_auth import Admin
             logged_in_admin = Admin.objects.filter(id=admin_session_id).first()
             if logged_in_admin:
                 is_super_admin = (logged_in_admin.role == 'super')
-                admin_permissions = logged_in_admin.permissions.values_list('name', flat=True) if logged_in_admin.role == 'manager' else []
-        elif request.user.is_staff:
-            is_super_admin = request.user.is_superuser
-            class MockAdmin:
-                name = request.user.get_full_name() or request.user.username
-                role = 'super' if request.user.is_superuser else 'manager'
-            logged_in_admin = MockAdmin()
-            
+                raw_perms = logged_in_admin.permissions
+                admin_permissions = raw_perms if isinstance(raw_perms, list) else []
+
     # Resolve SubscriptionPlan using robust multi-tier helper
     agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
 
@@ -895,6 +868,19 @@ def edit_profile(request):
 @never_cache
 def update_profile(request):
     from django.http import JsonResponse
+
+    if not request.user.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+
+    agent = Agent.objects.filter(user=request.user).first()
+    if not agent:
+        return JsonResponse({'status': 'error', 'message': 'Agent not found'}, status=404)
+
+    return apply_profile_update(request, agent, is_admin_edit=False)
+
+
+def apply_profile_update(request, agent, is_admin_edit=False):
+    from django.http import JsonResponse
     from django.db import transaction
     from django.core.files.storage import default_storage
     from apps.agents.models import (
@@ -907,28 +893,6 @@ def update_profile(request):
     import time
     import uuid
     import json
-    
-    from apps.admin_panel.views.dashboard import _get_admin_from_session
-
-    # Same admin guard as edit_profile
-    admin_session_id = _get_admin_from_session(request)
-    is_admin = bool(admin_session_id) or (request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser))
-
-    if not is_admin and not request.user.is_authenticated:
-        return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
-        
-    agent_id = request.POST.get('agent_id')
-    
-    is_admin_edit = is_admin and bool(agent_id)
-    
-    if is_admin_edit:
-        agent = Agent.objects.filter(id=agent_id).first()
-    else:
-        agent = Agent.objects.filter(user=request.user).first()
-        
-    if not agent:
-        return JsonResponse({'status': 'error', 'message': 'Agent not found'}, status=404)
-        
     profile, _ = AgentProfile.objects.get_or_create(agent=agent)
     current_step = request.POST.get('current_step')
     
@@ -2421,7 +2385,7 @@ def agent_public_share_profile(request, slug):
     if not agent:
         raise Http404("Agent not found")
 
-    profile = getattr(agent, 'profile', None)
+    profile = agent.get_primary_profile()
 
     # Inactive, suspended or deleted checks
     is_active = getattr(agent, 'is_active', True)

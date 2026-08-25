@@ -1,4 +1,7 @@
-// Hide preloader on page load
+// Hide preloader as soon as the DOM is ready, and again on full load.
+$(function () {
+    hidePreloader();
+});
 $(window).on('load', function () {
     hidePreloader();
 });
@@ -32,4 +35,4 @@ setTimeout(function() {
     if ($('.loader-mask').is(':visible:not(.hidden)')) {
         hidePreloader();
     }
-}, 15000); // 15 second safety timeout
+}, 3000);

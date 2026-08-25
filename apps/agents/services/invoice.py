@@ -146,7 +146,7 @@ class InvoiceService:
             # 4. Generate unique invoice number: INV-YYYY-XXXXX
             invoice_number = self.generate_invoice_number()
 
-            profile = getattr(agent, 'profile', None)
+            profile = agent.get_primary_profile()
 
             # 5. Create Invoice Database record
             invoice = Invoice.objects.create(

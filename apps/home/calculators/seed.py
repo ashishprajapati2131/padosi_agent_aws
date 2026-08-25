@@ -30,11 +30,12 @@ def _rename_legacy_slugs(Calculator):
     return renamed
 
 
-def seed_calculators(Calculator, CalculatorCategory=None):
+def seed_calculators(Calculator, CalculatorCategory=None, activate_all=False):
     """Idempotent seed. New slugs are inserted; existing rows refresh engine_ready.
 
     When an engine first becomes ready, the calculator is auto-activated.
-    Admin copy, SEO, FAQs and later is_active toggles are left untouched after that.
+    Admin copy, SEO, FAQs and later is_active toggles are left untouched after that,
+    unless activate_all=True (used after a DB restore that wiped the catalog).
     """
     if CalculatorCategory is None:
         from apps.home.models.calculator_category import CalculatorCategory
@@ -89,6 +90,28 @@ def seed_calculators(Calculator, CalculatorCategory=None):
         if becoming_ready and not obj.is_active:
             obj.is_active = True
             fields.append('is_active')
+        if activate_all and spec['engine_ready'] and not obj.is_active:
+            obj.is_active = True
+            fields.append('is_active')
+        if activate_all:
+            if not (obj.short_description or '').strip():
+                obj.short_description = spec['short_description']
+                fields.append('short_description')
+            if not (obj.meta_title or '').strip():
+                obj.meta_title = spec['meta_title']
+                fields.append('meta_title')
+            if not (obj.meta_description or '').strip():
+                obj.meta_description = spec['meta_description']
+                fields.append('meta_description')
+            if not (obj.disclaimer or '').strip():
+                obj.disclaimer = spec['disclaimer']
+                fields.append('disclaimer')
+            if not obj.faq_json:
+                obj.faq_json = spec.get('faqs') or []
+                fields.append('faq_json')
+            if getattr(obj, 'category_id', None) != category.id:
+                obj.category = category
+                fields.append('category')
         if obj.slug == 'health-insurance-calculator' and obj.title == 'Insurance Premium Calculator':
             obj.title = spec['title']
             obj.short_description = spec['short_description']

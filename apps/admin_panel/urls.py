@@ -22,7 +22,6 @@ Notes:
 """
 
 from django.urls import path
-from apps.agents.views.registration import fb_ad_signup
 from .views.dashboard import (
     show_login_form,
     admin_login,
@@ -54,6 +53,8 @@ from .views.agents import (
     agent_pending_registrations,
     bulk_action_agents,
     admin_verify_pending_payment,
+    admin_edit_profile,
+    admin_full_update_profile,
 )
 from .views.agents_irdai import verify_irdai_license
 from .views.agents_amfi import verify_amfi_arn
@@ -143,10 +144,6 @@ from .views.referrals import (
     admin_referrals_mark_claimed,
     admin_referrals_generate_missing,
     admin_referrals_update_tiers,
-)
-from .views.agent_referral import (
-    referral_join,
-    agent_referral_dashboard,
 )
 from .views.advanced import analytics, activity_logs, delete_activity_log
 from .views.export import (
@@ -283,6 +280,8 @@ urlpatterns = [
     path("admin/agents/update-profile/", update_profile, name="admin_agents_update_profile"),
     path("admin/agents/get/<int:id>/", get_agent_json, name="admin_agents_get_agent_json"),
     path("admin/agents/<int:id>/edit-logs/", get_edit_logs, name="admin_agents_get_edit_logs"),
+    path("admin/agents/<int:id>/edit-profile/", admin_edit_profile, name="admin_agents_edit_profile"),
+    path("admin/agents/<int:id>/edit-profile/update/", admin_full_update_profile, name="admin_agents_full_update_profile"),
 
     # Phase 4D: Queues
     path("admin/approvals/", agent_approvals, name="admin_agents_approvals"),
@@ -395,11 +394,6 @@ urlpatterns = [
     path("admin/referrals/<int:code_id>/mark-claimed/", admin_referrals_mark_claimed,    name="admin_referrals_mark_claimed"),
     path("admin/referrals/generate-missing-codes/",    admin_referrals_generate_missing, name="admin_referrals_generate_missing"),
     path("admin/referrals/update-tiers/",              admin_referrals_update_tiers,    name="admin_referrals_update_tiers"),
-
-    # Phase REFERRAL_SYSTEM: Agent-facing
-    path("join/ad/",               fb_ad_signup,               name="admin_fb_ad_signup"),
-    path("join/<str:ref_code>/",   referral_join,              name="referral_join"),
-    path("agent/referral/",        agent_referral_dashboard,   name="agent_referral_dashboard"),
 
     # Phase REVIEWS: Reviews Management
     path("admin/reviews/",                reviews_index,          name="admin_reviews_index"),

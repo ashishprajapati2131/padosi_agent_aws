@@ -242,7 +242,15 @@ def iter_agent_service_pincodes(agent):
 
     add(getattr(agent, 'agent_pincode', None))
 
-    profile = getattr(agent, 'profile', None)
+    profile = None
+    getter = getattr(agent, 'get_primary_profile', None)
+    if callable(getter):
+        try:
+            profile = getter()
+        except Exception:
+            profile = None
+    if profile is None:
+        profile = getattr(agent, 'profile', None)
     raw = getattr(profile, 'service_pincodes', None) if profile else None
     if isinstance(raw, str):
         try:
@@ -310,7 +318,8 @@ def apply_search_proximity(agents, user_lat, user_lng, search_pincode=None, radi
                 best = dist
 
         if best is None:
-            profile = getattr(agent, 'profile', None)
+            getter = getattr(agent, 'get_primary_profile', None)
+            profile = getter() if callable(getter) else getattr(agent, 'profile', None)
             if profile:
                 first_city = agent.serviceableCities.first() if hasattr(agent, 'serviceableCities') else None
                 if first_city:

@@ -1,4 +1,4 @@
-import bcrypt
+from password_hashing import hash_password
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.core.paginator import Paginator
@@ -121,7 +121,7 @@ def admins_store(request):
             messages.error(request, 'Email already exists.')
             return redirect('admin_admins_create')
 
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        hashed_password = hash_password(password)
         permissions = None if role == 'super' else (permissions_selected or [])
 
         Admin.objects.create(
@@ -188,7 +188,7 @@ def admins_update(request, id):
         admin.permissions = None if role == 'super' else (permissions_selected or [])
 
         if password:
-            admin.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            admin.password = hash_password(password)
 
         admin.save()
 

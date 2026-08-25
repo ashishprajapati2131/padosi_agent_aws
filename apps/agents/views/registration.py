@@ -468,8 +468,12 @@ def exclusive_discount_status(request):
 def chooseplan(request):
     """Render the plan selection page."""
     if request.user.is_authenticated:
-        from apps.agents.models import Agent, SubscriptionPlan
-        if Agent.objects.filter(user=request.user).exists() or request.user.is_staff or request.user.is_superuser:
+        from apps.agents.services.account_auth import resolve_agent_for_user
+        try:
+            logged_in_agent = resolve_agent_for_user(request.user)
+        except Exception:
+            logged_in_agent = None
+        if logged_in_agent or request.user.is_staff or request.user.is_superuser:
             return redirect('agents:agent_dashboard')
 
     draft_id = request.session.get('current_draft_id')
@@ -794,30 +798,9 @@ def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment
     return agent
 
 
-def create_or_link_django_user(agent):
-    from django.contrib.auth.models import User
-    
-    user = User.objects.filter(email=agent.email).first()
-    if not user:
-        # Create standard Django user
-        username = agent.email.split('@')[0]
-        counter = 1
-        base_username = username
-        while User.objects.filter(username=username).exists():
-            username = f"{base_username}{counter}"
-            counter += 1
-            
-        user = User.objects.create_user(
-            username=username,
-            email=agent.email,
-            password=agent.email,
-            first_name=agent.fullname.split(' ')[0],
-            last_name=' '.join(agent.fullname.split(' ')[1:])
-        )
-    
-    agent.user = user
-    agent.save()
-    return user
+def create_or_link_django_user(agent, plain_password=None):
+    from apps.agents.services.account_auth import create_or_link_django_user as _create_or_link
+    return _create_or_link(agent, plain_password=plain_password)
 
 
 def verify_and_activate_pending_payment(agent):

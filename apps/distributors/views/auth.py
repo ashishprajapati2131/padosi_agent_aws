@@ -1,8 +1,8 @@
 import json
-import bcrypt
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.models import User as DjangoUser, Group
+from password_hashing import check_password_hash
 
 def distributor_logout(request):
     logout(request)
@@ -26,23 +26,7 @@ def distributor_login(request):
         if laravel_user:
             if laravel_user.role == 'distributor':
                 hash_to_check = laravel_user.password
-                is_valid = False
-                
-                if hash_to_check.startswith('$2y$') or hash_to_check.startswith('$2b$'):
-                    # Legacy Laravel bcrypt hash
-                    if hash_to_check.startswith('$2y$'):
-                        bcrypt_hash = '$2b$' + hash_to_check[4:]
-                    else:
-                        bcrypt_hash = hash_to_check
-                        
-                    try:
-                        is_valid = bcrypt.checkpw(password.encode('utf-8'), bcrypt_hash.encode('utf-8'))
-                    except Exception:
-                        pass
-                else:
-                    # Django pbkdf2_sha256 hash (if any distributors were created before the bcrypt fix)
-                    from django.contrib.auth.hashers import check_password
-                    is_valid = check_password(password, hash_to_check)
+                is_valid = check_password_hash(password, hash_to_check)
 
                 if is_valid:
                     # Authentication successful! 

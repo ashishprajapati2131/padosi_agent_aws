@@ -521,7 +521,7 @@
             {% endif %}
 
             {% if is_super_admin or 'agents' in admin_permissions %}
-            <a href="/admin/agents/" class="menu-item {% if request.path == '/admin/agents/' %}active{% endif %}">
+            <a href="/admin/agents/?status=active" class="menu-item {% if request.path == '/admin/agents/' %}active{% endif %}">
                 <i class="fa-solid fa-users-gear"></i> Agents
             </a>
             {% endif %}

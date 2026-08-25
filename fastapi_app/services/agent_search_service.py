@@ -69,7 +69,7 @@ class AgentSearchService:
     @staticmethod
     def _build_agent_queryset(req: FindAgentsRequest):
         # Base query
-        query = Agent.objects.filter(status='active', user__isnull=False).exclude(profile__is_card_visible=False)
+        query = Agent.objects.filter(status='active').exclude(profile__is_card_visible=False)
         query = query.select_related('profile', 'performanceStats').prefetch_related(
             'insuranceSegments', 'reviews', 'serviceableCities', 'productExpertise'
         )
@@ -102,27 +102,13 @@ class AgentSearchService:
         if invalid_pincode:
             return query.none(), user_lat, user_lng, invalid_pincode
 
-        # Type mapping
-        type_mapping = {
-            'Health Insurance': 'health', 'Health': 'health',
-            'Life Insurance': 'life', 'Life': 'life',
-            'Motor Insurance': 'motor', 'Motor': 'motor',
-            'SME Insurance': 'sme', 'SME': 'sme',
-            'Travel Insurance': 'travel', 'Travel': 'travel',
-            'Fire Insurance': 'fire', 'Fire': 'fire',
-            'Marine Insurance': 'marine', 'Marine': 'marine',
-            'Liability Insurance': 'liability', 'Liability': 'liability',
-            'Other General Insurance': 'other', 'Transport': 'transport',
-            'Workmen Compensation': 'workmen_compensation', 'GPA / GMC': 'gpa_gmc',
-            'Group Term Insurance': 'group_term', 'Cyber': 'cyber'
-        }
+        from apps.home.services.agent_filters import (
+            apply_insurance_product_filter,
+            apply_insurance_type_filter,
+            apply_location_text_filter,
+        )
 
-        db_types = []
-        if req.insurance_types:
-            for t in req.insurance_types:
-                mapped_t = type_mapping.get(t, t.lower().replace(' insurance', ''))
-                db_types.append(mapped_t)
-            query = query.filter(insuranceSegments__segment_type__in=db_types).distinct()
+        query, db_types = apply_insurance_type_filter(query, req.insurance_types)
 
         if req.service_types:
             q_pref = Q()
@@ -140,19 +126,10 @@ class AgentSearchService:
             q_no_pref = Q(leadPreferences__isnull=True)
             query = query.filter(q_pref | q_spec | q_no_pref).distinct()
 
-        if req.location:
-            query = query.filter(
-                Q(profile__address__icontains=req.location) |
-                Q(profile__office_address__icontains=req.location) |
-                Q(profile__state__icontains=req.location) |
-                Q(serviceableCities__name__icontains=req.location)
-            ).distinct()
-
-        if req.insurance_companies:
-            q_company = Q(productExpertise__product_name__in=req.insurance_companies)
-            if db_types:
-                q_company &= Q(productExpertise__segment_type__in=db_types)
-            query = query.filter(q_company).distinct()
+        query = apply_location_text_filter(
+            query, req.location, pincode=req.pincode, has_coords=bool(user_lat and user_lng)
+        )
+        query = apply_insurance_product_filter(query, req.insurance_companies, db_types)
 
         if req.claim_insurance_company:
             query = query.filter(
@@ -268,7 +245,7 @@ class AgentSearchService:
 
         serialized_agents: List[AgentCardSchema] = []
         for agent in page_agents:
-            profile = getattr(agent, 'profile', None)
+            profile = agent.get_primary_profile()
             perf = getattr(agent, 'performanceStats', None)
 
             photo_url = profile.profile_photo_url if profile else '/static/img/avatar-icon.jpg'

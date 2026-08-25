@@ -23,10 +23,7 @@ def generate_professional_bio(request):
         from apps.admin_panel.views.dashboard import _get_admin_from_session
 
         admin_id = _get_admin_from_session(request)
-        is_admin = bool(admin_id) or (
-            request.user.is_authenticated
-            and (request.user.is_staff or request.user.is_superuser)
-        )
+        is_admin = bool(admin_id)
 
         if not is_admin and not request.user.is_authenticated:
             return JsonResponse(

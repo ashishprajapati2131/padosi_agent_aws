@@ -7,10 +7,7 @@ import json
 import requests as http_requests
 from apps.home.models.site_setting import SiteSetting
 from apps.home.models.faq import Faq
-from apps.home.models.homepage import (
-    HomePageSettings, HeroTrustBadge, HeroStatistic, HeroProductTile,
-    HeroSlide, DidYouKnowSlide, QuickPickItem, WhyChooseCard, HowItWorksStep
-)
+from apps.home.services.homepage import build_homepage_cms_context
 from django.contrib.staticfiles.storage import staticfiles_storage
 
 
@@ -22,6 +19,12 @@ def favicon(request):
 from apps.admin_panel.models.contact_submission import ContactSubmission
 from apps.agents.models import Agent, AgentPortfolio, AgentReview, City, FavoriteAgent
 from apps.home.models import Pincode, PincodeCache
+from apps.home.services.agent_filters import (
+    apply_insurance_product_filter,
+    apply_insurance_type_filter,
+    apply_location_text_filter,
+    listed_agents_queryset,
+)
 from apps.home.services.distance import DistanceService, apply_search_proximity
 from apps.home.services.geocoding import GeocodingService
 from apps.home.services.ai_picks import AIPicksService
@@ -145,21 +148,14 @@ def contact_submit(request):
 
 
 def home(request):
-    settings = HomePageSettings.load()
+    cms = build_homepage_cms_context()
+    settings = cms['settings']
 
-    # Load from models
-    trust_badges = HeroTrustBadge.objects.all()
-    stats_data = HeroStatistic.objects.all()
-    product_tiles = HeroProductTile.objects.all()
-    hero_slides = HeroSlide.objects.all()
-    dyk_slides = DidYouKnowSlide.objects.all()
-    quick_picks = QuickPickItem.objects.all()
-    why_cards = WhyChooseCard.objects.all()
-    works_steps = HowItWorksStep.objects.all()
-
-    # Testimonials logic (keep existing random/cache logic)
-    reviews = cache.get('homepage_reviews')
-    if reviews is None:
+    # Testimonials: admin custom list wins; otherwise approved reviews (cached).
+    reviews = cms.get('custom_reviews') or []
+    if not reviews:
+        reviews = cache.get('homepage_reviews')
+    if not reviews:
         from apps.agents.models import AgentReview
         db_reviews = AgentReview.objects.filter(is_approved=True).select_related('agent', 'agent__profile').order_by('-created_at')[:100]
 
@@ -194,7 +190,7 @@ def home(request):
 
             if rev.agent:
                 try:
-                    profile = rev.agent.profile
+                    profile = rev.agent.get_primary_profile()
                     agent_slug = profile.slug
                     agent_photo = profile.profile_photo_url
                 except Exception:
@@ -218,63 +214,9 @@ def home(request):
                 {'name': 'Anjali Desai', 'service': 'Client of Priya Sharma', 'agent_url': None, 'rating': 4.0, 'comment': 'Got my policy reviewed and discovered I was overpaying. Saved ₹15,000 annually. Thank you!', 'image': 'https://ui-avatars.com/api/?name=Anjali+Desai&background=0d9488&color=fff&bold=true'},
             ]
 
-        cache.set('homepage_reviews', reviews, 1800)
+        if not cms.get('custom_reviews'):
+            cache.set('homepage_reviews', reviews, 1800)
 
-    # Zip trust cards with indexes to allow colored borders easily in DTL
-    card_accents = [
-        {'color': '#0065ff', 'class': 'pb-accent-blue'},
-        {'color': '#10b981', 'class': 'pb-accent-green'},
-        {'color': '#0ea5e9', 'class': 'pb-accent-sky'},
-        {'color': '#d97706', 'class': 'pb-accent-orange'},
-        {'color': '#7c3aed', 'class': 'pb-accent-purple'},
-        {'color': '#14b8a6', 'class': 'pb-accent-teal'},
-    ]
-    why_cards_zipped = []
-    for idx, card in enumerate(why_cards):
-        accent = card_accents[idx % len(card_accents)]
-        why_cards_zipped.append({
-            'card': card,
-            'accent': accent,
-            'index': idx
-        })
-
-    slide_gradients = [
-        'linear-gradient(135deg, hsla(var(--pa-primary-h), var(--pa-primary-s), var(--pa-primary-l), 0.25), hsla(var(--pa-primary-h), var(--pa-primary-s), var(--pa-primary-l), 0.1), hsla(var(--pa-primary-h), var(--pa-primary-s), var(--pa-primary-l), 0.05))',
-        'linear-gradient(135deg, hsla(var(--pa-secondary-h), var(--pa-secondary-s), var(--pa-secondary-l), 0.25), hsla(var(--pa-secondary-h), var(--pa-secondary-s), var(--pa-secondary-l), 0.1), hsla(var(--pa-secondary-h), var(--pa-secondary-s), var(--pa-secondary-l), 0.05))',
-        'linear-gradient(135deg, hsla(0, 72%, 51%, 0.25), hsla(0, 72%, 51%, 0.1), hsla(0, 72%, 51%, 0.05))',
-        'linear-gradient(135deg, hsla(38, 92%, 50%, 0.25), hsla(38, 92%, 50%, 0.1), hsla(38, 92%, 50%, 0.05))',
-        'linear-gradient(135deg, hsla(173, 80%, 36%, 0.25), hsla(173, 80%, 36%, 0.1), hsla(173, 80%, 36%, 0.05))',
-        'linear-gradient(135deg, hsla(160, 84%, 39%, 0.25), hsla(160, 84%, 39%, 0.1), hsla(160, 84%, 39%, 0.05))',
-        'linear-gradient(135deg, hsla(262, 83%, 58%, 0.25), hsla(262, 83%, 58%, 0.1), hsla(262, 83%, 58%, 0.05))',
-    ]
-    slide_icon_shadows = [
-        '0 10px 15px -3px hsla(var(--pa-primary-h), var(--pa-primary-s), var(--pa-primary-l), 0.2), 0 4px 6px -4px hsla(var(--pa-primary-h), var(--pa-primary-s), var(--pa-primary-l), 0.2)',
-        '0 10px 15px -3px hsla(var(--pa-secondary-h), var(--pa-secondary-s), var(--pa-secondary-l), 0.2), 0 4px 6px -4px hsla(var(--pa-secondary-h), var(--pa-secondary-s), var(--pa-secondary-l), 0.2)',
-        '0 10px 15px -3px hsla(0, 72%, 51%, 0.2), 0 4px 6px -4px hsla(0, 72%, 51%, 0.2)',
-        '0 10px 15px -3px hsla(38, 92%, 50%, 0.2), 0 4px 6px -4px hsla(38, 92%, 50%, 0.2)',
-        '0 10px 15px -3px hsla(173, 80%, 36%, 0.2), 0 4px 6px -4px hsla(173, 80%, 36%, 0.2)',
-        '0 10px 15px -3px hsla(160, 84%, 39%, 0.2), 0 4px 6px -4px hsla(160, 84%, 39%, 0.2)',
-        '0 10px 15px -3px hsla(262, 83%, 58%, 0.2), 0 4px 6px -4px hsla(262, 83%, 58%, 0.2)',
-    ]
-
-    facts_zipped = []
-    for idx, fact in enumerate(hero_slides):
-        facts_zipped.append({
-            'fact': fact,
-            'gradient': slide_gradients[idx % len(slide_gradients)],
-            'shadow': slide_icon_shadows[idx % len(slide_icon_shadows)],
-            'index': idx
-        })
-
-    # 2. Build and zip dyk slides
-    slides_zipped = []
-    for idx, slide in enumerate(dyk_slides):
-        slides_zipped.append({
-            'fact': slide,
-            'index': idx
-        })
-
-    # 3. Static chart data for hero section chart slide
     chart_data = [
         {'year': '2020', 'rejection': 12},
         {'year': '2021', 'rejection': 16},
@@ -283,12 +225,7 @@ def home(request):
         {'year': '2024', 'rejection': 34},
     ]
 
-    from apps.home.models.site_setting import SiteSetting
-    custom_hero = SiteSetting.get_value('hero_section')
-    if custom_hero and isinstance(custom_hero, dict) and custom_hero.get('heading'):
-        raw_heading = custom_hero['heading']
-    else:
-        raw_heading = settings.hero_heading
+    raw_heading = settings.hero_heading
     # Clean braces first if any
     cleaned_heading = raw_heading.replace('{', '').replace('}', '')
     def replace_word(match):
@@ -302,17 +239,17 @@ def home(request):
 
     return render(request, 'public/home.html', {
         'settings': settings,
-        'why_cards_zipped': why_cards_zipped,
+        'why_cards_zipped': cms['why_cards_zipped'],
         'reviews_json': json.dumps(reviews),
         'hide_header': True,
-        'trust_badges': trust_badges,
-        'stats_data': stats_data,
-        'product_tiles': product_tiles,
-        'facts_zipped': facts_zipped,
-        'slides_zipped': slides_zipped,
-        'quick_picks': quick_picks,
-        'why_cards': why_cards,
-        'works_steps': works_steps,
+        'trust_badges': cms['trust_badges'],
+        'stats_data': cms['stats_data'],
+        'product_tiles': cms['product_tiles'],
+        'facts_zipped': cms['facts_zipped'],
+        'slides_zipped': cms['slides_zipped'],
+        'quick_picks': cms['quick_picks'],
+        'why_cards': cms['why_cards'],
+        'works_steps': cms['works_steps'],
         'chart_data': chart_data,
         'hero_heading_html': hero_heading_html,
     })
@@ -346,7 +283,6 @@ def get_portfolio_companies_by_type():
         # Fetch active agents portfolios
         portfolios = AgentPortfolio.objects.filter(
             agent__status='active',
-            agent__user__isnull=False
         ).select_related('agent')
 
         for p in portfolios:
@@ -404,34 +340,15 @@ def fetch_filtered_agents_list(request):
     detected_area = request.session.get('detected_area', '')
 
     service_type_input = request.GET.getlist('ServiceType')
-    
-    # Core query build
-    query = Agent.objects.filter(status='active', user__isnull=False).exclude(profile__is_card_visible=False)
+
+    # Core query build — do not require auth_user; PHP-imported agents often have none.
+    query = listed_agents_queryset()
     query = query.select_related('profile', 'performanceStats').prefetch_related(
         'insuranceSegments', 'reviews', 'serviceableCities', 'productExpertise', 'servicePincodes'
     )
 
-    type_mapping = {
-        'Health Insurance': 'health', 'Health': 'health',
-        'Life Insurance': 'life', 'Life': 'life',
-        'Motor Insurance': 'motor', 'Motor': 'motor',
-        'SME Insurance': 'sme', 'SME': 'sme',
-        'Travel Insurance': 'travel', 'Travel': 'travel',
-        'Fire Insurance': 'fire', 'Fire': 'fire',
-        'Marine Insurance': 'marine', 'Marine': 'marine',
-        'Liability Insurance': 'liability', 'Liability': 'liability',
-        'Other General Insurance': 'other', 'Transport': 'transport',
-        'Workmen Compensation': 'workmen_compensation', 'GPA / GMC': 'gpa_gmc',
-        'Group Term Insurance': 'group_term', 'Cyber': 'cyber'
-    }
-
-    db_types = []
     insurance_type_input = request.GET.getlist('InsuranceType')
-    if insurance_type_input:
-        for t in insurance_type_input:
-            mapped_t = type_mapping.get(t, t.lower().replace(' insurance', ''))
-            db_types.append(mapped_t)
-        query = query.filter(insuranceSegments__segment_type__in=db_types).distinct()
+    query, db_types = apply_insurance_type_filter(query, insurance_type_input)
 
     if service_type_input:
         q_pref = Q()
@@ -449,20 +366,11 @@ def fetch_filtered_agents_list(request):
         q_no_pref = Q(leadPreferences__isnull=True)
         query = query.filter(q_pref | q_spec | q_no_pref).distinct()
 
-    if location:
-        query = query.filter(
-            Q(profile__address__icontains=location) |
-            Q(profile__office_address__icontains=location) |
-            Q(profile__state__icontains=location) |
-            Q(serviceableCities__name__icontains=location)
-        ).distinct()
+    has_coords = bool(lat and lng)
+    query = apply_location_text_filter(query, location, pincode=pincode, has_coords=has_coords)
 
     insurance_company_input = request.GET.getlist('InsuranceCompany')
-    if insurance_company_input:
-        q_company = Q(productExpertise__product_name__in=insurance_company_input)
-        if db_types:
-            q_company &= Q(productExpertise__segment_type__in=db_types)
-        query = query.filter(q_company).distinct()
+    query = apply_insurance_product_filter(query, insurance_company_input, db_types)
 
     claim_company_input = request.GET.get('ClaimInsuranceCompany', '').strip()
     if claim_company_input:
@@ -687,6 +595,7 @@ def find_agents(request):
     if pincode_param or location_param:
         if pincode_param:
             request.session['last_pincode'] = pincode_param
+            request.session.pop('last_location', None)
             detected_area = pincode_param
             
             # Resolve pincode to area name immediately (before redirect)
@@ -715,6 +624,8 @@ def find_agents(request):
         if location_param:
             request.session['last_location'] = location_param
             request.session['detected_area'] = location_param
+            if not pincode_param:
+                request.session.pop('last_pincode', None)
 
         # Clear old GPS memory
         for k in ['last_lat', 'last_lng', 'lat', 'lng']:
@@ -1209,34 +1120,13 @@ def blacklisted_agents(request):
 
 def build_agent_query(pincode, location, lat, lng, detected_area, service_type_input, insurance_type_input, insurance_company_input, claim_company_input, search_val, sort_by, request=None):
     invalid_pincode = False
-    # Core query build
-    query = Agent.objects.filter(status='active', user__isnull=False).exclude(profile__is_card_visible=False)
+    query = listed_agents_queryset()
     query = query.select_related('profile', 'performanceStats').prefetch_related(
         'insuranceSegments', 'reviews', 'serviceableCities', 'productExpertise', 'servicePincodes'
     )
-    
-    type_mapping = {
-        'Health Insurance': 'health', 'Health': 'health',
-        'Life Insurance': 'life', 'Life': 'life',
-        'Motor Insurance': 'motor', 'Motor': 'motor',
-        'SME Insurance': 'sme', 'SME': 'sme',
-        'Travel Insurance': 'travel', 'Travel': 'travel',
-        'Fire Insurance': 'fire', 'Fire': 'fire',
-        'Marine Insurance': 'marine', 'Marine': 'marine',
-        'Liability Insurance': 'liability', 'Liability': 'liability',
-        'Other General Insurance': 'other', 'Transport': 'transport',
-        'Workmen Compensation': 'workmen_compensation', 'GPA / GMC': 'gpa_gmc',
-        'Group Term Insurance': 'group_term', 'Cyber': 'cyber'
-    }
-    
-    db_types = []
-    insurance_type_input = insurance_type_input
-    if insurance_type_input:
-        for t in insurance_type_input:
-            mapped_t = type_mapping.get(t, t.lower().replace(' insurance', ''))
-            db_types.append(mapped_t)
-        query = query.filter(insuranceSegments__segment_type__in=db_types).distinct()
-    
+
+    query, db_types = apply_insurance_type_filter(query, insurance_type_input)
+
     if service_type_input:
         q_pref = Q()
         if any(s in ['New Policy', 'Buying new insurance'] for s in service_type_input):
@@ -1245,37 +1135,26 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
             q_pref |= Q(leadPreferences__leads_claims_support=True)
         if any(s in ['Policy Review', 'Insurance audit', 'Port / transfer'] for s in service_type_input):
             q_pref |= Q(leadPreferences__leads_portfolio_analysis=True)
-            
+
         q_spec = Q()
         if db_types:
             q_spec = Q(insuranceSegments__segment_type__in=db_types)
-            
+
         q_no_pref = Q(leadPreferences__isnull=True)
         query = query.filter(q_pref | q_spec | q_no_pref).distinct()
-    
-    if location:
-        query = query.filter(
-            Q(profile__address__icontains=location) |
-            Q(profile__office_address__icontains=location) |
-            Q(profile__state__icontains=location) |
-            Q(serviceableCities__name__icontains=location)
-        ).distinct()
-    
-    insurance_company_input = insurance_company_input
-    if insurance_company_input:
-        q_company = Q(productExpertise__product_name__in=insurance_company_input)
-        if db_types:
-            q_company &= Q(productExpertise__segment_type__in=db_types)
-        query = query.filter(q_company).distinct()
-    
-    claim_company_input = claim_company_input.strip()
+
+    has_coords = bool(lat and lng)
+    query = apply_location_text_filter(query, location, pincode=pincode, has_coords=has_coords)
+    query = apply_insurance_product_filter(query, insurance_company_input, db_types)
+
+    claim_company_input = (claim_company_input or '').strip()
     if claim_company_input:
         query = query.filter(
             Q(portfolios__primary_companies__icontains=claim_company_input) |
             Q(portfolios__secondary_companies__icontains=claim_company_input)
         ).distinct()
     
-    search_val = search_val.strip()
+    search_val = (search_val or '').strip()
     if search_val:
         query = query.filter(
             Q(fullname__icontains=search_val) |
@@ -1450,7 +1329,7 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
 
 
 def serialize_agent_for_ai_picks(agent, user_lat, user_lng):
-    profile = getattr(agent, 'profile', None)
+    profile = agent.get_primary_profile()
     perf = getattr(agent, 'performanceStats', None)
     
     # Calculate profile completeness

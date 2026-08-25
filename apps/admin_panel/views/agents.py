@@ -5,6 +5,8 @@ from django.shortcuts import render, redirect
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.contrib import messages
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST
 import json
 
 from .dashboard import _get_admin_from_session
@@ -79,7 +81,7 @@ def agent_list(request):
 
     search = request.GET.get('search', '')
     plan_filter = request.GET.get('plan', 'All Plans')
-    status_filter = request.GET.get('status', 'All Status')
+    status_filter = (request.GET.get('status') or '').strip() or 'active'
     city_filter = request.GET.get('city', '')
     promo_code_filter = request.GET.get('promo_code', '')
 
@@ -1127,3 +1129,37 @@ def admin_verify_pending_payment(request):
             'success': False,
             'message': f'Payment NOT received from Razorpay for order {subscription.razorpay_order_id}. The user may not have completed the payment on the Razorpay checkout page.'
         }, status=400)
+
+
+@never_cache
+def admin_edit_profile(request, id):
+    """Full profile editor under /admin/agents/<id>/edit-profile/."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect('admin_login')
+
+    from apps.agents.models import Agent
+    from apps.agents.views.dashboard import render_edit_profile
+
+    agent = Agent.objects.filter(id=id).first()
+    if not agent:
+        messages.error(request, "Agent not found.")
+        return redirect('admin_agents')
+    return render_edit_profile(request, agent, is_admin_view=True)
+
+
+@require_POST
+@never_cache
+def admin_full_update_profile(request, id):
+    """POST target for the admin full profile editor. Distinct from manage-stats update_profile."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+
+    from apps.agents.models import Agent
+    from apps.agents.views.dashboard import apply_profile_update
+
+    agent = Agent.objects.filter(id=id).first()
+    if not agent:
+        return JsonResponse({'status': 'error', 'message': 'Agent not found'}, status=404)
+    return apply_profile_update(request, agent, is_admin_edit=True)

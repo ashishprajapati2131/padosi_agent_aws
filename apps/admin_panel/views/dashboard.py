@@ -24,8 +24,10 @@ import logging
 import secrets
 from datetime import datetime, date, timedelta, timezone
 
-import bcrypt
+from password_hashing import check_password_hash
 
+from django.conf import settings
+from django.contrib.auth import logout as django_logout
 from django.db import connection
 from django.shortcuts import render, redirect
 
@@ -33,10 +35,49 @@ from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
+ADMIN_SESSION_COOKIE = "session_token"
+
 
 # ---------------------------------------------------------------------------
 # Session Authentication Helper
 # ---------------------------------------------------------------------------
+
+def _admin_cookie_secure():
+    return (not settings.DEBUG) or bool(getattr(settings, "SESSION_COOKIE_SECURE", False))
+
+
+def invalidate_admin_session_token(token):
+    """Delete the user_sessions / user_session_data rows for a session token."""
+    if not token:
+        return
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id FROM user_sessions WHERE session_token = %s LIMIT 1",
+                [token],
+            )
+            row = cursor.fetchone()
+            if row:
+                session_id = row[0]
+                cursor.execute(
+                    "DELETE FROM user_session_data WHERE session_id = %s",
+                    [session_id],
+                )
+                cursor.execute(
+                    "DELETE FROM user_sessions WHERE id = %s",
+                    [session_id],
+                )
+    except Exception as exc:
+        logger.error("Admin session cleanup error: %s", exc)
+
+
+def clear_admin_session(request, response=None):
+    """Invalidate the admin DB session and optionally delete the browser cookie."""
+    token = request.COOKIES.get(ADMIN_SESSION_COOKIE)
+    invalidate_admin_session_token(token)
+    if response is not None:
+        response.delete_cookie(ADMIN_SESSION_COOKIE)
+    return response
 
 
 def _get_admin_from_session(request):
@@ -207,13 +248,9 @@ def admin_login(request):
 
     admin_db_id, stored_hash = row
 
-    # --- 3. Verify password with bcrypt ---
-    # stored_hash is a PHP $2y$ bcrypt hash; bcrypt treats $2y$ identically to $2b$
+    # --- 3. Verify password (bcrypt, same helper as every other login) ---
     try:
-        password_valid = bcrypt.checkpw(
-            password.encode("utf-8"),
-            stored_hash.encode("utf-8"),
-        )
+        password_valid = check_password_hash(password, stored_hash)
     except Exception as exc:
         logger.error("bcrypt verification error: %s", exc)
         return render(request, "admin/login.html", {
@@ -227,6 +264,10 @@ def admin_login(request):
             "error":     "Invalid email or password.",
             "old_email": email,
         })
+
+    # Agent Django sessions and admin cookie sessions must not coexist.
+    invalidate_admin_session_token(request.COOKIES.get(ADMIN_SESSION_COOKIE))
+    django_logout(request)
 
     # --- 4. Create session ---
     token      = secrets.token_hex(32)                        # 64-char hex string
@@ -291,11 +332,12 @@ def admin_login(request):
     # --- 5. Set cookie and redirect ---
     response = redirect("admin_dashboard")
     response.set_cookie(
-        "session_token",
+        ADMIN_SESSION_COOKIE,
         token,
         max_age=30 * 24 * 60 * 60,   # 30 days in seconds
         httponly=True,
         samesite="Lax",
+        secure=_admin_cookie_secure(),
     )
     return response
 
@@ -316,36 +358,9 @@ def admin_logout(request):
       5. Delete the cookie from the browser.
       6. Redirect to login.
     """
-    token = request.COOKIES.get("session_token")
-
-    if token:
-        try:
-            with connection.cursor() as cursor:
-                # Find the session row
-                cursor.execute(
-                    "SELECT id FROM user_sessions WHERE session_token = %s LIMIT 1",
-                    [token],
-                )
-                row = cursor.fetchone()
-                if row:
-                    session_id = row[0]
-                    # Delete session data first (FK child)
-                    cursor.execute(
-                        "DELETE FROM user_session_data WHERE session_id = %s",
-                        [session_id],
-                    )
-                    # Delete session record
-                    cursor.execute(
-                        "DELETE FROM user_sessions WHERE id = %s",
-                        [session_id],
-                    )
-        except Exception as exc:
-            logger.error("Logout session cleanup error: %s", exc)
-            # Continue to delete cookie and redirect even if DB cleanup fails
-
+    django_logout(request)
     response = redirect("admin_login")
-    response.delete_cookie("session_token")
-    return response
+    return clear_admin_session(request, response)
 
 
 # ---------------------------------------------------------------------------

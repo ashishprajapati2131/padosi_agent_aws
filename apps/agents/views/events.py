@@ -603,10 +603,7 @@ def payment_success(request):
 
             from django.contrib.auth.models import User as AuthUser
             is_new_user = not AuthUser.objects.filter(email=agent.email).exists()
-            user = create_or_link_django_user(agent)
-            if is_new_user:
-                user.set_password(generated_password)
-                user.save(update_fields=['password'])
+            user = create_or_link_django_user(agent, plain_password=generated_password if is_new_user else None)
 
         # Post-transaction (best effort): cache password, promo usage, invoice + welcome email
         if is_new_user:

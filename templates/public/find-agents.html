@@ -2668,34 +2668,50 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
             // ─── 3. Restore InsuranceCompany sub-products (non-claim mode) ───
             const homepageProductMap = {
-                'Super Top-up': 'Top-up',
-                'Cyber (SME)': 'Cyber',
-                'Liability (SME)': 'Liability'
+                'super top-up': 'Top-up',
+                'fire (sme)': 'Others',
+                'cyber (sme)': 'Cyber',
+                'liability (sme)': 'Liability'
             };
             let subProducts = [];
             for (let key of urlParams.keys()) {
                 if (key.startsWith('InsuranceCompany')) {
-                    const vals = urlParams.getAll(key).map(v => homepageProductMap[v] || v);
+                    const vals = urlParams.getAll(key).map(v => homepageProductMap[(v || '').toLowerCase()] || v);
                     subProducts = subProducts.concat(vals);
                 }
             }
 
+            function categoryNameFromInsuranceType(insType) {
+                let categoryName = categoryNames[insType] || insType;
+                if (insType === 'Vehicle Insurance' || insType === 'Vehicle') categoryName = 'Motor Insurance';
+                if (insType === 'Business Insurance' || insType === 'Business' || insType === 'SME') categoryName = 'SME Insurance';
+                if (insType === 'Health Insurance' || insType === 'Health') categoryName = 'Health Insurance';
+                if (insType === 'Life Insurance' || insType === 'Life') categoryName = 'Life Insurance';
+                if (insType === 'SME Insurance') categoryName = 'SME Insurance';
+                return categoryName;
+            }
+
             if (subProducts.length > 0) {
                 $('.circle-tile').removeClass('active');
-                if (isClaimMode) {
-                    // Single select
-                    const $tile = $(`.circle-tile[data-product="${subProducts[0]}"]`);
+                const activateProductTile = function (product) {
+                    if (String(product).toLowerCase() === 'others') {
+                        const cats = insuranceTypes.length
+                            ? insuranceTypes.map(categoryNameFromInsuranceType)
+                            : ['SME Insurance'];
+                        cats.forEach(function (cat) {
+                            $(`.product-category-section[data-category="${cat}"] .circle-tile[data-product="Others"]`).addClass('active');
+                        });
+                        return;
+                    }
+                    const $tile = $(`.circle-tile[data-product="${product}"]`);
                     if ($tile.length > 0) {
                         $tile.addClass('active');
                     }
+                };
+                if (isClaimMode) {
+                    activateProductTile(subProducts[0]);
                 } else {
-                    // Multi select
-                    subProducts.forEach(product => {
-                        const $tile = $(`.circle-tile[data-product="${product}"]`);
-                        if ($tile.length > 0) {
-                            $tile.addClass('active');
-                        }
-                    });
+                    subProducts.forEach(activateProductTile);
                 }
             }
 

@@ -198,7 +198,7 @@
                                     Actions
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end dropdown-menu-right shadow-sm">
-                                    <li><a class="dropdown-item" href="{% url 'agents:agent_edit_profile' %}?agent_id={{ agent.id }}"><i class="fa-solid fa-pen-to-square me-2 text-muted"></i> Full Profile Editor</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin_agents_edit_profile' agent.id %}"><i class="fa-solid fa-pen-to-square me-2 text-muted"></i> Full Profile Editor</a></li>
                                     <li><a class="dropdown-item" href="{% url 'admin_agents_manage' agent.id %}"><i class="fa-solid fa-chart-line me-2 text-muted"></i> Manage Statistics</a></li>
                                     <li>
                                         {% if agent.is_blacklisted %}

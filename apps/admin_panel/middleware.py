@@ -231,6 +231,38 @@ class AdminIpWhitelistMiddleware:
         return self.get_response(request)
 
 
+class IsolateAdminAgentSessionsMiddleware:
+    """
+    A Django-authenticated agent must not keep an admin session_token cookie.
+    That cookie is what AdminPermissionMiddleware uses to grant /admin access.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        path = request.path.rstrip('/')
+        if path in ['/admin', '/admin/login', '/admin/login/post', '/admin/logout']:
+            return self.get_response(request)
+
+        token = request.COOKIES.get('session_token')
+        user = getattr(request, 'user', None)
+        if (
+            token
+            and user is not None
+            and getattr(user, 'is_authenticated', False)
+        ):
+            from apps.agents.models import Agent
+            if Agent.objects.filter(user_id=user.pk).exists():
+                from apps.admin_panel.views.dashboard import invalidate_admin_session_token
+                invalidate_admin_session_token(token)
+                request.COOKIES.pop('session_token', None)
+                response = self.get_response(request)
+                response.delete_cookie('session_token')
+                return response
+        return self.get_response(request)
+
+
 class AdminPermissionMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -368,7 +400,7 @@ class AdminPermissionMiddleware:
         Intentionally excluded from this map (handled by other rules or not admin-gated):
           - Auth routes (admin_login, admin_login_page, admin_login_post, admin_logout)
           - Admin-management routes (admin_admins_*) — caught by rule #2
-          - Public routes (referral_join, agent_referral_dashboard, qr_download)
+          - Public routes (qr_download)
         """
         if not url_name:
             return None
@@ -394,6 +426,9 @@ class AdminPermissionMiddleware:
             'admin_agents_update_profile':              'agents',
             'admin_agents_get_agent_json':              'agents',
             'admin_agents_get_edit_logs':               'agents',
+            'admin_agents_edit_profile':                'agents',
+            'admin_agents_full_update_profile':         'agents',
+            'admin_agents_verify_pending_payment':      'agents',
             # ── Approvals / Pending / Blacklist ───────────────────────────
             'admin_agents_approvals':                   'approvals',
             'admin_agents_pending_registrations':       'pending_registrations',
@@ -429,6 +464,10 @@ class AdminPermissionMiddleware:
             # ── Subscriptions ─────────────────────────────────────────────
             'admin_subscriptions_index':                'subscriptions',
             'admin_delete_subscription':                'subscriptions',
+            'admin_plans_index':                        'subscriptions',
+            'admin_plan_create':                        'subscriptions',
+            'admin_plan_edit':                          'subscriptions',
+            'admin_plan_delete':                        'subscriptions',
             # ── Leads ─────────────────────────────────────────────────────
             'admin_leads_index':                        'leads',
             'admin_leads_update_status':                'leads',
@@ -488,8 +527,11 @@ class AdminPermissionMiddleware:
             'admin_pages_delete':                       'content',
             # ── Revenue ───────────────────────────────────────────────────
             'admin_revenue':                            'revenue',
+            'admin_search':                             'dashboard',
             # ── Invoices ──────────────────────────────────────────────────
             'admin_invoices':                           'invoices',
+            'admin_invoices_create':                    'invoices',
+            'admin_invoices_verify_promo':              'invoices',
             'admin_invoice_preview':                    'invoices',
             'admin_invoice_download':                   'invoices',
             'admin_invoice_save_sheet_url':             'invoices',
@@ -586,36 +628,36 @@ class AdminPermissionMiddleware:
         permission_to_route = {
             'dashboard': 'admin_dashboard',
             'agents': 'admin_agents',
-            'approvals': 'admin_agents',
+            'approvals': 'admin_agents_approvals',
             'approvals_awaiting_verification': 'admin_agents_approvals',
             'approvals_missing_licenses': 'admin_agents_approvals',
             'blacklisted_agents': 'admin_blacklisted_agents',
-            'pending_registrations': 'admin_agents',
+            'pending_registrations': 'admin_agents_pending_registrations',
             'distributors': 'admin_distributors',
-            'insurance': 'admin_agents',
-            'insurance_approvals': 'admin_agents',
-            'users': 'admin_agents',
-            'events': 'admin_agents',
-            'subscriptions': 'admin_agents',
-            'leads': 'admin_agents',
-            'contacts': 'admin_agents',
-            'reviews': 'admin_agents',
-            'notifications': 'admin_agents',
-            'content': 'admin_dashboard',
-            'revenue': 'admin_dashboard',
-            'invoices': 'admin_agents',
-            'promo_codes': 'admin_agents',
-            'free_trial': 'admin_agents',
-            'referrals': 'admin_agents',
-            'finance_accounts': 'admin_dashboard',
-            'export': 'admin_dashboard',
-            'qr_generator': 'admin_dashboard',
-            'geocoding': 'admin_dashboard',
-            'pincode': 'admin_dashboard',
-            'analytics': 'admin_dashboard',
-            'error_logs': 'admin_dashboard',
-            'site_settings': 'admin_dashboard',
-            'email_templates': 'admin_dashboard',
+            'insurance': 'admin_insurance_index',
+            'insurance_approvals': 'admin_insurance_approvals_index',
+            'users': 'admin_users',
+            'events': 'admin_events_index',
+            'subscriptions': 'admin_subscriptions_index',
+            'leads': 'admin_leads_index',
+            'contacts': 'admin_contacts_index',
+            'reviews': 'admin_reviews_index',
+            'notifications': 'agent_notify',
+            'content': 'admin_content_about',
+            'revenue': 'admin_revenue',
+            'invoices': 'admin_invoices',
+            'promo_codes': 'admin_promo_codes',
+            'free_trial': 'admin_free_trial',
+            'referrals': 'admin_referrals_index',
+            'finance_accounts': 'admin_finance_index',
+            'export': 'export_index',
+            'qr_generator': 'admin_qr_files_index',
+            'geocoding': 'admin_geocoding_index',
+            'pincode': 'admin_pincode_index',
+            'analytics': 'advanced_analytics',
+            'error_logs': 'admin_error_logs_index',
+            'site_settings': 'admin_settings_general',
+            'email_templates': 'admin_settings_templates',
             'server_health': 'admin_system_health',
             'logs': 'admin_system_logs',
             'api_logs': 'admin_system_api_logs',

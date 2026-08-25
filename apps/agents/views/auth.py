@@ -1,7 +1,7 @@
 import logging
 from urllib.parse import quote as urlencode
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
@@ -14,6 +14,17 @@ from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
 from apps.agents.models import Agent
 from apps.agents.services.brevo import email_service
+from apps.agents.services.account_auth import (
+    DJANGO_AUTH_BACKEND,
+    INCOMPLETE_STATUSES,
+    create_or_link_django_user,
+    find_agent,
+    find_laravel_user,
+    resolve_agent_for_user,
+    sync_verified_password,
+    verify_agent_password,
+)
+from password_hashing import hash_password
 
 logger = logging.getLogger(__name__)
 
@@ -56,16 +67,45 @@ def clear_login_throttle(ip):
     key = f"login_throttle_{ip}"
     cache.delete(key)
 
+
+def _clear_admin_session_on(response, request):
+    from apps.admin_panel.views.dashboard import clear_admin_session
+    return clear_admin_session(request, response)
+
+
+def _finish_agent_session_login(request, django_user, ip):
+    clear_login_throttle(ip)
+    keys_to_clear = [
+        'current_draft_id', 'email_verified', 'verified_email',
+        'email_otp', 'otp_email', 'otp_expires_at',
+        'applied_promo_code', 'promo_id', 'ref_code',
+    ]
+    for key in keys_to_clear:
+        request.session.pop(key, None)
+    login(request, django_user, backend=DJANGO_AUTH_BACKEND)
+    logger.info("Agent/Admin user %s logged in successfully.", getattr(django_user, 'email', ''))
+    response = redirect('agents:agent_dashboard')
+    return _clear_admin_session_on(response, request)
+
+
 @csrf_protect
 @never_cache
 def agent_login(request):
     """
     Handle rendering the agent login view and authenticating agent users.
     Enforces a role guard check and rate limiting of 6 attempts per minute.
+
+    Password check matches admin login: bcrypt against `users` (and leftover
+    auth_user hashes). Django authenticate() is not used because those hashes
+    are not PBKDF2.
     """
-    # If already logged in, redirect them
+    # If already logged in, send agents/admins to dashboard — never Choose Plan.
     if request.user.is_authenticated:
-        is_agent = Agent.objects.filter(user=request.user).exists()
+        try:
+            is_agent = bool(resolve_agent_for_user(request.user))
+        except Exception as e:
+            logger.error("Already-authenticated agent lookup failed: %s", e)
+            is_agent = Agent.objects.filter(email__iexact=request.user.email or '').exists()
         is_admin = request.user.is_staff or request.user.is_superuser
         if is_agent or is_admin:
             return redirect('agents:agent_dashboard')
@@ -73,116 +113,88 @@ def agent_login(request):
 
     if request.method == 'POST':
         ip = get_client_ip(request)
-        
+
         # Enforce rate limiting
         if not check_login_throttle(ip):
             messages.error(request, "Too many login attempts. Please try again after 1 minute.")
             return render(request, 'agents/login.html')
 
         email = request.POST.get('email', '').strip()
-        password = request.POST.get('password', '').strip()
+        password = request.POST.get('password', '')
 
         if not email or not password:
             record_login_attempt(ip)
             messages.error(request, "Please enter both email and password.")
             return render(request, 'agents/login.html', {'email': email})
 
-        # Try to retrieve User by email address (case-insensitive)
         try:
-            user = User.objects.filter(email__iexact=email).first()
+            agent = find_agent(email)
+            password_ok, laravel_user, django_user = verify_agent_password(email, password, agent=agent)
         except Exception as e:
-            logger.error(f"Database error during login email lookup: {e}")
+            logger.error("Database error during login email lookup: %s", e)
             messages.error(request, "Login service is temporarily unavailable. Please try again.")
             return render(request, 'agents/login.html', {'email': email})
 
-        if user:
-            # Verify credentials using Django authenticate
-            authenticated_user = authenticate(username=user.username, password=password)
-            if authenticated_user:
-                is_agent = Agent.objects.filter(user=authenticated_user).exists()
-                is_admin = authenticated_user.is_staff or authenticated_user.is_superuser
+        if not password_ok:
+            record_login_attempt(ip)
+            logger.warning("Failed login attempt for email: %s from IP: %s", email, ip)
+            messages.error(request, "Please Enter Valid Login Details")
+            return render(request, 'agents/login.html', {'email': email})
 
-                if is_agent:
-                    agent = Agent.objects.get(user=authenticated_user)
-                    
-                    if agent.status == 'active':
-                        pass # proceed to login
-                    elif agent.status == 'pending_approval':
-                        messages.info(request, "Your account is pending admin approval.")
-                        return render(request, 'agents/login.html', {'email': email})
-                    elif agent.status in ['suspended', 'blacklisted', 'rejected']:
-                        messages.error(request, f"Your account is currently {agent.status}.")
-                        return render(request, 'agents/login.html', {'email': email})
-                    else:
-                        # Status is 'incomplete' or 'pending_payment'
-                        # Try verifying pending payment first (Case 4 - network lost recovery)
+        canonical_email = (agent.email if agent else None) or (laravel_user.email if laravel_user else email)
+        fullname = (agent.fullname if agent else None) or (laravel_user.fullname if laravel_user else canonical_email)
+        laravel_role = (laravel_user.role or '').lower() if laravel_user else ''
+
+        if laravel_role and laravel_role != 'agent' and not agent:
+            record_login_attempt(ip)
+            logger.warning("Login rejected for user %s: Incorrect role/type", email)
+            messages.error(request, "Please use the correct login page for your account type.")
+            return render(request, 'agents/login.html', {'email': email})
+
+        is_admin = bool(
+            django_user
+            and (getattr(django_user, 'is_staff', False) or getattr(django_user, 'is_superuser', False))
+        )
+        if not agent and not is_admin:
+            record_login_attempt(ip)
+            logger.warning("Login rejected for user %s: Incorrect role/type", email)
+            messages.error(request, "Please use the correct login page for your account type.")
+            return render(request, 'agents/login.html', {'email': email})
+
+        try:
+            if agent:
+                django_user = sync_verified_password(
+                    canonical_email, fullname, password, role='agent', agent=agent
+                )
+                try:
+                    agent.refresh_from_db()
+                except Exception:
+                    pass
+
+                if agent.status in ['suspended', 'blacklisted', 'rejected']:
+                    messages.error(request, f"Your account is currently {agent.status}.")
+                    return render(request, 'agents/login.html', {'email': email})
+
+                if agent.status in INCOMPLETE_STATUSES:
+                    try:
                         from apps.agents.views.registration import verify_and_activate_pending_payment
-                        if verify_and_activate_pending_payment(agent):
-                            # Reload agent state
-                            agent.refresh_from_db()
-                            if agent.status == 'active':
-                                # Payment verified and account active - proceed to login!
-                                pass
-                            elif agent.status == 'pending_approval':
-                                messages.info(request, "Your payment has been verified. Your account is pending admin approval.")
-                                return render(request, 'agents/login.html', {'email': email})
-                            else:
-                                messages.info(request, f"Your account status is currently: {agent.status}")
-                                return render(request, 'agents/login.html', {'email': email})
-                        else:
-                            # Not paid yet (or verification failed) - resume Choose Plan
-                            from apps.agents.models import AgentDraft
-                            draft = AgentDraft.objects.filter(email=agent.email).first()
-                            if not draft:
-                                # Create a draft representing their details
-                                session_key = request.session.session_key
-                                if not session_key:
-                                    request.session.create()
-                                    session_key = request.session.session_key
-                                draft = AgentDraft.objects.create(
-                                    session_key=session_key,
-                                    email=agent.email,
-                                    fullname=agent.fullname,
-                                    mobile=agent.mobile,
-                                    agent_pincode=agent.agent_pincode,
-                                    experience_range=agent.experience_range,
-                                    client_base=agent.client_base,
-                                    email_verified=True,
-                                    registration_step=2
-                                )
-                            request.session['current_draft_id'] = draft.pk
-                            request.session['reg_step'] = 3
-                            messages.info(request, "Please complete plan selection and payment to activate your account.")
-                            return redirect('/chooseplan/')
+                        verify_and_activate_pending_payment(agent)
+                        agent.refresh_from_db()
+                    except Exception as e:
+                        logger.warning(
+                            "Pending-payment check failed for %s; continuing to dashboard: %s",
+                            canonical_email, e,
+                        )
 
-                if is_agent or is_admin:
-                    # Successful login
-                    clear_login_throttle(ip)
-                    
-                    # Clean up stale session keys from registration flow
-                    keys_to_clear = [
-                        'current_draft_id', 'email_verified', 'verified_email',
-                        'email_otp', 'otp_email', 'otp_expires_at',
-                        'applied_promo_code', 'promo_id', 'ref_code'
-                    ]
-                    for key in keys_to_clear:
-                        request.session.pop(key, None)
-
-                    login(request, authenticated_user)
-                    logger.info(f"Agent/Admin user {authenticated_user.email} logged in successfully.")
-                    return redirect('agents:agent_dashboard')
-                
-                # Correct credentials but not an agent/admin user (e.g. distributor page user)
-                record_login_attempt(ip)
-                logger.warning(f"Login rejected for user {email}: Incorrect role/type")
-                messages.error(request, "Please use the correct login page for your account type.")
-                return render(request, 'agents/login.html', {'email': email})
-
-        # Generic authentication failure path (prevent email enumeration)
-        record_login_attempt(ip)
-        logger.warning(f"Failed login attempt for email: {email} from IP: {ip}")
-        messages.error(request, "Please Enter Valid Login Details")
-        return render(request, 'agents/login.html', {'email': email})
+            if not django_user:
+                django_user = sync_verified_password(
+                    canonical_email, fullname, password, role='agent', agent=agent
+                )
+            return _finish_agent_session_login(request, django_user, ip)
+        except Exception as e:
+            logger.exception("Agent login session setup failed for %s: %s", email, e)
+            messages.error(request, "Login service is temporarily unavailable. Please try again.")
+            return render(request, 'agents/login.html', {'email': email})
 
     return render(request, 'agents/login.html')
 
@@ -193,7 +205,8 @@ def agent_logout(request):
     """
     logout(request)
     messages.success(request, "You have been logged out successfully.")
-    return redirect('agents:agent_login')
+    response = redirect('agents:agent_login')
+    return _clear_admin_session_on(response, request)
 
 @csrf_exempt
 @never_cache
@@ -220,20 +233,18 @@ def logout_view(request):
         referer = request.META.get('HTTP_REFERER')
         host = request.get_host()
         if referer and host in referer:
-            return redirect(referer)
-        return redirect('home:find_agents')
+            return _clear_admin_session_on(redirect(referer), request)
+        return _clear_admin_session_on(redirect('home:find_agents'), request)
 
     if role == 'distributor':
-        return redirect('/distributor-login')
+        return _clear_admin_session_on(redirect('/distributor-login'), request)
         
     if role == 'insurance_company':
         messages.success(request, "You have been logged out successfully.")
-        return redirect('insurance_login')
+        return _clear_admin_session_on(redirect('insurance_login'), request)
 
     messages.success(request, "You have been logged out successfully.")
-    if role == 'agent':
-        return redirect('agents:agent_login')
-    return redirect('agents:agent_login')
+    return _clear_admin_session_on(redirect('agents:agent_login'), request)
 
 @login_required(login_url='agents:agent_login')
 def agent_dashboard(request):
@@ -413,10 +424,18 @@ def forgot_password(request):
             messages.error(request, "Please enter a valid email address.")
             return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
 
-        # Look up user by email
+        agent = find_agent(email)
+        laravel_user = find_laravel_user(email)
         user = User.objects.filter(email__iexact=email).first()
 
+        if login_type == 'agent' and agent and not user:
+            user = create_or_link_django_user(agent)
+
         # Generic response to prevent email enumeration (matching PHP logic)
+        if not user and not agent:
+            messages.success(request, "If that email is registered, you will receive a reset link shortly.")
+            return render(request, 'agents/forgot_password.html', {'type': login_type})
+
         if not user:
             messages.success(request, "If that email is registered, you will receive a reset link shortly.")
             return render(request, 'agents/forgot_password.html', {'type': login_type})
@@ -426,8 +445,12 @@ def forgot_password(request):
             return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
 
         # Check if user role matches login_type
-        is_agent = Agent.objects.filter(user=user).exists()
+        is_agent = bool(agent) or Agent.objects.filter(user=user).exists()
+        laravel_role = (laravel_user.role or '').lower() if laravel_user else ''
         if login_type == 'agent' and not is_agent:
+            messages.error(request, "This email belongs to a Distributor account. Please use the Distributor login page.")
+            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
+        if login_type == 'agent' and laravel_role and laravel_role != 'agent' and not is_agent:
             messages.error(request, "This email belongs to a Distributor account. Please use the Distributor login page.")
             return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
 
@@ -495,9 +518,13 @@ def reset_password(request, uidb64=None, token=None):
                 'token': token, 'uidb64': uidb64, 'email': email, 'type': login_type
             })
 
-        # Set new password
-        user.set_password(password)
-        user.save()
+        bcrypt_hash = hash_password(password)
+        user.password = bcrypt_hash
+        user.save(update_fields=['password'])
+        from apps.agents.services.account_auth import ensure_laravel_user, find_agent as _find_agent
+        agent = _find_agent(user.email)
+        fullname = (agent.fullname if agent else '') or user.get_full_name() or user.username
+        ensure_laravel_user(user.email, fullname, bcrypt_hash, role='agent', overwrite_password=True)
 
         messages.success(request, "Your password has been reset successfully! Please log in.")
         return redirect('agents:agent_login')

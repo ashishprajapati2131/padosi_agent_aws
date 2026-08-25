@@ -228,7 +228,7 @@ def get_unlock_rules():
 def profile_completion_percent(agent):
     """Same 15-point rubric used by the agent dashboard. Do not change the math."""
     completion = 15
-    profile = getattr(agent, 'profile', None)
+    profile = agent.get_primary_profile()
     if profile:
         if profile.address and profile.languages:
             completion += 15
@@ -250,7 +250,7 @@ def profile_completion_percent(agent):
 
 def collect_agent_metrics(agent):
     """Read live activity metrics used by unlock rules."""
-    profile = getattr(agent, 'profile', None)
+    profile = agent.get_primary_profile()
     try:
         reviews = int(agent.review_count or 0)
     except Exception:

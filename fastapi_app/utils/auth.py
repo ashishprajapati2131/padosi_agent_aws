@@ -2,17 +2,25 @@ from datetime import datetime, timedelta
 from typing import Optional, Union, Any
 from uuid import uuid4
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 from fastapi_app.config import settings
 
-# Setup password hashing context
-pwd_context = CryptContext(schemes=["bcrypt", "django_pbkdf2_sha256"], deprecated="auto")
+try:
+    from password_hashing import check_password_hash, hash_password
+except ImportError:
+    from passlib.context import CryptContext
+    _pwd_context = CryptContext(schemes=["bcrypt", "django_pbkdf2_sha256"], deprecated="auto")
+
+    def check_password_hash(plain_password, hashed_password):
+        return _pwd_context.verify(plain_password, hashed_password)
+
+    def hash_password(password):
+        return _pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    return check_password_hash(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return hash_password(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
