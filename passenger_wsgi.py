@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -24,30 +25,57 @@ try:
         if env_path.exists():
             load_dotenv(env_path)
             break
-except ImportError:
+except Exception:
     pass
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "padosi_agent.settings")
 
-from django.core.wsgi import get_wsgi_application
-
-django_wsgi_application = get_wsgi_application()
+STARTUP_ERROR = None
+django_wsgi_application = None
+asgi_wsgi_application = None
+FASTAPI_ENABLED = False
 
 try:
-    from a2wsgi import ASGIMiddleware
-    from padosi_agent.asgi import application as asgi_app
+    from django.core.wsgi import get_wsgi_application
 
-    asgi_wsgi_application = ASGIMiddleware(asgi_app)
-    FASTAPI_ENABLED = True
+    django_wsgi_application = get_wsgi_application()
 except Exception:
-    import logging
+    STARTUP_ERROR = traceback.format_exc()
+    try:
+        with open(PROJECT_ROOT / "passenger_startup_error.log", "a", encoding="utf-8") as f:
+            f.write("\n--- STARTUP ERROR ---\n" + STARTUP_ERROR)
+    except Exception:
+        pass
 
-    logging.getLogger(__name__).exception("ASGI/FastAPI could not be loaded in passenger_wsgi")
-    FASTAPI_ENABLED = False
+if not STARTUP_ERROR:
+    try:
+        from a2wsgi import ASGIMiddleware
+        from padosi_agent.asgi import application as asgi_app
+
+        asgi_wsgi_application = ASGIMiddleware(asgi_app)
+        FASTAPI_ENABLED = True
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception("ASGI/FastAPI could not be loaded in passenger_wsgi")
+        FASTAPI_ENABLED = False
 
 
 def application(environ, start_response):
+    if STARTUP_ERROR:
+        status = "500 Internal Server Error"
+        output = f"<h3>Passenger Startup Error:</h3><pre style='background:#f8d7da;color:#721c24;padding:15px;border-radius:8px;'>{STARTUP_ERROR}</pre>".encode(
+            "utf-8"
+        )
+        response_headers = [
+            ("Content-Type", "text/html; charset=utf-8"),
+            ("Content-Length", str(len(output))),
+        ]
+        start_response(status, response_headers)
+        return [output]
+
     path = environ.get("PATH_INFO", "")
     if FASTAPI_ENABLED and path.startswith("/api"):
         return asgi_wsgi_application(environ, start_response)
     return django_wsgi_application(environ, start_response)
+
