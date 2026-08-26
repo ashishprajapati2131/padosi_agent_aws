@@ -20,6 +20,11 @@ def plan_create(request):
     if request.method == 'POST':
         try:
             name = request.POST.get('name')
+            slug = ''
+            description = request.POST.get('description', '')
+            color_theme = request.POST.get('color_theme', 'starter-theme')
+            badge_text = request.POST.get('badge_text', '')
+            sort_order = int(request.POST.get('sort_order') or 0)
             html_code = request.POST.get('html_code', '')
             actual_price = request.POST.get('actual_price', 0.0)
             discounted_price = request.POST.get('discounted_price', 0.0)
@@ -54,6 +59,11 @@ def plan_create(request):
             
             plan = SubscriptionPlan.objects.create(
                 name=name,
+                slug=slug,
+                description=description,
+                color_theme=color_theme,
+                badge_text=badge_text,
+                sort_order=sort_order,
                 html_code=html_code,
                 actual_price=actual_price,
                 discounted_price=discounted_price,
@@ -102,6 +112,11 @@ def plan_edit(request, plan_id):
     if request.method == 'POST':
         try:
             plan.name = request.POST.get('name')
+            plan.slug = ''
+            plan.description = request.POST.get('description', '')
+            plan.color_theme = request.POST.get('color_theme', 'starter-theme')
+            plan.badge_text = request.POST.get('badge_text', '')
+            plan.sort_order = int(request.POST.get('sort_order') or 0)
             plan.html_code = request.POST.get('html_code', '')
             plan.actual_price = request.POST.get('actual_price', 0.0)
             plan.discounted_price = request.POST.get('discounted_price', 0.0)

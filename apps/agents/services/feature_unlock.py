@@ -12,6 +12,18 @@ logger = logging.getLogger(__name__)
 
 PLAN_SLUGS = ('free_trial', 'starter', 'professional', 'exclusive')
 
+
+def get_plan_slugs():
+    """DB-driven plan slugs from new_updates, with hardcoded fallback."""
+    try:
+        from apps.agents.models import SubscriptionPlan
+        slugs = [s for s in SubscriptionPlan.objects.values_list('slug', flat=True) if s]
+        if slugs:
+            return slugs
+    except Exception:
+        pass
+    return list(PLAN_SLUGS)
+
 PLAN_LABELS = {
     'free_trial': 'Free Trial / Expired',
     'starter': 'Starter Plan',

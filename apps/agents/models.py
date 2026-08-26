@@ -44,10 +44,7 @@ def clean_investment_types(types):
         except Exception:
             types = [types]
     if not isinstance(types, list):
-        if isinstance(types, dict):
-            types = [v for v in types.values() if v] if types else []
-        else:
-            types = [types]
+        types = [types]
     normalized = []
     has_sip_stp_swp = False
     for t in types:
@@ -251,22 +248,6 @@ class Agent(models.Model):
     def __str__(self):
         return f"Agent({self.email}, status={self.status})"
 
-    def get_primary_profile(self):
-        """OneToOne reverse accessor crashes if PHP import left duplicate profiles."""
-        try:
-            return self.profile
-        except AgentProfile.DoesNotExist:
-            return None
-        except AgentProfile.MultipleObjectsReturned:
-            return AgentProfile.objects.filter(agent_id=self.pk).order_by('-id').first()
-
-    def get_auth_user(self):
-        """PHP import stores Laravel users.id on user_id; auth_user may not exist."""
-        try:
-            return self.user
-        except User.DoesNotExist:
-            return None
-
     def isOnFreeTrial(self):
         from django.utils import timezone
         return self.plan_type == 'free_trial' and self.trial_ends_at and self.trial_ends_at > timezone.now()
@@ -315,9 +296,8 @@ class Agent(models.Model):
         match = re.search(r'(\d+)', range_val)
         if match:
             return int(match.group(1))
-        profile = self.get_primary_profile()
-        if profile and profile.experience_years:
-            return profile.experience_years
+        if hasattr(self, 'profile') and self.profile and self.profile.experience_years:
+            return self.profile.experience_years
         return 0
 
     def get_match_percent(self, user_pincode='', user_city=''):
@@ -342,7 +322,7 @@ class Agent(models.Model):
         achievement_score = min(20.0, (claims_processed / 100.0) * 20.0)
 
         # Location score
-        profile = self.get_primary_profile()
+        profile = getattr(self, 'profile', None)
         agent_pincode = self.agent_pincode or (profile.service_pincodes[0] if (profile and profile.service_pincodes) else '')
         agent_city = (profile.office_address or '') if profile else ''
         
@@ -409,9 +389,8 @@ class Agent(models.Model):
 
     @property
     def display_name(self):
-        profile = self.get_primary_profile()
-        if profile and profile.display_name:
-            return profile.display_name
+        if hasattr(self, 'profile') and self.profile and self.profile.display_name:
+            return self.profile.display_name
         return self.fullname
 
     def get_effective_pincode(self):
@@ -420,7 +399,7 @@ class Agent(models.Model):
         if pincode and re.match(r'^[1-9]\d{5}$', pincode):
             return pincode
             
-        profile = self.get_primary_profile()
+        profile = getattr(self, 'profile', None)
         if profile:
             service_pincodes = profile.service_pincodes
             if isinstance(service_pincodes, list) and service_pincodes:
@@ -455,16 +434,14 @@ class Agent(models.Model):
 
     @property
     def agent_slug(self):
-        profile = self.get_primary_profile()
-        if profile and profile.slug:
-            return profile.slug
+        if hasattr(self, 'profile') and self.profile and self.profile.slug:
+            return self.profile.slug
         return str(self.id)
 
     @property
     def whatsapp_raw(self):
-        profile = self.get_primary_profile()
-        if profile and profile.whatsapp:
-            return profile.whatsapp
+        if hasattr(self, 'profile') and self.profile and self.profile.whatsapp:
+            return self.profile.whatsapp
         return self.mobile
 
     @property
@@ -505,9 +482,8 @@ class Agent(models.Model):
         if first_city:
             remain = self.serviceableCities.count() - 1
             return first_city.name + (f" +{remain} more" if remain > 0 else "")
-        profile = self.get_primary_profile()
-        if profile and profile.office_address:
-            return profile.office_address
+        if hasattr(self, 'profile') and self.profile and self.profile.office_address:
+            return self.profile.office_address
         return ""
 
     @property
@@ -984,69 +960,6 @@ class AgentPortfolio(models.Model):
         managed = True
 
 
-def resolve_stored_file_url(path, fallback_subdirs=(), missing='/static/img/avatar-icon.jpg'):
-    """Turn a stored photo path into a /media/ URL if the file exists on disk.
-
-    PHP/Laravel saved paths like ``agent/achievements/HASH.jpg`` (URL /storage/...).
-    Django new uploads live under ``app/public/achievement/``. After a data import,
-    files are often copied into MEDIA_ROOT/app/public/achievement/ while the DB
-    still has the old Laravel relative path — look up by filename in fallback dirs.
-    """
-    import os
-    from django.conf import settings
-
-    path = (path or '').strip()
-    if not path:
-        return missing
-
-    media_root = settings.MEDIA_ROOT
-
-    if path.startswith(('http://', 'https://')):
-        if any(k in path.lower() for k in ['ngrok', 'localhost', '127.0.0.1']):
-            from urllib.parse import urlparse
-            parsed = urlparse(path)
-            rel_path = parsed.path.lstrip('/')
-            if rel_path.startswith('static/'):
-                return f"/{rel_path}"
-            if rel_path.startswith('media/'):
-                check = os.path.join(media_root, rel_path[6:])
-                if os.path.isfile(check):
-                    return f"/{rel_path}"
-            filename = os.path.basename(rel_path)
-            for sub in fallback_subdirs:
-                sub = sub.strip('/').replace('\\', '/')
-                candidate = os.path.join(media_root, *sub.split('/'), filename)
-                if os.path.isfile(candidate):
-                    return f"/media/{sub}/{filename}"
-            return missing
-        return path
-
-    normalized = path.replace('\\', '/').lstrip('/')
-    direct = os.path.join(media_root, normalized)
-    if os.path.isfile(direct):
-        return f"/media/{normalized}"
-
-    for prefix in ('app/public/', 'public/storage/', 'public/', 'storage/'):
-        if normalized.startswith(prefix):
-            stripped = normalized[len(prefix):]
-            for sub in ('', 'app/public/'):
-                candidate = os.path.join(media_root, sub, stripped)
-                if os.path.isfile(candidate):
-                    rel = f"{sub}{stripped}".replace('\\', '/')
-                    return f"/media/{rel}"
-            break
-
-    filename = os.path.basename(normalized)
-    if filename:
-        for sub in fallback_subdirs:
-            sub = sub.strip('/').replace('\\', '/')
-            candidate = os.path.join(media_root, *sub.split('/'), filename)
-            if os.path.isfile(candidate):
-                return f"/media/{sub}/{filename}"
-
-    return missing
-
-
 class AgentAchievementPhoto(models.Model):
     agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='achievementPhotos')
     photo_path = models.CharField(max_length=255)
@@ -1059,10 +972,33 @@ class AgentAchievementPhoto(models.Model):
 
     @property
     def photo_url(self):
-        return resolve_stored_file_url(
-            self.photo_path,
-            fallback_subdirs=('app/public/achievement', 'agent/achievements'),
-        )
+        path = (self.photo_path or '').strip()
+        if not path:
+            return '/static/img/avatar-icon.jpg'
+        if path.startswith(('http://', 'https://')):
+            if any(k in path.lower() for k in ['ngrok', 'localhost', '127.0.0.1']):
+                from urllib.parse import urlparse
+                parsed = urlparse(path)
+                rel_path = parsed.path.lstrip('/')
+                if rel_path.startswith('static/'):
+                    return f"/{rel_path}"
+                elif rel_path.startswith('media/'):
+                    return f"/{rel_path}"
+            return path
+        normalized_path = path.replace('\\', '/').lstrip('/')
+        from django.conf import settings
+        import os
+        if os.path.exists(os.path.join(settings.MEDIA_ROOT, normalized_path)):
+            return f"/media/{normalized_path}"
+        for prefix in ['app/public/', 'public/storage/', 'public/', 'storage/']:
+            if normalized_path.startswith(prefix):
+                stripped = normalized_path[len(prefix):]
+                if os.path.exists(os.path.join(settings.MEDIA_ROOT, stripped)):
+                    return f"/media/{stripped}"
+                if os.path.exists(os.path.join(settings.MEDIA_ROOT, 'app/public', stripped)):
+                    return f"/media/app/public/{stripped}"
+                break
+        return f"/media/{normalized_path}"
 
 
 class AgentLeadPreference(models.Model):
@@ -1417,6 +1353,12 @@ def clear_og_image_on_agent_change(sender, instance, **kwargs):
 
 class SubscriptionPlan(models.Model):
     name = models.CharField(max_length=255, unique=True)
+    slug = models.SlugField(max_length=50, unique=True, null=True, blank=True)
+    description = models.TextField(blank=True, default='')
+    color_theme = models.CharField(max_length=50, default='starter-theme')
+    badge_text = models.CharField(max_length=50, blank=True, null=True)
+    sort_order = models.IntegerField(default=0)
+    
     html_code = models.TextField(blank=True, default='')
     actual_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     discounted_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)

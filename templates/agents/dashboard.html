@@ -1228,7 +1228,8 @@
       reviewManagement: {% if not agent_plan or agent_plan.show_review_management %}true{% else %}false{% endif %},
       leadStatus: {% if not agent_plan or agent_plan.show_lead_status %}true{% else %}false{% endif %},
       editProfileFull: {% if not agent_plan or agent_plan.show_edit_profile_full %}true{% else %}false{% endif %},
-      premiumSupport: {% if not agent_plan or agent_plan.premium_priority_support %}true{% else %}false{% endif %}
+      premiumSupport: {% if not agent_plan or agent_plan.premium_priority_support %}true{% else %}false{% endif %},
+      claimSupport: {% if not agent_plan or agent_plan.show_claim_support %}true{% else %}false{% endif %}
     };
 
     function lockReason(name, hintKey) {
@@ -1316,6 +1317,7 @@
         if (!planPermissions.professionalBio) lockToggleRow('Professional Bio', 'show_professional_bio');
         if (!planPermissions.socialMedia) lockToggleRow('Social Media Buttons', 'show_social_media');
         if (!planPermissions.reviewManagement) lockToggleRow('Comments & Reviews', 'show_review_management');
+        if (!planPermissions.claimSupport) lockToggleRow('Claims & Settled Stats', 'show_claim_support');
     }
     
     function lockToggleRow(title, hintKey) {
