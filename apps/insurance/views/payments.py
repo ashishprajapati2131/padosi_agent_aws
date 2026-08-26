@@ -160,15 +160,18 @@ def handle_payment_success(request, agent_id):
     company_id = request.user.insurance_profile.get_insurance_company_id()
     agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)
 
-    is_test_payment = request.POST.get('test_payment') == '1'
     payment_ref = request.POST.get('razorpay_payment_id')
     order_id = request.POST.get('razorpay_order_id')
     signature = request.POST.get('razorpay_signature')
     
     key = getattr(settings, 'RAZORPAY_KEY', '')
     secret = getattr(settings, 'RAZORPAY_SECRET', '')
+    is_mock_payment = not bool(key and secret and razorpay) and getattr(settings, 'DEBUG', False)
 
-    if not is_test_payment and key and secret and razorpay:
+    if not is_mock_payment:
+        if not (key and secret and razorpay):
+            return JsonResponse({'success': False, 'message': 'Payment gateway is not configured on the server.'}, status=500)
+
         client = razorpay.Client(auth=(key, secret))
         try:
             client.utility.verify_payment_signature({
@@ -189,6 +192,9 @@ def handle_payment_success(request, agent_id):
             return JsonResponse({'success': False, 'message': 'Invalid payment signature.'}, status=400)
         except Exception as e:
             return JsonResponse({'success': False, 'message': f'Failed to verify payment: {str(e)}'}, status=400)
+    else:
+        if not getattr(settings, 'DEBUG', False):
+            return JsonResponse({'success': False, 'message': 'Mock payments are disabled in production.'}, status=403)
 
     if not payment_ref:
         payment_ref = 'TEST_PAY_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))

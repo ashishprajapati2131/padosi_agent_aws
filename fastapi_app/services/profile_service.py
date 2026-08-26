@@ -1,8 +1,12 @@
 from fastapi import HTTPException
 import json
+import logging
 from fastapi_app.repositories.agent_repository import AgentRepository
 from fastapi_app.schemas.profile import AgentProfileResponse, AgentProfileUpdateRequest
 from fastapi_app.config import settings
+
+logger = logging.getLogger(__name__)
+
 
 def clean_investment_types(types):
     if not types:
@@ -59,6 +63,60 @@ from fastapi_app.models.agent_lead_preference import AgentLeadPreference
 class ProfileService:
     def __init__(self, agent_repo: AgentRepository):
         self.agent_repo = agent_repo
+
+    @staticmethod
+    def _sync_login_identity(db, previous_email: str, new_email: str, fullname: str) -> None:
+        """Keep the credential tables aligned with agents.email.
+
+        Agent login looks the account up by email in Laravel `users` first and
+        Django `auth_user` second. Renaming only `agents.email` leaves both
+        lookups pointing at the old address, which locks the agent out.
+        """
+        from sqlalchemy import text
+
+        previous = (previous_email or "").strip()
+        new = (new_email or "").strip()
+        if not new:
+            return
+
+        changed = previous.lower() != new.lower()
+
+        if changed:
+            clash = db.execute(
+                text("SELECT id FROM users WHERE LOWER(email) = LOWER(:email) LIMIT 1"),
+                {"email": new},
+            ).fetchone()
+            owner = db.execute(
+                text("SELECT id FROM users WHERE LOWER(email) = LOWER(:email) LIMIT 1"),
+                {"email": previous},
+            ).fetchone()
+            if clash and (not owner or clash[0] != owner[0]):
+                raise HTTPException(status_code=409, detail="The email has already been taken.")
+
+            db.execute(
+                text("UPDATE users SET email = :new, fullname = :fullname WHERE LOWER(email) = LOWER(:previous)"),
+                {"new": new, "fullname": fullname or new, "previous": previous},
+            )
+            db.execute(
+                text("UPDATE auth_user SET email = :new WHERE LOWER(email) = LOWER(:previous)"),
+                {"new": new, "previous": previous},
+            )
+            # auth_user.username is unique and is seeded from the email on
+            # import, so rename it too when it still mirrors the old address.
+            username_taken = db.execute(
+                text("SELECT id FROM auth_user WHERE username = :username LIMIT 1"),
+                {"username": new},
+            ).fetchone()
+            if not username_taken:
+                db.execute(
+                    text("UPDATE auth_user SET username = :new WHERE username = :previous"),
+                    {"new": new, "previous": previous},
+                )
+        elif fullname:
+            db.execute(
+                text("UPDATE users SET fullname = :fullname WHERE LOWER(email) = LOWER(:email)"),
+                {"fullname": fullname, "email": new},
+            )
 
     def get_profile(self, agent_id: int) -> AgentProfileResponse:
         agent = self.agent_repo.get_agent_with_full_profile(agent_id)
@@ -286,9 +344,14 @@ class ProfileService:
             
         try:
             # Step 1: Basic Info
+            previous_email = agent.email
             agent.fullname = payload.agent.fullname
             agent.email = payload.agent.email
             agent.mobile = payload.agent.mobile
+
+            # Login resolves credentials by email against `users` / `auth_user`,
+            # so an email change here must carry over or the agent is locked out.
+            self._sync_login_identity(db, previous_email, payload.agent.email, payload.agent.fullname)
             agent.badge = payload.agent.badge
             agent.user_types = payload.agent.user_types
             
@@ -519,16 +582,24 @@ class ProfileService:
                 lead.claims_fee_amount = claims_fee_amount
                 lead.claims_percent = claims_percent
                 
-            # Step 7: Submission status update
-            agent.status = 'pending_approval'
-            
+            # Step 7: Submission status update.
+            # Mirrors apps/agents/views/dashboard.py apply_profile_update: a full
+            # profile submission goes back into the admin approval queue. Agents
+            # in this state can still sign in (see AuthService.login).
+            if agent.status not in ('suspended', 'blacklisted', 'rejected'):
+                agent.status = 'pending_approval'
+
             db.commit()
-            
-            return self.get_profile(agent_id)
-            
+
+        except HTTPException:
+            db.rollback()
+            raise
         except Exception as e:
             db.rollback()
-            raise HTTPException(status_code=500, detail=f"An error occurred while updating the profile: {str(e)}")
+            logger.exception("Profile update failed for agent_id=%s", agent_id)
+            raise HTTPException(status_code=500, detail="An error occurred while updating the profile.")
+
+        return self.get_profile(agent_id)
 
     def update_profile_photo(self, agent_id: int, secure_url: str) -> dict:
         db = self.agent_repo.db

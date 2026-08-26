@@ -438,17 +438,26 @@ class RegistrationService:
 
             pricing = self.calculate_pricing(db, agent_id)
             
-            # Resolve plan_type dynamically by display name / plan name matching
-            matched_key = None
-            for key, info in pricing.items():
-                if info.get("name") == plan_type:
-                    matched_key = key
-                    break
+            PLAN_KEY_ALIASES = {
+                'starter': 'basic',
+                'basic': 'basic',
+                'professional': 'professional',
+                'pro': 'professional',
+                'free_trial': 'free_trial',
+                'exclusive': 'exclusive',
+            }
+
+            # Resolve plan_type by slug/alias first, then display name
+            matched_key = PLAN_KEY_ALIASES.get(str(plan_type or '').strip().lower())
             if not matched_key:
-                if plan_type in pricing:
-                    matched_key = plan_type
+                for key, info in pricing.items():
+                    if info.get("name") == plan_type:
+                        matched_key = key
+                        break
+            if not matched_key and plan_type in pricing:
+                matched_key = plan_type
                     
-            if not matched_key:
+            if not matched_key or matched_key not in pricing:
                 raise ValueError(f"Invalid plan type: {plan_type}")
 
             plan_info = pricing.get(matched_key)

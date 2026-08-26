@@ -12,6 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
     <style>
         :root {
@@ -184,6 +186,285 @@
         .popup-icon { font-size: 50px; margin-bottom: 15px; }
         .popup-title { font-size: 20px; font-weight: 800; margin-bottom: 10px; color: #0f172a; }
         .popup-message { font-size: 14px; color: #64748b; margin-bottom: 20px; font-weight: 500; }
+
+        /* Exclusive Plan Modals CSS */
+        .scratch-modal-overlay,
+        .gift-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+            z-index: 1050;
+            display: none;
+            overflow-y: auto;
+            padding: 15px 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .scratch-modal-overlay.active,
+        .gift-modal-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .gift-modal {
+            background: #ffffff;
+            border-radius: 28px;
+            width: 92%;
+            max-width: 400px;
+            padding: 18px 16px 14px 16px;
+            margin: 16px auto;
+            text-align: center;
+            box-shadow: 0 18px 50px rgba(88, 28, 135, 0.22);
+            border: 2px solid #7c3aed;
+            transform: scale(0);
+            opacity: 0;
+            position: relative;
+            overflow: hidden;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+        }
+
+        .gift-modal-overlay.active .gift-modal {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .btn-close-gift-modal:hover {
+            background: #e2e8f0 !important;
+            color: #0f172a !important;
+            transform: scale(1.08);
+        }
+
+        .exc-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #111827;
+            letter-spacing: -0.3px;
+            margin: 0;
+            line-height: 1.25;
+        }
+
+        .exc-plan-name {
+            color: #7c3aed;
+            font-weight: 800;
+        }
+
+        .exc-unlocked {
+            font-size: 20px;
+            font-weight: 800;
+            color: #7c3aed;
+            margin: 4px 0 8px;
+            letter-spacing: -0.2px;
+        }
+
+        .exc-unlocked .exc-star {
+            color: #7c3aed;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .exc-subtitle {
+            color: #94a3b8;
+            font-size: 13px;
+            font-weight: 500;
+            margin: 0 0 10px;
+        }
+
+        .exc-urgency {
+            line-height: 1.35;
+            margin-bottom: 12px;
+        }
+
+        .exc-urgency-top {
+            font-size: 13px;
+            color: #9f1239;
+            font-weight: 700;
+        }
+
+        .exc-urgency-count {
+            font-size: 15px;
+            color: #e11d48;
+            font-weight: 800;
+        }
+
+        .exc-price-pill {
+            background: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 8px 12px;
+            margin: 0 auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .discount-sticker {
+            background: #ef4444;
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 6px;
+            display: inline-flex;
+            flex-direction: column;
+            line-height: 1.1;
+            margin-left: 4px;
+        }
+
+        .exc-section-head {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin: 12px 0 8px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .exc-line {
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        .grid-3-cols {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .feature-tile {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 8px 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .feature-tile .icon-wrapper {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .feature-tile .feature-text {
+            font-size: 10px;
+            font-weight: 600;
+            color: #334155;
+            line-height: 1.2;
+        }
+
+        .grid-4-cols {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .social-btn {
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 6px 2px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 10px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .social-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .social-btn .social-logo {
+            width: 20px;
+            height: 20px;
+        }
+
+        .social-btn.followed {
+            background: #ecfdf5 !important;
+            border-color: #a7f3d0 !important;
+            color: #059669 !important;
+        }
+
+        .exc-claim-btn {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            color: white;
+            font-weight: 800;
+            font-size: 1rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            width: 100%;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            position: relative;
+            box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .exc-claim-btn:hover {
+            background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+            transform: translateY(-1px);
+        }
+
+        .exc-bolt {
+            background: #ffffff;
+            color: #7c3aed;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            position: absolute;
+            left: 14px;
+        }
+
+        @keyframes glitch-ribbon {
+            0% { transform: translate(0) rotate(45deg); opacity: 1; }
+            10% { transform: translate(-2px, 1px) rotate(45deg); filter: hue-rotate(45deg); }
+            20% { transform: translate(2px, -1px) rotate(45deg); }
+            30% { transform: translate(-1px, 2px) rotate(45deg); filter: hue-rotate(-45deg); }
+            40% { transform: translate(1px, -2px) rotate(45deg); }
+            50% { transform: translate(-2px, -1px) rotate(45deg); }
+            60% { transform: translate(2px, 1px) rotate(45deg); filter: hue-rotate(90deg); }
+            70% { transform: translate(0) rotate(45deg); filter: hue-rotate(0deg); opacity: 1; }
+            100% { transform: translate(0) rotate(45deg); opacity: 1; }
+        }
+
+        .glitch-badge {
+            animation: glitch-ribbon 1s ease-in-out forwards;
+        }
     </style>
 </head>
 
@@ -225,7 +506,17 @@
 
             <!-- 1. RECOMMENDED PROFESSIONAL'S PLAN CARD -->
             <div class="plan-card fade-enter-active {% if selected_professional %}border border-success border-3 shadow-lg{% endif %}" id="professionalCard" {% if selected_professional %}style="background: #f0fdf4;"{% endif %}>
-                <div class="recommended-ribbon">Recommended</div>
+                {% if is_exclusive_active %}
+                    <div class="recommended-ribbon glitch-badge"
+                        style="background: #10b981; cursor: pointer; box-shadow: 0 0 15px rgba(139, 92, 246, 0.5); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;"
+                        id="ribbonContainer">
+                        <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px;"><i class="fa-solid fa-gift me-1"></i> GIFT</span>
+                        <canvas class="ribbon-scratch-canvas" data-label="RECOMMENDED" data-color="#10b981"
+                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none;"></canvas>
+                    </div>
+                {% else %}
+                    <div class="recommended-ribbon">Recommended</div>
+                {% endif %}
 
                 <div class="plan-header">
                     <div class="plan-name">Professional's Plan</div>
@@ -480,6 +771,144 @@
                     {% endif %}
                 </div>
             </div>
+        {# Exclusive Gamification Modals #}
+        {% if is_exclusive_active %}
+            <!-- Gift Modal -->
+            <div class="gift-modal-overlay" id="giftModal">
+                <div class="gift-modal">
+                    <!-- Close button -->
+                    <button type="button" class="btn-close-gift-modal" onclick="closeGiftModal()" aria-label="Close"
+                        style="position: absolute; top: 12px; right: 12px; z-index: 99; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b; font-size: 14px; transition: all 0.2s;">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+
+                    <div class="animate__animated animate__bounceIn" style="animation-delay: 0.2s;">
+                        <div class="gift-box-container mb-1" style="position: relative; display: inline-block;">
+                            <span style="font-size: 80px; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.15));">{{ exclusive_config.emoji_main|default:'🎁' }}</span>
+                            <span style="position: absolute; top: -10px; left: -20px; font-size: 20px;">{{ exclusive_config.emoji_top_left|default:'🎊' }}</span>
+                            <span style="position: absolute; top: 10px; right: -20px; font-size: 24px;">{{ exclusive_config.emoji_top_right|default:'✨' }}</span>
+                            <span style="position: absolute; bottom: 10px; left: -15px; font-size: 18px;">{{ exclusive_config.emoji_bottom_left|default:'🎉' }}</span>
+                        </div>
+                    </div>
+
+                    <h2 class="exc-title">{{ exclusive_config.title_prefix|default:'Surprise!!!!' }} <span class="exc-plan-name">'{{ exclusive_config.title_main|default:'Exclusive Plan' }}'</span></h2>
+                    <p class="exc-unlocked"><span class="exc-star">✦</span> {{ exclusive_config.title_suffix|default:'Unlocked!' }} <span class="exc-star">✦</span></p>
+                    <p class="exc-subtitle">{{ exclusive_config.gift_subtitle|default:'Follow us on Social Media...' }}</p>
+
+                    {% if spots_left > 0 %}
+                        <div class="exc-urgency">
+                            <div class="exc-urgency-top">{{ urgency_line_1 }}</div>
+                            <div class="exc-urgency-count">{{ urgency_line_2|safe }}</div>
+                        </div>
+                    {% endif %}
+
+                    <div class="exc-price-pill">
+                        <div id="priceUIBeforeFollow" class="d-flex align-items-center justify-content-center flex-wrap gap-1 w-100">
+                            <span style="font-size: 1.25rem; color: #94a3b8; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 2px;">₹{{ exclusive_config.strikeout_price|default:1999 }}/-</span>
+                            <span style="font-size: 2rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; line-height: 1;" id="excCurrentPrice">₹{{ exclusive_config.base_price|default:499 }}/-</span>
+                            <div class="discount-sticker">
+                                <span class="discount-val">{{ exclusive_config.before_discount_val|default:'85%' }}</span>
+                                <span class="discount-text">{{ exclusive_config.discount_text_label|default:'OFF' }}</span>
+                            </div>
+                        </div>
+
+                        <div id="priceUIAfterFollow" class="align-items-center justify-content-center flex-wrap gap-1 w-100" style="display: none !important;">
+                            <span style="font-size: 1.25rem; color: #94a3b8; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 2px;">₹{{ exclusive_config.base_price|default:499 }}/-</span>
+                            <span style="font-size: 2rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; line-height: 1;" id="excDiscountedPrice">₹{{ exclusive_config.discounted_price|default:199 }}/-</span>
+                            <div class="discount-sticker">
+                                <span class="discount-val">{{ exclusive_config.after_discount_val|default:'85%' }}</span>
+                                <span class="discount-text">{{ exclusive_config.discount_text_label|default:'OFF' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="excDiscountMessage" class="small fw-bold text-success" style="display:none; font-size: 11.5px; background: #d1fae5; padding: 4px 12px; border-radius: 50px; border: 1px solid #34d399; margin: 0 auto 4px; width: fit-content;">
+                        <i class="fa-solid fa-tag"></i> {{ exclusive_config.extra_discount_msg|default:'Extra Follower Discount Applied!' }}
+                    </div>
+
+                    <div class="exc-section-head">
+                        <span class="exc-line"></span>
+                        <span>✦ {{ exclusive_config.features_header|default:"What You'll Get" }} ✦</span>
+                        <span class="exc-line"></span>
+                    </div>
+
+                    <div class="grid-3-cols mb-1">
+                        {% for feature in premiumFeatures %}
+                            <div class="feature-tile">
+                                <div class="icon-wrapper"
+                                    style="color: {{ feature.color|default:'#000' }}; background: {{ feature.bg_color|default:'#eee' }}; position: relative;">
+                                    {% if '<' in feature.icon %}
+                                        {{ feature.icon|safe }}
+                                    {% else %}
+                                        <i class="fa-solid {{ feature.icon }}"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="feature-text">{{ feature.name|default:''|safe }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="exc-section-head">
+                        <span class="exc-line"></span>
+                        <span>✦ {{ exclusive_config.social_header|default:'Follow on' }} ✦</span>
+                        <span class="exc-line"></span>
+                    </div>
+
+                    <div id="socialButtonsContainer" class="grid-4-cols">
+                        {% for link in exclusive_config.social_links %}
+                            <button type="button" class="social-btn platform-{{ link.platform_key|default:link.platform|lower }} w-100"
+                                data-platform="{{ link.platform }}"
+                                onclick="handleSocialFollow('{{ link.platform }}', '{{ link.url }}', this)">
+                                {% if link.platform_key == 'instagram' %}
+                                    <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
+                                        <defs>
+                                            <radialGradient id="excIgGrad" cx="30%" cy="107%" r="150%">
+                                                <stop offset="0%" stop-color="#fdf497"/>
+                                                <stop offset="5%" stop-color="#fdf497"/>
+                                                <stop offset="45%" stop-color="#fd5949"/>
+                                                <stop offset="60%" stop-color="#d6249f"/>
+                                                <stop offset="90%" stop-color="#285AEB"/>
+                                            </radialGradient>
+                                        </defs>
+                                        <rect x="2" y="2" width="20" height="20" rx="6" fill="url(#excIgGrad)"/>
+                                        <circle cx="12" cy="12" r="4.2" fill="none" stroke="#fff" stroke-width="1.8"/>
+                                        <circle cx="17.2" cy="6.8" r="1.1" fill="#fff"/>
+                                    </svg>
+                                {% elif link.platform_key == 'facebook' %}
+                                    <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="12" fill="#1877F2"/>
+                                        <path fill="#fff" d="M13.5 12.8h2.2l.3-2.4h-2.5V9.1c0-.7.2-1.2 1.2-1.2h1.4V5.8c-.2 0-1.1-.1-2.1-.1-2.1 0-3.5 1.3-3.5 3.6v2.1H8.3v2.4h2.2V19h2.9v-6.2z"/>
+                                    </svg>
+                                {% elif link.platform_key == 'x' or link.platform_key == 'twitter' %}
+                                    <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path fill="#000" d="M18.244 2H21.5l-7.5 8.57L22.5 22h-6.59l-5.16-6.74L5.2 22H1.94l8.03-9.17L1.5 2h6.76l4.66 6.17L18.244 2zm-1.16 18.05h1.8L7.01 3.86H5.07l12.01 16.19z"/>
+                                    </svg>
+                                {% elif link.platform_key == 'linkedin' %}
+                                    <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
+                                        <rect width="24" height="24" rx="4" fill="#0A66C2"/>
+                                        <path fill="#fff" d="M7.05 9.2H4.9V19h2.15V9.2zM5.96 5C5.2 5 4.6 5.6 4.6 6.36c0 .75.6 1.37 1.36 1.37.75 0 1.36-.62 1.36-1.37C7.32 5.6 6.72 5 5.96 5zM19.1 13.54c0-2.62-1.4-3.84-3.27-3.84-1.51 0-2.18.83-2.56 1.41V9.2H11.1c.03.61 0 9.8 0 9.8h2.17v-5.48c0-.29.02-.58.11-.79.23-.58.77-1.18 1.66-1.18 1.17 0 1.64.89 1.64 2.2V19H19.1v-5.46z"/>
+                                    </svg>
+                                {% elif link.platform_key == 'youtube' %}
+                                    <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
+                                        <rect width="24" height="24" rx="6" fill="#FF0000"/>
+                                        <path fill="#fff" d="M10 8.2v7.6l6.4-3.8L10 8.2z"/>
+                                    </svg>
+                                {% else %}
+                                    <i class="fa-brands {{ link.iconClass }}"></i>
+                                {% endif %}
+                                <span>{{ link.label|default:link.platform|title }}</span>
+                            </button>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mt-1 mb-1">
+                        <button type="button" class="exc-claim-btn" onclick="directRazorpayCheckout(this)">
+                            <span class="exc-bolt"><i class="fa-solid fa-bolt"></i></span>
+                            {{ exclusive_config.checkout_btn_text|default:'Claim Now' }}
+                            <i class="fa-solid fa-chevron-right ms-auto"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
         {% endif %}
     </div>
 
@@ -533,7 +962,306 @@
             }
         }
 
+        // Scratch Card & Exclusive Plan Logic
+        let ribbonCanvases = document.querySelectorAll('.ribbon-scratch-canvas');
+        let isRibbonDrawing = false;
+        let ribbonTotalPixels = 0;
+        let scratchThreshold = {{ exclusive_config.scratch_threshold_percent|default:40 }};
+        let agentId = '{{ event_registration.id|default:"event" }}';
+
+        let activeRibbonCtx = null;
+        let activeRibbonCanvas = null;
+
+        function initRibbonScratch() {
+            if (!ribbonCanvases.length) return;
+
+            ribbonCanvases.forEach(canvas => {
+                let ctx = canvas.getContext('2d', { willReadFrequently: true });
+                canvas.width = 140;
+                canvas.height = 26;
+
+                let bgColor = canvas.dataset.color || '#10b981';
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, 140, 26);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '800 10px "Plus Jakarta Sans", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                let label = canvas.dataset.label || 'RECOMMENDED';
+                ctx.fillText(label, 70, 14);
+
+                ctx.globalCompositeOperation = 'destination-out';
+                canvas.ribbonScratchCompleted = false;
+
+                canvas.addEventListener('mousedown', startRibbonScratch);
+                canvas.addEventListener('mousemove', scratchRibbon);
+                canvas.addEventListener('mouseup', stopRibbonScratch);
+                canvas.addEventListener('mouseleave', stopRibbonScratch);
+
+                canvas.addEventListener('touchstart', startRibbonScratch, { passive: false });
+                canvas.addEventListener('touchmove', scratchRibbon, { passive: false });
+                canvas.addEventListener('touchend', stopRibbonScratch);
+            });
+        }
+
+        function startRibbonScratch(e) {
+            activeRibbonCanvas = e.currentTarget || e.target;
+            if (!activeRibbonCanvas) return;
+            activeRibbonCtx = activeRibbonCanvas.getContext('2d', { willReadFrequently: true });
+            isRibbonDrawing = true;
+            scratchRibbon(e);
+        }
+
+        function stopRibbonScratch() {
+            isRibbonDrawing = false;
+            checkRibbonThreshold();
+        }
+
+        function scratchRibbon(e) {
+            if (!isRibbonDrawing || !activeRibbonCanvas || activeRibbonCanvas.ribbonScratchCompleted) return;
+            if (e.cancelable) e.preventDefault();
+
+            let x, y;
+            let bcr = activeRibbonCanvas.getBoundingClientRect();
+            let clientX, clientY;
+
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            if (clientX !== undefined && clientY !== undefined && bcr.width > 0) {
+                let cx = bcr.left + bcr.width / 2;
+                let cy = bcr.top + bcr.height / 2;
+                let dx = clientX - cx;
+                let dy = clientY - cy;
+
+                let cosA = 0.70710678;
+                let sinA = -0.70710678;
+
+                let rotatedX = dx * cosA - dy * sinA;
+                let rotatedY = dx * sinA + dy * cosA;
+
+                x = rotatedX + 70;
+                y = rotatedY + 13;
+            } else if (e.offsetX !== undefined && e.offsetY !== undefined) {
+                x = e.offsetX;
+                y = e.offsetY;
+            } else {
+                return;
+            }
+
+            activeRibbonCtx.beginPath();
+            activeRibbonCtx.arc(x, y, 14, 0, Math.PI * 2);
+            activeRibbonCtx.fill();
+        }
+
+        function checkRibbonThreshold() {
+            if (!activeRibbonCanvas || activeRibbonCanvas.ribbonScratchCompleted) return;
+            let imageData = activeRibbonCtx.getImageData(0, 0, activeRibbonCanvas.width, activeRibbonCanvas.height);
+            let pixels = imageData.data;
+            let transparentCount = 0;
+            for (let i = 3; i < pixels.length; i += 4) {
+                if (pixels[i] === 0) transparentCount++;
+            }
+            ribbonTotalPixels = activeRibbonCanvas.width * activeRibbonCanvas.height;
+            let scratchedPercent = (transparentCount / ribbonTotalPixels) * 100;
+            if (scratchedPercent >= scratchThreshold) {
+                activeRibbonCanvas.ribbonScratchCompleted = true;
+                setTimeout(() => {
+                    openGiftModal();
+                    triggerConfetti();
+                }, 300);
+            }
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                var cCanvas = document.createElement('canvas');
+                cCanvas.style.position = 'fixed';
+                cCanvas.style.inset = '0';
+                cCanvas.style.width = '100vw';
+                cCanvas.style.height = '100vh';
+                cCanvas.style.zIndex = '999999';
+                cCanvas.style.pointerEvents = 'none';
+                document.body.appendChild(cCanvas);
+
+                var cConfetti = confetti.create(cCanvas, { resize: true, useWorker: true });
+                var count = 200;
+                var defaults = { origin: { y: 0.7 }, zIndex: 999999 };
+
+                function fire(particleRatio, opts) {
+                    cConfetti(Object.assign({}, defaults, opts, {
+                        particleCount: Math.floor(count * particleRatio)
+                    }));
+                }
+
+                fire(0.25, { spread: 26, startVelocity: 55 });
+                fire(0.2, { spread: 60 });
+                fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+                fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+                fire(0.1, { spread: 120, startVelocity: 45 });
+
+                setTimeout(() => cCanvas.remove(), 4000);
+            }
+        }
+
+        window.openGiftModal = function () {
+            let modal = document.getElementById('giftModal');
+            if (modal) {
+                modal.classList.add('active');
+            }
+            fetchDiscountStatus();
+
+            if (typeof confetti === 'function') {
+                var myCanvas = document.createElement('canvas');
+                myCanvas.style.position = 'fixed';
+                myCanvas.style.inset = '0';
+                myCanvas.style.width = '100vw';
+                myCanvas.style.height = '100vh';
+                myCanvas.style.zIndex = '999999';
+                myCanvas.style.pointerEvents = 'none';
+                document.body.appendChild(myCanvas);
+
+                var myConfetti = confetti.create(myCanvas, { resize: true, useWorker: true });
+                var duration = 2500;
+                var animationEnd = Date.now() + duration;
+                var defaults = { startVelocity: 45, spread: 360, ticks: 100, zIndex: 999999 };
+
+                function randomInRange(min, max) {
+                    return Math.random() * (max - min) + min;
+                }
+
+                var interval = setInterval(function () {
+                    var timeLeft = animationEnd - Date.now();
+                    if (timeLeft <= 0) {
+                        clearInterval(interval);
+                        myCanvas.remove();
+                        return;
+                    }
+                    var particleCount = 120 * (timeLeft / duration);
+                    myConfetti(Object.assign({}, defaults, {
+                        particleCount,
+                        origin: { x: randomInRange(0.4, 0.6), y: randomInRange(0.4, 0.6) },
+                        colors: ['#8b5cf6', '#10b981', '#fde047', '#fbbf24', '#ffffff']
+                    }));
+                }, 250);
+            }
+        };
+
+        window.closeGiftModal = function () {
+            let modal = document.getElementById('giftModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        };
+
+        window.directRazorpayCheckout = function (btn) {
+            closeGiftModal();
+            let payBtn = document.getElementById('payButton');
+            if (payBtn) {
+                initiatePayment();
+            } else {
+                let form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{% url 'events:plans.submit' %}";
+                let csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = '{{ csrf_token }}';
+                form.appendChild(csrfInput);
+                let planInput = document.createElement('input');
+                planInput.type = 'hidden';
+                planInput.name = 'plan_type';
+                planInput.value = 'professional';
+                form.appendChild(planInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        };
+
+        async function fetchDiscountStatus() {
+            try {
+                let res = await fetch(`/exclusive-plan/discount-status/?agent_id=${agentId}`);
+                let data = await res.json();
+                if (data.success) {
+                    updateGiftUI(data);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        window.handleSocialFollow = async function (platform, url, btn) {
+            window.open(url, '_blank');
+
+            try {
+                let res = await fetch('/exclusive-plan/social-follow/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ platform: platform, agent_id: agentId })
+                });
+                let data = await res.json();
+                if (data.success) {
+                    updateGiftUI(data);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        function updateGiftUI(data) {
+            let curPriceEl = document.getElementById('excCurrentPrice');
+            let discPriceEl = document.getElementById('excDiscountedPrice');
+            if (curPriceEl) curPriceEl.innerText = '₹' + data.current_price + '/-';
+            if (discPriceEl) discPriceEl.innerText = '₹' + data.current_price + '/-';
+
+            let beforeFollow = document.getElementById('priceUIBeforeFollow');
+            let afterFollow = document.getElementById('priceUIAfterFollow');
+
+            if (data.discount_unlocked) {
+                if (beforeFollow) beforeFollow.style.setProperty('display', 'none', 'important');
+                if (afterFollow) afterFollow.style.setProperty('display', 'flex', 'important');
+                let discountMsg = document.getElementById('excDiscountMessage');
+                if (discountMsg) discountMsg.style.display = 'inline-block';
+
+                if (discPriceEl) {
+                    discPriceEl.classList.add('animate__animated', 'animate__tada');
+                    setTimeout(() => discPriceEl.classList.remove('animate__animated', 'animate__tada'), 1000);
+                }
+            } else {
+                if (beforeFollow) beforeFollow.style.setProperty('display', 'flex', 'important');
+                if (afterFollow) afterFollow.style.setProperty('display', 'none', 'important');
+            }
+
+            document.querySelectorAll('.social-btn').forEach(btn => {
+                if (data.followed_platforms && data.followed_platforms.includes(btn.dataset.platform)) {
+                    btn.classList.add('followed');
+                    let span = btn.querySelector('span');
+                    if (span) span.innerText = 'Followed';
+                }
+            });
+        }
+
         window.addEventListener('DOMContentLoaded', function () {
+            initRibbonScratch();
+
+            let giftModalOverlay = document.getElementById('giftModal');
+            if (giftModalOverlay) {
+                giftModalOverlay.addEventListener('click', function (e) {
+                    if (e.target === this) {
+                        closeGiftModal();
+                    }
+                });
+            }
+
             {% if selected_plan_key == 'basic' %}
                 togglePlans('starter');
             {% else %}

@@ -38,6 +38,12 @@ class Agent(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    def get_primary_profile(self):
+        try:
+            return self.profile
+        except Exception:
+            return None
+
     # Relationships
     insurance_segments = relationship(
         "AgentInsuranceSegment", 

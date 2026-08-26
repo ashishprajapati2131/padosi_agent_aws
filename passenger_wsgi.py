@@ -14,16 +14,17 @@ try:
 except ImportError:
     pass
 
-# cPanel virtualenv site-packages. Override with VENV_SITE_PACKAGES /
-# VENV_SITE_PACKAGES_64 when the hosting path changes.
-_DEFAULT_VENV = "/home/m69qf6gyhm3n/virtualenv/padosiagentdjango/src/3.11/lib/python3.11/site-packages"
-_DEFAULT_VENV_64 = "/home/m69qf6gyhm3n/virtualenv/padosiagentdjango/src/3.11/lib64/python3.11/site-packages"
-VENV_PATH = os.environ.get("VENV_SITE_PACKAGES", _DEFAULT_VENV)
-VENV_PATH_64 = os.environ.get("VENV_SITE_PACKAGES_64", _DEFAULT_VENV_64)
-if os.path.exists(VENV_PATH) and VENV_PATH not in sys.path:
-    sys.path.insert(0, VENV_PATH)
-if os.path.exists(VENV_PATH_64) and VENV_PATH_64 not in sys.path:
-    sys.path.insert(0, VENV_PATH_64)
+# cPanel virtualenv site-packages. Check both possible folder names
+_POSSIBLE_VENVS = [
+    "/home/m69qf6gyhm3n/virtualenv/padosiagent_django/src/3.11/lib/python3.11/site-packages",
+    "/home/m69qf6gyhm3n/virtualenv/padosiagent_django/src/3.11/lib64/python3.11/site-packages",
+    "/home/m69qf6gyhm3n/virtualenv/padosiagentdjango/src/3.11/lib/python3.11/site-packages",
+    "/home/m69qf6gyhm3n/virtualenv/padosiagentdjango/src/3.11/lib64/python3.11/site-packages",
+]
+
+for venv_dir in _POSSIBLE_VENVS:
+    if os.path.exists(venv_dir) and venv_dir not in sys.path:
+        sys.path.insert(0, venv_dir)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "padosi_agent.settings")
 

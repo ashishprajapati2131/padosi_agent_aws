@@ -352,8 +352,123 @@ def _render_plans(request, event_registration, pricing, promo_code_str):
             except Agent.DoesNotExist:
                 pass
 
+    from apps.home.models import SiteSetting
+    from apps.agents.views.registration import _exclusive_base_price
+
+    # Fetch Gamification Config
+    exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
+    is_exclusive_active = exclusive_config.get('is_active', False)
+    draft_id = event_registration.id if event_registration else 'event'
+    session_key = f'followed_platforms_{draft_id}'
+    followed = request.session.get(session_key, [])
+    follow_count = len(followed)
+    discount_unlocked = follow_count > 0
+
+    exc_strikeout = float(exclusive_config.get('strikeout_price', 6999))
+    exc_base = float(exclusive_config.get('base_price', 1999))
+    exc_discounted = _exclusive_base_price(exclusive_config, follow_count, discount_unlocked)
+
+    if exc_strikeout > 0 and exc_base < exc_strikeout:
+        exclusive_config['before_discount_val'] = f"{int(round((exc_strikeout - exc_base) / exc_strikeout * 100))}%"
+    else:
+        exclusive_config['before_discount_val'] = "0%"
+
+    if exc_base > 0 and exc_discounted < exc_base:
+        exclusive_config['after_discount_val'] = f"{int(round((exc_base - exc_discounted) / exc_base * 100))}%"
+    else:
+        exclusive_config['after_discount_val'] = "0%"
+
+    default_features = [
+        {'name': 'Permanent<br>Website', 'icon': 'fa-globe', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
+        {'name': 'Digital<br>Card', 'icon': 'fa-id-card-clip', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
+        {'name': 'Licensed<br>Badge', 'icon': 'fa-shield-halved', 'color': '#f59e0b', 'bg_color': '#fffbeb'},
+        {'name': 'Call &<br>WhatsApp', 'icon': 'fa-phone', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
+        {'name': 'Customer<br>Reviews', 'icon': 'fa-star', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
+        {'name': 'Product<br>Showcase', 'icon': 'fa-store', 'color': '#3b82f6', 'bg_color': '#eff6ff'}
+    ]
+    premium_features = exclusive_config.get('premium_features', None)
+    if premium_features is None:
+        premium_features = default_features
+
+    social_links = exclusive_config.get('social_links', [])
+    social_labels = {
+        'instagram': 'Instagram',
+        'facebook': 'Facebook',
+        'x': 'X',
+        'twitter': 'X',
+        'linkedin': 'LinkedIn',
+        'youtube': 'YouTube',
+        'whatsapp': 'WhatsApp',
+    }
+    for link in social_links:
+        platform = (link.get('platform') or '').lower()
+        link['platform_key'] = platform
+        link['label'] = social_labels.get(platform, (link.get('platform') or '').title())
+        user_icon = (link.get('icon') or '').strip()
+        if user_icon.startswith('fa-'):
+            link['iconClass'] = user_icon
+        elif platform in ('x', 'twitter'):
+            link['iconClass'] = 'fa-x-twitter'
+        elif platform == 'linkedin':
+            link['iconClass'] = 'fa-linkedin-in'
+        elif platform == 'facebook':
+            link['iconClass'] = 'fa-facebook-f'
+        elif platform == 'youtube':
+            link['iconClass'] = 'fa-youtube'
+        else:
+            link['iconClass'] = 'fa-instagram'
+
+    checkout_label = (exclusive_config.get('checkout_btn_text') or 'Claim Now').strip()
+    if checkout_label.upper() in ('BUY', 'CLAIM OFFER'):
+        checkout_label = 'Claim Now'
+    exclusive_config['checkout_btn_text'] = checkout_label
+
+    title_prefix = (exclusive_config.get('title_prefix') or 'Surprise!!!!').strip()
+    if title_prefix in ('Surprise!', 'Surprise'):
+        title_prefix = 'Surprise!!!!'
+    exclusive_config['title_prefix'] = title_prefix
+
+    gift_subtitle = (exclusive_config.get('gift_subtitle') or '').strip()
+    if gift_subtitle in (
+        '',
+        'For a limited time, get our best deal.',
+        'Follow our social handles to reveal your secret discounted price.',
+    ):
+        exclusive_config['gift_subtitle'] = 'Follow us on Social Media...'
+
+    try:
+        total_seats = int(exclusive_config.get('total_seats') or 10000)
+    except (TypeError, ValueError):
+        total_seats = 10000
+    try:
+        claimed_seats = int(exclusive_config.get('base_claimed_seats') or 0)
+    except (TypeError, ValueError):
+        claimed_seats = 0
+    spots_left = max(0, total_seats - claimed_seats)
+
+    def _format_urgency(template, fallback):
+        text = template or fallback
+        try:
+            return text.format(
+                total_seats=total_seats,
+                claimed_seats=claimed_seats,
+                spots_left=spots_left,
+            )
+        except (KeyError, ValueError, IndexError):
+            return text
+
+    urgency_line_1 = _format_urgency(
+        exclusive_config.get('urgency_line_1'),
+        '🔥 Hurry! Offer valid only for the first {total_seats} users!',
+    )
+    urgency_line_2 = _format_urgency(
+        exclusive_config.get('urgency_line_2'),
+        '🔥 {claimed_seats}/{total_seats} Claimed',
+    )
+
     return render(request, 'events/plans.html', {
         'event_registration': event_registration,
+        'draft': event_registration,
         'pricing': pricing,
         'selected_plan': selected_plan,
         'selected_plan_key': selected_plan_key,
@@ -364,6 +479,14 @@ def _render_plans(request, event_registration, pricing, promo_code_str):
         'base_minus_6999': round(PROFESSIONAL_BASE - pricing['professional']['base'], 2),
         'selected_professional': selected_plan_key == 'professional',
         'selected_basic': selected_plan_key == 'basic',
+
+        'exclusive_config': exclusive_config,
+        'is_exclusive_active': is_exclusive_active,
+        'discount_unlocked': discount_unlocked,
+        'premiumFeatures': premium_features,
+        'spots_left': spots_left,
+        'urgency_line_1': urgency_line_1,
+        'urgency_line_2': urgency_line_2,
     })
 
 

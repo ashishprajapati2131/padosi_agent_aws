@@ -129,6 +129,20 @@ class DashboardService:
             referral=referral_info,
         )
 
+    @staticmethod
+    def _resolve_photo_url(path: str) -> Optional[str]:
+        try:
+            from apps.agents.models import resolve_stored_file_url
+
+            return resolve_stored_file_url(
+                path,
+                fallback_subdirs=('app/public/profile', 'agent/profiles'),
+                missing='',
+            ) or None
+        except Exception as e:
+            logger.warning("Could not resolve profile photo path %r: %s", path, e)
+            return path
+
     def _build_agent_summary(self, agent: Agent, profile: Optional[AgentProfile]) -> AgentSummary:
         display_name = None
         photo_url = None
@@ -142,7 +156,9 @@ class DashboardService:
             languages = profile.languages
             agency_name = profile.agency_name
             if profile.profile_photo_path:
-                photo_url = profile.profile_photo_path
+                # Stored paths are relative (or legacy Laravel paths). Resolve
+                # them the same way GET /profile does so clients get one shape.
+                photo_url = self._resolve_photo_url(profile.profile_photo_path)
 
         return AgentSummary(
             id=agent.id,

@@ -67,10 +67,18 @@ def index(request):
     return render(request, 'admin/export_center.html', {'counts': counts})
 
 
+ALLOWED_EXPORT_TABLES = {
+    'agent_leads', 'agents', 'contact_submissions', 'agent_subscriptions',
+    'agent_reviews', 'promo_codes', 'pincodes', 'insurance_companies',
+    'referral_codes', 'referral_usages', 'free_trial_history'
+}
+
 def _count_table(table: str) -> int:
     """Count rows in a raw table that may not have a Django model."""
+    if table not in ALLOWED_EXPORT_TABLES:
+        return 0
     with connection.cursor() as cursor:
-        cursor.execute(f"SELECT COUNT(*) FROM {table}")
+        cursor.execute(f"SELECT COUNT(*) FROM `{table}`")
         return cursor.fetchone()[0]
 
 

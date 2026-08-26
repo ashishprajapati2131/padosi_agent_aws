@@ -4,6 +4,16 @@ from fastapi.responses import JSONResponse
 import time
 from collections import defaultdict
 
+# Substrings of the real router paths. The earlier "/auth/login" marker never
+# matched, so credential and payment endpoints ran on the generic 100/min limit.
+SENSITIVE_PATH_MARKERS = (
+    "/agents/login",
+    "/agents/forgot-password",
+    "/agents/reset-password",
+    "/payment-order",
+    "/payment/success",
+)
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, requests_limit: int = 100, window_seconds: int = 60):
         super().__init__(app)
@@ -38,7 +48,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Enforce rate limits (e.g. login or checkouts can have lower limits in the future,
         # but here we apply a general limit per IP)
         limit = self.requests_limit
-        if "/auth/login" in path or "/payment/" in path:
+        if any(marker in path for marker in SENSITIVE_PATH_MARKERS):
             limit = 15  # Tighter limit on sensitive endpoints
             
         if len(self.client_records[ip]) >= limit:

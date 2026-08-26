@@ -24,6 +24,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         email: str = payload.get("sub")
         role: str = payload.get("role")
         jti: str = payload.get("jti")
+        token_user_id = payload.get("user_id")
         if email is None or role != "agent":
             raise credentials_exception
             
@@ -47,6 +48,11 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         
     user_repo = UserRepository(db)
     user = user_repo.get_by_email(email)
+    # The `sub` claim is the email captured at login. An agent who changes their
+    # email keeps a valid, unrevoked token, so fall back to the user id claim
+    # instead of forcing a re-login they cannot complete.
+    if user is None and token_user_id is not None:
+        user = db.query(User).filter(User.id == token_user_id).first()
     if user is None:
         raise credentials_exception
         
@@ -58,6 +64,9 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         
     return user
 
+# Mirrors AuthService.BLOCKED_AGENT_STATUSES and Django's agent_login guard.
+BLOCKED_AGENT_STATUSES = ("suspended", "blacklisted", "rejected")
+
 def get_current_agent(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Agent:
     agent_repo = AgentRepository(db)
     agent = agent_repo.get_by_email(current_user.email)
@@ -67,5 +76,11 @@ def get_current_agent(current_user: User = Depends(get_current_user), db: Sessio
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Agent profile not found."
         )
-        
+
+    if agent.status in BLOCKED_AGENT_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Your account is currently {agent.status}."
+        )
+
     return agent

@@ -11,6 +11,7 @@ FlexibleUploadFile = Annotated[
     BeforeValidator(validate_upload_or_str),
     WithJsonSchema({"type": "string", "format": "binary"})
 ]
+from fastapi_app.config import settings
 from fastapi_app.database import get_db
 from fastapi_app.dependencies.auth import get_current_agent
 from fastapi_app.models.agent import Agent

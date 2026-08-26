@@ -40,7 +40,12 @@ EDIT_PROFILE_CHILD_FEATURES = (
 
 SLUG_NORMALISE = {
     'basic': 'starter',
+    'starter': 'starter',
     'free trial': 'free_trial',
+    'free_trial': 'free_trial',
+    'professional': 'professional',
+    'pro': 'professional',
+    'exclusive': 'exclusive',
 }
 
 FEATURE_ATTR_MAP = {
@@ -87,7 +92,6 @@ FEATURE_LABELS = {
     'public_profile': 'Public Profile Customization',
     'agent_directory_visibility': 'Listed in Find Agents Directory',
     'receive_leads': 'Eligible to Receive New Leads',
-    'premium_support': 'Premium Priority Support',
     'edit_profile_certifications': 'Agent Certificate',
     'edit_profile_career_timeline': 'Career Timeline',
     'edit_profile_professional_bio': 'Professional Bio',
@@ -225,6 +229,54 @@ def normalize_plan_slug(plan_type):
     pt = str(plan_type).strip()
     slug = pt.lower().replace(' ', '_')
     return SLUG_NORMALISE.get(slug, slug)
+
+
+def plan_slug_from_name(plan_name):
+    """Map a display name / selected_plan string to a canonical slug."""
+    name = str(plan_name or '').strip().lower()
+    if not name:
+        return ''
+    if 'trial' in name:
+        return 'free_trial'
+    if 'exclusive' in name:
+        return 'exclusive'
+    if 'professional' in name or name in ('pro', 'pro_plan', 'pro plan'):
+        return 'professional'
+    if 'starter' in name or 'basic' in name:
+        return 'starter'
+    return normalize_plan_slug(name) if normalize_plan_slug(name) in PLAN_SLUGS else ''
+
+
+def resolve_checkout_plan_slug(plan_type, plan_name=None):
+    """
+    Accept checkout identifiers from web, upgrade, and legacy clients.
+
+    Valid inputs: canonical slugs, aliases (basic/pro), display names,
+    and numeric SubscriptionPlan ids. Returns a PLAN_SLUGS value or None.
+    """
+    raw = str(plan_type or '').strip()
+    if raw:
+        slug = normalize_plan_slug(raw)
+        if slug in PLAN_SLUGS:
+            return slug
+        named = plan_slug_from_name(raw)
+        if named in PLAN_SLUGS:
+            return named
+        if raw.isdigit():
+            try:
+                from apps.agents.models import SubscriptionPlan
+                plan = SubscriptionPlan.objects.filter(id=int(raw)).first()
+                if plan:
+                    named = plan_slug_from_name(plan.name)
+                    if named in PLAN_SLUGS:
+                        return named
+            except Exception:
+                logger.warning('Failed to resolve SubscriptionPlan id=%s', raw, exc_info=True)
+    if plan_name:
+        named = plan_slug_from_name(plan_name)
+        if named in PLAN_SLUGS:
+            return named
+    return None
 
 
 def get_unlock_rules():
