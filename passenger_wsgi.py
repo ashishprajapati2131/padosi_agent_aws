@@ -5,16 +5,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-try:
-    from dotenv import load_dotenv
-
-    env_path = PROJECT_ROOT / ".env"
-    if env_path.exists():
-        load_dotenv(env_path)
-except ImportError:
-    pass
-
-# cPanel virtualenv site-packages. Check both possible folder names
+# cPanel virtualenv site-packages. Add to sys.path FIRST before any 3rd party packages
 _POSSIBLE_VENVS = [
     "/home/m69qf6gyhm3n/virtualenv/padosiagent_django/src/3.11/lib/python3.11/site-packages",
     "/home/m69qf6gyhm3n/virtualenv/padosiagent_django/src/3.11/lib64/python3.11/site-packages",
@@ -25,6 +16,16 @@ _POSSIBLE_VENVS = [
 for venv_dir in _POSSIBLE_VENVS:
     if os.path.exists(venv_dir) and venv_dir not in sys.path:
         sys.path.insert(0, venv_dir)
+
+try:
+    from dotenv import load_dotenv
+
+    for env_path in [PROJECT_ROOT / ".env", PROJECT_ROOT.parent / ".env"]:
+        if env_path.exists():
+            load_dotenv(env_path)
+            break
+except ImportError:
+    pass
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "padosi_agent.settings")
 
