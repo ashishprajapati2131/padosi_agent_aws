@@ -43,6 +43,15 @@ class PublicProfileService:
             raise HTTPException(status_code=404, detail="Agent Profile Not found")
             
         profile = agent.profile
+
+        # The endpoint is unauthenticated, so the agent's own visibility switch
+        # is the only thing standing between a hidden profile and the public.
+        if profile is not None and not profile.is_profile_visible:
+            raise HTTPException(status_code=404, detail="Agent Profile Not found")
+
+        show_certificates = profile.show_certificates if profile else True
+        show_achievements = profile.show_achievements if profile else True
+        show_reviews = profile.show_reviews if profile else True
         perf = agent.performance_stats
         prefs = agent.lead_preferences
         

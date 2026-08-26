@@ -12,6 +12,9 @@ import time
 # Simple in-memory throttle store: {ip: {"attempts": int, "expires_at": float}}
 login_attempts_store = {}
 
+# Mirrors apps/agents/views/auth.py: the only agent statuses that deny a session.
+BLOCKED_AGENT_STATUSES = ('suspended', 'blacklisted', 'rejected')
+
 def check_login_throttle(ip: str) -> bool:
     record = login_attempts_store.get(ip)
     if record:
@@ -171,24 +174,21 @@ class AuthService:
                 content={"success": False, "message": "Your account is currently inactive."}
             )
 
-        # Check Agent status specifically matching Django
-        if agent.status in ('incomplete', 'pending_payment'):
+        # Check Agent status specifically matching Django.
+        # Django's agent_login only hard-blocks suspended/blacklisted/rejected;
+        # `pending_approval` must stay able to sign in because submitting a
+        # profile edit puts an otherwise healthy agent into that state.
+        if agent.status in BLOCKED_AGENT_STATUSES:
+            record_login_attempt(ip)
+            return JSONResponse(
+                status_code=200,
+                content={"success": False, "message": f"Your account is currently {agent.status}."}
+            )
+        elif agent.status in ('incomplete', 'pending_payment', 'pending_accounts_payment'):
             record_login_attempt(ip)
             return JSONResponse(
                 status_code=200,
                 content={"success": False, "message": "Please complete plan selection and payment to activate your account."}
-            )
-        elif agent.status in ('pending', 'pending_approval'):
-            record_login_attempt(ip)
-            return JSONResponse(
-                status_code=200,
-                content={"success": False, "message": "Your payment has been verified. Your account is pending admin approval."}
-            )
-        elif agent.status != 'active':
-            record_login_attempt(ip)
-            return JSONResponse(
-                status_code=200,
-                content={"success": False, "message": "Your account is not active."}
             )
 
         # Clear login throttle on successful auth
@@ -213,13 +213,18 @@ class AuthService:
                 content={"success": False, "message": "Authentication failed due to database transaction error."}
             )
 
+        message = "Login successful."
+        if agent.status in ('pending', 'pending_approval'):
+            message = "Login successful. Your profile is pending admin approval."
+
         return JSONResponse(
             status_code=200,
             content={
                 "success": True,
-                "message": "Login successful.",
+                "message": message,
                 "access_token": access_token,
                 "token_type": "bearer",
-                "expires_in": 100 * 365 * 24 * 3600  # 100 years in seconds
+                "expires_in": 100 * 365 * 24 * 3600,  # 100 years in seconds
+                "agent_status": agent.status
             }
         )

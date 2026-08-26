@@ -26,7 +26,7 @@ def qr_files_index(request):
     file_type_filter = request.GET.get('type', '').strip().lower()
     if file_type_filter:
         if file_type_filter == 'image':
-            query = query.filter(file_type__in=['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'])
+            query = query.filter(file_type__in=['png', 'jpg', 'jpeg', 'gif', 'webp'])
         else:
             query = query.filter(file_type=file_type_filter)
 
@@ -70,7 +70,7 @@ def qr_files_store(request):
         name_parts = original_name.rsplit('.', 1)
         extension = name_parts[1].lower() if len(name_parts) > 1 else ''
 
-        allowed_extensions = ['pdf', 'apk', 'zip', 'docx', 'xlsx', 'pptx', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'rar', 'tar', 'gz', 'txt', 'csv', 'sql', 'json']
+        allowed_extensions = ['pdf', 'apk', 'zip', 'docx', 'xlsx', 'pptx', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'rar', 'tar', 'gz', 'txt', 'csv', 'json']
         if extension not in allowed_extensions:
             return JsonResponse({'success': False, 'message': 'Invalid file type.'}, status=422)
 
@@ -140,7 +140,7 @@ def qr_files_update(request, id):
         name_parts = original_name.rsplit('.', 1)
         extension = name_parts[1].lower() if len(name_parts) > 1 else ''
 
-        allowed_extensions = ['pdf', 'apk', 'zip', 'docx', 'xlsx', 'pptx', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'rar', 'tar', 'gz', 'txt', 'csv', 'sql', 'json']
+        allowed_extensions = ['pdf', 'apk', 'zip', 'docx', 'xlsx', 'pptx', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'rar', 'tar', 'gz', 'txt', 'csv', 'json']
         if extension not in allowed_extensions:
             return JsonResponse({'success': False, 'message': 'Invalid file type.'}, status=422)
 

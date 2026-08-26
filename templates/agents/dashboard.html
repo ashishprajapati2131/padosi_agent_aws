@@ -45,15 +45,6 @@
                 <button type="button" class="btn text-white shadow-sm px-4 d-flex align-items-center mb-2 mb-sm-0" data-feature="rank_boost_tips" data-toggle="modal" data-target="#rankingGuideModal" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; font-weight: 700; border-radius: 8px; margin-right: 12px; height: 42px; position: relative;">
                     <i class="fas fa-rocket mr-2"></i> Rank Boost Tips
                 </button>
-                {% if not admin_lock_preview and agent_plan and agent_plan.premium_priority_support %}
-                <button type="button" class="btn text-white shadow-sm px-4 d-flex align-items-center mb-2 mb-sm-0" data-feature="premium_support" onclick="window.open('https://wa.me/919999999999?text=Hi%2C%20I%20am%20a%20Priority%20Support%20agent%20needing%20assistance.', '_blank')" style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); border: none; font-weight: 700; border-radius: 8px; margin-right: 12px; height: 42px; position: relative; overflow: hidden;">
-                    <div style="position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); animation: shine 2.5s infinite;"></div>
-                    <i class="fab fa-whatsapp mr-2" style="font-size: 1.2rem;"></i> Priority Support
-                </button>
-                <style>
-                    @keyframes shine { 100% { left: 200%; } }
-                </style>
-                {% endif %}
                 <a href="{% if admin_lock_preview %}#{% elif profile.slug %}{% url 'agents:agent_public_profile' slug=profile.slug %}{% elif agent.agent_slug %}{% url 'agents:agent_public_profile' slug=agent.agent_slug %}{% else %}#{% endif %}" class="btn btn-profile-view mb-2 mb-sm-0" data-feature="view_public_profile" style="height: 42px; display: inline-flex; align-items: center; position: relative;">View My Profile</a>
             </div>
         </div>
@@ -1026,10 +1017,9 @@
             // Launch Razorpay
             const options = {
                 key:         data.key,
-                amount:      data.amount,
                 currency:    'INR',
                 name:        'PadosiAgent',
-                description: 'Plan Upgrade — ' + (planType === 'basic' ? "Starter's Plan" : "Professional's Plan"),
+                description: 'Plan Upgrade — ' + (planType === 'basic' || planType === 'starter' ? "Starter's Plan" : "Professional's Plan"),
                 order_id:    data.order_id,
                 prefill: {
                     name:  '{{ agent.fullname }}',
@@ -1298,10 +1288,6 @@
     
     if (!planPermissions.leadStatus) {
       $('.lead-status-select, .lead-status-dropdown').prop('disabled', true).css({'opacity': '0.7', 'cursor': 'not-allowed'}).attr('title', lockReason('Lead Status', 'show_lead_status') || 'Lead Status updates are locked by your Admin Plan');
-    }
-
-    if (!planPermissions.premiumSupport) {
-      $('[data-feature="premium_support"]').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', lockReason('Priority Support', 'premium_priority_support'));
     }
     
     // Add lock for the profile section visibility card if restricted

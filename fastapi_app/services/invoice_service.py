@@ -365,7 +365,12 @@ class InvoiceService:
             pdf.set_xy(25, 105.5)
             pdf.set_font("helvetica", "", 9)
             pdf.set_text_color(106, 106, 106)
-            plan_desc = "PadosiAgent Subscription - 30 Day Trial" if invoice.plan_type == "free_trial" else ("PadosiAgent Subscription - 1 Year Starter" if invoice.plan_type == "basic" else "PadosiAgent Subscription - 1 Year Professional")
+            plan_desc = (
+                "PadosiAgent Subscription - 30 Day Trial" if invoice.plan_type == "free_trial"
+                else "PadosiAgent Subscription - 1 Year Starter" if invoice.plan_type in ("basic", "starter")
+                else "PadosiAgent Subscription - Exclusive Plan" if invoice.plan_type == "exclusive"
+                else "PadosiAgent Subscription - 1 Year Professional"
+            )
             pdf.cell(100, 5, plan_desc, border=0, align="L")
             
             row_end_y = 112

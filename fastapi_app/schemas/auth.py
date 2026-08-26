@@ -11,6 +11,7 @@ class LoginResponse(BaseModel):
     access_token: Optional[str] = None
     token_type: Optional[str] = None
     expires_in: Optional[int] = None
+    agent_status: Optional[str] = None
 
 class AgentMeResponse(BaseModel):
     success: bool

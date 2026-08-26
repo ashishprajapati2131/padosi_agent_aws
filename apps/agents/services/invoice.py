@@ -241,8 +241,10 @@ class InvoiceService:
             
             if invoice.plan_type == 'free_trial':
                 plan_desc = "PadosiAgent Subscription – 30 Day Trial"
-            elif invoice.plan_type == 'basic':
+            elif invoice.plan_type in ('basic', 'starter'):
                 plan_desc = "PadosiAgent Subscription – 1 Year Starter"
+            elif invoice.plan_type == 'exclusive':
+                plan_desc = "PadosiAgent Subscription – Exclusive Plan"
             else:
                 plan_desc = "PadosiAgent Subscription – 1 Year Professional"
 

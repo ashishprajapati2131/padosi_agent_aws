@@ -362,7 +362,7 @@ def plans(request):
         'extra_discount_msg': 'Extra Follower Discount Applied!',
         'features_header': "What You'll Get",
         'social_header': 'Follow on',
-        'checkout_btn_text': 'Claim Offer',
+        'checkout_btn_text': 'Claim Now',
         'social_links': [],
         'premium_features': [],
         'follow_tiers': [],
@@ -392,7 +392,6 @@ def plans(request):
         ('public_profile', 'Public Profile Customization'),
         ('agent_directory_visibility', 'Listed in Find Agents Directory'),
         ('receive_leads', 'Eligible to Receive New Leads'),
-        ('premium_support', 'Premium Priority Support'),
     ]
 
     legacy_features = [
@@ -562,7 +561,7 @@ def update_exclusive_config(request):
             'extra_discount_msg': request.POST.get('extra_discount_msg', 'Extra Follower Discount Applied!'),
             'features_header': request.POST.get('features_header', 'What You\'ll Get'),
             'social_header': request.POST.get('social_header', 'Follow on'),
-            'checkout_btn_text': request.POST.get('checkout_btn_text', 'BUY'),
+            'checkout_btn_text': request.POST.get('checkout_btn_text', 'Claim Now'),
             
             # Advanced Text & Badge Labels
             'plan_badge': request.POST.get('plan_badge', '👑'),

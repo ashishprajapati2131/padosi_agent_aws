@@ -29,9 +29,8 @@ CSRF_COOKIE_NAME = "padosi_csrf_token"
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# ─── Core Security ──────────────────────────────────────────────────────────
-# DEBUG defaults True for local development. Production .env MUST set DEBUG=False.
-DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes')
+# DEBUG defaults False for production safety. Local dev .env sets DEBUG=True.
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 # Production must set SECRET_KEY in the environment. The insecure fallback is
 # local-only so a missing production secret fails closed instead of shipping

@@ -22,7 +22,9 @@ from apps.agents.services.feature_unlock import (
     evaluate_unlock_rules,
     normalize_plan_slug,
     overlay_plan,
+    plan_slug_from_name,
     profile_completion_percent,
+    resolve_checkout_plan_slug,
 )
 logger = logging.getLogger(__name__)
 
@@ -111,6 +113,7 @@ def _resolve_base_agent_plan(plan_type):
         # Tier 2c: keyword-contains fallback
         SLUG_KEYWORDS = {
             'free_trial': ['free', 'trial'],
+            'starter':    ['starter', 'basic'],
             'basic':      ['basic', 'starter'],
             'professional': ['professional', 'pro'],
             'standard':   ['standard'],
@@ -166,10 +169,7 @@ def agent_dashboard(request):
 
         if completed_sub:
             plan_name = (completed_sub.selected_plan or '').lower()
-            plan_type = 'free_trial' if 'trial' in plan_name else (
-                'professional' if ('professional' in plan_name or 'pro' in plan_name) else (
-                'basic' if ('starter' in plan_name or 'basic' in plan_name) else 'standard'
-            ))
+            plan_type = plan_slug_from_name(plan_name) or 'professional'
 
             agent.status = 'active'
             agent.plan_type = plan_type
@@ -957,6 +957,7 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                 if errors:
                     return JsonResponse({'status': 'error', 'message': 'Validation failed', 'errors': errors}, status=422)
                     
+                previous_email = agent.email
                 agent.fullname = full_name
                 agent.email = email
                 agent.mobile = mobile
@@ -974,7 +975,12 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                         agent.status = request.POST.get('status')
                         
                 agent.save()
-                
+
+                # Login reads `users`/`auth_user` by email, so an address change
+                # here has to follow through or the agent cannot sign in again.
+                from apps.agents.services.account_auth import sync_agent_email_change
+                sync_agent_email_change(previous_email, email, full_name)
+
                 profile.display_name = display_name
                 profile.whatsapp = whatsapp
                 profile.languages = languages
@@ -1634,8 +1640,9 @@ def agent_upgrade_plan(request):
         except json.JSONDecodeError:
             data = request.POST
 
-        plan_type = data.get('plan_type')
-        if plan_type not in ['basic', 'professional']:
+        raw_plan_type = data.get('plan_type')
+        plan_type = resolve_checkout_plan_slug(raw_plan_type)
+        if plan_type not in ['starter', 'professional']:
             return JsonResponse({'success': False, 'message': 'Invalid plan selection.'}, status=400)
 
         promo_code = data.get('promo_code', '').strip()
@@ -1689,7 +1696,7 @@ def agent_upgrade_plan(request):
         else:
             prof_disc = prof_base + round(prof_base * 0.18, 0)
 
-        if plan_type == 'basic':
+        if plan_type == 'starter':
             total_amount = starter_disc
             plan_amount = starter_base
             plan_name = pricing_config.get('starter', {}).get('name', "Starter's Plan")
@@ -1735,6 +1742,12 @@ def agent_upgrade_plan(request):
                 logger.error(f"Razorpay Upgrade Order Creation Failed: {str(e)}")
                 return JsonResponse({'success': False, 'message': 'Payment service is offline.'}, status=500)
 
+        if not razorpay_order_id and amount_paise > 0:
+            return JsonResponse({
+                'success': False,
+                'message': 'Payment system error. Unable to initialize Razorpay transaction. Please try again later.'
+            }, status=500)
+
         # Update or create AgentSubscription
         subscription, created = AgentSubscription.objects.update_or_create(
             agent=agent,
@@ -1748,8 +1761,7 @@ def agent_upgrade_plan(request):
             }
         )
 
-        agent.status = 'pending_payment'
-        agent.save()
+        # Keep current agent status until payment succeeds — do not demote active trial users.
 
         # If 0 amount, complete instantly
         if amount_paise == 0:

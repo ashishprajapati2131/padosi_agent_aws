@@ -237,6 +237,46 @@ def ensure_laravel_user(email, fullname, password_hash, role='agent', status='ac
     return user
 
 
+def sync_agent_email_change(previous_email, new_email, fullname=None):
+    """Carry an agents.email change over to the credential tables.
+
+    Login resolves the account by email against `users` first and `auth_user`
+    second. Renaming only `agents.email` leaves both lookups on the old address
+    and the agent can no longer sign in with either one.
+    """
+    previous = (previous_email or '').strip()
+    new = (new_email or '').strip()
+    if not new or previous.lower() == new.lower():
+        return
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE users SET email = %s, fullname = COALESCE(NULLIF(%s, ''), fullname) "
+                "WHERE LOWER(email) = LOWER(%s)",
+                [new, fullname or '', previous],
+            )
+    except Exception as exc:
+        logger.warning("Could not move users.email from %s to %s: %s", previous, new, exc)
+
+    django_user = find_django_user(previous)
+    if not django_user:
+        return
+    updates = ['email']
+    django_user.email = new
+    if django_user.username == previous and not DjangoUser.objects.filter(username=new).exists():
+        django_user.username = new
+        updates.append('username')
+    first_name, last_name = _split_name(fullname)
+    if first_name and django_user.first_name != first_name:
+        django_user.first_name = first_name
+        updates.append('first_name')
+    if last_name and django_user.last_name != last_name:
+        django_user.last_name = last_name
+        updates.append('last_name')
+    django_user.save(update_fields=updates)
+
+
 def restore_soft_deleted_agent(agent):
     """Clear agents.deleted_at when the column exists (Laravel soft deletes)."""
     if not agent or not getattr(agent, 'id', None):

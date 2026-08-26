@@ -4,7 +4,10 @@ import json
 import time
 import re
 import zipfile
-import xml.etree.ElementTree as ET
+try:
+    import defusedxml.ElementTree as ET
+except ImportError:
+    import xml.etree.ElementTree as ET
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.core.files.storage import FileSystemStorage

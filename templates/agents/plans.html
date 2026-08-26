@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block extra_css %}
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <style>
         :root {
@@ -463,9 +463,16 @@
             cursor: pointer;
         }
 
-        .btn-pay:hover {
+        .btn-pay:hover:not(:disabled) {
             transform: translateY(-1px);
             box-shadow: 0 12px 20px -4px rgba(39, 60, 142, 0.4);
+        }
+
+        .btn-pay:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
 
         .terms-conditions-label {
@@ -575,28 +582,22 @@
         .gift-modal {
             background: #ffffff;
             border-radius: 28px;
-            width: 90%;
-            max-width: 520px;
-            padding: 25px 15px 15px 15px;
-            margin: 20px auto;
+            width: 92%;
+            max-width: 400px;
+            padding: 18px 16px 14px 16px;
+            margin: 16px auto;
             text-align: center;
-            box-shadow: 0 25px 65px rgba(30, 0, 70, 0.4);
-            border: 4px solid #7c3aed;
+            box-shadow: 0 18px 50px rgba(88, 28, 135, 0.22);
+            border: 2px solid #7c3aed;
             transform: scale(0);
             opacity: 0;
             position: relative;
             overflow: hidden;
+            font-family: 'Poppins', 'Plus Jakarta Sans', sans-serif;
         }
 
         .gift-modal::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 250px;
-            background: radial-gradient(ellipse at top center, #f5f3ff 0%, #ffffff 100%);
-            z-index: 0;
+            content: none;
         }
 
         .gift-modal>* {
@@ -604,47 +605,137 @@
             z-index: 1;
         }
 
+        .exc-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #111827;
+            letter-spacing: -0.3px;
+            margin: 0;
+            line-height: 1.25;
+        }
+
+        .exc-plan-name {
+            color: #facc15;
+            font-weight: 800;
+        }
+
+        .exc-unlocked {
+            font-size: 20px;
+            font-weight: 800;
+            color: #facc15;
+            margin: 4px 0 8px;
+            letter-spacing: -0.2px;
+        }
+
+        .exc-unlocked .exc-star {
+            color: #7c3aed;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .exc-subtitle {
+            color: #94a3b8;
+            font-size: 13px;
+            font-weight: 500;
+            margin: 0 0 10px;
+        }
+
+        .exc-urgency {
+            line-height: 1.35;
+            margin-bottom: 12px;
+        }
+
+        .exc-urgency-top {
+            font-size: 13px;
+            color: #9f1239;
+            font-weight: 700;
+        }
+
+        .exc-urgency-count {
+            font-size: 15px;
+            color: #e11d48;
+            font-weight: 800;
+            margin-top: 2px;
+        }
+
+        .exc-price-pill {
+            background: #ffffff;
+            border-radius: 999px;
+            padding: 12px 64px 12px 18px;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
+            max-width: 340px;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            min-height: 68px;
+        }
+
+        .exc-section-head {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 14px 0 10px;
+            color: #7c3aed;
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        .exc-section-head .exc-line {
+            height: 1.5px;
+            flex: 1;
+            max-width: 72px;
+            background: #7c3aed;
+        }
+
         .grid-4-cols {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            margin: 15px 0;
+            gap: 10px;
+            margin: 8px 0 12px;
         }
 
         .grid-3-cols {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin: 15px 0;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 8px 0 4px;
         }
 
         .discount-sticker {
-            background: #ef4444;
+            background: #e11d48;
             color: white;
-            width: 46px;
-            height: 46px;
-            border-radius: 50%;
+            width: 56px;
+            height: 56px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             font-weight: 900;
             line-height: 1;
-            transform: rotate(15deg) translateY(-2px);
-            border: 2px dashed #ffffff;
-            box-shadow: 0 0 0 3px #ef4444, 0 5px 12px rgba(239, 68, 68, 0.35);
-            margin-left: 10px;
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%) rotate(10deg);
+            margin-left: 0;
+            flex-shrink: 0;
+            clip-path: polygon(50% 0%, 63% 8%, 78% 4%, 84% 18%, 97% 22%, 92% 36%, 100% 50%, 92% 64%, 97% 78%, 84% 82%, 78% 96%, 63% 92%, 50% 100%, 37% 92%, 22% 96%, 16% 82%, 3% 78%, 8% 64%, 0% 50%, 8% 36%, 3% 22%, 16% 18%, 22% 4%, 37% 8%);
+            box-shadow: 0 6px 14px rgba(225, 29, 72, 0.35);
+            z-index: 2;
         }
 
         .discount-sticker .discount-val {
-            font-size: 15px;
-            letter-spacing: -0.5px;
+            font-size: 13px;
+            letter-spacing: -0.4px;
         }
 
         .discount-sticker .discount-text {
             font-size: 8px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.4px;
             margin-top: 2px;
         }
 
@@ -653,16 +744,15 @@
             flex-direction: column;
             align-items: center;
             background: #ffffff;
-            border: 1px solid #f1f5f9;
+            border: 1px solid #eef2ff;
             border-radius: 16px;
-            padding: 15px 5px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-            transition: all 0.2s ease;
+            padding: 14px 6px 12px;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
         }
 
         .feature-tile:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
         }
 
         .feature-tile .icon-wrapper {
@@ -681,7 +771,7 @@
             font-weight: 700;
             color: #0f172a;
             text-align: center;
-            line-height: 1.2;
+            line-height: 1.25;
         }
 
         @keyframes premium-reveal {
@@ -723,27 +813,34 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            padding: 15px 5px;
-            border-radius: 16px;
+            gap: 6px;
+            padding: 12px 4px 10px;
+            border-radius: 14px;
             background: #ffffff;
             color: #1e293b !important;
             font-weight: 600;
             font-size: 11px;
             text-decoration: none;
             transition: all 0.2s ease;
-            border: 1px solid #f1f5f9;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+            border: 1px solid #eef2ff;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
             cursor: pointer;
+            min-height: 86px;
         }
 
         .social-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
         }
 
         .social-btn i {
-            font-size: 28px;
+            font-size: 26px;
+        }
+
+        .social-logo {
+            width: 32px;
+            height: 32px;
+            display: block;
         }
 
         .social-btn.platform-facebook i {
@@ -783,50 +880,76 @@
             color: #059669;
         }
 
-        .btn-pay {
+        .exc-claim-btn {
             background: #6d28d9;
             color: white;
-            font-weight: 700;
-            font-size: 1.15rem;
+            font-weight: 800;
+            font-size: 1.02rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
             width: 100%;
             border: none;
-            padding: 16px 25px;
-            border-radius: 14px;
+            padding: 15px 48px;
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
             position: relative;
+            box-shadow: 0 10px 22px rgba(109, 40, 217, 0.28);
         }
 
-        .btn-pay:hover {
+        .exc-claim-btn:hover {
             background: #5b21b6;
-            transform: translateY(-2px);
+            transform: translateY(-1px);
+        }
+
+        .exc-bolt {
+            border: none;
+            background: #ffffff;
+            color: #6d28d9;
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: 16px;
+        }
+
+        .exc-bolt i {
+            font-size: 11px;
+        }
+
+        .exc-claim-chevron {
+            position: absolute;
+            right: 16px;
+            font-size: 14px;
         }
 
         @media (max-width: 480px) {
             .gift-modal {
-                padding: 30px 15px 20px 15px;
-                width: 95%;
-            }
-
-            .gift-modal::before {
-                height: 180px;
+                padding: 20px 12px 14px 12px;
+                width: 94%;
             }
 
             .grid-4-cols, .grid-3-cols {
-                gap: 6px;
+                gap: 8px;
             }
 
             .social-btn,
             .feature-tile {
-                padding: 12px 2px;
+                padding: 10px 2px;
             }
 
-            .social-btn i {
-                font-size: 24px;
+            .social-btn i,
+            .social-logo {
+                font-size: 22px;
+                width: 28px;
+                height: 28px;
             }
 
             .feature-tile .icon-wrapper {
@@ -839,21 +962,21 @@
             .social-btn span,
             .feature-tile .feature-text {
                 font-size: 9px;
-                letter-spacing: -0.3px;
+                letter-spacing: -0.2px;
             }
 
-            h2.fw-black {
-                font-size: 22px !important;
+            .exc-title {
+                font-size: 20px !important;
             }
 
-            .btn-pay {
-                font-size: 1.05rem;
-                padding: 14px 15px;
+            .exc-claim-btn {
+                font-size: 0.98rem;
+                padding: 14px 40px;
             }
 
             #excCurrentPrice,
             #excDiscountedPrice {
-                font-size: 1.8rem !important;
+                font-size: 1.7rem !important;
             }
 
             .gift-box-container span:first-child {
@@ -906,7 +1029,7 @@
                             </div>
                             <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
                                 18% GST applicable at checkout</div>
-                            <div class="plan-subtitle">{{ trialConfig.description }}</div>
+                            <div class="plan-subtitle">{{ trial_config.description }}</div>
                         </div>
 
                         <div class="plan-features">
@@ -925,7 +1048,7 @@
                         </div>
 
                         <div>
-                            <button onclick="selectPlanForPayment('free_trial')" class="btn-select-plan trial-btn">
+                            <button type="button" onclick="selectPlanForPayment('free_trial')" class="btn-select-plan trial-btn">
                                 <i class="fa-solid fa-circle-check"></i> Select Trial Plan
                             </button>
                             <div class="footer-note">Try before you commit</div>
@@ -934,9 +1057,125 @@
                 {% endif %}
 
 
+                {#  STARTER CARD  #}
+                <div class="plan-card starter-theme">
+                    <div class="plan-header">
+                        <div class="plan-name">{{ starter_name|default:"Starter's Plan" }}</div>
+                        <div class="plan-price">
+                            {% if has_starter_promo and starter_final < starter_full %}
+                                <span
+                                    style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">₹{{ starter_full|floatformat:"0" }}</span>
+                                ₹{{ starter_base }}/-<span>1st Year Only</span>
+                            {% else %}
+                                ₹{{ starter_base }}/-<span>1st Year Only</span>
+                            {% endif %}
+                        </div>
+                        {% if has_starter_promo and starter_final < starter_full %}
+                            <div style="text-align:center; margin-top:6px;">
+                                <span
+                                    style="background:#dbeafe; color:#1e3a8a; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #93c5fd;">
+                                    <i class="fa-solid fa-tag me-1"></i> Promo Applied
+                                </span>
+                            </div>
+                        {% endif %}
+                        <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
+                            18% GST applicable at checkout</div>
+                        <div class="plan-subtitle">{{ starter_desc }}</div>
+                    </div>
+
+                    <div class="plan-features">
+                        <div class="category-block">
+                            <div class="category-header">
+                                <i class="fa-solid fa-briefcase"></i> Sales Kit
+                            </div>
+                            <div class="feature-row">
+                                <div class="feature-name">
+                                    <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                    <span>Organic Lead Inquiries</span>
+                                </div>
+                                <span class="badge-capsule badge-outline-green" style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Standard</span>
+                            </div>
+                            <div class="feature-row">
+                                <div class="feature-name">
+                                    <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                    <span>Service Lead Inquiries*</span>
+                                </div>
+                                <span class="badge-capsule badge-outline-green" style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Standard</span>
+                            </div>
+                            <div class="feature-row">
+                                <div class="feature-name">
+                                    <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                    <span>Referral Lead Inquiries</span>
+                                </div>
+                                <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                            </div>
+                        </div>
+
+                        <div class="category-block">
+                            <div class="category-header">
+                                <i class="fa-solid fa-bullhorn"></i> Asset & Marketing
+                            </div>
+                            <div class="feature-row">
+                                <div class="feature-name">
+                                    <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                    <span>Webpage</span>
+                                </div>
+                                <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                            </div>
+                            <div class="feature-row">
+                                <div class="feature-name">
+                                    <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                    <span>Social Media Integration</span>
+                                </div>
+                                <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                            </div>
+                            <div class="feature-row">
+                                <div class="feature-name">
+                                    <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                    <span>Digital Business Card</span>
+                                </div>
+                                <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                            </div>
+                            <div class="feature-row">
+                                <div class="feature-name">
+                                    <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                    <span>Digital Gallery</span>
+                                </div>
+                                <span class="badge-capsule badge-filled-green">5 Images</span>
+                            </div>
+                        </div>
+
+                        <div class="category-block">
+                            <div class="category-header">
+                                <i class="fa-solid fa-headset"></i> Business Support
+                            </div>
+                            <div class="feature-row">
+                                <div class="feature-name">
+                                    <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                    <span>Profile Review & Rating</span>
+                                </div>
+                                <span class="badge-capsule badge-outline-green">Lifetime*</span>
+                            </div>
+                            <div class="feature-row">
+                                <div class="feature-name">
+                                    <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                    <span>Profile Analytics</span>
+                                </div>
+                                <span class="badge-capsule badge-outline-green" style="border-color: var(--padosi-blue); color: var(--padosi-blue);">Basic</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="button" onclick="selectPlanForPayment('starter')" class="btn-select-plan starter-btn">
+                            <i class="fa-solid fa-circle-check"></i> Select Starter's Plan
+                        </button>
+                        <div class="footer-note">Special Launch Price</div>
+                    </div>
+                </div>
+
                 {#  PROFESSIONAL CARD  #}
-                <div class="plan-card recommended-theme"
-                    style="""">
+                <div class="plan-card recommended-theme">
                     <!-- Diagonal Ribbon -->
                     {% if is_exclusive_active %}
                         <div class="recommended-ribbon glitch-badge"
@@ -1105,7 +1344,7 @@
                     </div>
 
                     <div>
-                        <button onclick="selectPlanForPayment('professional')" class="btn-select-plan">
+                        <button type="button" onclick="selectPlanForPayment('professional')" class="btn-select-plan">
                             <i class="fa-solid fa-crown"></i> Select Professional's Plan
                         </button>
                         <div class="footer-note">Special Pre-Launch Price</div>
@@ -1142,7 +1381,7 @@
                     </div>
                 </div>
 
-                <div class="form-check mt-3 mb-4">
+                <div class="form-check terms-checkbox-container mt-3 mb-4">
                     <input class="form-check-input" type="checkbox" id="termsCheckbox">
                     <label class="form-check-label terms-conditions-label" for="termsCheckbox">
                         I agree to the <a href="/terms" target="_blank">Terms & Conditions</a> and <a
@@ -1150,7 +1389,7 @@
                     </label>
                 </div>
 
-                <button id="confirmPaymentBtn" onclick="confirmPayment()" class="btn-pay">
+                <button type="button" id="confirmPaymentBtn" class="btn-pay" disabled>
                     <i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>
                 </button>
             </div>
@@ -1162,7 +1401,6 @@
             <!-- Gift Modal -->
             <div class="gift-modal-overlay" id="giftModal">
                 <div class="gift-modal">
-                    <!-- Gift Box Graphic -->
                     <div class="animate__animated animate__bounceIn" style="animation-delay: 0.2s;">
                         <div class="gift-box-container mb-1" style="position: relative; display: inline-block;">
                             <span style="font-size: 80px; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.15));">{{ exclusive_config.emoji_main|default:'🎁' }}</span>
@@ -1172,71 +1410,47 @@
                         </div>
                     </div>
 
-                    <!-- Title & Subtitle -->
-                    <h2 class="fw-black text-dark mb-0" style="font-size: 24px; letter-spacing: -0.5px;">{{ exclusive_config.title_prefix|default:'Surprise!' }} <span
-                            class="golden-text-shine">"{{ exclusive_config.title_main|default:'Exclusive Plan' }}"</span></h2>
-                    <h2 class="fw-black mb-1" style="font-size: 22px; color: #0f172a; letter-spacing: -0.5px;"><span
-                            style="color: #f59e0b;">✦</span> {{ exclusive_config.title_suffix|default:'Unlocked!' }} <span style="color: #f59e0b;">✦</span></h2>
-                    <p class="text-muted mb-2" style="font-size: 0.8rem;">
-                        {{ exclusive_config.gift_subtitle|default:'Follow our social handles to reveal your secret discounted price.' }}
-                    </p>
+                    <h2 class="exc-title">{{ exclusive_config.title_prefix|default:'Surprise!!!!' }} <span class="exc-plan-name">'{{ exclusive_config.title_main|default:'Exclusive Plan' }}'</span></h2>
+                    <p class="exc-unlocked"><span class="exc-star">✦</span> {{ exclusive_config.title_suffix|default:'Unlocked!' }} <span class="exc-star">✦</span></p>
+                    <p class="exc-subtitle">{{ exclusive_config.gift_subtitle|default:'Follow us on Social Media...' }}</p>
 
-                    <!-- Urgency Banner -->
                     {% if spots_left > 0 %}
-                        <div class="mb-2 text-center" style="line-height: 1.3;">
-                            <div style="font-size: 0.85rem; color: #1e293b; font-weight: 800;">
-                                {{ urgency_line_1 }}
-                                <div style="font-size: 0.85rem; color: #475569; font-weight: 800;">
-                                    {{ urgency_line_2|safe }}
-                                </div>
-                            </div>
+                        <div class="exc-urgency">
+                            <div class="exc-urgency-top">{{ urgency_line_1 }}</div>
+                            <div class="exc-urgency-count">{{ urgency_line_2|safe }}</div>
                         </div>
                     {% endif %}
 
-                        <!-- Pricing Area -->
-                        <div class="mb-2 text-center mx-auto"
-                            style="background: #ffffff; border-radius: 16px; padding: 12px 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.04); max-width: 400px; border: 1px solid #f8fafc;">
-                            <!-- Before Follow UI -->
-                            <div id="priceUIBeforeFollow" class="d-flex flex-column align-items-center w-100 mt-1 mb-1">
-                                <div class="d-flex align-items-center justify-content-center flex-wrap gap-1 w-100 position-relative">
-                                    <span style="font-size: 1.4rem; color: #94a3b8; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 2px; margin-right: 4px;">₹{{ exclusive_config.strikeout_price|default:15000 }}/-</span>
-                                    <span style="font-size: 2.2rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; line-height: 1;" id="excCurrentPrice">₹{{ exclusive_config.base_price|default:6999 }}/-</span>
-                                    <div class="discount-sticker">
-                                        <span class="discount-val">{{ exclusive_config.before_discount_val|default:'53%' }}</span>
-                                        <span class="discount-text">{{ exclusive_config.discount_text_label|default:'OFF' }}</span>
-                                    </div>
+                        <div class="exc-price-pill">
+                            <div id="priceUIBeforeFollow" class="d-flex align-items-center justify-content-center flex-wrap gap-1 w-100">
+                                <span style="font-size: 1.25rem; color: #94a3b8; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 2px;">₹{{ exclusive_config.strikeout_price|default:1999 }}/-</span>
+                                <span style="font-size: 2rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; line-height: 1;" id="excCurrentPrice">₹{{ exclusive_config.base_price|default:499 }}/-</span>
+                                <div class="discount-sticker">
+                                    <span class="discount-val">{{ exclusive_config.before_discount_val|default:'85%' }}</span>
+                                    <span class="discount-text">{{ exclusive_config.discount_text_label|default:'OFF' }}</span>
                                 </div>
                             </div>
 
-                            <!-- After Follow UI -->
-                            <div id="priceUIAfterFollow" class="d-flex flex-column align-items-center w-100 mt-1 mb-1" style="display: none !important;">
-                                <div class="d-flex align-items-center justify-content-center flex-wrap gap-1 w-100 position-relative">
-                                    <span style="font-size: 1.4rem; color: #94a3b8; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 2px; margin-right: 4px;">₹{{ exclusive_config.base_price|default:6999 }}/-</span>
-                                    <span style="font-size: 2.2rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; line-height: 1;" id="excDiscountedPrice">₹{{ exclusive_config.discounted_price|default:1999 }}/-</span>
-                                    <div class="discount-sticker">
-                                        <span class="discount-val">{{ exclusive_config.after_discount_val|default:'85%' }}</span>
-                                        <span class="discount-text">{{ exclusive_config.discount_text_label|default:'OFF' }}</span>
-                                    </div>
-                                </div>
-                                <div class="small fw-bold text-success mt-2" style="font-size: 11.5px; background: #d1fae5; padding: 4px 12px; border-radius: 50px; border: 1px solid #34d399;" id="excDiscountMessage">
-                                    <i class="fa-solid fa-tag"></i> {{ exclusive_config.extra_discount_msg|default:'Extra Follower Discount Applied!' }}
+                            <div id="priceUIAfterFollow" class="align-items-center justify-content-center flex-wrap gap-1 w-100" style="display: none !important;">
+                                <span style="font-size: 1.25rem; color: #94a3b8; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 2px;">₹{{ exclusive_config.base_price|default:499 }}/-</span>
+                                <span style="font-size: 2rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; line-height: 1;" id="excDiscountedPrice">₹{{ exclusive_config.discounted_price|default:199 }}/-</span>
+                                <div class="discount-sticker">
+                                    <span class="discount-val">{{ exclusive_config.after_discount_val|default:'85%' }}</span>
+                                    <span class="discount-text">{{ exclusive_config.discount_text_label|default:'OFF' }}</span>
                                 </div>
                             </div>
                         </div>
-
-                   
-
-                        <!-- What You'll Get Divider -->
-                        <div class="d-flex align-items-center justify-content-center gap-3 my-2">
-                            <div style="height: 1.5px; width: 40px; background: #8b5cf6;"></div>
-                            <div style="color: #0f172a; font-weight: 900; font-size: 0.9rem;"><span
-                                    style="color: #8b5cf6;">✦</span>
-                                {{ exclusive_config.features_header|default:"What You'll Get" }} <span style="color: #8b5cf6;">✦</span></div>
-                            <div style="height: 1.5px; width: 40px; background: #8b5cf6;"></div>
+                        <div id="excDiscountMessage" class="small fw-bold text-success" style="display:none; font-size: 11.5px; background: #d1fae5; padding: 4px 12px; border-radius: 50px; border: 1px solid #34d399; margin: 0 auto 4px; width: fit-content;">
+                            <i class="fa-solid fa-tag"></i> {{ exclusive_config.extra_discount_msg|default:'Extra Follower Discount Applied!' }}
                         </div>
 
-                        <div class="grid-3-cols mb-3">
-                            
+                        <div class="exc-section-head">
+                            <span class="exc-line"></span>
+                            <span>✦ {{ exclusive_config.features_header|default:"What You'll Get" }} ✦</span>
+                            <span class="exc-line"></span>
+                        </div>
+
+                        <div class="grid-3-cols mb-1">
                             {% for feature in premiumFeatures %}
                                 <div class="feature-tile">
                                     <div class="icon-wrapper"
@@ -1251,41 +1465,67 @@
                                 </div>
                             {% endfor %}
                         </div>
-     <!-- Follow on Divider -->
-                        <div class="d-flex align-items-center justify-content-center gap-3 my-2">
-                            <div style="height: 1.5px; width: 40px; background: #8b5cf6;"></div>
-                            <div style="color: #0f172a; font-weight: 900; font-size: 0.9rem;"><span
-                                    style="color: #8b5cf6;">✦</span>
-                                {{ exclusive_config.social_header|default:'Follow on' }} <span style="color: #8b5cf6;">✦</span></div>
-                            <div style="height: 1.5px; width: 40px; background: #8b5cf6;"></div>
+
+                        <div class="exc-section-head">
+                            <span class="exc-line"></span>
+                            <span>✦ {{ exclusive_config.social_header|default:'Follow on' }} ✦</span>
+                            <span class="exc-line"></span>
                         </div>
 
-                        <!-- Social Links -->
-                        <div id="socialButtonsContainer" class="grid-4-cols mb-2">
+                        <div id="socialButtonsContainer" class="grid-4-cols">
                             {% for link in exclusive_config.social_links %}
-                                
-                                <button class="social-btn platform-{{ link.platform|lower }} w-100"
+                                <button type="button" class="social-btn platform-{{ link.platform_key|default:link.platform|lower }} w-100"
                                     data-platform="{{ link.platform }}"
                                     onclick="handleSocialFollow('{{ link.platform }}', '{{ link.url }}', this)">
-                                    <i class="fa-brands {{ link.iconClass }}"></i>
-                                    <span>{{ link.platform|title }}</span>
+                                    {% if link.platform_key == 'instagram' %}
+                                        <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
+                                            <defs>
+                                                <radialGradient id="excIgGrad" cx="30%" cy="107%" r="150%">
+                                                    <stop offset="0%" stop-color="#fdf497"/>
+                                                    <stop offset="5%" stop-color="#fdf497"/>
+                                                    <stop offset="45%" stop-color="#fd5949"/>
+                                                    <stop offset="60%" stop-color="#d6249f"/>
+                                                    <stop offset="90%" stop-color="#285AEB"/>
+                                                </radialGradient>
+                                            </defs>
+                                            <rect x="2" y="2" width="20" height="20" rx="6" fill="url(#excIgGrad)"/>
+                                            <circle cx="12" cy="12" r="4.2" fill="none" stroke="#fff" stroke-width="1.8"/>
+                                            <circle cx="17.2" cy="6.8" r="1.1" fill="#fff"/>
+                                        </svg>
+                                    {% elif link.platform_key == 'facebook' %}
+                                        <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="12" fill="#1877F2"/>
+                                            <path fill="#fff" d="M13.5 12.8h2.2l.3-2.4h-2.5V9.1c0-.7.2-1.2 1.2-1.2h1.4V5.8c-.2 0-1.1-.1-2.1-.1-2.1 0-3.5 1.3-3.5 3.6v2.1H8.3v2.4h2.2V19h2.9v-6.2z"/>
+                                        </svg>
+                                    {% elif link.platform_key == 'x' or link.platform_key == 'twitter' %}
+                                        <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path fill="#000" d="M18.244 2H21.5l-7.5 8.57L22.5 22h-6.59l-5.16-6.74L5.2 22H1.94l8.03-9.17L1.5 2h6.76l4.66 6.17L18.244 2zm-1.16 18.05h1.8L7.01 3.86H5.07l12.01 16.19z"/>
+                                        </svg>
+                                    {% elif link.platform_key == 'linkedin' %}
+                                        <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
+                                            <rect width="24" height="24" rx="4" fill="#0A66C2"/>
+                                            <path fill="#fff" d="M7.05 9.2H4.9V19h2.15V9.2zM5.96 5C5.2 5 4.6 5.6 4.6 6.36c0 .75.6 1.37 1.36 1.37.75 0 1.36-.62 1.36-1.37C7.32 5.6 6.72 5 5.96 5zM19.1 13.54c0-2.62-1.4-3.84-3.27-3.84-1.51 0-2.18.83-2.56 1.41V9.2H11.1c.03.61 0 9.8 0 9.8h2.17v-5.48c0-.29.02-.58.11-.79.23-.58.77-1.18 1.66-1.18 1.17 0 1.64.89 1.64 2.2V19H19.1v-5.46z"/>
+                                        </svg>
+                                    {% elif link.platform_key == 'youtube' %}
+                                        <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
+                                            <rect width="24" height="24" rx="6" fill="#FF0000"/>
+                                            <path fill="#fff" d="M10 8.2v7.6l6.4-3.8L10 8.2z"/>
+                                        </svg>
+                                    {% else %}
+                                        <i class="fa-brands {{ link.iconClass }}"></i>
+                                    {% endif %}
+                                    <span>{{ link.label|default:link.platform|title }}</span>
                                 </button>
                             {% endfor %}
                         </div>
-                        <!-- Checkout Button -->
-                        <div class="mt-2 mb-1">
-                            <button class="btn-pay" onclick="directRazorpayCheckout(this)">
-                                <div
-                                    style="border: 2px solid rgba(255,255,255,0.8); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; position: absolute; left: 20px;">
-                                    <i class="fa-solid fa-bolt" style="font-size: 10px;"></i>
-                                </div>
-                                {{ exclusive_config.checkout_btn_text|default:'Claim Offer' }}
-                                <i class="fa-solid fa-chevron-right"
-                                    style="position: absolute; right: 20px; font-size: 14px;"></i>
+
+                        <div class="mt-1 mb-1">
+                            <button type="button" class="exc-claim-btn" onclick="directRazorpayCheckout(this)">
+                                <span class="exc-bolt"><i class="fa-solid fa-bolt"></i></span>
+                                {{ exclusive_config.checkout_btn_text|default:'Claim Now' }}
+                                <i class="fa-solid fa-chevron-right exc-claim-chevron"></i>
                             </button>
                         </div>
-
-
                     </div>
                 </div>
         {% endif %}
@@ -1302,25 +1542,41 @@
         var trialTotal = trialBase + (trialBase * 0.18);
 
         var selectedPlan = {
-            type: '{{ prof_id|default:2 }}',
+            type: 'professional',
             name: '{{ prof_name|escapejs }}',
             price: {{ prof_base }},
             total: {{ prof_final }}
             };
+        var payClickUnlockAt = 0;
+
+        function isTermsAccepted() {
+            const termsCheckbox = document.getElementById('termsCheckbox');
+            return !!(termsCheckbox && termsCheckbox.checked);
+        }
+
+        function syncPayButtonState() {
+            const paymentBtn = document.getElementById('confirmPaymentBtn');
+            if (!paymentBtn) return;
+            const ready = isTermsAccepted();
+            paymentBtn.disabled = !ready;
+            paymentBtn.setAttribute('aria-disabled', ready ? 'false' : 'true');
+        }
 
         window.selectPlanForPayment = function (planType) {
             if (planType === 'free_trial') {
                 selectedPlan = { type: 'free_trial', name: 'Trial Plan ({{ trial_duration }} Days)', price: trialBase, total: trialTotal };
-            } else if (planType === 'basic') {
-                selectedPlan = { type: '{{ starter_id|default:1 }}', name: '{{ starter_name|escapejs }}', price: {{ starter_base }}, total: {{ starter_final }} };
+            } else if (planType === 'basic' || planType === 'starter') {
+                selectedPlan = { type: 'starter', name: '{{ starter_name|escapejs }}', price: {{ starter_base }}, total: {{ starter_final }} };
             } else if (planType === 'exclusive') {
-                let excPrice = parseInt(document.getElementById('excCurrentPrice').innerText.replace('₹', ''));
-                let excTotal = excPrice + (excPrice * 0.18);
-                selectedPlan = { type: 'exclusive', name: 'Exclusive Plan', price: excPrice, total: excTotal };
+                let raw = (document.getElementById('excCurrentPrice') || {}).innerText || '';
+                let excPrice = parseFloat(String(raw).replace(/[^\d.]/g, '')) || 0;
+                let excTotal = Math.round((excPrice + (excPrice * 0.18)) * 100) / 100;
+                selectedPlan = { type: 'exclusive', name: '{{ exclusive_config.name|default:"Exclusive Plan"|escapejs }}', price: excPrice, total: excTotal };
             } else {
-                selectedPlan = { type: '{{ prof_id|default:2 }}', name: '{{ prof_name|escapejs }}', price: {{ prof_base }}, total: {{ prof_final }} };
+                selectedPlan = { type: 'professional', name: '{{ prof_name|escapejs }}', price: {{ prof_base }}, total: {{ prof_final }} };
             }
 
+            payClickUnlockAt = Date.now() + 600;
             updateSelectedPlanSummary();
         }
 
@@ -1338,7 +1594,10 @@
                 document.getElementById('selectedPlanPrice').textContent = `₹${selectedPlan.price.toLocaleString('en-IN')}`;
                 document.getElementById('selectedPlanGST').textContent = `₹${(selectedPlan.price * 0.18).toLocaleString('en-IN')}`;
                 document.getElementById('selectedPlanTotal').textContent = `₹${selectedPlan.total.toLocaleString('en-IN')}`;
-                summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                syncPayButtonState();
+                setTimeout(function () {
+                    summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 50);
             }
         }
 
@@ -1370,7 +1629,14 @@
             return "{{ csrf_token }}";
         }
 
-        async function confirmPayment() {
+        async function confirmPayment(source) {
+            if (source !== 'pay-button' && source !== 'exclusive-claim') {
+                return;
+            }
+            if (source === 'pay-button' && Date.now() < payClickUnlockAt) {
+                return;
+            }
+
             const termsCheckbox = document.getElementById('termsCheckbox');
             if (!termsCheckbox || !termsCheckbox.checked) {
                 Swal.fire('Oops', 'Please agree to the Terms & Conditions and Privacy Policy to proceed.', 'warning');
@@ -1378,8 +1644,10 @@
             }
 
             const paymentBtn = document.getElementById('confirmPaymentBtn');
-            paymentBtn.disabled = true;
-            paymentBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+            if (paymentBtn) {
+                paymentBtn.disabled = true;
+                paymentBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+            }
 
             try {
                 const token = await getFreshCsrfToken();
@@ -1403,20 +1671,37 @@
                         Swal.fire('Success', data.message || 'Registration Complete successfully.', 'success').then(() => {
                             window.location.href = data.redirect_url || '/agent/dashboard';
                         });
+                    } else if (!data.order_id || !data.key) {
+                        Swal.fire('Error', data.message || 'Payment gateway is not ready. Please try again.', 'error');
                     } else {
+                        const contact = String(data.mobile || '').replace(/\D/g, '').slice(-10);
                         const options = {
                             "key": data.key,
-                            "amount": data.amount,
                             "currency": "INR",
                             "name": "PadosiAgent",
                             "description": selectedPlan.name,
-                            "image": "{% static 'img/logo.png' %}",
+                            "image": "{% static 'img/logo.webp' %}",
                             "order_id": data.order_id,
                             "handler": function (response) { handlePaymentSuccess(response, data.agent_id, selectedPlan); },
-                            "prefill": { "name": data.name, "email": data.email, "contact": data.mobile },
-                            "theme": { "color": "#273C8E" }
+                            "prefill": { "name": data.name || '', "email": data.email || '', "contact": contact },
+                            "theme": { "color": "#273C8E" },
+                            "modal": {
+                                ondismiss: function () {
+                                    if (paymentBtn) {
+                                        paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
+                                    }
+                                    syncPayButtonState();
+                                }
+                            }
                         };
                         const rzp = new Razorpay(options);
+                        rzp.on('payment.failed', function (resp) {
+                            const desc = (resp && resp.error && resp.error.description) || 'Payment was not completed.';
+                            console.error('Razorpay payment.failed', resp && resp.error);
+                            setTimeout(function () {
+                                Swal.fire('Payment Failed', desc, 'error');
+                            }, 300);
+                        });
                         rzp.open();
                     }
                 } else {
@@ -1425,8 +1710,10 @@
             } catch {
                 Swal.fire('Error', 'Payment preparation failed.', 'error');
             } finally {
-                paymentBtn.disabled = false;
-                paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
+                if (paymentBtn) {
+                    paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
+                }
+                syncPayButtonState();
             }
         }
 
@@ -1667,12 +1954,48 @@
             if (termsCheckbox) {
                 termsCheckbox.checked = true;
             }
+            syncPayButtonState();
             closeGiftModal();
-            confirmPayment();
+            setTimeout(function () { confirmPayment('exclusive-claim'); }, 300);
         };
 
         // Initialize the inline ribbon scratch card immediately
-        document.addEventListener('DOMContentLoaded', initRibbonScratch);
+        document.addEventListener('DOMContentLoaded', function () {
+            initRibbonScratch();
+            syncPayButtonState();
+
+            const payBtn = document.getElementById('confirmPaymentBtn');
+            if (payBtn) {
+                payBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (payBtn.disabled) return;
+                    confirmPayment('pay-button');
+                });
+            }
+
+            const termsCheckbox = document.getElementById('termsCheckbox');
+            if (termsCheckbox) {
+                termsCheckbox.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                });
+                termsCheckbox.addEventListener('change', function () {
+                    if (termsCheckbox.checked) {
+                        payClickUnlockAt = Date.now() + 600;
+                        setTimeout(syncPayButtonState, 0);
+                    } else {
+                        syncPayButtonState();
+                    }
+                });
+            }
+
+            const termsWrap = document.querySelector('.terms-checkbox-container');
+            if (termsWrap) {
+                termsWrap.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                });
+            }
+        });
 
         async function fetchDiscountStatus() {
             try {
@@ -1715,6 +2038,8 @@
             if (data.discount_unlocked) {
                 document.getElementById('priceUIBeforeFollow').style.setProperty('display', 'none', 'important');
                 document.getElementById('priceUIAfterFollow').style.setProperty('display', 'flex', 'important');
+                let discountMsg = document.getElementById('excDiscountMessage');
+                if (discountMsg) discountMsg.style.display = 'inline-block';
 
                 // Add a small celebration animation to the price
                 let priceEl = document.getElementById('excDiscountedPrice');
@@ -1723,6 +2048,8 @@
             } else {
                 document.getElementById('priceUIBeforeFollow').style.setProperty('display', 'flex', 'important');
                 document.getElementById('priceUIAfterFollow').style.setProperty('display', 'none', 'important');
+                let discountMsg = document.getElementById('excDiscountMessage');
+                if (discountMsg) discountMsg.style.display = 'none';
             }
 
             document.querySelectorAll('.social-btn').forEach(btn => {

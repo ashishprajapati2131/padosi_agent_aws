@@ -74,7 +74,10 @@ def get_reset_password_page(request: Request, token: str, email: str, type: str 
             "token": token,
             "email": email,
             "login_type": type,
-            "app_url": settings.APP_URL
+            "app_url": settings.APP_URL,
+            # Empty when served standalone, "/api" when mounted in the Django
+            # ASGI app. The page posts back to itself, so it must match.
+            "api_prefix": request.scope.get("root_path", "") or ""
         }
     )
 

@@ -252,6 +252,12 @@ class Agent(models.Model):
         from django.utils import timezone
         return self.plan_type == 'free_trial' and self.trial_ends_at and self.trial_ends_at > timezone.now()
 
+    def get_primary_profile(self):
+        try:
+            return self.profile
+        except (models.ObjectDoesNotExist, AttributeError):
+            return None
+
     def isTrialExpired(self):
         from django.utils import timezone
         return self.plan_type == 'free_trial' and self.trial_ends_at and self.trial_ends_at <= timezone.now()
@@ -960,6 +966,78 @@ class AgentPortfolio(models.Model):
         managed = True
 
 
+def resolve_stored_file_url(path, fallback_subdirs=None, missing='/static/img/avatar-icon.jpg'):
+    path = (path or '').strip()
+    if not path:
+        return missing
+    if path.startswith(('http://', 'https://')):
+        if any(k in path.lower() for k in ['ngrok', 'localhost', '127.0.0.1']):
+            from urllib.parse import urlparse
+            import os
+            from django.conf import settings
+            parsed = urlparse(path)
+            rel_path = parsed.path.lstrip('/')
+            if rel_path.startswith('static/'):
+                check_path = os.path.join(settings.BASE_DIR, rel_path)
+                if os.path.exists(check_path):
+                    return f"/{rel_path}"
+            elif rel_path.startswith('media/'):
+                check_path = os.path.join(settings.MEDIA_ROOT, rel_path[6:])
+                if os.path.exists(check_path):
+                    return f"/{rel_path}"
+            return missing
+        return path
+
+    import os
+    from django.conf import settings
+
+    normalized_path = path.replace('\\', '/').lstrip('/')
+
+    # 1. Direct match under MEDIA_ROOT
+    if os.path.exists(os.path.join(settings.MEDIA_ROOT, normalized_path)):
+        return f"/media/{normalized_path}"
+
+    subdirs = list(fallback_subdirs) if fallback_subdirs else []
+    default_subdirs = [
+        'app/public/achievement',
+        'app/public/photo/achievements',
+        'app/public/profile',
+        'app/public/photo/profiles',
+        'app/public/insurance',
+        'app/public/investment',
+        'app/public',
+        'uploads/achievements',
+        'agent/achievements',
+        'agent/profiles',
+    ]
+    for s in default_subdirs:
+        if s not in subdirs:
+            subdirs.append(s)
+
+    # 2. Strip known prefixes and test
+    for prefix in ['app/public/', 'public/storage/', 'public/', 'storage/', 'agent/achievements/', 'agent/profiles/']:
+        if normalized_path.startswith(prefix):
+            stripped = normalized_path[len(prefix):]
+            if os.path.exists(os.path.join(settings.MEDIA_ROOT, stripped)):
+                return f"/media/{stripped}"
+            if os.path.exists(os.path.join(settings.MEDIA_ROOT, 'app/public', stripped)):
+                return f"/media/app/public/{stripped}"
+            for subdir in subdirs:
+                candidate = os.path.join(settings.MEDIA_ROOT, subdir, stripped)
+                if os.path.exists(candidate):
+                    return f"/media/{subdir}/{stripped}"
+
+    # 3. Match by filename across fallback / candidate subdirs
+    filename = os.path.basename(normalized_path)
+    if filename:
+        for subdir in subdirs:
+            candidate = os.path.join(settings.MEDIA_ROOT, subdir, filename)
+            if os.path.exists(candidate):
+                return f"/media/{subdir}/{filename}"
+
+    return f"/media/{normalized_path}"
+
+
 class AgentAchievementPhoto(models.Model):
     agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='achievementPhotos')
     photo_path = models.CharField(max_length=255)
@@ -972,33 +1050,16 @@ class AgentAchievementPhoto(models.Model):
 
     @property
     def photo_url(self):
-        path = (self.photo_path or '').strip()
-        if not path:
-            return '/static/img/avatar-icon.jpg'
-        if path.startswith(('http://', 'https://')):
-            if any(k in path.lower() for k in ['ngrok', 'localhost', '127.0.0.1']):
-                from urllib.parse import urlparse
-                parsed = urlparse(path)
-                rel_path = parsed.path.lstrip('/')
-                if rel_path.startswith('static/'):
-                    return f"/{rel_path}"
-                elif rel_path.startswith('media/'):
-                    return f"/{rel_path}"
-            return path
-        normalized_path = path.replace('\\', '/').lstrip('/')
-        from django.conf import settings
-        import os
-        if os.path.exists(os.path.join(settings.MEDIA_ROOT, normalized_path)):
-            return f"/media/{normalized_path}"
-        for prefix in ['app/public/', 'public/storage/', 'public/', 'storage/']:
-            if normalized_path.startswith(prefix):
-                stripped = normalized_path[len(prefix):]
-                if os.path.exists(os.path.join(settings.MEDIA_ROOT, stripped)):
-                    return f"/media/{stripped}"
-                if os.path.exists(os.path.join(settings.MEDIA_ROOT, 'app/public', stripped)):
-                    return f"/media/app/public/{stripped}"
-                break
-        return f"/media/{normalized_path}"
+        return resolve_stored_file_url(
+            self.photo_path,
+            fallback_subdirs=(
+                'app/public/achievement',
+                'app/public/photo/achievements',
+                'uploads/achievements',
+                'agent/achievements',
+            ),
+            missing='/static/img/avatar-icon.jpg',
+        )
 
 
 class AgentLeadPreference(models.Model):

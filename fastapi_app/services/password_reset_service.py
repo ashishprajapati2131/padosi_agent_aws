@@ -61,15 +61,19 @@ class PasswordResetService:
             self.token_repo.create(user.email, hashed_token)
             
             # 7. Formulate reset URL
-            # URL structure: {APP_URL}/reset-password/{raw_token}?email={email}&type={login_type}
+            # URL structure: {APP_URL}{mount}/reset-password/{raw_token}?email={email}&type={login_type}
+            # The service is mounted under /api inside the Django ASGI app, so
+            # the link has to carry that prefix or it resolves to Django and 404s.
             base_url = settings.APP_URL
+            mount_prefix = ""
             if req:
                 proto = req.headers.get("x-forwarded-proto", req.url.scheme)
                 host = req.headers.get("x-forwarded-host", req.headers.get("host", req.url.netloc))
                 base_url = f"{proto}://{host}"
+                mount_prefix = req.scope.get("root_path", "") or ""
 
             reset_url = (
-                f"{base_url}/reset-password/{raw_token}"
+                f"{base_url}{mount_prefix}/reset-password/{raw_token}"
                 f"?email={urllib.parse.quote(user.email)}"
                 f"&type={request.login_type}"
             )
