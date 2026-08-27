@@ -1,7 +1,6 @@
 import os
 import logging
 import math
-import json
 from json import dumps as json_dumps, loads as json_loads, JSONDecodeError as JSONDecodeError
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
@@ -660,7 +659,7 @@ def agent_public_profile(request, slug, state_code=None):
             social_links = profile.social_links
         elif isinstance(profile.social_links, str):
             try:
-                social_links = json.loads(profile.social_links)
+                social_links = json_loads(profile.social_links)
             except ValueError:
                 pass
                 
@@ -867,7 +866,7 @@ def render_edit_profile(request, agent, is_admin_view=False):
         'years_range': years_range,
         'months': months,
         'active_investment_types': investment_types,
-        'feature_unlock_hints_json': json.dumps(
+        'feature_unlock_hints_json': json_dumps(
             build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
         ),
     }
@@ -1548,8 +1547,8 @@ def agent_push_token(request):
 
     try:
         try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
+            data = json_loads(request.body)
+        except JSONDecodeError:
             data = request.POST
 
         token = data.get('token', '').strip()
@@ -1645,8 +1644,8 @@ def agent_upgrade_plan(request):
 
     try:
         try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
+            data = json_loads(request.body)
+        except JSONDecodeError:
             data = request.POST
 
         raw_plan_type = data.get('plan_type')
@@ -1979,7 +1978,7 @@ def agent_capture_lead(request):
                     social_links = profile.social_links
                 elif isinstance(profile.social_links, str):
                     try:
-                        social_links = json.loads(profile.social_links)
+                        social_links = json_loads(profile.social_links)
                     except ValueError:
                         pass
             url = social_links.get(interaction_type) or '#'
@@ -2490,10 +2489,10 @@ def agent_update_visibility(request):
     Allow agents to toggle visibility of sections on their public profile.
     """
     try:
-        data = json.loads(request.body)
+        data = json_loads(request.body)
         field = data.get('field')
         value = 1 if data.get('value') else 0
-    except json.JSONDecodeError:
+    except JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'})
 
     valid_fields = [
