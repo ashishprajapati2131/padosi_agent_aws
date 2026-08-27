@@ -2,6 +2,7 @@ import os
 import logging
 import math
 import json
+from json import dumps as json_dumps, loads as json_loads, JSONDecodeError as JSONDecodeError
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
@@ -316,16 +317,15 @@ def agent_dashboard(request):
     raw_plan = 'Free Plan'
     active_sub = agent.activeSubscription
     if active_sub and active_sub.selected_plan:
-        import json
         try:
-            decoded_plan = json.loads(active_sub.selected_plan)
+            decoded_plan = json_loads(active_sub.selected_plan)
             if isinstance(decoded_plan, dict) and 'name' in decoded_plan:
                 raw_plan = decoded_plan['name']
             else:
                 raw_plan = str(active_sub.selected_plan)
-        except (json.JSONDecodeError, TypeError):
+        except (JSONDecodeError, TypeError, ValueError):
             raw_plan = str(active_sub.selected_plan)
-            
+
     plan_name = raw_plan.replace('_', ' ').replace('-', ' ').title()
 
     # Resolve SubscriptionPlan using robust multi-tier helper
@@ -334,6 +334,20 @@ def agent_dashboard(request):
     favorite_ids = set(
         FavoriteAgent.objects.filter(user=request.user).values_list('agent_id', flat=True)
     )
+
+    try:
+        unread_notifications_json = json_dumps(
+            [{'title': n.title, 'body': n.body} for n in unread_notifications],
+            ensure_ascii=False,
+        )
+    except Exception:
+        unread_notifications_json = '[]'
+    try:
+        feature_unlock_hints_json = json_dumps(
+            build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
+        )
+    except Exception:
+        feature_unlock_hints_json = '[]'
 
     context = {
         'agent_plan': agent_plan,
@@ -345,10 +359,7 @@ def agent_dashboard(request):
         'allLeads': all_leads,
         'showReferral': show_referral,
         'unreadNotifications': unread_notifications,
-        'unread_notifications_json': json.dumps(
-            [{'title': n.title, 'body': n.body} for n in unread_notifications],
-            ensure_ascii=False,
-        ),
+        'unread_notifications_json': unread_notifications_json,
         'completion': completion,
         'isOnTrial': is_on_trial,
         'daysLeft': days_left,
@@ -358,9 +369,7 @@ def agent_dashboard(request):
         'profFull': prof_full,
         'profDisc': prof_disc,
         'planName': plan_name,
-        'feature_unlock_hints_json': json.dumps(
-            build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
-        ),
+        'feature_unlock_hints_json': feature_unlock_hints_json,
         'fcm_api_key': getattr(settings, 'FCM_API_KEY', ''),
         'fcm_auth_domain': getattr(settings, 'FCM_AUTH_DOMAIN', ''),
         'fcm_project_id': getattr(settings, 'FCM_PROJECT_ID', ''),
@@ -645,7 +654,6 @@ def agent_public_profile(request, slug, state_code=None):
             'agentInitial': agent_initial,
         })
     
-    import json
     social_links = {}
     if profile and profile.social_links:
         if isinstance(profile.social_links, dict):
@@ -894,7 +902,6 @@ def apply_profile_update(request, agent, is_admin_edit=False):
     import os
     import time
     import uuid
-    import json
     profile, _ = AgentProfile.objects.get_or_create(agent=agent)
     current_step = request.POST.get('current_step')
     
