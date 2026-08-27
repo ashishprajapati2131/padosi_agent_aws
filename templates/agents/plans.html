@@ -118,6 +118,10 @@
             z-index: 10;
         }
 
+        .recommended-ribbon.scratch-ribbon {
+            overflow: hidden;
+        }
+
         .plan-header {
             text-align: center;
             margin-bottom: 28px;
@@ -1088,9 +1092,9 @@
                 <div class="plan-card starter-theme">
                     <!-- Ribbon -->
                     {% if starter_scratch_enabled %}
-                        <div class="recommended-ribbon glitch-badge"
+                        <div class="recommended-ribbon glitch-badge scratch-ribbon"
                             style="background: #3b82f6; cursor: pointer; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;">
-                            <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i> SCRATCH</span>
+                            <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px; pointer-events: none;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i> SCRATCH</span>
                             <canvas class="ribbon-scratch-canvas" data-label="SCRATCH ME" data-plan="starter" data-color="#3b82f6"
                                 style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none;"></canvas>
                         </div>
@@ -1222,9 +1226,9 @@
                 <div class="plan-card recommended-theme">
                     <!-- Diagonal Ribbon -->
                     {% if prof_scratch_enabled %}
-                        <div class="recommended-ribbon glitch-badge"
+                        <div class="recommended-ribbon glitch-badge scratch-ribbon"
                             style="background: #10b981; cursor: pointer; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;">
-                            <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px;"><i class="fa-solid fa-gift me-1"></i> SCRATCH</span>
+                            <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px; pointer-events: none;"><i class="fa-solid fa-gift me-1"></i> SCRATCH</span>
                             <canvas class="ribbon-scratch-canvas" data-label="SCRATCH ME" data-plan="professional" data-color="#10b981"
                                 style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none;"></canvas>
                         </div>
@@ -1625,15 +1629,23 @@
         var is_upgrade_flow = {{ is_upgrade_flow|yesno:"true,false"|default:"false" }};
         var starterScratchEnabled = {{ starter_scratch_enabled|yesno:"true,false"|default:"false" }};
         var profScratchEnabled = {{ prof_scratch_enabled|yesno:"true,false"|default:"false" }};
+        var starterScratchRevealed = false;
+        var profScratchRevealed = false;
+
+        function payableTotal(base) {
+            var n = Math.round(Number(base) || 0);
+            if (n <= 0) return 0;
+            return Math.round(n + (n * 0.18));
+        }
 
         var discountedPrices = {
             starter: {
                 base: {{ starter_base }},
-                total: {{ starter_final }}
+                total: {{ starter_final }} || payableTotal({{ starter_base }})
             },
             professional: {
                 base: {{ prof_base }},
-                total: {{ prof_final }}
+                total: {{ prof_final }} || payableTotal({{ prof_base }})
             }
         };
 
@@ -1642,13 +1654,13 @@
                 name: '{{ starter_name|escapejs }}',
                 full: {{ starter_full|floatformat:"0" }},
                 base: starterScratchEnabled ? {{ starter_full|floatformat:"0" }} : {{ starter_base }},
-                total: starterScratchEnabled ? Math.round({{ starter_full|floatformat:"0" }} * 1.18) : {{ starter_final }}
+                total: 0
             },
             professional: {
                 name: '{{ prof_name|escapejs }}',
                 full: {{ prof_full|floatformat:"0" }},
                 base: profScratchEnabled ? {{ prof_full|floatformat:"0" }} : {{ prof_base }},
-                total: profScratchEnabled ? Math.round({{ prof_full|floatformat:"0" }} * 1.18) : {{ prof_final }}
+                total: 0
             },
             free_trial: {
                 name: 'Trial Plan ({{ trial_duration }} Days)',
@@ -1657,11 +1669,32 @@
                 total: {{ trial_final|default:1 }}
             }
         };
+        currentPrices.starter.total = payableTotal(currentPrices.starter.base);
+        currentPrices.professional.total = payableTotal(currentPrices.professional.base);
+        if (!currentPrices.free_trial.total) {
+            currentPrices.free_trial.total = payableTotal(currentPrices.free_trial.base);
+        }
 
-        function revealScratchReward(planType) {
+        async function persistScratchReveal(planType) {
+            try {
+                await fetch('/plan-scratch-reveal/', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': await getFreshCsrfToken()
+                    },
+                    body: JSON.stringify({ plan_type: planType })
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function applyScratchUi(planType) {
             if (planType === 'starter') {
                 currentPrices.starter.base = discountedPrices.starter.base;
-                currentPrices.starter.total = discountedPrices.starter.total;
+                currentPrices.starter.total = discountedPrices.starter.total || payableTotal(discountedPrices.starter.base);
 
                 let strikeEl = document.getElementById('starterStrikePrice');
                 let dispEl = document.getElementById('starterDisplayPrice');
@@ -1679,7 +1712,7 @@
                 }
             } else if (planType === 'professional') {
                 currentPrices.professional.base = discountedPrices.professional.base;
-                currentPrices.professional.total = discountedPrices.professional.total;
+                currentPrices.professional.total = discountedPrices.professional.total || payableTotal(discountedPrices.professional.base);
 
                 let strikeEl = document.getElementById('profStrikePrice');
                 let dispEl = document.getElementById('profDisplayPrice');
@@ -1702,6 +1735,13 @@
             }
         }
 
+        async function revealScratchReward(planType) {
+            await persistScratchReveal(planType);
+            if (planType === 'starter') starterScratchRevealed = true;
+            if (planType === 'professional') profScratchRevealed = true;
+            applyScratchUi(planType);
+        }
+
         var selectedPlan = null;
         var payClickUnlockAt = 0;
         var agentId = {{ draft.pk|default:0 }};
@@ -1722,11 +1762,26 @@
 
         window.selectPlanForPayment = function (planType) {
             if (planType === 'free_trial') {
-                selectedPlan = { type: 'free_trial', name: currentPrices.free_trial.name, price: currentPrices.free_trial.base, total: currentPrices.free_trial.total };
+                selectedPlan = {
+                    type: 'free_trial',
+                    name: currentPrices.free_trial.name,
+                    price: currentPrices.free_trial.base,
+                    total: currentPrices.free_trial.total || payableTotal(currentPrices.free_trial.base)
+                };
             } else if (planType === 'starter' || planType === 'basic') {
-                selectedPlan = { type: 'starter', name: currentPrices.starter.name, price: currentPrices.starter.base, total: currentPrices.starter.total };
+                selectedPlan = {
+                    type: 'starter',
+                    name: currentPrices.starter.name,
+                    price: currentPrices.starter.base,
+                    total: currentPrices.starter.total || payableTotal(currentPrices.starter.base)
+                };
             } else {
-                selectedPlan = { type: 'professional', name: currentPrices.professional.name, price: currentPrices.professional.base, total: currentPrices.professional.total };
+                selectedPlan = {
+                    type: 'professional',
+                    name: currentPrices.professional.name,
+                    price: currentPrices.professional.base,
+                    total: currentPrices.professional.total || payableTotal(currentPrices.professional.base)
+                };
             }
 
             payClickUnlockAt = Date.now() + 600;
@@ -1736,12 +1791,16 @@
         function updateSelectedPlanSummary() {
             const summary = document.getElementById('selectedPlanSummary');
             if (summary && selectedPlan) {
+                const price = Number(selectedPlan.price) || 0;
+                const gst = Math.round(price * 0.18);
+                const total = Number(selectedPlan.total) > 0 ? Number(selectedPlan.total) : (price + gst);
+                selectedPlan.total = total;
                 summary.style.display = 'block';
                 let planNameEl = document.getElementById('selectedPlanName');
                 planNameEl.textContent = selectedPlan.name;
-                document.getElementById('selectedPlanPrice').textContent = `₹${selectedPlan.price.toLocaleString('en-IN')}`;
-                document.getElementById('selectedPlanGST').textContent = `₹${Math.round(selectedPlan.price * 0.18).toLocaleString('en-IN')}`;
-                document.getElementById('selectedPlanTotal').textContent = `₹${selectedPlan.total.toLocaleString('en-IN')}`;
+                document.getElementById('selectedPlanPrice').textContent = `₹${price.toLocaleString('en-IN')}`;
+                document.getElementById('selectedPlanGST').textContent = `₹${gst.toLocaleString('en-IN')}`;
+                document.getElementById('selectedPlanTotal').textContent = `₹${total.toLocaleString('en-IN')}`;
                 syncPayButtonState();
                 setTimeout(function () {
                     summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1773,13 +1832,32 @@
             Swal.close();
         }
 
+        var lastCheckout = null;
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+            return '';
+        }
+
         async function getFreshCsrfToken() {
-            return "{{ csrf_token }}";
+            return getCookie('padosi_csrf_token') || getCookie('csrftoken') || '{{ csrf_token }}';
+        }
+
+        function resetPayButton(paymentBtn) {
+            if (!paymentBtn) return;
+            paymentBtn.disabled = false;
+            paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
         }
 
         async function confirmPayment(source) {
             if (source !== 'pay-button') return;
             if (Date.now() < payClickUnlockAt) return;
+            if (!selectedPlan || !selectedPlan.type) {
+                Swal.fire('Oops', 'Please select a plan first.', 'warning');
+                return;
+            }
 
             const termsCheckbox = document.getElementById('termsCheckbox');
             if (!termsCheckbox || !termsCheckbox.checked) {
@@ -1796,13 +1874,16 @@
             try {
                 const response = await fetch('/agent-register/complete/', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': await getFreshCsrfToken()
                     },
                     body: JSON.stringify({
                         plan_type: selectedPlan.type,
-                        plan_name: selectedPlan.name
+                        plan_name: selectedPlan.name,
+                        scratch_revealed: selectedPlan.type === 'professional' ? !!profScratchRevealed : (selectedPlan.type === 'starter' ? !!starterScratchRevealed : false),
+                        displayed_total: selectedPlan.total
                     })
                 });
 
@@ -1811,14 +1892,30 @@
                     const orderId = data.razorpay_order_id || data.order_id;
                     const keyId = data.razorpay_key_id || data.key;
                     const amountPaise = data.amount_paise || data.amount;
+                    lastCheckout = {
+                        agent_id: data.agent_id,
+                        plan_type: selectedPlan.type,
+                        plan_name: selectedPlan.name,
+                        order_id: orderId
+                    };
+                    try { sessionStorage.setItem('padosiPendingCheckout', JSON.stringify(lastCheckout)); } catch (e) {}
+
+                    if (data.mock_checkout && orderId) {
+                        await verifyRazorpayPayment({
+                            razorpay_order_id: orderId,
+                            razorpay_payment_id: data.mock_payment_id,
+                            razorpay_signature: data.mock_signature,
+                            agent_id: data.agent_id,
+                            plan_type: selectedPlan.type,
+                            plan_name: selectedPlan.name
+                        });
+                        return;
+                    }
 
                     if (orderId && keyId && amountPaise > 0) {
                         if (typeof Razorpay === 'undefined') {
                             Swal.fire('Error', 'Payment Gateway SDK could not load. Please check your connection and reload.', 'error');
-                            if (paymentBtn) {
-                                paymentBtn.disabled = false;
-                                paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
-                            }
+                            resetPayButton(paymentBtn);
                             return;
                         }
 
@@ -1829,6 +1926,7 @@
                             "name": "PadosiAgent",
                             "description": selectedPlan.name,
                             "order_id": orderId,
+                            "callback_url": window.location.origin + '/agent-register/payment-callback/',
                             "handler": function (response) {
                                 verifyRazorpayPayment(response);
                             },
@@ -1842,20 +1940,32 @@
                             },
                             "modal": {
                                 "ondismiss": function() {
-                                    if (paymentBtn) {
-                                        paymentBtn.disabled = false;
-                                        paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
-                                    }
+                                    resetPayButton(paymentBtn);
                                 }
                             }
                         };
                         const rzp1 = new Razorpay(options);
                         rzp1.on('payment.failed', function (resp) {
-                            Swal.fire('Payment Failed', (resp.error && resp.error.description) || 'Transaction failed. Please try again.', 'error');
-                            if (paymentBtn) {
-                                paymentBtn.disabled = false;
-                                paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
+                            const err = (resp && resp.error) || {};
+                            const step = String(err.step || '').toLowerCase();
+                            if (step === 'payment_authentication' || step === 'payment_capture') {
+                                return;
                             }
+                            fetch('/payment-failure/', {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': getCookie('padosi_csrf_token') || getCookie('csrftoken') || '{{ csrf_token }}'
+                                },
+                                body: JSON.stringify({
+                                    agent_id: lastCheckout && lastCheckout.agent_id,
+                                    razorpay_order_id: orderId,
+                                    error: err
+                                })
+                            }).catch(function () {});
+                            Swal.fire('Payment Failed', err.description || 'Transaction failed. Please try again.', 'error');
+                            resetPayButton(paymentBtn);
                         });
                         rzp1.open();
                     } else if (data.already_completed) {
@@ -1870,38 +1980,31 @@
                         window.location.href = data.redirect_url || '/agent/dashboard';
                     } else {
                         Swal.fire('Payment Error', data.message || 'Unable to start payment checkout.', 'error');
-                        if (paymentBtn) {
-                            paymentBtn.disabled = false;
-                            paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
-                        }
+                        resetPayButton(paymentBtn);
                     }
                 } else {
                     Swal.fire('Payment Error', data.message || 'Unable to initiate payment.', 'error');
-                    if (paymentBtn) {
-                        paymentBtn.disabled = false;
-                        paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
-                    }
+                    resetPayButton(paymentBtn);
                 }
             } catch (err) {
                 console.error(err);
                 Swal.fire('Error', 'An unexpected error occurred.', 'error');
-                if (paymentBtn) {
-                    paymentBtn.disabled = false;
-                    paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
-                }
+                resetPayButton(paymentBtn);
             }
         }
 
         async function verifyRazorpayPayment(paymentResponse) {
             showLoadingPopup('Verifying Payment', 'Please wait while we confirm your transaction...');
             try {
+                const payload = Object.assign({}, paymentResponse || {}, lastCheckout || {});
                 const response = await fetch('/agent-register/verify-payment/', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': await getFreshCsrfToken()
                     },
-                    body: JSON.stringify(paymentResponse)
+                    body: JSON.stringify(payload)
                 });
                 const data = await response.json();
                 hideLoadingPopup();
@@ -1980,22 +2083,27 @@
                         if (span) span.innerText = 'Followed ✓';
                     });
 
-                    // Update prices
-                    currentPrices.starter.base = data.starter_base;
-                    currentPrices.starter.total = data.starter_total;
-                    currentPrices.professional.base = data.prof_base;
-                    currentPrices.professional.total = data.prof_total;
+                    discountedPrices.starter.base = data.starter_base;
+                    discountedPrices.starter.total = data.starter_total;
+                    discountedPrices.professional.base = data.prof_base;
+                    discountedPrices.professional.total = data.prof_total;
 
-                    // Update DOM on main page
-                    let sDisp = document.getElementById('starterDisplayPrice');
-                    if (sDisp) sDisp.innerText = '₹' + data.starter_base + '/-';
-                    let pDisp = document.getElementById('profDisplayPrice');
-                    if (pDisp) pDisp.innerText = '₹' + data.prof_base + '/-';
-
-                    let sBadge = document.getElementById('starterDiscountBadge');
-                    if (sBadge) sBadge.style.display = 'block';
-                    let pBadge = document.getElementById('profDiscountBadge');
-                    if (pBadge) pBadge.style.display = 'block';
+                    if (!starterScratchEnabled || starterScratchRevealed) {
+                        currentPrices.starter.base = data.starter_base;
+                        currentPrices.starter.total = data.starter_total;
+                        let sDisp = document.getElementById('starterDisplayPrice');
+                        if (sDisp) sDisp.innerText = '₹' + data.starter_base + '/-';
+                        let sBadge = document.getElementById('starterDiscountBadge');
+                        if (sBadge) sBadge.style.display = 'block';
+                    }
+                    if (!profScratchEnabled || profScratchRevealed) {
+                        currentPrices.professional.base = data.prof_base;
+                        currentPrices.professional.total = data.prof_total;
+                        let pDisp = document.getElementById('profDisplayPrice');
+                        if (pDisp) pDisp.innerText = '₹' + data.prof_base + '/-';
+                        let pBadge = document.getElementById('profDiscountBadge');
+                        if (pBadge) pBadge.style.display = 'block';
+                    }
 
                     // Update modal price and discount badge
                     let currEl = document.getElementById('modalCurrentPrice');
@@ -2057,16 +2165,6 @@
                 canvas.addEventListener('touchstart', startRibbonScratch, { passive: false });
                 canvas.addEventListener('touchmove', scratchRibbon, { passive: false });
                 canvas.addEventListener('touchend', stopRibbonScratch);
-
-                // Direct click to reveal fallback
-                canvas.addEventListener('click', function() {
-                    if (!canvas.ribbonScratchCompleted) {
-                        canvas.ribbonScratchCompleted = true;
-                        canvas.style.display = 'none';
-                        triggerConfetti();
-                        openScratchRewardModal(canvas.dataset.plan || 'starter');
-                    }
-                });
             });
         }
 
@@ -2170,6 +2268,11 @@
         // Initialize on DOM ready
         document.addEventListener('DOMContentLoaded', function () {
             initRibbonScratch();
+            var callbackParams = new URLSearchParams(window.location.search);
+            if (callbackParams.get('razorpay_payment_id') && callbackParams.get('razorpay_order_id')) {
+                window.location.replace('/agent-register/payment-callback/' + window.location.search);
+                return;
+            }
             syncPayButtonState();
 
             const payBtn = document.getElementById('confirmPaymentBtn');

@@ -1008,6 +1008,37 @@
                 return;
             }
 
+            if (data.already_completed) {
+                window.location.reload();
+                return;
+            }
+
+            if (data.mock_checkout && (data.order_id || data.razorpay_order_id)) {
+                fetch('{% url "agents:payment_success" %}', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({
+                        razorpay_payment_id: data.mock_payment_id,
+                        razorpay_order_id: data.razorpay_order_id || data.order_id,
+                        razorpay_signature: data.mock_signature,
+                        agent_id: data.agent_id,
+                        plan_type: planType,
+                    })
+                })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        window.location.reload();
+                    } else {
+                        alert(res.message || 'Payment verification failed. Please contact support.');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-lock me-2"></i> Pay Securely & Upgrade';
+                    }
+                });
+                return;
+            }
+
             if (!data.order_id) {
                 alert('Payment order creation failed. Please contact support.');
                 btn.disabled = false;
@@ -1021,6 +1052,7 @@
                 name:        'PadosiAgent',
                 description: 'Plan Upgrade — ' + (planType === 'basic' || planType === 'starter' ? "Starter's Plan" : "Professional's Plan"),
                 order_id:    data.order_id,
+                callback_url: window.location.origin + '/agent-register/payment-callback/',
                 prefill: {
                     name:  '{{ agent.fullname }}',
                     email: '{{ agent.email }}',
