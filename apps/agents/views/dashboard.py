@@ -1740,8 +1740,8 @@ def agent_upgrade_plan(request):
         if not razorpay_order_id and amount_paise > 0:
             return JsonResponse({
                 'success': False,
-                'message': 'Payment system error. Unable to initialize Razorpay transaction. Please try again later.'
-            }, status=500)
+                'message': 'Payment gateway is not configured correctly. Please try again in a few minutes or contact support.',
+            })
 
         # Update or create AgentSubscription
         subscription, created = AgentSubscription.objects.update_or_create(

@@ -132,7 +132,7 @@ def _get_tier_prices(pricing_config, follow_count):
 
     social_active = pricing_config.get('social_discount_active', True)
     default_discount = float(pricing_config.get('social_discount_amount', 200) or 200)
-    follow_tiers = list(pricing_config.get('follow_tiers') or [])
+    follow_tiers = [t for t in (pricing_config.get('follow_tiers') or []) if isinstance(t, dict)]
 
     starter_price = starter_initial
     prof_price = prof_initial
@@ -140,10 +140,10 @@ def _get_tier_prices(pricing_config, follow_count):
 
     if social_active and follow_count > 0:
         if follow_tiers:
-            sorted_tiers = sorted(follow_tiers, key=lambda t: int(t.get('follows', 0)), reverse=True)
+            sorted_tiers = sorted(follow_tiers, key=_tier_follow_count, reverse=True)
             matched = False
             for tier in sorted_tiers:
-                if follow_count >= int(tier.get('follows', 0)):
+                if follow_count >= _tier_follow_count(tier):
                     if tier.get('starter_price') and float(tier.get('starter_price')) > 0:
                         starter_price = float(tier.get('starter_price'))
                     elif tier.get('discount_amount'):
@@ -239,6 +239,20 @@ def _gst_bundle_from_base(base_amount):
     gst = round(base * 0.18, 2)
     total = int(round(base + gst, 0))
     return base, gst, total
+
+
+def _tier_follow_count(tier):
+    try:
+        return int((tier or {}).get('follows', 0) or 0)
+    except (TypeError, ValueError, AttributeError):
+        return 0
+
+
+def _session_follow_count(request, draft_id):
+    followed = request.session.get(f'followed_platforms_{draft_id}') or []
+    if isinstance(followed, (list, tuple, set)):
+        return len(followed)
+    return 0
 
 
 def _scratch_session_key(plan_type):
@@ -1440,6 +1454,17 @@ def agent_register_complete(request):
     Prepare order or complete registration.
     """
     try:
+        return _agent_register_complete_impl(request)
+    except Exception:
+        logger.exception('agent_register_complete failed')
+        return JsonResponse({
+            'success': False,
+            'message': 'Unable to start payment right now. Please try again.',
+        })
+
+
+def _agent_register_complete_impl(request):
+    try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         data = request.POST
@@ -1474,7 +1499,7 @@ def agent_register_complete(request):
     if not trial_config or not isinstance(trial_config, dict) or not trial_config.get('price'):
         return JsonResponse({'success': False, 'message': 'Server configuration error.'}, status=500)
 
-    applied_promo_code = request.session.get('applied_promo_code', '').strip().upper()
+    applied_promo_code = (request.session.get('applied_promo_code') or '').strip().upper()
     has_promo = bool(applied_promo_code)
     has_free_trial_promo = False
 
@@ -1556,8 +1581,8 @@ def agent_register_complete(request):
     if not razorpay_order_id and amount_paise > 0:
         return JsonResponse({
             'success': False,
-            'message': 'Payment system error. Unable to initialize Razorpay transaction. Please try again later.'
-        }, status=500)
+            'message': 'Payment gateway is not configured correctly. Please try again in a few minutes or contact support.',
+        })
 
     from django.db import transaction
     from apps.agents.models import Agent, AgentSubscription, Invoice

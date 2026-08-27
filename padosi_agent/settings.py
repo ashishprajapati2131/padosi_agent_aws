@@ -253,9 +253,22 @@ DEFAULT_FROM_EMAIL  = (
 )
 
 # ─── Razorpay Payments ───────────────────────────────────────────────────────
-RAZORPAY_KEY            = os.environ.get('RAZORPAY_KEY', '')
-RAZORPAY_SECRET         = os.environ.get('RAZORPAY_SECRET', '')
-RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET', '')
+def _clean_env_secret(value):
+    text = str(value or '').replace('\ufeff', '').strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in ('"', "'"):
+        text = text[1:-1].strip()
+    return text
+
+
+RAZORPAY_KEY = _clean_env_secret(
+    os.environ.get('RAZORPAY_KEY') or os.environ.get('RAZORPAY_KEY_ID') or ''
+)
+RAZORPAY_SECRET = _clean_env_secret(
+    os.environ.get('RAZORPAY_SECRET') or os.environ.get('RAZORPAY_KEY_SECRET') or ''
+)
+RAZORPAY_WEBHOOK_SECRET = _clean_env_secret(
+    os.environ.get('RAZORPAY_WEBHOOK_SECRET') or ''
+)
 
 # ─── Firebase Cloud Messaging (FCM) ─────────────────────────────────────────
 FCM_API_KEY              = os.environ.get('FCM_API_KEY', '')
