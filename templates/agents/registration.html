@@ -123,11 +123,7 @@
                 </div>
 
                 <!-- Features Card Slider -->
-                <div x-data="{ currentSlide: 0, slides: [
-                    {"title": "Free Digital Card", "desc": "Create your professional identity in 2 mins", "icon": "fa-solid fa-id-card", "color": "from-blue-500 to-indigo-600"},
-                    {"title": "Get Unlimited Leads", "desc": "Customers in your pincode will find you", "icon": "fa-solid fa-users", "color": "from-emerald-500 to-teal-600"},
-                    {"title": "Zero Cost Forever", "desc": "No hidden charges. 100% Free platform.", "icon": "fa-solid fa-gift", "color": "from-purple-500 to-pink-600"}
-                ], init() { setInterval(() => { this.currentSlide = (this.currentSlide + 1) % this.slides.length }, 3000) } }"
+                <div x-data="featureSlider"
                 class="w-full overflow-hidden rounded-xl shadow-lg relative mb-6">
                     <div class="flex transition-transform duration-500 ease-in-out" :style="`transform: translateX(-${currentSlide * 100}%)`">
                         <template x-for="(slide, index) in slides" :key="index">
@@ -1345,6 +1341,19 @@
         })();
 
         document.addEventListener('alpine:init', () => {
+            Alpine.data('featureSlider', () => ({
+                currentSlide: 0,
+                slides: [
+                    { title: 'Free Digital Card', desc: 'Create your professional identity in 2 mins', icon: 'fa-solid fa-id-card', color: 'from-blue-500 to-indigo-600' },
+                    { title: 'Get Unlimited Leads', desc: 'Customers in your pincode will find you', icon: 'fa-solid fa-users', color: 'from-emerald-500 to-teal-600' },
+                    { title: 'Zero Cost Forever', desc: 'No hidden charges. 100% Free platform.', icon: 'fa-solid fa-gift', color: 'from-purple-500 to-pink-600' }
+                ],
+                init() {
+                    setInterval(() => {
+                        this.currentSlide = (this.currentSlide + 1) % this.slides.length;
+                    }, 3000);
+                }
+            }));
             Alpine.data('agentRegistration', () => ({
                 agentStep: 'details',
                 errors: {},
