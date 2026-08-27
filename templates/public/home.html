@@ -641,24 +641,26 @@
         var total = reviewsData.length;
 
         function renderStars(rating) {
-            var full = Math.floor(rating);
-            var partial = rating - full;
-            var empty = 5 - Math.ceil(rating);
-            var html = '<div class="review-stars">';
+            var r = parseFloat(rating) || 5.0;
+            var full = Math.floor(r);
+            var partial = r - full;
+            var empty = Math.max(0, 5 - Math.ceil(r));
+            var html = '<div class="review-stars" style="display:flex;align-items:center;gap:3px;margin:8px 0;">';
             for (var i = 0; i < full; i++) {
-                html += '<svg class="fill-amber-400 text-amber-400" style="width:13px;height:13px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+                html += '<svg style="width:16px;height:16px;fill:#f59e0b;color:#f59e0b;display:inline-block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
             }
             if (partial > 0) {
-                html += '<div style="position:relative;display:inline-block;width:13px;height:13px;">' +
-                    '<svg class="text-amber-400/40" style="position:absolute;width:13px;height:13px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
-                    '<div style="position:absolute;overflow:hidden;width:' + (partial * 100) + '%;height:13px;">' +
-                    '<svg class="fill-amber-400 text-amber-400" style="width:13px;height:13px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
+                html += '<div style="position:relative;display:inline-block;width:16px;height:16px;flex-shrink:0;">' +
+                    '<svg style="position:absolute;width:16px;height:16px;fill:#e2e8f0;color:#cbd5e1;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
+                    '<div style="position:absolute;overflow:hidden;width:' + (partial * 100) + '%;height:16px;">' +
+                    '<svg style="width:16px;height:16px;fill:#f59e0b;color:#f59e0b;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
                     '</div>' +
                     '</div>';
             }
             for (var i = 0; i < empty; i++) {
-                html += '<svg class="text-amber-400/40" style="width:13px;height:13px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+                html += '<svg style="width:16px;height:16px;fill:#e2e8f0;color:#cbd5e1;display:inline-block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
             }
+            html += '<span style="margin-left:6px;font-weight:700;font-size:13px;color:#d97706;">' + r.toFixed(1) + ' ★</span>';
             html += '</div>';
             return html;
         }

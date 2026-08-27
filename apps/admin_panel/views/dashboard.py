@@ -359,6 +359,8 @@ def admin_logout(request):
       6. Redirect to login.
     """
     django_logout(request)
+    from apps.home.services.portal_messages import PORTAL_ADMIN, portal_success
+    portal_success(request, "You have been logged out successfully.", PORTAL_ADMIN)
     response = redirect("admin_login")
     return clear_admin_session(request, response)
 

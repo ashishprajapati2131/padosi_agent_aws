@@ -24,7 +24,7 @@ from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.utils import timezone
 from django.conf import settings
 
-from apps.agents.models import AgentDraft, PromoCode
+from apps.agents.models import Agent, AgentDraft, PromoCode
 from apps.home.models import SiteSetting
 from apps.home.models.pincode import Pincode
 from apps.agents.services.brevo import send_otp_email
@@ -61,6 +61,131 @@ LANGUAGE_OPTIONS = [
     'Telugu', 'Kannada', 'Bengali', 'Punjabi', 'Malayalam',
     'Odia', 'Urdu', 'Assamese', 'Rajasthani',
 ]
+
+_DEFAULT_PRICING = {
+    'scratch_card_enabled': True,
+    'social_discount_active': True,
+    'social_discount_amount': 200,
+    'starter': {
+        'name': "Starter's Plan",
+        'full_price': 1999,
+        'promo_price': 1499,
+        'scratch_price': 1299,
+        'description': 'Perfect for New Agents',
+        'badge': 'STANDARD',
+        'scratch_enabled': True,
+    },
+    'professional': {
+        'name': "Professional's Plan",
+        'full_price': 6999,
+        'promo_price': 4999,
+        'scratch_price': 4799,
+        'description': 'For Established Professionals',
+        'badge': 'RECOMMENDED',
+        'scratch_enabled': True,
+    },
+    'promo_discount_label': 'Partner Promo Applied! Once in a lifetime offer!',
+    'standard_label': 'Get started with our standard partner plans',
+    'social_links': [
+        {'platform': 'Instagram', 'url': 'https://instagram.com/padosiagent', 'icon': 'fa-instagram'},
+        {'platform': 'Facebook', 'url': 'https://facebook.com/padosiagent', 'icon': 'fa-facebook'},
+        {'platform': 'YouTube', 'url': 'https://youtube.com/@padosiagent', 'icon': 'fa-youtube'},
+        {'platform': 'LinkedIn', 'url': 'https://linkedin.com/company/padosiagent', 'icon': 'fa-linkedin'},
+    ],
+    'follow_tiers': [
+        {'follows': 1, 'discount_amount': 100, 'starter_price': 1399, 'prof_price': 4899},
+        {'follows': 2, 'discount_amount': 200, 'starter_price': 1299, 'prof_price': 4799},
+        {'follows': 3, 'discount_amount': 300, 'starter_price': 1199, 'prof_price': 4699},
+        {'follows': 4, 'discount_amount': 500, 'starter_price': 999, 'prof_price': 4499},
+    ],
+}
+
+
+def _get_tier_prices(pricing_config, follow_count):
+    """Compute tier pricing and discounts based on the number of accounts followed."""
+    if not isinstance(pricing_config, dict):
+        pricing_config = dict(_DEFAULT_PRICING)
+
+    starter_cfg = pricing_config.get('starter', _DEFAULT_PRICING['starter'])
+    prof_cfg = pricing_config.get('professional', _DEFAULT_PRICING['professional'])
+
+    starter_full = float(starter_cfg.get('full_price', 1999) or 1999)
+    starter_promo = float(starter_cfg.get('promo_price', 1499) or 1499)
+    starter_scratch = float(starter_cfg.get('scratch_price', starter_promo) or starter_promo)
+    starter_scratch_enabled = starter_cfg.get('scratch_enabled', True)
+
+    prof_full = float(prof_cfg.get('full_price', 6999) or 6999)
+    prof_promo = float(prof_cfg.get('promo_price', 4999) or 4999)
+    prof_scratch = float(prof_cfg.get('scratch_price', prof_promo) or prof_promo)
+    prof_scratch_enabled = prof_cfg.get('scratch_enabled', True)
+
+    starter_initial = starter_scratch if starter_scratch_enabled else starter_promo
+    prof_initial = prof_scratch if prof_scratch_enabled else prof_promo
+
+    social_active = pricing_config.get('social_discount_active', True)
+    default_discount = float(pricing_config.get('social_discount_amount', 200) or 200)
+    follow_tiers = list(pricing_config.get('follow_tiers') or [])
+
+    starter_price = starter_initial
+    prof_price = prof_initial
+    applied_discount = 0.0
+
+    if social_active and follow_count > 0:
+        if follow_tiers:
+            sorted_tiers = sorted(follow_tiers, key=lambda t: int(t.get('follows', 0)), reverse=True)
+            matched = False
+            for tier in sorted_tiers:
+                if follow_count >= int(tier.get('follows', 0)):
+                    if tier.get('starter_price') and float(tier.get('starter_price')) > 0:
+                        starter_price = float(tier.get('starter_price'))
+                    elif tier.get('discount_amount'):
+                        starter_price = max(0.0, starter_initial - float(tier.get('discount_amount')))
+                    else:
+                        starter_price = max(0.0, starter_initial - default_discount)
+
+                    if tier.get('prof_price') and float(tier.get('prof_price')) > 0:
+                        prof_price = float(tier.get('prof_price'))
+                    elif tier.get('discount_amount'):
+                        prof_price = max(0.0, prof_initial - float(tier.get('discount_amount')))
+                    else:
+                        prof_price = max(0.0, prof_initial - default_discount)
+
+                    applied_discount = float(tier.get('discount_amount', default_discount) or default_discount)
+                    matched = True
+                    break
+            if not matched:
+                starter_price = max(0.0, starter_initial - default_discount)
+                prof_price = max(0.0, prof_initial - default_discount)
+                applied_discount = default_discount
+        else:
+            starter_price = max(0.0, starter_initial - default_discount)
+            prof_price = max(0.0, prof_initial - default_discount)
+            applied_discount = default_discount
+
+    starter_base = int(round(starter_price))
+    starter_gst = round(starter_base * 0.18, 2)
+    starter_total = int(round(starter_base + starter_gst))
+
+    prof_base = int(round(prof_price))
+    prof_gst = round(prof_base * 0.18, 2)
+    prof_total = int(round(prof_base + prof_gst))
+
+    return {
+        'starter_full': starter_full,
+        'starter_price': starter_price,
+        'starter_base': starter_base,
+        'starter_gst': starter_gst,
+        'starter_total': starter_total,
+        'starter_scratch_price': starter_scratch,
+        'prof_full': prof_full,
+        'prof_price': prof_price,
+        'prof_base': prof_base,
+        'prof_gst': prof_gst,
+        'prof_total': prof_total,
+        'prof_scratch_price': prof_scratch,
+        'applied_discount': applied_discount,
+        'follow_count': follow_count,
+    }
 
 
 from django.core.cache import cache
@@ -405,49 +530,45 @@ def register_step2(request):
 
 @require_POST
 def record_social_follow(request):
-    """Record that the user successfully followed social accounts for gamified plan."""
+    """Record that the user successfully followed social accounts and compute plan discounts."""
     import json
     try:
         data = json.loads(request.body)
-        platform = data.get('platform')
-        agent_id = data.get('agent_id') # actually draft_id
+        platform = (data.get('platform') or '').lower()
+        agent_id = data.get('agent_id')  # draft_id
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON.'}, status=400)
 
     if not agent_id or not platform:
         return JsonResponse({'success': False, 'message': 'Missing data.'}, status=400)
-    
+
     from apps.home.models import SiteSetting
-    exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
+    pricing_config = SiteSetting.get_value('pricing_config', _DEFAULT_PRICING)
 
     session_key = f'followed_platforms_{agent_id}'
     followed = request.session.get(session_key, [])
     if platform not in followed:
         followed.append(platform)
         request.session[session_key] = followed
-        
+        if hasattr(request.session, 'modified'):
+            request.session.modified = True
+
     follow_count = len(followed)
-    discount_unlocked = follow_count > 0
-    current_price = _exclusive_base_price(exclusive_config, follow_count, discount_unlocked)
-    
-    # Save to DB so agent_register_complete can read it
-    if discount_unlocked:
-        from apps.agents.models import AgentDraft, UserPlanProgress
-        try:
-            draft = AgentDraft.objects.get(pk=agent_id)
-            progress, _ = UserPlanProgress.objects.get_or_create(draft=draft, plan_key='exclusive_gamified')
-            progress.discount_unlocked = True
-            progress.save()
-            logger.info(f"Saved discount_unlocked=True for draft {draft.id}")
-        except Exception as e:
-            logger.error(f"Failed to save UserPlanProgress in social_follow: {e}")
-    
+    tier_info = _get_tier_prices(pricing_config, follow_count)
+
     return JsonResponse({
         'success': True,
         'message': 'Follow recorded successfully!',
-        'discount_unlocked': discount_unlocked,
-        'current_price': current_price,
-        'followed_platforms': followed
+        'discount_unlocked': follow_count > 0,
+        'follow_count': follow_count,
+        'applied_discount': tier_info['applied_discount'],
+        'starter_price': tier_info['starter_price'],
+        'starter_base': tier_info['starter_base'],
+        'starter_total': tier_info['starter_total'],
+        'prof_price': tier_info['prof_price'],
+        'prof_base': tier_info['prof_base'],
+        'prof_total': tier_info['prof_total'],
+        'followed_platforms': followed,
     })
 
 def exclusive_discount_status(request):
@@ -516,21 +637,21 @@ def chooseplan(request):
         return redirect('agents:agent_registration')
 
     # Load site settings pricing config from DB only
-    pricing_config = SiteSetting.get_value('pricing_config')
-    if not pricing_config or not isinstance(pricing_config, dict):
-        return render(request, '500.html', status=500)
+    pricing_config = SiteSetting.get_value('pricing_config', _DEFAULT_PRICING)
+    if not isinstance(pricing_config, dict):
+        pricing_config = dict(_DEFAULT_PRICING)
 
-    starter_cfg = pricing_config.get('starter')
-    prof_cfg = pricing_config.get('professional')
-    if not starter_cfg or not prof_cfg or not starter_cfg.get('full_price') or not prof_cfg.get('full_price'):
+    starter_cfg = pricing_config.get('starter', _DEFAULT_PRICING['starter'])
+    prof_cfg = pricing_config.get('professional', _DEFAULT_PRICING['professional'])
+    if not starter_cfg or not prof_cfg:
         return render(request, '500.html', status=500)
 
     trial_config = SiteSetting.get_value('trial_plan_config')
     if not trial_config or not isinstance(trial_config, dict) or not trial_config.get('price'):
-        return render(request, '500.html', status=500)
+        trial_config = {'price': 1, 'is_active': True, 'duration_days': 30}
 
     trial_active = trial_config.get('is_active', True)
-    trial_base_price = float(trial_config['price'])
+    trial_base_price = float(trial_config.get('price', 1))
     trial_duration = trial_config.get('duration_days', 30)
 
     # Promo codes
@@ -569,40 +690,57 @@ def chooseplan(request):
 
     trial_final = trial_base_price + (trial_base_price * 0.18)
 
-    # Calculate Starter/Basic price
-    starter_full = float(starter_cfg['full_price'])
+    # Scratch & Social Discounts
+    starter_scratch_enabled = starter_cfg.get('scratch_enabled', True)
+    prof_scratch_enabled = prof_cfg.get('scratch_enabled', True)
+    scratch_card_enabled = starter_scratch_enabled or prof_scratch_enabled
+    social_discount_active = pricing_config.get('social_discount_active', True)
+    social_discount_amount = float(pricing_config.get('social_discount_amount', 200) or 200)
+    social_links = pricing_config.get('social_links', _DEFAULT_PRICING['social_links'])
+    follow_tiers = pricing_config.get('follow_tiers', _DEFAULT_PRICING['follow_tiers'])
+
+    session_key = f'followed_platforms_{draft_id}'
+    followed = request.session.get(session_key, [])
+    follow_count = len(followed)
+    has_social_discount = social_discount_active and follow_count > 0
+
+    tier_info = _get_tier_prices(pricing_config, follow_count)
+    starter_full = tier_info['starter_full']
+    starter_discounted = tier_info['starter_price']
+    starter_base = tier_info['starter_base']
+    starter_gst = tier_info['starter_gst']
+    starter_final = tier_info['starter_total']
+
     if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('basic'):
-        starter_final = starter_full - promo_obj.calculate_discount(starter_full)
+        starter_base = int(round(max(0.0, starter_full - promo_obj.calculate_discount(starter_full))))
+        starter_gst = round(starter_base * 0.18, 2)
+        starter_final = int(round(starter_base + starter_gst))
         has_starter_promo = True
-    else:
-        starter_final = starter_full
 
-    starter_base = int(round(starter_final / 1.18, 0))
-    starter_gst = round(starter_base * 0.18, 2)
-    starter_final = int(round(starter_base + starter_gst, 0))
     starter_discount_percent = 0
-    if starter_full > 0 and starter_final < starter_full:
-        starter_discount_percent = round((1 - (starter_final / starter_full)) * 100)
+    if starter_full > 0 and starter_base < starter_full:
+        starter_discount_percent = round((1 - (starter_base / starter_full)) * 100)
 
-    # Calculate Professional price
-    prof_full = float(prof_cfg['full_price'])
+    prof_full = tier_info['prof_full']
+    prof_discounted = tier_info['prof_price']
+    prof_base = tier_info['prof_base']
+    prof_gst = tier_info['prof_gst']
+    prof_final = tier_info['prof_total']
+
     if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('professional'):
-        prof_final = prof_full - promo_obj.calculate_discount(prof_full)
+        prof_base = int(round(max(0.0, prof_full - promo_obj.calculate_discount(prof_full))))
+        prof_gst = round(prof_base * 0.18, 2)
+        prof_final = int(round(prof_base + prof_gst))
         has_prof_promo = True
-    else:
-        prof_final = prof_full
 
-    prof_base = int(round(prof_final / 1.18, 0))
-    prof_gst = round(prof_base * 0.18, 2)
-    prof_final = int(round(prof_base + prof_gst, 0))
     prof_discount_percent = 0
-    if prof_full > 0 and prof_final < prof_full:
-        prof_discount_percent = round((1 - (prof_final / prof_full)) * 100)
+    if prof_full > 0 and prof_base < prof_full:
+        prof_discount_percent = round((1 - (prof_base / prof_full)) * 100)
 
-    starter_name = starter_cfg.get('name', '')
-    starter_desc = starter_cfg.get('description', '')
-    prof_name = prof_cfg.get('name', '')
-    prof_desc = prof_cfg.get('description', '')
+    starter_name = starter_cfg.get('name', "Starter's Plan")
+    starter_desc = starter_cfg.get('description', 'Perfect for New Agents')
+    prof_name = prof_cfg.get('name', "Professional's Plan")
+    prof_desc = prof_cfg.get('description', 'For Established Professionals')
 
     trial_gst = round(trial_base_price * 0.18, 2)
 
@@ -721,6 +859,16 @@ def chooseplan(request):
         'draft': agent,  # Pass agent as draft to avoid template changes
         'agent': agent,
         'pricing_config': pricing_config,
+        'scratch_card_enabled': scratch_card_enabled,
+        'starter_scratch_enabled': starter_scratch_enabled,
+        'prof_scratch_enabled': prof_scratch_enabled,
+        'social_discount_active': social_discount_active,
+        'social_discount_amount': social_discount_amount,
+        'social_links': social_links,
+        'follow_tiers': follow_tiers,
+        'follow_tiers_json': json.dumps(follow_tiers),
+        'has_social_discount': has_social_discount,
+        'followed_platforms': followed,
         'trial_config': trial_config,
         'trial_active': trial_active,
         'trial_base_price': trial_base_price,
@@ -731,17 +879,21 @@ def chooseplan(request):
         'starter_name': starter_name,
         'starter_desc': starter_desc,
         'starter_full': starter_full,
+        'starter_discounted': starter_discounted,
         'starter_final': starter_final,
         'starter_gst': starter_gst,
         'starter_base': starter_base,
+        'starter_scratch_price': tier_info['starter_scratch_price'],
         'starter_discount_percent': starter_discount_percent,
         
         'prof_name': prof_name,
         'prof_desc': prof_desc,
         'prof_full': prof_full,
+        'prof_discounted': prof_discounted,
         'prof_final': prof_final,
         'prof_gst': prof_gst,
         'prof_base': prof_base,
+        'prof_scratch_price': tier_info['prof_scratch_price'],
         'prof_discount_percent': prof_discount_percent,
 
         'applied_promo_code': applied_promo_code,
@@ -1123,16 +1275,24 @@ def agent_register_complete(request):
         plan_name = plan_name or exclusive_config.get('name') or 'Exclusive Plan'
         logger.info(f"Exclusive Checkout: discount_unlocked={discount_unlocked}, follow_count={follow_count}, base_price={base_price}, total_amount={total_amount}")
     elif plan_type == 'starter':
-        final = starter_full
+        session_key = f'followed_platforms_{draft_id}'
+        followed = request.session.get(session_key, [])
+        follow_count = len(followed)
+        tier_info = _get_tier_prices(pricing_config, follow_count)
+        base_price = tier_info['starter_price']
         if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('basic'):
-            final = starter_full - promo_obj.calculate_discount(starter_full)
-        _, _, total_amount = _gst_total_from_inclusive(final)
+            base_price = max(0.0, starter_full - promo_obj.calculate_discount(starter_full))
+        total_amount = round(base_price + round(base_price * 0.18, 2), 2)
         plan_name = plan_name or starter_cfg.get('name') or "Starter's Plan"
     else:
-        final = prof_full
+        session_key = f'followed_platforms_{draft_id}'
+        followed = request.session.get(session_key, [])
+        follow_count = len(followed)
+        tier_info = _get_tier_prices(pricing_config, follow_count)
+        base_price = tier_info['prof_price']
         if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('professional'):
-            final = prof_full - promo_obj.calculate_discount(prof_full)
-        _, _, total_amount = _gst_total_from_inclusive(final)
+            base_price = max(0.0, prof_full - promo_obj.calculate_discount(prof_full))
+        total_amount = round(base_price + round(base_price * 0.18, 2), 2)
         plan_name = plan_name or prof_cfg.get('name') or "Professional's Plan"
 
     # Initialize Razorpay Client and create Order
@@ -1166,31 +1326,6 @@ def agent_register_complete(request):
 
     from django.db import transaction
     from apps.agents.models import Agent, AgentSubscription, Invoice
-
-    # Duplicate payment guard: check if agent already has a completed subscription or paid invoice
-    existing_agent = Agent.objects.filter(email=draft.email).first()
-    has_paid_invoice = Invoice.objects.filter(agent_email=draft.email, payment_status='paid').exists()
-    
-    if existing_agent or has_paid_invoice:
-        already_paid = None
-        if existing_agent:
-            already_paid = AgentSubscription.objects.filter(
-                agent=existing_agent,
-                payment_status='completed'
-            ).first()
-        
-        if already_paid or has_paid_invoice:
-            redirect_url = reverse('agents:agent_dashboard')
-            from apps.distributors.views.dashboard import is_distributor
-            if request.user.is_authenticated and is_distributor(request.user):
-                redirect_url = reverse('distributors:agents_index')
-
-            return JsonResponse({
-                'success': True,
-                'already_completed': True,
-                'agent_id': existing_agent.id if existing_agent else None,
-                'redirect_url': redirect_url,
-            })
 
     try:
         with transaction.atomic():
@@ -1349,10 +1484,17 @@ def agent_register_complete(request):
 
     return JsonResponse({
         'success': True,
+        'payment_required': True if amount_paise > 0 else False,
+        'razorpay_order_id': razorpay_order_id,
+        'razorpay_key_id': settings.RAZORPAY_KEY,
+        'amount_paise': amount_paise,
         'order_id': razorpay_order_id,
         'amount': amount_paise,
         'key': settings.RAZORPAY_KEY,
         'agent_id': agent.id,
+        'customer_name': agent.fullname,
+        'customer_email': agent.email,
+        'customer_phone': agent.mobile,
         'name': agent.fullname,
         'email': agent.email,
         'mobile': agent.mobile,

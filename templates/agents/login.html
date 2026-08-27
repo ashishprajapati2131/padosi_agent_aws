@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load portal_messages %}
 
 {% block title %}Agent Login — PadosiAgent{% endblock %}
 {% block meta_description %}Log in to your PadosiAgent portal to manage leads, profile settings, and client
@@ -217,15 +218,17 @@ interactions.{% endblock %}
             <div id="alert-container">
                 {% if messages %}
                 {% for message in messages %}
+                {% if message|for_portal:'agent' %}
                 <div
-                    class="custom-alert {% if message.tags == 'success' %}alert-success-custom{% else %}alert-danger-custom{% endif %}">
-                    {% if message.tags == 'success' %}
+                    class="custom-alert {% if message|is_success_message %}alert-success-custom{% else %}alert-danger-custom{% endif %}">
+                    {% if message|is_success_message %}
                     <i class="fas fa-check-circle"></i>
                     {% else %}
                     <i class="fas fa-exclamation-circle"></i>
                     {% endif %}
                     <span>{{ message }}</span>
                 </div>
+                {% endif %}
                 {% endfor %}
                 {% endif %}
             </div>

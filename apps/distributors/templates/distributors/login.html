@@ -1,4 +1,5 @@
 {% load static %}
+{% load portal_messages %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -168,6 +169,12 @@
             color: #dc2626;
             border: 1px solid #fee2e2;
         }
+
+        .alert-success {
+            background: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+        }
     </style>
 </head>
 <body>
@@ -187,10 +194,14 @@
             <input type="hidden" name="login_type" value="distributor">
 
             {% if messages %}
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle me-2"></i> 
-                    {% for message in messages %}{{ message }}{% endfor %}
+                {% for message in messages %}
+                {% if message|for_portal:'distributor' %}
+                <div class="alert {% if message|is_success_message %}alert-success{% else %}alert-danger{% endif %}">
+                    <i class="fas {% if message|is_success_message %}fa-check-circle{% else %}fa-exclamation-circle{% endif %} me-2"></i>
+                    {{ message }}
                 </div>
+                {% endif %}
+                {% endfor %}
             {% endif %}
 
             <div class="form-group">
