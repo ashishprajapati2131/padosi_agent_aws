@@ -1103,15 +1103,20 @@
                     <div class="plan-header">
                         <div class="plan-name">{{ starter_name|default:"Starter's Plan" }}</div>
                         <div class="plan-price">
-                            {% if starter_final < starter_full %}
+                            {% if starter_scratch_enabled %}
+                                <span id="starterStrikePrice"
+                                    style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px; display:none;">₹{{ starter_full|floatformat:"0" }}</span>
+                                <span id="starterDisplayPrice">₹{{ starter_full|floatformat:"0" }}/-</span><span>1st Year Only</span>
+                            {% elif starter_final < starter_full %}
                                 <span id="starterStrikePrice"
                                     style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">₹{{ starter_full|floatformat:"0" }}</span>
                                 <span id="starterDisplayPrice">₹{{ starter_base }}/-</span><span>1st Year Only</span>
                             {% else %}
+                                <span id="starterStrikePrice" style="display:none;"></span>
                                 <span id="starterDisplayPrice">₹{{ starter_base }}/-</span><span>1st Year Only</span>
                             {% endif %}
                         </div>
-                        <div id="starterDiscountBadge" style="text-align:center; margin-top:6px; {% if starter_final >= starter_full %}display:none;{% endif %}">
+                        <div id="starterDiscountBadge" style="text-align:center; margin-top:6px; {% if starter_scratch_enabled or starter_final >= starter_full %}display:none;{% endif %}">
                             <span
                                 style="background:#dbeafe; color:#1e3a8a; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #93c5fd;">
                                 <i class="fa-solid fa-tag me-1"></i> Special Discount Applied
@@ -1232,15 +1237,20 @@
                     <div class="plan-header">
                         <div class="plan-name">{{ prof_name }}</div>
                         <div class="plan-price">
-                            {% if prof_final < prof_full %}
+                            {% if prof_scratch_enabled %}
+                                <span id="profStrikePrice"
+                                    style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px; display:none;">₹{{ prof_full|floatformat:"0" }}</span>
+                                <span id="profDisplayPrice">₹{{ prof_full|floatformat:"0" }}/-</span><span>1st Year Only</span>
+                            {% elif prof_final < prof_full %}
                                 <span id="profStrikePrice"
                                     style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">₹{{ prof_full|floatformat:"0" }}</span>
                                 <span id="profDisplayPrice">₹{{ prof_base }}/-</span><span>1st Year Only</span>
                             {% else %}
+                                <span id="profStrikePrice" style="display:none;"></span>
                                 <span id="profDisplayPrice">₹{{ prof_base }}/-</span><span>1st Year Only</span>
                             {% endif %}
                         </div>
-                        <div id="profDiscountBadge" style="text-align:center; margin-top:6px; {% if prof_final >= prof_full %}display:none;{% endif %}">
+                        <div id="profDiscountBadge" style="text-align:center; margin-top:6px; {% if prof_scratch_enabled or prof_final >= prof_full %}display:none;{% endif %}">
                             <span
                                 style="background:#d1fae5; color:#059669; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #6ee7b7;">
                                 <i class="fa-solid fa-tag me-1"></i> Special Discount Applied
@@ -1613,18 +1623,32 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script>
         var is_upgrade_flow = {{ is_upgrade_flow|yesno:"true,false"|default:"false" }};
-        var currentPrices = {
+        var starterScratchEnabled = {{ starter_scratch_enabled|yesno:"true,false"|default:"false" }};
+        var profScratchEnabled = {{ prof_scratch_enabled|yesno:"true,false"|default:"false" }};
+
+        var discountedPrices = {
             starter: {
-                name: '{{ starter_name|escapejs }}',
-                full: {{ starter_full|floatformat:"0" }},
                 base: {{ starter_base }},
                 total: {{ starter_final }}
             },
             professional: {
-                name: '{{ prof_name|escapejs }}',
-                full: {{ prof_full|floatformat:"0" }},
                 base: {{ prof_base }},
                 total: {{ prof_final }}
+            }
+        };
+
+        var currentPrices = {
+            starter: {
+                name: '{{ starter_name|escapejs }}',
+                full: {{ starter_full|floatformat:"0" }},
+                base: starterScratchEnabled ? {{ starter_full|floatformat:"0" }} : {{ starter_base }},
+                total: starterScratchEnabled ? Math.round({{ starter_full|floatformat:"0" }} * 1.18) : {{ starter_final }}
+            },
+            professional: {
+                name: '{{ prof_name|escapejs }}',
+                full: {{ prof_full|floatformat:"0" }},
+                base: profScratchEnabled ? {{ prof_full|floatformat:"0" }} : {{ prof_base }},
+                total: profScratchEnabled ? Math.round({{ prof_full|floatformat:"0" }} * 1.18) : {{ prof_final }}
             },
             free_trial: {
                 name: 'Trial Plan ({{ trial_duration }} Days)',
@@ -1633,6 +1657,50 @@
                 total: {{ trial_final|default:1 }}
             }
         };
+
+        function revealScratchReward(planType) {
+            if (planType === 'starter') {
+                currentPrices.starter.base = discountedPrices.starter.base;
+                currentPrices.starter.total = discountedPrices.starter.total;
+
+                let strikeEl = document.getElementById('starterStrikePrice');
+                let dispEl = document.getElementById('starterDisplayPrice');
+                let badgeEl = document.getElementById('starterDiscountBadge');
+
+                if (strikeEl) {
+                    strikeEl.innerText = '₹' + currentPrices.starter.full;
+                    strikeEl.style.display = 'inline-block';
+                }
+                if (dispEl) {
+                    dispEl.innerText = '₹' + discountedPrices.starter.base + '/-';
+                }
+                if (badgeEl) {
+                    badgeEl.style.display = 'block';
+                }
+            } else if (planType === 'professional') {
+                currentPrices.professional.base = discountedPrices.professional.base;
+                currentPrices.professional.total = discountedPrices.professional.total;
+
+                let strikeEl = document.getElementById('profStrikePrice');
+                let dispEl = document.getElementById('profDisplayPrice');
+                let badgeEl = document.getElementById('profDiscountBadge');
+
+                if (strikeEl) {
+                    strikeEl.innerText = '₹' + currentPrices.professional.full;
+                    strikeEl.style.display = 'inline-block';
+                }
+                if (dispEl) {
+                    dispEl.innerText = '₹' + discountedPrices.professional.base + '/-';
+                }
+                if (badgeEl) {
+                    badgeEl.style.display = 'block';
+                }
+            }
+
+            if (selectedPlan && selectedPlan.type === planType) {
+                selectPlanForPayment(planType);
+            }
+        }
 
         var selectedPlan = null;
         var payClickUnlockAt = 0;
@@ -1857,12 +1925,14 @@
         // ─── REWARD MODAL OPENER & CLOSER ───────────────────────────────────────
         function openScratchRewardModal(planType) {
             activeRewardPlan = planType || 'starter';
+            revealScratchReward(activeRewardPlan);
+
             let strikeEl = document.getElementById('modalStrikePrice');
             let currEl = document.getElementById('modalCurrentPrice');
             let valEl = document.getElementById('modalDiscountVal');
 
-            let full = (planType === 'professional') ? currentPrices.professional.full : currentPrices.starter.full;
-            let current = (planType === 'professional') ? currentPrices.professional.base : currentPrices.starter.base;
+            let full = (activeRewardPlan === 'professional') ? currentPrices.professional.full : currentPrices.starter.full;
+            let current = (activeRewardPlan === 'professional') ? discountedPrices.professional.base : discountedPrices.starter.base;
             let percent = full > 0 ? Math.round((1 - (current / full)) * 100) : 0;
 
             if (strikeEl) strikeEl.innerText = '₹' + full + '/-';
