@@ -1887,7 +1887,12 @@
                     })
                 });
 
-                const data = await response.json();
+                const data = await response.json().catch(() => null);
+                if (!data) {
+                    Swal.fire('Payment Error', 'Unable to start payment right now. Please try again.', 'error');
+                    resetPayButton(paymentBtn);
+                    return;
+                }
                 if (data.success) {
                     const orderId = data.razorpay_order_id || data.order_id;
                     const keyId = data.razorpay_key_id || data.key;
