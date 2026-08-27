@@ -1,3 +1,4 @@
+import os
 import logging
 import math
 import json
@@ -6,6 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from django.contrib.auth import logout
 from django.contrib import messages
+from apps.home.services.portal_messages import PORTAL_AGENT, portal_error
 from django.utils import timezone
 from django.db.models import Sum, Q, Avg
 from django.http import JsonResponse
@@ -185,7 +187,7 @@ def agent_dashboard(request):
     is_admin = user.is_staff or user.is_superuser
     if not (agent or is_admin):
         logout(request)
-        messages.error(request, "Unauthorized access. Gated area.")
+        portal_error(request, "Unauthorized access. Gated area.", PORTAL_AGENT)
         return redirect('agents:agent_login')
 
     # Load statistics

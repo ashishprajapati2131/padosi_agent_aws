@@ -91,6 +91,8 @@
                 </style>
     <!-- Shared Agent Card Styles -->
     <link rel="stylesheet" href="{% static 'css/agent-card-shared.css' %}">
+    <!-- Public Profile Styles for Live Preview -->
+    <link rel="stylesheet" href="{% static 'css/agent-profile-view.css' %}">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- FontAwesome (for badges) -->
@@ -160,8 +162,7 @@
 
 
                                 <!-- Live Agent Card -->
-                                <div x-show="!cardPreviewMode && !isGeneratingCard"
-                                    class="overflow-hidden rounded-xl border border-border bg-card shadow-lg transition-all">
+                                <div class="overflow-hidden rounded-xl border border-border bg-card shadow-lg transition-all">
                                     <div class="p-3 sm:p-6">
                                         <!-- Identity Row -->
                                         <div class="flex items-start gap-2.5 sm:gap-4">
@@ -255,7 +256,7 @@
                                                             <i data-lucide="map-pin" class="h-3 w-3 shrink-0"></i>
                                                             <input x-ref="pinInput" type="text" x-model="pincode"
                                                                 @focus="editPin = true"
-                                                                @input="pincode = pincode.replace(/\D/g, '').slice(0,6); checkPin(); delete errors.agent_pincode"
+                                                                @input="pincode = pincode.replace(/\D/g, '').slice(0,6); if (pincode.length === 6) { checkPin(); } else { state = ''; city = ''; } delete errors.agent_pincode"
                                                                 @blur="editPin = false" placeholder="Pin code *"
                                                                 class="h-8 w-full min-w-0 border border-dashed rounded border-primary/40 bg-primary/[0.04] px-2 text-sm font-bold outline-none focus-visible:ring-1"
                                                                 :class="{'border-destructive focus-visible:ring-destructive': errors.agent_pincode}">
@@ -503,212 +504,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Generating Loading Screen -->
-                                <div x-show="isGeneratingCard" style="display: none;"
-                                    class="mt-4 flex flex-col items-center justify-center space-y-4 rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-10 text-center">
-                                    <div
-                                        class="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30">
-                                        <i data-lucide="loader-2" class="h-8 w-8 animate-spin"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-xl font-extrabold text-foreground tracking-tight">Generating Live
-                                            Card...</h3>
-                                        <p class="text-sm font-medium text-muted-foreground mt-1">Finalizing your
-                                            professional PadosiAgent profile</p>
-                                    </div>
-                                </div>
-
-                                <!-- Final Preview Card -->
-                                <div x-show="cardPreviewMode" style="display: none;" class="mt-4 relative">
-                                    <div class="absolute -right-2 -top-2 z-20">
-                                        <button type="button"
-                                            @click="cardPreviewMode = false; previewGeneratedOnce = false; startPreviewCountdown();"
-                                            class="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-md border hover:bg-gray-50 hover:text-primary transition-colors text-muted-foreground"
-                                            title="Edit details">
-                                            <i data-lucide="pencil" class="h-4 w-4"></i>
-                                        </button>
-                                    </div>
-
-                                    <div class="react-agent-card find-agents-list-item">
-                                        <!-- Desktop Card -->
-                                        <div class="rac-card rac-desktop-card shadow-lg border-primary/30">
-                                            <div class="rac-d-row">
-                                                <div class="rac-d-photo">
-                                                    <img :src="photoPreview ? photoPreview : '{% static 'img/avatar-icon.jpg' %}'"
-                                                        class="rac-d-photo-img" style="object-fit: cover;">
-                                                </div>
-                                                <div class="rac-d-info">
-                                                    <div class="rac-d-name-row">
-                                                        <h3 class="rac-d-name" x-text="name || 'Your Name'"></h3>
-                                                        <span class="agent-recognition-badge badge-verified-official">
-                                                            <i class="fas fa-id-badge"></i> Licensed
-                                                        </span>
-                                                    </div>
-                                                    <div class="rac-d-rating">
-                                                        <div class="rac-stars rac-stars--lg text-amber-500 flex gap-0.5">
-                                                            <template x-for="i in 5">
-                                                                <span
-                                                                    x-html="`<i data-lucide='star' class='h-4 w-4 fill-amber-500 text-amber-500'></i>`"></span>
-                                                            </template>
-                                                        </div>
-                                                        <span class="rac-d-rating-val">5.0</span>
-                                                        <span class="rac-d-rating-count">(0 reviews)</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-2 mt-1">
-                                                        <div class="rac-d-dist-pill"
-                                                            style="background: linear-gradient(135deg, #16a34a, #15803d);">
-                                                            <i data-lucide="map-pin" class="h-3 w-3 mr-1"></i> Nearby
-                                                        </div>
-                                                    </div>
-                                                    <div class="rac-d-location mt-2">
-                                                        <i data-lucide="map-pin" class="h-3 w-3"></i> <span
-                                                            x-text="city || pincode || 'India'"></span>
-                                                    </div>
-
-                                                    <div class="rac-stats-grid">
-                                                        <div class="rac-stat-box">
-                                                            <div class="rac-stat-num"
-                                                                x-text="(yearsExperience || '0') + '+'"></div>
-                                                            <div class="rac-stat-lbl">YEARS</div>
-                                                        </div>
-                                                        <div class="rac-stat-box">
-                                                            <div class="rac-stat-num"
-                                                                x-text="clientBase ? clientBase + '+' : 'N/A'"></div>
-                                                            <div class="rac-stat-lbl">CLIENTS</div>
-                                                        </div>
-                                                        <div class="rac-stat-box">
-                                                            <div class="rac-stat-num"
-                                                                x-text="claimAmount ? '₹' + claimAmount : '₹0'"></div>
-                                                            <div class="rac-stat-lbl">CLAIMS</div>
-                                                        </div>
-                                                        <div class="rac-stat-box">
-                                                            <div class="rac-stat-num"
-                                                                x-text="claimsSettled ? claimsSettled : 'N/A'"></div>
-                                                            <div class="rac-stat-lbl">SETTLED</div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="rac-tags">
-                                                        <template x-for="seg in segments">
-                                                            <span class="rac-tag rac-tag--default"
-                                                                x-text="seg.toUpperCase()"
-                                                                :class="{'rac-tag--health': seg === 'health', 'rac-tag--life': seg === 'life', 'rac-tag--motor': seg === 'motor', 'rac-tag--sme': seg === 'sme'}"></span>
-                                                        </template>
-                                                    </div>
-                                                </div>
-
-                                                <div class="rac-d-right">
-                                                    <div class="rac-d-match rac-match--green"
-                                                        style="background: linear-gradient(to left, rgba(187, 247, 208, 0.95) 0%, rgba(187, 247, 208, 0) 100%);">
-                                                        <i data-lucide="zap" class="h-4 w-4 mr-1"></i> 99% Match
-                                                    </div>
-                                                    <div class="rac-d-actions">
-                                                        <a href="javascript:void(0)"
-                                                            class="rac-d-btn rac-d-btn--profile pointer-events-none">
-                                                            <i data-lucide="user" class="h-4 w-4 mr-1"></i> View Profile
-                                                        </a>
-                                                        <a href="javascript:void(0)"
-                                                            class="rac-d-btn rac-d-btn--whatsapp pointer-events-none">
-                                                            <i data-lucide="message-circle" class="h-4 w-4 mr-1"></i>
-                                                            WhatsApp
-                                                        </a>
-                                                        <a href="javascript:void(0)"
-                                                            class="rac-d-btn rac-d-btn--call pointer-events-none">
-                                                            <i data-lucide="phone" class="h-4 w-4 mr-1"></i> Call Now
-                                                        </a>
-                                                    </div>
-                                                    <div class="rac-d-icon-row mt-2">
-                                                        <button class="rac-icon-btn pointer-events-none text-xs"><i
-                                                                data-lucide="copy" class="h-3 w-3"></i> Compare</button>
-                                                        <button class="rac-icon-btn pointer-events-none text-xs"><i
-                                                                data-lucide="heart" class="h-3 w-3"></i> Save</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Mobile Card -->
-                                        <div class="rac-card rac-mobile-card shadow-lg border-primary/30">
-                                            <div class="rac-top">
-                                                <div class="rac-photo-col" style="width: 100px;">
-                                                    <img :src="photoPreview ? photoPreview : '{% static 'img/avatar-icon.jpg' %}'"
-                                                        class="rac-photo-img" style="object-fit: cover;">
-                                                    <div class="rac-photo-fade"></div>
-                                                </div>
-                                                <div class="rac-info-col">
-                                                    <div class="rac-name-row">
-                                                        <h3 class="rac-name" x-text="name || 'Your Name'"></h3>
-                                                        <div class="rac-badges">
-                                                            <span class="agent-recognition-badge badge-verified-official">
-                                                                <i class="fas fa-id-badge"></i> Licensed
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="rac-rating">
-                                                        <div class="rac-stars text-amber-500 flex gap-0.5">
-                                                            <template x-for="i in 5">
-                                                                <span
-                                                                    x-html="`<i data-lucide='star' class='h-3 w-3 fill-amber-500 text-amber-500'></i>`"></span>
-                                                            </template>
-                                                        </div>
-                                                        <span class="rac-rating-val">5.0</span>
-                                                    </div>
-                                                    <div class="flex flex-wrap gap-1 mt-1">
-                                                        <div class="rac-dist-pill"><i data-lucide="map-pin"
-                                                                class="h-3 w-3 mr-0.5"></i> Nearby</div>
-                                                        <div class="rac-match-pill rac-match--green"><i data-lucide="zap"
-                                                                class="h-3 w-3 mr-0.5"></i> 99% Match</div>
-                                                    </div>
-                                                    <div class="rac-location mt-1">
-                                                        <i data-lucide="map-pin" class="h-3 w-3 mr-1"></i> <span
-                                                            x-text="city || pincode || 'India'"></span>
-                                                    </div>
-                                                    <div class="rac-stats-grid">
-                                                        <div class="rac-stat-box">
-                                                            <div class="rac-stat-num"
-                                                                x-text="(yearsExperience || '0') + '+'"></div>
-                                                            <div class="rac-stat-lbl">YEARS</div>
-                                                        </div>
-                                                        <div class="rac-stat-box">
-                                                            <div class="rac-stat-num"
-                                                                x-text="clientBase ? clientBase + '+' : 'N/A'"></div>
-                                                            <div class="rac-stat-lbl">CLIENTS</div>
-                                                        </div>
-                                                        <div class="rac-stat-box">
-                                                            <div class="rac-stat-num"
-                                                                x-text="claimAmount ? '₹' + claimAmount : '₹0'"></div>
-                                                            <div class="rac-stat-lbl">CLAIMS</div>
-                                                        </div>
-                                                        <div class="rac-stat-box">
-                                                            <div class="rac-stat-num"
-                                                                x-text="claimsSettled ? claimsSettled : 'N/A'"></div>
-                                                            <div class="rac-stat-lbl">SETTLED</div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="rac-tags mt-1">
-                                                        <template x-for="seg in segments">
-                                                            <span class="rac-tag rac-tag--default"
-                                                                x-text="seg.toUpperCase()"
-                                                                :class="{'rac-tag--health': seg === 'health', 'rac-tag--life': seg === 'life', 'rac-tag--motor': seg === 'motor', 'rac-tag--sme': seg === 'sme'}"></span>
-                                                        </template>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="rac-actions">
-                                                <a href="javascript:void(0)"
-                                                    class="rac-btn rac-btn--profile pointer-events-none"><i
-                                                        data-lucide="user" class="h-3 w-3 mr-1"></i> Profile</a>
-                                                <a href="javascript:void(0)"
-                                                    class="rac-btn rac-btn--whatsapp pointer-events-none"><i
-                                                        data-lucide="message-circle" class="h-3 w-3 mr-1"></i> WhatsApp</a>
-                                                <a href="javascript:void(0)"
-                                                    class="rac-btn rac-btn--call pointer-events-none"><i data-lucide="phone"
-                                                        class="h-3 w-3 mr-1"></i> Call Now</a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 <!-- Profile URL Card -->
                                 <div
                                     class="rounded-xl border border-border bg-card shadow-sm transition-all focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/50">
@@ -739,7 +534,8 @@
                                         <div
                                             class="flex items-center rounded-lg border border-border bg-muted/30 p-1 overflow-hidden">
                                             <span
-                                                class="pl-2 pr-1 text-sm font-medium text-muted-foreground truncate max-w-[50%] sm:max-w-none">padosiagent.com/profile/</span>
+                                                class="pl-2 pr-1 text-sm font-medium text-muted-foreground truncate max-w-[50%] sm:max-w-none"
+                                                x-text="profileBaseUrl">padosiagent.com/profile/</span>
                                             <input type="text" x-model="slug" @input="slug = slug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''); checkSlug()"
                                                 class="flex-1 min-w-0 bg-transparent px-1 py-1 text-sm font-bold outline-none placeholder:font-normal placeholder:text-muted-foreground"
                                                 :class="slug.length > 0 ? 'bg-clip-text text-transparent bg-gradient-to-r from-purple-500 via-pink-500 to-red-500' : 'text-foreground'"
@@ -817,7 +613,7 @@
                                 </div>
 
                                 <form id="step1Form" action="{% url 'agents:agent_register_step1' %}" method="POST"
-                                    onsubmit="event.preventDefault(); return false;" @submit.prevent="submitStep1">
+                                    onsubmit="event.preventDefault(); return false;" @submit.prevent="validateAndOpenPreview()">
                                     {% csrf_token %}
                                     <input type="hidden" name="user_types[]" value="insurance_agent">
                                     <input type="hidden" name="fullname" :value="name">
@@ -894,6 +690,623 @@
                 </div>
             </div>
         </div>
+
+        <!-- Registration Live Preview Modal (Directory Card + Public Profile Slider) -->
+        <!-- Registration Live Preview Modal (Directory Card + Full Public Profile Slider) -->
+        <div x-show="showPreviewModal" style="display: none;"
+            class="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 lg:p-6"
+            @click.self="showPreviewModal = false">
+            
+            <div class="relative w-full max-w-5xl bg-card rounded-2xl shadow-2xl border border-border overflow-hidden my-auto flex flex-col max-h-[94vh]">
+                
+                <!-- Modal Header with Navigation & Tabs -->
+                <div class="px-4 py-3 sm:px-6 sm:py-4 bg-muted/50 border-b border-border flex items-center justify-between gap-3 shrink-0">
+                    <div class="flex items-center gap-2.5">
+                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold">
+                            <i data-lucide="eye" class="h-4 w-4"></i>
+                        </span>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-bold text-foreground leading-tight">Live Profile Preview</h3>
+                            <p class="text-xs text-muted-foreground hidden sm:block">Full preview of your directory card and public profile page</p>
+                        </div>
+                    </div>
+
+                    <!-- Slide Switcher Controls (Arrow navigation & Pills) -->
+                    <div class="flex items-center gap-1.5 sm:gap-2">
+                        <div class="flex items-center bg-background rounded-lg border border-border p-0.5 shadow-sm">
+                            <button type="button" @click="previewSlide = 0"
+                                class="px-2.5 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5"
+                                :class="previewSlide === 0 ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">
+                                <i data-lucide="credit-card" class="h-3.5 w-3.5"></i>
+                                <span class="hidden sm:inline">Directory</span> Card
+                            </button>
+                            <button type="button" @click="previewSlide = 1"
+                                class="px-2.5 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5"
+                                :class="previewSlide === 1 ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">
+                                <i data-lucide="globe" class="h-3.5 w-3.5"></i>
+                                <span class="hidden sm:inline">Public</span> Profile
+                            </button>
+                        </div>
+
+                        <!-- Left / Right Slider Arrows -->
+                        <button type="button" @click="previewSlide = previewSlide === 0 ? 1 : 0"
+                            class="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                            title="Previous slide">
+                            <i data-lucide="chevron-left" class="h-4 w-4"></i>
+                        </button>
+                        <button type="button" @click="previewSlide = previewSlide === 1 ? 0 : 1"
+                            class="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                            title="Next slide">
+                            <i data-lucide="chevron-right" class="h-4 w-4"></i>
+                        </button>
+
+                        <!-- Close Modal Button -->
+                        <button type="button" @click="showPreviewModal = false"
+                            class="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ml-1"
+                            title="Close preview">
+                            <i data-lucide="x" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Body (Slider content) -->
+                <div class="p-3 sm:p-5 overflow-y-auto flex-1 bg-slate-50">
+                    
+                    <!-- Slide 0: Find Agents Directory Card -->
+                    <div x-show="previewSlide === 0" class="space-y-4">
+                        <div class="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span class="font-medium flex items-center gap-1"><i data-lucide="layout-grid" class="h-3.5 w-3.5 text-primary"></i> Find Agents Directory Card View</span>
+                            <span class="bg-emerald-500/10 text-emerald-600 font-semibold px-2 py-0.5 rounded-full">Slide 1 of 2</span>
+                        </div>
+
+                        <div class="react-agent-card find-agents-list-item">
+                            <!-- Desktop Card -->
+                            <div class="rac-card rac-desktop-card shadow-lg border-primary/30">
+                                <div class="rac-d-row">
+                                    <div class="rac-d-photo">
+                                        <img :src="photoPreview ? photoPreview : '{% static 'img/avatar-icon.jpg' %}'"
+                                            class="rac-d-photo-img" style="object-fit: cover;">
+                                    </div>
+                                    <div class="rac-d-info">
+                                        <div class="rac-d-name-row">
+                                            <h3 class="rac-d-name" x-text="name || 'Your Name'"></h3>
+                                            <span class="agent-recognition-badge badge-verified-official">
+                                                <i class="fas fa-id-badge"></i> Licensed
+                                            </span>
+                                        </div>
+                                        <div class="rac-d-rating">
+                                            <div class="rac-stars rac-stars--lg text-amber-500 flex gap-0.5">
+                                                <template x-for="i in 5">
+                                                    <span x-html="`<i data-lucide='star' class='h-4 w-4 fill-amber-500 text-amber-500'></i>`"></span>
+                                                </template>
+                                            </div>
+                                            <span class="rac-d-rating-val">5.0</span>
+                                            <span class="rac-d-rating-count">(0 reviews)</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <div class="rac-d-dist-pill"
+                                                style="background: linear-gradient(135deg, #16a34a, #15803d);">
+                                                <i data-lucide="map-pin" class="h-3 w-3 mr-1"></i> Nearby
+                                            </div>
+                                        </div>
+                                        <div class="rac-d-location mt-2">
+                                            <i data-lucide="map-pin" class="h-3 w-3"></i> <span
+                                                x-text="city || pincode || 'India'"></span>
+                                        </div>
+
+                                        <div class="rac-stats-grid">
+                                            <div class="rac-stat-box">
+                                                <div class="rac-stat-num"
+                                                    x-text="(yearsExperience || '0') + '+'"></div>
+                                                <div class="rac-stat-lbl">YEARS</div>
+                                            </div>
+                                            <div class="rac-stat-box">
+                                                <div class="rac-stat-num"
+                                                    x-text="clientBase ? clientBase + '+' : 'N/A'"></div>
+                                                <div class="rac-stat-lbl">CLIENTS</div>
+                                            </div>
+                                            <div class="rac-stat-box">
+                                                <div class="rac-stat-num"
+                                                    x-text="claimAmount ? '₹' + claimAmount : '₹0'"></div>
+                                                <div class="rac-stat-lbl">CLAIMS</div>
+                                            </div>
+                                            <div class="rac-stat-box">
+                                                <div class="rac-stat-num"
+                                                    x-text="claimsSettled ? claimsSettled : 'N/A'"></div>
+                                                <div class="rac-stat-lbl">SETTLED</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rac-tags">
+                                            <template x-for="seg in segments">
+                                                <span class="rac-tag rac-tag--default"
+                                                    x-text="seg.toUpperCase()"
+                                                    :class="{'rac-tag--health': seg === 'health', 'rac-tag--life': seg === 'life', 'rac-tag--motor': seg === 'motor', 'rac-tag--sme': seg === 'sme'}"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+
+                                    <div class="rac-d-right">
+                                        <div class="rac-d-match rac-match--green"
+                                            style="background: linear-gradient(to left, rgba(187, 247, 208, 0.95) 0%, rgba(187, 247, 208, 0) 100%);">
+                                            <i data-lucide="zap" class="h-4 w-4 mr-1"></i> 99% Match
+                                        </div>
+                                        <div class="rac-d-actions">
+                                            <a href="javascript:void(0)"
+                                                class="rac-d-btn rac-d-btn--profile pointer-events-none">
+                                                <i data-lucide="user" class="h-4 w-4 mr-1"></i> View Profile
+                                            </a>
+                                            <a href="javascript:void(0)"
+                                                class="rac-d-btn rac-d-btn--whatsapp pointer-events-none">
+                                                <i data-lucide="message-circle" class="h-4 w-4 mr-1"></i>
+                                                WhatsApp
+                                            </a>
+                                            <a href="javascript:void(0)"
+                                                class="rac-d-btn rac-d-btn--call pointer-events-none">
+                                                <i data-lucide="phone" class="h-4 w-4 mr-1"></i> Call Now
+                                            </a>
+                                        </div>
+                                        <div class="rac-d-icon-row mt-2">
+                                            <button class="rac-icon-btn pointer-events-none text-xs"><i
+                                                    data-lucide="copy" class="h-3 w-3"></i> Compare</button>
+                                            <button class="rac-icon-btn pointer-events-none text-xs"><i
+                                                    data-lucide="heart" class="h-3 w-3"></i> Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mobile Card -->
+                            <div class="rac-card rac-mobile-card shadow-lg border-primary/30">
+                                <div class="rac-top">
+                                    <div class="rac-photo-col" style="width: 100px;">
+                                        <img :src="photoPreview ? photoPreview : '{% static 'img/avatar-icon.jpg' %}'"
+                                            class="rac-photo-img" style="object-fit: cover;">
+                                        <div class="rac-photo-fade"></div>
+                                    </div>
+                                    <div class="rac-info-col">
+                                        <div class="rac-name-row">
+                                            <h3 class="rac-name" x-text="name || 'Your Name'"></h3>
+                                            <div class="rac-badges">
+                                                <span class="agent-recognition-badge badge-verified-official">
+                                                    <i class="fas fa-id-badge"></i> Licensed
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="rac-rating">
+                                            <div class="rac-stars text-amber-500 flex gap-0.5">
+                                                <template x-for="i in 5">
+                                                    <span x-html="`<i data-lucide='star' class='h-3 w-3 fill-amber-500 text-amber-500'></i>`"></span>
+                                                </template>
+                                            </div>
+                                            <span class="rac-rating-val">5.0</span>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1 mt-1">
+                                            <div class="rac-dist-pill"><i data-lucide="map-pin"
+                                                    class="h-3 w-3 mr-0.5"></i> Nearby</div>
+                                            <div class="rac-match-pill rac-match--green"><i data-lucide="zap"
+                                                    class="h-3 w-3 mr-0.5"></i> 99% Match</div>
+                                        </div>
+                                        <div class="rac-location mt-1">
+                                            <i data-lucide="map-pin" class="h-3 w-3 mr-1"></i> <span
+                                                x-text="city || pincode || 'India'"></span>
+                                        </div>
+                                        <div class="rac-stats-grid">
+                                            <div class="rac-stat-box">
+                                                <div class="rac-stat-num"
+                                                    x-text="(yearsExperience || '0') + '+'"></div>
+                                                <div class="rac-stat-lbl">YEARS</div>
+                                            </div>
+                                            <div class="rac-stat-box">
+                                                <div class="rac-stat-num"
+                                                    x-text="clientBase ? clientBase + '+' : 'N/A'"></div>
+                                                <div class="rac-stat-lbl">CLIENTS</div>
+                                            </div>
+                                            <div class="rac-stat-box">
+                                                <div class="rac-stat-num"
+                                                    x-text="claimAmount ? '₹' + claimAmount : '₹0'"></div>
+                                                <div class="rac-stat-lbl">CLAIMS</div>
+                                            </div>
+                                            <div class="rac-stat-box">
+                                                <div class="rac-stat-num"
+                                                    x-text="claimsSettled ? claimsSettled : 'N/A'"></div>
+                                                <div class="rac-stat-lbl">SETTLED</div>
+                                            </div>
+                                        </div>
+                                        <div class="rac-tags mt-1">
+                                            <template x-for="seg in segments">
+                                                <span class="rac-tag rac-tag--default"
+                                                    x-text="seg.toUpperCase()"
+                                                    :class="{'rac-tag--health': seg === 'health', 'rac-tag--life': seg === 'life', 'rac-tag--motor': seg === 'motor', 'rac-tag--sme': seg === 'sme'}"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="rac-actions">
+                                    <a href="javascript:void(0)"
+                                        class="rac-btn rac-btn--profile pointer-events-none"><i
+                                            data-lucide="user" class="h-3 w-3 mr-1"></i> Profile</a>
+                                    <a href="javascript:void(0)"
+                                        class="rac-btn rac-btn--whatsapp pointer-events-none"><i
+                                            data-lucide="message-circle" class="h-3 w-3 mr-1"></i> WhatsApp</a>
+                                    <a href="javascript:void(0)"
+                                        class="rac-btn rac-btn--call pointer-events-none"><i data-lucide="phone"
+                                            class="h-3 w-3 mr-1"></i> Call Now</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Slide 1: Full Comprehensive Public Profile Page Preview (Matches /profile/dishant-shah/) -->
+                    <div x-show="previewSlide === 1" class="space-y-4" style="display: none;">
+                        <div class="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span class="font-medium flex items-center gap-1"><i data-lucide="globe" class="h-3.5 w-3.5 text-primary"></i> Live Public Profile Page</span>
+                            <span class="bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded-full">Slide 2 of 2</span>
+                        </div>
+
+                        <!-- Full Profile Container with shared agent-profile-view styles -->
+                        <div class="profile-view-wrapper rounded-2xl border border-border shadow-md overflow-hidden bg-[#f8fafc] text-left">
+                            
+                            <!-- Profile Banner -->
+                            <div class="profile-banner relative">
+                                <a href="javascript:void(0)" class="back-btn pointer-events-none">
+                                    <i class="fas fa-arrow-left"></i> Back
+                                </a>
+                                <div class="banner-right-actions">
+                                    <button type="button" class="edit-profile-banner-btn pointer-events-none">
+                                        <i class="fas fa-share-alt"></i> Share Profile
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="px-3 sm:px-6 pb-6">
+                                <!-- Main Header Profile Card -->
+                                <div class="profile-main-card mb-5">
+                                    <div class="profile-header-flex">
+                                        
+                                        <!-- Left Column: Photo & Contact Actions -->
+                                        <div class="profile-left-col">
+                                            <div class="profile-img-container">
+                                                <div class="profile-img-wrapper">
+                                                    <img :src="photoPreview ? photoPreview : '{% static 'img/avatar-icon.webp' %}'"
+                                                        alt="Agent Photo" onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.webp' %}';">
+                                                </div>
+                                                <div class="verified-tick" title="Verified by PadosiAgent">
+                                                    <i class="fas fa-check"></i>
+                                                </div>
+                                            </div>
+
+                                            <div class="social-links">
+                                                <a href="javascript:void(0)" class="social-icon pointer-events-none"><i class="fab fa-linkedin-in"></i></a>
+                                                <a href="javascript:void(0)" class="social-icon pointer-events-none"><i class="fab fa-facebook-f"></i></a>
+                                                <a href="javascript:void(0)" class="social-icon pointer-events-none"><i class="fab fa-instagram"></i></a>
+                                                <a href="javascript:void(0)" class="social-icon pointer-events-none"><i class="fab fa-youtube"></i></a>
+                                                <a href="javascript:void(0)" class="social-icon pointer-events-none"><i class="fab fa-google"></i></a>
+                                            </div>
+
+                                            <div class="action-btns">
+                                                <a href="javascript:void(0)" class="btn btn-whatsapp pointer-events-none">
+                                                    <i class="fab fa-whatsapp"></i> WhatsApp
+                                                </a>
+                                                <a href="javascript:void(0)" class="btn btn-call pointer-events-none">
+                                                    <i class="fa-solid fa-phone"></i> Call Now
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        <!-- Right Column: Agent Bio & Highlights -->
+                                        <div class="profile-right-col">
+                                            <h1 class="agent-name" x-text="name || 'Dishant Shah'"></h1>
+
+                                            <div class="d-flex align-items-center flex-wrap mb-2" style="gap: 8px;">
+                                                <span class="agent-recognition-badge badge-verified-official" style="padding: 4px 12px; font-size: 12px;">
+                                                    <i class="fas fa-id-badge"></i> Licensed Official
+                                                </span>
+                                                <span class="agent-recognition-badge badge-irdai" style="padding: 4px 12px; font-size: 12px;">
+                                                    <i class="fas fa-shield-alt"></i> IRDAI Certified
+                                                </span>
+                                                <span class="text-xs text-muted-foreground font-semibold flex items-center gap-1 ml-1">
+                                                    <i class="fas fa-map-marker-alt text-primary"></i>
+                                                    <span x-text="(city ? city + ', ' : '') + (state ? state + ' - ' : '') + (pincode || 'India')"></span>
+                                                </span>
+                                            </div>
+
+                                            <p class="agent-bio">
+                                                Experienced and licensed insurance professional dedicated to helping individuals and families secure the best insurance coverage, optimal premiums, and end-to-end claim settlement assistance.
+                                            </p>
+
+                                            <!-- Quick Stats Row -->
+                                            <div class="quick-stats-row">
+                                                <div class="quick-stat-pill">
+                                                    <i class="fas fa-briefcase"></i> <span x-text="(yearsExperience || '0') + ' years'"></span>
+                                                </div>
+                                                <div class="quick-stat-pill">
+                                                    <i class="fas fa-users"></i> <span x-text="(clientBase ? clientBase + '+' : '0+') + ' clients'"></span>
+                                                </div>
+                                                <div class="quick-stat-pill">
+                                                    <i class="fas fa-language"></i> English, Hindi, Gujarati
+                                                </div>
+                                            </div>
+
+                                            <!-- Insurance Types -->
+                                            <div class="insurance-types">
+                                                <template x-for="seg in segments">
+                                                    <div class="insurance-pill">
+                                                        <i :class="seg === 'life' ? 'fas fa-user-shield' : (seg === 'health' ? 'fas fa-heartbeat' : (seg === 'motor' ? 'fas fa-car' : 'fas fa-store'))"></i>
+                                                        <span x-text="seg.toUpperCase()"></span>
+                                                    </div>
+                                                </template>
+                                                <template x-if="!segments || segments.length === 0">
+                                                    <div class="insurance-pill"><i class="fas fa-shield-alt"></i> General Insurance</div>
+                                                </template>
+                                            </div>
+
+                                            <!-- Reviews Summary & Profile URL Badge -->
+                                            <div class="flex flex-wrap items-center gap-3">
+                                                <div class="reviews-summary pointer-events-none">
+                                                    <div class="stars flex gap-1">
+                                                        <i class="fas fa-star text-amber-500"></i>
+                                                        <i class="fas fa-star text-amber-500"></i>
+                                                        <i class="fas fa-star text-amber-500"></i>
+                                                        <i class="fas fa-star text-amber-500"></i>
+                                                        <i class="fas fa-star text-amber-500"></i>
+                                                    </div>
+                                                    <span>5.0 (48 reviews)</span>
+                                                </div>
+                                                <div class="text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-full font-mono font-semibold truncate max-w-[280px]">
+                                                    <i class="fas fa-link mr-1"></i> <span x-text="profileBaseUrl + (slug || 'dishant-shah')"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 2-Column Content Grid: Left & Right Sections -->
+                                <div class="profile-content-grid">
+                                    
+                                    <!-- Left Section: Timeline, Certifications, Achievements -->
+                                    <div class="left-section">
+                                        
+                                        <!-- Career Timeline -->
+                                        <div class="section-card">
+                                            <h2 class="section-title"><i class="far fa-calendar-alt text-primary"></i> Career Timeline</h2>
+                                            <div class="timeline">
+                                                <div class="timeline-item">
+                                                    <i class="fas fa-trophy timeline-custom-icon text-amber-500"></i>
+                                                    <div class="timeline-year">Nov 2024</div>
+                                                    <div class="timeline-text">Awarded Top Insurance Advisor in Region</div>
+                                                </div>
+                                                <div class="timeline-item">
+                                                    <i class="fas fa-medal timeline-custom-icon text-teal-600"></i>
+                                                    <div class="timeline-year">May 2022</div>
+                                                    <div class="timeline-text">Achieved 100% Claim Settlement Milestone</div>
+                                                </div>
+                                                <div class="timeline-item">
+                                                    <i class="fas fa-briefcase timeline-custom-icon text-blue-600"></i>
+                                                    <div class="timeline-year">Jan 2018</div>
+                                                    <div class="timeline-text">Started Certified Insurance Advisory Practice</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Certifications & Licenses -->
+                                        <div class="section-card">
+                                            <h2 class="section-title"><i class="fas fa-award text-amber-500"></i> Certifications & Licenses</h2>
+                                            
+                                            <div class="icon-list-item" style="align-items: flex-start; gap: 10px; margin-bottom: 14px;">
+                                                <i class="fas fa-certificate item-icon" style="color: #0d9488; font-size: 20px;"></i>
+                                                <div class="item-text" style="line-height: 1.4;">
+                                                    <strong style="color: #0f172a; font-size: 14px;">IRDAI Certified Insurance Agent</strong><br>
+                                                    <span class="text-muted small">License No: <span x-text="pan ? 'IRDAI/' + (state ? state.toUpperCase() : 'GJ') + '/' + pan.slice(0,5) : 'IRDAI/GJ/78419/LIC'"></span></span>
+                                                    <span class="text-muted small d-block">Valid till: 31 Dec 2028</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="icon-list-item" style="align-items: flex-start; gap: 10px; margin-bottom: 14px;">
+                                                <i class="fas fa-certificate item-icon" style="color: #2563eb; font-size: 20px;"></i>
+                                                <div class="item-text" style="line-height: 1.4;">
+                                                    <strong style="color: #0f172a; font-size: 14px;">AMFI Certified Mutual Fund Distributor</strong><br>
+                                                    <span class="text-muted small">ARN Number: ARN-284910</span>
+                                                    <span class="text-muted small d-block">EUIN: E49102 • Valid till: 31 Mar 2028</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="icon-list-item" style="align-items: flex-start; gap: 10px;">
+                                                <i class="fas fa-certificate item-icon" style="color: #f59e0b; font-size: 20px;"></i>
+                                                <div class="item-text" style="line-height: 1.4;">
+                                                    <strong style="color: #0f172a; font-size: 14px;">Excellence in Claims Settlement</strong><br>
+                                                    <span class="text-muted small">Certified by Insurance Institute of India</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Achievements -->
+                                        <div class="section-card">
+                                            <h2 class="section-title"><i class="fas fa-trophy text-amber-500"></i> Achievements</h2>
+                                            <div class="achievements-row">
+                                                <div class="achievement-badge">
+                                                    <i class="fas fa-medal"></i> MDRT Qualifier
+                                                </div>
+                                                <div class="achievement-badge">
+                                                    <i class="fas fa-award"></i> Premier Club Member
+                                                </div>
+                                                <div class="achievement-badge">
+                                                    <i class="fas fa-shield-alt"></i> 100% Claim Assistance Record
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                    <!-- Right Section: Stats, Fees, Media, Reviews -->
+                                    <div class="right-section">
+                                        
+                                        <!-- Performance Stats (6-Grid) -->
+                                        <div class="section-card">
+                                            <h2 class="section-title"><i class="fas fa-chart-line text-emerald-600"></i> Performance Stats</h2>
+                                            <div class="stats-grid">
+                                                <div class="stat-box">
+                                                    <div class="stat-value" x-text="clientBase ? clientBase + '+' : '500+'"></div>
+                                                    <div class="stat-label">Clients Served</div>
+                                                </div>
+                                                <div class="stat-box">
+                                                    <div class="stat-value" x-text="claimsSettled ? claimsSettled : '120+'"></div>
+                                                    <div class="stat-label">Claims Processed</div>
+                                                </div>
+                                                <div class="stat-box">
+                                                    <div class="stat-value">98.5%</div>
+                                                    <div class="stat-label">Success Rate</div>
+                                                </div>
+                                                <div class="stat-box">
+                                                    <div class="stat-value" x-text="claimAmount ? '₹' + claimAmount : '₹2.5 Cr'"></div>
+                                                    <div class="stat-label">Claims Settled</div>
+                                                </div>
+                                                <div class="stat-box">
+                                                    <div class="stat-value">&lt; 2 hours</div>
+                                                    <div class="stat-label">Response Time</div>
+                                                </div>
+                                                <div class="stat-box">
+                                                    <div class="stat-value">5.0 ★</div>
+                                                    <div class="stat-label">Rating</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Service Fees -->
+                                        <div class="section-card">
+                                            <h2 class="section-title"><i class="fas fa-hand-holding-usd text-blue-600"></i> Service Fees</h2>
+                                            <div class="fees-grid">
+                                                <div class="fee-box">
+                                                    <div class="fee-value">Free</div>
+                                                    <div class="fee-label">New Policy</div>
+                                                </div>
+                                                <div class="fee-box">
+                                                    <div class="fee-value">Free</div>
+                                                    <div class="fee-label">Claim Help</div>
+                                                </div>
+                                                <div class="fee-box">
+                                                    <div class="fee-value">Free</div>
+                                                    <div class="fee-label">Portfolio Review</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Media Gallery Showcase -->
+                                        <div class="section-card">
+                                            <div class="media-header">
+                                                <h2 class="section-title mb-0"><i class="fas fa-images text-indigo-600"></i> Media & Showcase</h2>
+                                                <span class="max-indicator">Verified Photos</span>
+                                            </div>
+                                            <div class="media-grid">
+                                                <div class="media-item rounded-xl overflow-hidden shadow-sm relative group">
+                                                    <img src="{% static 'img/avatar-icon.webp' %}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                    <div class="media-overlay"><i class="fas fa-award text-white text-xl"></i></div>
+                                                </div>
+                                                <div class="media-item rounded-xl overflow-hidden shadow-sm relative group bg-teal-50 flex items-center justify-center p-4">
+                                                    <div class="text-center"><i class="fas fa-certificate text-teal-600 text-3xl mb-1"></i><div class="text-[11px] font-bold text-teal-900">Certificate</div></div>
+                                                    <div class="media-overlay"><i class="fas fa-search-plus text-white text-xl"></i></div>
+                                                </div>
+                                                <div class="media-item rounded-xl overflow-hidden shadow-sm relative group bg-indigo-50 flex items-center justify-center p-4">
+                                                    <div class="text-center"><i class="fas fa-trophy text-indigo-600 text-3xl mb-1"></i><div class="text-[11px] font-bold text-indigo-900">MDRT Honors</div></div>
+                                                    <div class="media-overlay"><i class="fas fa-search-plus text-white text-xl"></i></div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Client Reviews & Ratings -->
+                                        <div class="section-card" id="reviews-section">
+                                            <div class="reviews-header">
+                                                <h2 class="section-title mb-0"><i class="far fa-star text-amber-500"></i> Reviews</h2>
+                                                <span class="total-reviews">48 total</span>
+                                            </div>
+
+                                            <div class="reviews-body">
+                                                <div class="reviews-list">
+                                                    <div class="review-item">
+                                                        <div class="review-top">
+                                                            <div class="reviewer-info">
+                                                                <div class="reviewer-avatar">R</div>
+                                                                <div class="reviewer-name">Rajesh Mehta</div>
+                                                            </div>
+                                                            <div class="stars flex gap-0.5">
+                                                                <i class="fas fa-star text-amber-500"></i>
+                                                                <i class="fas fa-star text-amber-500"></i>
+                                                                <i class="fas fa-star text-amber-500"></i>
+                                                                <i class="fas fa-star text-amber-500"></i>
+                                                                <i class="fas fa-star text-amber-500"></i>
+                                                            </div>
+                                                        </div>
+                                                        <p class="review-text">"Extremely knowledgeable and honest. Helped me settle my father's health claim within 3 days without any hassle!"</p>
+                                                        <div class="review-date">Nov 14, 2024</div>
+                                                    </div>
+
+                                                    <div class="review-item">
+                                                        <div class="review-top">
+                                                            <div class="reviewer-info">
+                                                                <div class="reviewer-avatar" style="background: #2563eb;">P</div>
+                                                                <div class="reviewer-name">Priya Sharma</div>
+                                                            </div>
+                                                            <div class="stars flex gap-0.5">
+                                                                <i class="fas fa-star text-amber-500"></i>
+                                                                <i class="fas fa-star text-amber-500"></i>
+                                                                <i class="fas fa-star text-amber-500"></i>
+                                                                <i class="fas fa-star text-amber-500"></i>
+                                                                <i class="fas fa-star text-amber-500"></i>
+                                                            </div>
+                                                        </div>
+                                                        <p class="review-text">"Best insurance advisor in our city. Explained the policy terms clearly and helped me save on family term coverage."</p>
+                                                        <div class="review-date">Oct 28, 2024</div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Write Review Box -->
+                                                <div class="write-review-box">
+                                                    <h3 class="write-review-title">Write a Review</h3>
+                                                    <label class="review-rating-label">Your Rating:</label>
+                                                    <div class="review-stars-input text-amber-500">
+                                                        <i class="fas fa-star"></i>
+                                                        <i class="fas fa-star"></i>
+                                                        <i class="fas fa-star"></i>
+                                                        <i class="fas fa-star"></i>
+                                                        <i class="fas fa-star"></i>
+                                                    </div>
+                                                    <textarea class="form-control text-xs" rows="3" placeholder="Share your experience with this agent..." disabled></textarea>
+                                                    <button type="button" class="btn btn-whatsapp mt-2 pointer-events-none">Submit Review</button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Modal Footer (Actions) -->
+                <div class="px-4 py-3 sm:px-6 sm:py-4 bg-muted/50 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+                    <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                        <button type="button" @click="previewSlide = 0" class="h-2 w-6 rounded-full transition-all" :class="previewSlide === 0 ? 'bg-primary' : 'bg-border'"></button>
+                        <button type="button" @click="previewSlide = 1" class="h-2 w-6 rounded-full transition-all" :class="previewSlide === 1 ? 'bg-primary' : 'bg-border'"></button>
+                        <span class="ml-1">Use arrows to toggle view</span>
+                    </div>
+
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <button type="button" @click="showPreviewModal = false"
+                            class="flex-1 sm:flex-none inline-flex items-center justify-center rounded-lg border border-input bg-background px-4 py-2.5 text-xs sm:text-sm font-semibold shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors">
+                            <i data-lucide="arrow-left" class="h-3.5 w-3.5 mr-1.5"></i> Edit Details
+                        </button>
+                        <button type="button" @click="submitStep1()" :disabled="isSubmitting"
+                            class="flex-1 sm:flex-none inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-xs sm:text-sm font-bold text-primary-foreground shadow-md hover:bg-primary/90 transition-all disabled:opacity-50">
+                            <span x-text="isSubmitting ? 'Processing...' : 'Proceed to Choose Plan'"></span>
+                            <i data-lucide="arrow-right" class="h-4 w-4 ml-2" x-show="!isSubmitting"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
     </div>
 {% endblock %}
 
@@ -966,9 +1379,8 @@
                 agreeTerms: false,
                 isSubmitting: false,
 
-                // UI Edit Flags
-                isGeneratingCard: false,
-                cardPreviewMode: false,
+                showPreviewModal: false,
+                previewSlide: 0,
                 editName: false,
                 editPin: false,
                 editPan: false,
@@ -993,64 +1405,101 @@
                     { id: 'elss', label: 'Tax Saving (ELSS)' }
                 ],
 
-                previewTimer: null,
-                previewGeneratedOnce: false,
-
                 init() {
                     // Initial updates
                     this.checkSlug();
                     if (this.pincode.length === 6) this.checkPin();
 
-                    // Watch canSubmit for auto-preview
-                    this.$watch('canSubmit', (value) => {
-                        if (value && !this.cardPreviewMode && !this.isGeneratingCard && !this.previewGeneratedOnce) {
-                            this.startPreviewCountdown();
-                        } else if (!value) {
-                            this.cancelPreviewCountdown();
-                        }
-                    });
-
-                    // Watch for any typing to reset the timer if it's already running
-                    const resetTimer = () => {
-                        if (this.canSubmit && !this.cardPreviewMode && !this.isGeneratingCard && !this.previewGeneratedOnce) {
-                            this.startPreviewCountdown();
-                        }
-                    };
-                    this.$watch('name', resetTimer);
-                    this.$watch('email', resetTimer);
-                    this.$watch('phone', resetTimer);
-                    this.$watch('pincode', resetTimer);
-                    this.$watch('segments', resetTimer);
-                    this.$watch('yearsExperience', resetTimer);
-                    this.$watch('clientBase', resetTimer);
-
-                    if (this.canSubmit && !this.previewGeneratedOnce) this.startPreviewCountdown();
-
                     // Initial icon load
-                    setTimeout(() => lucide.createIcons(), 100);
-                },
-
-                startPreviewCountdown() {
-                    this.cancelPreviewCountdown();
-                    this.previewTimer = setTimeout(() => {
-                        this.generatePreview();
-                    }, 5000);
-                },
-
-                cancelPreviewCountdown() {
-                    if (this.previewTimer) clearTimeout(this.previewTimer);
-                },
-
-                generatePreview() {
-                    this.isGeneratingCard = true;
                     setTimeout(() => {
-                        this.isGeneratingCard = false;
-                        this.cardPreviewMode = true;
-                        this.previewGeneratedOnce = true;
-                        setTimeout(() => lucide.createIcons(), 100);
-                    }, 3000); // 3 seconds loading state
+                        if (window.lucide) lucide.createIcons();
+                    }, 100);
                 },
 
+                validateAndOpenPreview() {
+                    const nameStr = this.name || '';
+                    const emailStr = this.email || '';
+                    const phoneStr = this.phone || '';
+                    const pinStr = this.pincode || '';
+
+                    if (!/^[a-zA-Z\s.-]{2,}$/.test(nameStr.trim())) return Swal.fire('Invalid Detail', 'Please enter a valid full name with at least 2 characters.', 'warning');
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr.trim())) return Swal.fire('Invalid Detail', 'Please enter a valid email address.', 'warning');
+                    if (!/^[6-9]\d{9}$/.test(phoneStr)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit mobile number starting with 6-9.', 'warning');
+                    if (this.whatsapp && !/^\d{10}$/.test(this.whatsapp)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit WhatsApp number.', 'warning');
+                    if (!/^\d{6}$/.test(pinStr)) return Swal.fire('Invalid Detail', 'Please enter a valid 6-digit pincode.', 'warning');
+                    if (this.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(this.pan)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-character PAN number.', 'warning');
+                    if (!this.segments || this.segments.length === 0) return Swal.fire('Missing Detail', 'Please select at least one insurance segment.', 'warning');
+                    if (!this.agreeTerms) return Swal.fire('Missing Detail', 'Please agree to the Terms of Service to continue.', 'warning');
+
+                    this.showPreviewModal = true;
+                    this.previewSlide = 0;
+                    setTimeout(() => {
+                        if (window.lucide) lucide.createIcons();
+                    }, 50);
+                },
+
+
+                stateCodeMap: {
+                    'andaman and nicobar islands': 'an',
+                    'andhra pradesh': 'ap',
+                    'arunachal pradesh': 'ar',
+                    'assam': 'as',
+                    'bihar': 'br',
+                    'chandigarh': 'ch',
+                    'chhattisgarh': 'cg',
+                    'dadra and nagar haveli': 'dn',
+                    'daman and diu': 'dd',
+                    'dadra and nagar haveli and daman and diu': 'dn',
+                    'delhi': 'dl',
+                    'national capital territory of delhi': 'dl',
+                    'nct of delhi': 'dl',
+                    'goa': 'ga',
+                    'gujarat': 'gj',
+                    'haryana': 'hr',
+                    'himachal pradesh': 'hp',
+                    'jammu and kashmir': 'jk',
+                    'jharkhand': 'jh',
+                    'karnataka': 'ka',
+                    'kerala': 'kl',
+                    'ladakh': 'la',
+                    'lakshadweep': 'ld',
+                    'madhya pradesh': 'mp',
+                    'maharashtra': 'mh',
+                    'manipur': 'mn',
+                    'meghalaya': 'ml',
+                    'mizoram': 'mz',
+                    'nagaland': 'nl',
+                    'odisha': 'od',
+                    'orissa': 'od',
+                    'puducherry': 'py',
+                    'pondicherry': 'py',
+                    'punjab': 'pb',
+                    'rajasthan': 'rj',
+                    'sikkim': 'sk',
+                    'tamil nadu': 'tn',
+                    'telangana': 'ts',
+                    'tripura': 'tr',
+                    'uttar pradesh': 'up',
+                    'uttarakhand': 'uk',
+                    'uttaranchal': 'uk',
+                    'west bengal': 'wb'
+                },
+
+                get stateCode() {
+                    if (!this.state) return '';
+                    const key = this.state.toString().trim().toLowerCase();
+                    if (this.stateCodeMap[key]) {
+                        return this.stateCodeMap[key];
+                    }
+                    if (/^[a-z]{2}$/i.test(key)) {
+                        return key.toLowerCase();
+                    }
+                    return '';
+                },
+
+                get profileBaseUrl() {
+                    return `padosiagent.com/profile/${this.stateCode ? this.stateCode + '/' : ''}`;
+                },
 
                 get initials() {
                     if (!this.name) return 'YOU';
@@ -1110,12 +1559,15 @@
                         .then(res => {
                             if (res.success && res.data) {
                                 this.city = res.data.formatted_location || res.data.district || 'Unknown Location';
-                                this.state = res.data.state;
+                                this.state = res.data.state || '';
                             } else {
                                 this.city = 'Invalid Pincode';
+                                this.state = '';
                             }
                         })
-                        .catch(() => this.city = 'Lookup Failed')
+                        .catch(() => {
+                            this.city = 'Lookup Failed';
+                        })
                         .finally(() => this.lookingUpPin = false);
                 },
 

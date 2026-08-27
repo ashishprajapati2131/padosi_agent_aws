@@ -301,23 +301,44 @@ def update_banners(request):
 
 # ─── PLANS & PRICING ──────────────────────────────────────────────────────────
 
+# ─── PLANS & PRICING ──────────────────────────────────────────────────────────
+
 _DEFAULT_PRICING = {
+    'scratch_card_enabled': True,
+    'social_discount_active': True,
+    'social_discount_amount': 200,
     'starter': {
         'name': "Starter's Plan",
-        'full_price': 2359,
-        'promo_price': 589,
+        'full_price': 1999,
+        'promo_price': 1499,
+        'scratch_price': 1299,
         'description': 'Perfect for New Agents',
         'badge': 'STANDARD',
+        'scratch_enabled': True,
     },
     'professional': {
         'name': "Professional's Plan",
-        'full_price': 8258,
-        'promo_price': 2359,
+        'full_price': 6999,
+        'promo_price': 4999,
+        'scratch_price': 4799,
         'description': 'For Established Professionals',
         'badge': 'RECOMMENDED',
+        'scratch_enabled': True,
     },
     'promo_discount_label': 'Partner Promo Applied! Once in a lifetime offer!',
     'standard_label': 'Get started with our standard partner plans',
+    'social_links': [
+        {'platform': 'Instagram', 'url': 'https://instagram.com/padosiagent', 'icon': 'fa-instagram'},
+        {'platform': 'Facebook', 'url': 'https://facebook.com/padosiagent', 'icon': 'fa-facebook'},
+        {'platform': 'YouTube', 'url': 'https://youtube.com/@padosiagent', 'icon': 'fa-youtube'},
+        {'platform': 'LinkedIn', 'url': 'https://linkedin.com/company/padosiagent', 'icon': 'fa-linkedin'},
+    ],
+    'follow_tiers': [
+        {'follows': 1, 'discount_amount': 100, 'starter_price': 1399, 'prof_price': 4899},
+        {'follows': 2, 'discount_amount': 200, 'starter_price': 1299, 'prof_price': 4799},
+        {'follows': 3, 'discount_amount': 300, 'starter_price': 1199, 'prof_price': 4699},
+        {'follows': 4, 'discount_amount': 500, 'starter_price': 999, 'prof_price': 4499},
+    ],
 }
 
 
@@ -328,51 +349,24 @@ def plans(request):
         return redirect('admin_login')
 
     pricing = SiteSetting.get_value('pricing_config', _DEFAULT_PRICING)
-    # Ensure nested dicts exist with defaults
-    pricing.setdefault('starter', _DEFAULT_PRICING['starter'])
-    pricing.setdefault('professional', _DEFAULT_PRICING['professional'])
+    if not isinstance(pricing, dict):
+        pricing = dict(_DEFAULT_PRICING)
+    pricing.setdefault('scratch_card_enabled', True)
+    pricing.setdefault('social_discount_active', True)
+    pricing.setdefault('social_discount_amount', 200)
+    pricing.setdefault('starter', dict(_DEFAULT_PRICING['starter']))
+    pricing.setdefault('professional', dict(_DEFAULT_PRICING['professional']))
+    pricing['starter'].setdefault('scratch_enabled', True)
+    pricing['professional'].setdefault('scratch_enabled', True)
     pricing.setdefault('promo_discount_label', _DEFAULT_PRICING['promo_discount_label'])
     pricing.setdefault('standard_label', _DEFAULT_PRICING['standard_label'])
-    
-    exclusive_config = SiteSetting.get_value('exclusive_plan_config', {
-        'is_active': False,
-        'name': 'Exclusive Partner Plan',
-        'base_price': 8258,
-        'discounted_price': 1000,
-        'scratch_threshold_percent': 40,
-        'gift_title': 'Surprise! Special Plan Unlocked!',
-        'gift_subtitle': 'Follow our social handles to reveal your secret discounted price.',
-        'discount_rule': 'ALL_LINKS',
-        'required_follow_count': 1,
-        'emoji_main': '🎁',
-        'emoji_top_left': '🎊',
-        'emoji_top_right': '✨',
-        'emoji_bottom_left': '🎉',
-        'title_prefix': 'Surprise!',
-        'title_main': 'Exclusive Plan',
-        'title_suffix': 'Unlocked!',
-        'old_price': 1999,
-        'total_seats': 1000,
-        'base_claimed_seats': 964,
-        'urgency_line_1': '🔥 Hurry! Offer valid only for the first {total_seats} users!',
-        'urgency_line_2': '🔥 <span style="color: #ef4444;">{claimed_seats}/{total_seats}</span> Claimed – <span style="color: #ef4444;">Only {spots_left} Spots Left!</span>',
-        'before_discount_val': '85%',
-        'after_discount_val': '95%',
-        'discount_text_label': 'OFF',
-        'extra_discount_msg': 'Extra Follower Discount Applied!',
-        'features_header': "What You'll Get",
-        'social_header': 'Follow on',
-        'checkout_btn_text': 'Claim Now',
-        'social_links': [],
-        'premium_features': [],
-        'follow_tiers': [],
-    })
+    pricing.setdefault('social_links', list(_DEFAULT_PRICING['social_links']))
+    pricing.setdefault('follow_tiers', list(_DEFAULT_PRICING['follow_tiers']))
 
     plan_features_config = SiteSetting.get_value('plan_features_config', {
         'free_trial': ['dashboard_stats', 'edit_profile'],
         'starter': ['dashboard_stats', 'edit_profile', 'lead_management'],
         'professional': ['dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights', 'manage_portfolio', 'upload_achievements', 'view_reviews', 'public_profile'],
-        'exclusive': ['dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights']
     })
 
     available_features = [
@@ -410,7 +404,6 @@ def plans(request):
         ('free_trial', 'Free Trial / Expired'),
         ('starter', 'Starter'),
         ('professional', 'Professional'),
-        ('exclusive', 'Exclusive'),
     ]
     unlock_builder = {
         'rules': unlock_rules,
@@ -437,7 +430,6 @@ def plans(request):
 
     return render(request, 'admin/content/plans.html', {
         'pricing': pricing,
-        'exclusive_config': exclusive_config,
         'features_config': plan_features_config,
         'available_features': available_features,
         'legacy_features': legacy_features,
@@ -456,23 +448,93 @@ def update_plans(request):
         return redirect('admin_login')
 
     if request.method == 'POST':
+        starter_scratch = 'starter_scratch_enabled' in request.POST or request.POST.get('starter_scratch_enabled') == 'on'
+        prof_scratch = 'prof_scratch_enabled' in request.POST or request.POST.get('prof_scratch_enabled') == 'on'
+
+        # Social Links Parsing
+        social_platforms = request.POST.getlist('social_platform[]')
+        social_urls = request.POST.getlist('social_url[]')
+        social_links = []
+        for p, u in zip(social_platforms, social_urls):
+            p_val = (p or '').strip()
+            u_val = (u or '').strip()
+            if p_val and u_val:
+                p_lower = p_val.lower()
+                icon = 'fa-instagram'
+                if 'facebook' in p_lower:
+                    icon = 'fa-facebook'
+                elif 'youtube' in p_lower:
+                    icon = 'fa-youtube'
+                elif 'linkedin' in p_lower:
+                    icon = 'fa-linkedin'
+                elif 'twitter' in p_lower or p_lower == 'x':
+                    icon = 'fa-x-twitter'
+                social_links.append({'platform': p_val, 'url': u_val, 'icon': icon})
+        if not social_links and request.POST.get('social_links_json'):
+            try:
+                social_links = json.loads(request.POST.get('social_links_json'))
+            except Exception:
+                pass
+        if not social_links:
+            social_links = _DEFAULT_PRICING['social_links']
+
+        # Follow Tiers Parsing
+        tier_follows = request.POST.getlist('tier_follows[]')
+        tier_discounts = request.POST.getlist('tier_discount[]')
+        tier_starter_prices = request.POST.getlist('tier_starter_price[]')
+        tier_prof_prices = request.POST.getlist('tier_prof_price[]')
+        
+        follow_tiers = []
+        for f, d, sp, pp in zip(tier_follows, tier_discounts, tier_starter_prices, tier_prof_prices):
+            try:
+                f_int = int(f)
+                d_val = float(d or 0)
+                sp_val = float(sp or 0)
+                pp_val = float(pp or 0)
+                follow_tiers.append({
+                    'follows': f_int,
+                    'discount_amount': d_val,
+                    'starter_price': sp_val,
+                    'prof_price': pp_val,
+                })
+            except (ValueError, TypeError):
+                continue
+        if not follow_tiers and request.POST.get('follow_tiers_json'):
+            try:
+                follow_tiers = json.loads(request.POST.get('follow_tiers_json'))
+            except Exception:
+                pass
+        if not follow_tiers:
+            follow_tiers = _DEFAULT_PRICING['follow_tiers']
+        else:
+            follow_tiers.sort(key=lambda t: t['follows'])
+
         pricing = {
+            'scratch_card_enabled': starter_scratch or prof_scratch,
+            'social_discount_active': 'social_discount_active' in request.POST or request.POST.get('social_discount_active') == 'on',
+            'social_discount_amount': float(request.POST.get('social_discount_amount', 200) or 200),
             'starter': {
-                'name':        request.POST.get('starter_name', "Starter's Plan"),
-                'full_price':  int(request.POST.get('starter_full_price', 2359) or 2359),
-                'promo_price': int(request.POST.get('starter_promo_price', 589) or 589),
-                'description': request.POST.get('starter_description', 'Perfect for New Agents'),
-                'badge':       request.POST.get('starter_badge', 'STANDARD'),
+                'name':            request.POST.get('starter_name', "Starter's Plan"),
+                'full_price':      int(request.POST.get('starter_full_price', 1999) or 1999),
+                'promo_price':     int(request.POST.get('starter_promo_price', 1499) or 1499),
+                'scratch_price':   int(request.POST.get('starter_scratch_price', 1299) or 1299),
+                'description':     request.POST.get('starter_description', 'Perfect for New Agents'),
+                'badge':           request.POST.get('starter_badge', 'STANDARD'),
+                'scratch_enabled': starter_scratch,
             },
             'professional': {
-                'name':        request.POST.get('professional_name', "Professional's Plan"),
-                'full_price':  int(request.POST.get('professional_full_price', 8258) or 8258),
-                'promo_price': int(request.POST.get('professional_promo_price', 2359) or 2359),
-                'description': request.POST.get('professional_description', 'For Established Professionals'),
-                'badge':       request.POST.get('professional_badge', 'RECOMMENDED'),
+                'name':            request.POST.get('professional_name', "Professional's Plan"),
+                'full_price':      int(request.POST.get('professional_full_price', 6999) or 6999),
+                'promo_price':     int(request.POST.get('professional_promo_price', 4999) or 4999),
+                'scratch_price':   int(request.POST.get('prof_scratch_price', 4799) or 4799),
+                'description':     request.POST.get('professional_description', 'For Established Professionals'),
+                'badge':           request.POST.get('professional_badge', 'RECOMMENDED'),
+                'scratch_enabled': prof_scratch,
             },
             'promo_discount_label': request.POST.get('promo_discount_label', 'Partner Promo Applied! Once in a lifetime offer!'),
             'standard_label':       request.POST.get('standard_label', 'Get started with our standard partner plans'),
+            'social_links':         social_links,
+            'follow_tiers':         follow_tiers,
         }
 
         SiteSetting.set_value('pricing_config', pricing, 'pricing')

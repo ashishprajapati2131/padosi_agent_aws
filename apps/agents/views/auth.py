@@ -9,7 +9,13 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.cache import never_cache
-from django.contrib import messages
+from apps.home.services.portal_messages import (
+    PORTAL_AGENT,
+    PORTAL_DISTRIBUTOR,
+    PORTAL_INSURANCE,
+    portal_error,
+    portal_success,
+)
 from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
 from apps.agents.models import Agent
@@ -116,7 +122,7 @@ def agent_login(request):
 
         # Enforce rate limiting
         if not check_login_throttle(ip):
-            messages.error(request, "Too many login attempts. Please try again after 1 minute.")
+            portal_error(request, "Too many login attempts. Please try again after 1 minute.", PORTAL_AGENT)
             return render(request, 'agents/login.html')
 
         email = request.POST.get('email', '').strip()
@@ -124,7 +130,7 @@ def agent_login(request):
 
         if not email or not password:
             record_login_attempt(ip)
-            messages.error(request, "Please enter both email and password.")
+            portal_error(request, "Please enter both email and password.", PORTAL_AGENT)
             return render(request, 'agents/login.html', {'email': email})
 
         try:
@@ -132,13 +138,13 @@ def agent_login(request):
             password_ok, laravel_user, django_user = verify_agent_password(email, password, agent=agent)
         except Exception as e:
             logger.error("Database error during login email lookup: %s", e)
-            messages.error(request, "Login service is temporarily unavailable. Please try again.")
+            portal_error(request, "Login service is temporarily unavailable. Please try again.", PORTAL_AGENT)
             return render(request, 'agents/login.html', {'email': email})
 
         if not password_ok:
             record_login_attempt(ip)
             logger.warning("Failed login attempt for email: %s from IP: %s", email, ip)
-            messages.error(request, "Please Enter Valid Login Details")
+            portal_error(request, "Please Enter Valid Login Details", PORTAL_AGENT)
             return render(request, 'agents/login.html', {'email': email})
 
         canonical_email = (agent.email if agent else None) or (laravel_user.email if laravel_user else email)
@@ -148,7 +154,7 @@ def agent_login(request):
         if laravel_role and laravel_role != 'agent' and not agent:
             record_login_attempt(ip)
             logger.warning("Login rejected for user %s: Incorrect role/type", email)
-            messages.error(request, "Please use the correct login page for your account type.")
+            portal_error(request, "Please use the correct login page for your account type.", PORTAL_AGENT)
             return render(request, 'agents/login.html', {'email': email})
 
         is_admin = bool(
@@ -158,7 +164,7 @@ def agent_login(request):
         if not agent and not is_admin:
             record_login_attempt(ip)
             logger.warning("Login rejected for user %s: Incorrect role/type", email)
-            messages.error(request, "Please use the correct login page for your account type.")
+            portal_error(request, "Please use the correct login page for your account type.", PORTAL_AGENT)
             return render(request, 'agents/login.html', {'email': email})
 
         try:
@@ -172,7 +178,7 @@ def agent_login(request):
                     pass
 
                 if agent.status in ['suspended', 'blacklisted', 'rejected']:
-                    messages.error(request, f"Your account is currently {agent.status}.")
+                    portal_error(request, f"Your account is currently {agent.status}.", PORTAL_AGENT)
                     return render(request, 'agents/login.html', {'email': email})
 
                 if agent.status in INCOMPLETE_STATUSES:
@@ -193,7 +199,7 @@ def agent_login(request):
             return _finish_agent_session_login(request, django_user, ip)
         except Exception as e:
             logger.exception("Agent login session setup failed for %s: %s", email, e)
-            messages.error(request, "Login service is temporarily unavailable. Please try again.")
+            portal_error(request, "Login service is temporarily unavailable. Please try again.", PORTAL_AGENT)
             return render(request, 'agents/login.html', {'email': email})
 
     return render(request, 'agents/login.html')
@@ -204,9 +210,33 @@ def agent_logout(request):
     Log out the agent, invalidate session, and redirect to the login page.
     """
     logout(request)
-    messages.success(request, "You have been logged out successfully.")
+    portal_success(request, "You have been logged out successfully.", PORTAL_AGENT)
     response = redirect('agents:agent_login')
     return _clear_admin_session_on(response, request)
+
+def _resolve_logout_role(request):
+    from apps.admin_panel.views.dashboard import _get_admin_from_session
+    if _get_admin_from_session(request):
+        return 'admin'
+
+    user = getattr(request, 'user', None)
+    if not user or not getattr(user, 'is_authenticated', False):
+        return 'agent'
+
+    role = (getattr(user, 'role', None) or '').lower()
+    if role in ('admin', 'agent', 'client', 'distributor', 'insurance_company'):
+        return role
+    if user.groups.filter(name='distributor').exists():
+        return 'distributor'
+    if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
+        return 'admin'
+    try:
+        if Agent.objects.filter(user_id=user.pk).exists():
+            return 'agent'
+    except Exception:
+        pass
+    return 'agent'
+
 
 @csrf_exempt
 @never_cache
@@ -215,20 +245,14 @@ def logout_view(request):
     General logout view mirroring Laravel's AuthController@logout.
     Handles logout for all user roles (agent, admin, client, distributor).
     """
-    # 1. Determine user role before logout
-    role = 'agent'
-    if request.user.is_authenticated:
-        role = request.user.role
+    role = _resolve_logout_role(request)
 
-    # 2. Handle admin logout specifically to ensure session token and DB record cleanup
     if role == 'admin':
         from apps.admin_panel.views.dashboard import admin_logout
         return admin_logout(request)
 
-    # 3. Log out regular users (agents, clients, distributors)
     logout(request)
 
-    # 4. Role-based redirect logic
     if role == 'client':
         referer = request.META.get('HTTP_REFERER')
         host = request.get_host()
@@ -237,13 +261,14 @@ def logout_view(request):
         return _clear_admin_session_on(redirect('home:find_agents'), request)
 
     if role == 'distributor':
+        portal_success(request, "You have been logged out successfully.", PORTAL_DISTRIBUTOR)
         return _clear_admin_session_on(redirect('/distributor-login'), request)
-        
+
     if role == 'insurance_company':
-        messages.success(request, "You have been logged out successfully.")
+        portal_success(request, "You have been logged out successfully.", PORTAL_INSURANCE)
         return _clear_admin_session_on(redirect('insurance_login'), request)
 
-    messages.success(request, "You have been logged out successfully.")
+    portal_success(request, "You have been logged out successfully.", PORTAL_AGENT)
     return _clear_admin_session_on(redirect('agents:agent_login'), request)
 
 @login_required(login_url='agents:agent_login')
@@ -256,7 +281,7 @@ def agent_dashboard(request):
     is_admin = request.user.is_staff or request.user.is_superuser
     if not (is_agent or is_admin):
         logout(request)
-        messages.error(request, "Unauthorized access. Gated area.")
+        portal_error(request, "Unauthorized access. Gated area.", PORTAL_AGENT)
         return redirect('agents:agent_login')
 
     agent = None
@@ -421,7 +446,7 @@ def forgot_password(request):
         login_type = request.POST.get('login_type', 'agent').strip().lower()
 
         if not email or '@' not in email:
-            messages.error(request, "Please enter a valid email address.")
+            portal_error(request, "Please enter a valid email address.", PORTAL_AGENT)
             return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
 
         agent = find_agent(email)
@@ -433,25 +458,25 @@ def forgot_password(request):
 
         # Generic response to prevent email enumeration (matching PHP logic)
         if not user and not agent:
-            messages.success(request, "If that email is registered, you will receive a reset link shortly.")
+            portal_success(request, "If that email is registered, you will receive a reset link shortly.", PORTAL_AGENT)
             return render(request, 'agents/forgot_password.html', {'type': login_type})
 
         if not user:
-            messages.success(request, "If that email is registered, you will receive a reset link shortly.")
+            portal_success(request, "If that email is registered, you will receive a reset link shortly.", PORTAL_AGENT)
             return render(request, 'agents/forgot_password.html', {'type': login_type})
 
         if user.is_staff or user.is_superuser:
-            messages.error(request, "Admin accounts cannot use this reset flow.")
+            portal_error(request, "Admin accounts cannot use this reset flow.", PORTAL_AGENT)
             return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
 
         # Check if user role matches login_type
         is_agent = bool(agent) or Agent.objects.filter(user=user).exists()
         laravel_role = (laravel_user.role or '').lower() if laravel_user else ''
         if login_type == 'agent' and not is_agent:
-            messages.error(request, "This email belongs to a Distributor account. Please use the Distributor login page.")
+            portal_error(request, "This email belongs to a Distributor account. Please use the Distributor login page.", PORTAL_AGENT)
             return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
         if login_type == 'agent' and laravel_role and laravel_role != 'agent' and not is_agent:
-            messages.error(request, "This email belongs to a Distributor account. Please use the Distributor login page.")
+            portal_error(request, "This email belongs to a Distributor account. Please use the Distributor login page.", PORTAL_AGENT)
             return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
 
         try:
@@ -469,11 +494,11 @@ def forgot_password(request):
             if not success:
                 logger.error(f"Failed to send password reset email to {user.email}")
 
-            messages.success(request, "Password reset link has been sent to your email address!")
+            portal_success(request, "Password reset link has been sent to your email address!", PORTAL_AGENT)
             return render(request, 'agents/forgot_password.html', {'type': login_type})
         except Exception as e:
             logger.error(f"Error sending password reset email: {e}")
-            messages.error(request, "Unable to send reset email. Please try again later.")
+            portal_error(request, "Unable to send reset email. Please try again later.", PORTAL_AGENT)
             return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
 
     return render(request, 'agents/forgot_password.html', {'type': login_type})
@@ -499,7 +524,7 @@ def reset_password(request, uidb64=None, token=None):
         user = None
 
     if user is None or not default_token_generator.check_token(user, token):
-        messages.error(request, "This password reset link is invalid or has expired. Please request a new one.")
+        portal_error(request, "This password reset link is invalid or has expired. Please request a new one.", PORTAL_AGENT)
         return redirect('agents:forgot_password')
 
     if request.method == 'POST':
@@ -507,13 +532,13 @@ def reset_password(request, uidb64=None, token=None):
         password_confirmation = request.POST.get('password_confirmation', '')
 
         if not password or len(password) < 8:
-            messages.error(request, "Password must be at least 8 characters long.")
+            portal_error(request, "Password must be at least 8 characters long.", PORTAL_AGENT)
             return render(request, 'agents/reset_password.html', {
                 'token': token, 'uidb64': uidb64, 'email': email, 'type': login_type
             })
 
         if password != password_confirmation:
-            messages.error(request, "Passwords do not match.")
+            portal_error(request, "Passwords do not match.", PORTAL_AGENT)
             return render(request, 'agents/reset_password.html', {
                 'token': token, 'uidb64': uidb64, 'email': email, 'type': login_type
             })
@@ -526,7 +551,7 @@ def reset_password(request, uidb64=None, token=None):
         fullname = (agent.fullname if agent else '') or user.get_full_name() or user.username
         ensure_laravel_user(user.email, fullname, bcrypt_hash, role='agent', overwrite_password=True)
 
-        messages.success(request, "Your password has been reset successfully! Please log in.")
+        portal_success(request, "Your password has been reset successfully! Please log in.", PORTAL_AGENT)
         return redirect('agents:agent_login')
 
     return render(request, 'agents/reset_password.html', {

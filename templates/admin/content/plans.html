@@ -99,14 +99,315 @@
 <form method="POST" action="{% url 'admin_content_plans_update' %}">
     {% csrf_token %}
 
-    <!-- Global Labels -->
-    <div class="plan-editor-card mb-4 mt-2">
-        <div class="plan-editor-header">
-            <i class="fa-solid fa-tag text-primary"></i>
-            Global Labels & Promo Text
+    <!-- Plans & Pricing Editor -->
+    <div class="row g-4 mb-4 mt-1">
+
+        <!-- Starter Plan Editor -->
+        <div class="col-lg-6">
+            <div class="plan-editor-card h-100">
+                <div class="plan-editor-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg,#fef9c3,#fff);">
+                    <div>
+                        <i class="fa-solid fa-seedling text-warning me-1"></i>
+                        <span class="fw-bold">Starter's Plan</span>
+                    </div>
+                    <span class="badge bg-warning text-dark px-2 py-1" style="font-size:11px;">Basic Plan</span>
+                </div>
+                <div class="p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 px-3 rounded bg-light border">
+                        <div>
+                            <label class="form-label fw-bold mb-0" for="starterScratchSwitch" style="font-size:13px; cursor:pointer;">
+                                <i class="fa-solid fa-wand-magic-sparkles text-primary me-1"></i> Enable Scratch Card
+                            </label>
+                            <div class="text-muted" style="font-size:11px;">Agent scratches ribbon to unlock promo price</div>
+                        </div>
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" name="starter_scratch_enabled" id="starterScratchSwitch" style="cursor:pointer;" {% if pricing.starter.scratch_enabled %}checked{% endif %}>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" style="font-size:13px;">Plan Name</label>
+                            <input type="text" name="starter_name" class="form-control"
+                                   value="{{ pricing.starter.name|default:"Starter's Plan" }}"
+                                   placeholder="Starter's Plan">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold" style="font-size:13px;">Full Price <small class="text-muted">(Excl. GST)</small></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" name="starter_full_price" class="form-control price-calc-input"
+                                       value="{{ pricing.starter.full_price|default:1999 }}" min="0"
+                                       id="starterFullPrice" data-target="starterFullGst">
+                            </div>
+                            <small class="text-muted d-block mt-1" id="starterFullGst" style="font-size:11px;">+ 18% GST = ₹2,359 Total</small>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold" style="font-size:13px;">Standard Price <small class="text-muted">(Excl. GST)</small></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" name="starter_promo_price" class="form-control price-calc-input"
+                                       value="{{ pricing.starter.promo_price|default:1499 }}" min="0"
+                                       id="starterPromoPrice" data-target="starterPromoGst">
+                            </div>
+                            <small class="text-muted d-block mt-1" id="starterPromoGst" style="font-size:11px;">+ 18% GST = ₹1,769 Total</small>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold text-primary" style="font-size:13px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Scratch Price <small class="text-primary-emphasis">(Excl. GST)</small></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-primary-subtle text-primary border-primary">₹</span>
+                                <input type="number" name="starter_scratch_price" class="form-control border-primary price-calc-input"
+                                       value="{{ pricing.starter.scratch_price|default:pricing.starter.promo_price|default:1299 }}" min="0"
+                                       id="starterScratchPrice" data-target="starterScratchGst">
+                            </div>
+                            <small class="text-primary d-block mt-1 fw-medium" id="starterScratchGst" style="font-size:11px;">+ 18% GST = ₹1,533 Total</small>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" style="font-size:13px;">Description</label>
+                            <input type="text" name="starter_description" class="form-control"
+                                   value="{{ pricing.starter.description|default:'Perfect for New Agents' }}"
+                                   placeholder="Perfect for New Agents">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" style="font-size:13px;">Badge Label</label>
+                            <input type="text" name="starter_badge" class="form-control"
+                                   value="{{ pricing.starter.badge|default:'STANDARD' }}"
+                                   placeholder="STANDARD">
+                            <small class="text-muted">Shown on plan card when scratch card is disabled</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Professional Plan Editor -->
+        <div class="col-lg-6">
+            <div class="plan-editor-card h-100">
+                <div class="plan-editor-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg,#dcfce7,#fff);">
+                    <div>
+                        <i class="fa-solid fa-star text-success me-1"></i>
+                        <span class="fw-bold">Professional's Plan</span>
+                    </div>
+                    <span class="badge bg-success text-white px-2 py-1" style="font-size:11px;">Recommended</span>
+                </div>
+                <div class="p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 px-3 rounded bg-light border">
+                        <div>
+                            <label class="form-label fw-bold mb-0" for="profScratchSwitch" style="font-size:13px; cursor:pointer;">
+                                <i class="fa-solid fa-gift text-success me-1"></i> Enable Scratch Card
+                            </label>
+                            <div class="text-muted" style="font-size:11px;">Agent scratches ribbon to unlock promo price</div>
+                        </div>
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" name="prof_scratch_enabled" id="profScratchSwitch" style="cursor:pointer;" {% if pricing.professional.scratch_enabled %}checked{% endif %}>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" style="font-size:13px;">Plan Name</label>
+                            <input type="text" name="professional_name" class="form-control"
+                                   value="{{ pricing.professional.name|default:"Professional's Plan" }}"
+                                   placeholder="Professional's Plan">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold" style="font-size:13px;">Full Price <small class="text-muted">(Excl. GST)</small></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" name="professional_full_price" class="form-control price-calc-input"
+                                       value="{{ pricing.professional.full_price|default:6999 }}" min="0"
+                                       id="proFullPrice" data-target="proFullGst">
+                            </div>
+                            <small class="text-muted d-block mt-1" id="proFullGst" style="font-size:11px;">+ 18% GST = ₹8,259 Total</small>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold" style="font-size:13px;">Standard Price <small class="text-muted">(Excl. GST)</small></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" name="professional_promo_price" class="form-control price-calc-input"
+                                       value="{{ pricing.professional.promo_price|default:4999 }}" min="0"
+                                       id="proPromoPrice" data-target="proPromoGst">
+                            </div>
+                            <small class="text-muted d-block mt-1" id="proPromoGst" style="font-size:11px;">+ 18% GST = ₹5,899 Total</small>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label fw-semibold text-success" style="font-size:13px;"><i class="fa-solid fa-gift"></i> Scratch Price <small class="text-success-emphasis">(Excl. GST)</small></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-success-subtle text-success border-success">₹</span>
+                                <input type="number" name="prof_scratch_price" class="form-control border-success price-calc-input"
+                                       value="{{ pricing.professional.scratch_price|default:pricing.professional.promo_price|default:4799 }}" min="0"
+                                       id="proScratchPrice" data-target="proScratchGst">
+                            </div>
+                            <small class="text-success d-block mt-1 fw-medium" id="proScratchGst" style="font-size:11px;">+ 18% GST = ₹5,663 Total</small>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" style="font-size:13px;">Description</label>
+                            <input type="text" name="professional_description" class="form-control"
+                                   value="{{ pricing.professional.description|default:'For Established Professionals' }}"
+                                   placeholder="For Established Professionals">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold" style="font-size:13px;">Badge Label</label>
+                            <input type="text" name="professional_badge" class="form-control"
+                                   value="{{ pricing.professional.badge|default:'RECOMMENDED' }}"
+                                   placeholder="RECOMMENDED">
+                            <small class="text-muted">Shown on plan card when scratch card is disabled</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Social Media Follow & Discount Tiers Configuration -->
+    <div class="plan-editor-card mb-4">
+        <div class="plan-editor-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg,#eff6ff,#fff);">
+            <div>
+                <i class="fa-solid fa-share-nodes text-primary me-2"></i>
+                <span class="fw-bold">Social Media Channels & Follow Discount Tier Rules</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <label class="form-label fw-bold mb-0 text-muted" for="socialDiscountSwitch" style="font-size:13px;">Active:</label>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" name="social_discount_active" id="socialDiscountSwitch" style="cursor:pointer;" {% if pricing.social_discount_active %}checked{% endif %}>
+                </div>
+            </div>
         </div>
         <div class="p-4">
-            <div class="row g-3">
+            <p class="text-muted mb-4" style="font-size:13px;">
+                Configure social media handles for agents to follow after scratching. You can set conditional pricing based on how many accounts the agent follows (e.g. 1 follow &rarr; ₹1399, 2 &rarr; ₹1299, All &rarr; ₹999).
+            </p>
+
+            <!-- Social Media Channels List -->
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label fw-bold text-dark mb-0" style="font-size:14px;">
+                        <i class="fa-solid fa-link text-primary me-1"></i> Social Media Channels
+                    </label>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="addSocialChannelBtn" style="font-size:12px;">
+                        <i class="fa-solid fa-plus me-1"></i> Add Social Channel
+                    </button>
+                </div>
+                <div id="socialChannelsContainer" class="d-flex flex-column gap-2">
+                    {% for link in pricing.social_links %}
+                    <div class="row g-2 align-items-center social-channel-row p-2 border rounded bg-white">
+                        <div class="col-md-3">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fa-solid fa-tag"></i></span>
+                                <input type="text" name="social_platform[]" class="form-control" value="{{ link.platform }}" placeholder="Platform (e.g. Instagram)">
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="fa-solid fa-globe"></i></span>
+                                <input type="url" name="social_url[]" class="form-control" value="{{ link.url }}" placeholder="https://instagram.com/yourhandle">
+                            </div>
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <button type="button" class="btn btn-sm btn-outline-danger w-100 delete-social-row-btn" title="Remove">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="row g-2 align-items-center social-channel-row p-2 border rounded bg-white">
+                        <div class="col-md-3">
+                            <input type="text" name="social_platform[]" class="form-control form-control-sm" value="Instagram" placeholder="Platform">
+                        </div>
+                        <div class="col-md-8">
+                            <input type="url" name="social_url[]" class="form-control form-control-sm" value="https://instagram.com/padosiagent" placeholder="URL">
+                        </div>
+                        <div class="col-md-1 text-center">
+                            <button type="button" class="btn btn-sm btn-outline-danger w-100 delete-social-row-btn"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Follow Condition Tier Rules Table -->
+            <div class="mt-4 pt-3 border-top">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <label class="form-label fw-bold text-dark mb-0" style="font-size:14px;">
+                            <i class="fa-solid fa-layer-group text-success me-1"></i> Follow Discount Tier Rules & Conditions
+                        </label>
+                        <div class="text-muted" style="font-size:11px;">Define plan prices or extra discounts based on number of accounts followed</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="addTierRuleBtn" style="font-size:12px;">
+                        <i class="fa-solid fa-plus me-1"></i> Add Condition Tier
+                    </button>
+                </div>
+
+                <div class="table-responsive border rounded bg-white mt-2">
+                    <table class="table table-hover align-middle mb-0" style="font-size:13px;" id="followTiersTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 180px;">Follow Accounts (N)</th>
+                                <th>Extra ₹ OFF</th>
+                                <th>Starter Price (₹)</th>
+                                <th>Professional Price (₹)</th>
+                                <th style="width: 80px;" class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="followTiersContainer">
+                            {% for tier in pricing.follow_tiers %}
+                            <tr class="tier-rule-row">
+                                <td>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text"><i class="fa-solid fa-user-check"></i></span>
+                                        <input type="number" name="tier_follows[]" class="form-control" value="{{ tier.follows }}" min="1" max="10">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" name="tier_discount[]" class="form-control" value="{{ tier.discount_amount }}" min="0">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" name="tier_starter_price[]" class="form-control" value="{{ tier.starter_price|default:'' }}" placeholder="Auto if blank">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" name="tier_prof_price[]" class="form-control" value="{{ tier.prof_price|default:'' }}" placeholder="Auto if blank">
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger delete-tier-row-btn" title="Remove Tier">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr class="tier-rule-row">
+                                <td>
+                                    <input type="number" name="tier_follows[]" class="form-control form-control-sm" value="1" min="1">
+                                </td>
+                                <td>
+                                    <input type="number" name="tier_discount[]" class="form-control form-control-sm" value="200" min="0">
+                                </td>
+                                <td>
+                                    <input type="number" name="tier_starter_price[]" class="form-control form-control-sm" value="1299">
+                                </td>
+                                <td>
+                                    <input type="number" name="tier_prof_price[]" class="form-control form-control-sm" value="4799">
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-sm btn-outline-danger delete-tier-row-btn"><i class="fa-solid fa-trash-can"></i></button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-3 pt-3 border-top">
                 <div class="col-lg-6">
                     <label class="form-label fw-semibold" style="font-size:13px;">Promo Discount Label</label>
                     <input type="text" name="promo_discount_label" class="form-control"
@@ -120,111 +421,6 @@
                            value="{{ pricing.standard_label|default:'Get started with our standard partner plans' }}"
                            placeholder="Get started with our standard partner plans">
                     <small class="text-muted">Shown above the plan cards on the pricing page.</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Plans & Pricing Editor -->
-    <div class="row g-4 mb-4">
-
-        <!-- Starter Plan Editor -->
-        <div class="col-lg-6">
-            <div class="plan-editor-card">
-                <div class="plan-editor-header" style="background: linear-gradient(135deg,#fef9c3,#fff);">
-                    <i class="fa-solid fa-seedling text-warning"></i>
-                    Starter Plan (Basic)
-                </div>
-                <div class="p-4">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" style="font-size:13px;">Plan Name</label>
-                            <input type="text" name="starter_name" class="form-control"
-                                   value="{{ pricing.starter.name|default:"Starter's Plan" }}"
-                                   placeholder="Starter's Plan">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold" style="font-size:13px;">Full Price (₹) <small class="text-muted fw-normal">— crossed out</small></label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="number" name="starter_full_price" class="form-control"
-                                       value="{{ pricing.starter.full_price|default:2359 }}" min="0"
-                                       id="starterFullPrice">
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold" style="font-size:13px;">Promo Price (₹) <small class="text-muted fw-normal">— shown large</small></label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="number" name="starter_promo_price" class="form-control"
-                                       value="{{ pricing.starter.promo_price|default:589 }}" min="0"
-                                       id="starterPromoPrice">
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" style="font-size:13px;">Description</label>
-                            <input type="text" name="starter_description" class="form-control"
-                                   value="{{ pricing.starter.description|default:'Perfect for New Agents' }}"
-                                   placeholder="Perfect for New Agents">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" style="font-size:13px;">Badge Label</label>
-                            <input type="text" name="starter_badge" class="form-control"
-                                   value="{{ pricing.starter.badge|default:'STANDARD' }}"
-                                   placeholder="STANDARD">
-                            <small class="text-muted">Short uppercase label shown on the plan card (e.g. STANDARD, POPULAR)</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Professional Plan Editor -->
-        <div class="col-lg-6">
-            <div class="plan-editor-card">
-                <div class="plan-editor-header" style="background: linear-gradient(135deg,#dcfce7,#fff);">
-                    <i class="fa-solid fa-star text-success"></i>
-                    Professional Plan
-                </div>
-                <div class="p-4">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" style="font-size:13px;">Plan Name</label>
-                            <input type="text" name="professional_name" class="form-control"
-                                   value="{{ pricing.professional.name|default:"Professional's Plan" }}"
-                                   placeholder="Professional's Plan">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold" style="font-size:13px;">Full Price (₹)</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="number" name="professional_full_price" class="form-control"
-                                       value="{{ pricing.professional.full_price|default:8258 }}" min="0"
-                                       id="proFullPrice">
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold" style="font-size:13px;">Promo Price (₹)</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="number" name="professional_promo_price" class="form-control"
-                                       value="{{ pricing.professional.promo_price|default:2359 }}" min="0"
-                                       id="proPromoPrice">
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" style="font-size:13px;">Description</label>
-                            <input type="text" name="professional_description" class="form-control"
-                                   value="{{ pricing.professional.description|default:'For Established Professionals' }}"
-                                   placeholder="For Established Professionals">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold" style="font-size:13px;">Badge Label</label>
-                            <input type="text" name="professional_badge" class="form-control"
-                                   value="{{ pricing.professional.badge|default:'RECOMMENDED' }}"
-                                   placeholder="RECOMMENDED">
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -246,8 +442,8 @@
                             {{ pricing.starter.badge|default:'STANDARD' }}
                         </div>
                         <h6 class="fw-bold mb-1" id="prev-starter-name">{{ pricing.starter.name|default:"Starter's Plan" }}</h6>
-                        <div class="plan-price-full" id="prev-starter-full">₹{{ pricing.starter.full_price|default:2359 }}</div>
-                        <div class="plan-price-promo text-warning" id="prev-starter-promo">₹{{ pricing.starter.promo_price|default:589 }}</div>
+                        <div class="plan-price-full" id="prev-starter-full">₹{{ pricing.starter.full_price|default:1999 }}</div>
+                        <div class="plan-price-promo text-warning" id="prev-starter-promo">₹{{ pricing.starter.promo_price|default:1499 }}</div>
                         <div class="plan-price-note" id="prev-starter-desc">{{ pricing.starter.description|default:'Perfect for New Agents' }}</div>
                     </div>
                 </div>
@@ -258,8 +454,8 @@
                             {{ pricing.professional.badge|default:'RECOMMENDED' }}
                         </div>
                         <h6 class="fw-bold mb-1" id="prev-pro-name">{{ pricing.professional.name|default:"Professional's Plan" }}</h6>
-                        <div class="plan-price-full" id="prev-pro-full">₹{{ pricing.professional.full_price|default:8258 }}</div>
-                        <div class="plan-price-promo text-success" id="prev-pro-promo">₹{{ pricing.professional.promo_price|default:2359 }}</div>
+                        <div class="plan-price-full" id="prev-pro-full">₹{{ pricing.professional.full_price|default:6999 }}</div>
+                        <div class="plan-price-promo text-success" id="prev-pro-promo">₹{{ pricing.professional.promo_price|default:4999 }}</div>
                         <div class="plan-price-note" id="prev-pro-desc">{{ pricing.professional.description|default:'For Established Professionals' }}</div>
                     </div>
                 </div>
@@ -271,301 +467,6 @@
         <button type="submit" class="btn btn-primary px-5">
             <i class="fa-solid fa-save me-2"></i> Save Pricing Configuration
         </button>
-    </div>
-</form>
-
-<hr class="my-5">
-
-<!-- Exclusive Gamified Plan Editor -->
-<form method="POST" action="{% url 'admin_content_exclusive_plans_update' %}">
-    {% csrf_token %}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h5 class="fw-bold mb-1">🎮 Exclusive Gamified Plan</h5>
-            <span style="font-size:13px;color:var(--text-muted);">Configure the "Follow & Scratch" special plan.</span>
-        </div>
-    </div>
-    
-    <div class="plan-editor-card mb-4" style="border-top: 4px solid #8b5cf6;">
-        <div class="plan-editor-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <div class="m-0 fw-bold"><i class="fa-solid fa-gem me-2" style="color: #8b5cf6;"></i>Exclusive Plan Configuration (Gamified)</div>
-            <div class="form-check form-switch m-0">
-                <input class="form-check-input" type="checkbox" name="exc_is_active" id="isActiveSwitch" {% if exclusive_config.is_active %}checked{% endif %}>
-                <label class="form-check-label fw-bold text-primary" for="isActiveSwitch">Enable Scratch Trigger</label>
-            </div>
-        </div>
-        <div class="p-4">
-            <!-- Basic Settings -->
-            <h6 class="fw-bold mb-3 text-secondary border-bottom pb-2">Basic Settings</h6>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Plan Name</label>
-                    <input type="text" name="exclusive_name" value="{{ exclusive_config.name|default:'Exclusive Plan' }}" class="form-control" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Base Price (₹) <small>(Revealed after scratch)</small></label>
-                    <input type="number" name="exclusive_base_price" value="{{ exclusive_config.base_price|default:199 }}" class="form-control" required>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Discounted Price (₹) <small>(Secret)</small></label>
-                    <input type="number" name="exclusive_discounted_price" value="{{ exclusive_config.discounted_price|default:99 }}" class="form-control" required>
-                </div>
-            </div>
-
-            <!-- Gamification Rules -->
-            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Gamification Rules</h6>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Scratch Threshold %</label>
-                    <input type="number" name="scratch_threshold_percent" value="{{ exclusive_config.scratch_threshold_percent|default:40 }}" min="1" max="100" class="form-control" required>
-                    <small class="text-muted">How much of the card needs to be scratched to trigger popup.</small>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Discount Rule</label>
-                    <select name="discount_rule" class="form-select">
-                        <option value="ALL_LINKS" {% if exclusive_config.discount_rule == 'ALL_LINKS' %}selected{% endif %}>Follow All Links Required</option>
-                        <option value="ANY_N_OF_M" {% if exclusive_config.discount_rule == 'ANY_N_OF_M' %}selected{% endif %}>Follow ANY 'N' Links</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Required Follows (N)</label>
-                    <input type="number" name="required_follow_count" value="{{ exclusive_config.required_follow_count|default:1 }}" min="1" class="form-control" required>
-                </div>
-            </div>
-
-            <!-- Popup Copy -->
-            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Popup Copy</h6>
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Gift Title</label>
-                    <input type="text" name="gift_title" value="{{ exclusive_config.gift_title|default:'Surprise! Special Plan Unlocked!' }}" class="form-control" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Gift Subtitle</label>
-                    <input type="text" name="gift_subtitle" value="{{ exclusive_config.gift_subtitle|default:'Follow our social handles to reveal your secret discounted price.' }}" class="form-control" required>
-                </div>
-            </div>
-            
-            <!-- Dynamic Follow Tiers -->
-            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Dynamic Follow Tiers (Discounts)</h6>
-            <p class="text-muted small">Configure dynamic pricing tiers based on how many accounts the user follows. The system will apply the price of the highest reached tier.</p>
-            <div class="table-responsive">
-                <table class="table table-bordered table-sm" id="followTiersTable">
-                    <thead class="bg-light">
-                        <tr>
-                            <th style="width: 40%;">Required Follow Count</th>
-                            <th style="width: 40%;">Discounted Price (₹)</th>
-                            <th style="width: 20%; text-align: center;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if exclusive_config.follow_tiers %}
-                            {% for tier in exclusive_config.follow_tiers %}
-                            <tr>
-                                <td><input type="number" name="tier_follows[]" value="{{ tier.follows }}" min="1" class="form-control form-control-sm" required></td>
-                                <td><input type="number" name="tier_prices[]" value="{{ tier.price }}" min="0" class="form-control form-control-sm" required></td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-follow-tier"><i class="fa-solid fa-trash"></i></button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td><input type="number" name="tier_follows[]" value="1" min="1" class="form-control form-control-sm" required></td>
-                                <td><input type="number" name="tier_prices[]" value="99" min="0" class="form-control form-control-sm" required></td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-follow-tier"><i class="fa-solid fa-trash"></i></button>
-                                </td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-success mt-2" id="addFollowTierBtn">
-                <i class="fa-solid fa-plus me-1"></i> Add Follow Tier
-            </button>
-
-            <!-- Advanced Text & Badges (New!) -->
-            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Advanced Text & Badges (New!)</h6>
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Plan Badge</label>
-                    <input type="text" name="plan_badge" value="{{ exclusive_config.plan_badge|default:'👑' }}" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Badge Text</label>
-                    <input type="text" name="badge_text" value="{{ exclusive_config.badge_text|default:'Top Pick!' }}" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Ribbon Text</label>
-                    <input type="text" name="ribbon_text" value="{{ exclusive_config.ribbon_text|default:'Exclusive Deal' }}" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Ribbon Color</label>
-                    <input type="text" name="ribbon_color" value="{{ exclusive_config.ribbon_color|default:'#8A2BE2' }}" class="form-control">
-                </div>
-                
-                <div class="col-md-3">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Price Suffix</label>
-                    <input type="text" name="price_suffix" value="{{ exclusive_config.price_suffix|default:'/mo' }}" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Total Value Amount</label>
-                    <input type="number" name="total_value_amount" value="{{ exclusive_config.total_value_amount|default:15000 }}" class="form-control">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Savings Text</label>
-                    <input type="text" name="savings_text" value="{{ exclusive_config.savings_text|default:'🔥 Save 80% with this super exclusive secret deal!' }}" class="form-control">
-                </div>
-                
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Original Price Label (Tooltip)</label>
-                    <input type="text" name="old_price_tooltip" value="{{ exclusive_config.old_price_tooltip|default:'Actual market value of all these premium services combined.' }}" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Strikeout Price</label>
-                    <input type="number" name="strikeout_price" value="{{ exclusive_config.strikeout_price|default:15000 }}" class="form-control">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Discount Amount Label</label>
-                    <input type="text" name="discount_amount_label" value="{{ exclusive_config.discount_amount_label|default:'14801' }}" class="form-control">
-                </div>
-            </div>
-
-            <!-- Action Button Setup -->
-            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Action Button Setup</h6>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Active Button Text</label>
-                    <input type="text" name="checkout_btn_text" value="{{ exclusive_config.checkout_btn_text|default:'Claim Now' }}" class="form-control">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Locked Button Text</label>
-                    <input type="text" name="locked_btn_text" value="{{ exclusive_config.locked_btn_text|default:'LOCKED' }}" class="form-control">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Default Reason Text (Locked)</label>
-                    <input type="text" name="locked_reason_text" value="{{ exclusive_config.locked_reason_text|default:'Follow Social Media to Unlock' }}" class="form-control">
-                </div>
-            </div>
-
-            <!-- Locked Screen Instructions -->
-            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Locked Screen Instructions</h6>
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Heading (When locked)</label>
-                    <input type="text" name="locked_heading" value="{{ exclusive_config.locked_heading|default:'Please Follow Us First' }}" class="form-control">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-bold" style="font-size: 13px;">Description (When locked)</label>
-                    <input type="text" name="locked_desc" value="{{ exclusive_config.locked_desc|default:'Please Follow' }}" class="form-control">
-                </div>
-            </div>
-            
-            <!-- Gamification Social Links -->
-            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Social Media Links</h6>
-            <p class="text-muted small">Add the platforms you want users to follow. These will appear in the Gamified Gift Modal.</p>
-            
-            <div class="table-responsive">
-                <table class="table table-bordered table-sm" id="socialLinksTable">
-                    <thead class="bg-light">
-                        <tr>
-                            <th style="width: 25%;">Platform (e.g., instagram, youtube)</th>
-                            <th style="width: 45%;">URL</th>
-                            <th style="width: 20%;">Icon Class (e.g., fa-instagram)</th>
-                            <th style="width: 10%; text-align: center;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if exclusive_config.social_links %}
-                            {% for link in exclusive_config.social_links %}
-                            <tr>
-                                <td><input type="text" name="social_platform[]" value="{{ link.platform }}" class="form-control form-control-sm" required></td>
-                                <td><input type="url" name="social_url[]" value="{{ link.url }}" class="form-control form-control-sm" required></td>
-                                <td><input type="text" name="social_icon[]" value="{{ link.icon|default:'' }}" class="form-control form-control-sm" required></td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-social-link"><i class="fa-solid fa-trash"></i></button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td><input type="text" name="social_platform[]" value="instagram" class="form-control form-control-sm" required></td>
-                                <td><input type="url" name="social_url[]" value="https://instagram.com/padosiagent" class="form-control form-control-sm" required></td>
-                                <td><input type="text" name="social_icon[]" value="fa-instagram" class="form-control form-control-sm" required></td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-social-link"><i class="fa-solid fa-trash"></i></button>
-                                </td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-success mt-2" id="addSocialLinkBtn">
-                <i class="fa-solid fa-plus me-1"></i> Add Social Link
-            </button>
-
-            <!-- Premium Feature Strip -->
-            <h6 class="fw-bold mb-3 mt-4 text-secondary border-bottom pb-2">Premium Feature Strip Tiles</h6>
-            <p class="text-muted small">Configure the horizontal icon feature strip on the Gift Modal.</p>
-            
-            <div class="table-responsive">
-                <table class="table table-bordered table-sm" id="premiumFeaturesTable">
-                    <thead class="bg-light">
-                        <tr>
-                            <th style="width: 30%;">Title (use &lt;br&gt; for line breaks)</th>
-                            <th style="width: 25%;">Icon (e.g., fa-globe)</th>
-                            <th style="width: 15%;">Icon Color</th>
-                            <th style="width: 15%;">Icon BG Color</th>
-                            <th style="width: 15%; text-align: center;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if exclusive_config.premium_features %}
-                            {% for feature in exclusive_config.premium_features %}
-                            <tr>
-                                <td><input type="text" name="pf_name[]" value="{{ feature.name }}" class="form-control form-control-sm" required></td>
-                                <td><input type="text" name="pf_icon[]" value="{{ feature.icon|default:'' }}" class="form-control form-control-sm" required></td>
-                                <td><input type="color" name="pf_color[]" value="{{ feature.color|default:'#000000' }}" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
-                                <td><input type="color" name="pf_bg_color[]" value="{{ feature.bg_color|default:'#ffffff' }}" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-premium-feature"><i class="fa-solid fa-trash"></i></button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td><input type="text" name="pf_name[]" value="Permanent<br>Website" class="form-control form-control-sm" required></td>
-                                <td><input type="text" name="pf_icon[]" value="fa-globe" class="form-control form-control-sm" required></td>
-                                <td><input type="color" name="pf_color[]" value="#10b981" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
-                                <td><input type="color" name="pf_bg_color[]" value="#e6f7f0" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-premium-feature"><i class="fa-solid fa-trash"></i></button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><input type="text" name="pf_name[]" value="Digital<br>Card" class="form-control form-control-sm" required></td>
-                                <td><input type="text" name="pf_icon[]" value="fa-id-card" class="form-control form-control-sm" required></td>
-                                <td><input type="color" name="pf_color[]" value="#8b5cf6" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
-                                <td><input type="color" name="pf_bg_color[]" value="#f3e8ff" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-outline-danger remove-premium-feature"><i class="fa-solid fa-trash"></i></button>
-                                </td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-success mt-2" id="addPremiumFeatureBtn">
-                <i class="fa-solid fa-plus me-1"></i> Add Feature Tile
-            </button>
-
-            <div class="text-end mt-4">
-                <button type="submit" class="btn btn-primary px-5" style="background-color: #8b5cf6; border-color: #8b5cf6;">
-                    <i class="fa-solid fa-save me-2"></i> Save Exclusive Config
-                </button>
-            </div>
-        </div>
     </div>
 </form>
 
@@ -765,71 +666,102 @@ bind('professional_full_price', 'prev-pro-full', '₹');
 bind('professional_promo_price', 'prev-pro-promo', '₹');
 
 document.addEventListener('DOMContentLoaded', function() {
-    const tableBody = document.querySelector('#socialLinksTable tbody');
-    
-    document.getElementById('addSocialLinkBtn').addEventListener('click', function() {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><input type="text" name="social_platform[]" placeholder="e.g. facebook" class="form-control form-control-sm" required></td>
-            <td><input type="url" name="social_url[]" placeholder="https://..." class="form-control form-control-sm" required></td>
-            <td><input type="text" name="social_icon[]" placeholder="e.g. fa-facebook" class="form-control form-control-sm" required></td>
-            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-social-link"><i class="fa-solid fa-trash"></i></button></td>
-        `;
-        tableBody.appendChild(row);
-    });
-    
-    tableBody.addEventListener('click', function(e) {
-        if(e.target.closest('.remove-social-link')) {
-            if(tableBody.querySelectorAll('tr').length > 1) {
-                e.target.closest('tr').remove();
-            } else {
-                alert('You must have at least one social link.');
-            }
-        }
-    });
-    
-    const tiersTableBody = document.querySelector('#followTiersTable tbody');
-    
-    document.getElementById('addFollowTierBtn').addEventListener('click', function() {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><input type="number" name="tier_follows[]" min="1" placeholder="e.g. 2" class="form-control form-control-sm" required></td>
-            <td><input type="number" name="tier_prices[]" min="0" placeholder="e.g. 599" class="form-control form-control-sm" required></td>
-            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-follow-tier"><i class="fa-solid fa-trash"></i></button></td>
-        `;
-        tiersTableBody.appendChild(row);
-    });
-    
-    tiersTableBody.addEventListener('click', function(e) {
-        if(e.target.closest('.remove-follow-tier')) {
-            if(tiersTableBody.querySelectorAll('tr').length > 1) {
-                e.target.closest('tr').remove();
-            } else {
-                alert('You must have at least one discount tier.');
-            }
-        }
-    });
+    // Social Channels Add / Delete
+    const addSocialBtn = document.getElementById('addSocialChannelBtn');
+    const socialContainer = document.getElementById('socialChannelsContainer');
+    if (addSocialBtn && socialContainer) {
+        addSocialBtn.addEventListener('click', function() {
+            const row = document.createElement('div');
+            row.className = 'row g-2 align-items-center social-channel-row p-2 border rounded bg-white';
+            row.innerHTML = `
+                <div class="col-md-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fa-solid fa-tag"></i></span>
+                        <input type="text" name="social_platform[]" class="form-control" placeholder="Platform (e.g. YouTube)">
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fa-solid fa-globe"></i></span>
+                        <input type="url" name="social_url[]" class="form-control" placeholder="https://youtube.com/@yourhandle">
+                    </div>
+                </div>
+                <div class="col-md-1 text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger w-100 delete-social-row-btn" title="Remove">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+            socialContainer.appendChild(row);
+        });
 
+        socialContainer.addEventListener('click', function(e) {
+            const delBtn = e.target.closest('.delete-social-row-btn');
+            if (delBtn) {
+                const row = delBtn.closest('.social-channel-row');
+                if (socialContainer.querySelectorAll('.social-channel-row').length > 1) {
+                    row.remove();
+                } else {
+                    row.querySelectorAll('input').forEach(inp => inp.value = '');
+                }
+            }
+        });
+    }
 
-    const featuresTableBody = document.querySelector('#premiumFeaturesTable tbody');
-    
-    document.getElementById('addPremiumFeatureBtn').addEventListener('click', function() {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><input type="text" name="pf_name[]" placeholder="Feature Name" class="form-control form-control-sm" required></td>
-            <td><input type="text" name="pf_icon[]" placeholder="e.g. fa-star" class="form-control form-control-sm" required></td>
-            <td><input type="color" name="pf_color[]" value="#3b82f6" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
-            <td><input type="color" name="pf_bg_color[]" value="#dbeafe" class="form-control form-control-sm form-control-color" style="height: 31px; width:100%; padding: 0.125rem" required></td>
-            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-premium-feature"><i class="fa-solid fa-trash"></i></button></td>
-        `;
-        featuresTableBody.appendChild(row);
-    });
-    
-    featuresTableBody.addEventListener('click', function(e) {
-        if(e.target.closest('.remove-premium-feature')) {
-            e.target.closest('tr').remove();
-        }
-    });
+    // Follow Tiers Add / Delete
+    const addTierBtn = document.getElementById('addTierRuleBtn');
+    const tiersContainer = document.getElementById('followTiersContainer');
+    if (addTierBtn && tiersContainer) {
+        addTierBtn.addEventListener('click', function() {
+            const count = tiersContainer.querySelectorAll('.tier-rule-row').length + 1;
+            const tr = document.createElement('tr');
+            tr.className = 'tier-rule-row';
+            tr.innerHTML = `
+                <td>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fa-solid fa-user-check"></i></span>
+                        <input type="number" name="tier_follows[]" class="form-control" value="${count}" min="1" max="10">
+                    </div>
+                </td>
+                <td>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">₹</span>
+                        <input type="number" name="tier_discount[]" class="form-control" value="${count * 100}" min="0">
+                    </div>
+                </td>
+                <td>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">₹</span>
+                        <input type="number" name="tier_starter_price[]" class="form-control" placeholder="Auto if blank">
+                    </div>
+                </td>
+                <td>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">₹</span>
+                        <input type="number" name="tier_prof_price[]" class="form-control" placeholder="Auto if blank">
+                    </div>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger delete-tier-row-btn" title="Remove Tier">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </td>
+            `;
+            tiersContainer.appendChild(tr);
+        });
+
+        tiersContainer.addEventListener('click', function(e) {
+            const delBtn = e.target.closest('.delete-tier-row-btn');
+            if (delBtn) {
+                const tr = delBtn.closest('.tier-rule-row');
+                if (tiersContainer.querySelectorAll('.tier-rule-row').length > 1) {
+                    tr.remove();
+                } else {
+                    tr.querySelectorAll('input').forEach(inp => inp.value = '');
+                }
+            }
+        });
+    }
 
     // Edit Profile Dependency Logic (Column-based)
     const masterInputs = document.querySelectorAll('input[value="edit_profile"]');
@@ -1093,6 +1025,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
         render();
     })();
+
+    // Live GST Calculation Preview for Price Inputs
+    function updateGstPreviews() {
+        document.querySelectorAll('.price-calc-input').forEach(function(input) {
+            const targetId = input.getAttribute('data-target');
+            if (!targetId) return;
+            const targetEl = document.getElementById(targetId);
+            if (!targetEl) return;
+            const val = parseFloat(input.value) || 0;
+            const gst = val * 0.18;
+            const total = Math.round(val + gst);
+            targetEl.textContent = `+ 18% GST (₹${gst.toFixed(2)}) = ₹${total.toLocaleString('en-IN')} Total`;
+        });
+    }
+
+    document.querySelectorAll('.price-calc-input').forEach(function(input) {
+        input.addEventListener('input', updateGstPreviews);
+    });
+    updateGstPreviews();
 });
 </script>
 {% endblock %}

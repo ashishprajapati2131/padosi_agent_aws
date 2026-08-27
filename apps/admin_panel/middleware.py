@@ -206,7 +206,7 @@ class ThreatMonitorMiddleware:
 
 
 from django.shortcuts import redirect
-from django.contrib import messages
+from apps.home.services.portal_messages import PORTAL_ADMIN, portal_error
 
 class AdminIpWhitelistMiddleware:
     def __init__(self, get_response):
@@ -293,7 +293,7 @@ class AdminPermissionMiddleware:
             if is_ajax:
                 from django.http import JsonResponse
                 return JsonResponse({'success': False, 'message': 'Unauthorized. Please sign in to the admin panel.'}, status=403)
-            messages.error(request, "Please sign in to access the admin panel.")
+            portal_error(request, "Please sign in to access the admin panel.", PORTAL_ADMIN)
             return redirect('admin_login_page')
 
         try:
@@ -308,7 +308,7 @@ class AdminPermissionMiddleware:
             if is_ajax:
                 from django.http import JsonResponse
                 return JsonResponse({'success': False, 'message': 'Admin account not found.'}, status=403)
-            messages.error(request, "Admin account not found. Logged out.")
+            portal_error(request, "Admin account not found. Logged out.", PORTAL_ADMIN)
             return admin_logout(request)
 
         # Super admins have full access to everything
@@ -323,12 +323,12 @@ class AdminPermissionMiddleware:
                 try:
                     from django.urls import reverse
                     url = reverse(allowed_route)
-                    messages.error(request, message)
+                    portal_error(request, message, PORTAL_ADMIN)
                     return redirect(url)
                 except Exception:
                     pass
             from apps.admin_panel.views.dashboard import admin_logout
-            messages.error(request, "Your staff account has no access permissions. Logged out.")
+            portal_error(request, "Your staff account has no access permissions. Logged out.", PORTAL_ADMIN)
             return admin_logout(request)
 
         # 1. DELETE ACTION PROTECTION:

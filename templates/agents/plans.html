@@ -583,17 +583,44 @@
             background: #ffffff;
             border-radius: 28px;
             width: 92%;
-            max-width: 400px;
-            padding: 18px 16px 14px 16px;
+            max-width: 420px;
+            padding: 24px 18px 16px 18px;
             margin: 16px auto;
             text-align: center;
             box-shadow: 0 18px 50px rgba(88, 28, 135, 0.22);
-            border: 2px solid #7c3aed;
+            border: 3px solid #7c3aed;
             transform: scale(0);
             opacity: 0;
             position: relative;
             overflow: hidden;
             font-family: 'Poppins', 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .btn-close-gift-modal {
+            position: absolute !important;
+            top: 14px !important;
+            right: 14px !important;
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 50% !important;
+            background: #f1f5f9 !important;
+            color: #64748b !important;
+            border: none !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 15px !important;
+            cursor: pointer !important;
+            z-index: 30 !important;
+            transition: all 0.2s ease !important;
+            outline: none !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06) !important;
+        }
+
+        .btn-close-gift-modal:hover {
+            background: #e2e8f0 !important;
+            color: #0f172a !important;
+            transform: scale(1.1) !important;
         }
 
         .gift-modal::before {
@@ -1059,25 +1086,37 @@
 
                 {#  STARTER CARD  #}
                 <div class="plan-card starter-theme">
+                    <!-- Ribbon -->
+                    {% if starter_scratch_enabled %}
+                        <div class="recommended-ribbon glitch-badge"
+                            style="background: #3b82f6; cursor: pointer; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;">
+                            <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i> SCRATCH</span>
+                            <canvas class="ribbon-scratch-canvas" data-label="SCRATCH ME" data-plan="starter" data-color="#3b82f6"
+                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none;"></canvas>
+                        </div>
+                    {% else %}
+                        <div class="recommended-ribbon glitch-badge" style="background: #3b82f6;">
+                            {{ pricing_config.starter.badge|default:'STANDARD' }}
+                        </div>
+                    {% endif %}
+
                     <div class="plan-header">
                         <div class="plan-name">{{ starter_name|default:"Starter's Plan" }}</div>
                         <div class="plan-price">
-                            {% if has_starter_promo and starter_final < starter_full %}
-                                <span
+                            {% if starter_final < starter_full %}
+                                <span id="starterStrikePrice"
                                     style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">₹{{ starter_full|floatformat:"0" }}</span>
-                                ₹{{ starter_base }}/-<span>1st Year Only</span>
+                                <span id="starterDisplayPrice">₹{{ starter_base }}/-</span><span>1st Year Only</span>
                             {% else %}
-                                ₹{{ starter_base }}/-<span>1st Year Only</span>
+                                <span id="starterDisplayPrice">₹{{ starter_base }}/-</span><span>1st Year Only</span>
                             {% endif %}
                         </div>
-                        {% if has_starter_promo and starter_final < starter_full %}
-                            <div style="text-align:center; margin-top:6px;">
-                                <span
-                                    style="background:#dbeafe; color:#1e3a8a; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #93c5fd;">
-                                    <i class="fa-solid fa-tag me-1"></i> Promo Applied
-                                </span>
-                            </div>
-                        {% endif %}
+                        <div id="starterDiscountBadge" style="text-align:center; margin-top:6px; {% if starter_final >= starter_full %}display:none;{% endif %}">
+                            <span
+                                style="background:#dbeafe; color:#1e3a8a; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #93c5fd;">
+                                <i class="fa-solid fa-tag me-1"></i> Special Discount Applied
+                            </span>
+                        </div>
                         <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
                             18% GST applicable at checkout</div>
                         <div class="plan-subtitle">{{ starter_desc }}</div>
@@ -1177,41 +1216,36 @@
                 {#  PROFESSIONAL CARD  #}
                 <div class="plan-card recommended-theme">
                     <!-- Diagonal Ribbon -->
-                    {% if is_exclusive_active %}
+                    {% if prof_scratch_enabled %}
                         <div class="recommended-ribbon glitch-badge"
-                            style="background: #10b981; cursor: pointer; box-shadow: 0 0 15px rgba(139, 92, 246, 0.5); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;"
-                            id="ribbonContainer">
-                            <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px;"><i
-                                    class="fa-solid fa-gift me-1"></i> GIFT</span>
-                            <canvas class="ribbon-scratch-canvas" data-label="RECOMMENDED" data-color="#10b981"
+                            style="background: #10b981; cursor: pointer; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;">
+                            <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px;"><i class="fa-solid fa-gift me-1"></i> SCRATCH</span>
+                            <canvas class="ribbon-scratch-canvas" data-label="SCRATCH ME" data-plan="professional" data-color="#10b981"
                                 style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none;"></canvas>
                         </div>
                     {% else %}
                         <div class="recommended-ribbon glitch-badge">
-                            Recommended
+                            {{ pricing_config.professional.badge|default:'RECOMMENDED' }}
                         </div>
                     {% endif %}
 
                     <div class="plan-header">
                         <div class="plan-name">{{ prof_name }}</div>
                         <div class="plan-price">
-                            {% if has_prof_promo and prof_final < prof_full %}
-                                <span
+                            {% if prof_final < prof_full %}
+                                <span id="profStrikePrice"
                                     style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">₹{{ prof_full|floatformat:"0" }}</span>
-                                ₹{{ prof_base }}/-<span>1st Year Only</span>
+                                <span id="profDisplayPrice">₹{{ prof_base }}/-</span><span>1st Year Only</span>
                             {% else %}
-                                ₹{{ prof_base }}/-<span>1st Year Only</span>
+                                <span id="profDisplayPrice">₹{{ prof_base }}/-</span><span>1st Year Only</span>
                             {% endif %}
                         </div>
-                        {% if has_prof_promo and prof_final < prof_full %}
-                            <div style="text-align:center; margin-top:6px;">
-                                <span
-                                    style="background:#d1fae5; color:#059669; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #6ee7b7;">
-                                    <i class="fa-solid fa-tag me-1"></i> Promo Applied — You Save
-                                    ₹{{ prof_full|floatformat:"0" }}
-                                </span>
-                            </div>
-                        {% endif %}
+                        <div id="profDiscountBadge" style="text-align:center; margin-top:6px; {% if prof_final >= prof_full %}display:none;{% endif %}">
+                            <span
+                                style="background:#d1fae5; color:#059669; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #6ee7b7;">
+                                <i class="fa-solid fa-tag me-1"></i> Special Discount Applied
+                            </span>
+                        </div>
                         <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
                             18% GST applicable at checkout</div>
                         <div class="plan-subtitle">{{ prof_desc }}</div>
@@ -1314,31 +1348,26 @@
                                 </div>
                                 <span class="badge-capsule badge-filled-green">Advanced</span>
                             </div>
+                        </div>
+
+                        <!-- Category 4: Growth & Trust Tools -->
+                        <div class="category-block">
+                            <div class="category-header">
+                                <i class="fa-solid fa-chart-line"></i> Growth & Trust Tools
+                            </div>
                             <div class="feature-row">
                                 <div class="feature-name">
                                     <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                    <span>Retention Tools</span>
+                                    <span>Achievement Showcase</span>
                                 </div>
-                                <span class="badge-capsule badge-filled-green">Full Access</span>
+                                <span class="badge-capsule badge-filled-green">Active</span>
                             </div>
-                        </div>
-
-                        <!-- Category 4: Coming Soon -->
-                        <div class="coming-soon-panel">
-                            <div class="coming-soon-title">
-                                <i class="fa-solid fa-bolt"></i> More Features Coming Soon
-                            </div>
-                            <div class="coming-soon-item">
-                                <i class="fa-regular fa-folder-closed"></i>
-                                <span>Business Ops Kit</span>
-                            </div>
-                            <div class="coming-soon-item">
-                                <i class="fa-solid fa-cubes"></i>
-                                <span>Cross Sell Products</span>
-                            </div>
-                            <div class="coming-soon-item">
-                                <i class="fa-solid fa-rocket"></i>
-                                <span>Many More...</span>
+                            <div class="feature-row">
+                                <div class="feature-name">
+                                    <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                    <span>Client Testimonials</span>
+                                </div>
+                                <span class="badge-capsule badge-filled-green">Priority</span>
                             </div>
                         </div>
                     </div>
@@ -1396,141 +1425,187 @@
 
         </div>
 
-        {#  Exclusive Gamification Modals  #}
-        {% if is_exclusive_active %}
-            <!-- Gift Modal -->
-            <div class="gift-modal-overlay" id="giftModal">
-                <div class="gift-modal">
-                    <div class="animate__animated animate__bounceIn" style="animation-delay: 0.2s;">
-                        <div class="gift-box-container mb-1" style="position: relative; display: inline-block;">
-                            <span style="font-size: 80px; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.15));">{{ exclusive_config.emoji_main|default:'🎁' }}</span>
-                            <span style="position: absolute; top: -10px; left: -20px; font-size: 20px;">{{ exclusive_config.emoji_top_left|default:'🎊' }}</span>
-                            <span style="position: absolute; top: 10px; right: -20px; font-size: 24px;">{{ exclusive_config.emoji_top_right|default:'✨' }}</span>
-                            <span style="position: absolute; bottom: 10px; left: -15px; font-size: 18px;">{{ exclusive_config.emoji_bottom_left|default:'🎉' }}</span>
-                        </div>
-                    </div>
-
-                    <h2 class="exc-title">{{ exclusive_config.title_prefix|default:'Surprise!!!!' }} <span class="exc-plan-name">'{{ exclusive_config.title_main|default:'Exclusive Plan' }}'</span></h2>
-                    <p class="exc-unlocked"><span class="exc-star">✦</span> {{ exclusive_config.title_suffix|default:'Unlocked!' }} <span class="exc-star">✦</span></p>
-                    <p class="exc-subtitle">{{ exclusive_config.gift_subtitle|default:'Follow us on Social Media...' }}</p>
-
-                    {% if spots_left > 0 %}
-                        <div class="exc-urgency">
-                            <div class="exc-urgency-top">{{ urgency_line_1 }}</div>
-                            <div class="exc-urgency-count">{{ urgency_line_2|safe }}</div>
-                        </div>
-                    {% endif %}
-
-                        <div class="exc-price-pill">
-                            <div id="priceUIBeforeFollow" class="d-flex align-items-center justify-content-center flex-wrap gap-1 w-100">
-                                <span style="font-size: 1.25rem; color: #94a3b8; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 2px;">₹{{ exclusive_config.strikeout_price|default:1999 }}/-</span>
-                                <span style="font-size: 2rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; line-height: 1;" id="excCurrentPrice">₹{{ exclusive_config.base_price|default:499 }}/-</span>
-                                <div class="discount-sticker">
-                                    <span class="discount-val">{{ exclusive_config.before_discount_val|default:'85%' }}</span>
-                                    <span class="discount-text">{{ exclusive_config.discount_text_label|default:'OFF' }}</span>
-                                </div>
-                            </div>
-
-                            <div id="priceUIAfterFollow" class="align-items-center justify-content-center flex-wrap gap-1 w-100" style="display: none !important;">
-                                <span style="font-size: 1.25rem; color: #94a3b8; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 2px;">₹{{ exclusive_config.base_price|default:499 }}/-</span>
-                                <span style="font-size: 2rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; line-height: 1;" id="excDiscountedPrice">₹{{ exclusive_config.discounted_price|default:199 }}/-</span>
-                                <div class="discount-sticker">
-                                    <span class="discount-val">{{ exclusive_config.after_discount_val|default:'85%' }}</span>
-                                    <span class="discount-text">{{ exclusive_config.discount_text_label|default:'OFF' }}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="excDiscountMessage" class="small fw-bold text-success" style="display:none; font-size: 11.5px; background: #d1fae5; padding: 4px 12px; border-radius: 50px; border: 1px solid #34d399; margin: 0 auto 4px; width: fit-content;">
-                            <i class="fa-solid fa-tag"></i> {{ exclusive_config.extra_discount_msg|default:'Extra Follower Discount Applied!' }}
-                        </div>
-
-                        <div class="exc-section-head">
-                            <span class="exc-line"></span>
-                            <span>✦ {{ exclusive_config.features_header|default:"What You'll Get" }} ✦</span>
-                            <span class="exc-line"></span>
-                        </div>
-
-                        <div class="grid-3-cols mb-1">
-                            {% for feature in premiumFeatures %}
-                                <div class="feature-tile">
-                                    <div class="icon-wrapper"
-                                        style="color: {{ feature.color|default:'#000' }}; background: {{ feature.bg_color|default:'#eee' }}; position: relative;">
-                                        {% if '<' in feature.icon %}
-                                            {{ feature.icon|safe }}
-                                        {% else %}
-                                            <i class="fa-solid {{ feature.icon }}"></i>
-                                        {% endif %}
-                                    </div>
-                                    <div class="feature-text">{{ feature.name|default:''|safe }}</div>
-                                </div>
-                            {% endfor %}
-                        </div>
-
-                        <div class="exc-section-head">
-                            <span class="exc-line"></span>
-                            <span>✦ {{ exclusive_config.social_header|default:'Follow on' }} ✦</span>
-                            <span class="exc-line"></span>
-                        </div>
-
-                        <div id="socialButtonsContainer" class="grid-4-cols">
-                            {% for link in exclusive_config.social_links %}
-                                <button type="button" class="social-btn platform-{{ link.platform_key|default:link.platform|lower }} w-100"
-                                    data-platform="{{ link.platform }}"
-                                    onclick="handleSocialFollow('{{ link.platform }}', '{{ link.url }}', this)">
-                                    {% if link.platform_key == 'instagram' %}
-                                        <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
-                                            <defs>
-                                                <radialGradient id="excIgGrad" cx="30%" cy="107%" r="150%">
-                                                    <stop offset="0%" stop-color="#fdf497"/>
-                                                    <stop offset="5%" stop-color="#fdf497"/>
-                                                    <stop offset="45%" stop-color="#fd5949"/>
-                                                    <stop offset="60%" stop-color="#d6249f"/>
-                                                    <stop offset="90%" stop-color="#285AEB"/>
-                                                </radialGradient>
-                                            </defs>
-                                            <rect x="2" y="2" width="20" height="20" rx="6" fill="url(#excIgGrad)"/>
-                                            <circle cx="12" cy="12" r="4.2" fill="none" stroke="#fff" stroke-width="1.8"/>
-                                            <circle cx="17.2" cy="6.8" r="1.1" fill="#fff"/>
-                                        </svg>
-                                    {% elif link.platform_key == 'facebook' %}
-                                        <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
-                                            <circle cx="12" cy="12" r="12" fill="#1877F2"/>
-                                            <path fill="#fff" d="M13.5 12.8h2.2l.3-2.4h-2.5V9.1c0-.7.2-1.2 1.2-1.2h1.4V5.8c-.2 0-1.1-.1-2.1-.1-2.1 0-3.5 1.3-3.5 3.6v2.1H8.3v2.4h2.2V19h2.9v-6.2z"/>
-                                        </svg>
-                                    {% elif link.platform_key == 'x' or link.platform_key == 'twitter' %}
-                                        <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path fill="#000" d="M18.244 2H21.5l-7.5 8.57L22.5 22h-6.59l-5.16-6.74L5.2 22H1.94l8.03-9.17L1.5 2h6.76l4.66 6.17L18.244 2zm-1.16 18.05h1.8L7.01 3.86H5.07l12.01 16.19z"/>
-                                        </svg>
-                                    {% elif link.platform_key == 'linkedin' %}
-                                        <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
-                                            <rect width="24" height="24" rx="4" fill="#0A66C2"/>
-                                            <path fill="#fff" d="M7.05 9.2H4.9V19h2.15V9.2zM5.96 5C5.2 5 4.6 5.6 4.6 6.36c0 .75.6 1.37 1.36 1.37.75 0 1.36-.62 1.36-1.37C7.32 5.6 6.72 5 5.96 5zM19.1 13.54c0-2.62-1.4-3.84-3.27-3.84-1.51 0-2.18.83-2.56 1.41V9.2H11.1c.03.61 0 9.8 0 9.8h2.17v-5.48c0-.29.02-.58.11-.79.23-.58.77-1.18 1.66-1.18 1.17 0 1.64.89 1.64 2.2V19H19.1v-5.46z"/>
-                                        </svg>
-                                    {% elif link.platform_key == 'youtube' %}
-                                        <svg class="social-logo" viewBox="0 0 24 24" aria-hidden="true">
-                                            <rect width="24" height="24" rx="6" fill="#FF0000"/>
-                                            <path fill="#fff" d="M10 8.2v7.6l6.4-3.8L10 8.2z"/>
-                                        </svg>
-                                    {% else %}
-                                        <i class="fa-brands {{ link.iconClass }}"></i>
-                                    {% endif %}
-                                    <span>{{ link.label|default:link.platform|title }}</span>
-                                </button>
-                            {% endfor %}
-                        </div>
-
-                        <div class="mt-1 mb-1">
-                            <button type="button" class="exc-claim-btn" onclick="directRazorpayCheckout(this)">
-                                <span class="exc-bolt"><i class="fa-solid fa-bolt"></i></span>
-                                {{ exclusive_config.checkout_btn_text|default:'Claim Now' }}
-                                <i class="fa-solid fa-chevron-right exc-claim-chevron"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-        {% endif %}
-
     </section>
+
+    <!-- Gift / Scratch Modal Overlay -->
+    <div class="gift-modal-overlay" id="giftModal">
+        <div class="gift-modal">
+            <!-- Close Button -->
+            <button type="button" class="btn-close-gift-modal" onclick="closeGiftModal()" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Urgency Banner -->
+            <div class="exc-urgency text-center">
+                <div class="exc-urgency-top">🔥 Hurry! Offer valid only for the first 10000 users!</div>
+                <div class="exc-urgency-count">🔥 2964/10000 Claimed</div>
+            </div>
+
+            <!-- Price Pill Area -->
+            <div class="exc-price-pill" id="excPricePill">
+                <span style="font-size: 1.4rem; color: #94a3b8; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 2px;" id="modalStrikePrice">₹{{ starter_full|floatformat:"0" }}/-</span>
+                <span style="font-size: 2.2rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; line-height: 1;" id="modalCurrentPrice">₹{{ starter_base }}/-</span>
+                <div class="discount-sticker" id="modalDiscountSticker">
+                    <span class="discount-val" id="modalDiscountVal">{{ starter_discount_percent|default:"35" }}%</span>
+                    <span class="discount-text">OFF</span>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-center mb-2" id="modalDiscountBadgeWrapper">
+                <span class="badge px-3 py-1 rounded-pill fw-bold" id="modalDiscountBadge" style="font-size: 11px; background: #d1fae5; color: #059669; border: 1px solid #6ee7b7; {% if not has_social_discount %}display:none;{% endif %}">
+                    <i class="fa-solid fa-tag me-1"></i> Extra Follower Discount Applied!
+                </span>
+            </div>
+
+            <!-- What You'll Get Divider -->
+            <div class="exc-section-head">
+                <div class="exc-line"></div>
+                <div><span style="color: #8b5cf6;">✦</span> What You'll Get <span style="color: #8b5cf6;">✦</span></div>
+                <div class="exc-line"></div>
+            </div>
+
+            <div class="grid-3-cols mb-3">
+                <div class="feature-tile">
+                    <div class="icon-wrapper" style="color: #16a34a; background: #f0fdf4;">
+                        <i class="fa-solid fa-globe"></i>
+                    </div>
+                    <div class="feature-text">Permanent<br>Website</div>
+                </div>
+                <div class="feature-tile">
+                    <div class="icon-wrapper" style="color: #6d28d9; background: #f3e8ff;">
+                        <i class="fa-solid fa-id-card-clip"></i>
+                    </div>
+                    <div class="feature-text">Digital<br>Card</div>
+                </div>
+                <div class="feature-tile">
+                    <div class="icon-wrapper" style="color: #f97316; background: #fff7ed;">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div class="feature-text">Licensed<br>Badge</div>
+                </div>
+                <div class="feature-tile">
+                    <div class="icon-wrapper" style="color: #16a34a; background: #f0fdf4;">
+                        <i class="fa-solid fa-phone"></i>
+                    </div>
+                    <div class="feature-text">Call &<br>WhatsApp</div>
+                </div>
+                <div class="feature-tile">
+                    <div class="icon-wrapper" style="color: #6d28d9; background: #f3e8ff;">
+                        <i class="fa-solid fa-star"></i>
+                    </div>
+                    <div class="feature-text">Customer<br>Reviews</div>
+                </div>
+                <div class="feature-tile">
+                    <div class="icon-wrapper" style="color: #3b82f6; background: #eff6ff;">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                    <div class="feature-text">Product<br>Showcase</div>
+                </div>
+            </div>
+
+            <!-- Follow on Divider -->
+            <div class="exc-section-head">
+                <div class="exc-line"></div>
+                <div><span style="color: #8b5cf6;">✦</span> Follow on <span style="color: #8b5cf6;">✦</span></div>
+                <div class="exc-line"></div>
+            </div>
+
+            <!-- Social Links 4-col -->
+            <div class="grid-4-cols mb-3" id="modalSocialButtons">
+                {% for link in social_links %}
+                {% with p=link.platform|lower %}
+                <button type="button" class="social-btn platform-{{ p }} {% if p in followed_platforms %}followed{% endif %}"
+                        data-platform="{{ p }}"
+                        onclick="handleSocialFollow('{{ p }}', '{{ link.url }}', this)">
+                    {% if 'insta' in p %}
+                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="none">
+                        <radialGradient id="igGrad-{{ forloop.counter }}" cx="30%" cy="107%" r="150%">
+                            <stop offset="0%" stop-color="#fdf497"/>
+                            <stop offset="5%" stop-color="#fdf497"/>
+                            <stop offset="45%" stop-color="#fd5949"/>
+                            <stop offset="60%" stop-color="#d6249f"/>
+                            <stop offset="90%" stop-color="#285AEB"/>
+                        </radialGradient>
+                        <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#igGrad-{{ forloop.counter }})" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="4.5" stroke="url(#igGrad-{{ forloop.counter }})" stroke-width="2"/>
+                        <circle cx="17.5" cy="6.5" r="1.5" fill="url(#igGrad-{{ forloop.counter }})"/>
+                    </svg>
+                    <span>{% if p in followed_platforms %}Followed ✓{% else %}Instagram{% endif %}</span>
+                    {% elif 'face' in p %}
+                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#1877F2">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    <span>{% if p in followed_platforms %}Followed ✓{% else %}Facebook{% endif %}</span>
+                    {% elif p == 'x' or 'twit' in p %}
+                    <svg class="social-logo" viewBox="0 0 24 24" width="26" height="26" fill="#000000">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    <span>{% if p in followed_platforms %}Followed ✓{% else %}X{% endif %}</span>
+                    {% elif 'link' in p %}
+                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#0A66C2">
+                        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.74a1.62 1.62 0 0 0-1.63 1.63c0 .9.73 1.63 1.63 1.63s1.63-.73 1.63-1.63c0-.9-.73-1.63-1.63-1.63z"/>
+                    </svg>
+                    <span>{% if p in followed_platforms %}Followed ✓{% else %}LinkedIn{% endif %}</span>
+                    {% elif 'you' in p %}
+                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#FF0000">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    <span>{% if p in followed_platforms %}Followed ✓{% else %}YouTube{% endif %}</span>
+                    {% else %}
+                    <i class="fa-brands {{ link.icon|default:'fa-share-nodes' }}"></i>
+                    <span>{% if p in followed_platforms %}Followed ✓{% else %}{{ link.platform|title }}{% endif %}</span>
+                    {% endif %}
+                </button>
+                {% endwith %}
+                {% empty %}
+                <button type="button" class="social-btn platform-instagram" data-platform="instagram" onclick="handleSocialFollow('instagram', 'https://instagram.com/padosiagent', this)">
+                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="none">
+                        <radialGradient id="igGrad-d1" cx="30%" cy="107%" r="150%">
+                            <stop offset="0%" stop-color="#fdf497"/>
+                            <stop offset="5%" stop-color="#fdf497"/>
+                            <stop offset="45%" stop-color="#fd5949"/>
+                            <stop offset="60%" stop-color="#d6249f"/>
+                            <stop offset="90%" stop-color="#285AEB"/>
+                        </radialGradient>
+                        <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#igGrad-d1)" stroke-width="2"/>
+                        <circle cx="12" cy="12" r="4.5" stroke="url(#igGrad-d1)" stroke-width="2"/>
+                        <circle cx="17.5" cy="6.5" r="1.5" fill="url(#igGrad-d1)"/>
+                    </svg>
+                    <span>Instagram</span>
+                </button>
+                <button type="button" class="social-btn platform-facebook" data-platform="facebook" onclick="handleSocialFollow('facebook', 'https://facebook.com/padosiagent', this)">
+                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#1877F2">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    <span>Facebook</span>
+                </button>
+                <button type="button" class="social-btn platform-x" data-platform="x" onclick="handleSocialFollow('x', 'https://x.com/padosiagent', this)">
+                    <svg class="social-logo" viewBox="0 0 24 24" width="26" height="26" fill="#000000">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    <span>X</span>
+                </button>
+                <button type="button" class="social-btn platform-linkedin" data-platform="linkedin" onclick="handleSocialFollow('linkedin', 'https://linkedin.com/company/padosiagent', this)">
+                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#0A66C2">
+                        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.74a1.62 1.62 0 0 0-1.63 1.63c0 .9.73 1.63 1.63 1.63s1.63-.73 1.63-1.63c0-.9-.73-1.63-1.63-1.63z"/>
+                    </svg>
+                    <span>LinkedIn</span>
+                </button>
+                {% endfor %}
+            </div>
+
+            <!-- Action Button -->
+            <div class="mt-2 mb-1">
+                <button type="button" class="btn-pay" id="modalClaimOfferBtn" onclick="claimModalOffer()">
+                    <div style="border: 2px solid rgba(255,255,255,0.8); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; position: absolute; left: 20px;">
+                        <i class="fa-solid fa-bolt" style="font-size: 10px;"></i>
+                    </div>
+                    Claim Offer
+                    <i class="fa-solid fa-chevron-right" style="position: absolute; right: 20px; font-size: 14px;"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -1538,16 +1613,31 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script>
         var is_upgrade_flow = {{ is_upgrade_flow|yesno:"true,false"|default:"false" }};
-        var trialBase = {{ trial_base_price }};
-        var trialTotal = trialBase + (trialBase * 0.18);
+        var currentPrices = {
+            starter: {
+                name: '{{ starter_name|escapejs }}',
+                full: {{ starter_full|floatformat:"0" }},
+                base: {{ starter_base }},
+                total: {{ starter_final }}
+            },
+            professional: {
+                name: '{{ prof_name|escapejs }}',
+                full: {{ prof_full|floatformat:"0" }},
+                base: {{ prof_base }},
+                total: {{ prof_final }}
+            },
+            free_trial: {
+                name: 'Trial Plan ({{ trial_duration }} Days)',
+                full: {{ trial_base_price|default:1 }},
+                base: {{ trial_base_price|default:1 }},
+                total: {{ trial_final|default:1 }}
+            }
+        };
 
-        var selectedPlan = {
-            type: 'professional',
-            name: '{{ prof_name|escapejs }}',
-            price: {{ prof_base }},
-            total: {{ prof_final }}
-            };
+        var selectedPlan = null;
         var payClickUnlockAt = 0;
+        var agentId = {{ draft.pk|default:0 }};
+        var activeRewardPlan = 'starter';
 
         function isTermsAccepted() {
             const termsCheckbox = document.getElementById('termsCheckbox');
@@ -1564,35 +1654,25 @@
 
         window.selectPlanForPayment = function (planType) {
             if (planType === 'free_trial') {
-                selectedPlan = { type: 'free_trial', name: 'Trial Plan ({{ trial_duration }} Days)', price: trialBase, total: trialTotal };
-            } else if (planType === 'basic' || planType === 'starter') {
-                selectedPlan = { type: 'starter', name: '{{ starter_name|escapejs }}', price: {{ starter_base }}, total: {{ starter_final }} };
-            } else if (planType === 'exclusive') {
-                let raw = (document.getElementById('excCurrentPrice') || {}).innerText || '';
-                let excPrice = parseFloat(String(raw).replace(/[^\d.]/g, '')) || 0;
-                let excTotal = Math.round((excPrice + (excPrice * 0.18)) * 100) / 100;
-                selectedPlan = { type: 'exclusive', name: '{{ exclusive_config.name|default:"Exclusive Plan"|escapejs }}', price: excPrice, total: excTotal };
+                selectedPlan = { type: 'free_trial', name: currentPrices.free_trial.name, price: currentPrices.free_trial.base, total: currentPrices.free_trial.total };
+            } else if (planType === 'starter' || planType === 'basic') {
+                selectedPlan = { type: 'starter', name: currentPrices.starter.name, price: currentPrices.starter.base, total: currentPrices.starter.total };
             } else {
-                selectedPlan = { type: 'professional', name: '{{ prof_name|escapejs }}', price: {{ prof_base }}, total: {{ prof_final }} };
+                selectedPlan = { type: 'professional', name: currentPrices.professional.name, price: currentPrices.professional.base, total: currentPrices.professional.total };
             }
 
             payClickUnlockAt = Date.now() + 600;
             updateSelectedPlanSummary();
-        }
+        };
 
         function updateSelectedPlanSummary() {
             const summary = document.getElementById('selectedPlanSummary');
-            if (summary) {
+            if (summary && selectedPlan) {
                 summary.style.display = 'block';
                 let planNameEl = document.getElementById('selectedPlanName');
                 planNameEl.textContent = selectedPlan.name;
-                if (selectedPlan.type === 'exclusive') {
-                    planNameEl.className = 'golden-text-shine';
-                } else {
-                    planNameEl.className = '';
-                }
                 document.getElementById('selectedPlanPrice').textContent = `₹${selectedPlan.price.toLocaleString('en-IN')}`;
-                document.getElementById('selectedPlanGST').textContent = `₹${(selectedPlan.price * 0.18).toLocaleString('en-IN')}`;
+                document.getElementById('selectedPlanGST').textContent = `₹${Math.round(selectedPlan.price * 0.18).toLocaleString('en-IN')}`;
                 document.getElementById('selectedPlanTotal').textContent = `₹${selectedPlan.total.toLocaleString('en-IN')}`;
                 syncPayButtonState();
                 setTimeout(function () {
@@ -1605,13 +1685,13 @@
             Swal.fire({
                 title: title,
                 html: `
-                        <div class="text-center">
-                            <p class="mb-3">${message}</p>
-                            <div class="text-danger fw-bold" style="font-size: 14px;">
-                                <i class="fa-solid fa-triangle-exclamation"></i> PLEASE DO NOT CLICK THE BACK BUTTON OR CLOSE WINDOW
-                            </div>
+                    <div class="text-center">
+                        <p class="mb-3">${message}</p>
+                        <div class="text-danger fw-bold" style="font-size: 14px;">
+                            <i class="fa-solid fa-triangle-exclamation"></i> PLEASE DO NOT CLICK THE BACK BUTTON OR CLOSE WINDOW
                         </div>
-                    `,
+                    </div>
+                `,
                 allowOutsideClick: false,
                 allowEscapeKey: false,
                 showConfirmButton: false,
@@ -1630,12 +1710,8 @@
         }
 
         async function confirmPayment(source) {
-            if (source !== 'pay-button' && source !== 'exclusive-claim') {
-                return;
-            }
-            if (source === 'pay-button' && Date.now() < payClickUnlockAt) {
-                return;
-            }
+            if (source !== 'pay-button') return;
+            if (Date.now() < payClickUnlockAt) return;
 
             const termsCheckbox = document.getElementById('termsCheckbox');
             if (!termsCheckbox || !termsCheckbox.checked) {
@@ -1650,14 +1726,11 @@
             }
 
             try {
-                const token = await getFreshCsrfToken();
-                const endpoint = is_upgrade_flow ? '/agent/upgrade-plan/' : '/agent-register-complete/';
-                const response = await fetch(endpoint, {
+                const response = await fetch('/agent-register/complete/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRFToken': token
+                        'X-CSRFToken': await getFreshCsrfToken()
                     },
                     body: JSON.stringify({
                         plan_type: selectedPlan.type,
@@ -1667,86 +1740,108 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    if ((data.test_payment || data.already_completed) && !data.order_id) {
-                        Swal.fire('Success', data.message || 'Registration Complete successfully.', 'success').then(() => {
-                            window.location.href = data.redirect_url || '/agent/dashboard';
-                        });
-                    } else if (!data.order_id || !data.key) {
-                        Swal.fire('Error', data.message || 'Payment gateway is not ready. Please try again.', 'error');
-                    } else {
-                        const contact = String(data.mobile || '').replace(/\D/g, '').slice(-10);
+                    const orderId = data.razorpay_order_id || data.order_id;
+                    const keyId = data.razorpay_key_id || data.key;
+                    const amountPaise = data.amount_paise || data.amount;
+
+                    if (orderId && keyId && amountPaise > 0) {
+                        if (typeof Razorpay === 'undefined') {
+                            Swal.fire('Error', 'Payment Gateway SDK could not load. Please check your connection and reload.', 'error');
+                            if (paymentBtn) {
+                                paymentBtn.disabled = false;
+                                paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
+                            }
+                            return;
+                        }
+
                         const options = {
-                            "key": data.key,
+                            "key": keyId,
+                            "amount": amountPaise,
                             "currency": "INR",
                             "name": "PadosiAgent",
                             "description": selectedPlan.name,
-                            "image": "{% static 'img/logo.webp' %}",
-                            "order_id": data.order_id,
-                            "handler": function (response) { handlePaymentSuccess(response, data.agent_id, selectedPlan); },
-                            "prefill": { "name": data.name || '', "email": data.email || '', "contact": contact },
-                            "theme": { "color": "#273C8E" },
+                            "order_id": orderId,
+                            "handler": function (response) {
+                                verifyRazorpayPayment(response);
+                            },
+                            "prefill": {
+                                "name": data.customer_name || data.name || '',
+                                "email": data.customer_email || data.email || '',
+                                "contact": data.customer_phone || data.mobile || ''
+                            },
+                            "theme": {
+                                "color": "#273c8e"
+                            },
                             "modal": {
-                                ondismiss: function () {
+                                "ondismiss": function() {
                                     if (paymentBtn) {
+                                        paymentBtn.disabled = false;
                                         paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
                                     }
-                                    syncPayButtonState();
                                 }
                             }
                         };
-                        const rzp = new Razorpay(options);
-                        rzp.on('payment.failed', function (resp) {
-                            const desc = (resp && resp.error && resp.error.description) || 'Payment was not completed.';
-                            console.error('Razorpay payment.failed', resp && resp.error);
-                            setTimeout(function () {
-                                Swal.fire('Payment Failed', desc, 'error');
-                            }, 300);
+                        const rzp1 = new Razorpay(options);
+                        rzp1.on('payment.failed', function (resp) {
+                            Swal.fire('Payment Failed', (resp.error && resp.error.description) || 'Transaction failed. Please try again.', 'error');
+                            if (paymentBtn) {
+                                paymentBtn.disabled = false;
+                                paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
+                            }
                         });
-                        rzp.open();
+                        rzp1.open();
+                    } else if (data.already_completed) {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Already Active',
+                            text: 'Your registration is already active. Redirecting to your dashboard...'
+                        }).then(() => {
+                            window.location.href = data.redirect_url || '/agent/dashboard';
+                        });
+                    } else if (amountPaise === 0 || !data.payment_required) {
+                        window.location.href = data.redirect_url || '/agent/dashboard';
+                    } else {
+                        Swal.fire('Payment Error', data.message || 'Unable to start payment checkout.', 'error');
+                        if (paymentBtn) {
+                            paymentBtn.disabled = false;
+                            paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
+                        }
                     }
                 } else {
-                    Swal.fire('Error', data.message || 'Unable to complete registration.', 'error');
+                    Swal.fire('Payment Error', data.message || 'Unable to initiate payment.', 'error');
+                    if (paymentBtn) {
+                        paymentBtn.disabled = false;
+                        paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
+                    }
                 }
-            } catch {
-                Swal.fire('Error', 'Payment preparation failed.', 'error');
-            } finally {
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'An unexpected error occurred.', 'error');
                 if (paymentBtn) {
+                    paymentBtn.disabled = false;
                     paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
                 }
-                syncPayButtonState();
             }
         }
 
-        async function handlePaymentSuccess(paymentResponse, agentId, plan) {
-            showLoadingPopup('Verifying Payment', 'We have received your payment. Please wait while we verify the transaction and set up your agent account...');
+        async function verifyRazorpayPayment(paymentResponse) {
+            showLoadingPopup('Verifying Payment', 'Please wait while we confirm your transaction...');
             try {
-                const token = await getFreshCsrfToken();
-                const response = await fetch('/payment-success/', {
+                const response = await fetch('/agent-register/verify-payment/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': token
+                        'X-CSRFToken': await getFreshCsrfToken()
                     },
-                    body: JSON.stringify({
-                        razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                        razorpay_order_id: paymentResponse.razorpay_order_id,
-                        razorpay_signature: paymentResponse.razorpay_signature,
-                        agent_id: agentId,
-                        plan_type: plan.type,
-                        plan_name: plan.name
-                    })
+                    body: JSON.stringify(paymentResponse)
                 });
                 const data = await response.json();
                 hideLoadingPopup();
                 if (data.success) {
                     Swal.fire({
-                        title: 'Success',
-                        text: 'Payment Successful! Redirecting to dashboard...',
                         icon: 'success',
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        showConfirmButton: false,
-                        timer: 2000
+                        title: 'Payment Successful!',
+                        text: 'Your registration is confirmed. Redirecting to your dashboard...'
                     }).then(() => {
                         window.location.href = data.redirect_url || '/agent/dashboard';
                     });
@@ -1759,15 +1854,108 @@
             }
         }
 
-        // Scratch Card & Exclusive Plan Logic
+        // ─── REWARD MODAL OPENER & CLOSER ───────────────────────────────────────
+        function openScratchRewardModal(planType) {
+            activeRewardPlan = planType || 'starter';
+            let strikeEl = document.getElementById('modalStrikePrice');
+            let currEl = document.getElementById('modalCurrentPrice');
+            let valEl = document.getElementById('modalDiscountVal');
+
+            let full = (planType === 'professional') ? currentPrices.professional.full : currentPrices.starter.full;
+            let current = (planType === 'professional') ? currentPrices.professional.base : currentPrices.starter.base;
+            let percent = full > 0 ? Math.round((1 - (current / full)) * 100) : 0;
+
+            if (strikeEl) strikeEl.innerText = '₹' + full + '/-';
+            if (currEl) currEl.innerText = '₹' + current + '/-';
+            if (valEl) valEl.innerText = percent + '%';
+
+            let overlay = document.getElementById('giftModal');
+            if (overlay) {
+                overlay.classList.add('active');
+            }
+        }
+
+        window.closeGiftModal = function() {
+            let overlay = document.getElementById('giftModal');
+            if (overlay) {
+                overlay.classList.remove('active');
+            }
+        };
+
+        window.claimModalOffer = function() {
+            closeGiftModal();
+            selectPlanForPayment(activeRewardPlan);
+        };
+
+        // ─── SOCIAL FOLLOW HANDLER ──────────────────────────────────────────────
+        window.handleSocialFollow = async function (platform, url, btn) {
+            if (url) window.open(url, '_blank');
+
+            try {
+                let token = await getFreshCsrfToken();
+                let res = await fetch('/exclusive-plan/social-follow/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': token
+                    },
+                    body: JSON.stringify({ platform: platform, agent_id: agentId })
+                });
+                let data = await res.json();
+                if (data.success) {
+                    // Update all matching social buttons
+                    document.querySelectorAll(`.social-btn[data-platform="${platform}"]`).forEach(b => {
+                        b.classList.add('followed');
+                        let span = b.querySelector('span');
+                        if (span) span.innerText = 'Followed ✓';
+                    });
+
+                    // Update prices
+                    currentPrices.starter.base = data.starter_base;
+                    currentPrices.starter.total = data.starter_total;
+                    currentPrices.professional.base = data.prof_base;
+                    currentPrices.professional.total = data.prof_total;
+
+                    // Update DOM on main page
+                    let sDisp = document.getElementById('starterDisplayPrice');
+                    if (sDisp) sDisp.innerText = '₹' + data.starter_base + '/-';
+                    let pDisp = document.getElementById('profDisplayPrice');
+                    if (pDisp) pDisp.innerText = '₹' + data.prof_base + '/-';
+
+                    let sBadge = document.getElementById('starterDiscountBadge');
+                    if (sBadge) sBadge.style.display = 'block';
+                    let pBadge = document.getElementById('profDiscountBadge');
+                    if (pBadge) pBadge.style.display = 'block';
+
+                    // Update modal price and discount badge
+                    let currEl = document.getElementById('modalCurrentPrice');
+                    let valEl = document.getElementById('modalDiscountVal');
+                    let badgeEl = document.getElementById('modalDiscountBadge');
+
+                    let full = (activeRewardPlan === 'professional') ? currentPrices.professional.full : currentPrices.starter.full;
+                    let current = (activeRewardPlan === 'professional') ? data.prof_base : data.starter_base;
+                    let percent = full > 0 ? Math.round((1 - (current / full)) * 100) : 0;
+
+                    if (currEl) currEl.innerText = '₹' + current + '/-';
+                    if (valEl) valEl.innerText = percent + '%';
+                    if (badgeEl) badgeEl.style.display = 'inline-block';
+
+                    triggerConfetti();
+
+                    // If summary is open, re-sync it
+                    if (selectedPlan) {
+                        selectPlanForPayment(selectedPlan.type);
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        // ─── SCRATCH CANVAS LOGIC ───────────────────────────────────────────────
         let ribbonCanvases = document.querySelectorAll('.ribbon-scratch-canvas');
         let isRibbonDrawing = false;
-        let ribbonTotalPixels = 0;
-        let scratchThreshold = {{ exclusive_config.scratch_threshold_percent|default:40 }};
-        let agentId = {{ draft.pk|default:0 }};
-
-        let activeRibbonCtx = null;
-        let activeRibbonCanvas = null;
+        let scratchThreshold = 35;
 
         function initRibbonScratch() {
             if (!ribbonCanvases.length) return;
@@ -1777,7 +1965,7 @@
                 canvas.width = 140;
                 canvas.height = 26;
 
-                let bgColor = canvas.dataset.color || '#8b5cf6';
+                let bgColor = canvas.dataset.color || '#3b82f6';
                 ctx.fillStyle = bgColor;
                 ctx.fillRect(0, 0, 140, 26);
 
@@ -1785,7 +1973,7 @@
                 ctx.font = '800 10px "Plus Jakarta Sans", sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                let label = canvas.dataset.label || 'BEGINNER';
+                let label = canvas.dataset.label || 'SCRATCH ME';
                 ctx.fillText(label, 70, 14);
 
                 ctx.globalCompositeOperation = 'destination-out';
@@ -1799,14 +1987,23 @@
                 canvas.addEventListener('touchstart', startRibbonScratch, { passive: false });
                 canvas.addEventListener('touchmove', scratchRibbon, { passive: false });
                 canvas.addEventListener('touchend', stopRibbonScratch);
+
+                // Direct click to reveal fallback
+                canvas.addEventListener('click', function() {
+                    if (!canvas.ribbonScratchCompleted) {
+                        canvas.ribbonScratchCompleted = true;
+                        canvas.style.display = 'none';
+                        triggerConfetti();
+                        openScratchRewardModal(canvas.dataset.plan || 'starter');
+                    }
+                });
             });
         }
 
+        let activeRibbonCanvas = null;
+        let activeRibbonCtx = null;
+
         function startRibbonScratch(e) {
-            if (agentId === 0) {
-                Swal.fire('Oops', 'Please log in or begin registration to claim your special offer!', 'info');
-                return;
-            }
             activeRibbonCanvas = e.target;
             activeRibbonCtx = activeRibbonCanvas.getContext('2d', { willReadFrequently: true });
             isRibbonDrawing = true;
@@ -1831,7 +2028,7 @@
                 let dy = e.touches[0].clientY - cy;
 
                 let cosA = 0.70710678;
-                let sinA = -0.70710678; // inverse
+                let sinA = -0.70710678;
 
                 let rotatedX = dx * cosA - dy * sinA;
                 let rotatedY = dx * sinA + dy * cosA;
@@ -1858,14 +2055,14 @@
             for (let i = 3; i < pixels.length; i += 4) {
                 if (pixels[i] === 0) transparentCount++;
             }
-            ribbonTotalPixels = activeRibbonCanvas.width * activeRibbonCanvas.height;
-            let scratchedPercent = (transparentCount / ribbonTotalPixels) * 100;
+            let totalPixels = activeRibbonCanvas.width * activeRibbonCanvas.height;
+            let scratchedPercent = (transparentCount / totalPixels) * 100;
             if (scratchedPercent >= scratchThreshold) {
                 activeRibbonCanvas.ribbonScratchCompleted = true;
-                setTimeout(() => {
-                    openGiftModal();
-                    triggerConfetti();
-                }, 400);
+                activeRibbonCanvas.style.display = 'none';
+                triggerConfetti();
+                let planType = activeRibbonCanvas.dataset.plan || 'starter';
+                openScratchRewardModal(planType);
             }
         }
 
@@ -1881,7 +2078,6 @@
                 document.body.appendChild(cCanvas);
 
                 var cConfetti = confetti.create(cCanvas, { resize: true, useWorker: true });
-
                 var count = 200;
                 var defaults = { origin: { y: 0.7 }, zIndex: 999999 };
 
@@ -1901,65 +2097,7 @@
             }
         }
 
-        window.openGiftModal = function () {
-            document.getElementById('giftModal').classList.add('active');
-            fetchDiscountStatus();
-
-            // Create a dedicated high z-index canvas to ensure confetti is NOT blurred by the overlay
-            var myCanvas = document.createElement('canvas');
-            myCanvas.style.position = 'fixed';
-            myCanvas.style.inset = '0';
-            myCanvas.style.width = '100vw';
-            myCanvas.style.height = '100vh';
-            myCanvas.style.zIndex = '999999';
-            myCanvas.style.pointerEvents = 'none';
-            document.body.appendChild(myCanvas);
-
-            var myConfetti = confetti.create(myCanvas, { resize: true, useWorker: true });
-
-            // Crazy Confetti Burst from behind the modal!
-            var duration = 3000;
-            var animationEnd = Date.now() + duration;
-            var defaults = { startVelocity: 45, spread: 360, ticks: 100, zIndex: 999999 };
-
-            function randomInRange(min, max) {
-                return Math.random() * (max - min) + min;
-            }
-
-            var interval = setInterval(function () {
-                var timeLeft = animationEnd - Date.now();
-                if (timeLeft <= 0) {
-                    clearInterval(interval);
-                    myCanvas.remove();
-                    return;
-                }
-                var particleCount = 150 * (timeLeft / duration);
-
-                // Fire from center
-                myConfetti(Object.assign({}, defaults, {
-                    particleCount,
-                    origin: { x: randomInRange(0.4, 0.6), y: randomInRange(0.4, 0.6) },
-                    colors: ['#8b5cf6', '#10b981', '#fde047', '#fbbf24', '#ffffff']
-                }));
-            }, 250);
-        };
-
-        window.closeGiftModal = function () {
-            document.getElementById('giftModal').classList.remove('active');
-        };
-
-        window.directRazorpayCheckout = function (btn) {
-            selectPlanForPayment('exclusive');
-            let termsCheckbox = document.getElementById('termsCheckbox');
-            if (termsCheckbox) {
-                termsCheckbox.checked = true;
-            }
-            syncPayButtonState();
-            closeGiftModal();
-            setTimeout(function () { confirmPayment('exclusive-claim'); }, 300);
-        };
-
-        // Initialize the inline ribbon scratch card immediately
+        // Initialize on DOM ready
         document.addEventListener('DOMContentLoaded', function () {
             initRibbonScratch();
             syncPayButtonState();
@@ -1996,68 +2134,5 @@
                 });
             }
         });
-
-        async function fetchDiscountStatus() {
-            try {
-                let res = await fetch(`/exclusive-plan/discount-status/?agent_id=${agentId}`);
-                let data = await res.json();
-                if (data.success) {
-                    updateGiftUI(data);
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-        window.handleSocialFollow = async function (platform, url, btn) {
-            window.open(url, '_blank');
-
-            try {
-                let token = await getFreshCsrfToken();
-                let res = await fetch('/exclusive-plan/social-follow/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': token
-                    },
-                    body: JSON.stringify({ platform: platform, agent_id: agentId })
-                });
-                let data = await res.json();
-                if (data.success) {
-                    updateGiftUI(data);
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        };
-
-        function updateGiftUI(data) {
-            document.getElementById('excCurrentPrice').innerText = '₹' + data.current_price + '/-';
-            document.getElementById('excDiscountedPrice').innerText = '₹' + data.current_price + '/-';
-
-            if (data.discount_unlocked) {
-                document.getElementById('priceUIBeforeFollow').style.setProperty('display', 'none', 'important');
-                document.getElementById('priceUIAfterFollow').style.setProperty('display', 'flex', 'important');
-                let discountMsg = document.getElementById('excDiscountMessage');
-                if (discountMsg) discountMsg.style.display = 'inline-block';
-
-                // Add a small celebration animation to the price
-                let priceEl = document.getElementById('excDiscountedPrice');
-                priceEl.classList.add('animate__animated', 'animate__tada');
-                setTimeout(() => priceEl.classList.remove('animate__animated', 'animate__tada'), 1000);
-            } else {
-                document.getElementById('priceUIBeforeFollow').style.setProperty('display', 'flex', 'important');
-                document.getElementById('priceUIAfterFollow').style.setProperty('display', 'none', 'important');
-                let discountMsg = document.getElementById('excDiscountMessage');
-                if (discountMsg) discountMsg.style.display = 'none';
-            }
-
-            document.querySelectorAll('.social-btn').forEach(btn => {
-                if (data.followed_platforms.includes(btn.dataset.platform)) {
-                    btn.classList.add('followed');
-                    btn.querySelector('span').innerText = 'Followed';
-                }
-            });
-        }
     </script>
 {% endblock %}
