@@ -14,9 +14,21 @@ MOCK_SIGNATURE = 'test_signature_skip'
 LOCAL_HOSTS = {'127.0.0.1', 'localhost', '::1', '0.0.0.0'}
 
 
+def clean_razorpay_credential(value):
+    text = str(value or '').replace('\ufeff', '').strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in ('"', "'"):
+        text = text[1:-1].strip()
+    return text
+
+
+def razorpay_credentials():
+    key = clean_razorpay_credential(getattr(settings, 'RAZORPAY_KEY', None))
+    secret = clean_razorpay_credential(getattr(settings, 'RAZORPAY_SECRET', None))
+    return key, secret
+
+
 def razorpay_key_mode():
-    key = (getattr(settings, 'RAZORPAY_KEY', None) or '').strip()
-    secret = (getattr(settings, 'RAZORPAY_SECRET', None) or '').strip()
+    key, secret = razorpay_credentials()
     if not key or not secret:
         return 'missing'
     if key.startswith('rzp_test_'):
@@ -82,7 +94,11 @@ def create_checkout_order(amount_paise, receipt, request):
         return order_id, True
     try:
         import razorpay
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
+        key, secret = razorpay_credentials()
+        if not key or not secret:
+            logger.error('Razorpay keys are missing; cannot create order')
+            return None, False
+        client = razorpay.Client(auth=(key, secret))
         order = client.order.create({
             'amount': amount_paise,
             'currency': 'INR',
@@ -90,8 +106,15 @@ def create_checkout_order(amount_paise, receipt, request):
             'payment_capture': 1,
         })
         return order.get('id'), False
-    except Exception:
-        logger.exception('Razorpay order creation failed')
+    except Exception as err:
+        key, _secret = razorpay_credentials()
+        key_prefix = f'{key[:12]}...' if key else 'empty'
+        logger.error(
+            'Razorpay order creation failed: %s (mode=%s, key=%s)',
+            err,
+            razorpay_key_mode(),
+            key_prefix,
+        )
         return None, False
 
 
@@ -108,7 +131,8 @@ def is_mock_payment(order_id=None, signature=None):
 def checkout_key(is_mock=False):
     if is_mock:
         return 'rzp_test_local_mock'
-    return getattr(settings, 'RAZORPAY_KEY', '') or ''
+    key, _secret = razorpay_credentials()
+    return key
 
 
 def checkout_payload(order_id, amount_paise, agent, is_mock=False, extra=None):

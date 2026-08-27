@@ -2,6 +2,7 @@ from django.test import RequestFactory, SimpleTestCase, override_settings
 
 from apps.agents.services.razorpay_checkout import (
     MOCK_SIGNATURE,
+    clean_razorpay_credential,
     create_checkout_order,
     is_local_request,
     is_mock_payment,
@@ -16,6 +17,10 @@ class RazorpayCheckoutHelperTests(SimpleTestCase):
         self.assertEqual(sanitize_contact('+91 98765 43210'), '9876543210')
         self.assertEqual(sanitize_contact('09876543210'), '9876543210')
         self.assertEqual(sanitize_contact('not-a-phone'), '')
+
+    def test_clean_razorpay_credential_strips_quotes_and_whitespace(self):
+        self.assertEqual(clean_razorpay_credential('  "rzp_live_abc"  '), 'rzp_live_abc')
+        self.assertEqual(clean_razorpay_credential("'rzp_test_xyz'"), 'rzp_test_xyz')
 
     def test_mock_payment_only_in_debug(self):
         with override_settings(DEBUG=True):
