@@ -1728,28 +1728,15 @@ def agent_upgrade_plan(request):
                 'agent_id': agent.id
             })
 
-        # Initialize Razorpay Client and create Order
-        import razorpay
         import time
-        from django.conf import settings
-        
-        razorpay_order_id = None
+        from apps.agents.services.razorpay_checkout import checkout_payload, create_checkout_order
+
         amount_paise = int(round(total_amount * 100))
-        
-        if settings.RAZORPAY_KEY and settings.RAZORPAY_SECRET and amount_paise > 0:
-            try:
-                client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
-                order_data = {
-                    'amount': amount_paise,
-                    'currency': 'INR',
-                    'receipt': f'agent_upgrade_{agent.pk}_{int(time.time())}',
-                    'payment_capture': 1
-                }
-                order = client.order.create(order_data)
-                razorpay_order_id = order.get('id')
-            except Exception as e:
-                logger.error(f"Razorpay Upgrade Order Creation Failed: {str(e)}")
-                return JsonResponse({'success': False, 'message': 'Payment service is offline.'}, status=500)
+        razorpay_order_id, mock_checkout = create_checkout_order(
+            amount_paise,
+            f'agent_upgrade_{agent.pk}_{int(time.time())}',
+            request,
+        )
 
         if not razorpay_order_id and amount_paise > 0:
             return JsonResponse({
@@ -1826,17 +1813,16 @@ def agent_upgrade_plan(request):
                 'agent_id': agent.id
             })
 
-        return JsonResponse({
-            'success': True,
-            'order_id': razorpay_order_id,
-            'amount': amount_paise,
-            'key': settings.RAZORPAY_KEY,
-            'agent_id': agent.id,
-            'name': agent.fullname,
-            'email': agent.email,
-            'plan_amount': plan_amount,
-            'total_amount': total_amount
-        })
+        return JsonResponse(checkout_payload(
+            razorpay_order_id,
+            amount_paise,
+            agent,
+            is_mock=mock_checkout,
+            extra={
+                'plan_amount': plan_amount,
+                'total_amount': total_amount,
+            },
+        ))
 
     except Exception as e:
         logger.error(f"Plan upgrade request failed: {e}")

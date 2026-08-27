@@ -32,6 +32,14 @@ from apps.agents.services.feature_unlock import (
     resolve_checkout_plan_slug,
     plan_slug_from_name,
 )
+from apps.agents.services.razorpay_checkout import (
+    MOCK_SIGNATURE,
+    checkout_payload,
+    create_checkout_order,
+    is_mock_payment,
+    login_agent_user,
+    mock_payment_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -112,12 +120,12 @@ def _get_tier_prices(pricing_config, follow_count):
     starter_full = float(starter_cfg.get('full_price', 1999) or 1999)
     starter_promo = float(starter_cfg.get('promo_price', 1499) or 1499)
     starter_scratch = float(starter_cfg.get('scratch_price', starter_promo) or starter_promo)
-    starter_scratch_enabled = starter_cfg.get('scratch_enabled', True)
+    starter_scratch_enabled = _is_scratch_enabled(starter_cfg)
 
     prof_full = float(prof_cfg.get('full_price', 6999) or 6999)
     prof_promo = float(prof_cfg.get('promo_price', 4999) or 4999)
     prof_scratch = float(prof_cfg.get('scratch_price', prof_promo) or prof_promo)
-    prof_scratch_enabled = prof_cfg.get('scratch_enabled', True)
+    prof_scratch_enabled = _is_scratch_enabled(prof_cfg)
 
     starter_initial = starter_scratch if starter_scratch_enabled else starter_promo
     prof_initial = prof_scratch if prof_scratch_enabled else prof_promo
@@ -223,6 +231,211 @@ def _gst_total_from_inclusive(final_inclusive):
     gst = round(base * 0.18, 2)
     total = int(round(base + gst, 0))
     return base, gst, total
+
+
+def _gst_bundle_from_base(base_amount):
+    """GST-exclusive base → (base_rupees, gst, gst_inclusive_total). Matches chooseplan display."""
+    base = int(round(float(base_amount or 0)))
+    gst = round(base * 0.18, 2)
+    total = int(round(base + gst, 0))
+    return base, gst, total
+
+
+def _scratch_session_key(plan_type):
+    return f'scratch_revealed_{plan_type}'
+
+
+def _parse_json_flag(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return value == 1
+    return str(value or '').strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def _parse_displayed_total(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_scratch_enabled(cfg, default=True):
+    if not isinstance(cfg, dict) or 'scratch_enabled' not in cfg:
+        return default
+    return _parse_json_flag(cfg.get('scratch_enabled'))
+
+
+def _amounts_match(left, right, tolerance=1):
+    try:
+        return abs(float(left) - float(right)) <= tolerance
+    except (TypeError, ValueError):
+        return False
+
+
+def _clear_scratch_reveal_session(request):
+    """Plans page always starts at full price until the ribbon is scratched again."""
+    changed = False
+    for plan_type in ('starter', 'professional'):
+        key = _scratch_session_key(plan_type)
+        if key in request.session:
+            request.session.pop(key, None)
+            changed = True
+    if changed:
+        request.session.modified = True
+
+
+def _scratch_revealed_for_checkout(request, data, plan_type, full_total, discounted_total=None):
+    """
+    Apply the scratch discount only when this page actually revealed it
+    and the order summary is showing that discounted total.
+    """
+    displayed = _parse_displayed_total((data or {}).get('displayed_total'))
+    if displayed is not None and full_total and _amounts_match(displayed, full_total):
+        return False
+    session_revealed = bool(request.session.get(_scratch_session_key(plan_type)))
+    client_revealed = _parse_json_flag((data or {}).get('scratch_revealed'))
+    if not (session_revealed and client_revealed):
+        return False
+    if discounted_total is not None and displayed is not None:
+        return _amounts_match(displayed, discounted_total)
+    return True
+
+
+def _plan_payable_total(pricing_config, follow_count, plan_type, scratch_revealed=False, promo_obj=None):
+    """
+    Charge the amount shown on the card.
+    Scratch-enabled plans stay at full_price + GST until the ribbon is revealed.
+    """
+    if not isinstance(pricing_config, dict):
+        pricing_config = dict(_DEFAULT_PRICING)
+    starter_cfg = pricing_config.get('starter') or _DEFAULT_PRICING['starter']
+    prof_cfg = pricing_config.get('professional') or _DEFAULT_PRICING['professional']
+    starter_full = float(starter_cfg.get('full_price', 1999) or 1999)
+    prof_full = float(prof_cfg.get('full_price', 6999) or 6999)
+    tier_info = _get_tier_prices(pricing_config, follow_count)
+
+    if plan_type == 'starter':
+        if promo_obj and not promo_obj.is_free_trial_code() and promo_obj.is_valid('basic'):
+            base = max(0.0, starter_full - promo_obj.calculate_discount(starter_full))
+            return _gst_bundle_from_base(base)[2]
+        if _is_scratch_enabled(starter_cfg) and not scratch_revealed:
+            return _gst_bundle_from_base(starter_full)[2]
+        return tier_info['starter_total']
+
+    if plan_type == 'professional':
+        if promo_obj and not promo_obj.is_free_trial_code() and promo_obj.is_valid('professional'):
+            base = max(0.0, prof_full - promo_obj.calculate_discount(prof_full))
+            return _gst_bundle_from_base(base)[2]
+        if _is_scratch_enabled(prof_cfg) and not scratch_revealed:
+            return _gst_bundle_from_base(prof_full)[2]
+        return tier_info['prof_total']
+
+    return 0
+
+
+def _checkout_total_for_plan(pricing_config, follow_count, plan_type, request, data, promo_obj=None):
+    """Razorpay amount must match the on-screen order summary."""
+    revealed_total = _plan_payable_total(
+        pricing_config, follow_count, plan_type, scratch_revealed=True, promo_obj=promo_obj,
+    )
+    unrevealed_total = _plan_payable_total(
+        pricing_config, follow_count, plan_type, scratch_revealed=False, promo_obj=promo_obj,
+    )
+    cfg_key = 'starter' if plan_type == 'starter' else 'professional'
+    default_full = 1999 if plan_type == 'starter' else 6999
+    full = float((pricing_config.get(cfg_key) or {}).get('full_price', default_full) or default_full)
+    full_total = _gst_bundle_from_base(full)[2]
+    if _scratch_revealed_for_checkout(request, data, plan_type, full_total, revealed_total):
+        return revealed_total
+    return unrevealed_total
+
+
+def _paise_amounts_match(paid, expected, tolerance=100):
+    """Allow ₹1 GST rounding difference between order amount and stored fee."""
+    try:
+        return abs(int(paid) - int(expected)) <= tolerance
+    except (TypeError, ValueError):
+        return False
+
+
+def _is_in_progress_razorpay_error(error):
+    """Netbanking/UPI redirects fire payment.failed before the bank returns."""
+    if not isinstance(error, dict):
+        return False
+    step = str(error.get('step') or '').strip().lower()
+    return step in ('payment_authentication', 'payment_capture')
+
+
+def _recover_pending_razorpay_checkout(request, payload=None, retry=False):
+    """
+    After netbanking the browser often reloads /chooseplan/ instead of
+    calling verify-payment. If Razorpay already captured the payment, finish it.
+    """
+    pending = request.session.get('pending_checkout') or {}
+    payload = payload or {}
+    agent_id = payload.get('agent_id') or pending.get('agent_id')
+    order_id = payload.get('razorpay_order_id') or pending.get('order_id')
+    from apps.agents.models import Agent, AgentSubscription
+
+    agent = Agent.objects.filter(pk=agent_id).first() if agent_id else None
+    if not agent and order_id:
+        sub = AgentSubscription.objects.filter(razorpay_order_id=order_id).first()
+        if sub:
+            agent = sub.agent
+    if not agent:
+        return None
+    if not verify_and_activate_pending_payment(agent):
+        if not retry:
+            return None
+        time.sleep(1)
+        if not verify_and_activate_pending_payment(agent):
+            return None
+    try:
+        user = create_or_link_django_user(agent)
+        login_agent_user(request, user)
+    except Exception as login_err:
+        logger.error('Pending checkout login failed for agent %s: %s', getattr(agent, 'id', None), login_err)
+
+    request.session.pop('current_draft_id', None)
+    request.session.pop('reg_step', None)
+    request.session.pop('ref_code', None)
+    request.session.pop('pending_checkout', None)
+
+    from apps.distributors.views.dashboard import is_distributor
+    if request.user.is_authenticated and is_distributor(request.user):
+        return reverse('distributors:agents_index')
+    return reverse('agents:agent_dashboard')
+
+
+def _razorpay_callback_payload(request):
+    data = {}
+    if request.method == 'POST':
+        content_type = (request.content_type or '').lower()
+        if 'json' in content_type:
+            try:
+                data = json.loads(request.body or '{}')
+            except json.JSONDecodeError:
+                data = request.POST.dict()
+        else:
+            data = request.POST.dict()
+    else:
+        data = request.GET.dict()
+    pending = request.session.get('pending_checkout') or {}
+    return {
+        'razorpay_payment_id': data.get('razorpay_payment_id'),
+        'razorpay_order_id': data.get('razorpay_order_id') or pending.get('order_id'),
+        'razorpay_signature': data.get('razorpay_signature'),
+        'agent_id': data.get('agent_id') or pending.get('agent_id'),
+        'plan_type': data.get('plan_type') or pending.get('plan_type'),
+        'plan_name': data.get('plan_name') or pending.get('plan_name'),
+        'error': data.get('error') or {
+            'code': data.get('error[code]') or data.get('error_code'),
+            'description': data.get('error[description]') or data.get('error_description'),
+            'step': data.get('error[step]'),
+            'reason': data.get('error[reason]'),
+        },
+    }
 
 
 def _expected_amount_paise(registration_amount):
@@ -571,6 +784,23 @@ def record_social_follow(request):
         'followed_platforms': followed,
     })
 
+
+@require_POST
+@csrf_protect
+def record_scratch_reveal(request):
+    """Persist that the user revealed the starter/professional scratch price."""
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        data = request.POST
+    plan_type = resolve_checkout_plan_slug(data.get('plan_type'))
+    if plan_type not in ('starter', 'professional'):
+        return JsonResponse({'success': False, 'message': 'Invalid plan.'}, status=400)
+    request.session[_scratch_session_key(plan_type)] = True
+    request.session.modified = True
+    return JsonResponse({'success': True, 'plan_type': plan_type})
+
+
 def exclusive_discount_status(request):
     """Get the current discount status and followed platforms."""
     agent_id = request.GET.get('agent_id')
@@ -625,6 +855,10 @@ def chooseplan(request):
         elif request.user.is_staff or request.user.is_superuser:
             return redirect('agents:agent_dashboard')
 
+    recovered_url = _recover_pending_razorpay_checkout(request)
+    if recovered_url:
+        return redirect(recovered_url)
+
     draft_id = request.session.get('current_draft_id')
     if not draft_id:
         return redirect('agents:agent_registration')
@@ -635,6 +869,8 @@ def chooseplan(request):
     except AgentDraft.DoesNotExist:
         request.session.pop('current_draft_id', None)
         return redirect('agents:agent_registration')
+
+    _clear_scratch_reveal_session(request)
 
     # Load site settings pricing config from DB only
     pricing_config = SiteSetting.get_value('pricing_config', _DEFAULT_PRICING)
@@ -691,8 +927,8 @@ def chooseplan(request):
     trial_final = trial_base_price + (trial_base_price * 0.18)
 
     # Scratch & Social Discounts
-    starter_scratch_enabled = starter_cfg.get('scratch_enabled', True)
-    prof_scratch_enabled = prof_cfg.get('scratch_enabled', True)
+    starter_scratch_enabled = _is_scratch_enabled(starter_cfg)
+    prof_scratch_enabled = _is_scratch_enabled(prof_cfg)
     scratch_card_enabled = starter_scratch_enabled or prof_scratch_enabled
     social_discount_active = pricing_config.get('social_discount_active', True)
     social_discount_amount = float(pricing_config.get('social_discount_amount', 200) or 200)
@@ -862,6 +1098,10 @@ def chooseplan(request):
         'scratch_card_enabled': scratch_card_enabled,
         'starter_scratch_enabled': starter_scratch_enabled,
         'prof_scratch_enabled': prof_scratch_enabled,
+        'starter_scratch_revealed': False,
+        'prof_scratch_revealed': False,
+        'starter_full_total': _gst_bundle_from_base(starter_full)[2],
+        'prof_full_total': _gst_bundle_from_base(prof_full)[2],
         'social_discount_active': social_discount_active,
         'social_discount_amount': social_discount_amount,
         'social_links': social_links,
@@ -1036,9 +1276,12 @@ def verify_and_activate_pending_payment(agent):
         logger.info(f"[verify_and_activate_pending_payment] Active invoice exists for {agent.email}. Already active.")
         return True
 
-    subscription = AgentSubscription.objects.filter(agent=agent, payment_status='pending').order_by('-created_at').first()
+    subscription = AgentSubscription.objects.filter(
+        agent=agent,
+        payment_status__in=['pending', 'failed'],
+    ).order_by('-created_at').first()
     if not subscription or not subscription.razorpay_order_id:
-        logger.info(f"[verify_and_activate_pending_payment] No pending subscription or Razorpay Order ID for {agent.email}")
+        logger.info(f"[verify_and_activate_pending_payment] No pending/failed subscription or Razorpay Order ID for {agent.email}")
         return False
 
     if not (settings.RAZORPAY_KEY and settings.RAZORPAY_SECRET):
@@ -1065,7 +1308,7 @@ def verify_and_activate_pending_payment(agent):
 
     paid_amount_paise = successful_payment.get('amount')
     expected_amount_paise = _expected_amount_paise(subscription.registration_amount)
-    if paid_amount_paise != expected_amount_paise:
+    if not _paise_amounts_match(paid_amount_paise, expected_amount_paise):
         logger.critical(
             f"[verify_and_activate_pending_payment] Price tampering check failed! "
             f"Paid: {paid_amount_paise}, Expected: {expected_amount_paise}"
@@ -1243,7 +1486,7 @@ def agent_register_complete(request):
         except Exception:
             pass
 
-    if promo_obj and promo_obj.is_free_trial_code():
+    if promo_obj and promo_obj.is_free_trial_code() and promo_obj.is_valid():
         has_free_trial_promo = True
 
     trial_base_price = float(trial_config['price'])
@@ -1278,44 +1521,36 @@ def agent_register_complete(request):
         session_key = f'followed_platforms_{draft_id}'
         followed = request.session.get(session_key, [])
         follow_count = len(followed)
-        tier_info = _get_tier_prices(pricing_config, follow_count)
-        base_price = tier_info['starter_price']
-        if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('basic'):
-            base_price = max(0.0, starter_full - promo_obj.calculate_discount(starter_full))
-        total_amount = round(base_price + round(base_price * 0.18, 2), 2)
+        checkout_promo = promo_obj if (not has_free_trial_promo and has_promo) else None
+        total_amount = _checkout_total_for_plan(
+            pricing_config, follow_count, 'starter', request, data, checkout_promo,
+        )
         plan_name = plan_name or starter_cfg.get('name') or "Starter's Plan"
+        logger.info(
+            'Starter checkout: full=%s displayed=%s follow=%s total=%s',
+            starter_full, data.get('displayed_total'), follow_count, total_amount,
+        )
     else:
         session_key = f'followed_platforms_{draft_id}'
         followed = request.session.get(session_key, [])
         follow_count = len(followed)
-        tier_info = _get_tier_prices(pricing_config, follow_count)
-        base_price = tier_info['prof_price']
-        if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('professional'):
-            base_price = max(0.0, prof_full - promo_obj.calculate_discount(prof_full))
-        total_amount = round(base_price + round(base_price * 0.18, 2), 2)
+        checkout_promo = promo_obj if (not has_free_trial_promo and has_promo) else None
+        total_amount = _checkout_total_for_plan(
+            pricing_config, follow_count, 'professional', request, data, checkout_promo,
+        )
         plan_name = plan_name or prof_cfg.get('name') or "Professional's Plan"
+        logger.info(
+            'Professional checkout: full=%s displayed=%s follow=%s total=%s',
+            prof_full, data.get('displayed_total'), follow_count, total_amount,
+        )
 
-    # Initialize Razorpay Client and create Order
-    import razorpay
-    from django.conf import settings
-    
-    razorpay_order_id = None
     total_amount = _to_money(total_amount)
     amount_paise = _to_paise(total_amount)
-    
-    if settings.RAZORPAY_KEY and settings.RAZORPAY_SECRET and amount_paise > 0:
-        try:
-            client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
-            order_data = {
-                'amount': amount_paise,
-                'currency': 'INR',
-                'receipt': f'agent_draft_{draft.pk}_{int(time.time())}',
-                'payment_capture': 1
-            }
-            order = client.order.create(order_data)
-            razorpay_order_id = order.get('id')
-        except Exception as e:
-            logger.error(f"Razorpay Order Creation Failed: {str(e)}")
+    razorpay_order_id, mock_checkout = create_checkout_order(
+        amount_paise,
+        f'agent_draft_{draft.pk}_{int(time.time())}',
+        request,
+    )
 
     # Strict Production Guard: If order creation fails for a paid plan, prevent bypass
     if not razorpay_order_id and amount_paise > 0:
@@ -1327,6 +1562,7 @@ def agent_register_complete(request):
     from django.db import transaction
     from apps.agents.models import Agent, AgentSubscription, Invoice
 
+    instant_complete = False
     try:
         with transaction.atomic():
             # Create/get Agent record from DB
@@ -1455,26 +1691,8 @@ def agent_register_complete(request):
                     )
                 except Exception as mail_err:
                     logger.error(f"Failed to generate invoice/send welcome email during instant checkout: {mail_err}")
-                
-                from django.contrib.auth import login
-                user = create_or_link_django_user(agent)
-                from apps.distributors.views.dashboard import is_distributor
-                if not (request.user.is_authenticated and is_distributor(request.user)):
-                    login(request, user)
-                
-                request.session.pop('current_draft_id', None)
-                request.session.pop('reg_step', None)
-                request.session.pop('ref_code', None)
-                
-                redirect_url = reverse('agents:agent_dashboard')
-                if request.user.is_authenticated and is_distributor(request.user):
-                    redirect_url = reverse('distributors:agents_index')
 
-                return JsonResponse({
-                    'success': True,
-                    'message': 'Registration completed successfully! Welcome to PadosiAgent.',
-                    'redirect_url': redirect_url,
-                })
+                instant_complete = True
     except Exception as db_err:
         logger.error(f"Database transaction error in agent_register_complete: {db_err}")
         return JsonResponse({
@@ -1482,23 +1700,43 @@ def agent_register_complete(request):
             'message': 'Database error occurred. Please try again.'
         }, status=500)
 
-    return JsonResponse({
-        'success': True,
-        'payment_required': True if amount_paise > 0 else False,
-        'razorpay_order_id': razorpay_order_id,
-        'razorpay_key_id': settings.RAZORPAY_KEY,
-        'amount_paise': amount_paise,
-        'order_id': razorpay_order_id,
-        'amount': amount_paise,
-        'key': settings.RAZORPAY_KEY,
+    if instant_complete:
+        from apps.distributors.views.dashboard import is_distributor
+        try:
+            user = create_or_link_django_user(agent)
+            login_agent_user(request, user)
+        except Exception as login_err:
+            logger.error(f"Instant checkout login failed for agent {getattr(agent, 'id', None)}: {login_err}")
+
+        request.session.pop('current_draft_id', None)
+        request.session.pop('reg_step', None)
+        request.session.pop('ref_code', None)
+        request.session.pop('pending_checkout', None)
+
+        redirect_url = reverse('agents:agent_dashboard')
+        if request.user.is_authenticated and is_distributor(request.user):
+            redirect_url = reverse('distributors:agents_index')
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Registration completed successfully! Welcome to PadosiAgent.',
+            'redirect_url': redirect_url,
+        })
+
+    request.session['pending_checkout'] = {
         'agent_id': agent.id,
-        'customer_name': agent.fullname,
-        'customer_email': agent.email,
-        'customer_phone': agent.mobile,
-        'name': agent.fullname,
-        'email': agent.email,
-        'mobile': agent.mobile,
-    })
+        'order_id': razorpay_order_id,
+        'plan_type': plan_type,
+        'plan_name': plan_name,
+    }
+    request.session.modified = True
+
+    return JsonResponse(checkout_payload(
+        razorpay_order_id,
+        amount_paise,
+        agent,
+        is_mock=mock_checkout,
+    ))
 
 
 @require_POST
@@ -1512,88 +1750,102 @@ def payment_success(request):
     except json.JSONDecodeError:
         data = request.POST
 
+    pending = request.session.get('pending_checkout') or {}
     razorpay_payment_id = data.get('razorpay_payment_id')
-    razorpay_order_id = data.get('razorpay_order_id')
+    razorpay_order_id = data.get('razorpay_order_id') or pending.get('order_id')
     razorpay_signature = data.get('razorpay_signature')
-    agent_id = data.get('agent_id')
-    plan_type = resolve_checkout_plan_slug(data.get('plan_type'), data.get('plan_name'))
-    plan_name = data.get('plan_name')
+    agent_id = data.get('agent_id') or pending.get('agent_id')
+    plan_name = data.get('plan_name') or pending.get('plan_name')
+    plan_type = resolve_checkout_plan_slug(
+        data.get('plan_type') or pending.get('plan_type'),
+        plan_name,
+    )
 
-    import razorpay
-    from django.conf import settings
-    from apps.agents.models import Agent, AgentSubscription
+    from apps.agents.models import Agent, AgentSubscription, Invoice
     from apps.home.models import SiteSetting
     from apps.admin_panel.models.referral_code import ReferralCode
     from apps.admin_panel.models.referral_usage import ReferralUsage
+    from apps.distributors.views.dashboard import is_distributor
 
-    # Idempotency guard: if subscription or invoice for this order is already completed, log in and return success
-    from apps.agents.models import Agent, AgentSubscription, Invoice
     if razorpay_order_id:
         existing_sub = AgentSubscription.objects.filter(
             razorpay_order_id=razorpay_order_id,
             payment_status='completed'
         ).first()
-        existing_invoice = Invoice.objects.filter(razorpay_order_id=razorpay_order_id).first()
-        
+        existing_invoice = Invoice.objects.filter(
+            razorpay_order_id=razorpay_order_id,
+            payment_status='paid',
+        ).first()
+
         if existing_sub or existing_invoice:
-            from django.contrib.auth import login
             agent_obj = existing_sub.agent if existing_sub else existing_invoice.agent
-            user = create_or_link_django_user(agent_obj)
-            if not request.user.is_authenticated:
-                login(request, user)
-                
-            # Clear session
+            try:
+                user = create_or_link_django_user(agent_obj)
+                login_agent_user(request, user)
+            except Exception as login_err:
+                logger.error(f"Idempotent payment login failed: {login_err}")
+
             request.session.pop('current_draft_id', None)
             request.session.pop('reg_step', None)
             request.session.pop('ref_code', None)
-            
+            request.session.pop('pending_checkout', None)
+
             return JsonResponse({
                 'success': True,
                 'message': 'Payment already processed successfully.',
                 'redirect_url': reverse('agents:agent_dashboard'),
             })
 
-    # Verify signature securely and fetch payment details for anti-tampering amount validation
-    if not razorpay_signature:
-        return JsonResponse({'success': False, 'message': 'Payment signature is missing. Cannot verify transaction.'}, status=400)
-
-    try:
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
-
-        # 1. Verify Payment Signature
-        client.utility.verify_payment_signature({
-            'razorpay_order_id': razorpay_order_id,
-            'razorpay_payment_id': razorpay_payment_id,
-            'razorpay_signature': razorpay_signature
-        })
-
-        # 2. Fetch Payment Entity from Razorpay API
-        payment_info = client.payment.fetch(razorpay_payment_id)
-        payment_status = payment_info.get('status')
-        paid_amount_paise = payment_info.get('amount')
-
-        if payment_status not in ('authorized', 'captured'):
-            logger.error(f"Razorpay Payment {razorpay_payment_id} status is {payment_status} — rejecting activation.")
-            return JsonResponse({'success': False, 'message': 'Payment is not completed.'}, status=400)
-
-        # 3. Retrieve Subscription to Verify Price
+    mock_checkout = is_mock_payment(razorpay_order_id, razorpay_signature)
+    if mock_checkout:
         subscription = AgentSubscription.objects.filter(razorpay_order_id=razorpay_order_id).first()
         if not subscription:
-            logger.error(f"No subscription found matching Razorpay Order {razorpay_order_id}")
+            logger.error(f"No subscription found matching mock Razorpay Order {razorpay_order_id}")
             return JsonResponse({'success': False, 'message': 'Invalid transaction ID.'}, status=400)
+        if not razorpay_payment_id:
+            razorpay_payment_id = mock_payment_id()
+        if not razorpay_signature:
+            razorpay_signature = MOCK_SIGNATURE
+        logger.warning('DEBUG mock payment verify order=%s', razorpay_order_id)
+    else:
+        if not razorpay_signature:
+            return JsonResponse({'success': False, 'message': 'Payment signature is missing. Cannot verify transaction.'}, status=400)
 
-        expected_amount_paise = _expected_amount_paise(subscription.registration_amount)
-        if paid_amount_paise != expected_amount_paise:
-            logger.critical(
-                f"POTENTIAL PRICE TAMPERING DETECTED! "
-                f"Agent ID: {agent_id}, Paid: {paid_amount_paise} paise, Expected: {expected_amount_paise} paise. "
-                f"Razorpay Payment ID: {razorpay_payment_id}"
-            )
-            return JsonResponse({'success': False, 'message': 'Payment validation failed: Amount mismatch.'}, status=400)
+        try:
+            import razorpay
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
 
-    except Exception as e:
-        logger.error(f"Razorpay Signature/Amount Verification Failed: {str(e)}")
-        return JsonResponse({'success': False, 'message': f'Security verification failed: {str(e)}'}, status=400)
+            client.utility.verify_payment_signature({
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature
+            })
+
+            payment_info = client.payment.fetch(razorpay_payment_id)
+            payment_status = payment_info.get('status')
+            paid_amount_paise = payment_info.get('amount')
+
+            if payment_status not in ('authorized', 'captured'):
+                logger.error(f"Razorpay Payment {razorpay_payment_id} status is {payment_status} — rejecting activation.")
+                return JsonResponse({'success': False, 'message': 'Payment is not completed.'}, status=400)
+
+            subscription = AgentSubscription.objects.filter(razorpay_order_id=razorpay_order_id).first()
+            if not subscription:
+                logger.error(f"No subscription found matching Razorpay Order {razorpay_order_id}")
+                return JsonResponse({'success': False, 'message': 'Invalid transaction ID.'}, status=400)
+
+            expected_amount_paise = _expected_amount_paise(subscription.registration_amount)
+            if not _paise_amounts_match(paid_amount_paise, expected_amount_paise):
+                logger.critical(
+                    f"POTENTIAL PRICE TAMPERING DETECTED! "
+                    f"Agent ID: {agent_id}, Paid: {paid_amount_paise} paise, Expected: {expected_amount_paise} paise. "
+                    f"Razorpay Payment ID: {razorpay_payment_id}"
+                )
+                return JsonResponse({'success': False, 'message': 'Payment validation failed: Amount mismatch.'}, status=400)
+
+        except Exception as e:
+            logger.error(f"Razorpay Signature/Amount Verification Failed: {str(e)}")
+            return JsonResponse({'success': False, 'message': f'Security verification failed: {str(e)}'}, status=400)
 
     from django.db import transaction
 
@@ -1709,29 +1961,69 @@ def payment_success(request):
             except Exception as mail_err:
                 logger.error(f"Failed to generate invoice/send welcome email during checkout completion: {mail_err}")
 
-            from django.contrib.auth import login
+        try:
             user = create_or_link_django_user(agent)
-            from apps.distributors.views.dashboard import is_distributor
-            if not (request.user.is_authenticated and is_distributor(request.user)):
-                login(request, user)
+            login_agent_user(request, user)
+        except Exception as login_err:
+            logger.error(f"Payment success login failed for agent {getattr(agent, 'id', None)}: {login_err}")
 
-            request.session.pop('current_draft_id', None)
-            request.session.pop('reg_step', None)
-            request.session.pop('ref_code', None)
+        request.session.pop('current_draft_id', None)
+        request.session.pop('reg_step', None)
+        request.session.pop('ref_code', None)
+        request.session.pop('pending_checkout', None)
 
-            redirect_url = reverse('agents:agent_dashboard')
-            if request.user.is_authenticated and is_distributor(request.user):
-                redirect_url = reverse('distributors:agents_index')
+        redirect_url = reverse('agents:agent_dashboard')
+        if request.user.is_authenticated and is_distributor(request.user):
+            redirect_url = reverse('distributors:agents_index')
 
-            return JsonResponse({
-                'success': True,
-                'message': 'Payment successful and account activated.',
-                'redirect_url': redirect_url,
-            })
+        return JsonResponse({
+            'success': True,
+            'message': 'Payment successful and account activated.',
+            'redirect_url': redirect_url,
+        })
     except Exception as e:
         logger.error(f"Error activating account in payment_success: {str(e)}")
         return JsonResponse({'success': False, 'message': 'Failed to activate agent account.'}, status=500)
 
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def payment_callback(request):
+    """
+    Razorpay redirect landing page for netbanking/UPI.
+    Checkout handler often never runs after the bank redirect.
+    """
+    payload = _razorpay_callback_payload(request)
+    logger.info(
+        'Razorpay payment callback order=%s payment=%s has_signature=%s',
+        payload.get('razorpay_order_id'),
+        payload.get('razorpay_payment_id'),
+        bool(payload.get('razorpay_signature')),
+    )
+
+    recovered_url = _recover_pending_razorpay_checkout(request, payload, retry=True)
+    if recovered_url:
+        return redirect(recovered_url)
+
+    if payload.get('razorpay_signature') and payload.get('razorpay_payment_id') and payload.get('razorpay_order_id'):
+        if not is_mock_payment(payload.get('razorpay_order_id'), payload.get('razorpay_signature')):
+            try:
+                import razorpay
+                client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
+                client.utility.verify_payment_signature({
+                    'razorpay_order_id': payload['razorpay_order_id'],
+                    'razorpay_payment_id': payload['razorpay_payment_id'],
+                    'razorpay_signature': payload['razorpay_signature'],
+                })
+            except Exception as sig_err:
+                logger.error('Razorpay callback signature failed: %s', sig_err)
+                return redirect('agents:chooseplan')
+        recovered_url = _recover_pending_razorpay_checkout(request, payload, retry=True)
+        if recovered_url:
+            return redirect(recovered_url)
+
+    logger.warning('Razorpay callback could not complete order=%s', payload.get('razorpay_order_id'))
+    return redirect('agents:chooseplan')
 
 
 @require_POST
@@ -1942,25 +2234,58 @@ def payment_failure(request):
             data = request.POST
 
         agent_id = data.get('agent_id')
+        order_id = data.get('razorpay_order_id')
         from apps.agents.models import Agent, AgentSubscription
 
-        agent = Agent.objects.filter(pk=agent_id).first()
-        if agent:
+        agent = Agent.objects.filter(pk=agent_id).first() if agent_id else None
+        subscription = None
+        if order_id:
+            subscription = AgentSubscription.objects.filter(razorpay_order_id=order_id).first()
+            if subscription and not agent:
+                agent = subscription.agent
+        if not subscription and agent:
             subscription = AgentSubscription.objects.filter(
                 agent=agent,
                 payment_status='pending'
             ).order_by('-created_at').first()
 
-            if subscription:
-                subscription.payment_status = 'failed'
-                subscription.save()
+        if subscription:
+            # Netbanking/UPI often fire a client "failed" event while the bank
+            # payment is still in progress. Never mark failed in that case.
+            error = data.get('error') if isinstance(data.get('error'), dict) else {}
+            if _is_in_progress_razorpay_error(error):
+                logger.info(
+                    'Ignoring in-progress Razorpay failure for order %s step=%s',
+                    order_id, error.get('step'),
+                )
+                return JsonResponse({
+                    'success': True,
+                    'ignored': True,
+                    'message': 'Payment still in progress.',
+                })
 
+            agent = agent or subscription.agent
+            if agent and verify_and_activate_pending_payment(agent):
+                return JsonResponse({
+                    'success': True,
+                    'already_completed': True,
+                    'message': 'Payment already captured.',
+                    'redirect_url': reverse('agents:agent_dashboard'),
+                })
+
+            if subscription.payment_status != 'completed':
+                logger.info(
+                    'Razorpay client failure logged for order %s; leaving subscription pending',
+                    order_id or subscription.razorpay_order_id,
+                )
+
+        if agent and agent.status not in ('active', 'pending_approval'):
             agent.status = 'pending_payment'
-            agent.save()
+            agent.save(update_fields=['status'])
         return JsonResponse({
             'success': True,
             'message': 'Payment failure logged.',
-            'redirect_url': f"{reverse('agents:agent_register_failed')}?agent_id={agent_id or ''}"
+            'redirect_url': f"{reverse('agents:agent_register_failed')}?agent_id={agent.id if agent else ''}"
         })
     except Exception as e:
         logger.error(f"PAYMENT FAILURE LOG ERR: {e}")
@@ -2036,7 +2361,7 @@ def razorpay_webhook(request):
             # Verify amount paid matches subscription amount to prevent tampering
             paid_amount_paise = payment.get('amount')
             expected_amount_paise = _expected_amount_paise(subscription.registration_amount)
-            if paid_amount_paise != expected_amount_paise:
+            if not _paise_amounts_match(paid_amount_paise, expected_amount_paise):
                 logger.critical(
                     f"[Webhook] PRICE TAMPERING DETECTED! "
                     f"Order: {order_id}, Paid: {paid_amount_paise} paise, Expected: {expected_amount_paise} paise."
