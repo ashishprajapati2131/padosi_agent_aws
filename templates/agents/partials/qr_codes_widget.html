@@ -7,12 +7,13 @@
     </div>
     <div class="pa-qr-dock-row">
         {% for item in qr_items %}
-        <div class="pa-qr-mini">
+        <div class="pa-qr-mini pa-qr-mini--{{ item.type }}">
+            <div class="pa-qr-mini-accent" aria-hidden="true"></div>
             <div class="pa-qr-hover">
-                <img src="{{ item.preview_url }}" alt="{{ item.label }} QR code" class="pa-qr-mini-img">
+                <img src="{{ item.preview_url }}" alt="{{ item.label }} QR code" class="pa-qr-mini-img" loading="lazy">
                 <div class="pa-qr-hover-actions">
                     <button type="button" class="pa-qr-chip pa-qr-view-btn" title="View" aria-label="View {{ item.label }} QR"
-                        data-src="{{ item.preview_url }}" data-label="{{ item.label }}" data-download="{{ item.download_url }}">
+                        data-src="{{ item.preview_url }}" data-label="{{ item.label }}">
                         <i class="fas fa-eye"></i>
                     </button>
                     {% if qr_allow_download %}
@@ -26,7 +27,17 @@
                     </button>
                 </div>
             </div>
-            <div class="pa-qr-mini-label">{{ item.label }}</div>
+            <div class="pa-qr-mini-foot">
+                <span class="pa-qr-mini-label">{{ item.label }}</span>
+                <div class="pa-qr-mini-social">
+                    <a class="pa-soc pa-soc-wa" href="{{ item.whatsapp_url }}" target="_blank" rel="noopener" title="Share on WhatsApp" aria-label="Share {{ item.label }} on WhatsApp">
+                        <i class="fab fa-whatsapp"></i>
+                    </a>
+                    <button type="button" class="pa-soc pa-soc-ig pa-ig-copy" data-copy="{{ item.target_url }}" title="Copy link for Instagram" aria-label="Copy {{ item.label }} link for Instagram">
+                        <i class="fab fa-instagram"></i>
+                    </button>
+                </div>
+            </div>
         </div>
         {% endfor %}
     </div>
@@ -34,8 +45,8 @@
 
 <div class="modal fade" id="qrPreviewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered pa-qr-preview-dialog">
-        <div class="modal-content border-0 shadow" style="border-radius:16px;overflow:hidden;background:#0f172a;">
-            <div class="d-flex justify-content-between align-items-center px-3 py-2" style="color:#fff;">
+        <div class="modal-content border-0 shadow pa-qr-preview-shell">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2 pa-qr-preview-head">
                 <strong id="qrPreviewLabel" style="font-size:14px;">QR code</strong>
                 <button type="button" class="btn text-white p-0" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
                     <span style="font-size:22px;">&times;</span>
@@ -93,6 +104,13 @@
                 return;
             }
             copyText(url).then(function() { toast(label + ' link copied'); });
+        });
+    });
+    document.querySelectorAll('.pa-qr-dock .pa-ig-copy').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            copyText(btn.getAttribute('data-copy') || '').then(function() {
+                toast('Link copied — open Instagram to share');
+            });
         });
     });
 })();

@@ -21,10 +21,14 @@
                 <h6 class="pa-review-section-title">Share your QR codes</h6>
                 <div class="pa-qr-popup-grid">
                     {% for item in qr_items %}
-                    <div class="pa-qr-popup-item">
+                    <div class="pa-qr-popup-item pa-qr-mini--{{ item.type }}">
                         <div class="pa-qr-hover">
-                            <img src="{{ item.preview_url }}" alt="{{ item.label }} QR" class="pa-qr-popup-thumb">
+                            <img src="{{ item.preview_url }}" alt="{{ item.label }} QR" class="pa-qr-popup-thumb" loading="lazy">
                             <div class="pa-qr-hover-actions">
+                                <button type="button" class="pa-qr-chip pa-qr-view-btn" title="View" aria-label="View {{ item.label }} QR"
+                                    data-src="{{ item.preview_url }}" data-label="{{ item.label }}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
                                 {% if qr_allow_download %}
                                 <a class="pa-qr-chip" href="{{ item.download_url }}" title="Download" aria-label="Download {{ item.label }} QR">
                                     <i class="fas fa-download"></i>
@@ -131,6 +135,23 @@
                 return;
             }
             copyText(url).then(function() { toast(label + ' link copied'); });
+        });
+    });
+    document.querySelectorAll('#reviewShareModal .pa-qr-view-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var src = btn.getAttribute('data-src') || '';
+            var label = btn.getAttribute('data-label') || 'QR code';
+            var img = document.getElementById('qrPreviewImg');
+            var title = document.getElementById('qrPreviewLabel');
+            if (img) img.src = src;
+            if (title) title.textContent = label;
+            var el = document.getElementById('qrPreviewModal');
+            if (!el) return;
+            if (typeof $ !== 'undefined' && $.fn.modal) {
+                $('#qrPreviewModal').modal('show');
+            } else if (typeof bootstrap !== 'undefined') {
+                new bootstrap.Modal(el).show();
+            }
         });
     });
     var later = document.getElementById('reviewShareLaterBtn');
