@@ -472,7 +472,7 @@
 
 <hr class="my-5">
 
-<form method="POST" action="{% url 'admin_content_plans_update_qr_service' %}">
+<form method="POST" action="{% url 'admin_content_plans' %}update-qr-service/">
     {% csrf_token %}
     <div class="plan-editor-card mb-4" style="border-top: 4px solid #1d7d5d;">
         <div class="plan-editor-header bg-white py-3">
@@ -495,7 +495,7 @@
     </div>
 </form>
 
-<form method="POST" action="{% url 'admin_content_plans_update_review_growth' %}">
+<form method="POST" action="{% url 'admin_content_plans' %}update-review-growth/">
     {% csrf_token %}
     <div class="plan-editor-card mb-4" style="border-top: 4px solid #f59e0b;">
         <div class="plan-editor-header bg-white py-3">
