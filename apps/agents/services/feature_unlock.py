@@ -73,6 +73,10 @@ FEATURE_ATTR_MAP = {
     'agent_directory_visibility': ['is_listed_in_directory'],
     'receive_leads': ['show_new_business_leads'],
     'premium_support': ['premium_priority_support'],
+    'visibility_aio': ['show_visibility_aio'],
+    'visibility_geo': ['show_visibility_geo'],
+    'visibility_seo': ['show_visibility_seo'],
+    'visibility_priority_ranking': ['show_visibility_priority_ranking'],
 }
 
 FEATURE_LABELS = {
@@ -99,6 +103,10 @@ FEATURE_LABELS = {
     'edit_profile_claim_support': 'Claim Support',
     'edit_profile_companies': 'Companies',
     'legacy_lead_status': 'Lead Status',
+    'visibility_aio': 'More Visibility: AIO',
+    'visibility_geo': 'More Visibility: GEO',
+    'visibility_seo': 'More Visibility: SEO',
+    'visibility_priority_ranking': 'More Visibility: Priority Ranking',
 }
 
 NUMERIC_OPS = ('gte', 'gt', 'lte', 'lt', 'eq')

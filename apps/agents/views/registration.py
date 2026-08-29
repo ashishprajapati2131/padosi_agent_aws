@@ -36,9 +36,11 @@ from apps.agents.services.razorpay_checkout import (
     MOCK_SIGNATURE,
     checkout_payload,
     create_checkout_order,
+    gateway_failure_message,
     is_mock_payment,
     login_agent_user,
     mock_payment_id,
+    razorpay_client,
 )
 
 logger = logging.getLogger(__name__)
@@ -1279,8 +1281,6 @@ def verify_and_activate_pending_payment(agent):
     Directly query Razorpay to verify if the pending order has a captured/authorized payment,
     and activate the subscription/registration atomically and idempotently.
     """
-    import razorpay
-    from django.conf import settings
     from django.utils import timezone
     from django.db import transaction
     from apps.agents.models import AgentSubscription, Invoice, PromoCode
@@ -1298,12 +1298,11 @@ def verify_and_activate_pending_payment(agent):
         logger.info(f"[verify_and_activate_pending_payment] No pending/failed subscription or Razorpay Order ID for {agent.email}")
         return False
 
-    if not (settings.RAZORPAY_KEY and settings.RAZORPAY_SECRET):
-        logger.error("[verify_and_activate_pending_payment] Razorpay keys not configured.")
-        return False
-
     try:
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
+        client = razorpay_client()
+        if client is None:
+            logger.error("[verify_and_activate_pending_payment] Razorpay keys not configured.")
+            return False
         payments = client.order.payments(subscription.razorpay_order_id)
     except Exception as err:
         logger.error(f"[verify_and_activate_pending_payment] Razorpay API call failed: {err}")
@@ -1581,7 +1580,7 @@ def _agent_register_complete_impl(request):
     if not razorpay_order_id and amount_paise > 0:
         return JsonResponse({
             'success': False,
-            'message': 'Payment gateway is not configured correctly. Please try again in a few minutes or contact support.',
+            'message': gateway_failure_message(),
         })
 
     from django.db import transaction
@@ -1837,8 +1836,9 @@ def payment_success(request):
             return JsonResponse({'success': False, 'message': 'Payment signature is missing. Cannot verify transaction.'}, status=400)
 
         try:
-            import razorpay
-            client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
+            client = razorpay_client()
+            if client is None:
+                return JsonResponse({'success': False, 'message': gateway_failure_message()}, status=400)
 
             client.utility.verify_payment_signature({
                 'razorpay_order_id': razorpay_order_id,
@@ -1869,8 +1869,8 @@ def payment_success(request):
                 return JsonResponse({'success': False, 'message': 'Payment validation failed: Amount mismatch.'}, status=400)
 
         except Exception as e:
-            logger.error(f"Razorpay Signature/Amount Verification Failed: {str(e)}")
-            return JsonResponse({'success': False, 'message': f'Security verification failed: {str(e)}'}, status=400)
+            logger.error("Razorpay Signature/Amount Verification Failed: %s", e)
+            return JsonResponse({'success': False, 'message': gateway_failure_message()}, status=400)
 
     from django.db import transaction
 
@@ -2033,8 +2033,10 @@ def payment_callback(request):
     if payload.get('razorpay_signature') and payload.get('razorpay_payment_id') and payload.get('razorpay_order_id'):
         if not is_mock_payment(payload.get('razorpay_order_id'), payload.get('razorpay_signature')):
             try:
-                import razorpay
-                client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
+                client = razorpay_client()
+                if client is None:
+                    logger.error('Razorpay callback skipped: keys missing')
+                    return redirect(f"{reverse('agents:agent_register_failed')}?reason=gateway")
                 client.utility.verify_payment_signature({
                     'razorpay_order_id': payload['razorpay_order_id'],
                     'razorpay_payment_id': payload['razorpay_payment_id'],
@@ -2338,9 +2340,11 @@ def razorpay_webhook(request):
     if received_signature == 'test_signature_skip_verification' and settings.DEBUG:
         logger.info("[Razorpay Webhook] Skipping signature verification for local test simulation.")
     else:
-        import razorpay
         try:
-            client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
+            client = razorpay_client()
+            if client is None:
+                logger.error("[Razorpay Webhook] Razorpay keys not configured.")
+                return HttpResponse('Unable to process webhook.', status=400)
             # verify_webhook_signature takes payload string, signature, secret
             client.utility.verify_webhook_signature(
                 payload.decode('utf-8') if isinstance(payload, bytes) else payload,

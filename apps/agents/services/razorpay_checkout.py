@@ -1,10 +1,17 @@
 """Razorpay order helpers with a DEBUG-only local checkout fallback."""
 import logging
+import os
 import re
 import time
 import uuid
+from pathlib import Path
 
 from django.conf import settings
+from padosi_agent.razorpay_env import (
+    USER_PAYMENT_UNAVAILABLE,
+    clean_razorpay_credential,
+    credential_pair_from_mapping,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -14,17 +21,58 @@ MOCK_SIGNATURE = 'test_signature_skip'
 LOCAL_HOSTS = {'127.0.0.1', 'localhost', '::1', '0.0.0.0'}
 
 
-def clean_razorpay_credential(value):
-    text = str(value or '').replace('\ufeff', '').strip()
-    if len(text) >= 2 and text[0] == text[-1] and text[0] in ('"', "'"):
-        text = text[1:-1].strip()
-    return text
+def _dotenv_file_maps():
+    maps = []
+    try:
+        from dotenv import dotenv_values
+        base = Path(getattr(settings, 'BASE_DIR', '.') or '.')
+    except Exception:
+        return maps
+    for path in (base / '.env', base.parent / '.env'):
+        try:
+            if path.is_file():
+                maps.append(dotenv_values(path) or {})
+        except Exception:
+            logger.warning('Could not read Razorpay env file %s', path)
+    return maps
 
 
-def razorpay_credentials():
-    key = clean_razorpay_credential(getattr(settings, 'RAZORPAY_KEY', None))
-    secret = clean_razorpay_credential(getattr(settings, 'RAZORPAY_SECRET', None))
-    return key, secret
+def razorpay_credentials(file_maps=None, environ=None):
+    """
+    Never mix a key from one source with a secret from another.
+    cPanel live keys plus .env test secrets cause Authentication failed in production.
+    """
+    sources = list(file_maps if file_maps is not None else _dotenv_file_maps())
+    env = environ if environ is not None else os.environ
+    sources.append(env)
+    sources.append({
+        'RAZORPAY_KEY': getattr(settings, 'RAZORPAY_KEY', ''),
+        'RAZORPAY_SECRET': getattr(settings, 'RAZORPAY_SECRET', ''),
+        'RAZORPAY_KEY_ID': getattr(settings, 'RAZORPAY_KEY_ID', ''),
+        'RAZORPAY_KEY_SECRET': getattr(settings, 'RAZORPAY_KEY_SECRET', ''),
+    })
+    for mapping in sources:
+        key, secret = credential_pair_from_mapping(mapping)
+        if key and secret:
+            return key, secret
+    return '', ''
+
+
+def razorpay_client():
+    key, secret = razorpay_credentials()
+    if not key or not secret:
+        return None
+    try:
+        import razorpay
+    except ImportError:
+        logger.error('razorpay package is not installed')
+        return None
+    return razorpay.Client(auth=(key, secret))
+
+
+def gateway_failure_message():
+    logger.error('Payment checkout is unavailable (mode=%s)', razorpay_key_mode())
+    return USER_PAYMENT_UNAVAILABLE
 
 
 def razorpay_key_mode():
@@ -93,12 +141,10 @@ def create_checkout_order(amount_paise, receipt, request):
         )
         return order_id, True
     try:
-        import razorpay
-        key, secret = razorpay_credentials()
-        if not key or not secret:
+        client = razorpay_client()
+        if client is None:
             logger.error('Razorpay keys are missing; cannot create order')
             return None, False
-        client = razorpay.Client(auth=(key, secret))
         order = client.order.create({
             'amount': amount_paise,
             'currency': 'INR',

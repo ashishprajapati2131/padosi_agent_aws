@@ -1,0 +1,100 @@
+{% if qr_service_enabled and qr_items %}
+<div class="pa-qr-dock">
+    <div class="pa-qr-dock-intro">
+        <span class="pa-qr-dock-badge"><i class="fas fa-qrcode"></i> Share QR</span>
+        <strong>Your codes</strong>
+        <span>Profile · Card · Reviews</span>
+    </div>
+    <div class="pa-qr-dock-row">
+        {% for item in qr_items %}
+        <div class="pa-qr-mini">
+            <div class="pa-qr-hover">
+                <img src="{{ item.preview_url }}" alt="{{ item.label }} QR code" class="pa-qr-mini-img">
+                <div class="pa-qr-hover-actions">
+                    <button type="button" class="pa-qr-chip pa-qr-view-btn" title="View" aria-label="View {{ item.label }} QR"
+                        data-src="{{ item.preview_url }}" data-label="{{ item.label }}" data-download="{{ item.download_url }}">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    {% if qr_allow_download %}
+                    <a class="pa-qr-chip" href="{{ item.download_url }}" title="Download" aria-label="Download {{ item.label }} QR">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    {% endif %}
+                    <button type="button" class="pa-qr-chip pa-qr-share-btn" title="Share" aria-label="Share {{ item.label }} QR"
+                        data-url="{{ item.target_url }}" data-label="{{ item.label }}">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="pa-qr-mini-label">{{ item.label }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="modal fade" id="qrPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered pa-qr-preview-dialog">
+        <div class="modal-content border-0 shadow" style="border-radius:16px;overflow:hidden;background:#0f172a;">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2" style="color:#fff;">
+                <strong id="qrPreviewLabel" style="font-size:14px;">QR code</strong>
+                <button type="button" class="btn text-white p-0" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                    <span style="font-size:22px;">&times;</span>
+                </button>
+            </div>
+            <div class="px-3 pb-3 text-center">
+                <img id="qrPreviewImg" src="" alt="QR code" class="pa-qr-preview-img">
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text);
+        }
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        return Promise.resolve();
+    }
+    function toast(msg) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ toast: true, position: 'top-end', timer: 2200, showConfirmButton: false, icon: 'success', title: msg });
+        }
+    }
+    function openPreview(src, label) {
+        var img = document.getElementById('qrPreviewImg');
+        var title = document.getElementById('qrPreviewLabel');
+        if (img) img.src = src || '';
+        if (title) title.textContent = label || 'QR code';
+        var el = document.getElementById('qrPreviewModal');
+        if (!el) return;
+        if (typeof $ !== 'undefined' && $.fn.modal) {
+            $('#qrPreviewModal').modal('show');
+        } else if (typeof bootstrap !== 'undefined') {
+            new bootstrap.Modal(el).show();
+        }
+    }
+    document.querySelectorAll('.pa-qr-dock .pa-qr-view-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            openPreview(btn.getAttribute('data-src'), btn.getAttribute('data-label'));
+        });
+    });
+    document.querySelectorAll('.pa-qr-dock .pa-qr-share-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var url = btn.getAttribute('data-url') || '';
+            var label = btn.getAttribute('data-label') || 'QR';
+            if (navigator.share) {
+                navigator.share({ title: 'PadosiAgent ' + label, text: 'I am on PadosiAgent. Scan my ' + label + ' QR.', url: url }).catch(function() {});
+                return;
+            }
+            copyText(url).then(function() { toast(label + ' link copied'); });
+        });
+    });
+})();
+</script>
+{% endif %}

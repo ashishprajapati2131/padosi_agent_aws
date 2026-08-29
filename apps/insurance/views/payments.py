@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.conf import settings
 from django.db import transaction
+import logging
 import random, string, datetime
 
 # Optional razorpay import
@@ -17,6 +18,9 @@ except ImportError:
     razorpay = None
 
 from apps.insurance.decorators import insurance_manager_or_accounts_required
+from padosi_agent.razorpay_env import USER_PAYMENT_UNAVAILABLE
+
+logger = logging.getLogger(__name__)
 
 @login_required
 @insurance_manager_or_accounts_required
@@ -139,9 +143,10 @@ def create_razorpay_order(request, agent_id):
             razorpay_order = client.order.create(data=order_data)
             order_id = razorpay_order['id']
         except Exception as e:
-            return JsonResponse({'success': False, 'message': f'Razorpay API failure: {str(e)}'}, status=500)
+            logger.error('Insurance Razorpay order failed: %s', e)
+            return JsonResponse({'success': False, 'message': USER_PAYMENT_UNAVAILABLE}, status=500)
     elif not is_test_key and key:
-        return JsonResponse({'success': False, 'message': 'Payment gateway keys are not configured.'}, status=500)
+        return JsonResponse({'success': False, 'message': USER_PAYMENT_UNAVAILABLE}, status=500)
 
     return JsonResponse({
         'success': True,
@@ -170,7 +175,7 @@ def handle_payment_success(request, agent_id):
 
     if not is_mock_payment:
         if not (key and secret and razorpay):
-            return JsonResponse({'success': False, 'message': 'Payment gateway is not configured on the server.'}, status=500)
+            return JsonResponse({'success': False, 'message': USER_PAYMENT_UNAVAILABLE}, status=500)
 
         client = razorpay.Client(auth=(key, secret))
         try:

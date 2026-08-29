@@ -1,0 +1,28 @@
+{% if show_starter_upgrade_cta %}
+<div class="pa-upgrade-banner">
+    <div class="row align-items-center position-relative">
+        <div class="col-lg-8">
+            <span style="background:rgba(255,255,255,0.18);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:800;letter-spacing:.04em;">UPGRADE UNLOCKED</span>
+            <h4 class="mt-3 mb-2" style="font-weight:800;color:#fff;">{{ review_growth.upgrade_title }}</h4>
+            <p class="mb-0" style="color:rgba(255,255,255,.95);font-size:14.5px;line-height:1.55;">{{ review_growth.upgrade_message }}</p>
+            <div class="d-flex flex-wrap mt-3" style="gap:8px;">
+                <span style="background:rgba(255,255,255,.15);border-radius:99px;padding:4px 10px;font-size:12px;font-weight:700;">AIO</span>
+                <span style="background:rgba(255,255,255,.15);border-radius:99px;padding:4px 10px;font-size:12px;font-weight:700;">GEO</span>
+                <span style="background:rgba(255,255,255,.15);border-radius:99px;padding:4px 10px;font-size:12px;font-weight:700;">SEO</span>
+                <span style="background:rgba(255,255,255,.15);border-radius:99px;padding:4px 10px;font-size:12px;font-weight:700;">Priority Ranking</span>
+            </div>
+        </div>
+        <div class="col-lg-4 mt-4 mt-lg-0">
+            <button type="button" onclick="openUpgradeModal('professional', '{{ profDisc }}')" class="btn w-100" style="background:#fff;color:#1e3a8a;border-radius:16px;padding:16px 18px;font-weight:800;border:none;">
+                <div style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;opacity:.75;">Professional plan</div>
+                <div style="font-size:1.4rem;line-height:1.2;">
+                    ₹{{ profDisc|floatformat:0 }}
+                    {% if profFull %}
+                    <span style="font-size:13px;text-decoration:line-through;opacity:.45;font-weight:500;margin-left:6px;">₹{{ profFull|floatformat:0 }}</span>
+                    {% endif %}
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}

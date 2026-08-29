@@ -11,6 +11,7 @@ from apps.home.services.portal_messages import PORTAL_AGENT, portal_error
 from django.utils import timezone
 from django.db.models import Sum, Q, Avg
 from django.http import JsonResponse
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentLead, AgentProfileView, AgentInsuranceSegment, City, AgentDeviceToken, FavoriteAgent
@@ -55,6 +56,10 @@ class PlanFeatureProxy:
       agent_directory_visibility → is_listed_in_directory
       receive_leads         → show_new_business_leads
       premium_support       → premium_priority_support
+      visibility_aio        → show_visibility_aio
+      visibility_geo        → show_visibility_geo
+      visibility_seo        → show_visibility_seo
+      visibility_priority_ranking → show_visibility_priority_ranking
     """
     # Maps feature slug → list of show_* attr names it enables
     FEATURE_MAP = FEATURE_ATTR_MAP
@@ -143,7 +148,12 @@ def _resolve_agent_plan(plan_type, agent=None):
     base = _resolve_base_agent_plan(plan_type)
     if base is None or agent is None:
         return base
-    extra = evaluate_unlock_rules(agent, normalize_plan_slug(plan_type))
+    extra = set(evaluate_unlock_rules(agent, normalize_plan_slug(plan_type)))
+    try:
+        from apps.agents.services.review_growth import extra_unlock_attrs
+        extra |= extra_unlock_attrs(agent)
+    except Exception:
+        logger.exception('Review-growth unlock overlay failed')
     return overlay_plan(base, extra)
 
 
@@ -342,11 +352,50 @@ def agent_dashboard(request):
     except Exception:
         unread_notifications_json = '[]'
     try:
-        feature_unlock_hints_json = json_dumps(
-            build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
-        )
+        feature_unlock_hints = build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
+        from apps.agents.services.review_growth import build_review_growth_hints
+        feature_unlock_hints.update(build_review_growth_hints(agent))
+        feature_unlock_hints_json = json_dumps(feature_unlock_hints)
     except Exception:
         feature_unlock_hints_json = '[]'
+
+    from urllib.parse import quote
+    from apps.agents.services.qr_branded import build_qr_target_url
+    from apps.agents.services.review_growth import (
+        QR_TYPE_LABELS,
+        QR_TYPES,
+        agent_review_count,
+        get_qr_config,
+        get_review_growth_config,
+        should_show_popup,
+        should_show_upgrade_cta,
+    )
+
+    qr_cfg = get_qr_config()
+    growth_cfg = get_review_growth_config()
+    slug = (profile.slug if profile and profile.slug else '') or getattr(agent, 'agent_slug', '') or str(agent.id)
+    profile_url = request.build_absolute_uri(
+        reverse('agents:agent_public_profile', kwargs={'slug': slug})
+    ) if slug else request.build_absolute_uri('/')
+    share_text = (
+        f"I'm now on PadosiAgent — India's trusted insurance agent network. "
+        f"View my profile and leave a review: {profile_url}"
+    )
+    qr_items = []
+    if qr_cfg.get('enabled') and slug:
+        for qr_type in QR_TYPES:
+            target = build_qr_target_url(request, agent, qr_type)
+            qr_items.append({
+                'type': qr_type,
+                'label': QR_TYPE_LABELS[qr_type],
+                'preview_url': reverse('agents:agent_qr_image', kwargs={'qr_type': qr_type}),
+                'download_url': reverse('agents:agent_qr_download', kwargs={'qr_type': qr_type}),
+                'public_png_url': reverse('agents:agent_public_qr_image', kwargs={'slug': slug, 'qr_type': qr_type}),
+                'target_url': target,
+                'whatsapp_url': 'https://api.whatsapp.com/send?text=' + quote(
+                    f"I'm on PadosiAgent. Scan my {QR_TYPE_LABELS[qr_type]}: {target}"
+                ),
+            })
 
     context = {
         'agent_plan': agent_plan,
@@ -369,6 +418,18 @@ def agent_dashboard(request):
         'profDisc': prof_disc,
         'planName': plan_name,
         'feature_unlock_hints_json': feature_unlock_hints_json,
+        'qr_service_enabled': qr_cfg.get('enabled'),
+        'qr_allow_download': qr_cfg.get('allow_download'),
+        'qr_items': qr_items,
+        'show_review_share_popup': should_show_popup(agent),
+        'show_starter_upgrade_cta': should_show_upgrade_cta(agent),
+        'show_visibility_section': growth_cfg.get('visibility_section_enabled', True),
+        'review_growth': growth_cfg,
+        'review_count_display': agent_review_count(agent),
+        'share_profile_url': profile_url,
+        'share_text': share_text,
+        'share_text_encoded': quote(share_text),
+        'share_url_encoded': quote(profile_url, safe=''),
         'fcm_api_key': getattr(settings, 'FCM_API_KEY', ''),
         'fcm_auth_domain': getattr(settings, 'FCM_AUTH_DOMAIN', ''),
         'fcm_project_id': getattr(settings, 'FCM_PROJECT_ID', ''),
@@ -679,7 +740,13 @@ def agent_public_profile(request, slug, state_code=None):
         'socialLinks': social_links,
         'performanceStats': getattr(agent, 'performanceStats', None),
         'leadPreferences': getattr(agent, 'leadPreferences', None),
+        'review_scroll_delay_ms': 3000,
     }
+    try:
+        from apps.agents.services.review_growth import get_review_growth_config
+        context['review_scroll_delay_ms'] = get_review_growth_config()['review_scroll_delay_ms']
+    except Exception:
+        pass
     return render(request, 'agents/profile_view.html', context)
 
 
@@ -1728,7 +1795,11 @@ def agent_upgrade_plan(request):
             })
 
         import time
-        from apps.agents.services.razorpay_checkout import checkout_payload, create_checkout_order
+        from apps.agents.services.razorpay_checkout import (
+            checkout_payload,
+            create_checkout_order,
+            gateway_failure_message,
+        )
 
         amount_paise = int(round(total_amount * 100))
         razorpay_order_id, mock_checkout = create_checkout_order(
@@ -1740,7 +1811,7 @@ def agent_upgrade_plan(request):
         if not razorpay_order_id and amount_paise > 0:
             return JsonResponse({
                 'success': False,
-                'message': 'Payment gateway is not configured correctly. Please try again in a few minutes or contact support.',
+                'message': gateway_failure_message(),
             })
 
         # Update or create AgentSubscription

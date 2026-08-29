@@ -15,12 +15,26 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
+from padosi_agent.razorpay_env import (
+    capture_razorpay_environ,
+    complete_pair_from_env_files,
+    credential_pair_from_mapping,
+    resync_razorpay_environ_after_dotenv,
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load .env file
-load_dotenv(BASE_DIR / '.env', override=True)
+# Snapshot process/cPanel Razorpay vars before dotenv can mix a key from one
+# file with a secret from another.
+_RAZORPAY_ENV_SNAPSHOT = capture_razorpay_environ()
+
+# Parent .env first, then src/.env so the app directory wins on duplicates.
+for _env_path in (BASE_DIR.parent / '.env', BASE_DIR / '.env'):
+    if _env_path.exists():
+        load_dotenv(_env_path, override=True)
+
+resync_razorpay_environ_after_dotenv(BASE_DIR, _RAZORPAY_ENV_SNAPSHOT)
 
 # Use a custom CSRF cookie name for local dev to avoid conflicts with stale Secure cookies
 CSRF_COOKIE_NAME = "padosi_csrf_token"
@@ -260,12 +274,9 @@ def _clean_env_secret(value):
     return text
 
 
-RAZORPAY_KEY = _clean_env_secret(
-    os.environ.get('RAZORPAY_KEY') or os.environ.get('RAZORPAY_KEY_ID') or ''
-)
-RAZORPAY_SECRET = _clean_env_secret(
-    os.environ.get('RAZORPAY_SECRET') or os.environ.get('RAZORPAY_KEY_SECRET') or ''
-)
+RAZORPAY_KEY, RAZORPAY_SECRET = complete_pair_from_env_files(BASE_DIR)
+if not (RAZORPAY_KEY and RAZORPAY_SECRET):
+    RAZORPAY_KEY, RAZORPAY_SECRET = credential_pair_from_mapping(os.environ)
 RAZORPAY_WEBHOOK_SECRET = _clean_env_secret(
     os.environ.get('RAZORPAY_WEBHOOK_SECRET') or ''
 )

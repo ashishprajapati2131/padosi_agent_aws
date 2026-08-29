@@ -319,6 +319,8 @@ urlpatterns = [
     path('admin/content/plans/exclusive/update/', content.update_exclusive_config, name='admin_content_exclusive_plans_update'),
     path('admin/content/plans/update-features/', content.update_plan_features, name='admin_content_plans_update_features'),
     path('admin/content/plans/update-unlock-rules/', content.update_feature_unlock_rules, name='admin_content_plans_update_unlock_rules'),
+    path('admin/content/plans/update-qr-service/', content.update_qr_service, name='admin_content_plans_update_qr_service'),
+    path('admin/content/plans/update-review-growth/', content.update_review_growth, name='admin_content_plans_update_review_growth'),
     path('admin/content/plans/manage-agent/<str:plan_slug>/', content.manage_agent_preview, name='admin_content_plans_manage_agent'),
     path('admin/content/plans/manage-agent/<str:plan_slug>/toggle/', content.manage_agent_toggle, name='admin_content_plans_manage_agent_toggle'),
 

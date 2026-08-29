@@ -1623,7 +1623,7 @@
 {% endblock %}
 
 {% block extra_js %}
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js" data-razorpay-sdk="1"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script>
         var is_upgrade_flow = {{ is_upgrade_flow|yesno:"true,false"|default:"false" }};
@@ -1851,6 +1851,53 @@
             paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
         }
 
+        function isRazorpayReady() {
+            return typeof window.Razorpay === 'function';
+        }
+
+        function loadRazorpayScript(attempt) {
+            return new Promise(function (resolve, reject) {
+                if (isRazorpayReady()) {
+                    resolve(true);
+                    return;
+                }
+                var script = document.createElement('script');
+                script.src = 'https://checkout.razorpay.com/v1/checkout.js?r=' + attempt + '&t=' + Date.now();
+                script.async = true;
+                script.onload = function () { resolve(isRazorpayReady()); };
+                script.onerror = function () {
+                    script.remove();
+                    reject(new Error('sdk_network'));
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        async function ensureRazorpaySdk() {
+            if (isRazorpayReady()) return true;
+            for (var attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    await loadRazorpayScript(attempt);
+                    if (isRazorpayReady()) return true;
+                } catch (err) {
+                    await new Promise(function (resolve) { setTimeout(resolve, 400 * attempt); });
+                }
+            }
+            return isRazorpayReady();
+        }
+
+        ensureRazorpaySdk().catch(function () {});
+
+        function userPaymentMessage(raw) {
+            var generic = "We're unable to process your payment right now. Please try again in a few minutes.";
+            var text = String(raw || '').trim();
+            if (!text) return generic;
+            if (/razorpay|rzp_|matching pair|\.env|api key|secret|authentication failed|gateway.?key|not configured|traceback|exception/i.test(text)) {
+                return generic;
+            }
+            return text;
+        }
+
         async function confirmPayment(source) {
             if (source !== 'pay-button') return;
             if (Date.now() < payClickUnlockAt) return;
@@ -1969,7 +2016,7 @@
                                     error: err
                                 })
                             }).catch(function () {});
-                            Swal.fire('Payment Failed', err.description || 'Transaction failed. Please try again.', 'error');
+                            Swal.fire('Payment Failed', 'We\'re unable to process your payment right now. Please try again in a few minutes.', 'error');
                             resetPayButton(paymentBtn);
                         });
                         rzp1.open();
@@ -1984,11 +2031,11 @@
                     } else if (amountPaise === 0 || !data.payment_required) {
                         window.location.href = data.redirect_url || '/agent/dashboard';
                     } else {
-                        Swal.fire('Payment Error', data.message || 'Unable to start payment checkout.', 'error');
+                        Swal.fire('Payment Error', userPaymentMessage(data.message), 'error');
                         resetPayButton(paymentBtn);
                     }
                 } else {
-                    Swal.fire('Payment Error', data.message || 'Unable to initiate payment.', 'error');
+                    Swal.fire('Payment Error', userPaymentMessage(data.message), 'error');
                     resetPayButton(paymentBtn);
                 }
             } catch (err) {
@@ -2022,7 +2069,7 @@
                         window.location.href = data.redirect_url || '/agent/dashboard';
                     });
                 } else {
-                    Swal.fire('Error', data.message || 'Payment verification failed.', 'error');
+                    Swal.fire('Error', userPaymentMessage(data.message), 'error');
                 }
             } catch {
                 hideLoadingPopup();

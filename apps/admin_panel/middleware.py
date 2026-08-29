@@ -513,6 +513,8 @@ class AdminPermissionMiddleware:
             'admin_content_plans_update_features':      'content',
             'admin_content_exclusive_plans_update':     'content',
             'admin_content_plans_update_unlock_rules':  'content',
+            'admin_content_plans_update_qr_service':    'content',
+            'admin_content_plans_update_review_growth': 'content',
             'admin_content_plans_manage_agent':         'content',
             'admin_content_plans_manage_agent_toggle':  'content',
             'admin_settings_homepage':                  'content',

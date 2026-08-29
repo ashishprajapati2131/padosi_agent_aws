@@ -6,6 +6,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/agent-dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/review-growth.css' %}">
 <style>
 .toggle { width:40px; height:22px; border-radius:11px; background:#cbd5e1; position:relative; cursor:pointer; border:none; transition:.2s; }
 .toggle::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 2px rgba(0,0,0,.1); }
@@ -50,13 +51,15 @@
         </div>
 
         {% if agent.status == 'inactive' or agent.status == 'pending_approval' %}
-        <div class="alert alert-warning d-flex align-items-center mb-4" role="alert" style="background-color: #fffbeb; border-color: #fde68a; color: #92400e; border-radius: 8px;">
+        <div class="alert alert-warning d-flex align-items-center mb-3" role="alert" style="background-color: #fffbeb; border-color: #fde68a; color: #92400e; border-radius: 8px;">
             <i class="fas fa-exclamation-triangle mr-3" style="font-size: 1.25rem;"></i>
             <div>
                 <strong>Profile Pending Approval:</strong> Your registration is complete, but your profile is currently awaiting admin approval. It will become visible in the public agent list once approved.
             </div>
         </div>
         {% endif %}
+
+        {% include 'agents/partials/qr_codes_widget.html' %}
 
         {% if isOnTrial %}
         {# ──────── FREE TRIAL UPGRADE PROMOTION BANNER ──────── #}
@@ -128,8 +131,9 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
-        {# UPGRADE PAYMENT MODAL #}
+        {# UPGRADE PAYMENT MODAL — shared by trial banner and starter review-growth CTA #}
         <div class="modal fade" id="upgradeModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow" style="border-radius:16px;overflow:hidden;">
@@ -147,6 +151,10 @@
                 </div>
             </div>
         </div>
+
+        {% include 'agents/partials/starter_upgrade_banner.html' %}
+        {% if show_visibility_section %}
+        {% include 'agents/partials/visibility_boost.html' %}
         {% endif %}
 
         <!-- Tab Navigation Bar -->
@@ -802,6 +810,7 @@
         </div>
     </div>
 </div>
+{% include 'agents/partials/review_share_popup.html' %}
 {% endblock %}
 
 {% block extra_js %}
@@ -946,6 +955,11 @@
     function openUpgradeModal(planType, planAmount) {
         const planNames = { basic: "Starter's Plan", professional: "Professional's Plan" };
         const content = document.getElementById('upgradeModalContent');
+        if (!content) return;
+
+        const visNote = planType === 'professional'
+            ? `<div class="text-muted mb-3">More visibility: <strong>AIO, GEO, SEO, Priority Ranking</strong> — plus remaining locked dashboard sections.</div>`
+            : `<div class="text-muted mb-3">Full-year access with complete profile visibility</div>`;
 
         const discountBadge = planAmount < (planType === 'basic' ? {{ starterFull|default:2359 }} : {{ profFull|default:8258 }})
             ? `<span style="background:#10b981;color:white;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;" class="mb-2 d-inline-block">{{ discountPct|default:0 }}% OFF Applied</span>`
@@ -955,7 +969,7 @@
             <div style="padding:8px 0;">
                 ${discountBadge}
                 <div class="fw-bold fs-5 mb-1">${planNames[planType]}</div>
-                <div class="text-muted mb-3">Full-year access with complete profile visibility</div>
+                ${visNote}
                 <div style="font-size:2rem;font-weight:800;color:#1e3a6e;">₹${Number(planAmount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
                 <small class="text-muted d-block mb-4">+ 18% GST | Paid via Razorpay</small>
                 <button onclick="initiateUpgradePayment('${planType}', ${planAmount})" class="btn btn-lg w-100 fw-bold text-white" style="background:linear-gradient(135deg,#1e3a6e,#1d7d5d);border-radius:10px;border:0;">
@@ -986,6 +1000,16 @@
         } catch(e) {}
     }
 
+    function userPaymentMessage(raw) {
+        var generic = "We're unable to process your payment right now. Please try again in a few minutes.";
+        var text = String(raw || '').trim();
+        if (!text) return generic;
+        if (/razorpay|rzp_|matching pair|\.env|api key|secret|authentication failed|gateway.?key|not configured|traceback|exception/i.test(text)) {
+            return generic;
+        }
+        return text;
+    }
+
     function initiateUpgradePayment(planType, planAmount) {
         const btn = event.currentTarget;
         btn.disabled = true;
@@ -1002,7 +1026,7 @@
         .then(r => r.json())
         .then(data => {
             if (!data.success) {
-                alert(data.message || 'Could not initiate payment. Please try again.');
+                alert(userPaymentMessage(data.message));
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-lock me-2"></i> Pay Securely & Upgrade';
                 return;
@@ -1031,7 +1055,7 @@
                     if (res.success) {
                         window.location.reload();
                     } else {
-                        alert(res.message || 'Payment verification failed. Please contact support.');
+                        alert(userPaymentMessage(res.message));
                         btn.disabled = false;
                         btn.innerHTML = '<i class="fas fa-lock me-2"></i> Pay Securely & Upgrade';
                     }
@@ -1040,7 +1064,7 @@
             }
 
             if (!data.order_id) {
-                alert('Payment order creation failed. Please contact support.');
+                alert("We're unable to process your payment right now. Please try again in a few minutes.");
                 btn.disabled = false;
                 return;
             }
@@ -1251,13 +1275,20 @@
       leadStatus: {% if not agent_plan or agent_plan.show_lead_status %}true{% else %}false{% endif %},
       editProfileFull: {% if not agent_plan or agent_plan.show_edit_profile_full %}true{% else %}false{% endif %},
       premiumSupport: {% if not agent_plan or agent_plan.premium_priority_support %}true{% else %}false{% endif %},
-      claimSupport: {% if not agent_plan or agent_plan.show_claim_support %}true{% else %}false{% endif %}
+      claimSupport: {% if not agent_plan or agent_plan.show_claim_support %}true{% else %}false{% endif %},
+      visibilityAio: {% if not agent_plan or agent_plan.show_visibility_aio %}true{% else %}false{% endif %},
+      visibilityGeo: {% if not agent_plan or agent_plan.show_visibility_geo %}true{% else %}false{% endif %},
+      visibilitySeo: {% if not agent_plan or agent_plan.show_visibility_seo %}true{% else %}false{% endif %},
+      visibilityPriority: {% if not agent_plan or agent_plan.show_visibility_priority_ranking %}true{% else %}false{% endif %}
     };
 
     function lockReason(name, hintKey) {
       const fragment = (hintKey && featureUnlockHints[hintKey]) || '';
       if (fragment) {
         return 'Unlock ' + name + ' by: ' + fragment;
+      }
+      if (hintKey && String(hintKey).indexOf('show_visibility') === 0) {
+        return 'Upgrade to Professional for AIO, GEO, SEO & Priority Ranking.';
       }
       return name + ' is set to private by the administrator.';
     }
@@ -1325,6 +1356,19 @@
     // Add lock for the profile section visibility card if restricted
     if (!planPermissions.profileSection) {
       lockSection($('.profile-visibility-content'), "Profile Section Visibility", "show_profile_section");
+    }
+
+    if (!planPermissions.visibilityAio) {
+      lockSection($('.pa-vis-tile[data-feature="visibility_aio"]'), "AIO Visibility", "show_visibility_aio");
+    }
+    if (!planPermissions.visibilityGeo) {
+      lockSection($('.pa-vis-tile[data-feature="visibility_geo"]'), "GEO Visibility", "show_visibility_geo");
+    }
+    if (!planPermissions.visibilitySeo) {
+      lockSection($('.pa-vis-tile[data-feature="visibility_seo"]'), "SEO Visibility", "show_visibility_seo");
+    }
+    if (!planPermissions.visibilityPriority) {
+      lockSection($('.pa-vis-tile[data-feature="visibility_priority_ranking"]'), "Priority Ranking", "show_visibility_priority_ranking");
     }
     
     // We can also disable individual toggles if their plan counterparts are disabled
