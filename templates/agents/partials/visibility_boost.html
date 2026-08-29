@@ -1,0 +1,32 @@
+<div class="px-2 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+        <h5 class="mb-0 font-weight-bold" style="color:#0f172a;">More Visibility</h5>
+        <span class="text-muted" style="font-size:12px;">AIO · GEO · SEO · Priority Ranking</span>
+    </div>
+    <div class="pa-vis-grid">
+        <div class="pa-vis-tile" data-feature="visibility_aio">
+            <div class="pa-vis-iconwrap"><i class="fas fa-brain"></i></div>
+            <h6 class="pa-vis-title">AIO</h6>
+            <p class="pa-vis-copy">AI-ready profile signals so people can discover you in AI overviews and assistants.</p>
+            <span class="pa-vis-status">{% if not agent_plan or agent_plan.show_visibility_aio %}Active{% else %}Locked{% endif %}</span>
+        </div>
+        <div class="pa-vis-tile" data-feature="visibility_geo">
+            <div class="pa-vis-iconwrap"><i class="fas fa-location-dot"></i></div>
+            <h6 class="pa-vis-title">GEO</h6>
+            <p class="pa-vis-copy">Neighbourhood and map visibility so nearby clients can find you first.</p>
+            <span class="pa-vis-status">{% if not agent_plan or agent_plan.show_visibility_geo %}Active{% else %}Locked{% endif %}</span>
+        </div>
+        <div class="pa-vis-tile" data-feature="visibility_seo">
+            <div class="pa-vis-iconwrap"><i class="fas fa-magnifying-glass"></i></div>
+            <h6 class="pa-vis-title">SEO</h6>
+            <p class="pa-vis-copy">Search-optimised public profile so Google can rank you for local insurance queries.</p>
+            <span class="pa-vis-status">{% if not agent_plan or agent_plan.show_visibility_seo %}Active{% else %}Locked{% endif %}</span>
+        </div>
+        <div class="pa-vis-tile" data-feature="visibility_priority_ranking">
+            <div class="pa-vis-iconwrap"><i class="fas fa-arrow-up-wide-short"></i></div>
+            <h6 class="pa-vis-title">Priority Ranking</h6>
+            <p class="pa-vis-copy">Priority placement in Find Agents results for stronger discovery.</p>
+            <span class="pa-vis-status">{% if not agent_plan or agent_plan.show_visibility_priority_ranking %}Active{% else %}Locked{% endif %}</span>
+        </div>
+    </div>
+</div>

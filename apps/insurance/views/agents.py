@@ -10,6 +10,7 @@ from django.conf import settings
 from apps.agents.models import Agent, AgentProfile, AgentSubscription
 from django.contrib.auth.models import User
 from apps.admin_panel.models.insurance_approval import AgentApprovalRequest
+from padosi_agent.razorpay_env import USER_PAYMENT_UNAVAILABLE
 import random, string, logging, datetime
 
 logger = logging.getLogger(__name__)
@@ -435,9 +436,10 @@ def checkout_online_start(request):
             order_id = razorpay_order['id']
             request.session['insurance_bulk_order_id'] = order_id
         except Exception as e:
-            return JsonResponse({'success': False, 'message': f'Razorpay API failure: {str(e)}'}, status=500)
+            logger.error('Insurance Razorpay order failed: %s', e)
+            return JsonResponse({'success': False, 'message': USER_PAYMENT_UNAVAILABLE}, status=500)
     elif not is_test_key and key:
-        return JsonResponse({'success': False, 'message': 'Payment gateway keys are not configured.'}, status=500)
+        return JsonResponse({'success': False, 'message': USER_PAYMENT_UNAVAILABLE}, status=500)
 
     return JsonResponse({
         'success': True,
@@ -472,7 +474,7 @@ def checkout_online_success(request):
 
     if not is_mock_payment:
         if not (key and secret and razorpay):
-            return JsonResponse({'success': False, 'message': 'Payment gateway is not configured on the server.'}, status=500)
+            return JsonResponse({'success': False, 'message': USER_PAYMENT_UNAVAILABLE}, status=500)
 
         expected_order_id = request.session.get('insurance_bulk_order_id')
         if not expected_order_id or expected_order_id != order_id:

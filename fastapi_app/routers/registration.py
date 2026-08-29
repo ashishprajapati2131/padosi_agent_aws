@@ -4,6 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import Optional
 import json
+import logging
 
 from fastapi_app.database import get_db
 from fastapi_app.utils.auth import decode_token
@@ -18,12 +19,14 @@ from fastapi_app.schemas.registration import (
     PricingRequest
 )
 from fastapi_app.repositories.agent_repository import AgentRepository
+from padosi_agent.razorpay_env import USER_PAYMENT_UNAVAILABLE
 from fastapi_app.repositories.user_repository import UserRepository
 from fastapi_app.services.registration_service import RegistrationService
 from fastapi_app.services.payment_service import PaymentService
 
 router = APIRouter(prefix="/api/v1/agents/registration", tags=["Agent Registration"])
 security = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 def get_agent_repository(db: Session = Depends(get_db)) -> AgentRepository:
     return AgentRepository(db)
@@ -306,13 +309,15 @@ def create_payment_order_endpoint(
         return OrderResponse(**checkout_data)
 
     except ValueError as val_err:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
+        logger.error("Order ValueError: %s", val_err)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=USER_PAYMENT_UNAVAILABLE)
     except HTTPException as http_ex:
         raise http_ex
     except Exception as e:
+        logger.error("Error creating order: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creating order: {str(e)}"
+            detail=USER_PAYMENT_UNAVAILABLE
         )
 
 @router.post("/payment/success", response_model=PaymentSuccessResponse, status_code=status.HTTP_200_OK)
@@ -399,13 +404,15 @@ def verify_payment_endpoint(
         return PaymentSuccessResponse(**activation_result)
 
     except ValueError as val_err:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
+        logger.error("Payment ValueError: %s", val_err)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=USER_PAYMENT_UNAVAILABLE)
     except HTTPException as http_ex:
         raise http_ex
     except Exception as e:
+        logger.error("Error processing payment: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing payment: {str(e)}"
+            detail=USER_PAYMENT_UNAVAILABLE
         )
 
 @router.post("/payment/webhook", status_code=status.HTTP_200_OK)
@@ -456,7 +463,8 @@ async def razorpay_webhook_endpoint(
         raise
     except Exception as e:
         await log_request_to_db("razorpay", str(request.url), "POST", payload_text, 500, client_host)
+        logger.error("Webhook processing error: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Webhook processing error: {str(e)}"
+            detail=USER_PAYMENT_UNAVAILABLE
         )

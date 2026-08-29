@@ -1,11 +1,19 @@
+import os
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
 from django.test import RequestFactory, SimpleTestCase, override_settings
 
 from apps.agents.services.razorpay_checkout import (
     MOCK_SIGNATURE,
     clean_razorpay_credential,
     create_checkout_order,
+    credential_pair_from_mapping,
+    gateway_failure_message,
     is_local_request,
     is_mock_payment,
+    razorpay_credentials,
     razorpay_key_mode,
     sanitize_contact,
     should_mock_razorpay,
@@ -13,6 +21,24 @@ from apps.agents.services.razorpay_checkout import (
 
 
 class RazorpayCheckoutHelperTests(SimpleTestCase):
+    def setUp(self):
+        self._file_maps = patch(
+            'apps.agents.services.razorpay_checkout._dotenv_file_maps',
+            return_value=[],
+        )
+        self._file_maps.start()
+        self._env = patch.dict(os.environ, {
+            'RAZORPAY_KEY': '',
+            'RAZORPAY_SECRET': '',
+            'RAZORPAY_KEY_ID': '',
+            'RAZORPAY_KEY_SECRET': '',
+        }, clear=False)
+        self._env.start()
+
+    def tearDown(self):
+        self._env.stop()
+        self._file_maps.stop()
+
     def test_sanitize_contact_strips_country_code(self):
         self.assertEqual(sanitize_contact('+91 98765 43210'), '9876543210')
         self.assertEqual(sanitize_contact('09876543210'), '9876543210')
@@ -57,6 +83,102 @@ class RazorpayCheckoutHelperTests(SimpleTestCase):
         order_id, is_mock = create_checkout_order(153300, 'agent_draft_1', request)
         self.assertTrue(is_mock)
         self.assertTrue(order_id.startswith('order_local_'))
+
+    def test_file_pair_wins_over_mixed_process_env(self):
+        key, secret = razorpay_credentials(
+            file_maps=[{
+                'RAZORPAY_KEY': 'rzp_test_file',
+                'RAZORPAY_SECRET': 'file_secret',
+            }],
+            environ={
+                'RAZORPAY_KEY': 'rzp_live_panel',
+                'RAZORPAY_SECRET': 'panel_secret',
+            },
+        )
+        self.assertEqual(key, 'rzp_test_file')
+        self.assertEqual(secret, 'file_secret')
+
+    def test_incomplete_file_pair_does_not_mix_with_env(self):
+        key, secret = razorpay_credentials(
+            file_maps=[{'RAZORPAY_KEY': 'rzp_live_only'}],
+            environ={
+                'RAZORPAY_KEY': 'rzp_test_env',
+                'RAZORPAY_SECRET': 'env_secret',
+            },
+        )
+        self.assertEqual(key, 'rzp_test_env')
+        self.assertEqual(secret, 'env_secret')
+
+    def test_credential_pair_requires_both_values(self):
+        self.assertEqual(credential_pair_from_mapping({'RAZORPAY_KEY': 'rzp_live_x'}), ('', ''))
+        self.assertEqual(
+            credential_pair_from_mapping({
+                'RAZORPAY_KEY_ID': 'rzp_test_id',
+                'RAZORPAY_KEY_SECRET': 'id_secret',
+            }),
+            ('rzp_test_id', 'id_secret'),
+        )
+
+    @override_settings(RAZORPAY_KEY='rzp_test_abc', RAZORPAY_SECRET='secret')
+    def test_gateway_failure_is_user_safe(self):
+        message = gateway_failure_message()
+        self.assertIn('unable to process', message.lower())
+        self.assertNotIn('razorpay', message.lower())
+        self.assertNotIn('matching pair', message.lower())
+        self.assertNotIn('.env', message.lower())
+        self.assertNotIn('RAZORPAY_KEY', message)
+
+    @override_settings(RAZORPAY_KEY='', RAZORPAY_SECRET='')
+    def test_gateway_failure_does_not_mention_missing_keys(self):
+        message = gateway_failure_message()
+        self.assertIn('unable to process', message.lower())
+        self.assertNotIn('missing', message.lower())
+        self.assertNotIn('RAZORPAY', message)
+
+    def test_resync_incomplete_file_keeps_snapshot_pair(self):
+        from padosi_agent.razorpay_env import resync_razorpay_environ_after_dotenv
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            app = root / 'src'
+            app.mkdir()
+            (app / '.env').write_text('RAZORPAY_KEY=rzp_test_fileonly\n', encoding='utf-8')
+            snapshot = {
+                'RAZORPAY_KEY': 'rzp_live_panel',
+                'RAZORPAY_SECRET': 'panel_secret',
+                'RAZORPAY_KEY_ID': None,
+                'RAZORPAY_KEY_SECRET': None,
+            }
+            environ = {
+                'RAZORPAY_KEY': 'rzp_test_fileonly',
+                'RAZORPAY_SECRET': 'panel_secret',
+            }
+            resync_razorpay_environ_after_dotenv(app, snapshot, environ)
+            self.assertEqual(environ['RAZORPAY_KEY'], 'rzp_live_panel')
+            self.assertEqual(environ['RAZORPAY_SECRET'], 'panel_secret')
+
+    def test_resync_complete_file_pair_replaces_snapshot(self):
+        from padosi_agent.razorpay_env import resync_razorpay_environ_after_dotenv
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            app = root / 'src'
+            app.mkdir()
+            (app / '.env').write_text(
+                'RAZORPAY_KEY=rzp_test_file\nRAZORPAY_SECRET=file_secret\n',
+                encoding='utf-8',
+            )
+            snapshot = {
+                'RAZORPAY_KEY': 'rzp_live_panel',
+                'RAZORPAY_SECRET': 'panel_secret',
+            }
+            environ = {
+                'RAZORPAY_KEY': 'rzp_test_file',
+                'RAZORPAY_SECRET': 'panel_secret',
+            }
+            resync_razorpay_environ_after_dotenv(app, snapshot, environ)
+            self.assertEqual(environ['RAZORPAY_KEY'], 'rzp_test_file')
+            self.assertEqual(environ['RAZORPAY_SECRET'], 'file_secret')
 
 
 class StarterPlanPricingTests(SimpleTestCase):

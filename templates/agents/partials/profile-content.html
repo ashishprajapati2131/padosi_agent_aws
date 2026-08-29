@@ -689,7 +689,7 @@
         </div>
 
         <!-- Reviews -->
-        <div class="section-card" id="reviews-section">
+        <div class="section-card" id="reviews-section" data-scroll-delay="{{ review_scroll_delay_ms|default:3000 }}">
             <div class="reviews-header">
                 <h2 class="section-title mb-0"><i class="far fa-star"></i> Reviews</h2>
                 {% if profile.show_reviews %}
@@ -1159,5 +1159,17 @@
 
     initReviewForm();
     initLightbox();
+
+    (function scrollToReviewsIfRequested() {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get('focus') !== 'reviews') return;
+        var delay = parseInt(document.getElementById('reviews-section') && document.getElementById('reviews-section').getAttribute('data-scroll-delay') || '3000', 10);
+        if (isNaN(delay) || delay < 2000) delay = 3000;
+        if (delay > 5000) delay = 5000;
+        setTimeout(function() {
+            var el = document.getElementById('reviews-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, delay);
+    })();
 })();
 </script>
