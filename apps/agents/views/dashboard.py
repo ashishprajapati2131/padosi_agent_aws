@@ -395,6 +395,7 @@ def agent_dashboard(request):
                 'whatsapp_url': 'https://api.whatsapp.com/send?text=' + quote(
                     f"I'm on PadosiAgent. Scan my {QR_TYPE_LABELS[qr_type]}: {target}"
                 ),
+                'facebook_url': 'https://www.facebook.com/sharer/sharer.php?u=' + quote(target, safe=''),
             })
 
     context = {

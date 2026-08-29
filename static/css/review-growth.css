@@ -94,24 +94,17 @@
     border-radius: 10px; background: #f1f5f9; display: block;
 }
 .pa-qr-mini-foot {
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; flex-direction: column; align-items: center;
     gap: 6px; margin-top: 6px; padding: 0 2px;
 }
 .pa-qr-mini-label { font-size: 11px; font-weight: 800; color: #1e3a8a; line-height: 1; }
 .pa-qr-mini--card .pa-qr-mini-label { color: #1d7d5d; }
 .pa-qr-mini--reviews .pa-qr-mini-label { color: #b45309; }
-.pa-qr-mini-social { display: flex; gap: 4px; align-items: center; }
-.pa-soc {
-    width: 24px; height: 24px; border-radius: 50%;
-    display: inline-flex; align-items: center; justify-content: center;
-    border: none; color: #fff !important; text-decoration: none;
-    font-size: 12px; line-height: 1; padding: 0; cursor: pointer;
-    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
-    transition: transform .12s ease;
+.pa-qr-mini-social { display: flex; gap: 6px; align-items: center; justify-content: center; }
+.pa-qr-mini-social .pa-fab {
+    width: 26px; height: 26px; font-size: 13px; flex: 0 0 26px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
 }
-.pa-soc:hover { transform: translateY(-1px); color: #fff !important; text-decoration: none; }
-.pa-soc-wa { background: #25D366; }
-.pa-soc-ig { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
 .pa-qr-chip {
     width: 28px; height: 28px; border-radius: 8px;
     display: inline-flex; align-items: center; justify-content: center;
