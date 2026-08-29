@@ -30,12 +30,15 @@
             <div class="pa-qr-mini-foot">
                 <span class="pa-qr-mini-label">{{ item.label }}</span>
                 <div class="pa-qr-mini-social">
-                    <a class="pa-soc pa-soc-wa" href="{{ item.whatsapp_url }}" target="_blank" rel="noopener" title="Share on WhatsApp" aria-label="Share {{ item.label }} on WhatsApp">
+                    <a class="pa-fab pa-fab-wa" href="{{ item.whatsapp_url }}" target="_blank" rel="noopener" title="Share on WhatsApp" aria-label="Share {{ item.label }} on WhatsApp">
                         <i class="fab fa-whatsapp"></i>
                     </a>
-                    <button type="button" class="pa-soc pa-soc-ig pa-ig-copy" data-copy="{{ item.target_url }}" title="Copy link for Instagram" aria-label="Copy {{ item.label }} link for Instagram">
+                    <button type="button" class="pa-fab pa-fab-ig pa-ig-copy" data-copy="{{ item.target_url }}" title="Copy link for Instagram" aria-label="Copy {{ item.label }} link for Instagram">
                         <i class="fab fa-instagram"></i>
                     </button>
+                    <a class="pa-fab pa-fab-fb" href="{{ item.facebook_url }}" target="_blank" rel="noopener" title="Share on Facebook" aria-label="Share {{ item.label }} on Facebook">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
                 </div>
             </div>
         </div>
@@ -109,7 +112,7 @@
     document.querySelectorAll('.pa-qr-dock .pa-ig-copy').forEach(function(btn) {
         btn.addEventListener('click', function() {
             copyText(btn.getAttribute('data-copy') || '').then(function() {
-                toast('Link copied — open Instagram to share');
+                toast('Link copied. Open Instagram to share.');
             });
         });
     });
