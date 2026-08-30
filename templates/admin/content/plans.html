@@ -472,6 +472,112 @@
 
 <hr class="my-5">
 
+<form method="POST" action="{% url 'admin_content_plans' %}update-qr-service/">
+    {% csrf_token %}
+    <div class="plan-editor-card mb-4" style="border-top: 4px solid #1d7d5d;">
+        <div class="plan-editor-header bg-white py-3">
+            <div class="m-0 fw-bold"><i class="fa-solid fa-qrcode me-2" style="color:#1d7d5d;"></i>QR Code Service</div>
+            <p class="text-muted mb-0 mt-1 fw-normal" style="font-size:12px;">Master switch for agent profile, card, and review QR codes. When disabled, QR pages return 404.</p>
+        </div>
+        <div class="p-4">
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="qrEnabled" name="qr_enabled" {% if qr_config.enabled %}checked{% endif %}>
+                <label class="form-check-label fw-bold" for="qrEnabled">Enable QR service</label>
+            </div>
+            <div class="form-check form-switch mb-4">
+                <input class="form-check-input" type="checkbox" id="qrDownload" name="qr_allow_download" {% if qr_config.allow_download %}checked{% endif %}>
+                <label class="form-check-label fw-bold" for="qrDownload">Allow agents to download QR posters</label>
+            </div>
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary px-5" style="background-color:#1d7d5d;border-color:#1d7d5d;">Save QR Settings</button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<form method="POST" action="{% url 'admin_content_plans' %}update-review-growth/">
+    {% csrf_token %}
+    <div class="plan-editor-card mb-4" style="border-top: 4px solid #f59e0b;">
+        <div class="plan-editor-header bg-white py-3">
+            <div class="m-0 fw-bold"><i class="fa-solid fa-star me-2" style="color:#d97706;"></i>Review Growth &amp; Starter Upgrade</div>
+            <p class="text-muted mb-0 mt-1 fw-normal" style="font-size:12px;">Popup delay, review threshold, which Starter sections unlock, and the Professional upgrade message. Plan prices come from the Professional editor above.</p>
+        </div>
+        <div class="p-4">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="growthEnabled" name="growth_enabled" {% if review_growth.enabled %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="growthEnabled">Enable review growth</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="growthPopup" name="growth_popup_enabled" {% if review_growth.popup_enabled %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="growthPopup">Show dashboard popup</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="growthVisibility" name="growth_visibility_section" {% if review_growth.visibility_section_enabled %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="growthVisibility">Show More Visibility section</label>
+                    </div>
+                    <div class="form-text">When off, AIO / GEO / SEO / Priority Ranking tiles are hidden on the agent dashboard.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold" style="font-size:13px;">Eligible plan</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="growth_eligible_plans[]" value="starter" id="eligStarter" {% if 'starter' in review_growth.eligible_plans %}checked{% endif %}>
+                        <label class="form-check-label" for="eligStarter">Starter (₹1999 plan)</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size:13px;">Min reviews</label>
+                    <input type="number" min="1" max="50" class="form-control" name="growth_min_reviews" value="{{ review_growth.min_reviews }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size:13px;">Popup delay (ms)</label>
+                    <input type="number" min="1500" max="5000" class="form-control" name="growth_popup_delay_ms" value="{{ review_growth.popup_delay_ms }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size:13px;">Review scroll delay (ms)</label>
+                    <input type="number" min="2000" max="5000" class="form-control" name="growth_review_scroll_delay_ms" value="{{ review_growth.review_scroll_delay_ms }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold" style="font-size:13px;">Upgrade plan</label>
+                    <input type="text" class="form-control" name="growth_upgrade_plan" value="{{ review_growth.upgrade_plan }}" readonly>
+                    <div class="form-text">Price is taken from Professional plan above (promo ₹{{ pricing.professional.promo_price|default:4999 }}).</div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold" style="font-size:13px;">Upgrade title</label>
+                    <input type="text" class="form-control" name="growth_upgrade_title" value="{{ review_growth.upgrade_title }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold" style="font-size:13px;">Upgrade message</label>
+                    <textarea class="form-control" name="growth_upgrade_message" rows="3">{{ review_growth.upgrade_message }}</textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold" style="font-size:13px;">Unlock these Starter sections after min reviews</label>
+                    <div class="row">
+                        {% for f_key, f_label in review_growth_unlock_choices %}
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="growth_unlock_features[]" value="{{ f_key }}" id="unlock_{{ f_key }}" {% if f_key in review_growth.unlock_feature_slugs %}checked{% endif %}>
+                                <label class="form-check-label" for="unlock_{{ f_key }}">{{ f_label }}</label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="text-end mt-4">
+                <button type="submit" class="btn btn-primary px-5" style="background-color:#d97706;border-color:#d97706;">Save Review Growth</button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<hr class="my-5">
+
 <!-- Plan Feature Permissions -->
 <form method="POST" action="{% url 'admin_content_plans_update_features' %}">
     {% csrf_token %}

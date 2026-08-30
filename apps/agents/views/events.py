@@ -34,6 +34,7 @@ from apps.agents.models import (
     PromoCode, Event, EventRegistration,
 )
 from apps.agents.views.registration import create_or_link_django_user
+from padosi_agent.razorpay_env import USER_PAYMENT_UNAVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -577,7 +578,7 @@ def show_payment(request):
 
     if not razorpay_order_id:
         if not key or not secret or key.startswith('your_'):
-            messages.error(request, 'Payment gateway is not configured. Please contact support.')
+            messages.error(request, USER_PAYMENT_UNAVAILABLE)
             return redirect('events:plans')
         razorpay_order_id = _create_razorpay_order(
             receipt=f'evt_{event_registration.id}_{int(time.time())}',
@@ -585,7 +586,7 @@ def show_payment(request):
             event_registration=event_registration,
         )
         if not razorpay_order_id:
-            messages.error(request, 'Payment gateway is temporarily unavailable. Please try again in a few minutes.')
+            messages.error(request, USER_PAYMENT_UNAVAILABLE)
             return redirect('events:plans')
 
     if agent_id:

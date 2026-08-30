@@ -1,5 +1,5 @@
-from django.urls import path
-from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites, participants, career_timeline as career_timeline_views
+from django.urls import path, re_path
+from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites, participants, career_timeline as career_timeline_views, qr as qr_views
 
 app_name = 'agents'
 
@@ -10,11 +10,13 @@ urlpatterns = [
     path('agent-check-slug/',     registration.check_slug_availability, name='agent_check_slug'),
     path('chooseplan/',         registration.chooseplan,         name='chooseplan'),
     path('plan-social-follow/', registration.record_social_follow, name='plan_social_follow'),
+    path('plan-scratch-reveal/', registration.record_scratch_reveal, name='plan_scratch_reveal'),
     path('exclusive-plan/social-follow/', registration.record_social_follow, name='exclusive_social_follow'),
     path('exclusive-plan/discount-status/', registration.exclusive_discount_status, name='exclusive_discount_status'),
     path('agent-register-complete/', registration.agent_register_complete, name='agent_register_complete'),
     path('agent-register/complete/', registration.agent_register_complete, name='agent_register_complete_slash'),
     path('agent-register/verify-payment/', registration.payment_success, name='agent_register_verify_payment'),
+    path('agent-register/payment-callback/', registration.payment_callback, name='agent_register_payment_callback'),
     path('payment-success/',    registration.payment_success,    name='payment_success'),
     path('payment-failure/',    registration.payment_failure,    name='payment_failure'),
     path('agent-registration/failed/', registration.agent_register_failed, name='agent_register_failed'),
@@ -27,6 +29,8 @@ urlpatterns = [
     path('logout/',             auth.logout_view,                name='logout'),
     path('agent/dashboard/',    dashboard.agent_dashboard,       name='agent_dashboard'),
     path('agent/referral/',     dashboard.referral,              name='agent_referral'),
+    re_path(r'^agent/qr/(?P<qr_type>profile|card|reviews)\.png$', qr_views.agent_qr_image, name='agent_qr_image'),
+    path('agent/qr/<str:qr_type>/download/', qr_views.agent_qr_download, name='agent_qr_download'),
     # Review routes must come before profile/<state>/<slug>/, otherwise
     # POST /profile/<slug>/review/ is captured as state_code=slug, slug="review"
     # and agent_public_profile 404s looking up slug "review".
@@ -34,6 +38,8 @@ urlpatterns = [
     path('profile/<str:state_code>/<str:slug>/review/', dashboard.store_review,   name='agent_store_review_state'),
     path('profile/<str:slug>/', dashboard.agent_public_profile,  name='agent_public_profile'),
     path('profile/<str:state_code>/<str:slug>/', dashboard.agent_public_profile,  name='agent_public_profile_state'),
+    path('card/<str:slug>/',    qr_views.public_agent_card,      name='agent_public_card'),
+    re_path(r'^qr/(?P<slug>[^/]+)/(?P<qr_type>profile|card|reviews)\.png$', qr_views.public_qr_image, name='agent_public_qr_image'),
     path('agent/edit-profile/', dashboard.edit_profile,         name='agent_edit_profile'),
     path('agent/update-profile/', dashboard.update_profile,     name='agent_update_profile'),
     path('agent/push-token/',   dashboard.agent_push_token,      name='agent_push_token'),

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ agentDisplayName }} | Agent Card | PadosiAgent{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/agent-card-shared.css' %}">
+<style>
+    .public-card-page { background: #f1f5f9; min-height: 100vh; padding: 32px 16px 64px; }
+    .public-card-brand { text-align: center; margin-bottom: 20px; color: #1e3a8a; font-weight: 800; }
+    .public-card-wrap { max-width: 720px; margin: 0 auto; }
+    .public-card-cta { text-align: center; margin-top: 24px; }
+    .public-card-cta a {
+        display: inline-block; background: #1d7d5d; color: #fff; font-weight: 700;
+        border-radius: 10px; padding: 12px 22px; text-decoration: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="public-card-page">
+    <div class="public-card-wrap">
+        <div class="public-card-brand">PadosiAgent</div>
+        {% include 'partials/agent-card.html' %}
+        <div class="public-card-cta">
+            <a href="{% url 'agents:agent_public_profile' slug=agent.agent_slug %}">View full profile</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,172 @@
+{% if show_review_share_popup %}
+<div class="modal fade" id="reviewShareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered pa-review-dialog">
+        <div class="modal-content border-0 shadow pa-review-content">
+            <div class="modal-header pa-review-header">
+                <h5 class="modal-title fw-bold d-flex align-items-center mb-0">
+                    <i class="fas fa-star mr-2" style="color:#fbbf24;"></i>
+                    Collect reviews on PadosiAgent
+                </h5>
+                <button type="button" class="btn text-white p-0" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                    <span style="font-size:20px;">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body pa-review-body">
+                <p class="pa-review-tagline">
+                    Share that you are on <strong>PadosiAgent</strong> and ask clients to leave a review and rating.
+                    More reviews help unlock dashboard features.
+                </p>
+
+                {% if qr_service_enabled and qr_items %}
+                <h6 class="pa-review-section-title">Share your QR codes</h6>
+                <div class="pa-qr-popup-grid">
+                    {% for item in qr_items %}
+                    <div class="pa-qr-popup-item pa-qr-mini--{{ item.type }}">
+                        <div class="pa-qr-hover">
+                            <img src="{{ item.preview_url }}" alt="{{ item.label }} QR" class="pa-qr-popup-thumb" loading="lazy">
+                            <div class="pa-qr-hover-actions">
+                                <button type="button" class="pa-qr-chip pa-qr-view-btn" title="View" aria-label="View {{ item.label }} QR"
+                                    data-src="{{ item.preview_url }}" data-label="{{ item.label }}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                {% if qr_allow_download %}
+                                <a class="pa-qr-chip" href="{{ item.download_url }}" title="Download" aria-label="Download {{ item.label }} QR">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                                {% endif %}
+                                <button type="button" class="pa-qr-chip pa-qr-share-btn" title="Share" aria-label="Share {{ item.label }} QR"
+                                    data-url="{{ item.target_url }}" data-label="{{ item.label }}">
+                                    <i class="fas fa-share-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="pa-qr-mini-label">{{ item.label }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="pa-review-social">
+                    <a class="pa-fab pa-fab-wa" href="https://api.whatsapp.com/send?text={{ share_text_encoded }}" target="_blank" rel="noopener" aria-label="Share on WhatsApp">
+                        <i class="fab fa-whatsapp"></i>
+                    </a>
+                    <button type="button" class="pa-fab pa-fab-ig pa-ig-copy" data-copy="{{ share_profile_url }}" aria-label="Copy link for Instagram">
+                        <i class="fab fa-instagram"></i>
+                    </button>
+                    <a class="pa-fab pa-fab-fb" href="https://www.facebook.com/sharer/sharer.php?u={{ share_url_encoded }}" target="_blank" rel="noopener" aria-label="Share on Facebook">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a class="pa-fab pa-fab-in" href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url_encoded }}" target="_blank" rel="noopener" aria-label="Share on LinkedIn">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                    <a class="pa-fab pa-fab-x" href="https://twitter.com/intent/tweet?text={{ share_text_encoded }}&url={{ share_url_encoded }}" target="_blank" rel="noopener" aria-label="Share on X">
+                        <i class="fab fa-x-twitter"></i>
+                    </a>
+                </div>
+                <div class="pa-review-social-labels">
+                    <span>WhatsApp</span><span>Instagram</span><span>Facebook</span><span>LinkedIn</span><span>X</span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center pa-review-progress-row">
+                    <span>Reviews collected</span>
+                    <span class="pa-review-count">{{ review_count_display }} / {{ review_growth.min_reviews }}</span>
+                </div>
+                <div class="review-share-progress">
+                    <span style="width:{% widthratio review_count_display review_growth.min_reviews 100 %}%;max-width:100%;"></span>
+                </div>
+            </div>
+            <div class="modal-footer pa-review-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="reviewShareLaterBtn" data-dismiss="modal" data-bs-dismiss="modal">Later</button>
+                <button type="button" class="btn btn-sm text-white" id="reviewShareDontShowBtn" style="background:#1e3a8a;">Don't show again</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var delay = {{ review_growth.popup_delay_ms|default:2500 }};
+    var storageKey = 'pa_review_share_hide_{{ agent.id }}';
+    function showModal() {
+        if (window.sessionStorage && sessionStorage.getItem(storageKey + '_session')) return;
+        if (window.localStorage && localStorage.getItem(storageKey)) return;
+        var el = document.getElementById('reviewShareModal');
+        if (!el) return;
+        if (typeof $ !== 'undefined' && $.fn.modal) {
+            $('#reviewShareModal').modal('show');
+        } else if (typeof bootstrap !== 'undefined') {
+            new bootstrap.Modal(el).show();
+        }
+    }
+    setTimeout(showModal, delay);
+
+    function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text);
+        }
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        return Promise.resolve();
+    }
+    function toast(msg) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ toast: true, position: 'top-end', timer: 2200, showConfirmButton: false, icon: 'success', title: msg });
+        } else {
+            alert(msg);
+        }
+    }
+    document.querySelectorAll('#reviewShareModal .pa-ig-copy').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            copyText(btn.getAttribute('data-copy') || '').then(function() {
+                toast('Link copied. Open Instagram to share.');
+            });
+        });
+    });
+    document.querySelectorAll('#reviewShareModal .pa-qr-share-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var url = btn.getAttribute('data-url') || '';
+            var label = btn.getAttribute('data-label') || 'QR';
+            var payload = { title: 'PadosiAgent ' + label, text: 'I am on PadosiAgent. Scan my ' + label + ' QR.', url: url };
+            if (navigator.share) {
+                navigator.share(payload).catch(function() {});
+                return;
+            }
+            copyText(url).then(function() { toast(label + ' link copied'); });
+        });
+    });
+    document.querySelectorAll('#reviewShareModal .pa-qr-view-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var src = btn.getAttribute('data-src') || '';
+            var label = btn.getAttribute('data-label') || 'QR code';
+            var img = document.getElementById('qrPreviewImg');
+            var title = document.getElementById('qrPreviewLabel');
+            if (img) img.src = src;
+            if (title) title.textContent = label;
+            var el = document.getElementById('qrPreviewModal');
+            if (!el) return;
+            if (typeof $ !== 'undefined' && $.fn.modal) {
+                $('#qrPreviewModal').modal('show');
+            } else if (typeof bootstrap !== 'undefined') {
+                new bootstrap.Modal(el).show();
+            }
+        });
+    });
+    var later = document.getElementById('reviewShareLaterBtn');
+    if (later) later.addEventListener('click', function() {
+        try { sessionStorage.setItem(storageKey + '_session', '1'); } catch (e) {}
+    });
+    var never = document.getElementById('reviewShareDontShowBtn');
+    if (never) never.addEventListener('click', function() {
+        try { localStorage.setItem(storageKey, '1'); } catch (e) {}
+        if (typeof $ !== 'undefined' && $.fn.modal) $('#reviewShareModal').modal('hide');
+        else if (typeof bootstrap !== 'undefined') {
+            var inst = bootstrap.Modal.getInstance(document.getElementById('reviewShareModal'));
+            if (inst) inst.hide();
+        }
+    });
+})();
+</script>
+{% endif %}

@@ -1,7 +1,7 @@
 import os
 import logging
 import math
-import json
+from json import dumps as json_dumps, loads as json_loads, JSONDecodeError as JSONDecodeError
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
@@ -11,6 +11,7 @@ from apps.home.services.portal_messages import PORTAL_AGENT, portal_error
 from django.utils import timezone
 from django.db.models import Sum, Q, Avg
 from django.http import JsonResponse
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentLead, AgentProfileView, AgentInsuranceSegment, City, AgentDeviceToken, FavoriteAgent
@@ -55,6 +56,10 @@ class PlanFeatureProxy:
       agent_directory_visibility → is_listed_in_directory
       receive_leads         → show_new_business_leads
       premium_support       → premium_priority_support
+      visibility_aio        → show_visibility_aio
+      visibility_geo        → show_visibility_geo
+      visibility_seo        → show_visibility_seo
+      visibility_priority_ranking → show_visibility_priority_ranking
     """
     # Maps feature slug → list of show_* attr names it enables
     FEATURE_MAP = FEATURE_ATTR_MAP
@@ -192,7 +197,12 @@ def _resolve_agent_plan(plan_type, agent=None):
     base = _resolve_base_agent_plan(plan_type)
     if base is None or agent is None:
         return base
-    extra = evaluate_unlock_rules(agent, normalize_plan_slug(plan_type))
+    extra = set(evaluate_unlock_rules(agent, normalize_plan_slug(plan_type)))
+    try:
+        from apps.agents.services.review_growth import extra_unlock_attrs
+        extra |= extra_unlock_attrs(agent)
+    except Exception:
+        logger.exception('Review-growth unlock overlay failed')
     return overlay_plan(base, extra)
 
 
@@ -365,16 +375,15 @@ def agent_dashboard(request):
     raw_plan = 'Free Plan'
     active_sub = agent.activeSubscription
     if active_sub and active_sub.selected_plan:
-        import json
         try:
-            decoded_plan = json.loads(active_sub.selected_plan)
+            decoded_plan = json_loads(active_sub.selected_plan)
             if isinstance(decoded_plan, dict) and 'name' in decoded_plan:
                 raw_plan = decoded_plan['name']
             else:
                 raw_plan = str(active_sub.selected_plan)
-        except (json.JSONDecodeError, TypeError):
+        except (JSONDecodeError, TypeError, ValueError):
             raw_plan = str(active_sub.selected_plan)
-            
+
     plan_name = raw_plan.replace('_', ' ').replace('-', ' ').title()
 
     # Resolve SubscriptionPlan using robust multi-tier helper
@@ -383,6 +392,60 @@ def agent_dashboard(request):
     favorite_ids = set(
         FavoriteAgent.objects.filter(user=request.user).values_list('agent_id', flat=True)
     )
+
+    try:
+        unread_notifications_json = json_dumps(
+            [{'title': n.title, 'body': n.body} for n in unread_notifications],
+            ensure_ascii=False,
+        )
+    except Exception:
+        unread_notifications_json = '[]'
+    try:
+        feature_unlock_hints = build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
+        from apps.agents.services.review_growth import build_review_growth_hints
+        feature_unlock_hints.update(build_review_growth_hints(agent))
+        feature_unlock_hints_json = json_dumps(feature_unlock_hints)
+    except Exception:
+        feature_unlock_hints_json = '[]'
+
+    from urllib.parse import quote
+    from apps.agents.services.qr_branded import build_qr_target_url
+    from apps.agents.services.review_growth import (
+        QR_TYPE_LABELS,
+        QR_TYPES,
+        agent_review_count,
+        get_qr_config,
+        get_review_growth_config,
+        should_show_popup,
+        should_show_upgrade_cta,
+    )
+
+    qr_cfg = get_qr_config()
+    growth_cfg = get_review_growth_config()
+    slug = (profile.slug if profile and profile.slug else '') or getattr(agent, 'agent_slug', '') or str(agent.id)
+    profile_url = request.build_absolute_uri(
+        reverse('agents:agent_public_profile', kwargs={'slug': slug})
+    ) if slug else request.build_absolute_uri('/')
+    share_text = (
+        f"I'm now on PadosiAgent — India's trusted insurance agent network. "
+        f"View my profile and leave a review: {profile_url}"
+    )
+    qr_items = []
+    if qr_cfg.get('enabled') and slug:
+        for qr_type in QR_TYPES:
+            target = build_qr_target_url(request, agent, qr_type)
+            qr_items.append({
+                'type': qr_type,
+                'label': QR_TYPE_LABELS[qr_type],
+                'preview_url': reverse('agents:agent_qr_image', kwargs={'qr_type': qr_type}),
+                'download_url': reverse('agents:agent_qr_download', kwargs={'qr_type': qr_type}),
+                'public_png_url': reverse('agents:agent_public_qr_image', kwargs={'slug': slug, 'qr_type': qr_type}),
+                'target_url': target,
+                'whatsapp_url': 'https://api.whatsapp.com/send?text=' + quote(
+                    f"I'm on PadosiAgent. Scan my {QR_TYPE_LABELS[qr_type]}: {target}"
+                ),
+                'facebook_url': 'https://www.facebook.com/sharer/sharer.php?u=' + quote(target, safe=''),
+            })
 
     context = {
         'agent_plan': agent_plan,
@@ -394,10 +457,7 @@ def agent_dashboard(request):
         'allLeads': all_leads,
         'showReferral': show_referral,
         'unreadNotifications': unread_notifications,
-        'unread_notifications_json': json.dumps(
-            [{'title': n.title, 'body': n.body} for n in unread_notifications],
-            ensure_ascii=False,
-        ),
+        'unread_notifications_json': unread_notifications_json,
         'completion': completion,
         'isOnTrial': is_on_trial,
         'daysLeft': days_left,
@@ -407,9 +467,19 @@ def agent_dashboard(request):
         'profFull': prof_full,
         'profDisc': prof_disc,
         'planName': plan_name,
-        'feature_unlock_hints_json': json.dumps(
-            build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
-        ),
+        'feature_unlock_hints_json': feature_unlock_hints_json,
+        'qr_service_enabled': qr_cfg.get('enabled'),
+        'qr_allow_download': qr_cfg.get('allow_download'),
+        'qr_items': qr_items,
+        'show_review_share_popup': should_show_popup(agent),
+        'show_starter_upgrade_cta': should_show_upgrade_cta(agent),
+        'show_visibility_section': growth_cfg.get('visibility_section_enabled', True),
+        'review_growth': growth_cfg,
+        'review_count_display': agent_review_count(agent),
+        'share_profile_url': profile_url,
+        'share_text': share_text,
+        'share_text_encoded': quote(share_text),
+        'share_url_encoded': quote(profile_url, safe=''),
         'fcm_api_key': getattr(settings, 'FCM_API_KEY', ''),
         'fcm_auth_domain': getattr(settings, 'FCM_AUTH_DOMAIN', ''),
         'fcm_project_id': getattr(settings, 'FCM_PROJECT_ID', ''),
@@ -694,14 +764,13 @@ def agent_public_profile(request, slug, state_code=None):
             'agentInitial': agent_initial,
         })
     
-    import json
     social_links = {}
     if profile and profile.social_links:
         if isinstance(profile.social_links, dict):
             social_links = profile.social_links
         elif isinstance(profile.social_links, str):
             try:
-                social_links = json.loads(profile.social_links)
+                social_links = json_loads(profile.social_links)
             except ValueError:
                 pass
                 
@@ -721,7 +790,13 @@ def agent_public_profile(request, slug, state_code=None):
         'socialLinks': social_links,
         'performanceStats': getattr(agent, 'performanceStats', None),
         'leadPreferences': getattr(agent, 'leadPreferences', None),
+        'review_scroll_delay_ms': 3000,
     }
+    try:
+        from apps.agents.services.review_growth import get_review_growth_config
+        context['review_scroll_delay_ms'] = get_review_growth_config()['review_scroll_delay_ms']
+    except Exception:
+        pass
     return render(request, 'agents/profile_view.html', context)
 
 
@@ -908,7 +983,7 @@ def render_edit_profile(request, agent, is_admin_view=False):
         'years_range': years_range,
         'months': months,
         'active_investment_types': investment_types,
-        'feature_unlock_hints_json': json.dumps(
+        'feature_unlock_hints_json': json_dumps(
             build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
         ),
     }
@@ -943,7 +1018,6 @@ def apply_profile_update(request, agent, is_admin_edit=False):
     import os
     import time
     import uuid
-    import json
     profile, _ = AgentProfile.objects.get_or_create(agent=agent)
     current_step = request.POST.get('current_step')
     
@@ -1590,8 +1664,8 @@ def agent_push_token(request):
 
     try:
         try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
+            data = json_loads(request.body)
+        except JSONDecodeError:
             data = request.POST
 
         token = data.get('token', '').strip()
@@ -1687,8 +1761,8 @@ def agent_upgrade_plan(request):
 
     try:
         try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
+            data = json_loads(request.body)
+        except JSONDecodeError:
             data = request.POST
 
         raw_plan_type = data.get('plan_type')
@@ -1770,34 +1844,25 @@ def agent_upgrade_plan(request):
                 'agent_id': agent.id
             })
 
-        # Initialize Razorpay Client and create Order
-        import razorpay
         import time
-        from django.conf import settings
-        
-        razorpay_order_id = None
+        from apps.agents.services.razorpay_checkout import (
+            checkout_payload,
+            create_checkout_order,
+            gateway_failure_message,
+        )
+
         amount_paise = int(round(total_amount * 100))
-        
-        if settings.RAZORPAY_KEY and settings.RAZORPAY_SECRET and amount_paise > 0:
-            try:
-                client = razorpay.Client(auth=(settings.RAZORPAY_KEY, settings.RAZORPAY_SECRET))
-                order_data = {
-                    'amount': amount_paise,
-                    'currency': 'INR',
-                    'receipt': f'agent_upgrade_{agent.pk}_{int(time.time())}',
-                    'payment_capture': 1
-                }
-                order = client.order.create(order_data)
-                razorpay_order_id = order.get('id')
-            except Exception as e:
-                logger.error(f"Razorpay Upgrade Order Creation Failed: {str(e)}")
-                return JsonResponse({'success': False, 'message': 'Payment service is offline.'}, status=500)
+        razorpay_order_id, mock_checkout = create_checkout_order(
+            amount_paise,
+            f'agent_upgrade_{agent.pk}_{int(time.time())}',
+            request,
+        )
 
         if not razorpay_order_id and amount_paise > 0:
             return JsonResponse({
                 'success': False,
-                'message': 'Payment system error. Unable to initialize Razorpay transaction. Please try again later.'
-            }, status=500)
+                'message': gateway_failure_message(),
+            })
 
         # Update or create AgentSubscription
         subscription, created = AgentSubscription.objects.update_or_create(
@@ -1868,17 +1933,16 @@ def agent_upgrade_plan(request):
                 'agent_id': agent.id
             })
 
-        return JsonResponse({
-            'success': True,
-            'order_id': razorpay_order_id,
-            'amount': amount_paise,
-            'key': settings.RAZORPAY_KEY,
-            'agent_id': agent.id,
-            'name': agent.fullname,
-            'email': agent.email,
-            'plan_amount': plan_amount,
-            'total_amount': total_amount
-        })
+        return JsonResponse(checkout_payload(
+            razorpay_order_id,
+            amount_paise,
+            agent,
+            is_mock=mock_checkout,
+            extra={
+                'plan_amount': plan_amount,
+                'total_amount': total_amount,
+            },
+        ))
 
     except Exception as e:
         logger.error(f"Plan upgrade request failed: {e}")
@@ -2035,7 +2099,7 @@ def agent_capture_lead(request):
                     social_links = profile.social_links
                 elif isinstance(profile.social_links, str):
                     try:
-                        social_links = json.loads(profile.social_links)
+                        social_links = json_loads(profile.social_links)
                     except ValueError:
                         pass
             url = social_links.get(interaction_type) or '#'
@@ -2546,10 +2610,10 @@ def agent_update_visibility(request):
     Allow agents to toggle visibility of sections on their public profile.
     """
     try:
-        data = json.loads(request.body)
+        data = json_loads(request.body)
         field = data.get('field')
         value = 1 if data.get('value') else 0
-    except json.JSONDecodeError:
+    except JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON'})
 
     valid_fields = [

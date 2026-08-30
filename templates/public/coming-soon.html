@@ -3592,7 +3592,7 @@ async function handlePayment() {
                     console.error('Payment failed:', response.error);
                     showPaymentFailedPopup(
                         'Payment Failed',
-                        `Payment failed: ${response.error.description}. Please try again or use a different payment method.`
+                        "We're unable to process your payment right now. Please try again in a few minutes."
                     );
                     resetPaymentButton();
                 });
@@ -3603,12 +3603,12 @@ async function handlePayment() {
             }
         } else {
             console.error('Registration failed:', data);
-            showPaymentFailedPopup('Registration Failed', data.message || 'Unable to process registration. Please try again.');
+            showPaymentFailedPopup('Registration Failed', "We're unable to process your payment right now. Please try again in a few minutes.");
             resetPaymentButton();
         }
     } catch (error) {
         console.error('Payment error:', error);
-        showPaymentFailedPopup('Payment Error', 'Unable to process payment. Please check your internet connection and try again. Error: ' + error.message);
+            showPaymentFailedPopup('Payment Error', "We're unable to process your payment right now. Please try again in a few minutes.");
         resetPaymentButton();
     }
 }
@@ -3721,7 +3721,7 @@ async function handlePayment() {
                         'Your payment has been processed successfully and your registration is now complete. Welcome to Padosi!'
                     );
                 } else {
-                    showPaymentFailedPopup('Payment Verification Failed', data.message || 'Unable to verify payment. Please contact support.');
+                    showPaymentFailedPopup('Payment Verification Failed', "We're unable to process your payment right now. Please try again in a few minutes.");
                 }
             } catch (error) {
                 showPaymentFailedPopup('Payment Verification Failed', 'Unable to verify payment. Please contact our support team.');
