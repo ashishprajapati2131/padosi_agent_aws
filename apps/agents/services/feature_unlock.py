@@ -41,11 +41,20 @@ EDIT_PROFILE_CHILD_FEATURES = (
 SLUG_NORMALISE = {
     'basic': 'starter',
     'starter': 'starter',
+    'standard': 'starter',          # legacy — Standard Plan was old Starter
+    'starters_plan': 'starter',
+    'starters-plan': 'starter',
     'free trial': 'free_trial',
     'free_trial': 'free_trial',
     'professional': 'professional',
+    'professionals_plan': 'professional',
+    'professionals-plan': 'professional',
     'pro': 'professional',
     'exclusive': 'exclusive',
+    'exclusive_partner': 'exclusive',
+    'exclusive_partner_plan': 'exclusive',
+    'elite': 'starter',             # legacy — no dedicated SiteSettings key
+    'eliting_plan': 'starter',
 }
 
 FEATURE_ATTR_MAP = {
