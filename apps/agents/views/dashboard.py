@@ -80,7 +80,13 @@ def _resolve_base_agent_plan(plan_type):
     """
     Dual-system plan resolver (checkbox grid, then SubscriptionPlan).
 
-    Returns None when nothing matches → template shows all features (fail-safe).
+    Lookup order:
+      1a. normalize_plan_slug(plan_type) -> check SiteSettings
+      1b. Numeric ID -> look up SubscriptionPlan by ID -> use its slug -> check SiteSettings
+      1c. Unknown slug -> look up SubscriptionPlan by slug/name -> use its slug -> check SiteSettings
+      2.  Fall back to SubscriptionPlan model booleans directly
+
+    Returns None when nothing matches -> template shows all features (fail-safe).
     """
     if not plan_type:
         return None
@@ -88,19 +94,62 @@ def _resolve_base_agent_plan(plan_type):
     if not pt:
         return None
 
-    # ── Priority 1: plan_features_config (Plans & Pricing admin checkbox grid)
+    # -- Priority 1: plan_features_config (Plans & Pricing admin checkbox grid)
     try:
         from apps.home.models import SiteSetting
         features_config = SiteSetting.get_value('plan_features_config') or {}
-        slug = normalize_plan_slug(pt)
-        if slug in features_config:
-            enabled = features_config[slug]
+
+        def _check_site_settings(slug_to_try):
+            """Return PlanFeatureProxy if slug_to_try exists in SiteSettings, else None."""
+            if not slug_to_try:
+                return None
+            enabled = features_config.get(slug_to_try)
             if isinstance(enabled, list):
                 return PlanFeatureProxy(enabled)
+            return None
+
+        # 1a: Direct normalize -- handles 'starter', 'basic', 'standard', 'professional', etc.
+        slug = normalize_plan_slug(pt)
+        result = _check_site_settings(slug)
+        if result is not None:
+            return result
+
+        # 1b: Numeric ID -- look up SubscriptionPlan by ID, use its slug for SiteSettings
+        if pt.isdigit():
+            try:
+                from apps.agents.models import SubscriptionPlan as _SP
+                plan_by_id = _SP.objects.filter(id=int(pt)).first()
+                if plan_by_id and plan_by_id.slug:
+                    result = _check_site_settings(plan_by_id.slug)
+                    if result is not None:
+                        return result
+                    result = _check_site_settings(normalize_plan_slug(plan_by_id.slug))
+                    if result is not None:
+                        return result
+            except Exception:
+                pass
+
+        # 1c: Unknown slug -- look up SubscriptionPlan by slug or name, use its slug for SiteSettings
+        if not pt.isdigit() and slug not in features_config:
+            try:
+                from apps.agents.models import SubscriptionPlan as _SP
+                plan_by_slug = _SP.objects.filter(slug=pt).first()
+                if not plan_by_slug:
+                    plan_by_slug = _SP.objects.filter(name__icontains=pt, is_active=True).first()
+                if plan_by_slug and plan_by_slug.slug:
+                    result = _check_site_settings(plan_by_slug.slug)
+                    if result is not None:
+                        return result
+                    result = _check_site_settings(normalize_plan_slug(plan_by_slug.slug))
+                    if result is not None:
+                        return result
+            except Exception:
+                pass
+
     except Exception:
         pass
 
-    # ── Priority 2: SubscriptionPlan model ───────────────────────────────────
+    # -- Priority 2: SubscriptionPlan model -----------------------------------
     try:
         from apps.agents.models import SubscriptionPlan
         # Tier 2a: numeric ID

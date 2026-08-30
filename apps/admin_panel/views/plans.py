@@ -2,6 +2,7 @@ import json
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.contrib import messages
+from django.utils.text import slugify
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.agents.models import SubscriptionPlan
 from apps.admin_panel.models import AdminActivityLog
@@ -20,7 +21,9 @@ def plan_create(request):
     if request.method == 'POST':
         try:
             name = request.POST.get('name')
-            slug = ''
+            # Auto-generate slug from plan name so it flows consistently
+            # through agent.plan_type, SiteSettings keys, and Manage panel
+            slug = slugify(name) if name else ''
             description = request.POST.get('description', '')
             color_theme = request.POST.get('color_theme', 'starter-theme')
             badge_text = request.POST.get('badge_text', '')
@@ -112,7 +115,9 @@ def plan_edit(request, plan_id):
     if request.method == 'POST':
         try:
             plan.name = request.POST.get('name')
-            plan.slug = ''
+            # Auto-generate slug from updated name; preserves consistency
+            # with SiteSettings keys and agent.plan_type
+            plan.slug = slugify(plan.name) if plan.name else plan.slug
             plan.description = request.POST.get('description', '')
             plan.color_theme = request.POST.get('color_theme', 'starter-theme')
             plan.badge_text = request.POST.get('badge_text', '')
