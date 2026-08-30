@@ -1331,7 +1331,7 @@
                         payBtn.disabled = false;
                         payBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment';
                         logPaymentFailure(EVENT_RAZORPAY_ORDER_ID);
-                        showErrorPopup('Payment Failed', response.error.description || 'Your payment could not be processed. Please try again.');
+                        showErrorPopup('Payment Failed', 'We\'re unable to process your payment right now. Please try again in a few minutes.');
                     });
                     rzp.open();
                 } catch (err) {
@@ -1367,7 +1367,7 @@
                     if (data.success) {
                         showSuccessPopup('Success!', 'Your registration is complete. Welcome to PadosiAgent!', data.redirect_url);
                     } else {
-                        showErrorPopup('Checkout Failed', data.message || 'Verification failed. Please try again.');
+                        showErrorPopup('Checkout Failed', 'We\'re unable to process your payment right now. Please try again in a few minutes.');
                     }
                 } catch (error) {
                     hideLoadingPopup();

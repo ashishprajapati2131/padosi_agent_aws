@@ -26,6 +26,12 @@ from apps.agents.services.feature_unlock import (
     upsert_plan_unlock_rule,
 )
 from apps.agents.views.dashboard import PlanFeatureProxy
+from apps.agents.services.review_growth import (
+    get_qr_config,
+    get_review_growth_config,
+    sanitize_qr_config,
+    sanitize_review_growth_config,
+)
 
 
 # ─── ABOUT ───────────────────────────────────────────────────────────────────
@@ -366,7 +372,11 @@ def plans(request):
     plan_features_config = SiteSetting.get_value('plan_features_config', {
         'free_trial': ['dashboard_stats', 'edit_profile'],
         'starter': ['dashboard_stats', 'edit_profile', 'lead_management'],
-        'professional': ['dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights', 'manage_portfolio', 'upload_achievements', 'view_reviews', 'public_profile'],
+        'professional': [
+            'dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights',
+            'manage_portfolio', 'upload_achievements', 'view_reviews', 'public_profile',
+            'visibility_aio', 'visibility_geo', 'visibility_seo', 'visibility_priority_ranking',
+        ],
     })
 
     available_features = [
@@ -386,6 +396,10 @@ def plans(request):
         ('public_profile', 'Public Profile Customization'),
         ('agent_directory_visibility', 'Listed in Find Agents Directory'),
         ('receive_leads', 'Eligible to Receive New Leads'),
+        ('visibility_aio', 'More Visibility: AIO'),
+        ('visibility_geo', 'More Visibility: GEO'),
+        ('visibility_seo', 'More Visibility: SEO'),
+        ('visibility_priority_ranking', 'More Visibility: Priority Ranking'),
     ]
 
     legacy_features = [
@@ -438,6 +452,15 @@ def plans(request):
         'unlock_metric_catalog': METRIC_CATALOG,
         'unlock_plan_slugs': unlock_plan_slugs,
         'unlock_builder': unlock_builder,
+        'qr_config': get_qr_config(),
+        'review_growth': get_review_growth_config(),
+        'review_growth_unlock_choices': [
+            (k, l) for k, l in available_features
+            if k not in (
+                'visibility_aio', 'visibility_geo', 'visibility_seo',
+                'visibility_priority_ranking',
+            )
+        ],
     })
 
 
@@ -705,12 +728,53 @@ def update_feature_unlock_rules(request):
     return redirect('admin_content_plans')
 
 
+def update_qr_service(request):
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect('admin_login')
+    if request.method == 'POST':
+        cfg = sanitize_qr_config({
+            'enabled': request.POST.get('qr_enabled') == 'on',
+            'allow_download': request.POST.get('qr_allow_download') == 'on',
+        })
+        SiteSetting.set_value('qr_service_config', cfg, 'pricing')
+        AdminActivityLog.log('Updated QR service config', 'SiteSetting', request=request)
+        messages.success(request, 'QR service settings saved.')
+    return redirect('admin_content_plans')
+
+
+def update_review_growth(request):
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect('admin_login')
+    if request.method == 'POST':
+        eligible = request.POST.getlist('growth_eligible_plans[]') or ['starter']
+        cfg = sanitize_review_growth_config({
+            'enabled': request.POST.get('growth_enabled') == 'on',
+            'popup_enabled': request.POST.get('growth_popup_enabled') == 'on',
+            'popup_delay_ms': request.POST.get('growth_popup_delay_ms'),
+            'min_reviews': request.POST.get('growth_min_reviews'),
+            'eligible_plans': eligible,
+            'unlock_feature_slugs': request.POST.getlist('growth_unlock_features[]'),
+            'upgrade_plan': request.POST.get('growth_upgrade_plan', 'professional'),
+            'upgrade_title': request.POST.get('growth_upgrade_title', ''),
+            'upgrade_message': request.POST.get('growth_upgrade_message', ''),
+            'review_scroll_delay_ms': request.POST.get('growth_review_scroll_delay_ms'),
+            'visibility_section_enabled': request.POST.get('growth_visibility_section') == 'on',
+        })
+        SiteSetting.set_value('review_growth_config', cfg, 'pricing')
+        AdminActivityLog.log('Updated review growth config', 'SiteSetting', request=request)
+        messages.success(request, 'Review growth settings saved.')
+    return redirect('admin_content_plans')
+
+
 DEFAULT_PLAN_FEATURES = {
     'free_trial': ['dashboard_stats', 'edit_profile'],
     'starter': ['dashboard_stats', 'edit_profile', 'lead_management'],
     'professional': [
         'dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights',
         'manage_portfolio', 'upload_achievements', 'view_reviews', 'public_profile',
+        'visibility_aio', 'visibility_geo', 'visibility_seo', 'visibility_priority_ranking',
     ],
     'exclusive': ['dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights'],
 }
@@ -958,6 +1022,14 @@ def _manage_agent_common_context(plan_slug):
         'preview_feature_labels_json': json.dumps(FEATURE_LABELS),
         'hide_header': True,
         'hide_footer': True,
+        'show_review_share_popup': False,
+        'show_starter_upgrade_cta': False,
+        'show_visibility_section': get_review_growth_config().get('visibility_section_enabled', True),
+        'qr_service_enabled': False,
+        'qr_allow_download': False,
+        'qr_items': [],
+        'review_growth': get_review_growth_config(),
+        'review_count_display': 0,
     })
     # Let admin_badge_counts keep the real session admin so the sidebar renders.
     context.pop('logged_in_admin', None)
