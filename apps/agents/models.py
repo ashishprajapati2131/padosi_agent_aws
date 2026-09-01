@@ -96,6 +96,10 @@ class AgentDraft(models.Model):
     insurance_companies = models.JSONField(default=list, blank=True)
     address = models.CharField(max_length=255, blank=True, default='')
     client_base = models.CharField(max_length=50, blank=True, default='')
+    slug = models.CharField(max_length=255, blank=True, default='')
+    whatsapp = models.CharField(max_length=20, blank=True, default='')
+    claims_settled = models.IntegerField(default=0)
+    claim_amount = models.CharField(max_length=20, blank=True, default='')
 
     # Step 2 — Profile Details / Professional Details
     photo = models.ImageField(upload_to='agent_photos/', null=True, blank=True)

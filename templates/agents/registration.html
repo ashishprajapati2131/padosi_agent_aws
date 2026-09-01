@@ -88,6 +88,90 @@
                     .glass-bg {
                         background: linear-gradient(to bottom right, hsl(var(--background)), rgba(243, 244, 246, 0.3), rgba(59, 130, 246, 0.05));
                     }
+                    .reg-preview-overlay {
+                        z-index: 200000 !important;
+                    }
+                    .reg-preview-directory-card .rac-card {
+                        margin-bottom: 0;
+                        max-width: 760px;
+                        margin-left: auto;
+                        margin-right: auto;
+                        box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
+                        border: 1px solid rgba(255, 255, 255, 0.7);
+                    }
+                    .reg-form-stats-grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                    }
+                    @media (min-width: 640px) {
+                        .reg-form-stats-grid {
+                            grid-template-columns: repeat(4, minmax(0, 1fr));
+                        }
+                    }
+                    .reg-preview-directory-card .rac-d-name,
+                    .reg-preview-directory-card .rac-name {
+                        text-transform: uppercase;
+                    }
+                    .reg-preview-nav-btn {
+                        height: 48px;
+                        width: 48px;
+                        border-radius: 999px;
+                        background: #fff;
+                        color: #0f172a;
+                        border: 1px solid rgba(15, 23, 42, 0.08);
+                        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+                    }
+                    .reg-preview-nav-btn:hover {
+                        background: #ecfdf5;
+                        color: #047857;
+                        transform: translateY(-1px);
+                    }
+                    .reg-preview-claim-btn {
+                        min-width: 180px;
+                        height: 48px;
+                        padding: 0 28px;
+                        border-radius: 999px;
+                        background: linear-gradient(135deg, #10b981, #059669);
+                        color: #fff;
+                        font-weight: 700;
+                        letter-spacing: 0.02em;
+                        box-shadow: 0 10px 28px rgba(16, 185, 129, 0.38);
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+                    }
+                    .reg-preview-claim-btn:hover {
+                        filter: brightness(1.05);
+                        transform: translateY(-1px);
+                        box-shadow: 0 14px 32px rgba(16, 185, 129, 0.45);
+                    }
+                    .reg-preview-claim-btn:disabled {
+                        opacity: 0.55;
+                        transform: none;
+                        box-shadow: none;
+                    }
+                    .reg-preview-stage {
+                        display: grid;
+                        grid-template-columns: minmax(0, 1fr);
+                        width: 100%;
+                    }
+                    .reg-preview-slide {
+                        grid-area: 1 / 1 / 2 / 2;
+                        width: 100%;
+                        will-change: opacity, transform;
+                    }
+                    .reg-preview-slide--card {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: min(68vh, 540px);
+                    }
                 </style>
     <!-- Shared Agent Card Styles -->
     <link rel="stylesheet" href="{% static 'css/agent-card-shared.css' %}">
@@ -110,18 +194,6 @@
 
             <!-- Registration Card -->
             <div class="w-full min-w-0">
-                <!-- Header Logos -->
-                <div class="text-center mb-5 sm:mb-6">
-                    <img src="{% static 'img/logo.png' %}" alt="PadosiAgent"
-                        class="h-9 sm:h-11 mx-auto mb-2 mix-blend-multiply" />
-                    <div class="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                        <i data-lucide="shield" class="h-3.5 w-3.5 text-primary"></i>
-                        <span>{{ pageContent.header_title_1|default:'Licensed Platform' }}</span>
-                        <span class="text-border">•</span>
-                        <span>{{ pageContent.header_title_2|default:'100% Free' }}</span>
-                    </div>
-                </div>
-
                 <!-- Features Card Slider -->
                 <div x-data="featureSlider"
                 class="w-full overflow-hidden rounded-xl shadow-lg relative mb-6">
@@ -219,7 +291,7 @@
                                                     <p class="truncate text-xs sm:text-sm font-semibold text-muted-foreground"
                                                         x-text="'Financial Advisor' + (yearsExperience ? ' · ' + yearsExperience + ' yrs' : '')">
                                                     </p>
-                                                    <template x-if="pan.length === 10">
+                                                    <template x-if="isPanValid">
                                                         <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100/80 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700 shadow-sm">
                                                             <span x-html="`<i data-lucide='shield-check' class='h-3 w-3'></i>`"></span> Licensed
                                                         </span>
@@ -278,7 +350,7 @@
                                                         <i data-lucide="credit-card" class="h-2.5 w-2.5"></i> PAN
                                                     </span>
                                                 </p>
-                                                <div x-show="!editPan && pan.length === 10"
+                                                <div x-show="!editPan && isPanValid"
                                                     class="group flex min-w-0 items-center gap-1 mt-0.5">
                                                     <span
                                                         class="inline-flex min-w-0 items-center gap-1 text-sm font-extrabold tracking-wider text-foreground">
@@ -292,12 +364,13 @@
                                                         <i data-lucide="pencil" class="h-3 w-3"></i>
                                                     </button>
                                                 </div>
-                                                <div x-show="editPan || pan.length !== 10" class="mt-1">
-                                                    <input x-ref="panInput" type="text" x-model="pan"
+                                                <div x-show="editPan || !isPanValid" class="mt-1">
+                                                    <input x-ref="panInput" type="text" x-model="pan" maxlength="10"
+                                                        autocomplete="off" spellcheck="false"
                                                         @focus="editPan = true"
-                                                        @input="pan = pan.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10); delete errors.pan_number"
-                                                        @blur="editPan = false" placeholder="Enter your PAN card number"
-                                                        class="h-9 w-full border border-dashed rounded border-primary/40 bg-card px-2 text-sm font-extrabold tracking-wider placeholder:text-xs placeholder:tracking-normal outline-none focus-visible:ring-1"
+                                                        @input="handlePanInput()"
+                                                        @blur="editPan = false" placeholder="AAAAA9999A"
+                                                        class="h-9 w-full border border-dashed rounded border-primary/40 bg-card px-2 text-sm font-extrabold tracking-wider uppercase placeholder:text-xs placeholder:tracking-normal placeholder:normal-case outline-none focus-visible:ring-1"
                                                         :class="{'border-destructive focus-visible:ring-destructive': errors.pan_number}">
                                                 </div>
                                                 <span x-show="errors.pan_number" x-text="errors.pan_number?.[0]"
@@ -311,7 +384,7 @@
 
                                         <!-- Stats -->
                                         <div
-                                            class="mt-4 grid divide-x divide-border rounded-lg border border-border grid-cols-2 sm:grid-cols-4">
+                                            class="reg-form-stats-grid mt-4 grid divide-x divide-border rounded-lg border border-border grid-cols-2 sm:grid-cols-4">
                                             <!-- Experience -->
                                             <div class="min-w-0 px-1 py-1.5 text-center">
                                                 <p
@@ -328,9 +401,10 @@
                                                     </button>
                                                 </div>
                                                 <div x-show="editExp || !yearsExperience">
-                                                    <input x-ref="expInput" type="text" x-model="yearsExperience"
+                                                    <input x-ref="expInput" type="text" inputmode="numeric" maxlength="2"
+                                                        x-model="yearsExperience"
                                                         @focus="editExp = true"
-                                                        @input="yearsExperience = yearsExperience.replace(/\D/g, '').slice(0,2)"
+                                                        @input="advanceStat('yearsExperience', 2, 'clientInput', 'editClients')"
                                                         @blur="editExp = false" placeholder="yrs"
                                                         class="h-9 w-full rounded-md border border-dashed border-primary/40 bg-primary/[0.04] px-1 text-center text-sm font-extrabold text-foreground placeholder:text-xs sm:text-sm placeholder:font-semibold placeholder:text-muted-foreground/70 focus-visible:ring-1 outline-none">
                                                 </div>
@@ -351,9 +425,10 @@
                                                     </button>
                                                 </div>
                                                 <div x-show="editClients || !clientBase">
-                                                    <input x-ref="clientInput" type="text" x-model="clientBase"
+                                                    <input x-ref="clientInput" type="text" inputmode="numeric" maxlength="4"
+                                                        x-model="clientBase"
                                                         @focus="editClients = true"
-                                                        @input="clientBase = clientBase.replace(/\D/g, '').slice(0,6)"
+                                                        @input="advanceStat('clientBase', 4, 'settledInput', 'editSettled')"
                                                         @blur="editClients = false" placeholder="200"
                                                         class="h-9 w-full rounded-md border border-dashed border-primary/40 bg-primary/[0.04] px-1 text-center text-sm font-extrabold text-foreground placeholder:text-xs sm:text-sm placeholder:font-semibold placeholder:text-muted-foreground/70 focus-visible:ring-1 outline-none">
                                                 </div>
@@ -374,9 +449,10 @@
                                                     </button>
                                                 </div>
                                                 <div x-show="editSettled || !claimsSettled">
-                                                    <input x-ref="settledInput" type="text" x-model="claimsSettled"
+                                                    <input x-ref="settledInput" type="text" inputmode="numeric" maxlength="4"
+                                                        x-model="claimsSettled"
                                                         @focus="editSettled = true"
-                                                        @input="claimsSettled = claimsSettled.replace(/\D/g, '').slice(0,6)"
+                                                        @input="advanceStat('claimsSettled', 4, 'claimsInput', 'editClaims')"
                                                         @blur="editSettled = false" placeholder="0"
                                                         class="h-9 w-full rounded-md border border-dashed border-primary/40 bg-primary/[0.04] px-1 text-center text-sm font-extrabold text-foreground placeholder:text-xs sm:text-sm placeholder:font-semibold placeholder:text-muted-foreground/70 focus-visible:ring-1 outline-none">
                                                 </div>
@@ -397,9 +473,10 @@
                                                     </button>
                                                 </div>
                                                 <div x-show="editClaims || !claimAmount">
-                                                    <input x-ref="claimsInput" type="text" x-model="claimAmount"
+                                                    <input x-ref="claimsInput" type="text" inputmode="numeric" maxlength="3"
+                                                        x-model="claimAmount"
                                                         @focus="editClaims = true"
-                                                        @input="claimAmount = claimAmount.replace(/[^\d.]/g, '').slice(0,8)"
+                                                        @input="advanceStat('claimAmount', 3)"
                                                         @blur="editClaims = false" placeholder="₹ Lacs"
                                                         class="h-9 w-full rounded-md border border-dashed border-primary/40 bg-primary/[0.04] px-1 text-center text-sm font-extrabold text-foreground placeholder:text-xs sm:text-sm placeholder:font-semibold placeholder:text-muted-foreground/70 focus-visible:ring-1 outline-none">
                                                 </div>
@@ -482,11 +559,6 @@
                                                     class="h-7 min-w-0 flex-1 border border-dashed rounded border-[#25D366]/60 bg-card px-1 text-center text-sm font-bold placeholder:text-xs sm:text-sm outline-none focus-visible:ring-1"
                                                     :class="{'border-destructive focus-visible:ring-destructive': errors.whatsapp}">
                                             </div>
-
-                                            <span
-                                                class="inline-flex h-10 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground bg-card">
-                                                <i data-lucide="qr-code" class="h-4 w-4"></i>
-                                            </span>
                                         </div>
                                         <div class="flex justify-between items-start w-full px-2 mt-1">
                                             <span x-show="errors.mobile" x-text="errors.mobile?.[0]"
@@ -542,57 +614,50 @@
 
                                 <!-- Email Card -->
                                 <div
-                                    class="rounded-xl border border-border bg-card shadow-sm transition-all focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/50 mt-4">
+                                    class="rounded-xl border border-border bg-card shadow-sm transition-all focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/50 mt-4"
+                                    :class="{'border-destructive': emailStatus === 'taken' || errors.email}">
                                     <div class="px-3 py-2.5 sm:px-4 sm:py-3 flex items-center gap-3">
                                         <div
                                             class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                                             <i data-lucide="mail" class="h-4 w-4"></i>
                                         </div>
                                         <div class="flex-1 min-w-0">
-                                            <label
-                                                class="block text-xs sm:text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</label>
-                                            <input type="email" x-model="email" @input="email = email.replace(/\s/g, ''); delete errors.email"
+                                            <div class="flex items-center justify-between gap-2">
+                                                <label
+                                                    class="block text-xs sm:text-[10px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</label>
+                                                <template x-if="emailStatus === 'available'">
+                                                    <span
+                                                        class="flex items-center gap-1 text-xs sm:text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><span
+                                                            x-html="`<i data-lucide='check' class='h-3 w-3'></i>`"></span>
+                                                        Available</span>
+                                                </template>
+                                                <template x-if="emailStatus === 'checking'">
+                                                    <span
+                                                        class="flex items-center gap-1 text-xs sm:text-sm font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full"><span
+                                                            x-html="`<i data-lucide='loader-2' class='h-3 w-3 animate-spin'></i>`"></span>
+                                                        Checking</span>
+                                                </template>
+                                                <template x-if="emailStatus === 'taken'">
+                                                    <span
+                                                        class="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-destructive bg-destructive/10 px-2 py-0.5 rounded-full"><span
+                                                            x-html="`<i data-lucide='x' class='h-3 w-3'></i>`"></span>
+                                                        Already registered</span>
+                                                </template>
+                                            </div>
+                                            <input type="email" x-model="email"
+                                                @input="email = email.replace(/\s/g, ''); delete errors.email; checkEmail()"
+                                                @blur="checkEmailNow()"
                                                 placeholder="Enter your email address *"
                                                 class="w-full bg-primary/[0.04] border border-dashed border-primary/40 rounded px-2 py-1.5 mt-1 text-sm font-bold text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary placeholder:font-normal placeholder:text-muted-foreground"
-                                                :class="{'border-destructive focus-visible:ring-destructive': errors.email}">
-                                            <span x-show="errors.email" x-text="errors.email?.[0]"
+                                                :class="{'border-destructive focus-visible:ring-destructive': errors.email || emailStatus === 'taken'}">
+                                            <p x-show="emailStatus === 'taken'" class="text-destructive text-xs mt-1 font-medium">
+                                                This email is already registered.
+                                                <a :href="emailLoginUrl" class="font-semibold underline hover:no-underline">Login here</a>
+                                            </p>
+                                            <span x-show="errors.email && emailStatus !== 'taken'" x-text="errors.email?.[0]"
                                                 class="text-destructive text-xs mt-1 block font-medium"></span>
                                         </div>
                                     </div>
-                                </div>
-
-                                <!-- Promo Code -->
-                                <div class="flex items-center justify-center pt-2">
-                                    <template x-if="promoApplied">
-                                        <div class="flex items-center gap-2 text-xs sm:text-sm p-2 rounded-md"
-                                            style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2);">
-                                            <i class="fa-solid fa-circle-check text-success"></i>
-                                            <span class="font-medium text-success">Promo "<span x-text="promoCode"></span>"
-                                                applied</span>
-                                            <button type="button" @click="promoApplied = false; promoCode = ''"
-                                                class="text-danger hover:opacity-80 text-xs font-bold ml-2 bg-transparent border-0 p-0"
-                                                style="text-decoration: underline;">Remove</button>
-                                        </div>
-                                    </template>
-                                    <template x-if="!promoApplied">
-                                        <div class="flex gap-2 items-center" x-data="{ showInput: false }">
-                                            <button x-show="!showInput" type="button" @click="showInput = true"
-                                                class="flex items-center gap-2 text-xs sm:text-sm text-primary hover:text-primary/80 hover:underline transition-colors">
-                                                <span x-html="`<i data-lucide='tag' class='h-3.5 w-3.5'></i>`"></span> Have
-                                                a Promo Code?
-                                            </button>
-                                            <div x-show="showInput" class="flex gap-2">
-                                                <input type="text" x-model="promoCode" @input="promoCode = promoCode.toUpperCase().replace(/[^A-Z0-9]/g, '')" placeholder="Enter code"
-                                                    class="h-8 rounded-md border border-border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
-                                                <button type="button" @click="verifyPromoCode()"
-                                                    :disabled="isVerifyingPromo"
-                                                    class="h-8 rounded-md bg-secondary text-secondary-foreground px-3 text-xs font-medium shadow-sm hover:bg-secondary/80 disabled:opacity-50">
-                                                    <span x-show="!isVerifyingPromo">Apply</span>
-                                                    <span x-show="isVerifyingPromo">...</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </template>
                                 </div>
 
                                 <!-- Terms and Submit -->
@@ -626,6 +691,7 @@
                                         <input type="hidden" name="segments[]" :value="seg">
                                     </template>
                                     <input type="hidden" name="claim_amount" :value="claimAmount">
+                                    <input type="hidden" name="claims_settled" :value="claimsSettled">
                                     <input type="hidden" name="slug" :value="slug">
                                     <input type="hidden" name="promo_code" :value="promoApplied ? promoCode : ''">
 
@@ -687,77 +753,37 @@
             </div>
         </div>
 
-        <!-- Registration Live Preview Modal (Directory Card + Public Profile Slider) -->
-        <!-- Registration Live Preview Modal (Directory Card + Full Public Profile Slider) -->
+        <!-- Live Preview: directory card + public profile, no chrome frame -->
+        <template x-teleport="body">
         <div x-show="showPreviewModal" style="display: none;"
-            class="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 lg:p-6"
-            @click.self="showPreviewModal = false">
-            
-            <div class="relative w-full max-w-5xl bg-card rounded-2xl shadow-2xl border border-border overflow-hidden my-auto flex flex-col max-h-[94vh]">
-                
-                <!-- Modal Header with Navigation & Tabs -->
-                <div class="px-4 py-3 sm:px-6 sm:py-4 bg-muted/50 border-b border-border flex items-center justify-between gap-3 shrink-0">
-                    <div class="flex items-center gap-2.5">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold">
-                            <i data-lucide="eye" class="h-4 w-4"></i>
-                        </span>
-                        <div>
-                            <h3 class="text-base sm:text-lg font-bold text-foreground leading-tight">Live Profile Preview</h3>
-                            <p class="text-xs text-muted-foreground hidden sm:block">Full preview of your directory card and public profile page</p>
-                        </div>
-                    </div>
+            class="reg-preview-overlay fixed inset-0 z-50 flex flex-col"
+            @keydown.escape.window="showPreviewModal = false">
 
-                    <!-- Slide Switcher Controls (Arrow navigation & Pills) -->
-                    <div class="flex items-center gap-1.5 sm:gap-2">
-                        <div class="flex items-center bg-background rounded-lg border border-border p-0.5 shadow-sm">
-                            <button type="button" @click="previewSlide = 0"
-                                class="px-2.5 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5"
-                                :class="previewSlide === 0 ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">
-                                <i data-lucide="credit-card" class="h-3.5 w-3.5"></i>
-                                <span class="hidden sm:inline">Directory</span> Card
-                            </button>
-                            <button type="button" @click="previewSlide = 1"
-                                class="px-2.5 sm:px-3 py-1 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5"
-                                :class="previewSlide === 1 ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">
-                                <i data-lucide="globe" class="h-3.5 w-3.5"></i>
-                                <span class="hidden sm:inline">Public</span> Profile
-                            </button>
-                        </div>
+            <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-md" @click="showPreviewModal = false"></div>
 
-                        <!-- Left / Right Slider Arrows -->
-                        <button type="button" @click="previewSlide = previewSlide === 0 ? 1 : 0"
-                            class="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                            title="Previous slide">
-                            <i data-lucide="chevron-left" class="h-4 w-4"></i>
-                        </button>
-                        <button type="button" @click="previewSlide = previewSlide === 1 ? 0 : 1"
-                            class="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                            title="Next slide">
-                            <i data-lucide="chevron-right" class="h-4 w-4"></i>
-                        </button>
+            <button type="button"
+                @click="showPreviewModal = false"
+                title="Edit details"
+                aria-label="Edit details"
+                class="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 h-11 w-11 rounded-full bg-white text-slate-700 shadow-lg border border-white/80 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all inline-flex items-center justify-center">
+                <i data-lucide="pencil" class="h-4 w-4"></i>
+            </button>
 
-                        <!-- Close Modal Button -->
-                        <button type="button" @click="showPreviewModal = false"
-                            class="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ml-1"
-                            title="Close preview">
-                            <i data-lucide="x" class="h-4 w-4"></i>
-                        </button>
-                    </div>
-                </div>
+            <div class="relative z-10 flex-1 overflow-y-auto px-3 sm:px-6 pt-20 pb-28">
+                <div class="w-full mx-auto max-w-5xl reg-preview-stage">
 
-                <!-- Modal Body (Slider content) -->
-                <div class="p-3 sm:p-5 overflow-y-auto flex-1 bg-slate-50">
-                    
-                    <!-- Slide 0: Find Agents Directory Card -->
-                    <div x-show="previewSlide === 0" class="space-y-4">
-                        <div class="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                            <span class="font-medium flex items-center gap-1"><i data-lucide="layout-grid" class="h-3.5 w-3.5 text-primary"></i> Find Agents Directory Card View</span>
-                            <span class="bg-emerald-500/10 text-emerald-600 font-semibold px-2 py-0.5 rounded-full">Slide 1 of 2</span>
-                        </div>
-
+                    <!-- Slide 0: Directory card only -->
+                    <div x-show="previewSlide === 0"
+                        x-transition:enter="transition ease-out duration-1000"
+                        x-transition:enter-start="opacity-0 translate-y-4 scale-[0.98]"
+                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave="transition ease-in duration-1000"
+                        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave-end="opacity-0 -translate-y-4 scale-[0.98]"
+                        class="reg-preview-slide reg-preview-slide--card reg-preview-directory-card">
                         <div class="react-agent-card find-agents-list-item">
                             <!-- Desktop Card -->
-                            <div class="rac-card rac-desktop-card shadow-lg border-primary/30">
+                            <div class="rac-card rac-desktop-card">
                                 <div class="rac-d-row">
                                     <div class="rac-d-photo">
                                         <img :src="photoPreview ? photoPreview : '{% static 'img/avatar-icon.jpg' %}'"
@@ -821,39 +847,11 @@
                                             </template>
                                         </div>
                                     </div>
-
-                                    <div class="rac-d-right">
-                                        <div class="rac-d-match rac-match--green"
-                                            style="background: linear-gradient(to left, rgba(187, 247, 208, 0.95) 0%, rgba(187, 247, 208, 0) 100%);">
-                                            <i data-lucide="zap" class="h-4 w-4 mr-1"></i> 99% Match
-                                        </div>
-                                        <div class="rac-d-actions">
-                                            <a href="javascript:void(0)"
-                                                class="rac-d-btn rac-d-btn--profile pointer-events-none">
-                                                <i data-lucide="user" class="h-4 w-4 mr-1"></i> View Profile
-                                            </a>
-                                            <a href="javascript:void(0)"
-                                                class="rac-d-btn rac-d-btn--whatsapp pointer-events-none">
-                                                <i data-lucide="message-circle" class="h-4 w-4 mr-1"></i>
-                                                WhatsApp
-                                            </a>
-                                            <a href="javascript:void(0)"
-                                                class="rac-d-btn rac-d-btn--call pointer-events-none">
-                                                <i data-lucide="phone" class="h-4 w-4 mr-1"></i> Call Now
-                                            </a>
-                                        </div>
-                                        <div class="rac-d-icon-row mt-2">
-                                            <button class="rac-icon-btn pointer-events-none text-xs"><i
-                                                    data-lucide="copy" class="h-3 w-3"></i> Compare</button>
-                                            <button class="rac-icon-btn pointer-events-none text-xs"><i
-                                                    data-lucide="heart" class="h-3 w-3"></i> Save</button>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
 
                             <!-- Mobile Card -->
-                            <div class="rac-card rac-mobile-card shadow-lg border-primary/30">
+                            <div class="rac-card rac-mobile-card">
                                 <div class="rac-top">
                                     <div class="rac-photo-col" style="width: 100px;">
                                         <img :src="photoPreview ? photoPreview : '{% static 'img/avatar-icon.jpg' %}'"
@@ -880,8 +878,6 @@
                                         <div class="flex flex-wrap gap-1 mt-1">
                                             <div class="rac-dist-pill"><i data-lucide="map-pin"
                                                     class="h-3 w-3 mr-0.5"></i> Nearby</div>
-                                            <div class="rac-match-pill rac-match--green"><i data-lucide="zap"
-                                                    class="h-3 w-3 mr-0.5"></i> 99% Match</div>
                                         </div>
                                         <div class="rac-location mt-1">
                                             <i data-lucide="map-pin" class="h-3 w-3 mr-1"></i> <span
@@ -918,27 +914,19 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="rac-actions">
-                                    <a href="javascript:void(0)"
-                                        class="rac-btn rac-btn--profile pointer-events-none"><i
-                                            data-lucide="user" class="h-3 w-3 mr-1"></i> Profile</a>
-                                    <a href="javascript:void(0)"
-                                        class="rac-btn rac-btn--whatsapp pointer-events-none"><i
-                                            data-lucide="message-circle" class="h-3 w-3 mr-1"></i> WhatsApp</a>
-                                    <a href="javascript:void(0)"
-                                        class="rac-btn rac-btn--call pointer-events-none"><i data-lucide="phone"
-                                            class="h-3 w-3 mr-1"></i> Call Now</a>
-                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Slide 1: Full Comprehensive Public Profile Page Preview (Matches /profile/dishant-shah/) -->
-                    <div x-show="previewSlide === 1" class="space-y-4" style="display: none;">
-                        <div class="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                            <span class="font-medium flex items-center gap-1"><i data-lucide="globe" class="h-3.5 w-3.5 text-primary"></i> Live Public Profile Page</span>
-                            <span class="bg-primary/10 text-primary font-semibold px-2 py-0.5 rounded-full">Slide 2 of 2</span>
-                        </div>
+                    <!-- Slide 1: Public profile website -->
+                    <div x-show="previewSlide === 1"
+                        x-transition:enter="transition ease-out duration-1000"
+                        x-transition:enter-start="opacity-0 translate-y-4 scale-[0.98]"
+                        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave="transition ease-in duration-1000"
+                        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                        x-transition:leave-end="opacity-0 -translate-y-4 scale-[0.98]"
+                        class="reg-preview-slide space-y-4">
 
                         <!-- Full Profile Container with shared agent-profile-view styles -->
                         <div class="profile-view-wrapper rounded-2xl border border-border shadow-md overflow-hidden bg-[#f8fafc] text-left">
@@ -1279,30 +1267,23 @@
                     </div>
 
                 </div>
+            </div>
 
-                <!-- Modal Footer (Actions) -->
-                <div class="px-4 py-3 sm:px-6 sm:py-4 bg-muted/50 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-                    <div class="flex items-center gap-2 text-xs text-muted-foreground">
-                        <button type="button" @click="previewSlide = 0" class="h-2 w-6 rounded-full transition-all" :class="previewSlide === 0 ? 'bg-primary' : 'bg-border'"></button>
-                        <button type="button" @click="previewSlide = 1" class="h-2 w-6 rounded-full transition-all" :class="previewSlide === 1 ? 'bg-primary' : 'bg-border'"></button>
-                        <span class="ml-1">Use arrows to toggle view</span>
-                    </div>
-
-                    <div class="flex items-center gap-3 w-full sm:w-auto">
-                        <button type="button" @click="showPreviewModal = false"
-                            class="flex-1 sm:flex-none inline-flex items-center justify-center rounded-lg border border-input bg-background px-4 py-2.5 text-xs sm:text-sm font-semibold shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors">
-                            <i data-lucide="arrow-left" class="h-3.5 w-3.5 mr-1.5"></i> Edit Details
-                        </button>
-                        <button type="button" @click="submitStep1()" :disabled="isSubmitting"
-                            class="flex-1 sm:flex-none inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-xs sm:text-sm font-bold text-primary-foreground shadow-md hover:bg-primary/90 transition-all disabled:opacity-50">
-                            <span x-text="isSubmitting ? 'Processing...' : 'Proceed to Choose Plan'"></span>
-                            <i data-lucide="arrow-right" class="h-4 w-4 ml-2" x-show="!isSubmitting"></i>
-                        </button>
-                    </div>
+            <div class="absolute bottom-5 sm:bottom-7 inset-x-0 z-20 flex items-center justify-center pointer-events-none">
+                <div class="pointer-events-auto flex items-center justify-center gap-5 sm:gap-8 px-4">
+                    <button type="button" @click="cyclePreview(-1)" class="reg-preview-nav-btn" title="Previous" aria-label="Previous">
+                        <i data-lucide="chevron-left" class="h-5 w-5"></i>
+                    </button>
+                    <button type="button" @click="submitStep1()" :disabled="isSubmitting" class="reg-preview-claim-btn">
+                        <span x-text="isSubmitting ? 'Processing...' : 'Claim now'"></span>
+                    </button>
+                    <button type="button" @click="cyclePreview(1)" class="reg-preview-nav-btn" title="Next" aria-label="Next">
+                        <i data-lucide="chevron-right" class="h-5 w-5"></i>
+                    </button>
                 </div>
-
             </div>
         </div>
+        </template>
     </div>
 {% endblock %}
 
@@ -1368,6 +1349,9 @@
                 slug: '',
                 slugStatus: 'checking',
                 email: '{{ draft.email }}',
+                emailStatus: '',
+                emailCheckMessage: '',
+                emailLoginUrl: '{% url "agents:agent_login" %}',
                 phone: '{{ draft.mobile }}',
                 whatsapp: '{{ draft.whatsapp }}',
                 pincode: '{{ draft.agent_pincode }}',
@@ -1390,6 +1374,8 @@
 
                 showPreviewModal: false,
                 previewSlide: 0,
+                previewAutoTimer: null,
+                previewAutoDone: false,
                 editName: false,
                 editPin: false,
                 editPan: false,
@@ -1418,6 +1404,24 @@
                     // Initial updates
                     this.checkSlug();
                     if (this.pincode.length === 6) this.checkPin();
+                    if ((this.email || '').trim()) this.checkEmailNow();
+
+                    this.$watch('emailStatus', () => {
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    });
+                    this.$watch('showPreviewModal', (open) => {
+                        document.body.style.overflow = open ? 'hidden' : '';
+                        if (open) {
+                            this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                        } else {
+                            this.clearPreviewAutoTimer();
+                            this.previewAutoDone = false;
+                            this.previewSlide = 0;
+                        }
+                    });
+                    this.$watch('previewSlide', () => {
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    });
 
                     // Initial icon load
                     setTimeout(() => {
@@ -1425,7 +1429,7 @@
                     }, 100);
                 },
 
-                validateAndOpenPreview() {
+                async validateAndOpenPreview() {
                     const nameStr = this.name || '';
                     const emailStr = this.email || '';
                     const phoneStr = this.phone || '';
@@ -1433,18 +1437,55 @@
 
                     if (!/^[a-zA-Z\s.-]{2,}$/.test(nameStr.trim())) return Swal.fire('Invalid Detail', 'Please enter a valid full name with at least 2 characters.', 'warning');
                     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr.trim())) return Swal.fire('Invalid Detail', 'Please enter a valid email address.', 'warning');
+                    const emailOk = await this.checkEmailNow();
+                    if (!emailOk || this.emailStatus === 'taken') {
+                        return Swal.fire('Already Registered', this.emailCheckMessage || 'This email is already registered. Please login.', 'warning');
+                    }
                     if (!/^[6-9]\d{9}$/.test(phoneStr)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit mobile number starting with 6-9.', 'warning');
                     if (this.whatsapp && !/^\d{10}$/.test(this.whatsapp)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit WhatsApp number.', 'warning');
                     if (!/^\d{6}$/.test(pinStr)) return Swal.fire('Invalid Detail', 'Please enter a valid 6-digit pincode.', 'warning');
-                    if (this.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(this.pan)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-character PAN number.', 'warning');
+                    if (this.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(this.pan)) return Swal.fire('Invalid Detail', 'PAN must be 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).', 'warning');
                     if (!this.segments || this.segments.length === 0) return Swal.fire('Missing Detail', 'Please select at least one insurance segment.', 'warning');
                     if (!this.agreeTerms) return Swal.fire('Missing Detail', 'Please agree to the Terms of Service to continue.', 'warning');
 
                     this.showPreviewModal = true;
                     this.previewSlide = 0;
-                    setTimeout(() => {
+                    this.previewAutoDone = false;
+                    this.clearPreviewAutoTimer();
+                    this.$nextTick(() => {
                         if (window.lucide) lucide.createIcons();
-                    }, 50);
+                        this.schedulePreviewAutoAdvance();
+                    });
+                },
+
+                clearPreviewAutoTimer() {
+                    if (this.previewAutoTimer) {
+                        clearTimeout(this.previewAutoTimer);
+                        this.previewAutoTimer = null;
+                    }
+                },
+
+                schedulePreviewAutoAdvance() {
+                    this.clearPreviewAutoTimer();
+                    if (this.previewAutoDone) return;
+                    this.previewAutoTimer = setTimeout(() => {
+                        if (this.showPreviewModal && this.previewSlide === 0 && !this.previewAutoDone) {
+                            this.previewAutoDone = true;
+                            this.goPreviewSlide(1);
+                        }
+                    }, 5000);
+                },
+
+                goPreviewSlide(slide) {
+                    if (this.previewSlide === slide) return;
+                    this.previewSlide = slide;
+                    this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                },
+
+                cyclePreview(dir) {
+                    this.clearPreviewAutoTimer();
+                    this.previewAutoDone = true;
+                    this.goPreviewSlide((this.previewSlide + dir + 2) % 2);
                 },
 
 
@@ -1527,12 +1568,46 @@
                     return /^\d{10}$/.test(this.whatsapp || this.phone);
                 },
 
+                get isPanValid() {
+                    return /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(this.pan || '');
+                },
+
                 get canSubmit() {
                     return this.name.trim().length > 1 &&
                         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim()) &&
+                        this.emailStatus !== 'taken' &&
                         /^[6-9]\d{9}$/.test(this.phone) &&
                         /^\d{6}$/.test(this.pincode) &&
                         this.segments.length > 0;
+                },
+
+                handlePanInput() {
+                    const raw = (this.pan || '').toUpperCase();
+                    let result = '';
+                    for (const ch of raw) {
+                        const pos = result.length;
+                        if (pos >= 10) break;
+                        if (pos < 5) {
+                            if (/[A-Z]/.test(ch)) result += ch;
+                        } else if (pos < 9) {
+                            if (/[0-9]/.test(ch)) result += ch;
+                        } else if (/[A-Z]/.test(ch)) {
+                            result += ch;
+                        }
+                    }
+                    this.pan = result;
+                    delete this.errors.pan_number;
+                },
+
+                advanceStat(field, maxLen, nextRef, nextEditFlag) {
+                    this[field] = String(this[field] || '').replace(/\D/g, '').slice(0, maxLen);
+                    if (this[field].length === maxLen && nextRef) {
+                        this.$nextTick(() => {
+                            if (nextEditFlag) this[nextEditFlag] = true;
+                            const el = this.$refs[nextRef];
+                            if (el) el.focus();
+                        });
+                    }
                 },
 
                 handlePhoneInput() {
@@ -1557,6 +1632,48 @@
                         this.slugTimeout = setTimeout(() => {
                             this.slugStatus = 'available';
                         }, 400);
+                    }
+                },
+
+                checkEmail() {
+                    clearTimeout(this.emailTimeout);
+                    this.emailTimeout = setTimeout(() => this.checkEmailNow(), 400);
+                },
+
+                async checkEmailNow() {
+                    clearTimeout(this.emailTimeout);
+                    const emailStr = (this.email || '').trim();
+                    if (!emailStr) {
+                        this.emailStatus = '';
+                        this.emailCheckMessage = '';
+                        delete this.errors.email;
+                        return true;
+                    }
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
+                        this.emailStatus = 'invalid';
+                        this.emailCheckMessage = 'Please enter a valid email address.';
+                        return false;
+                    }
+                    this.emailStatus = 'checking';
+                    this.emailCheckMessage = '';
+                    try {
+                        const res = await fetch(`{% url 'agents:agent_check_email' %}?email=${encodeURIComponent(emailStr)}`);
+                        const data = await res.json();
+                        if ((this.email || '').trim().toLowerCase() !== emailStr.toLowerCase()) return true;
+                        if (data.registered) {
+                            this.emailStatus = 'taken';
+                            this.emailCheckMessage = data.message || 'This email is already registered. Please login.';
+                            this.emailLoginUrl = data.login_url || '{% url "agents:agent_login" %}';
+                            this.errors.email = [this.emailCheckMessage];
+                            return false;
+                        }
+                        this.emailStatus = 'available';
+                        this.emailCheckMessage = '';
+                        delete this.errors.email;
+                        return true;
+                    } catch (e) {
+                        this.emailStatus = '';
+                        return true;
                     }
                 },
 
@@ -1641,7 +1758,7 @@
                     }
                 },
 
-                submitStep1() {
+                async submitStep1() {
                     try {
                         const nameStr = this.name || '';
                         const emailStr = this.email || '';
@@ -1650,10 +1767,14 @@
 
                         if (!/^[a-zA-Z\s.-]{2,}$/.test(nameStr.trim())) return Swal.fire('Invalid Detail', 'Please enter a valid full name with at least 2 characters.', 'warning');
                         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr.trim())) return Swal.fire('Invalid Detail', 'Please enter a valid email address.', 'warning');
+                        const emailOk = await this.checkEmailNow();
+                        if (!emailOk || this.emailStatus === 'taken') {
+                            return Swal.fire('Already Registered', this.emailCheckMessage || 'This email is already registered. Please login.', 'warning');
+                        }
                         if (!/^[6-9]\d{9}$/.test(phoneStr)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit mobile number starting with 6-9.', 'warning');
                         if (this.whatsapp && !/^\d{10}$/.test(this.whatsapp)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit WhatsApp number.', 'warning');
                         if (!/^\d{6}$/.test(pinStr)) return Swal.fire('Invalid Detail', 'Please enter a valid 6-digit pincode.', 'warning');
-                        if (this.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(this.pan)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-character PAN number.', 'warning');
+                        if (this.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(this.pan)) return Swal.fire('Invalid Detail', 'PAN must be 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).', 'warning');
                         if (!this.segments || this.segments.length === 0) return Swal.fire('Missing Detail', 'Please select at least one insurance segment.', 'warning');
                         if (!this.agreeTerms) return Swal.fire('Missing Detail', 'Please agree to the Terms of Service to continue.', 'warning');
 

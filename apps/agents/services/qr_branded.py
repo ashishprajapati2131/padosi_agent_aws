@@ -17,19 +17,43 @@ from apps.home.models import SiteSetting
 logger = logging.getLogger(__name__)
 
 POSTER_WIDTH = 1080
-POSTER_HEIGHT = 1320
-QR_BOX = 620
-POSTER_VERSION = 'v7'
-SOCIAL_ICON_SIZE = 78
+POSTER_HEIGHT = 1440
+QR_BOX = 580
+POSTER_VERSION = 'v9'
+SOCIAL_ICON_SIZE = 72
+CARD_MARGIN = 0
+CARD_RADIUS = 32
 
 BRAND_NAVY = (30, 64, 175)
+BRAND_BLUE = (24, 82, 157)
+BRAND_TEAL = (15, 118, 110)
+BRAND_GREEN = (29, 125, 93)
+BRAND_GOLD = (245, 158, 11)
 QR_FILL = (0, 0, 0)
-BRAND_TEAL = (29, 125, 93)
 BRAND_SLATE = (15, 23, 42)
+CORNER_COLORS = (BRAND_BLUE, BRAND_TEAL, BRAND_GOLD, BRAND_GREEN)
 SOCIAL_COLORS = {
     'whatsapp': (37, 211, 102),
     'instagram': (225, 48, 108),
     'facebook': (24, 119, 242),
+}
+
+TYPE_COPY = {
+    'profile': {
+        'headline': 'View my agent profile',
+        'subline': 'Scan to connect with your neighbourhood insurance advisor',
+        'cta': 'Trusted agent on PadosiAgent — India\'s agent network',
+    },
+    'card': {
+        'headline': 'My digital business card',
+        'subline': 'Scan to save my contact, services & details instantly',
+        'cta': 'Professional · Shareable · Always up to date',
+    },
+    'reviews': {
+        'headline': 'Leave a review & rating',
+        'subline': 'Scan to share your experience and help others choose wisely',
+        'cta': 'Your feedback builds trust in our community',
+    },
 }
 
 
@@ -142,6 +166,64 @@ def _rounded_rect(draw, box, radius, fill, outline=None, width=1):
         draw.rounded_rectangle(box, radius=radius, **kwargs)
     else:
         draw.rectangle(box, **kwargs)
+
+
+def _text_width(draw, text, font):
+    bbox = draw.textbbox((0, 0), text, font=font)
+    return bbox[2] - bbox[0]
+
+
+def _draw_centered_text(draw, y, text, font, fill, canvas_width=POSTER_WIDTH):
+    tw = _text_width(draw, text, font)
+    draw.text(((canvas_width - tw) / 2, y), text, font=font, fill=fill)
+
+
+def _draw_card_corner_accents(draw, box, arm=72, width=10):
+    """PVC-style coloured L-corners (top-left → clockwise)."""
+    x0, y0, x1, y1 = box
+    corners = (
+        ((x0, y0 + arm, x0, y0, x0 + arm, y0), CORNER_COLORS[0]),
+        ((x1 - arm, y0, x1, y0, x1, y0 + arm), CORNER_COLORS[1]),
+        ((x1, y1 - arm, x1, y1, x1 - arm, y1), CORNER_COLORS[2]),
+        ((x0 + arm, y1, x0, y1, x0, y1 - arm), CORNER_COLORS[3]),
+    )
+    for points, color in corners:
+        draw.line(points, fill=color, width=width, joint='curve')
+
+
+def _draw_qr_scan_frame(draw, x, y, size, arm=56, width=9):
+    """Coloured scan brackets around the QR (reference-style)."""
+    colors = CORNER_COLORS
+    frames = (
+        ((x, y + arm, x, y, x + arm, y), colors[0]),
+        ((x + size - arm, y, x + size, y, x + size, y + arm), colors[1]),
+        ((x + size, y + size - arm, x + size, y + size, x + size - arm, y + size), colors[2]),
+        ((x + arm, y + size, x, y + size, x, y + size - arm), colors[3]),
+    )
+    for points, color in frames:
+        draw.line(points, fill=color, width=width, joint='curve')
+
+
+def _draw_star_row(draw, center_x, y, size=34, gap=8):
+    """Five gold stars for review/trust cue."""
+    total_w = size * 5 + gap * 4
+    start_x = center_x - total_w // 2
+    star_font = _get_font(False, size)
+    for i in range(5):
+        draw.text((start_x + i * (size + gap), y), '\u2605', font=star_font, fill=BRAND_GOLD)
+
+
+def _paste_header_logo(canvas, logo, top_y):
+    if logo is None:
+        return top_y
+    from PIL import Image
+
+    mark = logo.copy()
+    max_w = 200
+    mark.thumbnail((max_w, max_w), Image.Resampling.LANCZOS)
+    x = (POSTER_WIDTH - mark.size[0]) // 2
+    canvas.paste(mark, (x, top_y), mark)
+    return top_y + mark.size[1] + 18
 
 
 def _social_svg_path(name):
@@ -346,38 +428,24 @@ def _paste_social_row(canvas, center_y, icon_size=None):
         canvas.paste(mark, (start_x + index * (icon_size + gap), center_y), mark)
 
 
-def _make_qr_image(target_url, logo):
+def _make_qr_image(target_url):
     import qrcode
     from PIL import Image
 
     qr = qrcode.QRCode(
         version=None,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
         box_size=12,
         border=2,
     )
     qr.add_data(target_url)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color=QR_FILL, back_color=(255, 255, 255)).convert('RGBA')
-    qr_img = qr_img.resize((QR_BOX, QR_BOX), Image.Resampling.LANCZOS)
-
-    if logo is not None:
-        mark = logo.copy()
-        mark_size = int(QR_BOX * 0.18)
-        mark.thumbnail((mark_size, mark_size), Image.Resampling.LANCZOS)
-        pad = 16
-        badge_size = max(mark.size) + pad
-        badge = Image.new('RGBA', (badge_size, badge_size), (255, 255, 255, 255))
-        bx = (badge_size - mark.size[0]) // 2
-        by = (badge_size - mark.size[1]) // 2
-        badge.paste(mark, (bx, by), mark)
-        pos = ((QR_BOX - badge_size) // 2, (QR_BOX - badge_size) // 2)
-        qr_img.paste(badge, pos, badge)
-    return qr_img
+    return qr_img.resize((QR_BOX, QR_BOX), Image.Resampling.LANCZOS)
 
 
 def generate_branded_qr_png(agent, qr_type, target_url):
-    """Return PNG bytes for a branded poster, or None on failure."""
+    """Return PNG bytes for a single PVC-style marketing card."""
     from PIL import Image, ImageDraw
 
     if qr_type not in QR_TYPES:
@@ -387,77 +455,93 @@ def generate_branded_qr_png(agent, qr_type, target_url):
     agent_name = (profile.display_name if profile and getattr(profile, 'display_name', None) else '') or agent.fullname or 'Agent'
     site_name = _site_name()
     type_label = QR_TYPE_LABELS.get(qr_type, qr_type.title())
+    copy = TYPE_COPY.get(qr_type, TYPE_COPY['profile'])
     logo = _load_brand_logo()
 
-    type_accent = {
-        'profile': BRAND_NAVY,
-        'card': BRAND_TEAL,
-        'reviews': (217, 119, 6),
-    }.get(qr_type, BRAND_TEAL)
-
-    canvas = Image.new('RGB', (POSTER_WIDTH, POSTER_HEIGHT), (241, 245, 249))
+    canvas = Image.new('RGB', (POSTER_WIDTH, POSTER_HEIGHT), (255, 255, 255))
     draw = ImageDraw.Draw(canvas)
 
-    header_h = 220
-    for y in range(header_h):
-        t = y / header_h
-        r = int(30 + (15 - 30) * t)
-        g = int(58 + (23 - 58) * t)
-        b = int(138 + (42 - 138) * t)
-        draw.line((0, y, POSTER_WIDTH, y), fill=(r, g, b))
+    card_box = (0, 0, POSTER_WIDTH - 1, POSTER_HEIGHT - 1)
+    _draw_card_corner_accents(draw, card_box, arm=80, width=11)
 
-    card_top = 168
-    card_box = (40, card_top, POSTER_WIDTH - 40, POSTER_HEIGHT - 40)
-    _rounded_rect(draw, card_box, 32, fill=(255, 255, 255), outline=(226, 232, 240), width=2)
+    y = 44
+    y = _paste_header_logo(canvas, logo, y)
+    if logo is None:
+        brand_font = _get_font(True, 46)
+        _draw_centered_text(draw, y, site_name, brand_font, BRAND_NAVY)
+        y += 58
 
-    title_font = _get_font(True, 52)
-    title = site_name
-    tw = draw.textbbox((0, 0), title, font=title_font)
-    draw.text(((POSTER_WIDTH - (tw[2] - tw[0])) / 2, 56), title, font=title_font, fill=(255, 255, 255))
+    tag_font = _get_font(False, 22)
+    _draw_centered_text(draw, y, 'India\'s trusted insurance agent network', tag_font, (100, 116, 139))
+    y += 40
 
-    subtitle_font = _get_font(False, 26)
-    subtitle = 'Scan · Connect · Review'
-    sw = draw.textbbox((0, 0), subtitle, font=subtitle_font)
-    draw.text(((POSTER_WIDTH - (sw[2] - sw[0])) / 2, 118), subtitle, font=subtitle_font, fill=(226, 232, 240))
+    headline_font = _get_font(True, 38)
+    _draw_centered_text(draw, y, copy['headline'], headline_font, BRAND_SLATE)
+    y += 50
 
-    pill_font = _get_font(True, 24)
+    name_font = _fit_text(draw, agent_name, lambda s: _get_font(True, s), POSTER_WIDTH - 160, 42, min_size=30)
+    _draw_centered_text(draw, y, agent_name, name_font, BRAND_BLUE)
+    y += 52
+
+    sub_font = _get_font(False, 24)
+    sub_lines = _wrap_copy(copy['subline'], 42)
+    for line in sub_lines:
+        _draw_centered_text(draw, y, line, sub_font, (71, 85, 105))
+        y += 32
+
+    qr_img = _make_qr_image(target_url)
+    qr_x = (POSTER_WIDTH - QR_BOX) // 2
+    qr_y = y + 16
+    canvas.paste(qr_img, (qr_x, qr_y), qr_img)
+    _draw_qr_scan_frame(draw, qr_x - 6, qr_y - 6, QR_BOX + 12, arm=52, width=8)
+
+    y = qr_y + QR_BOX + 28
+    _draw_star_row(draw, POSTER_WIDTH // 2, y, size=36, gap=10)
+    y += 52
+
+    cta_font = _get_font(False, 23)
+    for line in _wrap_copy(copy['cta'], 44):
+        _draw_centered_text(draw, y, line, cta_font, (51, 65, 85))
+        y += 30
+
+    y += 12
+    share_font = _get_font(True, 20)
+    _draw_centered_text(draw, y, 'Share on', share_font, (100, 116, 139))
+    _paste_social_row(canvas, y + 30, icon_size=SOCIAL_ICON_SIZE)
+    y += 30 + SOCIAL_ICON_SIZE + 28
+
+    pill_font = _get_font(True, 22)
     pill = type_label.upper()
-    pw = draw.textbbox((0, 0), pill, font=pill_font)
-    pill_w = (pw[2] - pw[0]) + 36
-    pill_h = 38
+    pw = _text_width(draw, pill, pill_font)
+    pill_w = pw + 40
+    pill_h = 36
     pill_x = (POSTER_WIDTH - pill_w) // 2
-    pill_y = card_top + 28
-    _rounded_rect(draw, (pill_x, pill_y, pill_x + pill_w, pill_y + pill_h), 19, fill=type_accent)
-    draw.text((pill_x + 18, pill_y + 6), pill, font=pill_font, fill=(255, 255, 255))
+    _rounded_rect(draw, (pill_x, y, pill_x + pill_w, y + pill_h), 18, fill=BRAND_TEAL)
+    draw.text((pill_x + 20, y + 6), pill, font=pill_font, fill=(255, 255, 255))
 
-    qr_img = _make_qr_image(target_url, logo)
-    qr_pad = 20
-    frame_size = QR_BOX + qr_pad * 2
-    frame_x = (POSTER_WIDTH - frame_size) // 2
-    frame_y = pill_y + pill_h + 24
-    _rounded_rect(draw, (frame_x, frame_y, frame_x + frame_size, frame_y + frame_size), 20, fill=(248, 250, 252), outline=(226, 232, 240), width=2)
-    canvas.paste(qr_img, (frame_x + qr_pad, frame_y + qr_pad), qr_img)
-
-    share_font = _get_font(True, 22)
-    share_label = 'Share on'
-    slw = draw.textbbox((0, 0), share_label, font=share_font)
-    share_y = frame_y + frame_size + 28
-    draw.text(((POSTER_WIDTH - (slw[2] - slw[0])) / 2, share_y), share_label, font=share_font, fill=(100, 116, 139))
-    _paste_social_row(canvas, share_y + 34)
-
-    name_y = share_y + 34 + SOCIAL_ICON_SIZE + 36
-    name_font = _fit_text(draw, agent_name, lambda s: _get_font(True, s), POSTER_WIDTH - 120, 44)
-    nw = draw.textbbox((0, 0), agent_name, font=name_font)
-    draw.text(((POSTER_WIDTH - (nw[2] - nw[0])) / 2, name_y), agent_name, font=name_font, fill=BRAND_SLATE)
-
-    foot_font = _get_font(False, 24)
-    foot = 'padosiagent.com'
-    fw = draw.textbbox((0, 0), foot, font=foot_font)
-    draw.text(((POSTER_WIDTH - (fw[2] - fw[0])) / 2, POSTER_HEIGHT - 72), foot, font=foot_font, fill=(148, 163, 184))
+    foot_font = _get_font(True, 26)
+    _draw_centered_text(draw, POSTER_HEIGHT - 44, 'padosiagent.com', foot_font, BRAND_NAVY)
 
     buf = io.BytesIO()
     canvas.convert('RGB').save(buf, format='PNG', optimize=True)
     return buf.getvalue()
+
+
+def _wrap_copy(text, max_chars):
+    words = text.split()
+    lines = []
+    current = []
+    for word in words:
+        trial = ' '.join(current + [word])
+        if len(trial) <= max_chars:
+            current.append(word)
+        else:
+            if current:
+                lines.append(' '.join(current))
+            current = [word]
+    if current:
+        lines.append(' '.join(current))
+    return lines or [text]
 
 
 def get_or_create_qr_png(request, agent, qr_type):

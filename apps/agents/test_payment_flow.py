@@ -56,16 +56,22 @@ class RazorpayCheckoutHelperTests(SimpleTestCase):
             self.assertFalse(is_mock_payment('order_local_123', MOCK_SIGNATURE))
 
     @override_settings(DEBUG=True, RAZORPAY_KEY='', RAZORPAY_SECRET='')
-    def test_missing_keys_mock_in_debug(self):
+    def test_missing_keys_do_not_create_mock_order(self):
         request = RequestFactory().get('/', HTTP_HOST='127.0.0.1:1234')
         self.assertEqual(razorpay_key_mode(), 'missing')
         self.assertTrue(should_mock_razorpay(request))
+        order_id, is_mock = create_checkout_order(153300, 'agent_draft_1', request)
+        self.assertIsNone(order_id)
+        self.assertFalse(is_mock)
 
     @override_settings(DEBUG=True, RAZORPAY_KEY='rzp_live_abc', RAZORPAY_SECRET='secret')
-    def test_live_keys_on_localhost_are_mocked(self):
+    def test_live_keys_on_localhost_are_refused(self):
         request = RequestFactory().get('/', HTTP_HOST='127.0.0.1:1234')
         self.assertTrue(is_local_request(request))
-        self.assertTrue(should_mock_razorpay(request))
+        self.assertFalse(should_mock_razorpay(request))
+        order_id, is_mock = create_checkout_order(153300, 'agent_draft_1', request)
+        self.assertIsNone(order_id)
+        self.assertFalse(is_mock)
 
     @override_settings(DEBUG=True, RAZORPAY_KEY='rzp_test_abc', RAZORPAY_SECRET='secret')
     def test_test_keys_are_not_mocked(self):
@@ -78,11 +84,11 @@ class RazorpayCheckoutHelperTests(SimpleTestCase):
         self.assertFalse(should_mock_razorpay(request))
 
     @override_settings(DEBUG=True, RAZORPAY_KEY='', RAZORPAY_SECRET='')
-    def test_create_order_returns_local_mock(self):
+    def test_create_order_refuses_when_keys_missing(self):
         request = RequestFactory().get('/', HTTP_HOST='127.0.0.1:1234')
         order_id, is_mock = create_checkout_order(153300, 'agent_draft_1', request)
-        self.assertTrue(is_mock)
-        self.assertTrue(order_id.startswith('order_local_'))
+        self.assertIsNone(order_id)
+        self.assertFalse(is_mock)
 
     def test_file_pair_wins_over_mixed_process_env(self):
         key, secret = razorpay_credentials(

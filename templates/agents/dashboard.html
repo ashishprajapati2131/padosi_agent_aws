@@ -12,6 +12,8 @@
 .toggle::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 2px rgba(0,0,0,.1); }
 .toggle.on { background:#22c55e; }
 .toggle.on::after { left:20px; }
+.locked-plan-overlay { cursor: pointer; }
+.locked-plan-overlay:hover i { color: #1e3a8a !important; transform: scale(1.08); }
 </style>
 {% endblock %}
 
@@ -58,8 +60,6 @@
             </div>
         </div>
         {% endif %}
-
-        {% include 'agents/partials/qr_codes_widget.html' %}
 
         {% if isOnTrial %}
         {# ──────── FREE TRIAL UPGRADE PROMOTION BANNER ──────── #}
@@ -152,22 +152,20 @@
             </div>
         </div>
 
-        {% include 'agents/partials/starter_upgrade_banner.html' %}
-        {% if show_visibility_section %}
-        {% include 'agents/partials/visibility_boost.html' %}
-        {% endif %}
-
         <!-- Tab Navigation Bar -->
         <div class="dashboard-nav-tabs-wrapper mb-4 px-2">
             <ul class="nav dashboard-main-tabs">
                 <li class="nav-item">
-                    <a class="nav-link active" href="#">Overview</a>
+                    <a class="nav-link active" href="#overview" data-tab="overview">Overview</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#"><i class="far fa-user mr-2"></i>My Profile</a>
+                    <a class="nav-link" href="#profile" data-tab="profile"><i class="far fa-user mr-2"></i>My Profile</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#"><i class="far fa-list-alt mr-2"></i>Leads</a>
+                    <a class="nav-link" href="#leads" data-tab="leads"><i class="far fa-list-alt mr-2"></i>Leads</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#qrcodes" data-tab="qrcodes"><i class="fas fa-qrcode mr-2"></i>QR Codes</a>
                 </li>
             </ul>
         </div>
@@ -302,75 +300,6 @@
                     </div>
                 </div>
             </div>
-    
-            <!-- Recent Leads List -->
-            <div class="px-2 mt-2 pb-5">
-                <div class="card premium-dashboard-card" data-feature="lead_management">
-                    <div class="card-body p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <div>
-                                <h5 class="card-section-title mb-1">Recent Leads</h5>
-                                <p class="text-muted small mb-0">Your latest potential clients</p>
-                            </div>
-                            <button class="btn btn-view-all" disabled>View All Leads</button>
-                        </div>
-
-                        {% if recentLeads %}
-                            <div class="table-responsive">
-                                <table class="table table-borderless mb-0">
-                                    <thead>
-                                        <tr style="color:#64748b; font-size:13px;">
-                                            <th>Name</th>
-                                            <th>Contact</th>
-                                            <th>Pincode</th>
-                                            <th>Insurance Type</th>
-                                            <th>Requirement</th>
-                                            <th>Source</th>
-                                            <th>Status</th>
-                                            <th>Time</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for lead in recentLeads %}
-                                            <tr>
-                                                <td>{{ lead.customer_name|default:'Guest User' }}</td>
-                                                <td>
-                                                    <div>{{ lead.customer_mobile|default:'-' }}</div>
-                                                    <small class="text-muted">{{ lead.customer_email|default:'-' }}</small>
-                                                </td>
-                                                <td>{{ lead.customer_pincode|default:'-' }}</td>
-                                                <td>{{ lead.insurance_type|default:'-' }}</td>
-                                                <td>{{ lead.enquiry_requirements|default:'-' }}</td>
-                                                <td style="text-transform: capitalize;">{{ lead.interaction_type }}</td>
-                                                <td>
-                                                    <select class="form-select form-select-sm lead-status-dropdown lead-status-select"
-                                                            data-feature="legacy_lead_status"
-                                                            data-lead-id="{{ lead.id }}"
-                                                            style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; width: 120px; cursor: pointer; display: inline-block;
-                                                                   {% if lead.lead_status == 'new' %}background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca;{% elif lead.lead_status == 'contacted' %}background-color: #fffbeb; color: #d97706; border: 1px solid #fde68a;{% elif lead.lead_status == 'follow_up' %}background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;{% elif lead.lead_status == 'closed' %}background-color: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;{% else %}background-color: #f8fafc; color: #475569; border: 1px solid #cbd5e1;{% endif %}">
-                                                        <option value="new" {% if lead.lead_status == 'new' %}selected{% endif %} style="background: #fff; color: #1e293b;">New</option>
-                                                        <option value="contacted" {% if lead.lead_status == 'contacted' %}selected{% endif %} style="background: #fff; color: #1e293b;">Contacted</option>
-                                                        <option value="follow_up" {% if lead.lead_status == 'follow_up' %}selected{% endif %} style="background: #fff; color: #1e293b;">Follow-up</option>
-                                                        <option value="closed" {% if lead.lead_status == 'closed' %}selected{% endif %} style="background: #fff; color: #1e293b;">Closed</option>
-                                                    </select>
-                                                </td>
-                                                <td>{{ lead.created_at|timesince }} ago</td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        {% else %}
-                            <div class="empty-list-display text-center py-5">
-                                <div class="empty-icon-wrap mb-4">
-                                    <i class="far fa-folder-open fa-3x"></i>
-                                </div>
-                                <p class="empty-msg-text">No leads found. Start adding leads to see them here.</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
 
             <!-- Referral Rewards CTA Card -->
             {% if showReferral %}
@@ -415,6 +344,88 @@
                             <i class="fas fa-share-nodes"></i> View My Referrals
                         </a>
                     </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="leads-content" class="tab-panel" style="display: none;">
+            <div class="px-2 pb-5">
+                <div class="card premium-dashboard-card" data-feature="lead_management">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div>
+                                <h5 class="card-section-title mb-1">All Leads</h5>
+                                <p class="text-muted small mb-0">Every enquiry captured for your profile</p>
+                            </div>
+                        </div>
+
+                        {% if allLeads %}
+                            <div class="table-responsive">
+                                <table class="table table-borderless mb-0">
+                                    <thead>
+                                        <tr style="color:#64748b; font-size:13px;">
+                                            <th>Name</th>
+                                            <th>Contact</th>
+                                            <th>Pincode</th>
+                                            <th>Insurance Type</th>
+                                            <th>Requirement</th>
+                                            <th>Source</th>
+                                            <th>Status</th>
+                                            <th>Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for lead in allLeads %}
+                                            <tr>
+                                                <td>{{ lead.customer_name|default:'Guest User' }}</td>
+                                                <td>
+                                                    <div>{{ lead.customer_mobile|default:'-' }}</div>
+                                                    <small class="text-muted">{{ lead.customer_email|default:'-' }}</small>
+                                                </td>
+                                                <td>{{ lead.customer_pincode|default:'-' }}</td>
+                                                <td>{{ lead.insurance_type|default:'-' }}</td>
+                                                <td>{{ lead.enquiry_requirements|default:'-' }}</td>
+                                                <td style="text-transform: capitalize;">{{ lead.interaction_type }}</td>
+                                                <td>
+                                                    <select class="form-select form-select-sm lead-status-dropdown lead-status-select"
+                                                            data-feature="legacy_lead_status"
+                                                            data-lead-id="{{ lead.id }}"
+                                                            style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; width: 120px; cursor: pointer; display: inline-block;
+                                                                   {% if lead.lead_status == 'new' %}background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca;{% elif lead.lead_status == 'contacted' %}background-color: #fffbeb; color: #d97706; border: 1px solid #fde68a;{% elif lead.lead_status == 'follow_up' %}background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;{% elif lead.lead_status == 'closed' %}background-color: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;{% else %}background-color: #f8fafc; color: #475569; border: 1px solid #cbd5e1;{% endif %}">
+                                                        <option value="new" {% if lead.lead_status == 'new' %}selected{% endif %} style="background: #fff; color: #1e293b;">New</option>
+                                                        <option value="contacted" {% if lead.lead_status == 'contacted' %}selected{% endif %} style="background: #fff; color: #1e293b;">Contacted</option>
+                                                        <option value="follow_up" {% if lead.lead_status == 'follow_up' %}selected{% endif %} style="background: #fff; color: #1e293b;">Follow-up</option>
+                                                        <option value="closed" {% if lead.lead_status == 'closed' %}selected{% endif %} style="background: #fff; color: #1e293b;">Closed</option>
+                                                    </select>
+                                                </td>
+                                                <td>{{ lead.created_at|timesince }} ago</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="empty-list-display text-center py-5">
+                                <div class="empty-icon-wrap mb-4">
+                                    <i class="far fa-folder-open fa-3x"></i>
+                                </div>
+                                <p class="empty-msg-text">No leads found. Start adding leads to see them here.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="qr-content" class="tab-panel" style="display: none;">
+            {% include 'agents/partials/qr_codes_widget.html' %}
+            {% if not qr_items %}
+            <div class="card premium-dashboard-card mb-4 mx-2">
+                <div class="card-body p-5 text-center">
+                    <i class="fas fa-qrcode fa-3x text-muted mb-3"></i>
+                    <h5 class="mb-2">No QR codes yet</h5>
+                    <p class="text-muted mb-0">QR codes for your profile and services will appear here.</p>
                 </div>
             </div>
             {% endif %}
@@ -885,54 +896,54 @@
             tabInitInProgress = true;
 
             const dashboardTabs = document.querySelectorAll('.dashboard-main-tabs .nav-link');
-            const overviewContent = document.getElementById('overview-content');
-            const profileContent = document.getElementById('profile-content');
-            const viewProfileBtn = document.querySelector('.btn-profile-view');
+            const panels = {
+                overview: document.getElementById('overview-content'),
+                profile: document.getElementById('profile-content'),
+                leads: document.getElementById('leads-content'),
+                qrcodes: document.getElementById('qr-content')
+            };
+            const validTabs = Object.keys(panels);
 
-            if (!dashboardTabs.length || !overviewContent || !profileContent) {
-                // If elements aren't ready, try again shortly
+            if (!dashboardTabs.length || !panels.overview || !panels.profile || !panels.leads || !panels.qrcodes) {
                 tabInitInProgress = false;
                 setTimeout(initializeDashboardTabs, 100);
                 return;
             }
 
-            const overviewLink = dashboardTabs[0];
-            const profileLink = dashboardTabs[1];
-
-            function setActiveState(activeId) {
-                // Remove active class from all tabs
-                dashboardTabs.forEach(link => link.classList.remove('active'));
-                
-                if (activeId === 'profile') {
-                    if(profileLink) profileLink.classList.add('active');
-                    if(overviewContent) overviewContent.style.display = 'none';
-                    if(profileContent) profileContent.style.display = 'block';
-                } else {
-                    // Default to overview
-                    if(overviewLink) overviewLink.classList.add('active');
-                    if(overviewContent) overviewContent.style.display = 'block';
-                    if(profileContent) profileContent.style.display = 'none';
+            function setActiveState(activeId, updateHash) {
+                const tabId = validTabs.indexOf(activeId) >= 0 ? activeId : 'overview';
+                dashboardTabs.forEach(function(link) {
+                    link.classList.toggle('active', link.getAttribute('data-tab') === tabId);
+                });
+                validTabs.forEach(function(id) {
+                    if (panels[id]) {
+                        panels[id].style.display = id === tabId ? 'block' : 'none';
+                    }
+                });
+                if (updateHash !== false) {
+                    const nextHash = '#' + tabId;
+                    if (location.hash !== nextHash) {
+                        if (history.replaceState) {
+                            history.replaceState(null, '', nextHash);
+                        } else {
+                            location.hash = tabId;
+                        }
+                    }
                 }
             }
 
-            overviewLink.onclick = function(e) {
-                e.preventDefault();
-                setActiveState('overview');
-            };
-
-            if (profileLink) {
-                profileLink.onclick = function(e) {
+            dashboardTabs.forEach(function(link) {
+                link.onclick = function(e) {
                     e.preventDefault();
-                    setActiveState('profile');
+                    setActiveState(link.getAttribute('data-tab') || 'overview');
                 };
-            }
+            });
 
-            // Force Overview by default on load as requested
-            setActiveState('overview');
+            const hash = (location.hash || '').replace(/^#/, '').toLowerCase();
+            setActiveState(validTabs.indexOf(hash) >= 0 ? hash : 'overview', false);
 
             tabInitInProgress = false;
-            
-            // Safety: ensure loader mask is hidden
+
             if (typeof $ !== 'undefined') {
                 $('.loader-mask').fadeOut();
             }
@@ -1037,29 +1048,10 @@
                 return;
             }
 
-            if (data.mock_checkout && (data.order_id || data.razorpay_order_id)) {
-                fetch('{% url "agents:payment_success" %}', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-                    body: JSON.stringify({
-                        razorpay_payment_id: data.mock_payment_id,
-                        razorpay_order_id: data.razorpay_order_id || data.order_id,
-                        razorpay_signature: data.mock_signature,
-                        agent_id: data.agent_id,
-                        plan_type: planType,
-                    })
-                })
-                .then(r => r.json())
-                .then(res => {
-                    if (res.success) {
-                        window.location.reload();
-                    } else {
-                        alert(userPaymentMessage(res.message));
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-lock me-2"></i> Pay Securely & Upgrade';
-                    }
-                });
+            if (data.mock_checkout) {
+                alert('Payment is required. Razorpay checkout could not start. Dashboard stays locked until a real payment is captured.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-lock me-2"></i> Pay Securely & Upgrade';
                 return;
             }
 
@@ -1076,7 +1068,6 @@
                 name:        'PadosiAgent',
                 description: 'Plan Upgrade — ' + (planType === 'basic' || planType === 'starter' ? "Starter's Plan" : "Professional's Plan"),
                 order_id:    data.order_id,
-                callback_url: window.location.origin + '/agent-register/payment-callback/',
                 prefill: {
                     name:  '{{ agent.fullname }}',
                     email: '{{ agent.email }}',
@@ -1111,6 +1102,9 @@
                     });
                 }
             };
+            if (data.checkout_use_callback || window.location.protocol === 'https:') {
+                options.callback_url = window.location.origin + '/agent-register/payment-callback/';
+            }
 
             if (typeof Razorpay === 'undefined') {
                 // Load Razorpay SDK dynamically
@@ -1282,30 +1276,64 @@
       visibilityPriority: {% if not agent_plan or agent_plan.show_visibility_priority_ranking %}true{% else %}false{% endif %}
     };
 
+    const canOfferUpgrade = {% if show_starter_upgrade_cta %}true{% else %}false{% endif %};
+    const professionalUpgradeLine = 'Upgrade to Professional for AIO, GEO, SEO & Priority Ranking.';
+
     function lockReason(name, hintKey) {
       const fragment = (hintKey && featureUnlockHints[hintKey]) || '';
       if (fragment) {
         return 'Unlock ' + name + ' by: ' + fragment;
       }
       if (hintKey && String(hintKey).indexOf('show_visibility') === 0) {
-        return 'Upgrade to Professional for AIO, GEO, SEO & Priority Ranking.';
+        return professionalUpgradeLine;
       }
       return name + ' is set to private by the administrator.';
     }
 
+    function showLockedFeaturePopup(name, hintKey) {
+      const specific = lockReason(name, hintKey);
+      let html = '<p style="color:#334155;font-size:15px;line-height:1.55;margin:0;">' + professionalUpgradeLine + '</p>';
+      if (specific && specific !== professionalUpgradeLine) {
+        html += '<p style="color:#64748b;font-size:13px;line-height:1.5;margin:10px 0 0;">' + specific + '</p>';
+      }
+      const opts = {
+        icon: 'info',
+        iconColor: '#1e3a8a',
+        title: (name || 'This feature') + ' is locked',
+        html: html,
+        confirmButtonColor: '#1e3a8a',
+        confirmButtonText: canOfferUpgrade ? 'Upgrade to Professional' : 'OK'
+      };
+      if (canOfferUpgrade) {
+        opts.showCancelButton = true;
+        opts.cancelButtonText = 'Not now';
+      }
+      const run = function() {
+        Swal.fire(opts).then(function(result) {
+          if (result.isConfirmed && canOfferUpgrade && typeof openUpgradeModal === 'function') {
+            openUpgradeModal('professional', '{{ profDisc }}');
+          }
+        });
+      };
+      if (typeof Swal === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+        script.onload = run;
+        document.head.appendChild(script);
+        return;
+      }
+      run();
+    }
+
     function lockSection($el, sectionName, hintKey) {
       if ($el.length === 0) return;
-      
-      let $target = $el;
-      
-      // Attempt to locate a title to keep it visible, but prefer blurring just the card-body if it exists
+
       let $body = $el.find('.card-body').length ? $el.find('.card-body').first() : $el;
-      
-      // If we are operating on the full card, let's just wrap everything except the header/title
+
       if ($body.find('.locked-content-wrapper').length === 0) {
           $body.wrapInner('<div class="locked-content-wrapper" style="position:relative; min-height: 150px; flex-grow: 1; display: flex; flex-direction: column;"></div>');
       }
-      $target = $body.find('.locked-content-wrapper');
+      const $target = $body.find('.locked-content-wrapper');
 
       $target.css({
           'position': 'relative',
@@ -1313,62 +1341,85 @@
           'opacity': '1'
       });
       if ($target.find('.locked-plan-overlay').length === 0) {
-        let name = sectionName || "This feature";
-        $target.append(`
-          <div class="locked-plan-overlay" style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:auto; text-align:center; border-radius: 12px;">
-            <i class="fas fa-lock mb-3" style="font-size: 32px; color: #475569;"></i>
-            <p style="font-size: 18px; color: #475569; font-weight: 600; margin: 0; max-width: 80%; line-height: 1.5; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">${lockReason(name, hintKey)}</p>
+        const name = sectionName || "This feature";
+        const $overlay = $(`
+          <div class="locked-plan-overlay" role="button" tabindex="0" aria-label="Unlock ${name}" title="Locked — tap to see how to unlock" style="position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:auto; text-align:center; border-radius: 12px;">
+            <i class="fas fa-lock" style="font-size: 32px; color: #475569; transition: transform .15s ease, color .15s ease;"></i>
           </div>
         `);
+        $overlay.on('click keydown', function(e) {
+          if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          e.stopPropagation();
+          showLockedFeaturePopup(name, hintKey);
+        });
+        $target.append($overlay);
       }
     }
 
-    if (!planPermissions.recentLeads) {
-      lockSection($('h5:contains("Recent Leads")').closest('.card'), "Recent Leads", "show_recent_leads");
+    function lockControl($el, name, hintKey, originalHtml) {
+      if (!$el || !$el.length) return;
+      $el.removeClass('disabled');
+      $el.removeAttr('data-toggle').removeAttr('data-target').removeAttr('data-bs-toggle').removeAttr('data-bs-target');
+      $el.css({'pointer-events': 'auto', 'opacity': '0.92', 'cursor': 'pointer'});
+      $el.attr('title', 'Locked — tap to see how to unlock');
+      if (originalHtml) {
+        $el.html(originalHtml);
+      }
+      $el.off('click.planLock').on('click.planLock', function(e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        showLockedFeaturePopup(name, hintKey);
+      });
     }
-    
+
+    if (!planPermissions.recentLeads) {
+      lockSection($('#leads-content [data-feature="lead_management"]'), "Leads", "show_recent_leads");
+    }
+
     if (!planPermissions.salesInsights) {
       lockSection($('h5:contains("Sales Insights")').closest('.card'), "Sales Insights", "show_sales_insights");
     }
-    
+
     if (!planPermissions.performanceStats) {
       lockSection($('h5:contains("Performance Overview")').closest('.card'), "Dashboard Performance", "show_performance_stats");
       lockSection($('h5:contains("Lead Stats")').closest('.card'), "Lead Stats", "show_performance_stats");
     }
-    
+
     if (!planPermissions.rankBoostTips) {
-      $('button[data-target="#rankingGuideModal"]').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', lockReason('Rank Boost Tips', 'show_rank_boost_tips')).html('<i class="fas fa-lock me-2"></i>Locked');
+      lockControl(
+        $('button[data-feature="rank_boost_tips"], button[data-target="#rankingGuideModal"]'),
+        'Rank Boost Tips',
+        'show_rank_boost_tips',
+        '<i class="fas fa-lock mr-2"></i> Rank Boost Tips'
+      );
     }
-    
+
     if (!planPermissions.viewPublicProfileBtn) {
-      $('.btn-profile-view').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', lockReason('View Public Profile', 'show_view_public_profile_btn')).html('<i class="fas fa-lock me-2"></i>Locked');
+      lockControl(
+        $('.btn-profile-view'),
+        'View Public Profile',
+        'show_view_public_profile_btn',
+        '<i class="fas fa-lock mr-2"></i> View My Profile'
+      );
     }
-    
+
     if (!planPermissions.editProfileFull) {
       let editProfileUrl = "{% url 'agents:agent_edit_profile' %}";
-      $('a[href="' + editProfileUrl + '"]').addClass('disabled').css({'pointer-events': 'none', 'opacity': '0.5'}).attr('title', lockReason('Edit Profile', 'show_edit_profile_full')).html('<i class="fas fa-lock mr-2"></i>Locked');
+      lockControl(
+        $('a[href="' + editProfileUrl + '"]'),
+        'Edit Profile',
+        'show_edit_profile_full',
+        '<i class="fas fa-lock mr-2"></i> Edit Profile'
+      );
     }
-    
+
     if (!planPermissions.leadStatus) {
       $('.lead-status-select, .lead-status-dropdown').prop('disabled', true).css({'opacity': '0.7', 'cursor': 'not-allowed'}).attr('title', lockReason('Lead Status', 'show_lead_status') || 'Lead Status updates are locked by your Admin Plan');
     }
-    
-    // Add lock for the profile section visibility card if restricted
+
     if (!planPermissions.profileSection) {
       lockSection($('.profile-visibility-content'), "Profile Section Visibility", "show_profile_section");
-    }
-
-    if (!planPermissions.visibilityAio) {
-      lockSection($('.pa-vis-tile[data-feature="visibility_aio"]'), "AIO Visibility", "show_visibility_aio");
-    }
-    if (!planPermissions.visibilityGeo) {
-      lockSection($('.pa-vis-tile[data-feature="visibility_geo"]'), "GEO Visibility", "show_visibility_geo");
-    }
-    if (!planPermissions.visibilitySeo) {
-      lockSection($('.pa-vis-tile[data-feature="visibility_seo"]'), "SEO Visibility", "show_visibility_seo");
-    }
-    if (!planPermissions.visibilityPriority) {
-      lockSection($('.pa-vis-tile[data-feature="visibility_priority_ranking"]'), "Priority Ranking", "show_visibility_priority_ranking");
     }
     
     // We can also disable individual toggles if their plan counterparts are disabled
@@ -1385,12 +1436,21 @@
     function lockToggleRow(title, hintKey) {
         let $row = $('.visibility-title:contains("' + title + '")').closest('.visibility-row');
         if ($row.length > 0) {
-            $row.css({'opacity': '0.5', 'pointer-events': 'none', 'background': '#f8fafc'});
+            $row.css({'opacity': '0.72', 'background': '#f8fafc'});
             let $btn = $row.find('button.toggle');
+            $btn.css('pointer-events', 'none');
             if ($btn.hasClass('on')) {
                 $btn.removeClass('on').addClass('off');
             }
-            $row.append('<div class="small text-danger mt-1" style="width: 100%;"><i class="fas fa-lock text-muted mr-1"></i> ' + (hintKey && featureUnlockHints[hintKey] ? ('Unlock by: ' + featureUnlockHints[hintKey]) : 'Disabled by Admin Plan') + '</div>');
+            if ($row.find('.pa-lock-hint-btn').length === 0) {
+                const $lockBtn = $('<button type="button" class="pa-lock-hint-btn" title="Locked — tap to see how to unlock" style="border:none;background:transparent;color:#475569;cursor:pointer;padding:0 4px;"><i class="fas fa-lock"></i></button>');
+                $lockBtn.on('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showLockedFeaturePopup(title, hintKey);
+                });
+                $row.find('.visibility-title').first().append($lockBtn);
+            }
         }
     }
     {% endif %}

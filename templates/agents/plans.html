@@ -1014,6 +1014,240 @@
                 font-size: 70px !important;
             }
         }
+
+        /* ── Post-payment celebration (Diwali anar style) ── */
+        body.celebration-active { overflow: hidden; }
+
+        .congrats-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 999999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow: hidden;
+        }
+        .congrats-overlay.is-open { display: flex; }
+
+        .celebration-blur {
+            position: absolute;
+            inset: 0;
+            background: rgba(8, 12, 28, 0.52);
+            backdrop-filter: blur(16px) saturate(1.15);
+            -webkit-backdrop-filter: blur(16px) saturate(1.15);
+        }
+
+        .celebration-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .celebration-anar {
+            position: absolute;
+            bottom: 6%;
+            width: 90px;
+            height: 240px;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .celebration-anar--left { left: 2%; }
+        .celebration-anar--right { right: 2%; }
+
+        .celebration-anar-stick {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 5px;
+            height: 130px;
+            border-radius: 999px;
+            background: linear-gradient(to top, #b45309 0%, #fbbf24 45%, rgba(251, 191, 36, 0) 100%);
+            filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.9));
+            animation: anar-stick-pulse 0.22s ease-in-out infinite alternate;
+        }
+
+        .celebration-anar--right .celebration-anar-stick {
+            background: linear-gradient(to top, #7c3aed 0%, #f472b6 45%, rgba(244, 114, 182, 0) 100%);
+            filter: drop-shadow(0 0 8px rgba(244, 114, 182, 0.9));
+        }
+
+        .celebration-spark {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            opacity: 0;
+            animation: anar-spark-fly 1.1s ease-out infinite;
+        }
+
+        .celebration-anar--left .celebration-spark:nth-child(2)  { left: 42%; bottom: 118px; background: #ffd700; animation-delay: 0s;    --sx: -28px; --sy: -90px; }
+        .celebration-anar--left .celebration-spark:nth-child(3)  { left: 50%; bottom: 125px; background: #ff6b35; animation-delay: 0.08s; --sx: 8px;   --sy: -110px; }
+        .celebration-anar--left .celebration-spark:nth-child(4)  { left: 58%; bottom: 120px; background: #10b981; animation-delay: 0.16s; --sx: 32px;  --sy: -95px; }
+        .celebration-anar--left .celebration-spark:nth-child(5)  { left: 46%; bottom: 130px; background: #e879f9; animation-delay: 0.24s; --sx: -12px; --sy: -120px; }
+        .celebration-anar--left .celebration-spark:nth-child(6)  { left: 54%; bottom: 115px; background: #38bdf8; animation-delay: 0.32s; --sx: 22px;  --sy: -88px; }
+        .celebration-anar--left .celebration-spark:nth-child(7)  { left: 48%; bottom: 128px; background: #fff;    animation-delay: 0.4s;  --sx: -4px;  --sy: -105px; }
+        .celebration-anar--left .celebration-spark:nth-child(8)  { left: 52%; bottom: 122px; background: #f43f5e; animation-delay: 0.48s; --sx: 18px;  --sy: -98px; }
+
+        .celebration-anar--right .celebration-spark:nth-child(2) { left: 42%; bottom: 118px; background: #ffd700; animation-delay: 0.04s; --sx: 28px;  --sy: -92px; }
+        .celebration-anar--right .celebration-spark:nth-child(3) { left: 50%; bottom: 125px; background: #a855f7; animation-delay: 0.12s; --sx: -6px;  --sy: -112px; }
+        .celebration-anar--right .celebration-spark:nth-child(4) { left: 58%; bottom: 120px; background: #22d3ee; animation-delay: 0.2s;  --sx: -30px; --sy: -96px; }
+        .celebration-anar--right .celebration-spark:nth-child(5) { left: 46%; bottom: 130px; background: #fb923c; animation-delay: 0.28s; --sx: 14px;  --sy: -118px; }
+        .celebration-anar--right .celebration-spark:nth-child(6) { left: 54%; bottom: 115px; background: #4ade80; animation-delay: 0.36s; --sx: -22px; --sy: -86px; }
+        .celebration-anar--right .celebration-spark:nth-child(7) { left: 48%; bottom: 128px; background: #fff;    animation-delay: 0.44s; --sx: 6px;   --sy: -108px; }
+        .celebration-anar--right .celebration-spark:nth-child(8) { left: 52%; bottom: 122px; background: #f472b6; animation-delay: 0.52s; --sx: -16px; --sy: -100px; }
+
+        @keyframes anar-stick-pulse {
+            from { opacity: 0.85; transform: translateX(-50%) scaleY(0.96); }
+            to   { opacity: 1;    transform: translateX(-50%) scaleY(1.04); }
+        }
+
+        @keyframes anar-spark-fly {
+            0%   { opacity: 0; transform: translate(0, 0) scale(0.4); }
+            12%  { opacity: 1; }
+            100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(1.4); }
+        }
+
+        .congrats-card {
+            position: relative;
+            z-index: 3;
+            width: min(520px, 100%);
+            text-align: center;
+            padding: 12px 20px 8px;
+            animation: celebration-card-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes celebration-card-in {
+            from { opacity: 0; transform: translateY(28px) scale(0.94); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .celebration-glow {
+            position: absolute;
+            inset: -40px -20px;
+            background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.18) 0%, rgba(168, 85, 247, 0.08) 45%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+            animation: celebration-glow-pulse 2.4s ease-in-out infinite;
+        }
+
+        @keyframes celebration-glow-pulse {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50%      { opacity: 1;   transform: scale(1.06); }
+        }
+
+        .celebration-kicker {
+            font-family: 'Poppins', sans-serif;
+            font-size: clamp(1.35rem, 4vw, 1.85rem);
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            color: rgba(255, 255, 255, 0.92);
+            margin: 0 0 6px;
+            text-shadow: 0 2px 20px rgba(0, 0, 0, 0.35);
+        }
+
+        .celebration-name {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 900;
+            font-size: clamp(2.4rem, 8vw, 3.6rem);
+            line-height: 1.05;
+            margin: 0 0 18px;
+            background: linear-gradient(135deg, #ffd700 0%, #ff6b35 22%, #f472b6 45%, #a855f7 68%, #38bdf8 85%, #4ade80 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: celebration-name-shimmer 2.8s linear infinite;
+            filter: drop-shadow(0 4px 24px rgba(255, 215, 0, 0.45));
+        }
+
+        @keyframes celebration-name-shimmer {
+            0%   { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+
+        .celebration-msg {
+            color: rgba(255, 255, 255, 0.88);
+            font-size: clamp(0.95rem, 2.5vw, 1.08rem);
+            line-height: 1.55;
+            max-width: 420px;
+            margin: 0 auto 20px;
+            text-shadow: 0 1px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .congrats-url {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 700;
+            color: #065f46;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(167, 243, 208, 0.8);
+            border-radius: 999px;
+            padding: 8px 16px;
+            margin-bottom: 24px;
+            word-break: break-all;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .celebration-footer {
+            margin-top: 8px;
+        }
+
+        .celebration-countdown {
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.72);
+            margin-bottom: 10px;
+        }
+
+        .celebration-progress {
+            width: min(280px, 80%);
+            height: 4px;
+            margin: 0 auto 18px;
+            background: rgba(255, 255, 255, 0.18);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .celebration-progress-bar {
+            display: block;
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #ffd700, #f472b6, #38bdf8, #4ade80);
+            transition: width linear;
+        }
+
+        .congrats-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-width: 220px;
+            background: linear-gradient(135deg, #1d7d5d 0%, #10b981 100%);
+            color: #fff;
+            font-weight: 700;
+            border: 0;
+            border-radius: 999px;
+            padding: 14px 28px;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 12px 32px rgba(16, 185, 129, 0.4);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .congrats-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 40px rgba(16, 185, 129, 0.5);
+        }
+
+        @media (max-width: 640px) {
+            .celebration-anar { width: 60px; height: 180px; bottom: 4%; }
+            .celebration-anar-stick { height: 90px; }
+        }
     </style>
 {% endblock %}
 
@@ -1620,6 +1854,49 @@
             </div>
         </div>
     </div>
+
+    <div class="congrats-overlay" id="congratsOverlay" aria-hidden="true" role="dialog" aria-labelledby="congratsTitle" aria-describedby="congratsMessage">
+        <div class="celebration-blur" aria-hidden="true"></div>
+        <canvas class="celebration-canvas" id="celebrationCanvas" aria-hidden="true"></canvas>
+
+        <div class="celebration-anar celebration-anar--left" aria-hidden="true">
+            <span class="celebration-anar-stick"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+        </div>
+        <div class="celebration-anar celebration-anar--right" aria-hidden="true">
+            <span class="celebration-anar-stick"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+            <span class="celebration-spark"></span>
+        </div>
+
+        <div class="congrats-card">
+            <div class="celebration-glow" aria-hidden="true"></div>
+            <p class="celebration-kicker" id="congratsTitle">Congratulations</p>
+            <h2 class="celebration-name" id="congratsAgentName"></h2>
+            <p class="celebration-msg" id="congratsMessage">Your PadosiAgent profile is live. Welcome to the neighbourhood!</p>
+            <div class="congrats-url" id="congratsUrl" style="display:none;"></div>
+            <div class="celebration-footer">
+                <div class="celebration-countdown" id="congratsCountdown">Taking you to dashboard in 6s…</div>
+                <div class="celebration-progress" aria-hidden="true">
+                    <span class="celebration-progress-bar" id="congratsProgressBar"></span>
+                </div>
+                <button type="button" class="congrats-btn" id="congratsDashboardBtn">
+                    <i class="fa-solid fa-gauge-high"></i> Go to Dashboard
+                </button>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -1832,6 +2109,160 @@
             Swal.close();
         }
 
+        var celebrationTimers = { interval: null, countdown: null, redirect: null };
+        var CELEBRATION_REDIRECT_MS = 6000;
+        var DIWALI_COLORS = [
+            '#FFD700', '#FF6B35', '#FF1493', '#9370DB', '#00CED1',
+            '#FFEB3B', '#10b981', '#FFFFFF', '#FF4500', '#E879F9',
+            '#38bdf8', '#4ade80'
+        ];
+
+        function stopCelebrationEffects() {
+            if (celebrationTimers.interval) {
+                clearInterval(celebrationTimers.interval);
+                celebrationTimers.interval = null;
+            }
+            if (celebrationTimers.countdown) {
+                clearInterval(celebrationTimers.countdown);
+                celebrationTimers.countdown = null;
+            }
+            if (celebrationTimers.redirect) {
+                clearTimeout(celebrationTimers.redirect);
+                celebrationTimers.redirect = null;
+            }
+        }
+
+        function getCelebrationConfetti() {
+            if (typeof confetti !== 'function') return null;
+            var canvas = document.getElementById('celebrationCanvas');
+            if (!canvas) return confetti;
+            return confetti.create(canvas, { resize: true, useWorker: true });
+        }
+
+        function fireAnarBurst(side) {
+            var shoot = getCelebrationConfetti();
+            if (!shoot) return;
+            var originX = side === 'left' ? 0.07 : 0.93;
+            var angle = side === 'left' ? 78 : 102;
+
+            shoot({
+                particleCount: 110,
+                spread: 58,
+                startVelocity: 64,
+                decay: 0.86,
+                gravity: 0.92,
+                ticks: 420,
+                origin: { x: originX, y: 0.9 },
+                angle: angle,
+                colors: DIWALI_COLORS,
+                scalar: 1.15,
+                shapes: ['circle', 'square']
+            });
+            shoot({
+                particleCount: 45,
+                spread: 90,
+                startVelocity: 38,
+                decay: 0.9,
+                gravity: 0.55,
+                ticks: 320,
+                origin: { x: originX, y: 0.84 },
+                angle: angle,
+                colors: DIWALI_COLORS,
+                scalar: 0.75
+            });
+        }
+
+        function fireDiwaliAnarShow() {
+            fireAnarBurst('left');
+            fireAnarBurst('right');
+            var burstCount = 0;
+            celebrationTimers.interval = setInterval(function () {
+                fireAnarBurst('left');
+                fireAnarBurst('right');
+                burstCount += 1;
+                if (burstCount >= 11) {
+                    clearInterval(celebrationTimers.interval);
+                    celebrationTimers.interval = null;
+                }
+            }, 480);
+        }
+
+        function celebrateRegistration(data) {
+            hideLoadingPopup();
+            stopCelebrationEffects();
+
+            var overlay = document.getElementById('congratsOverlay');
+            var titleEl = document.getElementById('congratsTitle');
+            var nameEl = document.getElementById('congratsAgentName');
+            var msgEl = document.getElementById('congratsMessage');
+            var urlEl = document.getElementById('congratsUrl');
+            var btn = document.getElementById('congratsDashboardBtn');
+            var countdownEl = document.getElementById('congratsCountdown');
+            var progressBar = document.getElementById('congratsProgressBar');
+
+            var name = (data && (data.agent_name || data.customer_name || data.name)) ||
+                '{{ agent.fullname|default:draft.fullname|escapejs }}' ||
+                (lastCheckout && (lastCheckout.customer_name || lastCheckout.name)) || '';
+            var profileUrl = (data && data.profile_url) || '';
+            var redirectUrl = (data && data.redirect_url) || '{% url "agents:agent_dashboard" %}';
+            var secondsLeft = Math.ceil(CELEBRATION_REDIRECT_MS / 1000);
+
+            if (titleEl) titleEl.textContent = 'Congratulations';
+            if (nameEl) {
+                nameEl.textContent = name ? name : 'Agent';
+                nameEl.style.display = name ? 'block' : 'none';
+            }
+            if (msgEl) {
+                msgEl.textContent = name
+                    ? ('Payment successful! ' + name + ', your licensed profile is now live — neighbours can discover and trust you.')
+                    : 'Payment successful! Your licensed PadosiAgent profile is now live — welcome to the neighbourhood.';
+            }
+            if (urlEl) {
+                urlEl.textContent = profileUrl.replace(/^https?:\/\//, '');
+                urlEl.style.display = profileUrl ? 'inline-block' : 'none';
+            }
+            if (countdownEl) {
+                countdownEl.textContent = 'Taking you to dashboard in ' + secondsLeft + 's…';
+            }
+            if (progressBar) {
+                progressBar.style.transition = 'none';
+                progressBar.style.width = '0%';
+                requestAnimationFrame(function () {
+                    progressBar.style.transition = 'width ' + CELEBRATION_REDIRECT_MS + 'ms linear';
+                    progressBar.style.width = '100%';
+                });
+            }
+
+            document.body.classList.add('celebration-active');
+            if (overlay) {
+                overlay.classList.add('is-open');
+                overlay.setAttribute('aria-hidden', 'false');
+            }
+
+            fireDiwaliAnarShow();
+
+            var go = function () {
+                stopCelebrationEffects();
+                window.location.href = redirectUrl;
+            };
+            if (btn) btn.onclick = go;
+
+            celebrationTimers.countdown = setInterval(function () {
+                secondsLeft -= 1;
+                if (secondsLeft <= 0) {
+                    clearInterval(celebrationTimers.countdown);
+                    celebrationTimers.countdown = null;
+                    if (countdownEl) countdownEl.textContent = 'Opening your dashboard…';
+                    return;
+                }
+                if (countdownEl) {
+                    countdownEl.textContent = 'Taking you to dashboard in ' + secondsLeft + 's…';
+                }
+            }, 1000);
+
+            celebrationTimers.redirect = setTimeout(go, CELEBRATION_REDIRECT_MS);
+        }
+
         var lastCheckout = null;
 
         function getCookie(name) {
@@ -1853,6 +2284,40 @@
 
         function isRazorpayReady() {
             return typeof window.Razorpay === 'function';
+        }
+
+        function buildRazorpayOptions(data, selectedPlan, onSuccess) {
+            var orderId = data.razorpay_order_id || data.order_id;
+            var keyId = data.razorpay_key_id || data.key;
+            var options = {
+                key: keyId,
+                currency: 'INR',
+                name: 'PadosiAgent',
+                description: (selectedPlan && selectedPlan.name) || 'PadosiAgent Plan',
+                order_id: orderId,
+                handler: onSuccess,
+                prefill: {
+                    name: data.customer_name || data.name || '',
+                    email: data.customer_email || data.email || '',
+                    contact: data.customer_phone || data.mobile || ''
+                },
+                theme: { color: '#273c8e' },
+                modal: {
+                    ondismiss: function () {
+                        var paymentBtn = document.getElementById('confirmPaymentBtn');
+                        resetPayButton(paymentBtn);
+                    }
+                }
+            };
+            // callback_url only on HTTPS — HTTP localhost triggers browser Private Network Access blocks (EMI/netbanking fail).
+            var useCallback = data.checkout_use_callback;
+            if (useCallback === undefined || useCallback === null) {
+                useCallback = window.location.protocol === 'https:';
+            }
+            if (useCallback) {
+                options.callback_url = window.location.origin + '/agent-register/payment-callback/';
+            }
+            return options;
         }
 
         function loadRazorpayScript(attempt) {
@@ -1952,15 +2417,13 @@
                     };
                     try { sessionStorage.setItem('padosiPendingCheckout', JSON.stringify(lastCheckout)); } catch (e) {}
 
-                    if (data.mock_checkout && orderId) {
-                        await verifyRazorpayPayment({
-                            razorpay_order_id: orderId,
-                            razorpay_payment_id: data.mock_payment_id,
-                            razorpay_signature: data.mock_signature,
-                            agent_id: data.agent_id,
-                            plan_type: selectedPlan.type,
-                            plan_name: selectedPlan.name
-                        });
+                    if (data.mock_checkout) {
+                        Swal.fire(
+                            'Payment required',
+                            'Razorpay checkout could not start. Payment is required — dashboard access is blocked until a real payment is captured.',
+                            'error'
+                        );
+                        resetPayButton(paymentBtn);
                         return;
                     }
 
@@ -1971,31 +2434,9 @@
                             return;
                         }
 
-                        const options = {
-                            "key": keyId,
-                            "amount": amountPaise,
-                            "currency": "INR",
-                            "name": "PadosiAgent",
-                            "description": selectedPlan.name,
-                            "order_id": orderId,
-                            "callback_url": window.location.origin + '/agent-register/payment-callback/',
-                            "handler": function (response) {
-                                verifyRazorpayPayment(response);
-                            },
-                            "prefill": {
-                                "name": data.customer_name || data.name || '',
-                                "email": data.customer_email || data.email || '',
-                                "contact": data.customer_phone || data.mobile || ''
-                            },
-                            "theme": {
-                                "color": "#273c8e"
-                            },
-                            "modal": {
-                                "ondismiss": function() {
-                                    resetPayButton(paymentBtn);
-                                }
-                            }
-                        };
+                        const options = buildRazorpayOptions(data, selectedPlan, function (response) {
+                            verifyRazorpayPayment(response);
+                        });
                         const rzp1 = new Razorpay(options);
                         rzp1.on('payment.failed', function (resp) {
                             const err = (resp && resp.error) || {};
@@ -2021,15 +2462,9 @@
                         });
                         rzp1.open();
                     } else if (data.already_completed) {
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'Already Active',
-                            text: 'Your registration is already active. Redirecting to your dashboard...'
-                        }).then(() => {
-                            window.location.href = data.redirect_url || '/agent/dashboard';
-                        });
+                        celebrateRegistration(data);
                     } else if (amountPaise === 0 || !data.payment_required) {
-                        window.location.href = data.redirect_url || '/agent/dashboard';
+                        celebrateRegistration(data);
                     } else {
                         Swal.fire('Payment Error', userPaymentMessage(data.message), 'error');
                         resetPayButton(paymentBtn);
@@ -2046,6 +2481,7 @@
         }
 
         async function verifyRazorpayPayment(paymentResponse) {
+            const paymentBtn = document.getElementById('confirmPaymentBtn');
             showLoadingPopup('Verifying Payment', 'Please wait while we confirm your transaction...');
             try {
                 const payload = Object.assign({}, paymentResponse || {}, lastCheckout || {});
@@ -2061,19 +2497,15 @@
                 const data = await response.json();
                 hideLoadingPopup();
                 if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Payment Successful!',
-                        text: 'Your registration is confirmed. Redirecting to your dashboard...'
-                    }).then(() => {
-                        window.location.href = data.redirect_url || '/agent/dashboard';
-                    });
+                    celebrateRegistration(data);
                 } else {
-                    Swal.fire('Error', userPaymentMessage(data.message), 'error');
+                    Swal.fire('Payment Failed', userPaymentMessage(data.message), 'error');
+                    resetPayButton(paymentBtn);
                 }
             } catch {
                 hideLoadingPopup();
                 Swal.fire('Error', 'Payment verification failed.', 'error');
+                resetPayButton(paymentBtn);
             }
         }
 
