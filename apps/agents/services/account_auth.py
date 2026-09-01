@@ -65,9 +65,11 @@ def agent_can_access_dashboard(agent):
         return False
     if agent.status in BLOCKED_DASHBOARD_STATUSES:
         return False
+    if agent_has_completed_payment(agent):
+        return True
     if agent.status in INCOMPLETE_STATUSES:
         return False
-    return agent_has_completed_payment(agent)
+    return False
 
 
 def agent_needs_payment(agent):
