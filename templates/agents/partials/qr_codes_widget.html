@@ -4,6 +4,11 @@
         <span class="pa-qr-dock-badge"><i class="fas fa-qrcode"></i> Share QR</span>
         <strong>Your QR Codes</strong>
         <span>Profile, visiting card, and reviews — scan, download, or share</span>
+        {% if agent.agent_slug %}
+        <a class="btn btn-sm mt-2" href="{% url 'agents:agent_review_card' slug=agent.agent_slug %}" style="background:#0b1f4d;color:#fff;border-radius:999px;padding:8px 14px;font-weight:700;">
+            Open Review Card
+        </a>
+        {% endif %}
     </div>
     <div class="pa-qr-dock-row">
         {% for item in qr_items %}
