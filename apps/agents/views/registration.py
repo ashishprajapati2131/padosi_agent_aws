@@ -110,6 +110,30 @@ _DEFAULT_PRICING = {
     ],
 }
 
+_STARTER_PLAN_UI_FEATURES = [
+    {'name': 'Permanent<br>Webpage', 'icon': 'fa-globe', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
+    {'name': 'Professional<br>Digital Card', 'icon': 'fa-id-card-clip', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
+    {'name': 'Licensed<br>Badge', 'icon': 'fa-shield-halved', 'color': '#f59e0b', 'bg_color': '#fffbeb'},
+    {'name': 'Call & WhatsApp<br>Buttons', 'icon': 'fa-phone', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
+    {'name': 'Customer Review<br>& Rating', 'icon': 'fa-star', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
+    {'name': 'Profile<br>QR', 'icon': 'fa-qrcode', 'color': '#3b82f6', 'bg_color': '#eff6ff'},
+    {'name': 'Review & Rating<br>QR', 'icon': 'fa-comment-dots', 'color': '#0d9488', 'bg_color': '#f0fdfa'},
+    {'name': 'Product<br>Showcase', 'icon': 'fa-store', 'color': '#3b82f6', 'bg_color': '#eff6ff'},
+    {'name': 'Visibility in Your<br>Pin Code', 'icon': 'fa-location-dot', 'color': '#e11d48', 'bg_color': '#fff1f2'},
+    {'name': 'Downloadable<br>Digital Card', 'icon': 'fa-download', 'color': '#6366f1', 'bg_color': '#eef2ff'},
+    {'name': 'New Business<br>Leads', 'icon': 'fa-user-plus', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
+]
+
+_PROFESSIONAL_PLAN_UI_FEATURES = [
+    {'name': 'Trusted<br>Badge', 'icon': 'fa-shield-halved', 'color': '#f59e0b', 'bg_color': '#fffbeb'},
+    {'name': 'SEO - Google<br>will know you', 'icon': 'fa-magnifying-glass', 'color': '#3b82f6', 'bg_color': '#eff6ff'},
+    {'name': 'AIO &<br>GEO', 'icon': 'fa-robot', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
+    {'name': 'Profile<br>Analytics', 'icon': 'fa-chart-column', 'color': '#0d9488', 'bg_color': '#f0fdfa'},
+    {'name': 'Gallery', 'icon': 'fa-images', 'color': '#e11d48', 'bg_color': '#fff1f2'},
+    {'name': 'Lead<br>Preferences', 'icon': 'fa-sliders', 'color': '#6366f1', 'bg_color': '#eef2ff'},
+    {'name': 'AI Auto-fill &<br>Suggestions', 'icon': 'fa-wand-magic-sparkles', 'color': '#8b5cf6', 'bg_color': '#f5f3ff'},
+]
+
 
 def _get_tier_prices(pricing_config, follow_count):
     """Compute tier pricing and discounts based on the number of accounts followed."""
@@ -525,9 +549,14 @@ def _get_registration_context(request):
 def agent_registration(request):
     """Render the registration page. Shows OTP, Step 1, or Step 2 based on session."""
     if request.user.is_authenticated:
-        from apps.agents.models import Agent
-        if Agent.objects.filter(user=request.user).exists() or request.user.is_staff or request.user.is_superuser:
+        from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
+        if request.user.is_staff or request.user.is_superuser:
             return redirect('agents:agent_dashboard')
+        agent = resolve_agent_for_user(request.user)
+        if agent:
+            if agent_can_access_dashboard(agent):
+                return redirect('agents:agent_dashboard')
+            return redirect('agents:chooseplan')
 
     context = _get_registration_context(request)
     return render(request, 'agents/registration.html', context)
@@ -986,6 +1015,28 @@ def exclusive_discount_status(request):
 
 
 
+def _resolve_chooseplan_draft_id(request):
+    """Restore choose-plan draft from session or the logged-in agent's email."""
+    draft_id = request.session.get('current_draft_id')
+    if draft_id:
+        return draft_id
+    if not request.user.is_authenticated:
+        return None
+    try:
+        from apps.agents.services.account_auth import resolve_agent_for_user
+        logged_in = resolve_agent_for_user(request.user)
+    except Exception:
+        return None
+    if not logged_in:
+        return None
+    from apps.agents.models import AgentDraft
+    draft = AgentDraft.objects.filter(email__iexact=logged_in.email).order_by('-updated_at').first()
+    if draft:
+        request.session['current_draft_id'] = draft.pk
+        return draft.pk
+    return None
+
+
 def chooseplan(request):
     """Render the plan selection page."""
     if request.user.is_authenticated:
@@ -1003,21 +1054,7 @@ def chooseplan(request):
     if recovered_url:
         return redirect(recovered_url)
 
-    draft_id = request.session.get('current_draft_id')
-    if not draft_id and request.user.is_authenticated:
-        try:
-            from apps.agents.services.account_auth import resolve_agent_for_user
-            logged_in = resolve_agent_for_user(request.user)
-            if logged_in and logged_in.status in (
-                'pending_payment', 'incomplete', 'pending_accounts_payment'
-            ):
-                from apps.agents.models import AgentDraft
-                draft = AgentDraft.objects.filter(email=logged_in.email).order_by('-updated_at').first()
-                if draft:
-                    request.session['current_draft_id'] = draft.pk
-                    draft_id = draft.pk
-        except Exception:
-            pass
+    draft_id = _resolve_chooseplan_draft_id(request)
 
     if not draft_id:
         return redirect('agents:agent_registration')
@@ -1309,6 +1346,8 @@ def chooseplan(request):
         'spots_left': spots_left,
         'urgency_line_1': urgency_line_1,
         'urgency_line_2': urgency_line_2,
+        'starter_plan_features': _STARTER_PLAN_UI_FEATURES,
+        'professional_plan_features': _PROFESSIONAL_PLAN_UI_FEATURES,
     }
 
     return render(request, 'agents/plans.html', context)
