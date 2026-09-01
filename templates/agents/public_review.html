@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Rate {{ advisor_name }} | PadosiAgent{% endblock %}
+{% block meta_description %}Share your experience with {{ advisor_name }} on PadosiAgent. Your trust, our priority.{% endblock %}
+
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+    .pa-rv-page { min-height: 70vh; background: #f4f1ea; padding: 32px 16px 64px; font-family: "Plus Jakarta Sans", sans-serif; }
+    .pa-rv-card { max-width: 560px; margin: 0 auto; background: #fff; border-radius: 24px; padding: 32px 28px; box-shadow: 0 18px 40px rgba(11,31,77,.1); border: 1px solid #ece6d8; }
+    .pa-rv-logo { height: 52px; display: block; margin: 0 auto 10px; }
+    .pa-rv-kicker { text-align: center; letter-spacing: .22em; font-size: 11px; font-weight: 800; color: #163a7a; text-transform: uppercase; }
+    .pa-rv-card h1 { text-align: center; font-family: "Playfair Display", Georgia, serif; color: #0b1f4d; font-size: 30px; margin: 16px 0 8px; }
+    .pa-rv-advisor { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 18px 0 24px; }
+    .pa-rv-advisor img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 3px solid #0b1f4d; }
+    .pa-rv-advisor h2 { margin: 0; font-size: 20px; color: #0b1f4d; }
+    .pa-rv-advisor p { margin: 2px 0 0; color: #5c6578; font-size: 13px; font-weight: 600; }
+    .pa-rv-stars { display: flex; gap: 8px; justify-content: center; margin-bottom: 14px; }
+    .pa-rv-stars button { border: 0; background: none; font-size: 28px; color: #c9a227; cursor: pointer; line-height: 1; }
+    .pa-rv-card label { display: block; font-weight: 700; font-size: 13px; margin: 12px 0 6px; color: #0b1f4d; }
+    .pa-rv-card input, .pa-rv-card textarea { width: 100%; border: 1px solid #e6e1d4; border-radius: 12px; padding: 12px; font: inherit; }
+    .pa-rv-submit { width: 100%; margin-top: 18px; min-height: 48px; border: 0; border-radius: 999px; background: #0b1f4d; color: #fff; font-weight: 800; letter-spacing: .08em; cursor: pointer; }
+    .pa-rv-submit:hover { background: #163a7a; }
+    .pa-rv-card-link { display: block; text-align: center; margin-top: 16px; color: #163a7a; font-weight: 700; font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pa-rv-page">
+    <div class="pa-rv-card">
+        <img class="pa-rv-logo" src="{{ brand_logo_url }}" alt="PadosiAgent logo">
+        <div class="pa-rv-kicker">Your Trust, Our Priority</div>
+        <h1>Rate &amp; Review</h1>
+        <div class="pa-rv-advisor">
+            <img src="{{ advisor_image }}" alt="Portrait of {{ advisor_name }}">
+            <div>
+                <h2>{{ advisor_name }}</h2>
+                <p>{{ advisor_designation }}</p>
+            </div>
+        </div>
+        <form id="paPublicReviewForm" method="post" action="{{ review_post_url }}">
+            {% csrf_token %}
+            <input type="hidden" name="rating" id="paRating" value="0">
+            <label>Your rating</label>
+            <div class="pa-rv-stars" role="group" aria-label="Star rating">
+                <button type="button" data-rating="1" aria-label="1 star">☆</button>
+                <button type="button" data-rating="2" aria-label="2 stars">☆</button>
+                <button type="button" data-rating="3" aria-label="3 stars">☆</button>
+                <button type="button" data-rating="4" aria-label="4 stars">☆</button>
+                <button type="button" data-rating="5" aria-label="5 stars">☆</button>
+            </div>
+            {% if is_guest %}
+            <label for="paFullname">Full name</label>
+            <input id="paFullname" name="fullname" required autocomplete="name">
+            <label for="paEmail">Email</label>
+            <input id="paEmail" name="email" type="email" required autocomplete="email">
+            <label for="paMobile">Mobile</label>
+            <input id="paMobile" name="mobile" required inputmode="numeric" maxlength="10" autocomplete="tel">
+            {% endif %}
+            <label for="paReviewText">Your experience</label>
+            <textarea id="paReviewText" name="review" rows="5" required minlength="10" maxlength="500" placeholder="Share your experience (minimum 10 characters)"></textarea>
+            <button type="submit" class="pa-rv-submit">Submit Review</button>
+        </form>
+        <a class="pa-rv-card-link" href="{% url 'agents:agent_public_profile' slug=advisor_slug %}">View full profile</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var form = document.getElementById('paPublicReviewForm');
+    var ratingInput = document.getElementById('paRating');
+    var stars = form.querySelectorAll('.pa-rv-stars button');
+    function paint(n) {
+        stars.forEach(function (btn) {
+            var v = parseInt(btn.getAttribute('data-rating'), 10);
+            btn.textContent = v <= n ? '★' : '☆';
+        });
+    }
+    stars.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            ratingInput.value = btn.getAttribute('data-rating');
+            paint(parseInt(ratingInput.value, 10));
+        });
+    });
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (ratingInput.value === '0') {
+            if (window.Swal) Swal.fire('Rating required', 'Please select a star rating.', 'warning');
+            else alert('Please select a star rating.');
+            return;
+        }
+        var data = new FormData(form);
+        fetch(form.action, {
+            method: 'POST',
+            body: data,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': (form.querySelector('[name=csrfmiddlewaretoken]') || {}).value || ''
+            }
+        }).then(function (res) { return res.json().then(function (body) { return { ok: res.ok, body: body }; }); })
+        .then(function (result) {
+            if (result.body && result.body.status === 'success') {
+                if (window.Swal) Swal.fire('Thank you!', result.body.message, 'success');
+                else alert(result.body.message);
+                form.reset();
+                ratingInput.value = '0';
+                paint(0);
+            } else {
+                var msg = (result.body && (result.body.message || (result.body.errors && JSON.stringify(result.body.errors)))) || 'Could not submit review.';
+                if (window.Swal) Swal.fire('Could not submit', msg, 'error');
+                else alert(msg);
+            }
+        }).catch(function () {
+            alert('Network error. Please try again.');
+        });
+    });
+})();
+</script>
+{% endblock %}

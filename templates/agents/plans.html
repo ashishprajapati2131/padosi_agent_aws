@@ -2,1762 +2,1794 @@
 {% load static %}
 
 {% block extra_css %}
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap"
-        rel="stylesheet">
-    <style>
-        :root {
-            --primary: #1d7d5d;
-            --primary-dark: #12543e;
-            --accent: #f59e0b;
-            --card-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-            --padosi-blue: #1e3a8a;
-            --padosi-blue-light: #eff6ff;
-            --highlight-pink: #fff1f2;
-            --border-pink: #fecdd3;
-            --text-pink: #e11d48;
-            --pill-green: #e6f7f0;
-            --text-green: #10b981;
-        }
+<link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+<style>
+    :root {
+        --primary: #1d7d5d;
+        --primary-dark: #12543e;
+        --accent: #f59e0b;
+        --card-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+        --padosi-blue: #1e3a8a;
+        --padosi-blue-light: #eff6ff;
+        --highlight-pink: #fff1f2;
+        --border-pink: #fecdd3;
+        --text-pink: #e11d48;
+        --pill-green: #e6f7f0;
+        --text-green: #10b981;
+    }
 
-        .plans-container {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            padding: 80px 20px;
-            background: radial-gradient(circle at 10% 20%, rgb(240, 247, 255) 0%, rgb(255, 255, 255) 90%);
-            min-height: 100vh;
-        }
+    .plans-container {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        padding: 80px 20px;
+        background: radial-gradient(circle at 10% 20%, rgb(240, 247, 255) 0%, rgb(255, 255, 255) 90%);
+        min-height: 100vh;
+    }
 
-        .plans-wrapper {
-            width: 100%;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
+    .plans-wrapper {
+        width: 100%;
+        max-width: 1000px;
+        margin: 0 auto;
+    }
 
-        .header-section {
-            text-align: center;
-            margin-bottom: 45px;
-        }
+    .header-section {
+        text-align: center;
+        margin-bottom: 45px;
+    }
 
-        .header-section h1 {
-            font-weight: 800;
-            color: #0f172a;
-            font-size: 32px;
-            letter-spacing: -0.5px;
-            margin-bottom: 12px;
-        }
+    .header-section h1 {
+        font-weight: 800;
+        color: #0f172a;
+        font-size: 32px;
+        letter-spacing: -0.5px;
+        margin-bottom: 12px;
+    }
 
-        .header-section .subtitle {
-            color: #273c8e;
-            font-size: 15px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+    .header-section .subtitle {
+        color: #273c8e;
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
 
-        .header-section .description {
-            color: #64748b;
-            font-size: 15px;
-            font-weight: 500;
-            max-width: 600px;
-            margin: 0 auto;
-        }
+    .header-section .description {
+        color: #64748b;
+        font-size: 15px;
+        font-weight: 500;
+        max-width: 600px;
+        margin: 0 auto;
+    }
 
-        .plans-grid {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 30px;
-            margin-bottom: 40px;
-        }
+    .plans-grid {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 30px;
+        margin-bottom: 40px;
+    }
 
-        /* Beautiful Dynamic Card */
-        .plan-card {
-            background: #ffffff;
-            border-radius: 24px;
-            box-shadow: var(--card-shadow);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            padding: 35px 28px;
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            width: 100%;
-            max-width: 450px;
-        }
+    /* Beautiful Dynamic Card */
+    .plan-card {
+        background: #ffffff;
+        border-radius: 24px;
+        box-shadow: var(--card-shadow);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        padding: 35px 28px;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 100%;
+        max-width: 450px;
+    }
 
-        .plan-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
-        }
+    .plan-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
+    }
 
-        .plan-card.recommended-theme {
-            border: 2px solid #273c8e;
-            background: #f8faff;
-        }
+    .plan-card.recommended-theme {
+        border: 2px solid #273c8e;
+        background: #f8faff;
+    }
 
-        .plan-card.starter-theme {
-            border: 1.5px solid rgba(30, 58, 138, 0.2);
-        }
+    .plan-card.starter-theme {
+        border: 1.5px solid rgba(30, 58, 138, 0.2);
+    }
 
-        /* Diagonal Recommended Ribbon */
-        .recommended-ribbon {
-            position: absolute;
-            top: 22px;
-            right: -38px;
-            background: #273c8e;
-            color: white;
-            font-size: 9px;
-            font-weight: 800;
-            padding: 6px 40px;
-            transform: rotate(45deg);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            z-index: 10;
-        }
+    /* Diagonal Recommended Ribbon */
+    .recommended-ribbon {
+        position: absolute;
+        top: 22px;
+        right: -38px;
+        background: #273c8e;
+        color: white;
+        font-size: 9px;
+        font-weight: 800;
+        padding: 6px 40px;
+        transform: rotate(45deg);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+    }
 
-        .recommended-ribbon.scratch-ribbon {
-            overflow: hidden;
-        }
+    .recommended-ribbon.scratch-ribbon {
+        overflow: hidden;
+    }
 
-        .plan-header {
-            text-align: center;
-            margin-bottom: 28px;
-            border-bottom: 1px solid #f1f5f9;
-            padding-bottom: 20px;
-        }
+    .plan-header {
+        text-align: center;
+        margin-bottom: 28px;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 20px;
+    }
 
-        .plan-name {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--primary);
-            margin-bottom: 4px;
-        }
+    .plan-name {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--primary);
+        margin-bottom: 4px;
+    }
 
-        .plan-card.starter-theme .plan-name {
-            color: var(--padosi-blue);
-        }
+    .plan-card.starter-theme .plan-name {
+        color: var(--padosi-blue);
+    }
 
-        .plan-card.recommended-theme .plan-name {
-            color: var(--padosi-blue);
-        }
+    .plan-card.recommended-theme .plan-name {
+        color: var(--padosi-blue);
+    }
 
-        .plan-price {
-            font-size: 38px;
-            font-weight: 800;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 2px;
-        }
+    .plan-price {
+        font-size: 38px;
+        font-weight: 800;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+    }
 
-        .plan-card.starter-theme .plan-price {
-            color: var(--padosi-blue);
-        }
+    .plan-card.starter-theme .plan-price {
+        color: var(--padosi-blue);
+    }
 
-        .plan-card.recommended-theme .plan-price {
-            color: var(--padosi-blue);
-        }
+    .plan-card.recommended-theme .plan-price {
+        color: var(--padosi-blue);
+    }
 
-        .plan-price span {
-            font-size: 13px;
-            color: #64748b;
-            font-weight: 600;
-            margin-left: 4px;
-        }
+    .plan-price span {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 600;
+        margin-left: 4px;
+    }
 
-        .plan-subtitle {
-            font-size: 13px;
-            color: #64748b;
-            font-weight: 500;
-            font-style: italic;
-            margin-top: 4px;
-        }
+    .plan-subtitle {
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 500;
+        font-style: italic;
+        margin-top: 4px;
+    }
 
-        .plan-header-icon {
-            width: 52px;
-            height: 52px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            margin: 0 auto 12px;
-        }
+    .plan-header-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        margin: 0 auto 12px;
+    }
 
-        .plan-header-icon.starter-icon {
-            background: #eff6ff;
-            color: #3b82f6;
-        }
+    .plan-header-icon.starter-icon {
+        background: #eff6ff;
+        color: #3b82f6;
+    }
 
-        .plan-header-icon.professional-icon {
-            background: #f0fdfa;
-            color: #0f766e;
-        }
+    .plan-header-icon.professional-icon {
+        background: #f0fdfa;
+        color: #0f766e;
+    }
 
-        .plan-feature-section-title {
-            font-size: 10px;
-            font-weight: 800;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            text-align: center;
-            margin-bottom: 12px;
-        }
+    .plan-feature-section-title {
+        font-size: 10px;
+        font-weight: 800;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        text-align: center;
+        margin-bottom: 12px;
+    }
 
+    .plan-feature-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .plan-feature-grid .feature-tile {
+        padding: 10px 4px 8px;
+    }
+
+    .plan-feature-grid .feature-tile .icon-wrapper {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        font-size: 16px;
+        margin-bottom: 6px;
+    }
+
+    .plan-feature-grid .feature-tile .feature-text {
+        font-size: 9px;
+        line-height: 1.2;
+    }
+
+    @media (max-width: 768px) {
         .plan-feature-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 16px;
+            grid-template-columns: repeat(3, 1fr);
         }
+    }
 
-        .plan-feature-grid .feature-tile {
-            padding: 10px 4px 8px;
-        }
+    .plan-includes-banner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        background: #f0fdfa;
+        border: 1px solid #99f6e4;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #0f766e;
+        margin-bottom: 10px;
+        text-align: center;
+    }
 
-        .plan-feature-grid .feature-tile .icon-wrapper {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            font-size: 16px;
-            margin-bottom: 6px;
-        }
+    .plan-includes-banner i {
+        color: #10b981;
+        font-size: 12px;
+    }
 
-        .plan-feature-grid .feature-tile .feature-text {
-            font-size: 9px;
-            line-height: 1.2;
-        }
+    .plan-upgrade-note {
+        font-size: 11px;
+        color: #94a3b8;
+        font-weight: 500;
+        text-align: center;
+        line-height: 1.45;
+        margin: 4px 0 16px;
+        padding: 0 4px;
+    }
 
-        @media (max-width: 768px) {
-            .plan-feature-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
+    /* Custom Categories & Items */
+    .category-block {
+        margin-bottom: 22px;
+        text-align: left;
+    }
 
-        .plan-includes-banner {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            background: #f0fdfa;
-            border: 1px solid #99f6e4;
-            border-radius: 10px;
-            padding: 8px 12px;
-            font-size: 11px;
-            font-weight: 700;
-            color: #0f766e;
-            margin-bottom: 10px;
-            text-align: center;
-        }
+    .category-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--padosi-blue);
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
 
-        .plan-includes-banner i {
-            color: #10b981;
-            font-size: 12px;
-        }
+    .feature-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px dashed #f1f5f9;
+        font-size: 13px;
+        font-weight: 500;
+        color: #334155;
+    }
 
-        .plan-upgrade-note {
-            font-size: 11px;
-            color: #94a3b8;
-            font-weight: 500;
-            text-align: center;
-            line-height: 1.45;
-            margin: 4px 0 16px;
-            padding: 0 4px;
-        }
+    .feature-row.highlighted {
+        background: var(--highlight-pink);
+        border: 1px solid var(--border-pink);
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin: 4px 0;
+    }
 
-        /* Custom Categories & Items */
-        .category-block {
-            margin-bottom: 22px;
-            text-align: left;
-        }
+    .feature-name {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        .category-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--padosi-blue);
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+    .feature-name i {
+        font-size: 13px;
+        color: var(--padosi-blue);
+    }
 
-        .feature-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px dashed #f1f5f9;
-            font-size: 13px;
-            font-weight: 500;
-            color: #334155;
-        }
+    /* Badges */
+    .badge-capsule {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 50px;
+        text-transform: capitalize;
+    }
 
-        .feature-row.highlighted {
-            background: var(--highlight-pink);
-            border: 1px solid var(--border-pink);
-            border-radius: 8px;
-            padding: 8px 12px;
-            margin: 4px 0;
-        }
+    .badge-filled-green {
+        background: #e6f7f0;
+        color: #10b981;
+    }
 
-        .feature-name {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    .badge-outline-green {
+        border: 1px solid #10b981;
+        color: #10b981;
+        background: transparent;
+    }
 
-        .feature-name i {
-            font-size: 13px;
-            color: var(--padosi-blue);
-        }
+    .badge-filled-red {
+        background: #ffe4e6;
+        color: var(--text-pink);
+        border: 1px solid var(--border-pink);
+    }
 
-        /* Badges */
-        .badge-capsule {
-            font-size: 11px;
-            font-weight: 700;
-            padding: 3px 10px;
-            border-radius: 50px;
-            text-transform: capitalize;
-        }
+    .coming-soon-panel {
+        background: #f0fdf4;
+        border: 1px solid #d1fae5;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 15px;
+        text-align: left;
+    }
 
-        .badge-filled-green {
-            background: #e6f7f0;
-            color: #10b981;
-        }
-
-        .badge-outline-green {
-            border: 1px solid #10b981;
-            color: #10b981;
-            background: transparent;
-        }
-
-        .badge-filled-red {
-            background: #ffe4e6;
-            color: var(--text-pink);
-            border: 1px solid var(--border-pink);
-        }
-
-        .coming-soon-panel {
-            background: #f0fdf4;
-            border: 1px solid #d1fae5;
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 15px;
-            text-align: left;
-        }
-
-        @keyframes glitch-ribbon {
-            0% {
-                transform: translate(0) rotate(45deg);
-                opacity: 1;
-            }
-
-            10% {
-                transform: translate(-2px, 1px) rotate(45deg);
-                filter: hue-rotate(45deg);
-            }
-
-            20% {
-                transform: translate(2px, -1px) rotate(45deg);
-            }
-
-            30% {
-                transform: translate(-1px, 2px) rotate(45deg);
-                filter: hue-rotate(-45deg);
-            }
-
-            40% {
-                transform: translate(1px, -2px) rotate(45deg);
-            }
-
-            50% {
-                transform: translate(-2px, -1px) rotate(45deg);
-            }
-
-            60% {
-                transform: translate(2px, 1px) rotate(45deg);
-                filter: hue-rotate(90deg);
-            }
-
-            70% {
-                transform: translate(0) rotate(45deg);
-                filter: hue-rotate(0deg);
-                opacity: 1;
-            }
-
-            100% {
-                transform: translate(0) rotate(45deg);
-                opacity: 1;
-            }
-        }
-
-        .glitch-badge {
-            animation: glitch-ribbon 1s ease-in-out forwards;
-        }
-
-        .coming-soon-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            font-weight: 700;
-            color: #15803d;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-
-        .coming-soon-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            color: #166534;
-            margin-bottom: 6px;
-        }
-
-        .coming-soon-item:last-child {
-            margin-bottom: 0;
-        }
-
-        .coming-soon-item i {
-            font-size: 10px;
-            color: #15803d;
-        }
-
-        /* Action Buttons */
-        .btn-select-plan {
-            background: #273c8e;
-            color: white;
-            font-weight: 700;
-            font-size: 15px;
-            padding: 14px;
-            border-radius: 14px;
-            width: 100%;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 25px;
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(39, 60, 142, 0.2);
-            cursor: pointer;
-        }
-
-        .btn-select-plan:hover {
-            background: #1e3075;
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(39, 60, 142, 0.3);
-        }
-
-        .btn-select-plan.starter-btn {
-            background: var(--padosi-blue);
-            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
-        }
-
-        .btn-select-plan.starter-btn:hover {
-            background: #152e70;
-            box-shadow: 0 6px 16px rgba(30, 58, 138, 0.3);
-        }
-
-        .btn-select-plan.trial-btn {
-            background: #10b981;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-        }
-
-        .btn-select-plan.trial-btn:hover {
-            background: #059669;
-            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
-        }
-
-        .footer-note {
-            text-align: center;
-            font-size: 11px;
-            color: #64748b;
-            font-weight: 500;
-            margin-top: 8px;
-            font-style: italic;
-        }
-
-        /* Checkout Integration Styles */
-        .checkout-box {
-            background: rgba(255, 255, 255, 0.98);
-            border-radius: 20px;
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            box-shadow: var(--card-shadow);
-            padding: 30px;
-            margin-top: 30px;
-            text-align: left;
-        }
-
-        .section-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--padosi-blue);
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1.5px solid #f1f5f9;
-            padding-bottom: 6px;
-            margin-top: 15px;
-        }
-
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            color: #475569;
-        }
-
-        .detail-row strong {
-            color: #0f172a;
-        }
-
-        .summary-card {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .summary-total {
-            border-top: 1.5px solid #cbd5e1;
-            padding-top: 12px;
-            margin-top: 12px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 16px;
-            font-weight: 700;
-            color: #0f172a;
-        }
-
-        .btn-pay {
-            background: linear-gradient(135deg, #273c8e 0%, #1e2e6d 100%);
-            color: white;
-            font-weight: 700;
-            font-size: 16px;
-            width: 100%;
-            border: none;
-            padding: 16px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: all 0.2s;
-            box-shadow: 0 8px 16px -4px rgba(39, 60, 142, 0.3);
-            cursor: pointer;
-        }
-
-        .btn-pay:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 12px 20px -4px rgba(39, 60, 142, 0.4);
-        }
-
-        .btn-pay:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .terms-conditions-label {
-            font-size: 13.5px;
-            color: #475569;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .terms-conditions-label a {
-            color: #273c8e;
-            font-weight: 600;
-            text-decoration: none;
-        }
-
-        .terms-conditions-label a:hover {
-            text-decoration: underline;
-        }
-
-        /* Exclusive Plan Modals CSS */
-        .scratch-modal-overlay,
-        .gift-modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(4px);
-            z-index: 1050;
-            display: none;
-            overflow-y: auto;
-            padding: 15px 0;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .scratch-modal-overlay.active,
-        .gift-modal-overlay.active {
-            display: block;
+    @keyframes glitch-ribbon {
+        0% {
+            transform: translate(0) rotate(45deg);
             opacity: 1;
         }
 
-        .scratch-container {
-            position: relative;
-            width: 300px;
-            height: 300px;
-            background: url('https://via.placeholder.com/300x300.png?text=Surprise!') center/cover;
-            border-radius: 16px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            overflow: hidden;
-            margin: 40px auto;
+        10% {
+            transform: translate(-2px, 1px) rotate(45deg);
+            filter: hue-rotate(45deg);
         }
 
-        .scratch-container canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            cursor: crosshair;
+        20% {
+            transform: translate(2px, -1px) rotate(45deg);
         }
 
-        .golden-text-shine {
-            background: linear-gradient(90deg, #b8860b, #ffd700, #b8860b, #ffd700);
-            background-size: 200% auto;
-            color: #000;
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: shine 3s linear infinite;
-            font-weight: 900 !important;
+        30% {
+            transform: translate(-1px, 2px) rotate(45deg);
+            filter: hue-rotate(-45deg);
         }
 
-        @keyframes shine {
-            to {
-                background-position: 200% center;
-            }
+        40% {
+            transform: translate(1px, -2px) rotate(45deg);
         }
 
-        .pulse-urgency {
-            background-color: #fff3cd;
-            border: 1px solid #ffeeba;
-            color: #856404;
-            padding: 8px 15px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            display: inline-block;
-            animation: pulse-border 1.5s infinite;
+        50% {
+            transform: translate(-2px, -1px) rotate(45deg);
         }
 
-        @keyframes pulse-border {
-            0% {
-                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
-            }
-
-            70% {
-                box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
-            }
+        60% {
+            transform: translate(2px, 1px) rotate(45deg);
+            filter: hue-rotate(90deg);
         }
 
-        .gift-modal {
-            background: #ffffff;
-            border-radius: 28px;
-            width: 92%;
-            max-width: 420px;
-            padding: 24px 18px 16px 18px;
-            margin: 16px auto;
-            text-align: center;
-            box-shadow: 0 18px 50px rgba(88, 28, 135, 0.22);
-            border: 3px solid #7c3aed;
-            transform: scale(0);
+        70% {
+            transform: translate(0) rotate(45deg);
+            filter: hue-rotate(0deg);
+            opacity: 1;
+        }
+
+        100% {
+            transform: translate(0) rotate(45deg);
+            opacity: 1;
+        }
+    }
+
+    .glitch-badge {
+        animation: glitch-ribbon 1s ease-in-out forwards;
+    }
+
+    .coming-soon-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #15803d;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+    }
+
+    .coming-soon-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #166534;
+        margin-bottom: 6px;
+    }
+
+    .coming-soon-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .coming-soon-item i {
+        font-size: 10px;
+        color: #15803d;
+    }
+
+    /* Action Buttons */
+    .btn-select-plan {
+        background: #273c8e;
+        color: white;
+        font-weight: 700;
+        font-size: 15px;
+        padding: 14px;
+        border-radius: 14px;
+        width: 100%;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 25px;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(39, 60, 142, 0.2);
+        cursor: pointer;
+    }
+
+    .btn-select-plan:hover {
+        background: #1e3075;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(39, 60, 142, 0.3);
+    }
+
+    .btn-select-plan.starter-btn {
+        background: var(--padosi-blue);
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+    }
+
+    .btn-select-plan.starter-btn:hover {
+        background: #152e70;
+        box-shadow: 0 6px 16px rgba(30, 58, 138, 0.3);
+    }
+
+    .btn-select-plan.trial-btn {
+        background: #10b981;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    }
+
+    .btn-select-plan.trial-btn:hover {
+        background: #059669;
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+    }
+
+    .footer-note {
+        text-align: center;
+        font-size: 11px;
+        color: #64748b;
+        font-weight: 500;
+        margin-top: 8px;
+        font-style: italic;
+    }
+
+    /* Checkout Integration Styles */
+    .checkout-box {
+        background: rgba(255, 255, 255, 0.98);
+        border-radius: 20px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        box-shadow: var(--card-shadow);
+        padding: 30px;
+        margin-top: 30px;
+        text-align: left;
+    }
+
+    .section-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--padosi-blue);
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1.5px solid #f1f5f9;
+        padding-bottom: 6px;
+        margin-top: 15px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #475569;
+    }
+
+    .detail-row strong {
+        color: #0f172a;
+    }
+
+    .summary-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .summary-total {
+        border-top: 1.5px solid #cbd5e1;
+        padding-top: 12px;
+        margin-top: 12px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 16px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .btn-pay {
+        background: linear-gradient(135deg, #273c8e 0%, #1e2e6d 100%);
+        color: white;
+        font-weight: 700;
+        font-size: 16px;
+        width: 100%;
+        border: none;
+        padding: 16px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all 0.2s;
+        box-shadow: 0 8px 16px -4px rgba(39, 60, 142, 0.3);
+        cursor: pointer;
+    }
+
+    .btn-pay:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 20px -4px rgba(39, 60, 142, 0.4);
+    }
+
+    .btn-pay:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .terms-conditions-label {
+        font-size: 13.5px;
+        color: #475569;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .terms-conditions-label a {
+        color: #273c8e;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .terms-conditions-label a:hover {
+        text-decoration: underline;
+    }
+
+    /* Exclusive Plan Modals CSS */
+    .scratch-modal-overlay,
+    .gift-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(4px);
+        z-index: 1050;
+        display: none;
+        overflow-y: auto;
+        padding: 15px 0;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .scratch-modal-overlay.active,
+    .gift-modal-overlay.active {
+        display: block;
+        opacity: 1;
+    }
+
+    .scratch-container {
+        position: relative;
+        width: 300px;
+        height: 300px;
+        background: url('https://via.placeholder.com/300x300.png?text=Surprise!') center/cover;
+        border-radius: 16px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+        margin: 40px auto;
+    }
+
+    .scratch-container canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        cursor: crosshair;
+    }
+
+    .golden-text-shine {
+        background: linear-gradient(90deg, #b8860b, #ffd700, #b8860b, #ffd700);
+        background-size: 200% auto;
+        color: #000;
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: shine 3s linear infinite;
+        font-weight: 900 !important;
+    }
+
+    @keyframes shine {
+        to {
+            background-position: 200% center;
+        }
+    }
+
+    .pulse-urgency {
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+        color: #856404;
+        padding: 8px 15px;
+        border-radius: 8px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        display: inline-block;
+        animation: pulse-border 1.5s infinite;
+    }
+
+    @keyframes pulse-border {
+        0% {
+            box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+        }
+
+        70% {
+            box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+        }
+    }
+
+    .gift-modal {
+        background: #ffffff;
+        border-radius: 28px;
+        width: 92%;
+        max-width: 420px;
+        padding: 24px 18px 16px 18px;
+        margin: 16px auto;
+        text-align: center;
+        box-shadow: 0 18px 50px rgba(88, 28, 135, 0.22);
+        border: 3px solid #7c3aed;
+        transform: scale(0);
+        opacity: 0;
+        position: relative;
+        overflow: hidden;
+        font-family: 'Poppins', 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .btn-close-gift-modal {
+        position: absolute !important;
+        top: 14px !important;
+        right: 14px !important;
+        width: 32px !important;
+        height: 32px !important;
+        border-radius: 50% !important;
+        background: #f1f5f9 !important;
+        color: #64748b !important;
+        border: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 15px !important;
+        cursor: pointer !important;
+        z-index: 30 !important;
+        transition: all 0.2s ease !important;
+        outline: none !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
+    }
+
+    .btn-close-gift-modal:hover {
+        background: #e2e8f0 !important;
+        color: #0f172a !important;
+        transform: scale(1.1) !important;
+    }
+
+    .gift-modal::before {
+        content: none;
+    }
+
+    .gift-modal>* {
+        position: relative;
+        z-index: 1;
+    }
+
+    .exc-title {
+        font-size: 22px;
+        font-weight: 800;
+        color: #111827;
+        letter-spacing: -0.3px;
+        margin: 0;
+        line-height: 1.25;
+    }
+
+    .exc-plan-name {
+        color: #facc15;
+        font-weight: 800;
+    }
+
+    .exc-unlocked {
+        font-size: 20px;
+        font-weight: 800;
+        color: #facc15;
+        margin: 4px 0 8px;
+        letter-spacing: -0.2px;
+    }
+
+    .exc-unlocked .exc-star {
+        color: #7c3aed;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+    .exc-subtitle {
+        color: #94a3b8;
+        font-size: 13px;
+        font-weight: 500;
+        margin: 0 0 10px;
+    }
+
+    .exc-urgency {
+        line-height: 1.35;
+        margin-bottom: 12px;
+    }
+
+    .exc-urgency-top {
+        font-size: 13px;
+        color: #9f1239;
+        font-weight: 700;
+    }
+
+    .exc-urgency-count {
+        font-size: 15px;
+        color: #e11d48;
+        font-weight: 800;
+        margin-top: 2px;
+    }
+
+    .exc-price-pill {
+        background: #ffffff;
+        border-radius: 999px;
+        padding: 12px 64px 12px 18px;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
+        max-width: 340px;
+        margin: 0 auto 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        position: relative;
+        min-height: 68px;
+    }
+
+    .exc-section-head {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin: 14px 0 10px;
+        color: #7c3aed;
+        font-weight: 800;
+        font-size: 14px;
+    }
+
+    .exc-section-head .exc-line {
+        height: 1.5px;
+        flex: 1;
+        max-width: 72px;
+        background: #7c3aed;
+    }
+
+    .grid-4-cols {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin: 8px 0 12px;
+    }
+
+    .grid-3-cols {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin: 8px 0 4px;
+    }
+
+    .discount-sticker {
+        background: #e11d48;
+        color: white;
+        width: 56px;
+        height: 56px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        line-height: 1;
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%) rotate(10deg);
+        margin-left: 0;
+        flex-shrink: 0;
+        clip-path: polygon(50% 0%, 63% 8%, 78% 4%, 84% 18%, 97% 22%, 92% 36%, 100% 50%, 92% 64%, 97% 78%, 84% 82%, 78% 96%, 63% 92%, 50% 100%, 37% 92%, 22% 96%, 16% 82%, 3% 78%, 8% 64%, 0% 50%, 8% 36%, 3% 22%, 16% 18%, 22% 4%, 37% 8%);
+        box-shadow: 0 6px 14px rgba(225, 29, 72, 0.35);
+        z-index: 2;
+    }
+
+    .discount-sticker .discount-val {
+        font-size: 13px;
+        letter-spacing: -0.4px;
+    }
+
+    .discount-sticker .discount-text {
+        font-size: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin-top: 2px;
+    }
+
+    .feature-tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid #eef2ff;
+        border-radius: 16px;
+        padding: 14px 6px 12px;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+    }
+
+    .feature-tile:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+    }
+
+    .feature-tile .icon-wrapper {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        margin-bottom: 8px;
+    }
+
+    .feature-tile .feature-text {
+        font-size: 11px;
+        font-weight: 700;
+        color: #0f172a;
+        text-align: center;
+        line-height: 1.25;
+    }
+
+    @keyframes premium-reveal {
+        0% {
+            transform: scale(0.3) translateY(50px) rotate(-10deg);
             opacity: 0;
-            position: relative;
-            overflow: hidden;
-            font-family: 'Poppins', 'Plus Jakarta Sans', sans-serif;
+            filter: brightness(2);
         }
 
-        .btn-close-gift-modal {
-            position: absolute !important;
-            top: 14px !important;
-            right: 14px !important;
-            width: 32px !important;
-            height: 32px !important;
-            border-radius: 50% !important;
-            background: #f1f5f9 !important;
-            color: #64748b !important;
-            border: none !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            font-size: 15px !important;
-            cursor: pointer !important;
-            z-index: 30 !important;
-            transition: all 0.2s ease !important;
-            outline: none !important;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.06) !important;
+        50% {
+            transform: scale(1.1) translateY(-10px) rotate(3deg);
+            opacity: 1;
+            filter: brightness(1.5);
         }
 
-        .btn-close-gift-modal:hover {
-            background: #e2e8f0 !important;
-            color: #0f172a !important;
-            transform: scale(1.1) !important;
+        75% {
+            transform: scale(0.95) translateY(5px) rotate(-1deg);
         }
 
-        .gift-modal::before {
-            content: none;
+        100% {
+            transform: scale(1) translateY(0) rotate(0);
+            filter: brightness(1);
+            opacity: 1;
+        }
+    }
+
+    .gift-modal-overlay.active .gift-modal {
+        animation: premium-reveal 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .gift-icon {
+        font-size: 48px;
+        color: #8b5cf6;
+        margin-bottom: 15px;
+    }
+
+    .social-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 12px 4px 10px;
+        border-radius: 14px;
+        background: #ffffff;
+        color: #1e293b !important;
+        font-weight: 600;
+        font-size: 11px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border: 1px solid #eef2ff;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+        cursor: pointer;
+        min-height: 86px;
+    }
+
+    .social-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+    }
+
+    .social-btn i {
+        font-size: 26px;
+    }
+
+    .social-logo {
+        width: 32px;
+        height: 32px;
+        display: block;
+    }
+
+    .social-btn.platform-facebook i {
+        color: #1877F2;
+    }
+
+    .social-btn.platform-youtube i {
+        color: #FF0000;
+    }
+
+    .social-btn.platform-twitter i,
+    .social-btn.platform-x i {
+        color: #000000;
+    }
+
+    .social-btn.platform-linkedin i {
+        color: #0A66C2;
+    }
+
+    .social-btn.platform-whatsapp i {
+        color: #25D366;
+    }
+
+    .social-btn.platform-instagram i {
+        background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .social-btn.followed {
+        background: #ecfdf5 !important;
+        border-color: #a7f3d0 !important;
+        box-shadow: none !important;
+    }
+
+    .social-btn.followed span {
+        color: #059669;
+    }
+
+    .exc-claim-btn {
+        background: #6d28d9;
+        color: white;
+        font-weight: 800;
+        font-size: 1.02rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        width: 100%;
+        border: none;
+        padding: 15px 48px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        position: relative;
+        box-shadow: 0 10px 22px rgba(109, 40, 217, 0.28);
+    }
+
+    .exc-claim-btn:hover {
+        background: #5b21b6;
+        transform: translateY(-1px);
+    }
+
+    .exc-bolt {
+        border: none;
+        background: #ffffff;
+        color: #6d28d9;
+        border-radius: 50%;
+        width: 26px;
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        left: 16px;
+    }
+
+    .exc-bolt i {
+        font-size: 11px;
+    }
+
+    .exc-claim-chevron {
+        position: absolute;
+        right: 16px;
+        font-size: 14px;
+    }
+
+    @media (max-width: 480px) {
+        .gift-modal {
+            padding: 20px 12px 14px 12px;
+            width: 94%;
         }
 
-        .gift-modal>* {
-            position: relative;
-            z-index: 1;
-        }
-
-        .exc-title {
-            font-size: 22px;
-            font-weight: 800;
-            color: #111827;
-            letter-spacing: -0.3px;
-            margin: 0;
-            line-height: 1.25;
-        }
-
-        .exc-plan-name {
-            color: #facc15;
-            font-weight: 800;
-        }
-
-        .exc-unlocked {
-            font-size: 20px;
-            font-weight: 800;
-            color: #facc15;
-            margin: 4px 0 8px;
-            letter-spacing: -0.2px;
-        }
-
-        .exc-unlocked .exc-star {
-            color: #7c3aed;
-            font-size: 14px;
-            vertical-align: middle;
-        }
-
-        .exc-subtitle {
-            color: #94a3b8;
-            font-size: 13px;
-            font-weight: 500;
-            margin: 0 0 10px;
-        }
-
-        .exc-urgency {
-            line-height: 1.35;
-            margin-bottom: 12px;
-        }
-
-        .exc-urgency-top {
-            font-size: 13px;
-            color: #9f1239;
-            font-weight: 700;
-        }
-
-        .exc-urgency-count {
-            font-size: 15px;
-            color: #e11d48;
-            font-weight: 800;
-            margin-top: 2px;
-        }
-
-        .exc-price-pill {
-            background: #ffffff;
-            border-radius: 999px;
-            padding: 12px 64px 12px 18px;
-            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
-            max-width: 340px;
-            margin: 0 auto 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            position: relative;
-            min-height: 68px;
-        }
-
-        .exc-section-head {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin: 14px 0 10px;
-            color: #7c3aed;
-            font-weight: 800;
-            font-size: 14px;
-        }
-
-        .exc-section-head .exc-line {
-            height: 1.5px;
-            flex: 1;
-            max-width: 72px;
-            background: #7c3aed;
-        }
-
-        .grid-4-cols {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin: 8px 0 12px;
-        }
-
+        .grid-4-cols,
         .grid-3-cols {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin: 8px 0 4px;
+            gap: 8px;
         }
 
-        .discount-sticker {
-            background: #e11d48;
-            color: white;
-            width: 56px;
-            height: 56px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            line-height: 1;
-            position: absolute;
-            right: 4px;
-            top: 50%;
-            transform: translateY(-50%) rotate(10deg);
-            margin-left: 0;
-            flex-shrink: 0;
-            clip-path: polygon(50% 0%, 63% 8%, 78% 4%, 84% 18%, 97% 22%, 92% 36%, 100% 50%, 92% 64%, 97% 78%, 84% 82%, 78% 96%, 63% 92%, 50% 100%, 37% 92%, 22% 96%, 16% 82%, 3% 78%, 8% 64%, 0% 50%, 8% 36%, 3% 22%, 16% 18%, 22% 4%, 37% 8%);
-            box-shadow: 0 6px 14px rgba(225, 29, 72, 0.35);
-            z-index: 2;
-        }
-
-        .discount-sticker .discount-val {
-            font-size: 13px;
-            letter-spacing: -0.4px;
-        }
-
-        .discount-sticker .discount-text {
-            font-size: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            margin-top: 2px;
-        }
-
+        .social-btn,
         .feature-tile {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: #ffffff;
-            border: 1px solid #eef2ff;
-            border-radius: 16px;
-            padding: 14px 6px 12px;
-            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+            padding: 10px 2px;
         }
 
-        .feature-tile:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+        .social-btn i,
+        .social-logo {
+            font-size: 22px;
+            width: 28px;
+            height: 28px;
         }
 
         .feature-tile .icon-wrapper {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            margin-bottom: 8px;
+            width: 34px;
+            height: 34px;
+            font-size: 16px;
+            margin-bottom: 5px;
         }
 
+        .social-btn span,
         .feature-tile .feature-text {
-            font-size: 11px;
-            font-weight: 700;
-            color: #0f172a;
-            text-align: center;
-            line-height: 1.25;
+            font-size: 9px;
+            letter-spacing: -0.2px;
         }
 
-        @keyframes premium-reveal {
-            0% {
-                transform: scale(0.3) translateY(50px) rotate(-10deg);
-                opacity: 0;
-                filter: brightness(2);
-            }
-
-            50% {
-                transform: scale(1.1) translateY(-10px) rotate(3deg);
-                opacity: 1;
-                filter: brightness(1.5);
-            }
-
-            75% {
-                transform: scale(0.95) translateY(5px) rotate(-1deg);
-            }
-
-            100% {
-                transform: scale(1) translateY(0) rotate(0);
-                filter: brightness(1);
-                opacity: 1;
-            }
-        }
-
-        .gift-modal-overlay.active .gift-modal {
-            animation: premium-reveal 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-
-        .gift-icon {
-            font-size: 48px;
-            color: #8b5cf6;
-            margin-bottom: 15px;
-        }
-
-        .social-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        .plan-feature-grid {
             gap: 6px;
-            padding: 12px 4px 10px;
-            border-radius: 14px;
-            background: #ffffff;
-            color: #1e293b !important;
-            font-weight: 600;
-            font-size: 11px;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            border: 1px solid #eef2ff;
-            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
-            cursor: pointer;
-            min-height: 86px;
         }
 
-        .social-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
-        }
-
-        .social-btn i {
-            font-size: 26px;
-        }
-
-        .social-logo {
-            width: 32px;
-            height: 32px;
-            display: block;
-        }
-
-        .social-btn.platform-facebook i {
-            color: #1877F2;
-        }
-
-        .social-btn.platform-youtube i {
-            color: #FF0000;
-        }
-
-        .social-btn.platform-twitter i,
-        .social-btn.platform-x i {
-            color: #000000;
-        }
-
-        .social-btn.platform-linkedin i {
-            color: #0A66C2;
-        }
-
-        .social-btn.platform-whatsapp i {
-            color: #25D366;
-        }
-
-        .social-btn.platform-instagram i {
-            background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .social-btn.followed {
-            background: #ecfdf5 !important;
-            border-color: #a7f3d0 !important;
-            box-shadow: none !important;
-        }
-
-        .social-btn.followed span {
-            color: #059669;
-        }
-
-        .exc-claim-btn {
-            background: #6d28d9;
-            color: white;
-            font-weight: 800;
-            font-size: 1.02rem;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            width: 100%;
-            border: none;
-            padding: 15px 48px;
-            border-radius: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            position: relative;
-            box-shadow: 0 10px 22px rgba(109, 40, 217, 0.28);
-        }
-
-        .exc-claim-btn:hover {
-            background: #5b21b6;
-            transform: translateY(-1px);
-        }
-
-        .exc-bolt {
-            border: none;
-            background: #ffffff;
-            color: #6d28d9;
-            border-radius: 50%;
-            width: 26px;
-            height: 26px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: absolute;
-            left: 16px;
-        }
-
-        .exc-bolt i {
-            font-size: 11px;
-        }
-
-        .exc-claim-chevron {
-            position: absolute;
-            right: 16px;
+        .plan-feature-grid .feature-tile .icon-wrapper {
+            width: 30px;
+            height: 30px;
             font-size: 14px;
         }
 
-        @media (max-width: 480px) {
-            .gift-modal {
-                padding: 20px 12px 14px 12px;
-                width: 94%;
-            }
-
-            .grid-4-cols, .grid-3-cols {
-                gap: 8px;
-            }
-
-            .social-btn,
-            .feature-tile {
-                padding: 10px 2px;
-            }
-
-            .social-btn i,
-            .social-logo {
-                font-size: 22px;
-                width: 28px;
-                height: 28px;
-            }
-
-            .feature-tile .icon-wrapper {
-                width: 34px;
-                height: 34px;
-                font-size: 16px;
-                margin-bottom: 5px;
-            }
-
-            .social-btn span,
-            .feature-tile .feature-text {
-                font-size: 9px;
-                letter-spacing: -0.2px;
-            }
-
-            .plan-feature-grid {
-                gap: 6px;
-            }
-
-            .plan-feature-grid .feature-tile .icon-wrapper {
-                width: 30px;
-                height: 30px;
-                font-size: 14px;
-            }
-
-            .plan-feature-grid .feature-tile .feature-text {
-                font-size: 8px;
-            }
-
-            .plan-includes-banner {
-                font-size: 10px;
-                padding: 6px 8px;
-            }
-
-            .exc-title {
-                font-size: 20px !important;
-            }
-
-            .exc-claim-btn {
-                font-size: 0.98rem;
-                padding: 14px 40px;
-            }
-
-            #excCurrentPrice,
-            #excDiscountedPrice {
-                font-size: 1.7rem !important;
-            }
-
-            .gift-box-container span:first-child {
-                font-size: 70px !important;
-            }
+        .plan-feature-grid .feature-tile .feature-text {
+            font-size: 8px;
         }
-    </style>
+
+        .plan-includes-banner {
+            font-size: 10px;
+            padding: 6px 8px;
+        }
+
+        .exc-title {
+            font-size: 20px !important;
+        }
+
+        .exc-claim-btn {
+            font-size: 0.98rem;
+            padding: 14px 40px;
+        }
+
+        #excCurrentPrice,
+        #excDiscountedPrice {
+            font-size: 1.7rem !important;
+        }
+
+        .gift-box-container span:first-child {
+            font-size: 70px !important;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-    {% if not request.user.is_authenticated or "distributor" not in request.user.user_types %}
-        <div class="sub_banner position-relative">
-        </div>
-    {% endif %}
+{% if not request.user.is_authenticated or "distributor" not in request.user.user_types %}
+<div class="sub_banner position-relative">
+</div>
+{% endif %}
 
-    <section class="plans-container position-relative">
-        <div class="plans-wrapper">
+<section class="plans-container position-relative">
+    <div class="plans-wrapper">
 
-            
 
-            <!-- Header -->
-            <div class="header-section">
-                <div class="subtitle">
-                    {{ pricing_config.standard_label|default:'Get started with our standard partner plans' }}
-                </div>
-                <h1>Choose Your PadosiAgent Plan</h1>
-                <div class="description">Unlock professional features and listing visibility to reach clients instantly in
-                    your neighborhood.</div>
+
+        <!-- Header -->
+        <div class="header-section">
+            <div class="subtitle">
+                {{ pricing_config.standard_label|default:'Get started with our standard partner plans' }}
             </div>
+            <h1>Choose Your PadosiAgent Plan</h1>
+            <div class="description">Unlock professional features and listing visibility to reach clients instantly in
+                your neighborhood.</div>
+        </div>
 
-            {% if has_promo or is_upgrade_flow and pricing_config.promo_discount_label %}
-                <div class="alert alert-info alert-dismissible fade show mb-4 text-center" role="alert"
-                    style="border-radius: 16px; background-color: var(--padosi-blue-light); border: 1px solid rgba(30, 58, 138, 0.15); color: var(--padosi-blue); font-weight: 600; padding: 12px 45px 12px 20px; position: relative;">
-                    <i class="fa-solid fa-gift me-2 text-warning"></i> {{ pricing_config.promo_discount_label }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"
-                        style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); border: none; background: transparent; font-size: 20px; line-height: 1; color: var(--padosi-blue); opacity: 0.5; padding: 0; cursor: pointer;">&times;</button>
+        {% if has_promo or is_upgrade_flow and pricing_config.promo_discount_label %}
+        <div class="alert alert-info alert-dismissible fade show mb-4 text-center" role="alert"
+            style="border-radius: 16px; background-color: var(--padosi-blue-light); border: 1px solid rgba(30, 58, 138, 0.15); color: var(--padosi-blue); font-weight: 600; padding: 12px 45px 12px 20px; position: relative;">
+            <i class="fa-solid fa-gift me-2 text-warning"></i> {{ pricing_config.promo_discount_label }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"
+                style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); border: none; background: transparent; font-size: 20px; line-height: 1; color: var(--padosi-blue); opacity: 0.5; padding: 0; cursor: pointer;">&times;</button>
+        </div>
+        {% endif %}
+
+        <div class="plans-grid">
+            {# TRIAL CARD #}
+            {% if has_free_trial_promo and trial_active %}
+            <div class="plan-card recommended-theme" style="border-color: #10b981;">
+                <span class="recommended-ribbon" style="background: #10b981;">Trial Plan</span>
+
+                <div class="plan-header">
+                    <div class="plan-name" style="color: #10b981;">Trial Plan</div>
+                    <div class="plan-price" style="color: #10b981;">
+                        ₹{{ trial_base_price|floatformat:"0" }}/-<span>{{ trial_duration }} Days</span>
+                    </div>
+                    <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
+                        18% GST applicable at checkout</div>
+                    <div class="plan-subtitle">{{ trial_config.description }}</div>
                 </div>
+
+                <div class="plan-features">
+                    <div class="category-block">
+                        <div class="category-header">
+                            <i class="fa-solid fa-briefcase"></i> Starter Access
+                        </div>
+                        <div class="feature-row">
+                            <div class="feature-name">
+                                <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
+                                <span>All Standard Features Included</span>
+                            </div>
+                            <span class="badge-capsule badge-filled-green">Full</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="button" onclick="selectPlanForPayment('free_trial')"
+                        class="btn-select-plan trial-btn">
+                        <i class="fa-solid fa-circle-check"></i> Select Trial Plan
+                    </button>
+                    <div class="footer-note">Try before you commit</div>
+                </div>
+            </div>
             {% endif %}
 
-            <div class="plans-grid">
-                {#  TRIAL CARD  #}
-                {% if has_free_trial_promo and trial_active %}
-                    <div class="plan-card recommended-theme" style="border-color: #10b981;">
-                        <span class="recommended-ribbon" style="background: #10b981;">Trial Plan</span>
 
-                        <div class="plan-header">
-                            <div class="plan-name" style="color: #10b981;">Trial Plan</div>
-                            <div class="plan-price" style="color: #10b981;">
-                                ₹{{ trial_base_price|floatformat:"0" }}/-<span>{{ trial_duration }} Days</span>
-                            </div>
-                            <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
-                                18% GST applicable at checkout</div>
-                            <div class="plan-subtitle">{{ trial_config.description }}</div>
-                        </div>
-
-                        <div class="plan-features">
-                            <div class="category-block">
-                                <div class="category-header">
-                                    <i class="fa-solid fa-briefcase"></i> Starter Access
-                                </div>
-                                <div class="feature-row">
-                                    <div class="feature-name">
-                                        <i class="fa-solid fa-chevron-right text-muted" style="font-size: 8px;"></i>
-                                        <span>All Standard Features Included</span>
-                                    </div>
-                                    <span class="badge-capsule badge-filled-green">Full</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <button type="button" onclick="selectPlanForPayment('free_trial')" class="btn-select-plan trial-btn">
-                                <i class="fa-solid fa-circle-check"></i> Select Trial Plan
-                            </button>
-                            <div class="footer-note">Try before you commit</div>
-                        </div>
-                    </div>
+            {# STARTER CARD #}
+            <div class="plan-card starter-theme">
+                <!-- Ribbon -->
+                {% if starter_scratch_enabled %}
+                <div class="recommended-ribbon glitch-badge scratch-ribbon"
+                    style="background: #3b82f6; cursor: pointer; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;">
+                    <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px; pointer-events: none;"><i
+                            class="fa-solid fa-wand-magic-sparkles me-1"></i> SCRATCH</span>
+                    <canvas class="ribbon-scratch-canvas" data-label="SCRATCH ME" data-plan="starter"
+                        data-color="#3b82f6"
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none;"></canvas>
+                </div>
+                {% else %}
+                <div class="recommended-ribbon glitch-badge" style="background: #3b82f6;">
+                    {{ pricing_config.starter.badge|default:'STANDARD' }}
+                </div>
                 {% endif %}
 
-
-                {#  STARTER CARD  #}
-                <div class="plan-card starter-theme">
-                    <!-- Ribbon -->
-                    {% if starter_scratch_enabled %}
-                        <div class="recommended-ribbon glitch-badge scratch-ribbon"
-                            style="background: #3b82f6; cursor: pointer; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;">
-                            <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px; pointer-events: none;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i> SCRATCH</span>
-                            <canvas class="ribbon-scratch-canvas" data-label="SCRATCH ME" data-plan="starter" data-color="#3b82f6"
-                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none;"></canvas>
-                        </div>
-                    {% else %}
-                        <div class="recommended-ribbon glitch-badge" style="background: #3b82f6;">
-                            {{ pricing_config.starter.badge|default:'STANDARD' }}
-                        </div>
-                    {% endif %}
-
-                    <div class="plan-header">
-                        <div class="plan-header-icon starter-icon">
-                            <i class="fa-solid fa-bolt"></i>
-                        </div>
-                        <div class="plan-name">{{ starter_name|default:"Starter's Plan" }}</div>
-                        <div class="plan-price">
-                            {% if starter_scratch_enabled %}
-                                <span id="starterStrikePrice"
-                                    style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px; display:none;">₹{{ starter_full|floatformat:"0" }}</span>
-                                <span id="starterDisplayPrice">₹{{ starter_full|floatformat:"0" }}/-</span><span>1st Year Only</span>
-                            {% elif starter_final < starter_full %}
-                                <span id="starterStrikePrice"
-                                    style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">₹{{ starter_full|floatformat:"0" }}</span>
-                                <span id="starterDisplayPrice">₹{{ starter_base }}/-</span><span>1st Year Only</span>
+                <div class="plan-header">
+                    <div class="plan-header-icon starter-icon">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <div class="plan-name">{{ starter_name|default:"Starter's Plan" }}</div>
+                    <div class="plan-price">
+                        {% if starter_scratch_enabled %}
+                        <span id="starterStrikePrice"
+                            style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px; display:none;">₹{{
+                            starter_full|floatformat:"0" }}</span>
+                        <span id="starterDisplayPrice">₹{{ starter_full|floatformat:"0" }}/-</span><span>2st Year
+                            Only</span>
+                        {% elif starter_final < starter_full %} <span id="starterStrikePrice"
+                            style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">
+                            ₹{{ starter_full|floatformat:"0" }}</span>
+                            <span id="starterDisplayPrice">₹{{ starter_base }}/-</span><span>1st Year Only</span>
                             {% else %}
-                                <span id="starterStrikePrice" style="display:none;"></span>
-                                <span id="starterDisplayPrice">₹{{ starter_base }}/-</span><span>1st Year Only</span>
+                            <span id="starterStrikePrice" style="display:none;"></span>
+                            <span id="starterDisplayPrice">₹{{ starter_base }}/-</span><span>1st Year Only</span>
                             {% endif %}
-                        </div>
-                        <div id="starterDiscountBadge" style="text-align:center; margin-top:6px; {% if starter_scratch_enabled or starter_final >= starter_full %}display:none;{% endif %}">
-                            <span
-                                style="background:#dbeafe; color:#1e3a8a; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #93c5fd;">
-                                <i class="fa-solid fa-tag me-1"></i> Special Discount Applied
-                            </span>
-                        </div>
-                        <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
-                            18% GST applicable at checkout</div>
-                        <div class="plan-subtitle">{{ starter_desc }}</div>
                     </div>
-
-                    <div class="plan-features">
-                        <div class="plan-feature-section-title">Everything Included</div>
-                        <div class="plan-feature-grid">
-                            {% for feature in starter_plan_features %}
-                            <div class="feature-tile">
-                                <div class="icon-wrapper" style="color: {{ feature.color }}; background: {{ feature.bg_color }};">
-                                    <i class="fa-solid {{ feature.icon }}"></i>
-                                </div>
-                                <div class="feature-text">{{ feature.name|safe }}</div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        <p class="plan-upgrade-note">Premium growth tools (SEO, AI discovery, analytics, gallery) come with the Professional Plan — you can upgrade anytime.</p>
+                    <div id="starterDiscountBadge"
+                        style="text-align:center; margin-top:6px; {% if starter_scratch_enabled or starter_final >= starter_full %}display:none;{% endif %}">
+                        <span
+                            style="background:#dbeafe; color:#1e3a8a; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #93c5fd;">
+                            <i class="fa-solid fa-tag me-1"></i> Special Discount Applied
+                        </span>
                     </div>
-
-                    <div>
-                        <button type="button" onclick="selectPlanForPayment('starter')" class="btn-select-plan starter-btn">
-                            <i class="fa-solid fa-circle-check"></i> Select Starter's Plan
-                        </button>
-                        <div class="footer-note">Special Launch Price</div>
-                    </div>
+                    <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
+                        18% GST applicable at checkout</div>
+                    <div class="plan-subtitle">{{ starter_desc }}</div>
                 </div>
 
-                {#  PROFESSIONAL CARD  #}
-                <div class="plan-card recommended-theme">
-                    <!-- Diagonal Ribbon -->
-                    {% if prof_scratch_enabled %}
-                        <div class="recommended-ribbon glitch-badge scratch-ribbon"
-                            style="background: #10b981; cursor: pointer; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;">
-                            <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px; pointer-events: none;"><i class="fa-solid fa-gift me-1"></i> SCRATCH</span>
-                            <canvas class="ribbon-scratch-canvas" data-label="SCRATCH ME" data-plan="professional" data-color="#10b981"
-                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none;"></canvas>
-                        </div>
-                    {% else %}
-                        <div class="recommended-ribbon glitch-badge">
-                            {{ pricing_config.professional.badge|default:'RECOMMENDED' }}
-                        </div>
-                    {% endif %}
-
-                    <div class="plan-header">
-                        <div class="plan-header-icon professional-icon">
-                            <i class="fa-solid fa-crown"></i>
-                        </div>
-                        <div class="plan-name">{{ prof_name }}</div>
-                        <div class="plan-price">
-                            {% if prof_scratch_enabled %}
-                                <span id="profStrikePrice"
-                                    style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px; display:none;">₹{{ prof_full|floatformat:"0" }}</span>
-                                <span id="profDisplayPrice">₹{{ prof_full|floatformat:"0" }}/-</span><span>1st Year Only</span>
-                            {% elif prof_final < prof_full %}
-                                <span id="profStrikePrice"
-                                    style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">₹{{ prof_full|floatformat:"0" }}</span>
-                                <span id="profDisplayPrice">₹{{ prof_base }}/-</span><span>1st Year Only</span>
-                            {% else %}
-                                <span id="profStrikePrice" style="display:none;"></span>
-                                <span id="profDisplayPrice">₹{{ prof_base }}/-</span><span>1st Year Only</span>
-                            {% endif %}
-                        </div>
-                        <div id="profDiscountBadge" style="text-align:center; margin-top:6px; {% if prof_scratch_enabled or prof_final >= prof_full %}display:none;{% endif %}">
-                            <span
-                                style="background:#d1fae5; color:#059669; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #6ee7b7;">
-                                <i class="fa-solid fa-tag me-1"></i> Special Discount Applied
-                            </span>
-                        </div>
-                        <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
-                            18% GST applicable at checkout</div>
-                        <div class="plan-subtitle">{{ prof_desc }}</div>
-                    </div>
-
-                    <div class="plan-features">
-                        <div class="plan-includes-banner">
-                            <i class="fa-solid fa-circle-check"></i>
-                            Everything in {{ starter_name|default:"Starter Plan" }}, plus:
-                        </div>
-                        <div class="plan-feature-section-title">Premium Add-ons</div>
-                        <div class="plan-feature-grid">
-                            {% for feature in professional_plan_features %}
-                            <div class="feature-tile">
-                                <div class="icon-wrapper" style="color: {{ feature.color }}; background: {{ feature.bg_color }};">
-                                    <i class="fa-solid {{ feature.icon }}"></i>
-                                </div>
-                                <div class="feature-text">{{ feature.name|safe }}</div>
+                <div class="plan-features">
+                    <div class="plan-feature-section-title">Everything Included</div>
+                    <div class="plan-feature-grid">
+                        {% for feature in starter_plan_features %}
+                        <div class="feature-tile">
+                            <div class="icon-wrapper"
+                                style="color: {{ feature.color }}; background: {{ feature.bg_color }};">
+                                <i class="fa-solid {{ feature.icon }}"></i>
                             </div>
-                            {% endfor %}
+                            <div class="feature-text">{{ feature.name|safe }}</div>
                         </div>
+                        {% endfor %}
                     </div>
-
-                    <div>
-                        <button type="button" onclick="selectPlanForPayment('professional')" class="btn-select-plan">
-                            <i class="fa-solid fa-crown"></i> Select Professional's Plan
-                        </button>
-                        <div class="footer-note">Special Pre-Launch Price</div>
-                    </div>
+                    <p class="plan-upgrade-note">Premium growth tools (SEO, AI discovery, analytics, gallery) come with
+                        the Professional Plan — you can upgrade anytime.</p>
                 </div>
 
+                <div>
+                    <button type="button" onclick="selectPlanForPayment('starter')" class="btn-select-plan starter-btn">
+                        <i class="fa-solid fa-circle-check"></i> Select Starter's Plan
+                    </button>
+                    <div class="footer-note">Special Launch Price</div>
+                </div>
             </div>
 
-            {#  Dynamic Merged Secure Checkout UI  #}
-            <div class="checkout-box" id="selectedPlanSummary" style="display:none;">
-                <div class="brand-header text-center mb-3">
-                    <h4 class="fw-bold text-success mb-1"><i class="fa-solid fa-shield-halved"></i> Secure Checkout</h4>
-                    <p class="text-muted small">Please review your billing details to complete payment.</p>
+            {# PROFESSIONAL CARD #}
+            <div class="plan-card recommended-theme">
+                <!-- Diagonal Ribbon -->
+                {% if prof_scratch_enabled %}
+                <div class="recommended-ribbon glitch-badge scratch-ribbon"
+                    style="background: #10b981; cursor: pointer; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;">
+                    <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px; pointer-events: none;"><i
+                            class="fa-solid fa-gift me-1"></i> SCRATCH</span>
+                    <canvas class="ribbon-scratch-canvas" data-label="SCRATCH ME" data-plan="professional"
+                        data-color="#10b981"
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none;"></canvas>
+                </div>
+                {% else %}
+                <div class="recommended-ribbon glitch-badge">
+                    {{ pricing_config.professional.badge|default:'RECOMMENDED' }}
+                </div>
+                {% endif %}
+
+                <div class="plan-header">
+                    <div class="plan-header-icon professional-icon">
+                        <i class="fa-solid fa-crown"></i>
+                    </div>
+                    <div class="plan-name">{{ prof_name }}</div>
+                    <div class="plan-price">
+                        {% if prof_scratch_enabled %}
+                        <span id="profStrikePrice"
+                            style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px; display:none;">₹{{
+                            prof_full|floatformat:"0" }}</span>
+                        <span id="profDisplayPrice">₹{{ prof_full|floatformat:"0" }}/-</span><span>1st Year Only</span>
+                        {% elif prof_final < prof_full %} <span id="profStrikePrice"
+                            style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">
+                            ₹{{ prof_full|floatformat:"0" }}</span>
+                            <span id="profDisplayPrice">₹{{ prof_base }}/-</span><span>1st Year Only</span>
+                            {% else %}
+                            <span id="profStrikePrice" style="display:none;"></span>
+                            <span id="profDisplayPrice">₹{{ prof_base }}/-</span><span>1st Year Only</span>
+                            {% endif %}
+                    </div>
+                    <div id="profDiscountBadge"
+                        style="text-align:center; margin-top:6px; {% if prof_scratch_enabled or prof_final >= prof_full %}display:none;{% endif %}">
+                        <span
+                            style="background:#d1fae5; color:#059669; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #6ee7b7;">
+                            <i class="fa-solid fa-tag me-1"></i> Special Discount Applied
+                        </span>
+                    </div>
+                    <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
+                        18% GST applicable at checkout</div>
+                    <div class="plan-subtitle">{{ prof_desc }}</div>
                 </div>
 
-                <!-- Order Summary -->
-                <div class="section-title">Order Summary</div>
-                <div class="summary-card">
-                    <div class="detail-row">
-                        <span>Selected Plan</span>
-                        <strong id="selectedPlanName"></strong>
+                <div class="plan-features">
+                    <div class="plan-includes-banner">
+                        <i class="fa-solid fa-circle-check"></i>
+                        Everything in {{ starter_name|default:"Starter Plan" }}, plus:
                     </div>
-                    <div class="detail-row">
-                        <span>Base Registration Fee</span>
-                        <strong id="selectedPlanPrice"></strong>
-                    </div>
-                    <div class="detail-row">
-                        <span>GST (18%)</span>
-                        <strong id="selectedPlanGST"></strong>
-                    </div>
-                    <div class="summary-total">
-                        <span>Total Amount Payable</span>
-                        <strong id="selectedPlanTotal" style="color: #273c8e; font-size: 20px;"></strong>
+                    <div class="plan-feature-section-title">Premium Add-ons</div>
+                    <div class="plan-feature-grid">
+                        {% for feature in professional_plan_features %}
+                        <div class="feature-tile">
+                            <div class="icon-wrapper"
+                                style="color: {{ feature.color }}; background: {{ feature.bg_color }};">
+                                <i class="fa-solid {{ feature.icon }}"></i>
+                            </div>
+                            <div class="feature-text">{{ feature.name|safe }}</div>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
 
-                <div class="form-check terms-checkbox-container mt-3 mb-4">
-                    <input class="form-check-input" type="checkbox" id="termsCheckbox">
-                    <label class="form-check-label terms-conditions-label" for="termsCheckbox">
-                        I agree to the <a href="/terms" target="_blank">Terms & Conditions</a> and <a
-                            href="/privacy" target="_blank">Privacy Policy</a>.
-                    </label>
+                <div>
+                    <button type="button" onclick="selectPlanForPayment('professional')" class="btn-select-plan">
+                        <i class="fa-solid fa-crown"></i> Select Professional's Plan
+                    </button>
+                    <div class="footer-note">Special Pre-Launch Price</div>
                 </div>
-
-                <button type="button" id="confirmPaymentBtn" class="btn-pay" disabled>
-                    <i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>
-                </button>
             </div>
 
         </div>
 
-    </section>
+        {# Dynamic Merged Secure Checkout UI #}
+        <div class="checkout-box" id="selectedPlanSummary" style="display:none;">
+            <div class="brand-header text-center mb-3">
+                <h4 class="fw-bold text-success mb-1"><i class="fa-solid fa-shield-halved"></i> Secure Checkout</h4>
+                <p class="text-muted small">Please review your billing details to complete payment.</p>
+            </div>
 
-    <!-- Gift / Scratch Modal Overlay -->
-    <div class="gift-modal-overlay" id="giftModal">
-        <div class="gift-modal">
-            <!-- Close Button -->
-            <button type="button" class="btn-close-gift-modal" onclick="closeGiftModal()" aria-label="Close">
-                <i class="fa-solid fa-xmark"></i>
+            <!-- Order Summary -->
+            <div class="section-title">Order Summary</div>
+            <div class="summary-card">
+                <div class="detail-row">
+                    <span>Selected Plan</span>
+                    <strong id="selectedPlanName"></strong>
+                </div>
+                <div class="detail-row">
+                    <span>Base Registration Fee</span>
+                    <strong id="selectedPlanPrice"></strong>
+                </div>
+                <div class="detail-row">
+                    <span>GST (18%)</span>
+                    <strong id="selectedPlanGST"></strong>
+                </div>
+                <div class="summary-total">
+                    <span>Total Amount Payable</span>
+                    <strong id="selectedPlanTotal" style="color: #273c8e; font-size: 20px;"></strong>
+                </div>
+            </div>
+
+            <div class="form-check terms-checkbox-container mt-3 mb-4">
+                <input class="form-check-input" type="checkbox" id="termsCheckbox">
+                <label class="form-check-label terms-conditions-label" for="termsCheckbox">
+                    I agree to the <a href="/terms" target="_blank">Terms & Conditions</a> and <a href="/privacy"
+                        target="_blank">Privacy Policy</a>.
+                </label>
+            </div>
+
+            <button type="button" id="confirmPaymentBtn" class="btn-pay" disabled>
+                <i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>
             </button>
+        </div>
 
-            <!-- Urgency Banner -->
-            <div class="exc-urgency text-center">
-                <div class="exc-urgency-top">🔥 Hurry! Offer valid only for the first 10000 users!</div>
-                <div class="exc-urgency-count">🔥 2964/10000 Claimed</div>
+    </div>
+
+</section>
+
+<!-- Gift / Scratch Modal Overlay -->
+<div class="gift-modal-overlay" id="giftModal">
+    <div class="gift-modal">
+        <!-- Close Button -->
+        <button type="button" class="btn-close-gift-modal" onclick="closeGiftModal()" aria-label="Close">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <!-- Urgency Banner -->
+        <div class="exc-urgency text-center">
+            <div class="exc-urgency-top">🔥 Hurry! Offer valid only for the first 10000 users!</div>
+            <div class="exc-urgency-count">🔥 2964/10000 Claimed</div>
+        </div>
+
+        <!-- Price Pill Area -->
+        <div class="exc-price-pill" id="excPricePill">
+            <span
+                style="font-size: 1.4rem; color: #94a3b8; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 2px;"
+                id="modalStrikePrice">₹{{ starter_full|floatformat:"0" }}/-</span>
+            <span style="font-size: 2.2rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; line-height: 1;"
+                id="modalCurrentPrice">₹{{ starter_base }}/-</span>
+            <div class="discount-sticker" id="modalDiscountSticker">
+                <span class="discount-val" id="modalDiscountVal">{{ starter_discount_percent|default:"35" }}%</span>
+                <span class="discount-text">OFF</span>
             </div>
+        </div>
 
-            <!-- Price Pill Area -->
-            <div class="exc-price-pill" id="excPricePill">
-                <span style="font-size: 1.4rem; color: #94a3b8; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 2px;" id="modalStrikePrice">₹{{ starter_full|floatformat:"0" }}/-</span>
-                <span style="font-size: 2.2rem; font-weight: 900; color: #16a34a; letter-spacing: -1px; line-height: 1;" id="modalCurrentPrice">₹{{ starter_base }}/-</span>
-                <div class="discount-sticker" id="modalDiscountSticker">
-                    <span class="discount-val" id="modalDiscountVal">{{ starter_discount_percent|default:"35" }}%</span>
-                    <span class="discount-text">OFF</span>
+        <div class="d-flex justify-content-center mb-2" id="modalDiscountBadgeWrapper">
+            <span class="badge px-3 py-1 rounded-pill fw-bold" id="modalDiscountBadge"
+                style="font-size: 11px; background: #d1fae5; color: #059669; border: 1px solid #6ee7b7; {% if not has_social_discount %}display:none;{% endif %}">
+                <i class="fa-solid fa-tag me-1"></i> Extra Follower Discount Applied!
+            </span>
+        </div>
+
+        <!-- What You'll Get Divider -->
+        <div class="exc-section-head">
+            <div class="exc-line"></div>
+            <div><span style="color: #8b5cf6;">✦</span> What You'll Get <span style="color: #8b5cf6;">✦</span></div>
+            <div class="exc-line"></div>
+        </div>
+
+        <div class="grid-3-cols mb-3">
+            <div class="feature-tile">
+                <div class="icon-wrapper" style="color: #16a34a; background: #f0fdf4;">
+                    <i class="fa-solid fa-globe"></i>
                 </div>
+                <div class="feature-text">Permanent<br>Website</div>
             </div>
-
-            <div class="d-flex justify-content-center mb-2" id="modalDiscountBadgeWrapper">
-                <span class="badge px-3 py-1 rounded-pill fw-bold" id="modalDiscountBadge" style="font-size: 11px; background: #d1fae5; color: #059669; border: 1px solid #6ee7b7; {% if not has_social_discount %}display:none;{% endif %}">
-                    <i class="fa-solid fa-tag me-1"></i> Extra Follower Discount Applied!
-                </span>
-            </div>
-
-            <!-- What You'll Get Divider -->
-            <div class="exc-section-head">
-                <div class="exc-line"></div>
-                <div><span style="color: #8b5cf6;">✦</span> What You'll Get <span style="color: #8b5cf6;">✦</span></div>
-                <div class="exc-line"></div>
-            </div>
-
-            <div class="grid-3-cols mb-3">
-                <div class="feature-tile">
-                    <div class="icon-wrapper" style="color: #16a34a; background: #f0fdf4;">
-                        <i class="fa-solid fa-globe"></i>
-                    </div>
-                    <div class="feature-text">Permanent<br>Website</div>
+            <div class="feature-tile">
+                <div class="icon-wrapper" style="color: #6d28d9; background: #f3e8ff;">
+                    <i class="fa-solid fa-id-card-clip"></i>
                 </div>
-                <div class="feature-tile">
-                    <div class="icon-wrapper" style="color: #6d28d9; background: #f3e8ff;">
-                        <i class="fa-solid fa-id-card-clip"></i>
-                    </div>
-                    <div class="feature-text">Digital<br>Card</div>
-                </div>
-                <div class="feature-tile">
-                    <div class="icon-wrapper" style="color: #f97316; background: #fff7ed;">
-                        <i class="fa-solid fa-shield-halved"></i>
-                    </div>
-                    <div class="feature-text">Licensed<br>Badge</div>
-                </div>
-                <div class="feature-tile">
-                    <div class="icon-wrapper" style="color: #16a34a; background: #f0fdf4;">
-                        <i class="fa-solid fa-phone"></i>
-                    </div>
-                    <div class="feature-text">Call &<br>WhatsApp</div>
-                </div>
-                <div class="feature-tile">
-                    <div class="icon-wrapper" style="color: #6d28d9; background: #f3e8ff;">
-                        <i class="fa-solid fa-star"></i>
-                    </div>
-                    <div class="feature-text">Customer<br>Reviews</div>
-                </div>
-                <div class="feature-tile">
-                    <div class="icon-wrapper" style="color: #3b82f6; background: #eff6ff;">
-                        <i class="fa-solid fa-store"></i>
-                    </div>
-                    <div class="feature-text">Product<br>Showcase</div>
-                </div>
+                <div class="feature-text">Digital<br>Card</div>
             </div>
+            <div class="feature-tile">
+                <div class="icon-wrapper" style="color: #f97316; background: #fff7ed;">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="feature-text">Licensed<br>Badge</div>
+            </div>
+            <div class="feature-tile">
+                <div class="icon-wrapper" style="color: #16a34a; background: #f0fdf4;">
+                    <i class="fa-solid fa-phone"></i>
+                </div>
+                <div class="feature-text">Call &<br>WhatsApp</div>
+            </div>
+            <div class="feature-tile">
+                <div class="icon-wrapper" style="color: #6d28d9; background: #f3e8ff;">
+                    <i class="fa-solid fa-star"></i>
+                </div>
+                <div class="feature-text">Customer<br>Reviews</div>
+            </div>
+            <div class="feature-tile">
+                <div class="icon-wrapper" style="color: #3b82f6; background: #eff6ff;">
+                    <i class="fa-solid fa-store"></i>
+                </div>
+                <div class="feature-text">Product<br>Showcase</div>
+            </div>
+        </div>
 
-            <!-- Follow on Divider -->
-            <div class="exc-section-head">
-                <div class="exc-line"></div>
-                <div><span style="color: #8b5cf6;">✦</span> Follow on <span style="color: #8b5cf6;">✦</span></div>
-                <div class="exc-line"></div>
-            </div>
+        <!-- Follow on Divider -->
+        <div class="exc-section-head">
+            <div class="exc-line"></div>
+            <div><span style="color: #8b5cf6;">✦</span> Follow on <span style="color: #8b5cf6;">✦</span></div>
+            <div class="exc-line"></div>
+        </div>
 
-            <!-- Social Links 4-col -->
-            <div class="grid-4-cols mb-3" id="modalSocialButtons">
-                {% for link in social_links %}
-                {% with p=link.platform|lower %}
-                <button type="button" class="social-btn platform-{{ p }} {% if p in followed_platforms %}followed{% endif %}"
-                        data-platform="{{ p }}"
-                        onclick="handleSocialFollow('{{ p }}', '{{ link.url }}', this)">
-                    {% if 'insta' in p %}
-                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="none">
-                        <radialGradient id="igGrad-{{ forloop.counter }}" cx="30%" cy="107%" r="150%">
-                            <stop offset="0%" stop-color="#fdf497"/>
-                            <stop offset="5%" stop-color="#fdf497"/>
-                            <stop offset="45%" stop-color="#fd5949"/>
-                            <stop offset="60%" stop-color="#d6249f"/>
-                            <stop offset="90%" stop-color="#285AEB"/>
-                        </radialGradient>
-                        <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#igGrad-{{ forloop.counter }})" stroke-width="2"/>
-                        <circle cx="12" cy="12" r="4.5" stroke="url(#igGrad-{{ forloop.counter }})" stroke-width="2"/>
-                        <circle cx="17.5" cy="6.5" r="1.5" fill="url(#igGrad-{{ forloop.counter }})"/>
-                    </svg>
-                    <span>{% if p in followed_platforms %}Followed ✓{% else %}Instagram{% endif %}</span>
-                    {% elif 'face' in p %}
-                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#1877F2">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
-                    <span>{% if p in followed_platforms %}Followed ✓{% else %}Facebook{% endif %}</span>
-                    {% elif p == 'x' or 'twit' in p %}
-                    <svg class="social-logo" viewBox="0 0 24 24" width="26" height="26" fill="#000000">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                    </svg>
-                    <span>{% if p in followed_platforms %}Followed ✓{% else %}X{% endif %}</span>
-                    {% elif 'link' in p %}
-                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#0A66C2">
-                        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.74a1.62 1.62 0 0 0-1.63 1.63c0 .9.73 1.63 1.63 1.63s1.63-.73 1.63-1.63c0-.9-.73-1.63-1.63-1.63z"/>
-                    </svg>
-                    <span>{% if p in followed_platforms %}Followed ✓{% else %}LinkedIn{% endif %}</span>
-                    {% elif 'you' in p %}
-                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#FF0000">
-                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                    </svg>
-                    <span>{% if p in followed_platforms %}Followed ✓{% else %}YouTube{% endif %}</span>
-                    {% else %}
-                    <i class="fa-brands {{ link.icon|default:'fa-share-nodes' }}"></i>
-                    <span>{% if p in followed_platforms %}Followed ✓{% else %}{{ link.platform|title }}{% endif %}</span>
-                    {% endif %}
-                </button>
-                {% endwith %}
-                {% empty %}
-                <button type="button" class="social-btn platform-instagram" data-platform="instagram" onclick="handleSocialFollow('instagram', 'https://instagram.com/padosiagent', this)">
-                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="none">
-                        <radialGradient id="igGrad-d1" cx="30%" cy="107%" r="150%">
-                            <stop offset="0%" stop-color="#fdf497"/>
-                            <stop offset="5%" stop-color="#fdf497"/>
-                            <stop offset="45%" stop-color="#fd5949"/>
-                            <stop offset="60%" stop-color="#d6249f"/>
-                            <stop offset="90%" stop-color="#285AEB"/>
-                        </radialGradient>
-                        <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#igGrad-d1)" stroke-width="2"/>
-                        <circle cx="12" cy="12" r="4.5" stroke="url(#igGrad-d1)" stroke-width="2"/>
-                        <circle cx="17.5" cy="6.5" r="1.5" fill="url(#igGrad-d1)"/>
-                    </svg>
-                    <span>Instagram</span>
-                </button>
-                <button type="button" class="social-btn platform-facebook" data-platform="facebook" onclick="handleSocialFollow('facebook', 'https://facebook.com/padosiagent', this)">
-                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#1877F2">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
-                    <span>Facebook</span>
-                </button>
-                <button type="button" class="social-btn platform-x" data-platform="x" onclick="handleSocialFollow('x', 'https://x.com/padosiagent', this)">
-                    <svg class="social-logo" viewBox="0 0 24 24" width="26" height="26" fill="#000000">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                    </svg>
-                    <span>X</span>
-                </button>
-                <button type="button" class="social-btn platform-linkedin" data-platform="linkedin" onclick="handleSocialFollow('linkedin', 'https://linkedin.com/company/padosiagent', this)">
-                    <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#0A66C2">
-                        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.74a1.62 1.62 0 0 0-1.63 1.63c0 .9.73 1.63 1.63 1.63s1.63-.73 1.63-1.63c0-.9-.73-1.63-1.63-1.63z"/>
-                    </svg>
-                    <span>LinkedIn</span>
-                </button>
-                {% endfor %}
-            </div>
+        <!-- Social Links 4-col -->
+        <div class="grid-4-cols mb-3" id="modalSocialButtons">
+            {% for link in social_links %}
+            {% with p=link.platform|lower %}
+            <button type="button"
+                class="social-btn platform-{{ p }} {% if p in followed_platforms %}followed{% endif %}"
+                data-platform="{{ p }}" onclick="handleSocialFollow('{{ p }}', '{{ link.url }}', this)">
+                {% if 'insta' in p %}
+                <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="none">
+                    <radialGradient id="igGrad-{{ forloop.counter }}" cx="30%" cy="107%" r="150%">
+                        <stop offset="0%" stop-color="#fdf497" />
+                        <stop offset="5%" stop-color="#fdf497" />
+                        <stop offset="45%" stop-color="#fd5949" />
+                        <stop offset="60%" stop-color="#d6249f" />
+                        <stop offset="90%" stop-color="#285AEB" />
+                    </radialGradient>
+                    <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#igGrad-{{ forloop.counter }})"
+                        stroke-width="2" />
+                    <circle cx="12" cy="12" r="4.5" stroke="url(#igGrad-{{ forloop.counter }})" stroke-width="2" />
+                    <circle cx="17.5" cy="6.5" r="1.5" fill="url(#igGrad-{{ forloop.counter }})" />
+                </svg>
+                <span>{% if p in followed_platforms %}Followed ✓{% else %}Instagram{% endif %}</span>
+                {% elif 'face' in p %}
+                <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#1877F2">
+                    <path
+                        d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+                <span>{% if p in followed_platforms %}Followed ✓{% else %}Facebook{% endif %}</span>
+                {% elif p == 'x' or 'twit' in p %}
+                <svg class="social-logo" viewBox="0 0 24 24" width="26" height="26" fill="#000000">
+                    <path
+                        d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                <span>{% if p in followed_platforms %}Followed ✓{% else %}X{% endif %}</span>
+                {% elif 'link' in p %}
+                <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#0A66C2">
+                    <path
+                        d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.74a1.62 1.62 0 0 0-1.63 1.63c0 .9.73 1.63 1.63 1.63s1.63-.73 1.63-1.63c0-.9-.73-1.63-1.63-1.63z" />
+                </svg>
+                <span>{% if p in followed_platforms %}Followed ✓{% else %}LinkedIn{% endif %}</span>
+                {% elif 'you' in p %}
+                <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#FF0000">
+                    <path
+                        d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                </svg>
+                <span>{% if p in followed_platforms %}Followed ✓{% else %}YouTube{% endif %}</span>
+                {% else %}
+                <i class="fa-brands {{ link.icon|default:'fa-share-nodes' }}"></i>
+                <span>{% if p in followed_platforms %}Followed ✓{% else %}{{ link.platform|title }}{% endif %}</span>
+                {% endif %}
+            </button>
+            {% endwith %}
+            {% empty %}
+            <button type="button" class="social-btn platform-instagram" data-platform="instagram"
+                onclick="handleSocialFollow('instagram', 'https://instagram.com/padosiagent', this)">
+                <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="none">
+                    <radialGradient id="igGrad-d1" cx="30%" cy="107%" r="150%">
+                        <stop offset="0%" stop-color="#fdf497" />
+                        <stop offset="5%" stop-color="#fdf497" />
+                        <stop offset="45%" stop-color="#fd5949" />
+                        <stop offset="60%" stop-color="#d6249f" />
+                        <stop offset="90%" stop-color="#285AEB" />
+                    </radialGradient>
+                    <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#igGrad-d1)" stroke-width="2" />
+                    <circle cx="12" cy="12" r="4.5" stroke="url(#igGrad-d1)" stroke-width="2" />
+                    <circle cx="17.5" cy="6.5" r="1.5" fill="url(#igGrad-d1)" />
+                </svg>
+                <span>Instagram</span>
+            </button>
+            <button type="button" class="social-btn platform-facebook" data-platform="facebook"
+                onclick="handleSocialFollow('facebook', 'https://facebook.com/padosiagent', this)">
+                <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#1877F2">
+                    <path
+                        d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+                <span>Facebook</span>
+            </button>
+            <button type="button" class="social-btn platform-x" data-platform="x"
+                onclick="handleSocialFollow('x', 'https://x.com/padosiagent', this)">
+                <svg class="social-logo" viewBox="0 0 24 24" width="26" height="26" fill="#000000">
+                    <path
+                        d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                <span>X</span>
+            </button>
+            <button type="button" class="social-btn platform-linkedin" data-platform="linkedin"
+                onclick="handleSocialFollow('linkedin', 'https://linkedin.com/company/padosiagent', this)">
+                <svg class="social-logo" viewBox="0 0 24 24" width="28" height="28" fill="#0A66C2">
+                    <path
+                        d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.74a1.62 1.62 0 0 0-1.63 1.63c0 .9.73 1.63 1.63 1.63s1.63-.73 1.63-1.63c0-.9-.73-1.63-1.63-1.63z" />
+                </svg>
+                <span>LinkedIn</span>
+            </button>
+            {% endfor %}
+        </div>
 
-            <!-- Action Button -->
-            <div class="mt-2 mb-1">
-                <button type="button" class="btn-pay" id="modalClaimOfferBtn" onclick="claimModalOffer()">
-                    <div style="border: 2px solid rgba(255,255,255,0.8); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; position: absolute; left: 20px;">
-                        <i class="fa-solid fa-bolt" style="font-size: 10px;"></i>
-                    </div>
-                    Claim Offer
-                    <i class="fa-solid fa-chevron-right" style="position: absolute; right: 20px; font-size: 14px;"></i>
-                </button>
-            </div>
+        <!-- Action Button -->
+        <div class="mt-2 mb-1">
+            <button type="button" class="btn-pay" id="modalClaimOfferBtn" onclick="claimModalOffer()">
+                <div
+                    style="border: 2px solid rgba(255,255,255,0.8); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; position: absolute; left: 20px;">
+                    <i class="fa-solid fa-bolt" style="font-size: 10px;"></i>
+                </div>
+                Claim Offer
+                <i class="fa-solid fa-chevron-right" style="position: absolute; right: 20px; font-size: 14px;"></i>
+            </button>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-    <script src="https://checkout.razorpay.com/v1/checkout.js" data-razorpay-sdk="1"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script>
-        var is_upgrade_flow = {{ is_upgrade_flow|yesno:"true,false"|default:"false" }};
-        var starterScratchEnabled = {{ starter_scratch_enabled|yesno:"true,false"|default:"false" }};
-        var profScratchEnabled = {{ prof_scratch_enabled|yesno:"true,false"|default:"false" }};
-        var starterScratchRevealed = false;
-        var profScratchRevealed = false;
+<script src="https://checkout.razorpay.com/v1/checkout.js" data-razorpay-sdk="1"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script>
+    var is_upgrade_flow = {{ is_upgrade_flow|yesno:"true,false,false" }};
+    var starterScratchEnabled = {{ starter_scratch_enabled|yesno:"true,false,false" }};
+    var profScratchEnabled = {{ prof_scratch_enabled|yesno:"true,false,false" }};
+    var starterScratchRevealed = false;
+    var profScratchRevealed = false;
 
-        function payableTotal(base) {
-            var n = Math.round(Number(base) || 0);
-            if (n <= 0) return 0;
-            return Math.round(n + (n * 0.18));
+    function payableTotal(base) {
+        var n = Math.round(Number(base) || 0);
+        if (n <= 0) return 0;
+        return Math.round(n + (n * 0.18));
+    }
+
+    var discountedPrices = {
+        starter: {
+            base: {{ starter_base }},
+            total: {{ starter_final }} || payableTotal({{ starter_base }})
+        },
+        professional: {
+            base: {{ prof_base }},
+            total: {{ prof_final }} || payableTotal({{ prof_base }})
         }
+    };
 
-        var discountedPrices = {
-            starter: {
-                base: {{ starter_base }},
-                total: {{ starter_final }} || payableTotal({{ starter_base }})
-            },
-            professional: {
-                base: {{ prof_base }},
-                total: {{ prof_final }} || payableTotal({{ prof_base }})
-            }
-        };
-
-        var currentPrices = {
-            starter: {
-                name: '{{ starter_name|escapejs }}',
-                full: {{ starter_full|floatformat:"0" }},
-                base: starterScratchEnabled ? {{ starter_full|floatformat:"0" }} : {{ starter_base }},
-                total: 0
-            },
-            professional: {
-                name: '{{ prof_name|escapejs }}',
-                full: {{ prof_full|floatformat:"0" }},
-                base: profScratchEnabled ? {{ prof_full|floatformat:"0" }} : {{ prof_base }},
-                total: 0
-            },
-            free_trial: {
-                name: 'Trial Plan ({{ trial_duration }} Days)',
-                full: {{ trial_base_price|default:1 }},
-                base: {{ trial_base_price|default:1 }},
-                total: {{ trial_final|default:1 }}
-            }
-        };
-        currentPrices.starter.total = payableTotal(currentPrices.starter.base);
-        currentPrices.professional.total = payableTotal(currentPrices.professional.base);
-        if (!currentPrices.free_trial.total) {
-            currentPrices.free_trial.total = payableTotal(currentPrices.free_trial.base);
+    var currentPrices = {
+        starter: {
+            name: '{{ starter_name|escapejs }}',
+            full: {{ starter_full|floatformat:"0" }},
+            base: starterScratchEnabled ? {{ starter_full|floatformat:"0" }} : {{ starter_base }},
+            total: 0
+        },
+        professional: {
+            name: '{{ prof_name|escapejs }}',
+            full: {{ prof_full|floatformat:"0" }},
+            base: profScratchEnabled ? {{ prof_full|floatformat:"0" }} : {{ prof_base }},
+            total: 0
+        },
+        free_trial: {
+            name: 'Trial Plan ({{ trial_duration }} Days)',
+            full: {{ trial_base_price|default:1 }},
+            base: {{ trial_base_price|default:1 }},
+            total: {{ trial_final|default:1 }}
         }
+    };
+    currentPrices.starter.total = payableTotal(currentPrices.starter.base);
+    currentPrices.professional.total = payableTotal(currentPrices.professional.base);
+    if (!currentPrices.free_trial.total) {
+        currentPrices.free_trial.total = payableTotal(currentPrices.free_trial.base);
+    }
 
-        async function persistScratchReveal(planType) {
-            try {
-                await fetch('/plan-scratch-reveal/', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': await getFreshCsrfToken()
-                    },
-                    body: JSON.stringify({ plan_type: planType })
-                });
-            } catch (e) {
-                console.error(e);
-            }
+    async function persistScratchReveal(planType) {
+        try {
+            await fetch('/plan-scratch-reveal/', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': await getFreshCsrfToken()
+                },
+                body: JSON.stringify({ plan_type: planType })
+            });
+        } catch (e) {
+            console.error(e);
         }
+    }
 
-        function applyScratchUi(planType) {
-            if (planType === 'starter') {
-                currentPrices.starter.base = discountedPrices.starter.base;
-                currentPrices.starter.total = discountedPrices.starter.total || payableTotal(discountedPrices.starter.base);
+    function applyScratchUi(planType) {
+        if (planType === 'starter') {
+            currentPrices.starter.base = discountedPrices.starter.base;
+            currentPrices.starter.total = discountedPrices.starter.total || payableTotal(discountedPrices.starter.base);
 
-                let strikeEl = document.getElementById('starterStrikePrice');
-                let dispEl = document.getElementById('starterDisplayPrice');
-                let badgeEl = document.getElementById('starterDiscountBadge');
+            let strikeEl = document.getElementById('starterStrikePrice');
+            let dispEl = document.getElementById('starterDisplayPrice');
+            let badgeEl = document.getElementById('starterDiscountBadge');
 
-                if (strikeEl) {
-                    strikeEl.innerText = '₹' + currentPrices.starter.full;
-                    strikeEl.style.display = 'inline-block';
-                }
-                if (dispEl) {
-                    dispEl.innerText = '₹' + discountedPrices.starter.base + '/-';
-                }
-                if (badgeEl) {
-                    badgeEl.style.display = 'block';
-                }
-            } else if (planType === 'professional') {
-                currentPrices.professional.base = discountedPrices.professional.base;
-                currentPrices.professional.total = discountedPrices.professional.total || payableTotal(discountedPrices.professional.base);
-
-                let strikeEl = document.getElementById('profStrikePrice');
-                let dispEl = document.getElementById('profDisplayPrice');
-                let badgeEl = document.getElementById('profDiscountBadge');
-
-                if (strikeEl) {
-                    strikeEl.innerText = '₹' + currentPrices.professional.full;
-                    strikeEl.style.display = 'inline-block';
-                }
-                if (dispEl) {
-                    dispEl.innerText = '₹' + discountedPrices.professional.base + '/-';
-                }
-                if (badgeEl) {
-                    badgeEl.style.display = 'block';
-                }
+            if (strikeEl) {
+                strikeEl.innerText = '₹' + currentPrices.starter.full;
+                strikeEl.style.display = 'inline-block';
             }
+            if (dispEl) {
+                dispEl.innerText = '₹' + discountedPrices.starter.base + '/-';
+            }
+            if (badgeEl) {
+                badgeEl.style.display = 'block';
+            }
+        } else if (planType === 'professional') {
+            currentPrices.professional.base = discountedPrices.professional.base;
+            currentPrices.professional.total = discountedPrices.professional.total || payableTotal(discountedPrices.professional.base);
 
-            if (selectedPlan && selectedPlan.type === planType) {
-                selectPlanForPayment(planType);
+            let strikeEl = document.getElementById('profStrikePrice');
+            let dispEl = document.getElementById('profDisplayPrice');
+            let badgeEl = document.getElementById('profDiscountBadge');
+
+            if (strikeEl) {
+                strikeEl.innerText = '₹' + currentPrices.professional.full;
+                strikeEl.style.display = 'inline-block';
+            }
+            if (dispEl) {
+                dispEl.innerText = '₹' + discountedPrices.professional.base + '/-';
+            }
+            if (badgeEl) {
+                badgeEl.style.display = 'block';
             }
         }
 
-        async function revealScratchReward(planType) {
-            await persistScratchReveal(planType);
-            if (planType === 'starter') starterScratchRevealed = true;
-            if (planType === 'professional') profScratchRevealed = true;
-            applyScratchUi(planType);
+        if (selectedPlan && selectedPlan.type === planType) {
+            selectPlanForPayment(planType);
+        }
+    }
+
+    async function revealScratchReward(planType) {
+        await persistScratchReveal(planType);
+        if (planType === 'starter') starterScratchRevealed = true;
+        if (planType === 'professional') profScratchRevealed = true;
+        applyScratchUi(planType);
+    }
+
+    var selectedPlan = null;
+    var payClickUnlockAt = 0;
+    var agentId = {{ draft.pk|default:0 }};
+    var activeRewardPlan = 'starter';
+
+    function isTermsAccepted() {
+        const termsCheckbox = document.getElementById('termsCheckbox');
+        return !!(termsCheckbox && termsCheckbox.checked);
+    }
+
+    function syncPayButtonState() {
+        const paymentBtn = document.getElementById('confirmPaymentBtn');
+        if (!paymentBtn) return;
+        const ready = isTermsAccepted();
+        paymentBtn.disabled = !ready;
+        paymentBtn.setAttribute('aria-disabled', ready ? 'false' : 'true');
+    }
+
+    window.selectPlanForPayment = function (planType) {
+        if (planType === 'free_trial') {
+            selectedPlan = {
+                type: 'free_trial',
+                name: currentPrices.free_trial.name,
+                price: currentPrices.free_trial.base,
+                total: currentPrices.free_trial.total || payableTotal(currentPrices.free_trial.base)
+            };
+        } else if (planType === 'starter' || planType === 'basic') {
+            selectedPlan = {
+                type: 'starter',
+                name: currentPrices.starter.name,
+                price: currentPrices.starter.base,
+                total: currentPrices.starter.total || payableTotal(currentPrices.starter.base)
+            };
+        } else {
+            selectedPlan = {
+                type: 'professional',
+                name: currentPrices.professional.name,
+                price: currentPrices.professional.base,
+                total: currentPrices.professional.total || payableTotal(currentPrices.professional.base)
+            };
         }
 
-        var selectedPlan = null;
-        var payClickUnlockAt = 0;
-        var agentId = {{ draft.pk|default:0 }};
-        var activeRewardPlan = 'starter';
+        payClickUnlockAt = Date.now() + 600;
+        updateSelectedPlanSummary();
+    };
 
-        function isTermsAccepted() {
-            const termsCheckbox = document.getElementById('termsCheckbox');
-            return !!(termsCheckbox && termsCheckbox.checked);
+    function updateSelectedPlanSummary() {
+        const summary = document.getElementById('selectedPlanSummary');
+        if (summary && selectedPlan) {
+            const price = Number(selectedPlan.price) || 0;
+            const gst = Math.round(price * 0.18);
+            const total = Number(selectedPlan.total) > 0 ? Number(selectedPlan.total) : (price + gst);
+            selectedPlan.total = total;
+            summary.style.display = 'block';
+            let planNameEl = document.getElementById('selectedPlanName');
+            planNameEl.textContent = selectedPlan.name;
+            document.getElementById('selectedPlanPrice').textContent = `₹${price.toLocaleString('en-IN')}`;
+            document.getElementById('selectedPlanGST').textContent = `₹${gst.toLocaleString('en-IN')}`;
+            document.getElementById('selectedPlanTotal').textContent = `₹${total.toLocaleString('en-IN')}`;
+            syncPayButtonState();
+            setTimeout(function () {
+                summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 50);
         }
+    }
 
-        function syncPayButtonState() {
-            const paymentBtn = document.getElementById('confirmPaymentBtn');
-            if (!paymentBtn) return;
-            const ready = isTermsAccepted();
-            paymentBtn.disabled = !ready;
-            paymentBtn.setAttribute('aria-disabled', ready ? 'false' : 'true');
-        }
-
-        window.selectPlanForPayment = function (planType) {
-            if (planType === 'free_trial') {
-                selectedPlan = {
-                    type: 'free_trial',
-                    name: currentPrices.free_trial.name,
-                    price: currentPrices.free_trial.base,
-                    total: currentPrices.free_trial.total || payableTotal(currentPrices.free_trial.base)
-                };
-            } else if (planType === 'starter' || planType === 'basic') {
-                selectedPlan = {
-                    type: 'starter',
-                    name: currentPrices.starter.name,
-                    price: currentPrices.starter.base,
-                    total: currentPrices.starter.total || payableTotal(currentPrices.starter.base)
-                };
-            } else {
-                selectedPlan = {
-                    type: 'professional',
-                    name: currentPrices.professional.name,
-                    price: currentPrices.professional.base,
-                    total: currentPrices.professional.total || payableTotal(currentPrices.professional.base)
-                };
-            }
-
-            payClickUnlockAt = Date.now() + 600;
-            updateSelectedPlanSummary();
-        };
-
-        function updateSelectedPlanSummary() {
-            const summary = document.getElementById('selectedPlanSummary');
-            if (summary && selectedPlan) {
-                const price = Number(selectedPlan.price) || 0;
-                const gst = Math.round(price * 0.18);
-                const total = Number(selectedPlan.total) > 0 ? Number(selectedPlan.total) : (price + gst);
-                selectedPlan.total = total;
-                summary.style.display = 'block';
-                let planNameEl = document.getElementById('selectedPlanName');
-                planNameEl.textContent = selectedPlan.name;
-                document.getElementById('selectedPlanPrice').textContent = `₹${price.toLocaleString('en-IN')}`;
-                document.getElementById('selectedPlanGST').textContent = `₹${gst.toLocaleString('en-IN')}`;
-                document.getElementById('selectedPlanTotal').textContent = `₹${total.toLocaleString('en-IN')}`;
-                syncPayButtonState();
-                setTimeout(function () {
-                    summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }, 50);
-            }
-        }
-
-        function showLoadingPopup(title, message) {
-            Swal.fire({
-                title: title,
-                html: `
+    function showLoadingPopup(title, message) {
+        Swal.fire({
+            title: title,
+            html: `
                     <div class="text-center">
                         <p class="mb-3">${message}</p>
                         <div class="text-danger fw-bold" style="font-size: 14px;">
@@ -1765,552 +1797,553 @@
                         </div>
                     </div>
                 `,
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                showConfirmButton: false,
-                didOpen: () => {
-                    Swal.showLoading();
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+    }
+
+    function hideLoadingPopup() {
+        Swal.close();
+    }
+
+    function celebrateRegistration(data) {
+        hideLoadingPopup();
+        var redirectUrl = (data && data.redirect_url) || '{% url "agents:agent_dashboard" %}';
+        window.location.href = redirectUrl;
+    }
+
+    var lastCheckout = null;
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+        return '';
+    }
+
+    async function getFreshCsrfToken() {
+        return getCookie('padosi_csrf_token') || getCookie('csrftoken') || '{{ csrf_token }}';
+    }
+
+    function resetPayButton(paymentBtn) {
+        if (!paymentBtn) return;
+        paymentBtn.disabled = false;
+        paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
+    }
+
+    function isRazorpayReady() {
+        return typeof window.Razorpay === 'function';
+    }
+
+    function buildRazorpayOptions(data, selectedPlan, onSuccess) {
+        var orderId = data.razorpay_order_id || data.order_id;
+        var keyId = data.razorpay_key_id || data.key;
+        var options = {
+            key: keyId,
+            currency: 'INR',
+            name: 'PadosiAgent',
+            description: (selectedPlan && selectedPlan.name) || 'PadosiAgent Plan',
+            order_id: orderId,
+            handler: onSuccess,
+            prefill: {
+                name: data.customer_name || data.name || '',
+                email: data.customer_email || data.email || '',
+                contact: data.customer_phone || data.mobile || ''
+            },
+            theme: { color: '#273c8e' },
+            modal: {
+                ondismiss: function () {
+                    var paymentBtn = document.getElementById('confirmPaymentBtn');
+                    resetPayButton(paymentBtn);
                 }
-            });
+            }
+        };
+        // callback_url only on HTTPS — HTTP localhost triggers browser Private Network Access blocks (EMI/netbanking fail).
+        var useCallback = data.checkout_use_callback;
+        if (useCallback === undefined || useCallback === null) {
+            useCallback = window.location.protocol === 'https:';
         }
-
-        function hideLoadingPopup() {
-            Swal.close();
+        if (useCallback) {
+            options.callback_url = window.location.origin + '/agent-register/payment-callback/';
         }
+        return options;
+    }
 
-        function celebrateRegistration(data) {
-            hideLoadingPopup();
-            var redirectUrl = (data && data.redirect_url) || '{% url "agents:agent_dashboard" %}';
-            window.location.href = redirectUrl;
-        }
-
-        var lastCheckout = null;
-
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
-            return '';
-        }
-
-        async function getFreshCsrfToken() {
-            return getCookie('padosi_csrf_token') || getCookie('csrftoken') || '{{ csrf_token }}';
-        }
-
-        function resetPayButton(paymentBtn) {
-            if (!paymentBtn) return;
-            paymentBtn.disabled = false;
-            paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
-        }
-
-        function isRazorpayReady() {
-            return typeof window.Razorpay === 'function';
-        }
-
-        function buildRazorpayOptions(data, selectedPlan, onSuccess) {
-            var orderId = data.razorpay_order_id || data.order_id;
-            var keyId = data.razorpay_key_id || data.key;
-            var options = {
-                key: keyId,
-                currency: 'INR',
-                name: 'PadosiAgent',
-                description: (selectedPlan && selectedPlan.name) || 'PadosiAgent Plan',
-                order_id: orderId,
-                handler: onSuccess,
-                prefill: {
-                    name: data.customer_name || data.name || '',
-                    email: data.customer_email || data.email || '',
-                    contact: data.customer_phone || data.mobile || ''
-                },
-                theme: { color: '#273c8e' },
-                modal: {
-                    ondismiss: function () {
-                        var paymentBtn = document.getElementById('confirmPaymentBtn');
-                        resetPayButton(paymentBtn);
-                    }
-                }
+    function loadRazorpayScript(attempt) {
+        return new Promise(function (resolve, reject) {
+            if (isRazorpayReady()) {
+                resolve(true);
+                return;
+            }
+            var script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js?r=' + attempt + '&t=' + Date.now();
+            script.async = true;
+            script.onload = function () { resolve(isRazorpayReady()); };
+            script.onerror = function () {
+                script.remove();
+                reject(new Error('sdk_network'));
             };
-            // callback_url only on HTTPS — HTTP localhost triggers browser Private Network Access blocks (EMI/netbanking fail).
-            var useCallback = data.checkout_use_callback;
-            if (useCallback === undefined || useCallback === null) {
-                useCallback = window.location.protocol === 'https:';
-            }
-            if (useCallback) {
-                options.callback_url = window.location.origin + '/agent-register/payment-callback/';
-            }
-            return options;
-        }
+            document.head.appendChild(script);
+        });
+    }
 
-        function loadRazorpayScript(attempt) {
-            return new Promise(function (resolve, reject) {
-                if (isRazorpayReady()) {
-                    resolve(true);
-                    return;
-                }
-                var script = document.createElement('script');
-                script.src = 'https://checkout.razorpay.com/v1/checkout.js?r=' + attempt + '&t=' + Date.now();
-                script.async = true;
-                script.onload = function () { resolve(isRazorpayReady()); };
-                script.onerror = function () {
-                    script.remove();
-                    reject(new Error('sdk_network'));
-                };
-                document.head.appendChild(script);
-            });
-        }
-
-        async function ensureRazorpaySdk() {
-            if (isRazorpayReady()) return true;
-            for (var attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    await loadRazorpayScript(attempt);
-                    if (isRazorpayReady()) return true;
-                } catch (err) {
-                    await new Promise(function (resolve) { setTimeout(resolve, 400 * attempt); });
-                }
-            }
-            return isRazorpayReady();
-        }
-
-        ensureRazorpaySdk().catch(function () {});
-
-        function userPaymentMessage(raw) {
-            var generic = "We're unable to process your payment right now. Please try again in a few minutes.";
-            var text = String(raw || '').trim();
-            if (!text) return generic;
-            if (/razorpay|rzp_|matching pair|\.env|api key|secret|authentication failed|gateway.?key|not configured|traceback|exception/i.test(text)) {
-                return generic;
-            }
-            return text;
-        }
-
-        async function confirmPayment(source) {
-            if (source !== 'pay-button') return;
-            if (Date.now() < payClickUnlockAt) return;
-            if (!selectedPlan || !selectedPlan.type) {
-                Swal.fire('Oops', 'Please select a plan first.', 'warning');
-                return;
-            }
-
-            const termsCheckbox = document.getElementById('termsCheckbox');
-            if (!termsCheckbox || !termsCheckbox.checked) {
-                Swal.fire('Oops', 'Please agree to the Terms & Conditions and Privacy Policy to proceed.', 'warning');
-                return;
-            }
-
-            const paymentBtn = document.getElementById('confirmPaymentBtn');
-            if (paymentBtn) {
-                paymentBtn.disabled = true;
-                paymentBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
-            }
-
+    async function ensureRazorpaySdk() {
+        if (isRazorpayReady()) return true;
+        for (var attempt = 1; attempt <= 3; attempt++) {
             try {
-                const response = await fetch('/agent-register/complete/', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': await getFreshCsrfToken()
-                    },
-                    body: JSON.stringify({
-                        plan_type: selectedPlan.type,
-                        plan_name: selectedPlan.name,
-                        scratch_revealed: selectedPlan.type === 'professional' ? !!profScratchRevealed : (selectedPlan.type === 'starter' ? !!starterScratchRevealed : false),
-                        displayed_total: selectedPlan.total
-                    })
-                });
+                await loadRazorpayScript(attempt);
+                if (isRazorpayReady()) return true;
+            } catch (err) {
+                await new Promise(function (resolve) { setTimeout(resolve, 400 * attempt); });
+            }
+        }
+        return isRazorpayReady();
+    }
 
-                const data = await response.json().catch(() => null);
-                if (!data) {
-                    Swal.fire('Payment Error', 'Unable to start payment right now. Please try again.', 'error');
+    ensureRazorpaySdk().catch(function () { });
+
+    function userPaymentMessage(raw) {
+        var generic = "We're unable to process your payment right now. Please try again in a few minutes.";
+        var text = String(raw || '').trim();
+        if (!text) return generic;
+        if (/razorpay|rzp_|matching pair|\.env|api key|secret|authentication failed|gateway.?key|not configured|traceback|exception/i.test(text)) {
+            return generic;
+        }
+        return text;
+    }
+
+    async function confirmPayment(source) {
+        if (source !== 'pay-button') return;
+        if (Date.now() < payClickUnlockAt) return;
+        if (!selectedPlan || !selectedPlan.type) {
+            Swal.fire('Oops', 'Please select a plan first.', 'warning');
+            return;
+        }
+
+        const termsCheckbox = document.getElementById('termsCheckbox');
+        if (!termsCheckbox || !termsCheckbox.checked) {
+            Swal.fire('Oops', 'Please agree to the Terms & Conditions and Privacy Policy to proceed.', 'warning');
+            return;
+        }
+
+        const paymentBtn = document.getElementById('confirmPaymentBtn');
+        if (paymentBtn) {
+            paymentBtn.disabled = true;
+            paymentBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+        }
+
+        try {
+            const response = await fetch('/agent-register/complete/', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': await getFreshCsrfToken()
+                },
+                body: JSON.stringify({
+                    plan_type: selectedPlan.type,
+                    plan_name: selectedPlan.name,
+                    scratch_revealed: selectedPlan.type === 'professional' ? !!profScratchRevealed : (selectedPlan.type === 'starter' ? !!starterScratchRevealed : false),
+                    displayed_total: selectedPlan.total
+                })
+            });
+
+            const data = await response.json().catch(() => null);
+            if (!data) {
+                Swal.fire('Payment Error', 'Unable to start payment right now. Please try again.', 'error');
+                resetPayButton(paymentBtn);
+                return;
+            }
+            if (data.success) {
+                const orderId = data.razorpay_order_id || data.order_id;
+                const keyId = data.razorpay_key_id || data.key;
+                const amountPaise = data.amount_paise || data.amount;
+                lastCheckout = {
+                    agent_id: data.agent_id,
+                    plan_type: selectedPlan.type,
+                    plan_name: selectedPlan.name,
+                    order_id: orderId
+                };
+                try { sessionStorage.setItem('padosiPendingCheckout', JSON.stringify(lastCheckout)); } catch (e) { }
+
+                if (data.mock_checkout) {
+                    Swal.fire(
+                        'Payment required',
+                        'Razorpay checkout could not start. Payment is required — dashboard access is blocked until a real payment is captured.',
+                        'error'
+                    );
                     resetPayButton(paymentBtn);
                     return;
                 }
-                if (data.success) {
-                    const orderId = data.razorpay_order_id || data.order_id;
-                    const keyId = data.razorpay_key_id || data.key;
-                    const amountPaise = data.amount_paise || data.amount;
-                    lastCheckout = {
-                        agent_id: data.agent_id,
-                        plan_type: selectedPlan.type,
-                        plan_name: selectedPlan.name,
-                        order_id: orderId
-                    };
-                    try { sessionStorage.setItem('padosiPendingCheckout', JSON.stringify(lastCheckout)); } catch (e) {}
 
-                    if (data.mock_checkout) {
-                        Swal.fire(
-                            'Payment required',
-                            'Razorpay checkout could not start. Payment is required — dashboard access is blocked until a real payment is captured.',
-                            'error'
-                        );
+                if (orderId && keyId && amountPaise > 0) {
+                    var sdkReady = await ensureRazorpaySdk();
+                    if (!sdkReady) {
+                        Swal.fire('Error', 'Could not reach Razorpay. Check your internet and try again.', 'error');
                         resetPayButton(paymentBtn);
                         return;
                     }
 
-                    if (orderId && keyId && amountPaise > 0) {
-                        if (typeof Razorpay === 'undefined') {
-                            Swal.fire('Error', 'Payment Gateway SDK could not load. Please check your connection and reload.', 'error');
-                            resetPayButton(paymentBtn);
+                    const options = buildRazorpayOptions(data, selectedPlan, function (response) {
+                        verifyRazorpayPayment(response);
+                    });
+                    const rzp1 = new Razorpay(options);
+                    rzp1.on('payment.failed', function (resp) {
+                        const err = (resp && resp.error) || {};
+                        const step = String(err.step || '').toLowerCase();
+                        if (step === 'payment_authentication' || step === 'payment_capture') {
                             return;
                         }
-
-                        const options = buildRazorpayOptions(data, selectedPlan, function (response) {
-                            verifyRazorpayPayment(response);
-                        });
-                        const rzp1 = new Razorpay(options);
-                        rzp1.on('payment.failed', function (resp) {
-                            const err = (resp && resp.error) || {};
-                            const step = String(err.step || '').toLowerCase();
-                            if (step === 'payment_authentication' || step === 'payment_capture') {
-                                return;
-                            }
-                            fetch('/payment-failure/', {
-                                method: 'POST',
-                                credentials: 'same-origin',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRFToken': getCookie('padosi_csrf_token') || getCookie('csrftoken') || '{{ csrf_token }}'
-                                },
-                                body: JSON.stringify({
-                                    agent_id: lastCheckout && lastCheckout.agent_id,
-                                    razorpay_order_id: orderId,
-                                    error: err
-                                })
-                            }).catch(function () {});
-                            Swal.fire('Payment Failed', 'We\'re unable to process your payment right now. Please try again in a few minutes.', 'error');
-                            resetPayButton(paymentBtn);
-                        });
-                        rzp1.open();
-                    } else if (data.already_completed) {
-                        celebrateRegistration(data);
-                    } else if (amountPaise === 0 || !data.payment_required) {
-                        celebrateRegistration(data);
-                    } else {
-                        Swal.fire('Payment Error', userPaymentMessage(data.message), 'error');
+                        fetch('/payment-failure/', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('padosi_csrf_token') || getCookie('csrftoken') || '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({
+                                agent_id: lastCheckout && lastCheckout.agent_id,
+                                razorpay_order_id: orderId,
+                                error: err
+                            })
+                        }).catch(function () { });
+                        Swal.fire('Payment Failed', 'We\'re unable to process your payment right now. Please try again in a few minutes.', 'error');
                         resetPayButton(paymentBtn);
-                    }
+                    });
+                    rzp1.open();
+                } else if (data.already_completed) {
+                    celebrateRegistration(data);
+                } else if (amountPaise === 0 || !data.payment_required) {
+                    celebrateRegistration(data);
                 } else {
                     Swal.fire('Payment Error', userPaymentMessage(data.message), 'error');
                     resetPayButton(paymentBtn);
                 }
-            } catch (err) {
-                console.error(err);
-                Swal.fire('Error', 'An unexpected error occurred.', 'error');
+            } else {
+                Swal.fire('Payment Error', userPaymentMessage(data.message), 'error');
                 resetPayButton(paymentBtn);
             }
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'An unexpected error occurred.', 'error');
+            resetPayButton(paymentBtn);
         }
+    }
 
-        async function verifyRazorpayPayment(paymentResponse) {
-            const paymentBtn = document.getElementById('confirmPaymentBtn');
-            showLoadingPopup('Verifying Payment', 'Please wait while we confirm your transaction...');
-            try {
-                const payload = Object.assign({}, paymentResponse || {}, lastCheckout || {});
-                const response = await fetch('/agent-register/verify-payment/', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': await getFreshCsrfToken()
-                    },
-                    body: JSON.stringify(payload)
-                });
-                const data = await response.json();
-                hideLoadingPopup();
-                if (data.success) {
-                    celebrateRegistration(data);
-                } else {
-                    Swal.fire('Payment Failed', userPaymentMessage(data.message), 'error');
-                    resetPayButton(paymentBtn);
-                }
-            } catch {
-                hideLoadingPopup();
-                Swal.fire('Error', 'Payment verification failed.', 'error');
+    async function verifyRazorpayPayment(paymentResponse) {
+        const paymentBtn = document.getElementById('confirmPaymentBtn');
+        showLoadingPopup('Verifying Payment', 'Please wait while we confirm your transaction...');
+        try {
+            const payload = Object.assign({}, paymentResponse || {}, lastCheckout || {});
+            const response = await fetch('/agent-register/verify-payment/', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': await getFreshCsrfToken()
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            hideLoadingPopup();
+            if (data.success) {
+                celebrateRegistration(data);
+            } else {
+                Swal.fire('Payment Failed', userPaymentMessage(data.message), 'error');
                 resetPayButton(paymentBtn);
             }
+        } catch {
+            hideLoadingPopup();
+            Swal.fire('Error', 'Payment verification failed.', 'error');
+            resetPayButton(paymentBtn);
         }
+    }
 
-        // ─── REWARD MODAL OPENER & CLOSER ───────────────────────────────────────
-        function openScratchRewardModal(planType) {
-            activeRewardPlan = planType || 'starter';
-            revealScratchReward(activeRewardPlan);
+    // ─── REWARD MODAL OPENER & CLOSER ───────────────────────────────────────
+    function openScratchRewardModal(planType) {
+        activeRewardPlan = planType || 'starter';
+        revealScratchReward(activeRewardPlan);
 
-            let strikeEl = document.getElementById('modalStrikePrice');
-            let currEl = document.getElementById('modalCurrentPrice');
-            let valEl = document.getElementById('modalDiscountVal');
+        let strikeEl = document.getElementById('modalStrikePrice');
+        let currEl = document.getElementById('modalCurrentPrice');
+        let valEl = document.getElementById('modalDiscountVal');
 
-            let full = (activeRewardPlan === 'professional') ? currentPrices.professional.full : currentPrices.starter.full;
-            let current = (activeRewardPlan === 'professional') ? discountedPrices.professional.base : discountedPrices.starter.base;
-            let percent = full > 0 ? Math.round((1 - (current / full)) * 100) : 0;
+        let full = (activeRewardPlan === 'professional') ? currentPrices.professional.full : currentPrices.starter.full;
+        let current = (activeRewardPlan === 'professional') ? discountedPrices.professional.base : discountedPrices.starter.base;
+        let percent = full > 0 ? Math.round((1 - (current / full)) * 100) : 0;
 
-            if (strikeEl) strikeEl.innerText = '₹' + full + '/-';
-            if (currEl) currEl.innerText = '₹' + current + '/-';
-            if (valEl) valEl.innerText = percent + '%';
+        if (strikeEl) strikeEl.innerText = '₹' + full + '/-';
+        if (currEl) currEl.innerText = '₹' + current + '/-';
+        if (valEl) valEl.innerText = percent + '%';
 
-            let overlay = document.getElementById('giftModal');
-            if (overlay) {
-                overlay.classList.add('active');
-            }
+        let overlay = document.getElementById('giftModal');
+        if (overlay) {
+            overlay.classList.add('active');
         }
+    }
 
-        window.closeGiftModal = function() {
-            let overlay = document.getElementById('giftModal');
-            if (overlay) {
-                overlay.classList.remove('active');
-            }
-        };
+    window.closeGiftModal = function () {
+        let overlay = document.getElementById('giftModal');
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+    };
 
-        window.claimModalOffer = function() {
-            closeGiftModal();
-            selectPlanForPayment(activeRewardPlan);
-        };
+    window.claimModalOffer = function () {
+        closeGiftModal();
+        selectPlanForPayment(activeRewardPlan);
+    };
 
-        // ─── SOCIAL FOLLOW HANDLER ──────────────────────────────────────────────
-        window.handleSocialFollow = async function (platform, url, btn) {
-            if (url) window.open(url, '_blank');
+    // ─── SOCIAL FOLLOW HANDLER ──────────────────────────────────────────────
+    window.handleSocialFollow = async function (platform, url, btn) {
+        if (url) window.open(url, '_blank');
 
-            try {
-                let token = await getFreshCsrfToken();
-                let res = await fetch('/exclusive-plan/social-follow/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': token
-                    },
-                    body: JSON.stringify({ platform: platform, agent_id: agentId })
+        try {
+            let token = await getFreshCsrfToken();
+            let res = await fetch('/exclusive-plan/social-follow/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': token
+                },
+                body: JSON.stringify({ platform: platform, agent_id: agentId })
+            });
+            let data = await res.json();
+            if (data.success) {
+                // Update all matching social buttons
+                document.querySelectorAll(`.social-btn[data-platform="${platform}"]`).forEach(b => {
+                    b.classList.add('followed');
+                    let span = b.querySelector('span');
+                    if (span) span.innerText = 'Followed ✓';
                 });
-                let data = await res.json();
-                if (data.success) {
-                    // Update all matching social buttons
-                    document.querySelectorAll(`.social-btn[data-platform="${platform}"]`).forEach(b => {
-                        b.classList.add('followed');
-                        let span = b.querySelector('span');
-                        if (span) span.innerText = 'Followed ✓';
-                    });
 
-                    discountedPrices.starter.base = data.starter_base;
-                    discountedPrices.starter.total = data.starter_total;
-                    discountedPrices.professional.base = data.prof_base;
-                    discountedPrices.professional.total = data.prof_total;
+                discountedPrices.starter.base = data.starter_base;
+                discountedPrices.starter.total = data.starter_total;
+                discountedPrices.professional.base = data.prof_base;
+                discountedPrices.professional.total = data.prof_total;
 
-                    if (!starterScratchEnabled || starterScratchRevealed) {
-                        currentPrices.starter.base = data.starter_base;
-                        currentPrices.starter.total = data.starter_total;
-                        let sDisp = document.getElementById('starterDisplayPrice');
-                        if (sDisp) sDisp.innerText = '₹' + data.starter_base + '/-';
-                        let sBadge = document.getElementById('starterDiscountBadge');
-                        if (sBadge) sBadge.style.display = 'block';
-                    }
-                    if (!profScratchEnabled || profScratchRevealed) {
-                        currentPrices.professional.base = data.prof_base;
-                        currentPrices.professional.total = data.prof_total;
-                        let pDisp = document.getElementById('profDisplayPrice');
-                        if (pDisp) pDisp.innerText = '₹' + data.prof_base + '/-';
-                        let pBadge = document.getElementById('profDiscountBadge');
-                        if (pBadge) pBadge.style.display = 'block';
-                    }
-
-                    // Update modal price and discount badge
-                    let currEl = document.getElementById('modalCurrentPrice');
-                    let valEl = document.getElementById('modalDiscountVal');
-                    let badgeEl = document.getElementById('modalDiscountBadge');
-
-                    let full = (activeRewardPlan === 'professional') ? currentPrices.professional.full : currentPrices.starter.full;
-                    let current = (activeRewardPlan === 'professional') ? data.prof_base : data.starter_base;
-                    let percent = full > 0 ? Math.round((1 - (current / full)) * 100) : 0;
-
-                    if (currEl) currEl.innerText = '₹' + current + '/-';
-                    if (valEl) valEl.innerText = percent + '%';
-                    if (badgeEl) badgeEl.style.display = 'inline-block';
-
-                    triggerConfetti();
-
-                    // If summary is open, re-sync it
-                    if (selectedPlan) {
-                        selectPlanForPayment(selectedPlan.type);
-                    }
+                if (!starterScratchEnabled || starterScratchRevealed) {
+                    currentPrices.starter.base = data.starter_base;
+                    currentPrices.starter.total = data.starter_total;
+                    let sDisp = document.getElementById('starterDisplayPrice');
+                    if (sDisp) sDisp.innerText = '₹' + data.starter_base + '/-';
+                    let sBadge = document.getElementById('starterDiscountBadge');
+                    if (sBadge) sBadge.style.display = 'block';
                 }
-            } catch (e) {
-                console.error(e);
+                if (!profScratchEnabled || profScratchRevealed) {
+                    currentPrices.professional.base = data.prof_base;
+                    currentPrices.professional.total = data.prof_total;
+                    let pDisp = document.getElementById('profDisplayPrice');
+                    if (pDisp) pDisp.innerText = '₹' + data.prof_base + '/-';
+                    let pBadge = document.getElementById('profDiscountBadge');
+                    if (pBadge) pBadge.style.display = 'block';
+                }
+
+                // Update modal price and discount badge
+                let currEl = document.getElementById('modalCurrentPrice');
+                let valEl = document.getElementById('modalDiscountVal');
+                let badgeEl = document.getElementById('modalDiscountBadge');
+
+                let full = (activeRewardPlan === 'professional') ? currentPrices.professional.full : currentPrices.starter.full;
+                let current = (activeRewardPlan === 'professional') ? data.prof_base : data.starter_base;
+                let percent = full > 0 ? Math.round((1 - (current / full)) * 100) : 0;
+
+                if (currEl) currEl.innerText = '₹' + current + '/-';
+                if (valEl) valEl.innerText = percent + '%';
+                if (badgeEl) badgeEl.style.display = 'inline-block';
+
+                triggerConfetti();
+
+                // If summary is open, re-sync it
+                if (selectedPlan) {
+                    selectPlanForPayment(selectedPlan.type);
+                }
             }
-        };
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
-        // ─── SCRATCH CANVAS LOGIC ───────────────────────────────────────────────
-        let ribbonCanvases = document.querySelectorAll('.ribbon-scratch-canvas');
-        let isRibbonDrawing = false;
-        let scratchThreshold = 35;
+    // ─── SCRATCH CANVAS LOGIC ───────────────────────────────────────────────
+    let ribbonCanvases = document.querySelectorAll('.ribbon-scratch-canvas');
+    let isRibbonDrawing = false;
+    let scratchThreshold = 35;
 
-        function initRibbonScratch() {
-            if (!ribbonCanvases.length) return;
+    function initRibbonScratch() {
+        if (!ribbonCanvases.length) return;
 
-            ribbonCanvases.forEach(canvas => {
-                let ctx = canvas.getContext('2d', { willReadFrequently: true });
-                canvas.width = 140;
-                canvas.height = 26;
+        ribbonCanvases.forEach(canvas => {
+            let ctx = canvas.getContext('2d', { willReadFrequently: true });
+            canvas.width = 140;
+            canvas.height = 26;
 
-                let bgColor = canvas.dataset.color || '#3b82f6';
-                ctx.fillStyle = bgColor;
-                ctx.fillRect(0, 0, 140, 26);
+            let bgColor = canvas.dataset.color || '#3b82f6';
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, 140, 26);
 
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '800 10px "Plus Jakarta Sans", sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                let label = canvas.dataset.label || 'SCRATCH ME';
-                ctx.fillText(label, 70, 14);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '800 10px "Plus Jakarta Sans", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            let label = canvas.dataset.label || 'SCRATCH ME';
+            ctx.fillText(label, 70, 14);
 
-                ctx.globalCompositeOperation = 'destination-out';
-                canvas.ribbonScratchCompleted = false;
+            ctx.globalCompositeOperation = 'destination-out';
+            canvas.ribbonScratchCompleted = false;
 
-                canvas.addEventListener('mousedown', startRibbonScratch);
-                canvas.addEventListener('mousemove', scratchRibbon);
-                canvas.addEventListener('mouseup', stopRibbonScratch);
-                canvas.addEventListener('mouseleave', stopRibbonScratch);
+            canvas.addEventListener('mousedown', startRibbonScratch);
+            canvas.addEventListener('mousemove', scratchRibbon);
+            canvas.addEventListener('mouseup', stopRibbonScratch);
+            canvas.addEventListener('mouseleave', stopRibbonScratch);
 
-                canvas.addEventListener('touchstart', startRibbonScratch, { passive: false });
-                canvas.addEventListener('touchmove', scratchRibbon, { passive: false });
-                canvas.addEventListener('touchend', stopRibbonScratch);
+            canvas.addEventListener('touchstart', startRibbonScratch, { passive: false });
+            canvas.addEventListener('touchmove', scratchRibbon, { passive: false });
+            canvas.addEventListener('touchend', stopRibbonScratch);
+        });
+    }
+
+    let activeRibbonCanvas = null;
+    let activeRibbonCtx = null;
+
+    function startRibbonScratch(e) {
+        activeRibbonCanvas = e.target;
+        activeRibbonCtx = activeRibbonCanvas.getContext('2d', { willReadFrequently: true });
+        isRibbonDrawing = true;
+        scratchRibbon(e);
+    }
+
+    function stopRibbonScratch() {
+        isRibbonDrawing = false;
+        checkRibbonThreshold();
+    }
+
+    function scratchRibbon(e) {
+        if (!isRibbonDrawing || !activeRibbonCanvas || activeRibbonCanvas.ribbonScratchCompleted) return;
+        e.preventDefault();
+
+        let x, y;
+        if (e.touches && e.touches.length > 0) {
+            let bcr = activeRibbonCanvas.getBoundingClientRect();
+            let cx = bcr.left + bcr.width / 2;
+            let cy = bcr.top + bcr.height / 2;
+            let dx = e.touches[0].clientX - cx;
+            let dy = e.touches[0].clientY - cy;
+
+            let cosA = 0.70710678;
+            let sinA = -0.70710678;
+
+            let rotatedX = dx * cosA - dy * sinA;
+            let rotatedY = dx * sinA + dy * cosA;
+
+            x = rotatedX + 70;
+            y = rotatedY + 13;
+        } else if (e.offsetX !== undefined && e.offsetY !== undefined) {
+            x = e.offsetX;
+            y = e.offsetY;
+        } else {
+            return;
+        }
+
+        activeRibbonCtx.beginPath();
+        activeRibbonCtx.arc(x, y, 12, 0, Math.PI * 2);
+        activeRibbonCtx.fill();
+    }
+
+    function checkRibbonThreshold() {
+        if (!activeRibbonCanvas || activeRibbonCanvas.ribbonScratchCompleted) return;
+        let imageData = activeRibbonCtx.getImageData(0, 0, activeRibbonCanvas.width, activeRibbonCanvas.height);
+        let pixels = imageData.data;
+        let transparentCount = 0;
+        for (let i = 3; i < pixels.length; i += 4) {
+            if (pixels[i] === 0) transparentCount++;
+        }
+        let totalPixels = activeRibbonCanvas.width * activeRibbonCanvas.height;
+        let scratchedPercent = (transparentCount / totalPixels) * 100;
+        if (scratchedPercent >= scratchThreshold) {
+            activeRibbonCanvas.ribbonScratchCompleted = true;
+            activeRibbonCanvas.style.display = 'none';
+            triggerConfetti();
+            let planType = activeRibbonCanvas.dataset.plan || 'starter';
+            openScratchRewardModal(planType);
+        }
+    }
+
+    function triggerConfetti() {
+        if (typeof confetti === 'function') {
+            var cCanvas = document.createElement('canvas');
+            cCanvas.style.position = 'fixed';
+            cCanvas.style.inset = '0';
+            cCanvas.style.width = '100vw';
+            cCanvas.style.height = '100vh';
+            cCanvas.style.zIndex = '999999';
+            cCanvas.style.pointerEvents = 'none';
+            document.body.appendChild(cCanvas);
+
+            var cConfetti = confetti.create(cCanvas, { resize: true, useWorker: true });
+            var count = 200;
+            var defaults = { origin: { y: 0.7 }, zIndex: 999999 };
+
+            function fire(particleRatio, opts) {
+                cConfetti(Object.assign({}, defaults, opts, {
+                    particleCount: Math.floor(count * particleRatio)
+                }));
+            }
+
+            fire(0.25, { spread: 26, startVelocity: 55 });
+            fire(0.2, { spread: 60 });
+            fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+            fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+            fire(0.1, { spread: 120, startVelocity: 45 });
+
+            setTimeout(() => cCanvas.remove(), 4000);
+        }
+    }
+
+    // Initialize on DOM ready
+    document.addEventListener('DOMContentLoaded', function () {
+        initRibbonScratch();
+        var callbackParams = new URLSearchParams(window.location.search);
+        if (callbackParams.get('razorpay_payment_id') && callbackParams.get('razorpay_order_id')) {
+            window.location.replace('/agent-register/payment-callback/' + window.location.search);
+            return;
+        }
+        syncPayButtonState();
+
+        const payBtn = document.getElementById('confirmPaymentBtn');
+        if (payBtn) {
+            payBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (payBtn.disabled) return;
+                confirmPayment('pay-button');
             });
         }
 
-        let activeRibbonCanvas = null;
-        let activeRibbonCtx = null;
-
-        function startRibbonScratch(e) {
-            activeRibbonCanvas = e.target;
-            activeRibbonCtx = activeRibbonCanvas.getContext('2d', { willReadFrequently: true });
-            isRibbonDrawing = true;
-            scratchRibbon(e);
-        }
-
-        function stopRibbonScratch() {
-            isRibbonDrawing = false;
-            checkRibbonThreshold();
-        }
-
-        function scratchRibbon(e) {
-            if (!isRibbonDrawing || !activeRibbonCanvas || activeRibbonCanvas.ribbonScratchCompleted) return;
-            e.preventDefault();
-
-            let x, y;
-            if (e.touches && e.touches.length > 0) {
-                let bcr = activeRibbonCanvas.getBoundingClientRect();
-                let cx = bcr.left + bcr.width / 2;
-                let cy = bcr.top + bcr.height / 2;
-                let dx = e.touches[0].clientX - cx;
-                let dy = e.touches[0].clientY - cy;
-
-                let cosA = 0.70710678;
-                let sinA = -0.70710678;
-
-                let rotatedX = dx * cosA - dy * sinA;
-                let rotatedY = dx * sinA + dy * cosA;
-
-                x = rotatedX + 70;
-                y = rotatedY + 13;
-            } else if (e.offsetX !== undefined && e.offsetY !== undefined) {
-                x = e.offsetX;
-                y = e.offsetY;
-            } else {
-                return;
-            }
-
-            activeRibbonCtx.beginPath();
-            activeRibbonCtx.arc(x, y, 12, 0, Math.PI * 2);
-            activeRibbonCtx.fill();
-        }
-
-        function checkRibbonThreshold() {
-            if (!activeRibbonCanvas || activeRibbonCanvas.ribbonScratchCompleted) return;
-            let imageData = activeRibbonCtx.getImageData(0, 0, activeRibbonCanvas.width, activeRibbonCanvas.height);
-            let pixels = imageData.data;
-            let transparentCount = 0;
-            for (let i = 3; i < pixels.length; i += 4) {
-                if (pixels[i] === 0) transparentCount++;
-            }
-            let totalPixels = activeRibbonCanvas.width * activeRibbonCanvas.height;
-            let scratchedPercent = (transparentCount / totalPixels) * 100;
-            if (scratchedPercent >= scratchThreshold) {
-                activeRibbonCanvas.ribbonScratchCompleted = true;
-                activeRibbonCanvas.style.display = 'none';
-                triggerConfetti();
-                let planType = activeRibbonCanvas.dataset.plan || 'starter';
-                openScratchRewardModal(planType);
-            }
-        }
-
-        function triggerConfetti() {
-            if (typeof confetti === 'function') {
-                var cCanvas = document.createElement('canvas');
-                cCanvas.style.position = 'fixed';
-                cCanvas.style.inset = '0';
-                cCanvas.style.width = '100vw';
-                cCanvas.style.height = '100vh';
-                cCanvas.style.zIndex = '999999';
-                cCanvas.style.pointerEvents = 'none';
-                document.body.appendChild(cCanvas);
-
-                var cConfetti = confetti.create(cCanvas, { resize: true, useWorker: true });
-                var count = 200;
-                var defaults = { origin: { y: 0.7 }, zIndex: 999999 };
-
-                function fire(particleRatio, opts) {
-                    cConfetti(Object.assign({}, defaults, opts, {
-                        particleCount: Math.floor(count * particleRatio)
-                    }));
+        const termsCheckbox = document.getElementById('termsCheckbox');
+        if (termsCheckbox) {
+            termsCheckbox.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+            termsCheckbox.addEventListener('change', function () {
+                if (termsCheckbox.checked) {
+                    payClickUnlockAt = Date.now() + 600;
+                    setTimeout(syncPayButtonState, 0);
+                } else {
+                    syncPayButtonState();
                 }
-
-                fire(0.25, { spread: 26, startVelocity: 55 });
-                fire(0.2, { spread: 60 });
-                fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
-                fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
-                fire(0.1, { spread: 120, startVelocity: 45 });
-
-                setTimeout(() => cCanvas.remove(), 4000);
-            }
+            });
         }
 
-        // Initialize on DOM ready
-        document.addEventListener('DOMContentLoaded', function () {
-            initRibbonScratch();
-            var callbackParams = new URLSearchParams(window.location.search);
-            if (callbackParams.get('razorpay_payment_id') && callbackParams.get('razorpay_order_id')) {
-                window.location.replace('/agent-register/payment-callback/' + window.location.search);
-                return;
-            }
-            syncPayButtonState();
-
-            const payBtn = document.getElementById('confirmPaymentBtn');
-            if (payBtn) {
-                payBtn.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (payBtn.disabled) return;
-                    confirmPayment('pay-button');
-                });
-            }
-
-            const termsCheckbox = document.getElementById('termsCheckbox');
-            if (termsCheckbox) {
-                termsCheckbox.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                });
-                termsCheckbox.addEventListener('change', function () {
-                    if (termsCheckbox.checked) {
-                        payClickUnlockAt = Date.now() + 600;
-                        setTimeout(syncPayButtonState, 0);
-                    } else {
-                        syncPayButtonState();
-                    }
-                });
-            }
-
-            const termsWrap = document.querySelector('.terms-checkbox-container');
-            if (termsWrap) {
-                termsWrap.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                });
-            }
-        });
-    </script>
+        const termsWrap = document.querySelector('.terms-checkbox-container');
+        if (termsWrap) {
+            termsWrap.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+        }
+    });
+</script>
 {% endblock %}

@@ -61,10 +61,10 @@ def build_qr_target_url(request, agent, qr_type):
     slug = getattr(agent, 'agent_slug', None) or str(agent.id)
     if qr_type == 'card':
         path = reverse('agents:agent_public_card', kwargs={'slug': slug})
+    elif qr_type == 'reviews':
+        path = reverse('agents:agent_public_review', kwargs={'slug': slug})
     else:
         path = reverse('agents:agent_public_profile', kwargs={'slug': slug})
-        if qr_type == 'reviews':
-            path = f'{path}?focus=reviews'
     return request.build_absolute_uri(path)
 
 

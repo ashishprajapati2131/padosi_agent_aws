@@ -4,7 +4,8 @@ import re
 
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET
 
 from apps.agents.models import Agent
@@ -107,3 +108,106 @@ def public_agent_card(request, slug):
         'agentDisplayName': display_name,
         'qr_type_label': QR_TYPE_LABELS['card'],
     })
+
+
+def _brand_logo_url():
+    from django.templatetags.static import static
+    from apps.home.models import SiteSetting
+
+    logo = str(SiteSetting.get_value('site_logo', '') or '').strip()
+    if logo.startswith('http://') or logo.startswith('https://') or logo.startswith('/'):
+        return logo
+    if logo:
+        return logo if logo.startswith('static/') else f'/static/{logo.lstrip("/")}'
+    return static('img/logo.png')
+
+
+def advisor_review_context(request, agent):
+    profile = agent.get_primary_profile() if hasattr(agent, 'get_primary_profile') else None
+    slug = (getattr(profile, 'slug', None) if profile else None) or getattr(agent, 'agent_slug', None) or str(agent.id)
+    name = (getattr(profile, 'display_name', None) if profile else None) or agent.fullname or 'Insurance Advisor'
+    photo = ''
+    if profile:
+        photo = getattr(profile, 'profile_photo_url', '') or ''
+    if not photo:
+        from django.templatetags.static import static as static_url
+        photo = static_url('img/avatar-icon.jpg')
+    designation = 'Insurance Advisor'
+    if profile and getattr(profile, 'agency_name', None):
+        designation = f"Insurance Advisor · {profile.agency_name}"
+    review_url = request.build_absolute_uri(
+        reverse('agents:agent_public_review', kwargs={'slug': slug})
+    )
+    display_host = review_url.replace('https://', '').replace('http://', '').rstrip('/')
+    return {
+        'agent': agent,
+        'profile': profile,
+        'advisor_name': name,
+        'advisor_designation': designation,
+        'advisor_image': photo,
+        'advisor_slug': slug,
+        'review_url': review_url,
+        'review_url_display': display_host,
+        'brand_logo_url': _brand_logo_url(),
+        'hide_header': True,
+        'hide_footer': True,
+    }
+
+
+@require_GET
+def public_review_page(request, slug):
+    agent = _resolve_agent_by_slug(slug)
+    if not agent:
+        raise Http404('Agent not found')
+    profile = agent.get_primary_profile()
+    if profile is None:
+        raise Http404('Agent profile not found')
+    is_visible = bool(getattr(profile, 'is_profile_visible', False) or getattr(profile, 'is_card_visible', False))
+    if agent.status in ('inactive', 'suspended', 'deleted') or not is_visible:
+        return render(request, 'agents/profile_unavailable.html', {
+            'agent': agent,
+            'profile': profile,
+        }, status=404)
+
+    context = advisor_review_context(request, agent)
+    context.update({
+        'hide_header': False,
+        'hide_footer': False,
+        'review_post_url': reverse('agents:agent_store_review', kwargs={'slug': context['advisor_slug']}),
+        'is_guest': not request.user.is_authenticated,
+    })
+    return render(request, 'agents/public_review.html', context)
+
+
+@require_GET
+def public_review_card(request, slug):
+    agent = _resolve_agent_by_slug(slug)
+    if not agent:
+        raise Http404('Agent not found')
+    profile = agent.get_primary_profile()
+    if profile is None:
+        raise Http404('Agent profile not found')
+    is_visible = bool(getattr(profile, 'is_profile_visible', False) or getattr(profile, 'is_card_visible', False))
+    owner = _logged_in_agent(request)
+    is_owner = bool(owner and owner.id == agent.id)
+    if not is_owner and (agent.status in ('inactive', 'suspended', 'deleted') or not is_visible):
+        return render(request, 'agents/profile_unavailable.html', {
+            'agent': agent,
+            'profile': profile,
+        }, status=404)
+    context = advisor_review_context(request, agent)
+    context['is_owner'] = is_owner
+    return render(request, 'agents/review_card.html', context)
+
+
+@login_required(login_url='agents:agent_login')
+@require_GET
+def agent_review_card_redirect(request):
+    from django.shortcuts import redirect
+    from django.urls import reverse
+
+    agent = _logged_in_agent(request)
+    if not agent:
+        raise Http404('Agent not found')
+    slug = getattr(agent, 'agent_slug', None) or str(agent.id)
+    return redirect(reverse('agents:agent_review_card', kwargs={'slug': slug}))

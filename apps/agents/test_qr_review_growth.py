@@ -158,8 +158,8 @@ class AgentQrAndCardTests(TestCase):
         reviews_url = build_qr_target_url(request, self.agent, 'reviews')
         self.assertIn('/profile/qr-agent/', profile_url)
         self.assertIn('/card/qr-agent/', card_url)
-        self.assertIn('/profile/qr-agent/', reviews_url)
-        self.assertIn('focus=reviews', reviews_url)
+        self.assertIn('/review/qr-agent/', reviews_url)
+        self.assertNotIn('focus=reviews', reviews_url)
 
     def test_public_qr_png_when_enabled(self):
         url = reverse('agents:agent_public_qr_image', kwargs={'slug': 'qr-agent', 'qr_type': 'profile'})
@@ -189,6 +189,21 @@ class AgentQrAndCardTests(TestCase):
         self.assertContains(response, 'QR Agent')
         missing = self.client.get(reverse('agents:agent_public_card', args=['no-such-agent']))
         self.assertEqual(missing.status_code, 404)
+
+    def test_review_card_page_200_and_missing_slug_404(self):
+        response = self.client.get(reverse('agents:agent_review_card', args=['qr-agent']))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'QR Agent')
+        self.assertContains(response, 'Your Experience Matters')
+        self.assertContains(response, 'PadosiAgent logo')
+        missing = self.client.get(reverse('agents:agent_review_card', args=['no-such-agent']))
+        self.assertEqual(missing.status_code, 404)
+
+    def test_public_review_page_200(self):
+        response = self.client.get(reverse('agents:agent_public_review', args=['qr-agent']))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Rate & Review')
+        self.assertContains(response, 'QR Agent')
 
     def test_profile_focus_reviews_renders_scroll_hook(self):
         response = self.client.get(
