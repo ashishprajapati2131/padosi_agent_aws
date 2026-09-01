@@ -1073,8 +1073,21 @@ def manage_agent_toggle(request, plan_slug):
         return JsonResponse({'ok': False, 'error': 'Unauthorized'}, status=403)
 
     slug = normalize_plan_slug(plan_slug)
+    # Accept hardcoded slugs OR any slug that exists in the SubscriptionPlan table
+    # This allows new plans created via Admin -> Plans to work with Manage toggles
     if slug not in PLAN_SLUGS:
-        return JsonResponse({'ok': False, 'error': 'Unknown plan'}, status=400)
+        try:
+            from apps.agents.models import SubscriptionPlan
+            db_slugs = set(
+                s for s in SubscriptionPlan.objects.values_list('slug', flat=True) if s
+            )
+            if plan_slug not in db_slugs and slug not in db_slugs:
+                return JsonResponse({'ok': False, 'error': 'Unknown plan'}, status=400)
+            # Use the raw plan_slug from URL if it's a valid DB slug
+            if plan_slug in db_slugs:
+                slug = plan_slug
+        except Exception:
+            return JsonResponse({'ok': False, 'error': 'Unknown plan'}, status=400)
 
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')

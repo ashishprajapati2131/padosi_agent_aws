@@ -2042,6 +2042,22 @@ def payment_success(request):
             if not plan_type:
                 plan_type = plan_slug_from_name(subscription.selected_plan or plan_name)
 
+            # For custom plans created via Admin -> Plans: if plan_type is not a
+            # known canonical slug, check if it directly matches a SubscriptionPlan slug.
+            # This ensures agent.plan_type always matches the SiteSettings key.
+            if plan_type:
+                known_slugs = ('starter', 'professional', 'free_trial', 'exclusive', 'basic')
+                if plan_type not in known_slugs:
+                    try:
+                        from apps.agents.models import SubscriptionPlan as _SPReg
+                        sp = _SPReg.objects.filter(slug=plan_type).first()
+                        if not sp:
+                            sp = _SPReg.objects.filter(name__iexact=plan_type).first()
+                        if sp and sp.slug:
+                            plan_type = sp.slug
+                    except Exception:
+                        pass
+
             trial_config = SiteSetting.get_value('trial_plan_config', {'duration_days': 30})
             trial_days = int(trial_config.get('duration_days', 30))
 
