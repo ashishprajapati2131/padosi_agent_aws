@@ -66,13 +66,14 @@ class AgentLoginViewTests(SimpleTestCase):
     def setUp(self):
         self.login_url = reverse('agents:agent_login')
 
-    @patch('apps.agents.views.auth._finish_agent_session_login', return_value=HttpResponseRedirect('/agent/dashboard/'))
+    @patch('apps.agents.views.auth.agent_can_access_dashboard', return_value=False)
+    @patch('apps.agents.views.auth.login')
     @patch('apps.agents.views.registration.verify_and_activate_pending_payment', return_value=False)
     @patch('apps.agents.views.auth.sync_verified_password')
     @patch('apps.agents.views.auth.verify_agent_password')
     @patch('apps.agents.views.auth.find_agent')
-    def test_valid_credentials_go_to_dashboard(
-        self, mock_agent, mock_verify, mock_sync, _pay, mock_finish
+    def test_pending_payment_without_capture_goes_to_chooseplan(
+        self, mock_agent, mock_verify, mock_sync, _verify_pay, _mock_login, _can_dash
     ):
         email = 'coderparth2587@gmail.com'
         mock_agent.return_value = SimpleNamespace(
@@ -81,7 +82,7 @@ class AgentLoginViewTests(SimpleTestCase):
             status='pending_payment',
             refresh_from_db=lambda: None,
         )
-        django_user = SimpleNamespace(email=email)
+        django_user = SimpleNamespace(email=email, is_authenticated=True)
         mock_verify.return_value = (True, None, django_user)
         mock_sync.return_value = django_user
 
@@ -91,15 +92,15 @@ class AgentLoginViewTests(SimpleTestCase):
         })
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, '/agent/dashboard/')
-        mock_finish.assert_called_once()
+        self.assertEqual(response.url, reverse('agents:chooseplan'))
 
+    @patch('apps.agents.views.auth.agent_can_access_dashboard', return_value=True)
     @patch('apps.agents.views.auth._finish_agent_session_login', return_value=HttpResponseRedirect('/agent/dashboard/'))
     @patch('apps.agents.views.auth.sync_verified_password')
     @patch('apps.agents.views.auth.verify_agent_password')
     @patch('apps.agents.views.auth.find_agent')
     def test_active_agent_valid_password_goes_to_dashboard(
-        self, mock_agent, mock_verify, mock_sync, mock_finish
+        self, mock_agent, mock_verify, mock_sync, mock_finish, _can_dash
     ):
         email = 'active.agent@example.com'
         mock_agent.return_value = SimpleNamespace(

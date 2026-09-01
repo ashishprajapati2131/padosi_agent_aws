@@ -165,13 +165,22 @@ def agent_dashboard(request):
     Includes self-healing logic and pricing calculation.
     """
     user = request.user
-    from apps.agents.services.account_auth import resolve_agent_for_user
+    from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
+
     agent = resolve_agent_for_user(user)
     if not agent:
         messages.error(request, "Please complete your registration.")
         return redirect('agents:agent_registration')
 
-    # ── Self-Heal 2: Stuck in pending_payment but subscription completed ──
+    # Always re-check Razorpay before allowing dashboard (netbanking / lost callback recovery).
+    try:
+        from apps.agents.views.registration import verify_and_activate_pending_payment
+        verify_and_activate_pending_payment(agent)
+    except Exception as e:
+        logger.warning("Dashboard payment re-verify failed for agent #%s: %s", agent.id, e)
+    agent.refresh_from_db()
+
+    # ── Self-Heal: Stuck in pending_payment but subscription completed ──
     if agent.status in ['pending_payment', 'pending_accounts_payment', 'incomplete'] or agent.registration_step < 2:
         completed_sub = AgentSubscription.objects.filter(
             agent=agent,
@@ -183,15 +192,21 @@ def agent_dashboard(request):
             plan_name = (completed_sub.selected_plan or '').lower()
             plan_type = plan_slug_from_name(plan_name) or 'professional'
 
-            agent.status = 'active'
+            if plan_type == 'free_trial':
+                agent.status = 'active'
+                if not agent.trial_ends_at:
+                    agent.trial_ends_at = completed_sub.expires_at or (timezone.now() + timezone.timedelta(days=30))
+            else:
+                agent.status = 'pending_approval'
             agent.plan_type = plan_type
             agent.registration_step = 2
-
-            if plan_type == 'free_trial' and not agent.trial_ends_at:
-                agent.trial_ends_at = completed_sub.expires_at or (timezone.now() + timezone.timedelta(days=30))
-
             agent.save()
-            logger.info(f"AgentDashboard self-heal: agent #{agent.id} promoted to active.")
+            logger.info(f"AgentDashboard self-heal: agent #{agent.id} promoted to {agent.status}.")
+
+    agent.refresh_from_db()
+    if not agent_can_access_dashboard(agent):
+        messages.warning(request, "Please complete your payment to access the dashboard.")
+        return redirect('agents:chooseplan')
 
     # Enforce role guard check for dashboard access
     is_admin = user.is_staff or user.is_superuser
@@ -1893,6 +1908,7 @@ def agent_upgrade_plan(request):
                 'plan_amount': plan_amount,
                 'total_amount': total_amount,
             },
+            request=request,
         ))
 
     except Exception as e:

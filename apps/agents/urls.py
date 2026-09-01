@@ -8,6 +8,7 @@ urlpatterns = [
     path('agent-register-step1/', registration.register_step1,   name='agent_register_step1'),
     path('agent-register-step2/', registration.register_step2,   name='agent_register_step2'),
     path('agent-check-slug/',     registration.check_slug_availability, name='agent_check_slug'),
+    path('agent-check-email/',    registration.check_email_availability, name='agent_check_email'),
     path('chooseplan/',         registration.chooseplan,         name='chooseplan'),
     path('plan-social-follow/', registration.record_social_follow, name='plan_social_follow'),
     path('plan-scratch-reveal/', registration.record_scratch_reveal, name='plan_scratch_reveal'),

@@ -91,19 +91,29 @@ def is_local_request(request):
     return host in LOCAL_HOSTS
 
 
-def should_mock_razorpay(request):
+def is_unsafe_localhost_checkout(request):
     """
-    Live Razorpay checkout cannot complete on localhost HTTP.
-    Mock only in DEBUG when keys are missing, or live keys are used locally.
+    Real Razorpay iframe (HTTPS) cannot reach localhost HTTP assets/callbacks.
+    Browsers block this via Private Network Access — breaks EMI, netbanking, etc.
     """
     if not getattr(settings, 'DEBUG', False):
         return False
-    mode = razorpay_key_mode()
-    if mode == 'missing':
-        return True
-    if mode == 'live' and (is_local_request(request) or not request.is_secure()):
-        return True
-    return False
+    return is_local_request(request) and not request.is_secure()
+
+
+def localhost_checkout_allowed():
+    """Opt-in: set RAZORPAY_ALLOW_LOCALHOST=1 to try real Razorpay on localhost HTTP."""
+    return os.environ.get('RAZORPAY_ALLOW_LOCALHOST', '').strip().lower() in ('1', 'true', 'yes')
+
+
+def should_mock_razorpay(request):
+    """
+    Mock is never used to complete a paid registration.
+    Missing keys in DEBUG still return True so callers can show a gateway error.
+    """
+    if not getattr(settings, 'DEBUG', False):
+        return False
+    return razorpay_key_mode() == 'missing'
 
 
 def sanitize_contact(raw):
@@ -130,16 +140,15 @@ def create_checkout_order(amount_paise, receipt, request):
     amount_paise = int(amount_paise or 0)
     if amount_paise <= 0:
         return None, False
+    if razorpay_key_mode() == 'live' and is_local_request(request) and not request.is_secure():
+        logger.error('Refusing live Razorpay checkout on insecure localhost')
+        return None, False
     if should_mock_razorpay(request):
-        order_id = mock_order_id()
-        logger.warning(
-            'DEBUG mock Razorpay order %s (mode=%s, host=%s, secure=%s)',
-            order_id,
-            razorpay_key_mode(),
+        logger.error(
+            'Razorpay keys missing; refusing mock auto-complete (host=%s)',
             request.get_host(),
-            request.is_secure(),
         )
-        return order_id, True
+        return None, False
     try:
         client = razorpay_client()
         if client is None:
@@ -181,7 +190,7 @@ def checkout_key(is_mock=False):
     return key
 
 
-def checkout_payload(order_id, amount_paise, agent, is_mock=False, extra=None):
+def checkout_payload(order_id, amount_paise, agent, is_mock=False, extra=None, request=None):
     phone = sanitize_contact(getattr(agent, 'mobile', '') if agent else '')
     payload = {
         'success': True,
@@ -204,6 +213,13 @@ def checkout_payload(order_id, amount_paise, agent, is_mock=False, extra=None):
     if is_mock:
         payload['mock_signature'] = MOCK_SIGNATURE
         payload['mock_payment_id'] = mock_payment_id()
+        if request is not None and is_unsafe_localhost_checkout(request):
+            payload['mock_checkout_reason'] = 'localhost_http'
+    if request is not None:
+        payload['checkout_use_callback'] = bool(request.is_secure())
+        payload['unsafe_localhost_checkout'] = (
+            not is_mock and is_unsafe_localhost_checkout(request)
+        )
     if extra:
         payload.update(extra)
     return payload

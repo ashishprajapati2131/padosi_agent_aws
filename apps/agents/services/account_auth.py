@@ -17,7 +17,66 @@ from password_hashing import check_password_hash, hash_password, is_bcrypt_hash
 logger = logging.getLogger(__name__)
 
 INCOMPLETE_STATUSES = ('incomplete', 'pending_payment', 'pending_accounts_payment')
+BLOCKED_DASHBOARD_STATUSES = ('suspended', 'blacklisted', 'rejected', 'deleted')
 DJANGO_AUTH_BACKEND = 'django.contrib.auth.backends.ModelBackend'
+
+
+def is_real_razorpay_id(value, prefix):
+    """Reject local mock IDs (order_local_ / pay_local_)."""
+    raw = str(value or '').strip()
+    if not raw.startswith(prefix):
+        return False
+    if raw.startswith(f'{prefix}local_'):
+        return False
+    return True
+
+
+def agent_has_completed_payment(agent):
+    """True only after a real Razorpay-captured payment (not mock / pending / failed)."""
+    if not agent:
+        return False
+    from apps.agents.models import AgentSubscription, Invoice
+
+    completed = AgentSubscription.objects.filter(
+        agent=agent,
+        payment_status='completed',
+    )
+    for sub in completed:
+        if is_real_razorpay_id(sub.razorpay_payment_id, 'pay_'):
+            return True
+        if is_real_razorpay_id(sub.razorpay_order_id, 'order_'):
+            return True
+
+    invoices = Invoice.objects.filter(agent=agent, payment_status='paid')
+    for invoice in invoices:
+        if is_real_razorpay_id(invoice.razorpay_payment_id, 'pay_'):
+            return True
+        if is_real_razorpay_id(invoice.razorpay_order_id, 'order_'):
+            return True
+    return False
+
+
+def agent_can_access_dashboard(agent):
+    """
+    Dashboard access requires a verified captured payment.
+    Pending, failed, or mock checkout records never grant access.
+    """
+    if not agent:
+        return False
+    if agent.status in BLOCKED_DASHBOARD_STATUSES:
+        return False
+    if agent.status in INCOMPLETE_STATUSES:
+        return False
+    return agent_has_completed_payment(agent)
+
+
+def agent_needs_payment(agent):
+    """True when the agent must complete payment before dashboard access."""
+    if not agent:
+        return False
+    if agent.status in BLOCKED_DASHBOARD_STATUSES:
+        return False
+    return not agent_has_completed_payment(agent)
 
 
 def _split_name(fullname):

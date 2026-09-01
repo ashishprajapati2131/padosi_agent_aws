@@ -23,6 +23,8 @@ from apps.agents.services.brevo import email_service
 from apps.agents.services.account_auth import (
     DJANGO_AUTH_BACKEND,
     INCOMPLETE_STATUSES,
+    agent_can_access_dashboard,
+    agent_needs_payment,
     create_or_link_django_user,
     find_agent,
     find_laravel_user,
@@ -79,7 +81,7 @@ def _clear_admin_session_on(response, request):
     return clear_admin_session(request, response)
 
 
-def _finish_agent_session_login(request, django_user, ip):
+def _finish_agent_session_login(request, django_user, ip, agent=None):
     clear_login_throttle(ip)
     keys_to_clear = [
         'current_draft_id', 'email_verified', 'verified_email',
@@ -90,6 +92,18 @@ def _finish_agent_session_login(request, django_user, ip):
         request.session.pop(key, None)
     login(request, django_user, backend=DJANGO_AUTH_BACKEND)
     logger.info("Agent/Admin user %s logged in successfully.", getattr(django_user, 'email', ''))
+
+    if agent is None:
+        agent = resolve_agent_for_user(django_user)
+    if agent and not agent_can_access_dashboard(agent):
+        portal_error(
+            request,
+            "Payment is pending. Please complete your plan payment to continue.",
+            PORTAL_AGENT,
+        )
+        response = redirect('agents:chooseplan')
+        return _clear_admin_session_on(response, request)
+
     response = redirect('agents:agent_dashboard')
     return _clear_admin_session_on(response, request)
 
@@ -105,14 +119,25 @@ def agent_login(request):
     auth_user hashes). Django authenticate() is not used because those hashes
     are not PBKDF2.
     """
-    # If already logged in, send agents/admins to dashboard — never Choose Plan.
+    # If already logged in, route by verified payment status.
     if request.user.is_authenticated:
         try:
-            is_agent = bool(resolve_agent_for_user(request.user))
+            agent = resolve_agent_for_user(request.user)
+            is_agent = bool(agent)
         except Exception as e:
             logger.error("Already-authenticated agent lookup failed: %s", e)
+            agent = None
             is_agent = Agent.objects.filter(email__iexact=request.user.email or '').exists()
         is_admin = request.user.is_staff or request.user.is_superuser
+        if is_agent and agent:
+            try:
+                from apps.agents.views.registration import verify_and_activate_pending_payment
+                verify_and_activate_pending_payment(agent)
+                agent.refresh_from_db()
+            except Exception:
+                pass
+            if not agent_can_access_dashboard(agent):
+                return redirect('agents:chooseplan')
         if is_agent or is_admin:
             return redirect('agents:agent_dashboard')
         return redirect('/')
@@ -188,7 +213,7 @@ def agent_login(request):
                         agent.refresh_from_db()
                     except Exception as e:
                         logger.warning(
-                            "Pending-payment check failed for %s; continuing to dashboard: %s",
+                            "Pending-payment check failed for %s: %s",
                             canonical_email, e,
                         )
 
@@ -196,7 +221,18 @@ def agent_login(request):
                 django_user = sync_verified_password(
                     canonical_email, fullname, password, role='agent', agent=agent
                 )
-            return _finish_agent_session_login(request, django_user, ip)
+
+            if agent and not agent_can_access_dashboard(agent):
+                clear_login_throttle(ip)
+                login(request, django_user, backend=DJANGO_AUTH_BACKEND)
+                portal_error(
+                    request,
+                    "Payment is pending. Please complete your plan payment to continue.",
+                    PORTAL_AGENT,
+                )
+                return redirect('agents:chooseplan')
+
+            return _finish_agent_session_login(request, django_user, ip, agent=agent)
         except Exception as e:
             logger.exception("Agent login session setup failed for %s: %s", email, e)
             portal_error(request, "Login service is temporarily unavailable. Please try again.", PORTAL_AGENT)

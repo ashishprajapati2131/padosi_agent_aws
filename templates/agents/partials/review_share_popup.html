@@ -142,11 +142,13 @@
             var src = btn.getAttribute('data-src') || '';
             var label = btn.getAttribute('data-label') || 'QR code';
             var img = document.getElementById('qrPreviewImg');
-            var title = document.getElementById('qrPreviewLabel');
-            if (img) img.src = src;
-            if (title) title.textContent = label;
+            if (img) {
+                img.src = src;
+                img.alt = label + ' — PadosiAgent';
+            }
             var el = document.getElementById('qrPreviewModal');
             if (!el) return;
+            document.body.classList.add('pa-qr-preview-open');
             if (typeof $ !== 'undefined' && $.fn.modal) {
                 $('#qrPreviewModal').modal('show');
             } else if (typeof bootstrap !== 'undefined') {
