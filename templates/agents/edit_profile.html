@@ -152,6 +152,63 @@ Overview
             text-align: center !important;
         }
     }
+
+    .lead-pref-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+    .lead-pref-summary-card {
+        position: relative;
+        min-height: 96px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #fff;
+        padding: 14px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        overflow: hidden;
+    }
+    .lead-pref-summary-num {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #0d9488;
+        color: #fff;
+        font-weight: 700;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .lead-pref-summary-card .lead-pref-summary-title {
+        font-weight: 600;
+        color: #0f172a;
+        font-size: 14px;
+        line-height: 1.3;
+        margin: 0 0 4px;
+    }
+    .lead-preference-card {
+        position: relative;
+        overflow: hidden;
+    }
+    .lead-pref-summary-card.locked-plan-section .locked-plan-overlay i,
+    .lead-preference-card.locked-plan-section .locked-plan-overlay i {
+        font-size: 22px !important;
+        margin-bottom: 8px !important;
+    }
+    .lead-pref-summary-card.locked-plan-section .locked-plan-overlay p,
+    .lead-preference-card.locked-plan-section .locked-plan-overlay p {
+        font-size: 12px !important;
+        max-width: 92% !important;
+    }
+    @media (max-width: 768px) {
+        .lead-pref-summary-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -1044,6 +1101,44 @@ Overview
                             </div>
                         </div>
 
+                        <div class="lead-preferences-section mb-5" id="lead-preferences-section" data-feature="lead_preferences" data-lead-locked="{% if agent_plan and not agent_plan.show_lead_preferences %}1{% else %}0{% endif %}">
+                            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+                                <div>
+                                    <h5 class="mb-1"><i class="fas fa-chart-line mr-2"></i>Lead Preferences</h5>
+                                    <p class="text-muted small mb-0">Choose the customer leads you want to receive. Admin can lock or unlock this section per plan.</p>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary mt-2 mt-md-0" id="open-lead-preferences-btn">
+                                    <i class="fas fa-sliders-h mr-2"></i>Configure
+                                </button>
+                            </div>
+                            <div class="border rounded p-3 bg-light">
+                                <p class="mb-2 small text-muted">Current selection</p>
+                                <div class="lead-pref-summary-grid">
+                                    <div class="lead-pref-summary-card" id="lead-summary-new-business" data-feature="receive_leads" data-plan-locked="{% if agent_plan and not agent_plan.show_lead_preferences or agent_plan and not agent_plan.show_new_business_leads %}1{% else %}0{% endif %}">
+                                        <span class="lead-pref-summary-num">1</span>
+                                        <div>
+                                            <p class="lead-pref-summary-title">New Business</p>
+                                            <span class="badge badge-pill {% if agent.leadPreferences.leads_new_business|default:True %}badge-success{% else %}badge-secondary{% endif %} px-3 py-2">New Business</span>
+                                        </div>
+                                    </div>
+                                    <div class="lead-pref-summary-card" id="lead-summary-portfolio" data-feature="lead_portfolio_analysis" data-plan-locked="{% if agent_plan and not agent_plan.show_lead_preferences or agent_plan and not agent_plan.show_lead_portfolio_analysis %}1{% else %}0{% endif %}">
+                                        <span class="lead-pref-summary-num">2</span>
+                                        <div>
+                                            <p class="lead-pref-summary-title">Portfolio Analysis</p>
+                                            <span class="badge badge-pill {% if agent.leadPreferences.leads_portfolio_analysis %}badge-success{% else %}badge-secondary{% endif %} px-3 py-2">Portfolio Analysis</span>
+                                        </div>
+                                    </div>
+                                    <div class="lead-pref-summary-card" id="lead-summary-claims" data-feature="lead_claims_support" data-plan-locked="{% if agent_plan and not agent_plan.show_lead_preferences or agent_plan and not agent_plan.show_lead_claims_support %}1{% else %}0{% endif %}">
+                                        <span class="lead-pref-summary-num">3</span>
+                                        <div>
+                                            <p class="lead-pref-summary-title">Claims Support</p>
+                                            <span class="badge badge-pill {% if agent.leadPreferences.leads_claims_support %}badge-success{% else %}badge-secondary{% endif %} px-3 py-2">Claims Support</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Digital Presence Section -->
                         <div class="digital-presence-section mb-5" data-feature="edit_profile_social_media">
                             <h5 class="mb-4"><i class="fas fa-globe mr-2"></i>Digital Presence (Optional) <i
@@ -1494,7 +1589,7 @@ Overview
 
                                     <div class="lead-preferences-container">
                                         <!-- New Business Leads (All Agents) -->
-                                        <div class="lead-preference-card" id="lead-new-business" data-feature="receive_leads">
+                                        <div class="lead-preference-card" id="lead-new-business" data-feature="receive_leads" data-plan-locked="{% if agent_plan and not agent_plan.show_lead_preferences or agent_plan and not agent_plan.show_new_business_leads %}1{% else %}0{% endif %}">
                                             <div class="lead-card-header">
                                                 <div class="lead-info">
                                                     <div class="lead-icon">
@@ -1526,7 +1621,7 @@ Overview
                                         </div>
 
                                         <!-- Portfolio Analysis Leads (5+ Years) -->
-                                        <div class="lead-preference-card locked" id="lead-portfolio">
+                                        <div class="lead-preference-card locked" id="lead-portfolio" data-feature="lead_portfolio_analysis" data-plan-locked="{% if agent_plan and not agent_plan.show_lead_preferences or agent_plan and not agent_plan.show_lead_portfolio_analysis %}1{% else %}0{% endif %}">
                                             <div class="lead-card-header">
                                                 <div class="lead-info">
                                                     <div class="lead-icon">
@@ -1611,7 +1706,7 @@ Overview
                                         </div>
 
                                         <!-- Claims Support Leads (10+ Years) -->
-                                        <div class="lead-preference-card locked" id="lead-claims">
+                                        <div class="lead-preference-card locked" id="lead-claims" data-feature="lead_claims_support" data-plan-locked="{% if agent_plan and not agent_plan.show_lead_preferences or agent_plan and not agent_plan.show_lead_claims_support %}1{% else %}0{% endif %}">
                                             <div class="lead-card-header">
                                                 <div class="lead-info">
                                                     <div class="lead-icon">
@@ -1951,16 +2046,36 @@ Overview
         });
     });
 
+    function leadPreferenceItemsAllLocked() {
+        return $('#lead-summary-new-business, #lead-summary-portfolio, #lead-summary-claims').filter('[data-plan-locked="1"]').length === 3;
+    }
+
+    function leadPreferencesLocked() {
+        return $('#lead-preferences-section').attr('data-lead-locked') === '1' || leadPreferenceItemsAllLocked();
+    }
+
+    $('#open-lead-preferences-btn').on('click', function () {
+        $('#leadPreferencesModal').modal('show');
+    });
+
     // Lead Preferences Unlock Logic
     function updateLeadLocks() {
         const experience = parseInt($('#experience-input').val()) || 0;
 
+        const newBizCard = $('#lead-new-business');
+        if (newBizCard.attr('data-plan-locked') === '1') {
+            newBizCard.find('input[name="lead_types[]"]').prop('disabled', true).prop('checked', false);
+        }
+
         // Portfolio Analysis (5+ Years)
         const portfolioCard = $('#lead-portfolio');
-        const portfolioSwitch = portfolioCard.find('input');
+        const portfolioSwitch = portfolioCard.find('input[name="lead_types[]"]');
         const portfolioYearsLeft = portfolioCard.find('.years-left');
 
-        if (experience >= 5) {
+        if (portfolioCard.attr('data-plan-locked') === '1') {
+            portfolioCard.addClass('locked');
+            portfolioSwitch.prop('disabled', true).prop('checked', false);
+        } else if (experience >= 5) {
             portfolioCard.removeClass('locked');
             portfolioSwitch.prop('disabled', false);
             portfolioCard.find('.lock-requirement').html('<i class="fas fa-unlock text-success"></i> Unlocked');
@@ -1975,9 +2090,12 @@ Overview
 
         // Claims Support (10+ Years)
         const claimsCard = $('#lead-claims');
-        const claimsSwitch = claimsCard.find('input');
+        const claimsSwitch = claimsCard.find('input[name="lead_types[]"]');
 
-        if (experience >= 10) {
+        if (claimsCard.attr('data-plan-locked') === '1') {
+            claimsCard.addClass('locked');
+            claimsSwitch.prop('disabled', true).prop('checked', false);
+        } else if (experience >= 10) {
             claimsCard.removeClass('locked');
             claimsSwitch.prop('disabled', false);
             claimsCard.find('.lock-requirement').html('<i class="fas fa-unlock text-success"></i> Unlocked');
@@ -2269,7 +2387,10 @@ Overview
                 $('.invalid-feedback-main').remove();
             }
         } else if (step === 6) {
-            if ($('input[name="lead_types[]"]:checked').length === 0) {
+            const $enabledLeadTypes = $('input[name="lead_types[]"]:not(:disabled)');
+            if (leadPreferencesLocked() || $enabledLeadTypes.length === 0) {
+                isValid = true;
+            } else if ($enabledLeadTypes.filter(':checked').length === 0) {
                 $('.lead-preferences-container').parent().find('.invalid-feedback').remove();
                 $('.lead-preferences-container').after('<div class="invalid-feedback d-block">Please select at least one lead preference</div>');
                 isValid = false;
@@ -2395,8 +2516,12 @@ Overview
                     $(`.step-item[data-step="${currentStep}"]`).addClass('completed');
 
                     if (currentStep === 2) {
-                        // Show Lead Preferences popup modal
-                        $('#leadPreferencesModal').modal('show');
+                        if (leadPreferencesLocked()) {
+                            currentStep = 3;
+                            showStep(currentStep);
+                        } else {
+                            $('#leadPreferencesModal').modal('show');
+                        }
                     } else if (currentStep === 4) {
                         // Show Declarations popup modal
                         $('#declarationsModal').modal('show');
@@ -2422,6 +2547,12 @@ Overview
     });
 
     $('#btn-modal-save').on('click', function () {
+        if (leadPreferencesLocked()) {
+            $('#leadPreferencesModal').modal('hide');
+            currentStep = 3;
+            showStep(currentStep);
+            return;
+        }
         if (validateStep(6)) {
             saveStepData(6, $('#btn-modal-save')).then(function (success) {
                 if (success) {
@@ -4857,7 +4988,10 @@ Overview
       achievement: {% if not agent_plan or agent_plan.show_achievement %}true{% else %}false{% endif %},
       companies: {% if not agent_plan or agent_plan.show_companies %}true{% else %}false{% endif %},
       socialMedia: {% if not agent_plan or agent_plan.show_social_media %}true{% else %}false{% endif %},
-      newBusinessLeads: {% if not agent_plan or agent_plan.show_new_business_leads %}true{% else %}false{% endif %}
+      newBusinessLeads: {% if not agent_plan or agent_plan.show_new_business_leads %}true{% else %}false{% endif %},
+      leadPortfolio: {% if not agent_plan or agent_plan.show_lead_portfolio_analysis %}true{% else %}false{% endif %},
+      leadClaims: {% if not agent_plan or agent_plan.show_lead_claims_support %}true{% else %}false{% endif %},
+      leadPreferences: {% if not agent_plan or agent_plan.show_lead_preferences %}true{% else %}false{% endif %}
     };
 
     if (!planPermissions.editProfileFull) {
@@ -4905,7 +5039,22 @@ Overview
         if (!step4Locked) {
             if (!planPermissions.achievement) lockSection($('.achievement-photos-section'), "Achievement Photos", "show_achievement");
             if (!planPermissions.socialMedia) lockSection($('.digital-presence-section'), "Social Media Settings", "show_social_media");
-            if (!planPermissions.newBusinessLeads) lockSection($('#lead-new-business'), "New Business Leads", "show_new_business_leads");
+            const lockLeadItem = function($els, name, hintKey) {
+                $els.each(function () {
+                    const $el = $(this);
+                    lockSection($el, name, hintKey);
+                    $el.find('input[name="lead_types[]"]').prop('checked', false).prop('disabled', true);
+                });
+            };
+            if (!planPermissions.leadPreferences || !planPermissions.newBusinessLeads) {
+                lockLeadItem($('#lead-summary-new-business, #lead-new-business'), "New Business", "show_new_business_leads");
+            }
+            if (!planPermissions.leadPreferences || !planPermissions.leadPortfolio) {
+                lockLeadItem($('#lead-summary-portfolio, #lead-portfolio'), "Portfolio Analysis", "show_lead_portfolio_analysis");
+            }
+            if (!planPermissions.leadPreferences || !planPermissions.leadClaims) {
+                lockLeadItem($('#lead-summary-claims, #lead-claims'), "Claims Support", "show_lead_claims_support");
+            }
         }
     }
     {% endif %}

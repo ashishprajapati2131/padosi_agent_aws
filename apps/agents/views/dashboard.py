@@ -25,9 +25,16 @@ from apps.agents.services.feature_unlock import (
     evaluate_unlock_rules,
     normalize_plan_slug,
     overlay_plan,
+    plan_shows_feature,
     plan_slug_from_name,
     profile_completion_percent,
     resolve_checkout_plan_slug,
+    with_feature_defaults,
+)
+from apps.agents.views.registration import (
+    _deactivate_superseded_subscriptions,
+    _display_plan_name,
+    verify_and_activate_pending_payment,
 )
 logger = logging.getLogger(__name__)
 
@@ -40,7 +47,7 @@ class PlanFeatureProxy:
 
     Feature string → show_* attribute mapping:
       dashboard_stats       → show_performance_stats
-      lead_management       → show_recent_leads + show_new_business_leads
+      lead_management       → show_recent_leads
       sales_insights        → show_sales_insights
       rank_boost_tips       → show_rank_boost_tips
       view_public_profile   → show_view_public_profile_btn
@@ -55,6 +62,9 @@ class PlanFeatureProxy:
       public_profile        → show_profile_section
       agent_directory_visibility → is_listed_in_directory
       receive_leads         → show_new_business_leads
+      lead_preferences      → show_lead_preferences
+      lead_portfolio_analysis → show_lead_portfolio_analysis
+      lead_claims_support   → show_lead_claims_support
       premium_support       → premium_priority_support
       visibility_aio        → show_visibility_aio
       visibility_geo        → show_visibility_geo
@@ -110,7 +120,7 @@ def _resolve_base_agent_plan(plan_type):
                 return None
             enabled = features_config.get(slug_to_try)
             if isinstance(enabled, list):
-                return PlanFeatureProxy(enabled)
+                return PlanFeatureProxy(with_feature_defaults(slug_to_try, enabled, features_config))
             return None
 
         # 1a: Direct normalize -- handles 'starter', 'basic', 'standard', 'professional', etc.
@@ -223,11 +233,25 @@ def agent_dashboard(request):
 
     # Always re-check Razorpay before allowing dashboard (netbanking / lost callback recovery).
     try:
-        from apps.agents.views.registration import verify_and_activate_pending_payment
         verify_and_activate_pending_payment(agent)
     except Exception as e:
         logger.warning("Dashboard payment re-verify failed for agent #%s: %s", agent.id, e)
     agent.refresh_from_db()
+
+    latest_completed_sub = AgentSubscription.objects.filter(
+        agent=agent,
+        payment_status='completed',
+        status='active',
+    ).order_by('-starts_at', '-created_at', '-id').first()
+    if latest_completed_sub:
+        synced_plan = plan_slug_from_name(latest_completed_sub.selected_plan or '')
+        if synced_plan and synced_plan != normalize_plan_slug(agent.plan_type or ''):
+            agent.plan_type = synced_plan
+            agent.save(update_fields=['plan_type', 'updated_at'])
+        try:
+            _deactivate_superseded_subscriptions(agent, latest_completed_sub.pk)
+        except Exception:
+            logger.exception('Failed to deactivate superseded subscriptions for agent #%s', agent.id)
 
     # ── Self-Heal: Stuck in pending_payment but subscription completed ──
     if agent.status in ['pending_payment', 'pending_accounts_payment', 'incomplete'] or agent.registration_step < 2:
@@ -386,20 +410,7 @@ def agent_dashboard(request):
         prof_disc = prof_base + round(prof_base * 0.18, 0)
 
     from django.conf import settings
-    # ── Plan Name Parsing ──
-    raw_plan = 'Free Plan'
-    active_sub = agent.activeSubscription
-    if active_sub and active_sub.selected_plan:
-        try:
-            decoded_plan = json_loads(active_sub.selected_plan)
-            if isinstance(decoded_plan, dict) and 'name' in decoded_plan:
-                raw_plan = decoded_plan['name']
-            else:
-                raw_plan = str(active_sub.selected_plan)
-        except (JSONDecodeError, TypeError, ValueError):
-            raw_plan = str(active_sub.selected_plan)
-
-    plan_name = raw_plan.replace('_', ' ').replace('-', ' ').title()
+    plan_name = _display_plan_name(agent, pricing_config)
 
     # Resolve SubscriptionPlan using robust multi-tier helper
     agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
@@ -431,12 +442,16 @@ def agent_dashboard(request):
         agent_review_count,
         get_qr_config,
         get_review_growth_config,
+        get_review_growth_status,
+        get_review_upgrade_pricing,
         should_show_popup,
         should_show_upgrade_cta,
+        should_show_upgrade_progress,
     )
 
     qr_cfg = get_qr_config()
     growth_cfg = get_review_growth_config()
+    growth_status = get_review_growth_status(agent)
     slug = (profile.slug if profile and profile.slug else '') or getattr(agent, 'agent_slug', '') or str(agent.id)
     profile_url = request.build_absolute_uri(
         reverse('agents:agent_public_profile', kwargs={'slug': slug})
@@ -488,8 +503,14 @@ def agent_dashboard(request):
         'qr_items': qr_items,
         'show_review_share_popup': should_show_popup(agent),
         'show_starter_upgrade_cta': should_show_upgrade_cta(agent),
-        'show_visibility_section': growth_cfg.get('visibility_section_enabled', True),
+        'show_starter_upgrade_progress': should_show_upgrade_progress(agent),
+        'review_growth_status': growth_status,
+        'show_visibility_section': (
+            growth_cfg.get('enabled', True)
+            and growth_cfg.get('visibility_section_enabled', True)
+        ),
         'review_growth': growth_cfg,
+        'review_upgrade_price': get_review_upgrade_pricing(agent),
         'review_count_display': agent_review_count(agent),
         'share_profile_url': profile_url,
         'share_text': share_text,
@@ -884,6 +905,15 @@ def store_review(request, slug, state_code=None):
         
     if errors:
         return JsonResponse({'status': 'error', 'errors': errors}, status=422)
+
+    from apps.agents.services.review_growth import (
+        agent_review_count,
+        get_review_growth_config,
+        get_review_growth_status,
+        review_threshold_just_crossed,
+        should_show_upgrade_cta,
+    )
+    previous_review_count = agent_review_count(agent)
         
     reviewer_email = email.lower()
     
@@ -915,9 +945,50 @@ def store_review(request, slug, state_code=None):
             }
         )
     message = 'Review submitted successfully!' if created else 'Review updated successfully!'
+
+    new_review_count = agent_review_count(agent)
+    growth_status = get_review_growth_status(agent)
+    if (
+        review_threshold_just_crossed(previous_review_count, new_review_count)
+        and should_show_upgrade_cta(agent)
+    ):
+        try:
+            from apps.agents.models import AgentNotification
+            growth_cfg = get_review_growth_config()
+            AgentNotification.objects.create(
+                agent=agent,
+                title='Upgrade Unlocked',
+                body=growth_cfg.get(
+                    'upgrade_message',
+                    'You have collected enough reviews. Upgrade to Professional for full visibility.',
+                )[:500],
+            )
+        except Exception:
+            logger.exception('Failed to create upgrade-unlocked notification for agent #%s', agent.id)
+
+    response_message = message
+    if not created:
+        response_message = (
+            f'{message} Note: updating an existing review from the same email does not add a new review.'
+        )
+    if growth_status.get('show_upgrade_progress'):
+        remaining = growth_status.get('remaining_reviews', 0)
+        response_message = (
+            f'{response_message} You have {new_review_count} of {growth_status["min_reviews"]} unique customer reviews'
+            f' — {remaining} more unlocks your Professional upgrade.'
+        )
+    elif growth_status.get('upgrade_ready'):
+        response_message = (
+            f'{response_message} You unlocked the Professional upgrade — open your agent dashboard to continue.'
+        )
+
     return JsonResponse({
         'status': 'success',
-        'message': message
+        'message': response_message,
+        'review_count': new_review_count,
+        'min_reviews': growth_status.get('min_reviews', 3),
+        'upgrade_ready': bool(growth_status.get('upgrade_ready')),
+        'review_created': bool(created),
     })
 
 
@@ -1610,32 +1681,41 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                         
             # ── Step 6: Lead Preferences ──
             if should_process(6):
-                lead_types = request.POST.getlist('lead_types[]') or request.POST.getlist('lead_types')
-                portfolio_charging = request.POST.get('portfolio_charging', 'free')
-                
-                portfolio_fee = 0.0
-                if portfolio_charging == 'conditional':
-                    portfolio_fee = float(request.POST.get('portfolio_fee_conditional') or 0.0)
-                elif portfolio_charging == 'paid':
-                    portfolio_fee = float(request.POST.get('portfolio_fee_paid') or 0.0)
-                    
-                claims_charging = request.POST.get('claims_charging', 'free')
-                claims_fee_amount = float(request.POST.get('claims_fee_amount') or 0.0) if claims_charging == 'fee' else 0.0
-                claims_percent = float(request.POST.get('claims_percent') or 0.0) if claims_charging == 'percentage' else 0.0
-                
-                AgentLeadPreference.objects.update_or_create(
-                    agent=agent,
-                    defaults={
-                        'leads_new_business': 'new_business' in lead_types,
-                        'leads_portfolio_analysis': 'portfolio_analysis' in lead_types,
-                        'portfolio_charging': portfolio_charging,
-                        'portfolio_fee': portfolio_fee,
-                        'leads_claims_support': 'claims_support' in lead_types,
-                        'claims_charging': claims_charging,
-                        'claims_fee_amount': claims_fee_amount,
-                        'claims_percent': claims_percent
-                    }
+                agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
+                can_edit_leads = is_admin_edit or (
+                    agent_plan is None
+                    or plan_shows_feature(agent_plan, 'show_lead_preferences', default=False)
                 )
+                if can_edit_leads:
+                    lead_types = request.POST.getlist('lead_types[]') or request.POST.getlist('lead_types')
+                    portfolio_charging = request.POST.get('portfolio_charging', 'free')
+                    
+                    portfolio_fee = 0.0
+                    if portfolio_charging == 'conditional':
+                        portfolio_fee = float(request.POST.get('portfolio_fee_conditional') or 0.0)
+                    elif portfolio_charging == 'paid':
+                        portfolio_fee = float(request.POST.get('portfolio_fee_paid') or 0.0)
+                        
+                    claims_charging = request.POST.get('claims_charging', 'free')
+                    claims_fee_amount = float(request.POST.get('claims_fee_amount') or 0.0) if claims_charging == 'fee' else 0.0
+                    claims_percent = float(request.POST.get('claims_percent') or 0.0) if claims_charging == 'percentage' else 0.0
+                    
+                    allow_new = is_admin_edit or agent_plan is None or plan_shows_feature(agent_plan, 'show_new_business_leads', default=False)
+                    allow_portfolio = is_admin_edit or agent_plan is None or plan_shows_feature(agent_plan, 'show_lead_portfolio_analysis', default=False)
+                    allow_claims = is_admin_edit or agent_plan is None or plan_shows_feature(agent_plan, 'show_lead_claims_support', default=False)
+                    AgentLeadPreference.objects.update_or_create(
+                        agent=agent,
+                        defaults={
+                            'leads_new_business': allow_new and 'new_business' in lead_types,
+                            'leads_portfolio_analysis': allow_portfolio and 'portfolio_analysis' in lead_types,
+                            'portfolio_charging': portfolio_charging,
+                            'portfolio_fee': portfolio_fee,
+                            'leads_claims_support': allow_claims and 'claims_support' in lead_types,
+                            'claims_charging': claims_charging,
+                            'claims_fee_amount': claims_fee_amount,
+                            'claims_percent': claims_percent
+                        }
+                    )
                 
             # ── Step 7: Final Submission ──
             if not current_step or str(current_step) == '7':
@@ -1830,11 +1910,18 @@ def agent_upgrade_plan(request):
             prof_final = 1
             discount_pct = 99.99
 
-        prof_base = round(prof_final / 1.18, 0)
-        if agent.referral_reward_type == 'pro_plan_1rs':
-            prof_disc = 1.00
+        from apps.agents.services.review_growth import get_review_upgrade_pricing
+        review_upgrade = get_review_upgrade_pricing(agent) if plan_type == 'professional' else None
+
+        if review_upgrade:
+            prof_base = review_upgrade['checkout_base_excl_gst']
+            prof_disc = review_upgrade['checkout_total_incl_gst']
         else:
-            prof_disc = prof_base + round(prof_base * 0.18, 0)
+            prof_base = round(prof_final / 1.18, 0)
+            if agent.referral_reward_type == 'pro_plan_1rs':
+                prof_disc = 1.00
+            else:
+                prof_disc = prof_base + round(prof_base * 0.18, 0)
 
         if plan_type == 'starter':
             total_amount = starter_disc
@@ -1905,6 +1992,7 @@ def agent_upgrade_plan(request):
             agent.status = 'active'
             agent.plan_type = plan_type
             agent.save()
+            _deactivate_superseded_subscriptions(agent, subscription.pk)
 
             # Credit referral
             if agent.referred_by_code:
@@ -1947,6 +2035,14 @@ def agent_upgrade_plan(request):
                 'already_completed': True,
                 'agent_id': agent.id
             })
+
+        request.session['pending_checkout'] = {
+            'agent_id': agent.id,
+            'order_id': razorpay_order_id,
+            'plan_type': plan_type,
+            'plan_name': plan_name,
+        }
+        request.session.modified = True
 
         return JsonResponse(checkout_payload(
             razorpay_order_id,

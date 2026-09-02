@@ -269,10 +269,26 @@ class RazorpayVerifyFlowTests(SimpleTestCase):
             'step': 'payment_authentication',
             'reason': 'payment_failed',
         }))
+        self.assertTrue(_is_in_progress_razorpay_error({
+            'step': 'payment_redirect',
+        }))
         self.assertFalse(_is_in_progress_razorpay_error({
             'step': 'payment_authorization',
             'reason': 'payment_failed',
         }))
+
+    @override_settings(DEBUG=True, RAZORPAY_KEY='rzp_test_abc', RAZORPAY_SECRET='secret')
+    def test_localhost_test_keys_enable_redirect_callback(self):
+        from apps.agents.services.razorpay_checkout import checkout_uses_redirect_callback
+        request = RequestFactory().get('/', HTTP_HOST='127.0.0.1:1234')
+        self.assertTrue(checkout_uses_redirect_callback(request))
+
+    @override_settings(DEBUG=True, RAZORPAY_KEY='rzp_live_abc', RAZORPAY_SECRET='secret')
+    def test_localhost_live_keys_disable_redirect_callback(self):
+        from apps.agents.services.razorpay_checkout import checkout_uses_redirect_callback
+        with patch('apps.agents.services.razorpay_checkout.razorpay_key_mode', return_value='live'):
+            request = RequestFactory().get('/', HTTP_HOST='127.0.0.1:1234')
+            self.assertFalse(checkout_uses_redirect_callback(request))
 
     def test_paise_amounts_allow_one_rupee_gst_rounding(self):
         from apps.agents.views.registration import _paise_amounts_match

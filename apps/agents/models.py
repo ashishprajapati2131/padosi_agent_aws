@@ -269,7 +269,11 @@ class Agent(models.Model):
     @property
     def activeSubscription(self):
         from django.utils import timezone
-        return self.subscriptions.filter(status='active', expires_at__gt=timezone.now()).first()
+        return (
+            self.subscriptions.filter(status='active', expires_at__gt=timezone.now())
+            .order_by('-starts_at', '-created_at', '-id')
+            .first()
+        )
 
     @property
     def average_rating(self):

@@ -495,77 +495,146 @@
     </div>
 </form>
 
-<form method="POST" action="{% url 'admin_content_plans' %}update-review-growth/">
+<form method="POST" action="{% url 'admin_content_plans' %}update-review-growth/" id="reviewGrowthForm">
     {% csrf_token %}
     <div class="plan-editor-card mb-4" style="border-top: 4px solid #f59e0b;">
-        <div class="plan-editor-header bg-white py-3">
-            <div class="m-0 fw-bold"><i class="fa-solid fa-star me-2" style="color:#d97706;"></i>Review Growth &amp; Starter Upgrade</div>
-            <p class="text-muted mb-0 mt-1 fw-normal" style="font-size:12px;">Popup delay, review threshold, which Starter sections unlock, and the Professional upgrade message. Plan prices come from the Professional editor above.</p>
+        <div class="plan-editor-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-start gap-2">
+            <div>
+                <div class="m-0 fw-bold"><i class="fa-solid fa-star me-2" style="color:#d97706;"></i>Review Growth &amp; Starter Upgrade</div>
+                <p class="text-muted mb-0 mt-1 fw-normal" style="font-size:12px;">Control review collection popups, Starter unlocks, and the Professional upgrade banner on the agent dashboard.</p>
+            </div>
+            <span id="reviewGrowthStatusBadge" class="badge rounded-pill px-3 py-2 {% if review_growth.enabled %}bg-success{% else %}bg-secondary{% endif %}" style="font-size:12px;">
+                {% if review_growth.enabled %}Feature Active{% else %}Feature Disabled{% endif %}
+            </span>
         </div>
         <div class="p-4">
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="growthEnabled" name="growth_enabled" {% if review_growth.enabled %}checked{% endif %}>
-                        <label class="form-check-label fw-bold" for="growthEnabled">Enable review growth</label>
-                    </div>
+            <div class="alert alert-light border mb-4" style="border-color:#fde68a !important;background:#fffbeb;">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="growthEnabled" name="growth_enabled" {% if review_growth.enabled %}checked{% endif %} style="width:3rem;height:1.5rem;">
+                    <label class="form-check-label fw-bold ms-1" for="growthEnabled" style="font-size:15px;">
+                        Enable Review Growth &amp; Starter Upgrade
+                    </label>
+                </div>
+                <p class="text-muted mb-0 mt-2 ms-1" style="font-size:12px;">When off, review popups, Starter unlocks, upgrade banner, and threshold notifications are all disabled for agents.</p>
+            </div>
+
+            <div id="reviewGrowthFields" class="row g-3">
+                <div class="col-12">
+                    <div class="fw-bold mb-2" style="font-size:13px;color:#475569;">Sub-features (only apply when master switch is on)</div>
                 </div>
                 <div class="col-md-4">
                     <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="growthPopup" name="growth_popup_enabled" {% if review_growth.popup_enabled %}checked{% endif %}>
-                        <label class="form-check-label fw-bold" for="growthPopup">Show dashboard popup</label>
+                        <input class="form-check-input growth-sub-toggle" type="checkbox" id="growthPopup" name="growth_popup_enabled" {% if review_growth.popup_enabled %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="growthPopup">Collect reviews popup</label>
                     </div>
+                    <div class="form-text">Dashboard modal asking agents to share their review link.</div>
                 </div>
                 <div class="col-md-4">
                     <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="growthVisibility" name="growth_visibility_section" {% if review_growth.visibility_section_enabled %}checked{% endif %}>
-                        <label class="form-check-label fw-bold" for="growthVisibility">Show More Visibility section</label>
+                        <input class="form-check-input growth-sub-toggle" type="checkbox" id="growthUpgradeCta" name="growth_upgrade_cta_enabled" {% if review_growth.upgrade_cta_enabled %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="growthUpgradeCta">Starter upgrade banner</label>
                     </div>
-                    <div class="form-text">When off, AIO / GEO / SEO / Priority Ranking tiles are hidden on the agent dashboard.</div>
+                    <div class="form-text">Top dashboard banner + notification when review threshold is reached.</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input growth-sub-toggle" type="checkbox" id="growthVisibility" name="growth_visibility_section" {% if review_growth.visibility_section_enabled %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="growthVisibility">More Visibility section</label>
+                    </div>
+                    <div class="form-text">AIO / GEO / SEO / Priority Ranking tiles on agent dashboard.</div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-bold" style="font-size:13px;">Eligible plan</label>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="growth_eligible_plans[]" value="starter" id="eligStarter" {% if 'starter' in review_growth.eligible_plans %}checked{% endif %}>
+                        <input class="form-check-input growth-field" type="checkbox" name="growth_eligible_plans[]" value="starter" id="eligStarter" {% if 'starter' in review_growth.eligible_plans %}checked{% endif %}>
                         <label class="form-check-label" for="eligStarter">Starter (₹1999 plan)</label>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold" style="font-size:13px;">Min reviews</label>
-                    <input type="number" min="1" max="50" class="form-control" name="growth_min_reviews" value="{{ review_growth.min_reviews }}">
+                    <input type="number" min="1" max="50" class="form-control growth-field" name="growth_min_reviews" value="{{ review_growth.min_reviews }}">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold" style="font-size:13px;">Popup delay (ms)</label>
-                    <input type="number" min="1500" max="5000" class="form-control" name="growth_popup_delay_ms" value="{{ review_growth.popup_delay_ms }}">
+                    <input type="number" min="1500" max="5000" class="form-control growth-field" name="growth_popup_delay_ms" value="{{ review_growth.popup_delay_ms }}">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold" style="font-size:13px;">Review scroll delay (ms)</label>
-                    <input type="number" min="2000" max="5000" class="form-control" name="growth_review_scroll_delay_ms" value="{{ review_growth.review_scroll_delay_ms }}">
+                    <input type="number" min="2000" max="5000" class="form-control growth-field" name="growth_review_scroll_delay_ms" value="{{ review_growth.review_scroll_delay_ms }}">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold" style="font-size:13px;">Upgrade plan</label>
-                    <input type="text" class="form-control" name="growth_upgrade_plan" value="{{ review_growth.upgrade_plan }}" readonly>
-                    <div class="form-text">Price is taken from Professional plan above (promo ₹{{ pricing.professional.promo_price|default:4999 }}).</div>
+                    <input type="text" class="form-control growth-field" name="growth_upgrade_plan" value="{{ review_growth.upgrade_plan }}" readonly>
+                </div>
+                <div class="col-12">
+                    <div class="border rounded-3 p-3" style="background:#fffbeb;border-color:#fde68a !important;">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                            <div>
+                                <div class="fw-bold" style="font-size:14px;">Review-growth upgrade pricing</div>
+                                <p class="text-muted mb-0 mt-1" style="font-size:12px;">Price shown on the dashboard upgrade banner when Starter agents reach the review threshold. Checkout uses promo price + 18% GST.</p>
+                            </div>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input growth-sub-toggle" type="checkbox" id="growthUpgradePrice" name="growth_upgrade_price_enabled" {% if review_growth.upgrade_price_enabled %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="growthUpgradePrice">Use custom price</label>
+                            </div>
+                        </div>
+                        <div id="reviewUpgradePriceFields" class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold" style="font-size:13px;">Promo price <small class="text-muted">(Excl. GST)</small></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" min="0" class="form-control growth-field" name="growth_upgrade_promo_price" value="{{ review_growth.upgrade_promo_price|default:4999 }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold" style="font-size:13px;">Full price <small class="text-muted">(Excl. GST, strike-through)</small></label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" min="0" class="form-control growth-field" name="growth_upgrade_full_price" value="{{ review_growth.upgrade_full_price|default:6999 }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input growth-field" type="checkbox" id="growthUpgradeShowFull" name="growth_upgrade_show_full_price" {% if review_growth.upgrade_show_full_price %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold" for="growthUpgradeShowFull">Show full price strike-through</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-12">
                     <label class="form-label fw-bold" style="font-size:13px;">Upgrade title</label>
-                    <input type="text" class="form-control" name="growth_upgrade_title" value="{{ review_growth.upgrade_title }}">
+                    <input type="text" class="form-control growth-field" name="growth_upgrade_title" value="{{ review_growth.upgrade_title }}">
                 </div>
                 <div class="col-12">
                     <label class="form-label fw-bold" style="font-size:13px;">Upgrade message</label>
-                    <textarea class="form-control" name="growth_upgrade_message" rows="3">{{ review_growth.upgrade_message }}</textarea>
+                    <textarea class="form-control growth-field" name="growth_upgrade_message" rows="3">{{ review_growth.upgrade_message }}</textarea>
                 </div>
-                <div class="col-12">
-                    <label class="form-label fw-bold" style="font-size:13px;">Unlock these Starter sections after min reviews</label>
-                    <div class="row">
-                        {% for f_key, f_label in review_growth_unlock_choices %}
-                        <div class="col-md-6">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="growth_unlock_features[]" value="{{ f_key }}" id="unlock_{{ f_key }}" {% if f_key in review_growth.unlock_feature_slugs %}checked{% endif %}>
-                                <label class="form-check-label" for="unlock_{{ f_key }}">{{ f_label }}</label>
+
+                <div class="col-12 mt-2">
+                    <div class="border rounded-3 p-3" style="background:#f8fafc;border-color:#e2e8f0 !important;">
+                        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                            <div>
+                                <div class="fw-bold" style="font-size:14px;">Unlock Starter sections after min reviews</div>
+                                <p class="text-muted mb-0 mt-1" style="font-size:12px;">When enabled, Starter agents unlock the selected dashboard sections after reaching the minimum review count.</p>
+                            </div>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input growth-sub-toggle" type="checkbox" id="growthStarterUnlock" name="growth_starter_unlock_enabled" {% if review_growth.starter_unlock_enabled %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="growthStarterUnlock">Enable unlocks</label>
                             </div>
                         </div>
-                        {% endfor %}
+                        <div id="starterUnlockFields" class="row g-2">
+                            {% for f_key, f_label in review_growth_unlock_choices %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="d-flex align-items-center justify-content-between border rounded px-3 py-2 bg-white starter-unlock-row">
+                                    <label class="form-check-label mb-0 me-2" for="unlock_{{ f_key }}" style="font-size:13px;line-height:1.35;">{{ f_label }}</label>
+                                    <div class="form-check form-switch mb-0 flex-shrink-0">
+                                        <input class="form-check-input growth-field starter-unlock-toggle" type="checkbox" name="growth_unlock_features[]" value="{{ f_key }}" id="unlock_{{ f_key }}" {% if f_key in review_growth.unlock_feature_slugs %}checked{% endif %}>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -575,6 +644,74 @@
         </div>
     </div>
 </form>
+<script>
+(function () {
+    var master = document.getElementById('growthEnabled');
+    var fieldsWrap = document.getElementById('reviewGrowthFields');
+    var starterUnlockMaster = document.getElementById('growthStarterUnlock');
+    var starterUnlockFields = document.getElementById('starterUnlockFields');
+    var upgradePriceMaster = document.getElementById('growthUpgradePrice');
+    var upgradePriceFields = document.getElementById('reviewUpgradePriceFields');
+    var badge = document.getElementById('reviewGrowthStatusBadge');
+    if (!master || !fieldsWrap) return;
+
+    function syncUpgradePriceUi() {
+        if (!upgradePriceMaster || !upgradePriceFields) return;
+        var priceOn = master.checked && upgradePriceMaster.checked;
+        upgradePriceFields.style.opacity = priceOn ? '1' : '0.45';
+        upgradePriceFields.querySelectorAll('input').forEach(function (el) {
+            el.disabled = !priceOn;
+        });
+    }
+
+    function syncStarterUnlockUi() {
+        if (!starterUnlockMaster || !starterUnlockFields) return;
+        var unlockOn = master.checked && starterUnlockMaster.checked;
+        starterUnlockFields.style.opacity = unlockOn ? '1' : '0.45';
+        starterUnlockFields.querySelectorAll('.starter-unlock-toggle').forEach(function (el) {
+            el.disabled = !unlockOn;
+        });
+    }
+
+    function syncReviewGrowthUi() {
+        var on = master.checked;
+        fieldsWrap.style.opacity = on ? '1' : '0.45';
+        fieldsWrap.querySelectorAll('.growth-field, .growth-sub-toggle').forEach(function (el) {
+            el.disabled = !on;
+        });
+        if (badge) {
+            badge.textContent = on ? 'Feature Active' : 'Feature Disabled';
+            badge.classList.toggle('bg-success', on);
+            badge.classList.toggle('bg-secondary', !on);
+        }
+        syncStarterUnlockUi();
+        syncUpgradePriceUi();
+    }
+
+    master.addEventListener('change', syncReviewGrowthUi);
+    if (starterUnlockMaster) {
+        starterUnlockMaster.addEventListener('change', syncStarterUnlockUi);
+    }
+    if (upgradePriceMaster) {
+        upgradePriceMaster.addEventListener('change', syncUpgradePriceUi);
+    }
+    syncReviewGrowthUi();
+
+    var form = document.getElementById('reviewGrowthForm');
+    if (form) {
+        form.addEventListener('submit', function () {
+            fieldsWrap.querySelectorAll('.growth-field, .growth-sub-toggle').forEach(function (el) {
+                el.disabled = false;
+            });
+            if (starterUnlockFields) {
+                starterUnlockFields.querySelectorAll('.starter-unlock-toggle').forEach(function (el) {
+                    el.disabled = false;
+                });
+            }
+        });
+    }
+})();
+</script>
 
 <hr class="my-5">
 

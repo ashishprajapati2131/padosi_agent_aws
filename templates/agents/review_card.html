@@ -8,8 +8,9 @@
 {% block extra_css %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/review-card.css' %}?v=compact2">
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="{% static 'css/review-card.css' %}?v=ref3">
 {% endblock %}
 
 {% block content %}
@@ -22,88 +23,98 @@
 
     <div class="pa-rc-stage">
         <article class="pa-review-card" id="padosiReviewCard" aria-label="PadosiAgent customer review card">
-            <span class="pa-rc-gold-corner pa-rc-gold-corner--tl" aria-hidden="true"></span>
-            <span class="pa-rc-gold-corner pa-rc-gold-corner--tr" aria-hidden="true"></span>
+            <div class="pa-rc-deco pa-rc-deco--dots" aria-hidden="true"></div>
+            <div class="pa-rc-deco pa-rc-deco--swoosh-left" aria-hidden="true"></div>
+            <div class="pa-rc-deco pa-rc-deco--swoosh-right" aria-hidden="true"></div>
 
             <div class="pa-rc-inner">
                 <header class="pa-rc-header">
                     <img class="pa-rc-logo" src="{{ brand_logo_url }}" alt="PadosiAgent logo" crossorigin="anonymous">
-                    <p class="pa-rc-tagline">Your Trust, Our Priority</p>
-                    <div class="pa-rc-gold-line" aria-hidden="true"></div>
+                    <div class="pa-rc-tagline-row">
+                        <span class="pa-rc-tagline-line" aria-hidden="true"></span>
+                        <p class="pa-rc-tagline">Your Trust, Our Priority</p>
+                        <span class="pa-rc-tagline-line" aria-hidden="true"></span>
+                    </div>
                 </header>
 
                 <section class="pa-rc-heading">
                     <h1>Your Experience Matters!</h1>
                     <div class="pa-rc-ornament" aria-hidden="true">
-                        <span></span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="#c9a227"><path d="M12 2.5l2.7 6.1 6.6.7-5 4.6 1.4 6.5L12 17.8 6.3 20.4 7.7 13.9 2.7 9.3l6.6-.7L12 2.5z"/></svg>
-                        <span></span>
+                        <span class="pa-rc-spark-line"></span>
+                        <i class="fa-solid fa-star pa-rc-spark-icon"></i>
+                        <span class="pa-rc-spark-line"></span>
                     </div>
-                    <p>Please take a moment to rate &amp; review<br>your experience with us.</p>
+                    <p>Please take a moment to rate &amp; review<br>your experience with me.</p>
                 </section>
 
                 <div class="pa-rc-body">
                     <section class="pa-rc-advisor" aria-label="Advisor profile">
                         <div class="pa-rc-photo-wrap">
-                            <img class="pa-rc-photo" src="{{ advisor_image }}" alt="Portrait of {{ advisor_name }}" crossorigin="anonymous" width="92" height="92">
-                            <span class="pa-rc-photo-accent" aria-hidden="true"></span>
+                            <img class="pa-rc-photo" src="{{ advisor_image }}" alt="Portrait of {{ advisor_name }}" crossorigin="anonymous" width="108" height="108">
                         </div>
-                        <div class="pa-rc-advisor-copy">
-                            <h2>{{ advisor_name }}</h2>
-                            <p>{{ advisor_designation }}</p>
-                            <div class="pa-rc-pills">
-                                <span class="pa-rc-pill">
-                                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2 2"/></svg>
-                                    Trusted Advice
-                                </span>
-                                <span class="pa-rc-pill">
-                                    <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.6-7 10-7 10z"/></svg>
-                                    Customer First
-                                </span>
-                                <span class="pa-rc-pill">
-                                    <svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>
-                                    Right Coverage
-                                </span>
+                        <div class="pa-rc-name-badge">{{ advisor_name|upper }}</div>
+                        <p class="pa-rc-designation">Insurance Advisor</p>
+                        <div class="pa-rc-trusts">
+                            <div class="pa-rc-trust">
+                                <span class="pa-rc-trust-icon" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i></span>
+                                <span>Trusted Advice</span>
+                            </div>
+                            <div class="pa-rc-trust">
+                                <span class="pa-rc-trust-icon" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
+                                <span>Customer First</span>
+                            </div>
+                            <div class="pa-rc-trust">
+                                <span class="pa-rc-trust-icon" aria-hidden="true"><i class="fa-solid fa-umbrella"></i></span>
+                                <span>Right Coverage</span>
                             </div>
                         </div>
                     </section>
 
-                    <section class="pa-rc-qr" aria-label="Scan to rate and review">
-                        <div class="pa-rc-qr-kicker">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#c9a227" aria-hidden="true"><path d="M12 2.5l2.7 6.1 6.6.7-5 4.6 1.4 6.5L12 17.8 6.3 20.4 7.7 13.9 2.7 9.3l6.6-.7L12 2.5z"/></svg>
-                            SCAN TO
+                    <section class="pa-rc-qr-panel" aria-label="Scan to rate and review">
+                        <div class="pa-rc-qr-head">
+                            <span class="pa-rc-qr-head-icon" aria-hidden="true"><i class="fa-solid fa-star"></i></span>
+                            <span>Scan to Rate &amp; Review</span>
                         </div>
-                        <h3>Rate &amp; Review</h3>
-                        <div class="pa-rc-qr-frame">
-                            <div id="paReviewQr" role="img" aria-label="Review QR code"></div>
+                        <div class="pa-rc-qr-body">
+                            <div class="pa-rc-qr-frame">
+                                <div id="paReviewQr" role="img" aria-label="Review QR code"></div>
+                                <img class="pa-rc-qr-logo" src="{{ brand_logo_url }}" alt="" crossorigin="anonymous" aria-hidden="true">
+                            </div>
+                            <a class="pa-rc-url-pill" href="{{ review_url }}" target="_blank" rel="noopener">
+                                <i class="fa-solid fa-globe" aria-hidden="true"></i>
+                                <span>{{ review_url_display }}</span>
+                            </a>
+                            <p class="pa-rc-qr-help">or visit our website and search my name.</p>
                         </div>
-                        <p class="pa-rc-qr-help">Scan to share your experience</p>
-                        <span class="pa-rc-url-pill">{{ review_url_display }}</span>
                     </section>
                 </div>
 
-                <section class="pa-rc-cta-block">
-                    <p>Your feedback helps us serve you better</p>
-                    <p><strong>Your review can help other customers make the right choice.</strong></p>
-                    <a class="pa-rc-cta" href="{{ review_url }}" target="_blank" rel="noopener">Rate &amp; Review</a>
-                </section>
-
                 <section class="pa-rc-thanks">
-                    <h2>Thank You!</h2>
-                    <p>Your feedback means a lot to us.</p>
-                    <div class="pa-rc-thanks-gold">We truly appreciate your support!</div>
+                    <div class="pa-rc-thanks-left">
+                        <h2>Thank You!</h2>
+                        <span class="pa-rc-heart-outline" aria-hidden="true"><i class="fa-regular fa-heart"></i></span>
+                    </div>
+                    <div class="pa-rc-thanks-right">
+                        <p><i class="fa-solid fa-heart pa-rc-heart-gold" aria-hidden="true"></i> Your feedback helps me serve you better and helps others make the right choice. <strong>We truly appreciate your support!</strong></p>
+                    </div>
                 </section>
             </div>
 
             <footer class="pa-rc-footer">
-                <div class="pa-rc-foot-col">
-                    <strong>Visit us</strong>
-                    <a href="https://www.padosiagent.com">www.padosiagent.com</a>
-                </div>
-                <div class="pa-rc-foot-shield" aria-hidden="true">🛡</div>
-                <div class="pa-rc-foot-col pa-rc-foot-col--right">
-                    <strong>Insurance solutions</strong>
-                    <span>That care for you &amp; your family</span>
+                <div class="pa-rc-foot-wave" aria-hidden="true"></div>
+                <div class="pa-rc-foot-inner">
+                    <div class="pa-rc-foot-col">
+                        <i class="fa-solid fa-globe pa-rc-foot-icon" aria-hidden="true"></i>
+                        <div>
+                            <span class="pa-rc-foot-label">Visit us</span>
+                            <a href="https://www.padosiagent.com">www.padosiagent.com</a>
+                        </div>
+                    </div>
+                    <div class="pa-rc-foot-divider" aria-hidden="true"></div>
+                    <div class="pa-rc-foot-col pa-rc-foot-col--right">
+                        <i class="fa-solid fa-shield-halved pa-rc-foot-icon" aria-hidden="true"></i>
+                        <span>Insurance solutions that care for you &amp; your family</span>
+                    </div>
                 </div>
             </footer>
         </article>
@@ -120,8 +131,9 @@
         slug: "{{ advisor_slug|escapejs }}"
     };
     window.PADOSI_REVIEW_URL = "{{ review_url|escapejs }}";
+    window.PADOSI_BRAND_LOGO = "{{ brand_logo_url|escapejs }}";
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="{% static 'js/review-card.js' %}?v=compact2"></script>
+<script src="{% static 'js/review-card.js' %}?v=ref3"></script>
 {% endblock %}

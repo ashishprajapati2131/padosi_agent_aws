@@ -9,6 +9,7 @@ from apps.agents.services.feature_unlock import (
     sanitize_unlock_rules,
     toggle_plan_feature,
     upsert_plan_unlock_rule,
+    with_feature_defaults,
 )
 from apps.agents.views.dashboard import PlanFeatureProxy, _resolve_agent_plan
 
@@ -283,3 +284,95 @@ class AdminLockPreviewDoesNotChangeProxyTests(SimpleTestCase):
         wrapped = overlay_plan(proxy, {'show_sales_insights'})
         self.assertTrue(wrapped.show_sales_insights)
         self.assertTrue(wrapped.show_performance_stats)
+
+
+class LeadPreferencesPlanDefaultTests(SimpleTestCase):
+    def test_starter_stays_locked_until_admin_enables_it(self):
+        config = {
+            'free_trial': ['dashboard_stats'],
+            'starter': ['dashboard_stats', 'lead_management'],
+            'professional': ['dashboard_stats'],
+            'exclusive': ['dashboard_stats'],
+        }
+        enabled = with_feature_defaults('starter', config['starter'], config)
+        self.assertNotIn('lead_preferences', enabled)
+        proxy = PlanFeatureProxy(enabled)
+        self.assertFalse(proxy.show_lead_preferences)
+        self.assertTrue(proxy.show_recent_leads)
+        self.assertFalse(proxy.show_new_business_leads)
+        self.assertFalse(proxy.show_lead_portfolio_analysis)
+        self.assertFalse(proxy.show_lead_claims_support)
+
+    def test_professional_unlocked_before_admin_saves_the_new_feature(self):
+        config = {
+            'starter': ['dashboard_stats', 'lead_management'],
+            'professional': ['dashboard_stats', 'lead_management'],
+        }
+        enabled = with_feature_defaults('professional', config['professional'], config)
+        self.assertIn('lead_preferences', enabled)
+        proxy = PlanFeatureProxy(enabled)
+        self.assertTrue(proxy.show_lead_preferences)
+        self.assertTrue(proxy.show_new_business_leads)
+        self.assertTrue(proxy.show_lead_portfolio_analysis)
+        self.assertTrue(proxy.show_lead_claims_support)
+
+    def test_admin_can_unlock_starter_lead_preferences(self):
+        locked = {
+            'starter': ['dashboard_stats'],
+            'professional': ['dashboard_stats', 'lead_preferences'],
+            'free_trial': [],
+            'exclusive': ['lead_preferences'],
+        }
+        updated = toggle_plan_feature(locked, 'starter', 'lead_preferences', locked=False)
+        self.assertIn('lead_preferences', updated['starter'])
+        self.assertIn('receive_leads', updated['starter'])
+        self.assertIn('lead_portfolio_analysis', updated['starter'])
+        self.assertIn('lead_claims_support', updated['starter'])
+        self.assertIn('lead_preferences', updated['professional'])
+
+    def test_admin_can_lock_professional_lead_preferences(self):
+        config = {
+            'starter': ['dashboard_stats'],
+            'professional': [
+                'dashboard_stats', 'lead_preferences',
+                'receive_leads', 'lead_portfolio_analysis', 'lead_claims_support',
+            ],
+            'free_trial': [],
+            'exclusive': ['lead_preferences'],
+        }
+        updated = toggle_plan_feature(config, 'professional', 'lead_preferences', locked=True)
+        self.assertNotIn('lead_preferences', updated['professional'])
+        self.assertNotIn('receive_leads', updated['professional'])
+        self.assertNotIn('lead_portfolio_analysis', updated['professional'])
+        self.assertNotIn('lead_claims_support', updated['professional'])
+        enabled = with_feature_defaults('professional', updated['professional'], updated)
+        self.assertNotIn('lead_preferences', enabled)
+
+    def test_lock_one_lead_item_keeps_parent_and_siblings(self):
+        config = {
+            'starter': [
+                'lead_preferences', 'receive_leads',
+                'lead_portfolio_analysis', 'lead_claims_support',
+            ],
+            'professional': ['lead_preferences'],
+            'free_trial': [],
+            'exclusive': [],
+        }
+        updated = toggle_plan_feature(config, 'starter', 'lead_portfolio_analysis', locked=True)
+        self.assertIn('lead_preferences', updated['starter'])
+        self.assertIn('receive_leads', updated['starter'])
+        self.assertNotIn('lead_portfolio_analysis', updated['starter'])
+        self.assertIn('lead_claims_support', updated['starter'])
+
+    def test_unlock_lead_item_also_unlocks_parent_section(self):
+        config = {
+            'starter': ['dashboard_stats'],
+            'professional': ['lead_preferences'],
+            'free_trial': [],
+            'exclusive': [],
+        }
+        updated = toggle_plan_feature(config, 'starter', 'receive_leads', locked=False)
+        self.assertIn('receive_leads', updated['starter'])
+        self.assertIn('lead_preferences', updated['starter'])
+        self.assertNotIn('lead_portfolio_analysis', updated['starter'])
+

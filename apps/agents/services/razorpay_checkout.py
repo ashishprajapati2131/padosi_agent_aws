@@ -106,6 +106,22 @@ def localhost_checkout_allowed():
     return os.environ.get('RAZORPAY_ALLOW_LOCALHOST', '').strip().lower() in ('1', 'true', 'yes')
 
 
+def checkout_uses_redirect_callback(request):
+    """
+    Netbanking/UPI require callback_url with redirect=true.
+    HTTPS always; localhost HTTP only with Razorpay test keys (or opt-in).
+    """
+    if request is None:
+        return False
+    if request.is_secure():
+        return True
+    if not is_local_request(request):
+        return False
+    if razorpay_key_mode() == 'test':
+        return True
+    return localhost_checkout_allowed()
+
+
 def should_mock_razorpay(request):
     """
     Mock is never used to complete a paid registration.
@@ -216,7 +232,7 @@ def checkout_payload(order_id, amount_paise, agent, is_mock=False, extra=None, r
         if request is not None and is_unsafe_localhost_checkout(request):
             payload['mock_checkout_reason'] = 'localhost_http'
     if request is not None:
-        payload['checkout_use_callback'] = bool(request.is_secure())
+        payload['checkout_use_callback'] = checkout_uses_redirect_callback(request)
         payload['unsafe_localhost_checkout'] = (
             not is_mock and is_unsafe_localhost_checkout(request)
         )

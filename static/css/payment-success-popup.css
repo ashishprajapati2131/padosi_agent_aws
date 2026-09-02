@@ -1,0 +1,206 @@
+/* Payment success SweetAlert — registration & netbanking callback */
+.swal2-container .swal2-popup.payment-success-popup {
+    width: min(440px, 92vw) !important;
+    padding: 0 !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+    border: 1px solid #d1fae5 !important;
+    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(29, 125, 93, 0.08) !important;
+    background: #ffffff !important;
+}
+
+.swal2-container .swal2-popup.payment-success-popup .swal2-html-container {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+}
+
+.swal2-container .swal2-popup.payment-success-popup .swal2-title,
+.swal2-container .swal2-popup.payment-success-popup .swal2-icon {
+    display: none !important;
+}
+
+.swal2-container .swal2-popup.payment-success-popup .swal2-timer-progress-bar-container {
+    height: 4px !important;
+    background: #ecfdf5 !important;
+}
+
+.swal2-container .swal2-popup.payment-success-popup .swal2-timer-progress-bar {
+    background: linear-gradient(90deg, #1d7d5d 0%, #059669 50%, #10b981 100%) !important;
+}
+
+.pay-success-popup {
+    font-family: 'Plus Jakarta Sans', 'Urbanist', system-ui, sans-serif;
+    text-align: center;
+    padding: 28px 26px 22px;
+}
+
+.pay-success-popup__hero {
+    background: linear-gradient(145deg, #ecfdf5 0%, #f0fdf4 45%, #ffffff 100%);
+    margin: -28px -26px 20px;
+    padding: 28px 26px 22px;
+    border-bottom: 1px solid #d1fae5;
+    position: relative;
+}
+
+.pay-success-popup__hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #1d7d5d 0%, #059669 50%, #273c8e 100%);
+}
+
+.pay-success-icon-wrap {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 14px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pay-success-icon-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1d7d5d 0%, #10b981 100%);
+    opacity: 0.14;
+    animation: pay-success-pulse 2s ease-in-out infinite;
+}
+
+.pay-success-icon-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #1d7d5d 0%, #059669 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 24px rgba(29, 125, 93, 0.35);
+    position: relative;
+    z-index: 1;
+    animation: pay-success-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.pay-success-icon-circle i {
+    color: #ffffff;
+    font-size: 28px;
+}
+
+.pay-success-kicker {
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #059669;
+}
+
+.pay-success-name {
+    margin: 0 0 8px;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.25;
+    color: #1e3a8a;
+}
+
+.pay-success-lead {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #475569;
+    font-weight: 500;
+}
+
+.pay-success-notes {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+    text-align: left;
+    display: grid;
+    gap: 10px;
+}
+
+.pay-success-notes li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 12px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #334155;
+    font-weight: 600;
+}
+
+.pay-success-notes li i {
+    color: #1d7d5d;
+    font-size: 14px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.pay-success-footer {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.pay-success-footer i {
+    font-size: 13px;
+}
+
+@keyframes pay-success-pop {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pay-success-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.14; }
+    50% { transform: scale(1.08); opacity: 0.22; }
+}
+
+@media (max-width: 576px) {
+    .swal2-container .swal2-popup.payment-success-popup {
+        width: min(380px, 94vw) !important;
+        border-radius: 20px !important;
+    }
+
+    .pay-success-popup {
+        padding: 22px 18px 18px;
+    }
+
+    .pay-success-popup__hero {
+        margin: -22px -18px 16px;
+        padding: 22px 18px 18px;
+    }
+
+    .pay-success-name {
+        font-size: 19px;
+    }
+
+    .pay-success-notes li {
+        font-size: 12.5px;
+        padding: 10px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pay-success-icon-ring,
+    .pay-success-icon-circle {
+        animation: none !important;
+    }
+}

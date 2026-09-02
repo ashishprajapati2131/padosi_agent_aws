@@ -30,11 +30,11 @@
         mount.innerHTML = '';
         new QRCode(mount, {
             text: reviewUrl,
-            width: 220,
-            height: 220,
+            width: 196,
+            height: 196,
             colorDark: '#0b1f4d',
             colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.M
+            correctLevel: QRCode.CorrectLevel.H
         });
         const img = mount.querySelector('img');
         if (img) {

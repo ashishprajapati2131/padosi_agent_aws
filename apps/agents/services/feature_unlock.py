@@ -38,6 +38,12 @@ EDIT_PROFILE_CHILD_FEATURES = (
     'edit_profile_additional',
 )
 
+LEAD_PREFERENCE_CHILD_FEATURES = (
+    'receive_leads',
+    'lead_portfolio_analysis',
+    'lead_claims_support',
+)
+
 SLUG_NORMALISE = {
     'basic': 'starter',
     'starter': 'starter',
@@ -59,7 +65,7 @@ SLUG_NORMALISE = {
 
 FEATURE_ATTR_MAP = {
     'dashboard_stats': ['show_performance_stats'],
-    'lead_management': ['show_recent_leads', 'show_new_business_leads'],
+    'lead_management': ['show_recent_leads'],
     'legacy_lead_status': ['show_lead_status'],
     'sales_insights': ['show_sales_insights'],
     'rank_boost_tips': ['show_rank_boost_tips'],
@@ -81,6 +87,9 @@ FEATURE_ATTR_MAP = {
     'public_profile': ['show_profile_section'],
     'agent_directory_visibility': ['is_listed_in_directory'],
     'receive_leads': ['show_new_business_leads'],
+    'lead_preferences': ['show_lead_preferences'],
+    'lead_portfolio_analysis': ['show_lead_portfolio_analysis'],
+    'lead_claims_support': ['show_lead_claims_support'],
     'premium_support': ['premium_priority_support'],
     'visibility_aio': ['show_visibility_aio'],
     'visibility_geo': ['show_visibility_geo'],
@@ -104,7 +113,10 @@ FEATURE_LABELS = {
     'view_reviews': 'Review Management',
     'public_profile': 'Public Profile Customization',
     'agent_directory_visibility': 'Listed in Find Agents Directory',
-    'receive_leads': 'Eligible to Receive New Leads',
+    'receive_leads': 'Lead Pref: New Business',
+    'lead_preferences': 'Lead Preferences Section',
+    'lead_portfolio_analysis': 'Lead Pref: Portfolio Analysis',
+    'lead_claims_support': 'Lead Pref: Claims Support',
     'edit_profile_certifications': 'Agent Certificate',
     'edit_profile_career_timeline': 'Career Timeline',
     'edit_profile_professional_bio': 'Professional Bio',
@@ -717,6 +729,65 @@ def sanitize_unlock_rules(raw_rules):
     return cleaned
 
 
+LEAD_PREFERENCES_DEFAULT_ON = frozenset(('professional', 'exclusive'))
+
+
+def lead_preferences_configured(config):
+    """True once any plan list explicitly includes the lead_preferences feature."""
+    source = config if isinstance(config, dict) else {}
+    for slug in PLAN_SLUGS:
+        raw = source.get(slug) or []
+        if isinstance(raw, (list, tuple)) and 'lead_preferences' in raw:
+            return True
+    return False
+
+
+def with_feature_defaults(plan_slug, enabled_features, features_config=None):
+    """
+    Apply product defaults for features that did not exist when a config was saved.
+
+    Starter / free trial: Lead Preferences stay locked unless admin checks the box.
+    Professional / Exclusive: unlocked until admin has configured the feature.
+    """
+    enabled = list(enabled_features or [])
+    slug = normalize_plan_slug(plan_slug)
+    if 'lead_preferences' in enabled:
+        return enabled
+    if lead_preferences_configured(features_config):
+        return enabled
+    if slug in LEAD_PREFERENCES_DEFAULT_ON:
+        if 'lead_preferences' not in enabled:
+            enabled.append('lead_preferences')
+        for child in LEAD_PREFERENCE_CHILD_FEATURES:
+            if child not in enabled:
+                enabled.append(child)
+    return enabled
+
+
+def with_all_plan_feature_defaults(config):
+    """Copy plan feature lists and backfill lead_preferences product defaults."""
+    copied = copy_plan_features_config(config)
+    if lead_preferences_configured(copied):
+        return copied
+    for slug in LEAD_PREFERENCES_DEFAULT_ON:
+        if 'lead_preferences' not in copied[slug]:
+            copied[slug].append('lead_preferences')
+        for child in LEAD_PREFERENCE_CHILD_FEATURES:
+            if child not in copied[slug]:
+                copied[slug].append(child)
+    return copied
+
+
+def plan_shows_feature(agent_plan, attr, default=True):
+    """Read a show_* flag from PlanFeatureProxy, OverlayPlan, or SubscriptionPlan."""
+    if agent_plan is None:
+        return default
+    try:
+        return bool(getattr(agent_plan, attr))
+    except AttributeError:
+        return default
+
+
 def copy_plan_features_config(config):
     """Shallow-copy plan feature lists so callers cannot mutate SiteSetting data in place."""
     copied = {}
@@ -746,6 +817,8 @@ def toggle_plan_feature(config, plan_slug, feature, locked):
         drop = {feature}
         if feature == 'edit_profile':
             drop.update(EDIT_PROFILE_CHILD_FEATURES)
+        if feature == 'lead_preferences':
+            drop.update(LEAD_PREFERENCE_CHILD_FEATURES)
         features = [item for item in features if item not in drop]
     else:
         if feature not in features:
@@ -754,6 +827,12 @@ def toggle_plan_feature(config, plan_slug, feature, locked):
             for child in EDIT_PROFILE_CHILD_FEATURES:
                 if child not in features:
                     features.append(child)
+        if feature == 'lead_preferences':
+            for child in LEAD_PREFERENCE_CHILD_FEATURES:
+                if child not in features:
+                    features.append(child)
+        if feature in LEAD_PREFERENCE_CHILD_FEATURES and 'lead_preferences' not in features:
+            features.append('lead_preferences')
     new_config[slug] = features
     return new_config
 

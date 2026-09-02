@@ -40,7 +40,7 @@
                     {% endif %}
                 </div>
                 <div class="agent-info">
-                    <h2 class="mb-0 font-weight-bold agent-name-text">{{ display_name }} <span class="badge starter-plan-badge ml-2">{{ planName }}</span></h2>
+                    <h2 class="mb-0 font-weight-bold agent-name-text">{{ display_name }} <span class="badge ml-2 {% if agent.plan_type == 'professional' %}professional-plan-badge{% else %}starter-plan-badge{% endif %}">{{ planName }}</span></h2>
                     <p class="text-muted mb-0 agent-role-text">Insurance Agent</p>
                 </div>
             </div>
@@ -60,6 +60,9 @@
             </div>
         </div>
         {% endif %}
+
+        {% include 'agents/partials/starter_upgrade_banner.html' %}
+        {% include 'agents/partials/starter_upgrade_progress.html' %}
 
         {% if isOnTrial %}
         {# ──────── FREE TRIAL UPGRADE PROMOTION BANNER ──────── #}
@@ -963,7 +966,8 @@
     })();
 
     // ──────── FREE TRIAL UPGRADE FLOW ────────────────────────
-    function openUpgradeModal(planType, planAmount) {
+    function openUpgradeModal(planType, planAmount, options) {
+        options = options || {};
         const planNames = { basic: "Starter's Plan", professional: "Professional's Plan" };
         const content = document.getElementById('upgradeModalContent');
         if (!content) return;
@@ -972,9 +976,12 @@
             ? `<div class="text-muted mb-3">More visibility: <strong>AIO, GEO, SEO, Priority Ranking</strong> — plus remaining locked dashboard sections.</div>`
             : `<div class="text-muted mb-3">Full-year access with complete profile visibility</div>`;
 
-        const discountBadge = planAmount < (planType === 'basic' ? {{ starterFull|default:2359 }} : {{ profFull|default:8258 }})
+        const compareFull = planType === 'basic' ? {{ starterFull|default:2359 }} : {{ profFull|default:8258 }};
+        const discountBadge = (!options.hideDiscountBadge && planAmount < compareFull)
             ? `<span style="background:#10b981;color:white;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:700;" class="mb-2 d-inline-block">{{ discountPct|default:0 }}% OFF Applied</span>`
             : '';
+
+        const gstNote = options.gstNote || '+ 18% GST | Paid via Razorpay';
 
         content.innerHTML = `
             <div style="padding:8px 0;">
@@ -982,7 +989,7 @@
                 <div class="fw-bold fs-5 mb-1">${planNames[planType]}</div>
                 ${visNote}
                 <div style="font-size:2rem;font-weight:800;color:#1e3a6e;">₹${Number(planAmount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
-                <small class="text-muted d-block mb-4">+ 18% GST | Paid via Razorpay</small>
+                <small class="text-muted d-block mb-4">${gstNote}</small>
                 <button onclick="initiateUpgradePayment('${planType}', ${planAmount})" class="btn btn-lg w-100 fw-bold text-white" style="background:linear-gradient(135deg,#1e3a6e,#1d7d5d);border-radius:10px;border:0;">
                     <i class="fas fa-lock me-2"></i> Pay Securely & Upgrade
                 </button>
@@ -997,6 +1004,15 @@
             modal.show();
         }
     }
+
+    {% if review_upgrade_price %}
+    function openReviewUpgradeModal() {
+        openUpgradeModal('professional', {{ review_upgrade_price.promo_incl_gst }}, {
+            hideDiscountBadge: true,
+            gstNote: '₹{{ review_upgrade_price.promo_excl_gst|floatformat:0 }} + 18% GST | Paid via Razorpay'
+        });
+    }
+    {% endif %}
 
     function closeUpgradeModal() {
         if(typeof $ !== 'undefined' && $.fn.modal) {
@@ -1062,6 +1078,7 @@
             }
 
             // Launch Razorpay
+            const useCallback = !!(data.checkout_use_callback || window.location.protocol === 'https:');
             const options = {
                 key:         data.key,
                 currency:    'INR',
@@ -1075,8 +1092,13 @@
                 },
                 theme: { color: '#1d7d5d' },
                 modal: { ondismiss: function() { btn.disabled = false; btn.innerHTML = '<i class="fas fa-lock me-2"></i> Pay Securely & Upgrade'; } },
-                handler: function(response) {
-                    // Send confirmation to server
+            };
+            if (useCallback) {
+                options.callback_url = window.location.origin + '/agent-register/payment-callback/';
+                options.redirect = true;
+            } else {
+                options.redirect = false;
+                options.handler = function(response) {
                     fetch('{% url "agents:payment_success" %}', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
@@ -1100,10 +1122,7 @@
                             alert('Payment received but verification failed. Please contact support.');
                         }
                     });
-                }
-            };
-            if (data.checkout_use_callback || window.location.protocol === 'https:') {
-                options.callback_url = window.location.origin + '/agent-register/payment-callback/';
+                };
             }
 
             if (typeof Razorpay === 'undefined') {
@@ -1310,8 +1329,16 @@
       }
       const run = function() {
         Swal.fire(opts).then(function(result) {
-          if (result.isConfirmed && canOfferUpgrade && typeof openUpgradeModal === 'function') {
-            openUpgradeModal('professional', '{{ profDisc }}');
+          if (result.isConfirmed && canOfferUpgrade) {
+            {% if review_upgrade_price %}
+            if (typeof openReviewUpgradeModal === 'function') {
+              openReviewUpgradeModal();
+            }
+            {% else %}
+            if (typeof openUpgradeModal === 'function') {
+              openUpgradeModal('professional', '{{ profDisc }}');
+            }
+            {% endif %}
           }
         });
       };

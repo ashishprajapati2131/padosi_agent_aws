@@ -38,6 +38,8 @@ DEFAULT_UNLOCK_FEATURES = (
 DEFAULT_REVIEW_GROWTH = {
     'enabled': True,
     'popup_enabled': True,
+    'upgrade_cta_enabled': True,
+    'starter_unlock_enabled': True,
     'popup_delay_ms': 2500,
     'min_reviews': 3,
     'eligible_plans': ['starter'],
@@ -49,6 +51,10 @@ DEFAULT_REVIEW_GROWTH = {
         'Upgrade to Professional for AIO, GEO, SEO and Priority Ranking — '
         'and open every remaining locked section.'
     ),
+    'upgrade_price_enabled': True,
+    'upgrade_promo_price': 4999,
+    'upgrade_full_price': 6999,
+    'upgrade_show_full_price': True,
     'review_scroll_delay_ms': 3000,
     'visibility_section_enabled': True,
 }
@@ -118,6 +124,14 @@ def sanitize_review_growth_config(raw):
     return {
         'enabled': _as_bool(data.get('enabled'), True),
         'popup_enabled': _as_bool(data.get('popup_enabled'), True),
+        'upgrade_cta_enabled': _as_bool(
+            data.get('upgrade_cta_enabled'),
+            DEFAULT_REVIEW_GROWTH['upgrade_cta_enabled'],
+        ),
+        'starter_unlock_enabled': _as_bool(
+            data.get('starter_unlock_enabled'),
+            DEFAULT_REVIEW_GROWTH['starter_unlock_enabled'],
+        ),
         'popup_delay_ms': _as_int(data.get('popup_delay_ms'), 2500, 1500, 5000),
         'min_reviews': _as_int(data.get('min_reviews'), 3, 1, 50),
         'eligible_plans': eligible,
@@ -125,6 +139,24 @@ def sanitize_review_growth_config(raw):
         'upgrade_plan': upgrade_plan,
         'upgrade_title': title[:160],
         'upgrade_message': message[:800],
+        'upgrade_price_enabled': _as_bool(
+            data.get('upgrade_price_enabled'),
+            DEFAULT_REVIEW_GROWTH['upgrade_price_enabled'],
+        ),
+        'upgrade_promo_price': _as_int(
+            data.get('upgrade_promo_price'),
+            DEFAULT_REVIEW_GROWTH['upgrade_promo_price'],
+            minimum=0,
+        ),
+        'upgrade_full_price': _as_int(
+            data.get('upgrade_full_price'),
+            DEFAULT_REVIEW_GROWTH['upgrade_full_price'],
+            minimum=0,
+        ),
+        'upgrade_show_full_price': _as_bool(
+            data.get('upgrade_show_full_price'),
+            DEFAULT_REVIEW_GROWTH['upgrade_show_full_price'],
+        ),
         'review_scroll_delay_ms': _as_int(
             data.get('review_scroll_delay_ms'), 3000, 2000, 5000
         ),
@@ -132,6 +164,43 @@ def sanitize_review_growth_config(raw):
             data.get('visibility_section_enabled'), True
         ),
     }
+
+
+def gst_inclusive(excl_gst_amount):
+    """Return GST-inclusive rupee total from ex-GST base."""
+    base = round(float(excl_gst_amount or 0))
+    return base + round(base * 0.18, 0)
+
+
+def get_review_upgrade_pricing(agent):
+    """
+    Review-growth upgrade amounts for dashboard CTA and checkout.
+    Returns None when custom pricing is off or agent is not eligible.
+    """
+    cfg = get_review_growth_config()
+    if not cfg.get('enabled') or not cfg.get('upgrade_price_enabled', True):
+        return None
+    if not should_show_upgrade_cta(agent):
+        return None
+
+    promo_excl = cfg['upgrade_promo_price']
+    full_excl = cfg['upgrade_full_price']
+    promo_incl = gst_inclusive(promo_excl)
+    full_incl = gst_inclusive(full_excl)
+
+    return {
+        'promo_excl_gst': promo_excl,
+        'full_excl_gst': full_excl,
+        'promo_incl_gst': promo_incl,
+        'full_incl_gst': full_incl,
+        'show_full_price': bool(cfg.get('upgrade_show_full_price', True)),
+        'checkout_base_excl_gst': promo_excl,
+        'checkout_total_incl_gst': promo_incl,
+    }
+
+
+def should_use_review_upgrade_pricing(agent):
+    return get_review_upgrade_pricing(agent) is not None
 
 
 def get_qr_config():
@@ -157,10 +226,20 @@ def is_qr_enabled():
 
 
 def agent_review_count(agent):
-    try:
-        return int(getattr(agent, 'review_count', 0) or 0)
-    except (TypeError, ValueError):
+    """Approved review count — always query DB for accuracy."""
+    if agent is None:
         return 0
+    agent_id = getattr(agent, 'pk', None) or getattr(agent, 'id', None)
+    if not agent_id:
+        return 0
+    try:
+        from apps.agents.models import AgentReview
+        return AgentReview.objects.filter(agent_id=agent_id, is_approved=True).count()
+    except Exception:
+        try:
+            return int(getattr(agent, 'review_count', 0) or 0)
+        except (TypeError, ValueError):
+            return 0
 
 
 def _plan_slug(agent):
@@ -176,7 +255,7 @@ def should_show_popup(agent):
 
 def should_show_upgrade_cta(agent):
     cfg = get_review_growth_config()
-    if not cfg.get('enabled'):
+    if not cfg.get('enabled') or not cfg.get('upgrade_cta_enabled', True):
         return False
     slug = _plan_slug(agent)
     if slug not in cfg.get('eligible_plans', []):
@@ -186,10 +265,66 @@ def should_show_upgrade_cta(agent):
     return agent_review_count(agent) >= cfg['min_reviews']
 
 
+def should_show_upgrade_progress(agent):
+    """Starter agents below threshold — show progress toward upgrade unlock."""
+    cfg = get_review_growth_config()
+    if not cfg.get('enabled') or not cfg.get('upgrade_cta_enabled', True):
+        return False
+    slug = _plan_slug(agent)
+    if slug not in cfg.get('eligible_plans', []):
+        return False
+    if slug == cfg.get('upgrade_plan'):
+        return False
+    count = agent_review_count(agent)
+    return count < cfg['min_reviews']
+
+
+def get_review_growth_status(agent):
+    """Dashboard / API snapshot for review-growth UI."""
+    cfg = get_review_growth_config()
+    count = agent_review_count(agent)
+    min_reviews = cfg.get('min_reviews', 3)
+    slug = _plan_slug(agent)
+    eligible = slug in cfg.get('eligible_plans', [])
+    enabled = bool(cfg.get('enabled'))
+    upgrade_cta = bool(cfg.get('upgrade_cta_enabled', True))
+    on_upgrade_plan = slug == cfg.get('upgrade_plan')
+    show_cta = should_show_upgrade_cta(agent)
+    show_progress = should_show_upgrade_progress(agent)
+    remaining = max(min_reviews - count, 0)
+    return {
+        'enabled': enabled,
+        'upgrade_cta_enabled': upgrade_cta,
+        'eligible_plan': eligible,
+        'plan_slug': slug,
+        'review_count': count,
+        'min_reviews': min_reviews,
+        'remaining_reviews': remaining,
+        'upgrade_ready': show_cta,
+        'show_upgrade_cta': show_cta,
+        'show_upgrade_progress': show_progress,
+        'progress_percent': min(100, int(round((count / min_reviews) * 100))) if min_reviews else 0,
+    }
+
+
+def review_threshold_just_crossed(previous_count, new_count):
+    """True when approved review count crosses min_reviews this submission."""
+    cfg = get_review_growth_config()
+    if not cfg.get('enabled') or not cfg.get('upgrade_cta_enabled', True):
+        return False
+    threshold = cfg['min_reviews']
+    try:
+        previous_count = int(previous_count or 0)
+        new_count = int(new_count or 0)
+    except (TypeError, ValueError):
+        return False
+    return previous_count < threshold <= new_count
+
+
 def extra_unlock_attrs(agent):
     """show_* attribute names to ADD when review threshold is met."""
     cfg = get_review_growth_config()
-    if not cfg.get('enabled') or agent is None:
+    if not cfg.get('enabled') or not cfg.get('starter_unlock_enabled', True) or agent is None:
         return set()
     slug = _plan_slug(agent)
     if slug not in cfg.get('eligible_plans', []):
@@ -205,7 +340,7 @@ def extra_unlock_attrs(agent):
 def build_review_growth_hints(agent):
     """Remaining-condition fragments for features this config would unlock."""
     cfg = get_review_growth_config()
-    if not cfg.get('enabled') or agent is None:
+    if not cfg.get('enabled') or not cfg.get('starter_unlock_enabled', True) or agent is None:
         return {}
     slug = _plan_slug(agent)
     if slug not in cfg.get('eligible_plans', []):

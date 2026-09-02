@@ -32,6 +32,7 @@ from apps.agents.services.feature_unlock import (
     resolve_checkout_plan_slug,
     plan_slug_from_name,
 )
+from apps.agents.services.post_payment import queue_invoice_and_welcome
 from apps.agents.services.razorpay_checkout import (
     MOCK_SIGNATURE,
     checkout_payload,
@@ -244,6 +245,22 @@ def _exclusive_base_price(exclusive_config, follow_count=0, discount_unlocked=Fa
     return base_price
 
 
+def _resolve_registration_pincode(pincode):
+    """Return a Pincode row from the local table, or fetch/create it from the postal API."""
+    pin = str(pincode or '').strip()
+    if not re.match(r'^[1-9]\d{5}$', pin):
+        return None
+    row = Pincode.objects.filter(pincode=pin).first()
+    if row:
+        return row
+    try:
+        from apps.home.views.pages import _get_or_create_pincode
+        return _get_or_create_pincode(pin)
+    except Exception:
+        logger.exception('Pincode lookup failed for %s', pin)
+        return None
+
+
 def _to_money(value):
     return Decimal(str(value or 0)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
@@ -404,7 +421,12 @@ def _is_in_progress_razorpay_error(error):
     if not isinstance(error, dict):
         return False
     step = str(error.get('step') or '').strip().lower()
-    return step in ('payment_authentication', 'payment_capture')
+    reason = str(error.get('reason') or '').strip().lower()
+    if step in ('payment_authentication', 'payment_capture', 'payment_redirect', 'redirect'):
+        return True
+    if reason in ('payment_pending', 'payment_redirect'):
+        return True
+    return False
 
 
 def _recover_pending_razorpay_checkout(request, payload=None, retry=False):
@@ -428,8 +450,11 @@ def _recover_pending_razorpay_checkout(request, payload=None, retry=False):
     if not verify_and_activate_pending_payment(agent):
         if not retry:
             return None
-        time.sleep(1)
-        if not verify_and_activate_pending_payment(agent):
+        for _attempt in range(3):
+            time.sleep(1)
+            if verify_and_activate_pending_payment(agent):
+                break
+        else:
             return None
 
     from apps.agents.services.account_auth import agent_can_access_dashboard
@@ -455,7 +480,67 @@ def _recover_pending_razorpay_checkout(request, payload=None, retry=False):
     from apps.distributors.views.dashboard import is_distributor
     if request.user.is_authenticated and is_distributor(request.user):
         return reverse('distributors:agents_index')
-    return reverse('agents:agent_dashboard')
+    return reverse('agents:payment_complete')
+
+
+def _is_plan_upgrade_payment(agent, order_id=None):
+    """True when the agent already had a completed subscription before this order."""
+    if not agent:
+        return False
+    from apps.agents.models import AgentSubscription
+    qs = AgentSubscription.objects.filter(agent=agent, payment_status='completed')
+    if order_id:
+        qs = qs.exclude(razorpay_order_id=order_id)
+    return qs.exists()
+
+
+def _deactivate_superseded_subscriptions(agent, keep_subscription_id):
+    """Keep only the latest paid subscription active after an upgrade."""
+    if not agent or not keep_subscription_id:
+        return
+    from apps.agents.models import AgentSubscription
+    AgentSubscription.objects.filter(
+        agent=agent,
+        status='active',
+    ).exclude(pk=keep_subscription_id).update(status='inactive')
+
+
+def _display_plan_name(agent, pricing_config):
+    """Dashboard header plan label — agent.plan_type is the source of truth."""
+    from apps.agents.services.feature_unlock import normalize_plan_slug
+
+    slug = normalize_plan_slug(getattr(agent, 'plan_type', '') or '')
+    starter_name = (pricing_config.get('starter') or {}).get('name', "Starter's Plan")
+    prof_name = (pricing_config.get('professional') or {}).get('name', "Professional's Plan")
+
+    if slug == 'professional':
+        return prof_name
+    if slug in ('starter', 'basic'):
+        return starter_name
+    if slug == 'free_trial':
+        return 'Free Trial'
+    if slug == 'exclusive':
+        from apps.home.models import SiteSetting
+        ex_cfg = SiteSetting.get_value('exclusive_plan_config') or {}
+        return ex_cfg.get('name') or 'Exclusive Plan'
+
+    active_sub = getattr(agent, 'activeSubscription', None)
+    if active_sub and active_sub.selected_plan:
+        raw_plan = str(active_sub.selected_plan)
+        try:
+            decoded = json.loads(raw_plan)
+            if isinstance(decoded, dict) and decoded.get('name'):
+                raw_plan = str(decoded['name'])
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+        named_slug = plan_slug_from_name(raw_plan)
+        if named_slug == 'professional':
+            return prof_name
+        if named_slug == 'starter':
+            return starter_name
+        return raw_plan.replace('_', ' ').replace('-', ' ').title()
+
+    return starter_name
 
 
 def _razorpay_callback_payload(request):
@@ -616,7 +701,6 @@ def _activation_success_payload(request, agent, message='Payment successful and 
         'success': True,
         'message': message,
         'redirect_url': redirect_url,
-        'show_congrats': True,
         'agent_name': (getattr(agent, 'fullname', '') or '').strip(),
         'profile_url': request.build_absolute_uri(profile_path),
     }
@@ -740,14 +824,28 @@ def register_step1(request):
 
     # Validation
     errors = []
+    field_errors = {}
     if not fullname:
         errors.append('Full name is required.')
     if not email or '@' not in email:
         errors.append('Please enter a valid email address.')
-    if not mobile or len(mobile) != 10 or not mobile.isdigit():
-        errors.append('Please enter a valid 10-digit mobile number.')
-    if not agent_pincode or len(agent_pincode) != 6 or not agent_pincode.isdigit():
-        errors.append('Please enter a valid 6-digit pincode.')
+    if not mobile or not re.match(r'^[6-9]\d{9}$', mobile):
+        errors.append('Please enter a valid 10-digit mobile number starting with 6-9.')
+    whatsapp = request.POST.get('whatsapp', '').strip()
+    if whatsapp and not re.match(r'^[6-9]\d{9}$', whatsapp):
+        errors.append('Please enter a valid 10-digit WhatsApp number starting with 6-9.')
+    if not agent_pincode or not re.match(r'^[1-9]\d{5}$', agent_pincode):
+        msg = 'Please enter a valid 6-digit pincode.'
+        errors.append(msg)
+        field_errors['agent_pincode'] = [msg]
+    else:
+        pin_row = _resolve_registration_pincode(agent_pincode)
+        if not pin_row:
+            msg = 'This pincode was not found. Please enter a valid pincode.'
+            errors.append(msg)
+            field_errors['agent_pincode'] = [msg]
+        elif not state:
+            state = (pin_row.state or '').strip()
     if not state:
         errors.append('Please select a state.')
     if not segments and not investment_types:
@@ -757,7 +855,10 @@ def register_step1(request):
         errors.append('PAN must be 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).')
 
     if errors:
-        return JsonResponse({'success': False, 'message': ' '.join(errors)}, status=400)
+        payload = {'success': False, 'message': ' '.join(errors)}
+        if field_errors:
+            payload['errors'] = field_errors
+        return JsonResponse(payload, status=400)
 
     from django.contrib.auth.models import User
     from apps.agents.models import Agent, Invoice, AgentDraft
@@ -1504,7 +1605,7 @@ def verify_and_activate_pending_payment(agent):
     successful_payment = None
     if payments and 'items' in payments:
         for item in payments['items']:
-            if item.get('status') == 'captured':
+            if item.get('status') in ('captured', 'authorized'):
                 successful_payment = item
                 break
 
@@ -1530,6 +1631,7 @@ def verify_and_activate_pending_payment(agent):
 
             plan_type = plan_slug_from_name(subscription.selected_plan) or 'professional'
             is_trial = plan_type == 'free_trial'
+            is_upgrade = _is_plan_upgrade_payment(agent, subscription.razorpay_order_id)
 
             trial_config = SiteSetting.get_value('trial_plan_config', {'duration_days': 30})
             trial_days = int(trial_config.get('duration_days', 30))
@@ -1542,6 +1644,10 @@ def verify_and_activate_pending_payment(agent):
                 upgrade_discount = SiteSetting.get_value('trial_upgrade_discount', 20)
                 agent.upgrade_discount_percent = int(upgrade_discount)
                 sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
+            elif is_upgrade:
+                agent.plan_type = plan_type
+                if agent.status in ('pending_payment', 'incomplete', 'pending_accounts_payment'):
+                    agent.status = 'pending_approval'
             else:
                 agent.status = 'pending_approval'
                 agent.plan_type = plan_type
@@ -1556,6 +1662,7 @@ def verify_and_activate_pending_payment(agent):
             subscription.starts_at = timezone.now()
             subscription.expires_at = sub_expiry
             subscription.save()
+            _deactivate_superseded_subscriptions(agent, subscription.pk)
 
             # Increment used count of Promo Code
             if subscription.promo_code:
@@ -1610,26 +1717,7 @@ def verify_and_activate_pending_payment(agent):
             # Link user
             user = create_or_link_django_user(agent)
 
-            # Generate Invoice and send welcome credentials email
-            try:
-                import os
-                from apps.agents.services.invoice import invoice_service
-                from apps.agents.services.brevo import email_service
-
-                invoice = invoice_service.generate_from_subscription(agent, subscription)
-                pdf_path = None
-                if invoice and invoice.pdf_path:
-                     pdf_path = os.path.join(settings.MEDIA_ROOT, 'app', 'private', invoice.pdf_path)
-
-                email_service.send_welcome(
-                    to_email=agent.email,
-                    to_name=agent.fullname,
-                    temp_password=agent.email,
-                    plan_name=subscription.selected_plan,
-                    attachment_path=pdf_path
-                )
-            except Exception as mail_err:
-                logger.error(f"[verify_and_activate_pending_payment] Failed to generate invoice/send welcome email: {mail_err}")
+            queue_invoice_and_welcome(agent.id, subscription.id)
 
             logger.info(f"[verify_and_activate_pending_payment] Successfully activated agent {agent.email} via direct Razorpay query.")
             return True
@@ -1891,27 +1979,7 @@ def _agent_register_complete_impl(request):
                 except Exception:
                     pass
 
-                # Generate Invoice and send welcome credentials email with PDF attachment
-                try:
-                    import os
-                    from apps.agents.services.invoice import invoice_service
-                    from apps.agents.services.brevo import email_service
-                    
-                    invoice = invoice_service.generate_from_subscription(agent, subscription)
-                    pdf_path = None
-                    if invoice and invoice.pdf_path:
-                        pdf_path = os.path.join(settings.MEDIA_ROOT, 'app', 'private', invoice.pdf_path)
-                    
-                    # Send welcome email with credentials and attached invoice
-                    email_service.send_welcome(
-                        to_email=agent.email,
-                        to_name=agent.fullname,
-                        temp_password=agent.email,
-                        plan_name=subscription.selected_plan,
-                        attachment_path=pdf_path
-                    )
-                except Exception as mail_err:
-                    logger.error(f"Failed to generate invoice/send welcome email during instant checkout: {mail_err}")
+                queue_invoice_and_welcome(agent.id, subscription.id)
 
                 instant_complete = True
     except Exception as db_err:
@@ -1957,17 +2025,11 @@ def _agent_register_complete_impl(request):
     ))
 
 
-@require_POST
-@csrf_protect
-def payment_success(request):
+def _finalize_razorpay_payment(request, data):
     """
-    Handle successful payment webhook/callback.
+    Verify Razorpay payment signature and activate registration.
+    Used by verify-payment (JSON) and payment-callback (redirect).
     """
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        data = request.POST
-
     pending = request.session.get('pending_checkout') or {}
     razorpay_payment_id = data.get('razorpay_payment_id')
     razorpay_order_id = data.get('razorpay_order_id') or pending.get('order_id')
@@ -1983,7 +2045,6 @@ def payment_success(request):
     from apps.home.models import SiteSetting
     from apps.admin_panel.models.referral_code import ReferralCode
     from apps.admin_panel.models.referral_usage import ReferralUsage
-    from apps.distributors.views.dashboard import is_distributor
 
     if razorpay_order_id:
         existing_sub = AgentSubscription.objects.filter(
@@ -1999,10 +2060,18 @@ def payment_success(request):
             agent_obj = existing_sub.agent if existing_sub else existing_invoice.agent
             from apps.agents.services.account_auth import agent_can_access_dashboard
             if not agent_can_access_dashboard(agent_obj):
-                return JsonResponse({
+                return {
                     'success': False,
                     'message': 'Payment is not completed yet.',
-                }, status=400)
+                }
+            completed_sub = existing_sub
+            if completed_sub and completed_sub.selected_plan:
+                synced_slug = plan_slug_from_name(completed_sub.selected_plan)
+                if synced_slug and synced_slug != agent_obj.plan_type:
+                    agent_obj.plan_type = synced_slug
+                    agent_obj.save(update_fields=['plan_type', 'updated_at'])
+            if completed_sub:
+                _deactivate_superseded_subscriptions(agent_obj, completed_sub.pk)
             try:
                 user = create_or_link_django_user(agent_obj)
                 login_agent_user(request, user)
@@ -2014,27 +2083,31 @@ def payment_success(request):
             request.session.pop('ref_code', None)
             request.session.pop('pending_checkout', None)
 
-            return JsonResponse(_activation_success_payload(
+            return _activation_success_payload(
                 request,
                 agent_obj,
                 message='Payment already processed successfully.',
-            ))
+            )
 
     mock_checkout = is_mock_payment(razorpay_order_id, razorpay_signature)
     if mock_checkout:
         logger.error('Rejecting mock payment verification for order=%s', razorpay_order_id)
-        return JsonResponse({
+        return {
             'success': False,
             'message': 'Payment was not completed. Please pay through Razorpay to continue.',
-        }, status=400)
+        }
 
     if not razorpay_signature:
-        return JsonResponse({'success': False, 'message': 'Payment signature is missing. Cannot verify transaction.'}, status=400)
+        return {
+            'success': False,
+            'message': 'Payment signature is missing. Cannot verify transaction.',
+        }
 
+    subscription = None
     try:
         client = razorpay_client()
         if client is None:
-            return JsonResponse({'success': False, 'message': gateway_failure_message()}, status=400)
+            return {'success': False, 'message': gateway_failure_message()}
 
         client.utility.verify_payment_signature({
             'razorpay_order_id': razorpay_order_id,
@@ -2046,14 +2119,18 @@ def payment_success(request):
         payment_status = payment_info.get('status')
         paid_amount_paise = payment_info.get('amount')
 
-        if payment_status != 'captured':
-            logger.error(f"Razorpay Payment {razorpay_payment_id} status is {payment_status} — rejecting activation.")
-            return JsonResponse({'success': False, 'message': 'Payment is not completed.'}, status=400)
+        if payment_status not in ('captured', 'authorized'):
+            logger.error(
+                "Razorpay Payment %s status is %s — rejecting activation.",
+                razorpay_payment_id,
+                payment_status,
+            )
+            return {'success': False, 'message': 'Payment is not completed.'}
 
         subscription = AgentSubscription.objects.filter(razorpay_order_id=razorpay_order_id).first()
         if not subscription:
             logger.error(f"No subscription found matching Razorpay Order {razorpay_order_id}")
-            return JsonResponse({'success': False, 'message': 'Invalid transaction ID.'}, status=400)
+            return {'success': False, 'message': 'Invalid transaction ID.'}
 
         expected_amount_paise = _expected_amount_paise(subscription.registration_amount)
         if not _paise_amounts_match(paid_amount_paise, expected_amount_paise):
@@ -2062,11 +2139,11 @@ def payment_success(request):
                 f"Agent ID: {agent_id}, Paid: {paid_amount_paise} paise, Expected: {expected_amount_paise} paise. "
                 f"Razorpay Payment ID: {razorpay_payment_id}"
             )
-            return JsonResponse({'success': False, 'message': 'Payment validation failed: Amount mismatch.'}, status=400)
+            return {'success': False, 'message': 'Payment validation failed: Amount mismatch.'}
 
     except Exception as e:
         logger.error("Razorpay Signature/Amount Verification Failed: %s", e)
-        return JsonResponse({'success': False, 'message': gateway_failure_message()}, status=400)
+        return {'success': False, 'message': gateway_failure_message()}
 
     from django.db import transaction
 
@@ -2076,14 +2153,13 @@ def payment_success(request):
             if not agent:
                 agent = subscription.agent
             if not agent:
-                return JsonResponse({'success': False, 'message': 'Agent record not found.'}, status=400)
+                return {'success': False, 'message': 'Agent record not found.'}
 
             if not plan_type:
                 plan_type = plan_slug_from_name(subscription.selected_plan or plan_name)
 
-            # For custom plans created via Admin -> Plans: if plan_type is not a
-            # known canonical slug, check if it directly matches a SubscriptionPlan slug.
-            # This ensures agent.plan_type always matches the SiteSettings key.
+            is_upgrade = _is_plan_upgrade_payment(agent, razorpay_order_id)
+
             if plan_type:
                 known_slugs = ('starter', 'professional', 'free_trial', 'exclusive', 'basic')
                 if plan_type not in known_slugs:
@@ -2107,11 +2183,15 @@ def payment_success(request):
                 upgrade_discount = SiteSetting.get_value('trial_upgrade_discount', 20)
                 agent.upgrade_discount_percent = int(upgrade_discount)
                 sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
+            elif is_upgrade:
+                if agent.status in ('pending_payment', 'incomplete', 'pending_accounts_payment'):
+                    agent.status = 'pending_approval'
             else:
                 agent.status = 'pending_approval'
 
             if plan_type:
                 agent.plan_type = plan_type
+            agent.registration_step = 2
             agent.save()
 
             paid_sub = AgentSubscription.objects.filter(razorpay_order_id=razorpay_order_id).first()
@@ -2120,8 +2200,10 @@ def payment_success(request):
             if not paid_sub:
                 paid_sub = subscription
             if not paid_sub:
-                logger.error(f"No subscription found matching Razorpay Order {razorpay_order_id} or Agent ID {agent_id}")
-                return JsonResponse({'success': False, 'message': 'No subscription record found.'}, status=400)
+                logger.error(
+                    f"No subscription found matching Razorpay Order {razorpay_order_id} or Agent ID {agent_id}"
+                )
+                return {'success': False, 'message': 'No subscription record found.'}
 
             paid_sub.payment_status = 'completed'
             paid_sub.status = 'active'
@@ -2131,8 +2213,8 @@ def payment_success(request):
             paid_sub.expires_at = sub_expiry
             paid_sub.save()
             subscription = paid_sub
+            _deactivate_superseded_subscriptions(agent, paid_sub.pk)
 
-            # Increment promo code usage (matching PHP payment_success)
             if subscription.promo_code:
                 try:
                     promo = PromoCode.objects.filter(code=subscription.promo_code).first()
@@ -2142,7 +2224,6 @@ def payment_success(request):
                 except Exception:
                     pass
 
-            # Handle referral credit
             if agent.referred_by_code:
                 try:
                     ref_code_obj = ReferralCode.objects.filter(code=agent.referred_by_code).first()
@@ -2178,25 +2259,7 @@ def payment_success(request):
             except Exception:
                 pass
 
-            try:
-                import os
-                from apps.agents.services.invoice import invoice_service
-                from apps.agents.services.brevo import email_service
-
-                invoice = invoice_service.generate_from_subscription(agent, subscription)
-                pdf_path = None
-                if invoice and invoice.pdf_path:
-                    pdf_path = os.path.join(settings.MEDIA_ROOT, 'app', 'private', invoice.pdf_path)
-
-                email_service.send_welcome(
-                    to_email=agent.email,
-                    to_name=agent.fullname,
-                    temp_password=agent.email,
-                    plan_name=subscription.selected_plan,
-                    attachment_path=pdf_path
-                )
-            except Exception as mail_err:
-                logger.error(f"Failed to generate invoice/send welcome email during checkout completion: {mail_err}")
+            queue_invoice_and_welcome(agent.id, subscription.id)
 
         try:
             user = create_or_link_django_user(agent)
@@ -2209,14 +2272,30 @@ def payment_success(request):
         request.session.pop('ref_code', None)
         request.session.pop('pending_checkout', None)
 
-        return JsonResponse(_activation_success_payload(
+        return _activation_success_payload(
             request,
             agent,
             message='Payment successful and account activated.',
-        ))
+        )
     except Exception as e:
         logger.error(f"Error activating account in payment_success: {str(e)}")
-        return JsonResponse({'success': False, 'message': 'Failed to activate agent account.'}, status=500)
+        return {'success': False, 'message': 'Failed to activate agent account.', 'status': 500}
+
+
+@require_POST
+@csrf_protect
+def payment_success(request):
+    """
+    Handle successful payment webhook/callback.
+    """
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        data = request.POST
+
+    result = _finalize_razorpay_payment(request, data)
+    status = result.pop('status', None) or (200 if result.get('success') else 400)
+    return JsonResponse(result, status=status)
 
 
 @csrf_exempt
@@ -2234,31 +2313,42 @@ def payment_callback(request):
         bool(payload.get('razorpay_signature')),
     )
 
+    if payload.get('razorpay_payment_id') and payload.get('razorpay_order_id') and payload.get('razorpay_signature'):
+        for attempt in range(3):
+            result = _finalize_razorpay_payment(request, payload)
+            if result.get('success'):
+                return redirect('agents:payment_complete')
+            if attempt < 2:
+                time.sleep(1.5)
+
     recovered_url = _recover_pending_razorpay_checkout(request, payload, retry=True)
     if recovered_url:
         return redirect(recovered_url)
 
-    if payload.get('razorpay_signature') and payload.get('razorpay_payment_id') and payload.get('razorpay_order_id'):
-        if not is_mock_payment(payload.get('razorpay_order_id'), payload.get('razorpay_signature')):
-            try:
-                client = razorpay_client()
-                if client is None:
-                    logger.error('Razorpay callback skipped: keys missing')
-                    return redirect(f"{reverse('agents:agent_register_failed')}?reason=gateway")
-                client.utility.verify_payment_signature({
-                    'razorpay_order_id': payload['razorpay_order_id'],
-                    'razorpay_payment_id': payload['razorpay_payment_id'],
-                    'razorpay_signature': payload['razorpay_signature'],
-                })
-            except Exception as sig_err:
-                logger.error('Razorpay callback signature failed: %s', sig_err)
-                return redirect('agents:chooseplan')
-        recovered_url = _recover_pending_razorpay_checkout(request, payload, retry=True)
-        if recovered_url:
-            return redirect(recovered_url)
-
     logger.warning('Razorpay callback could not complete order=%s', payload.get('razorpay_order_id'))
     return redirect('agents:chooseplan')
+
+
+def payment_complete(request):
+    """Brief success message after verified payment, then auto-redirect to dashboard."""
+    if not request.user.is_authenticated:
+        return redirect('agents:chooseplan')
+
+    from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
+    from apps.distributors.views.dashboard import is_distributor
+    try:
+        agent = resolve_agent_for_user(request.user)
+    except Exception:
+        agent = None
+
+    if not agent or not agent_can_access_dashboard(agent):
+        return redirect('agents:chooseplan')
+
+    redirect_url = reverse('distributors:agents_index') if is_distributor(request.user) else reverse('agents:agent_dashboard')
+    return render(request, 'agents/payment_complete.html', {
+        'agent_name': (getattr(agent, 'fullname', '') or '').strip(),
+        'redirect_url': redirect_url,
+    })
 
 
 @require_POST
@@ -2699,27 +2789,7 @@ def razorpay_webhook(request):
                     # Link django user
                     user = create_or_link_django_user(agent)
 
-                    # Generate Invoice and send welcome credentials email with PDF attachment
-                    try:
-                        import os
-                        from apps.agents.services.invoice import invoice_service
-                        from apps.agents.services.brevo import email_service
-                        
-                        invoice = invoice_service.generate_from_subscription(agent, subscription)
-                        pdf_path = None
-                        if invoice and invoice.pdf_path:
-                            pdf_path = os.path.join(settings.MEDIA_ROOT, 'app', 'private', invoice.pdf_path)
-                        
-                        # Send welcome email with credentials and attached invoice
-                        email_service.send_welcome(
-                            to_email=agent.email,
-                            to_name=agent.fullname,
-                            temp_password=agent.email,
-                            plan_name=subscription.selected_plan,
-                            attachment_path=pdf_path
-                        )
-                    except Exception as mail_err:
-                        logger.error(f"[Webhook] Failed to generate invoice or send welcome email: {mail_err}")
+                    queue_invoice_and_welcome(agent.id, subscription.id)
 
             except Exception as db_err:
                 logger.error(f"[Webhook] Database transaction failed: {db_err}")
