@@ -17,13 +17,14 @@ from apps.agents.services.feature_unlock import (
     PLAN_LABELS,
     PLAN_SLUGS,
     build_unlock_hints,
-    copy_plan_features_config,
     get_unlock_rules,
     normalize_plan_slug,
     remove_plan_only_unlock_rule,
     sanitize_unlock_rules,
     toggle_plan_feature,
     upsert_plan_unlock_rule,
+    with_all_plan_feature_defaults,
+    with_feature_defaults,
 )
 from apps.agents.views.dashboard import PlanFeatureProxy
 from apps.agents.services.review_growth import (
@@ -369,15 +370,16 @@ def plans(request):
     pricing.setdefault('social_links', list(_DEFAULT_PRICING['social_links']))
     pricing.setdefault('follow_tiers', list(_DEFAULT_PRICING['follow_tiers']))
 
-    plan_features_config = SiteSetting.get_value('plan_features_config', {
+    plan_features_config = with_all_plan_feature_defaults(SiteSetting.get_value('plan_features_config', {
         'free_trial': ['dashboard_stats', 'edit_profile'],
         'starter': ['dashboard_stats', 'edit_profile', 'lead_management'],
         'professional': [
             'dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights',
             'manage_portfolio', 'upload_achievements', 'view_reviews', 'public_profile',
             'visibility_aio', 'visibility_geo', 'visibility_seo', 'visibility_priority_ranking',
+            'lead_preferences', 'receive_leads', 'lead_portfolio_analysis', 'lead_claims_support',
         ],
-    })
+    }))
 
     available_features = [
         ('dashboard_stats', 'Dashboard Performance & Stats'),
@@ -395,7 +397,10 @@ def plans(request):
         ('view_reviews', 'Review Management'),
         ('public_profile', 'Public Profile Customization'),
         ('agent_directory_visibility', 'Listed in Find Agents Directory'),
-        ('receive_leads', 'Eligible to Receive New Leads'),
+        ('lead_preferences', 'Lead Preferences Section'),
+        ('receive_leads', '— Lead Pref: New Business'),
+        ('lead_portfolio_analysis', '— Lead Pref: Portfolio Analysis'),
+        ('lead_claims_support', '— Lead Pref: Claims Support'),
         ('visibility_aio', 'More Visibility: AIO'),
         ('visibility_geo', 'More Visibility: GEO'),
         ('visibility_seo', 'More Visibility: SEO'),
@@ -748,18 +753,25 @@ def update_review_growth(request):
     if not admin_id:
         return redirect('admin_login')
     if request.method == 'POST':
-        eligible = request.POST.getlist('growth_eligible_plans[]') or ['starter']
+        existing = get_review_growth_config()
+        eligible = request.POST.getlist('growth_eligible_plans[]') or existing.get('eligible_plans') or ['starter']
         cfg = sanitize_review_growth_config({
             'enabled': request.POST.get('growth_enabled') == 'on',
             'popup_enabled': request.POST.get('growth_popup_enabled') == 'on',
-            'popup_delay_ms': request.POST.get('growth_popup_delay_ms'),
-            'min_reviews': request.POST.get('growth_min_reviews'),
+            'upgrade_cta_enabled': request.POST.get('growth_upgrade_cta_enabled') == 'on',
+            'starter_unlock_enabled': request.POST.get('growth_starter_unlock_enabled') == 'on',
+            'popup_delay_ms': request.POST.get('growth_popup_delay_ms') or existing.get('popup_delay_ms'),
+            'min_reviews': request.POST.get('growth_min_reviews') or existing.get('min_reviews'),
             'eligible_plans': eligible,
-            'unlock_feature_slugs': request.POST.getlist('growth_unlock_features[]'),
-            'upgrade_plan': request.POST.get('growth_upgrade_plan', 'professional'),
-            'upgrade_title': request.POST.get('growth_upgrade_title', ''),
-            'upgrade_message': request.POST.get('growth_upgrade_message', ''),
-            'review_scroll_delay_ms': request.POST.get('growth_review_scroll_delay_ms'),
+            'unlock_feature_slugs': request.POST.getlist('growth_unlock_features[]') or existing.get('unlock_feature_slugs'),
+            'upgrade_plan': request.POST.get('growth_upgrade_plan') or existing.get('upgrade_plan', 'professional'),
+            'upgrade_title': request.POST.get('growth_upgrade_title') or existing.get('upgrade_title', ''),
+            'upgrade_message': request.POST.get('growth_upgrade_message') or existing.get('upgrade_message', ''),
+            'upgrade_price_enabled': request.POST.get('growth_upgrade_price_enabled') == 'on',
+            'upgrade_promo_price': request.POST.get('growth_upgrade_promo_price') or existing.get('upgrade_promo_price'),
+            'upgrade_full_price': request.POST.get('growth_upgrade_full_price') or existing.get('upgrade_full_price'),
+            'upgrade_show_full_price': request.POST.get('growth_upgrade_show_full_price') == 'on',
+            'review_scroll_delay_ms': request.POST.get('growth_review_scroll_delay_ms') or existing.get('review_scroll_delay_ms'),
             'visibility_section_enabled': request.POST.get('growth_visibility_section') == 'on',
         })
         SiteSetting.set_value('review_growth_config', cfg, 'pricing')
@@ -775,8 +787,12 @@ DEFAULT_PLAN_FEATURES = {
         'dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights',
         'manage_portfolio', 'upload_achievements', 'view_reviews', 'public_profile',
         'visibility_aio', 'visibility_geo', 'visibility_seo', 'visibility_priority_ranking',
+        'lead_preferences', 'receive_leads', 'lead_portfolio_analysis', 'lead_claims_support',
     ],
-    'exclusive': ['dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights'],
+    'exclusive': [
+        'dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights',
+        'lead_preferences', 'receive_leads', 'lead_portfolio_analysis', 'lead_claims_support',
+    ],
 }
 
 
@@ -1002,10 +1018,10 @@ def _sample_manage_agent_context(plan_slug):
 
 
 def _manage_agent_common_context(plan_slug):
-    features_config = copy_plan_features_config(
+    features_config = with_all_plan_feature_defaults(
         SiteSetting.get_value('plan_features_config', DEFAULT_PLAN_FEATURES) or DEFAULT_PLAN_FEATURES
     )
-    enabled = features_config.get(plan_slug) or []
+    enabled = with_feature_defaults(plan_slug, features_config.get(plan_slug) or [], features_config)
     rules = get_unlock_rules()
     hints = build_unlock_hints(None, plan_slug, metrics={}, rules=rules)
     context = _sample_manage_agent_context(plan_slug)
@@ -1111,7 +1127,7 @@ def manage_agent_toggle(request, plan_slug):
                 'error': 'Add a valid unlock condition (choose a metric and a value).',
             }, status=400)
 
-    features_config = copy_plan_features_config(
+    features_config = with_all_plan_feature_defaults(
         SiteSetting.get_value('plan_features_config', DEFAULT_PLAN_FEATURES) or DEFAULT_PLAN_FEATURES
     )
     new_config = toggle_plan_feature(features_config, slug, feature, locked)

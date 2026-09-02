@@ -9,10 +9,13 @@ from apps.agents.services.feature_unlock import overlay_plan
 from apps.agents.services.qr_branded import build_qr_target_url, generate_branded_qr_png
 from apps.agents.services.review_growth import (
     extra_unlock_attrs,
+    get_review_growth_status,
+    review_threshold_just_crossed,
     sanitize_qr_config,
     sanitize_review_growth_config,
     should_show_popup,
     should_show_upgrade_cta,
+    should_show_upgrade_progress,
 )
 from apps.agents.views.dashboard import PlanFeatureProxy, _resolve_agent_plan
 from apps.home.models import SiteSetting
@@ -41,6 +44,45 @@ class ReviewGrowthConfigTests(SimpleTestCase):
         cfg = sanitize_qr_config({'enabled': 'off', 'allow_download': 'on'})
         self.assertFalse(cfg['enabled'])
         self.assertTrue(cfg['allow_download'])
+
+    def test_review_threshold_just_crossed(self):
+        with patch('apps.agents.services.review_growth.get_review_growth_config', return_value={
+            'enabled': True,
+            'min_reviews': 3,
+        }):
+            self.assertFalse(review_threshold_just_crossed(2, 2))
+            self.assertTrue(review_threshold_just_crossed(2, 3))
+            self.assertFalse(review_threshold_just_crossed(3, 4))
+            self.assertFalse(review_threshold_just_crossed(1, 5))
+
+    def test_sanitize_upgrade_cta_toggle(self):
+        cfg = sanitize_review_growth_config({'upgrade_cta_enabled': 'off'})
+        self.assertFalse(cfg['upgrade_cta_enabled'])
+        cfg_on = sanitize_review_growth_config({'upgrade_cta_enabled': 'on'})
+        self.assertTrue(cfg_on['upgrade_cta_enabled'])
+
+    def test_sanitize_starter_unlock_toggle(self):
+        cfg = sanitize_review_growth_config({'starter_unlock_enabled': 'off'})
+        self.assertFalse(cfg['starter_unlock_enabled'])
+        cfg_on = sanitize_review_growth_config({'starter_unlock_enabled': 'on'})
+        self.assertTrue(cfg_on['starter_unlock_enabled'])
+
+    def test_sanitize_upgrade_pricing(self):
+        cfg = sanitize_review_growth_config({
+            'upgrade_price_enabled': 'off',
+            'upgrade_promo_price': 4500,
+            'upgrade_full_price': 6500,
+            'upgrade_show_full_price': 'off',
+        })
+        self.assertFalse(cfg['upgrade_price_enabled'])
+        self.assertEqual(cfg['upgrade_promo_price'], 4500)
+        self.assertEqual(cfg['upgrade_full_price'], 6500)
+        self.assertFalse(cfg['upgrade_show_full_price'])
+
+    def test_gst_inclusive(self):
+        from apps.agents.services.review_growth import gst_inclusive
+        self.assertEqual(gst_inclusive(4999), 5899)
+        self.assertEqual(gst_inclusive(6999), 8259)
 
 
 class BrandedQrPngTests(SimpleTestCase):
@@ -107,11 +149,17 @@ class ReviewGrowthUnlockTests(TestCase):
 
     def test_upgrade_cta_only_for_starter_at_threshold(self):
         self.assertFalse(should_show_upgrade_cta(self.agent))
+        self.assertTrue(should_show_upgrade_progress(self.agent))
         self._add_reviews(2)
         self.assertTrue(should_show_upgrade_cta(self.agent))
+        self.assertFalse(should_show_upgrade_progress(self.agent))
+        status = get_review_growth_status(self.agent)
+        self.assertTrue(status['upgrade_ready'])
+        self.assertEqual(status['review_count'], 2)
         self.agent.plan_type = 'professional'
         self.agent.save(update_fields=['plan_type'])
         self.assertFalse(should_show_upgrade_cta(self.agent))
+        self.assertFalse(should_show_upgrade_progress(self.agent))
 
     def test_unlock_is_additive_and_does_not_remove_base(self):
         base = PlanFeatureProxy(['dashboard_stats', 'lead_management'])

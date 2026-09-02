@@ -5,6 +5,8 @@
 <link
     href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap"
     rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/registration-celebration.css' %}">
+<link rel="stylesheet" href="{% static 'css/payment-success-popup.css' %}">
 <style>
     :root {
         --primary: #1d7d5d;
@@ -146,13 +148,15 @@
     }
 
     .plan-price {
-        font-size: 38px;
+        font-size: 28px;
         font-weight: 800;
         color: var(--primary);
         display: flex;
-        align-items: center;
+        flex-wrap: wrap;
+        align-items: baseline;
         justify-content: center;
-        gap: 2px;
+        column-gap: 8px;
+        row-gap: 2px;
     }
 
     .plan-card.starter-theme .plan-price {
@@ -163,11 +167,115 @@
         color: var(--padosi-blue);
     }
 
-    .plan-price span {
-        font-size: 13px;
+    .plan-price-strike {
+        font-size: 14px;
+        color: #94a3b8;
+        font-weight: 600;
+        text-decoration: line-through;
+        text-decoration-thickness: 2px;
+        order: 1;
+    }
+
+    .plan-price-amount {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--padosi-blue);
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+        order: 2;
+    }
+
+    .plan-price-term {
+        width: 100%;
+        text-align: center;
+        font-size: 11px;
         color: #64748b;
         font-weight: 600;
-        margin-left: 4px;
+        order: 3;
+        margin-top: 2px;
+    }
+
+    .plan-price.is-discounted .plan-price-amount {
+        color: #047857;
+        font-size: 30px;
+        background: linear-gradient(180deg, #ecfdf5 0%, #d1fae5 100%);
+        border: 1.5px solid #6ee7b7;
+        border-radius: 12px;
+        padding: 4px 10px 3px;
+        box-shadow: 0 6px 16px rgba(16, 185, 129, 0.18);
+        animation: paPriceReveal 0.55s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    @keyframes paPriceReveal {
+        0% {
+            transform: scale(0.86);
+            opacity: 0.35;
+        }
+
+        60% {
+            transform: scale(1.05);
+        }
+
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .plan-price.is-discounted .plan-price-amount {
+            animation: none;
+        }
+    }
+
+    .plan-discount-badge {
+        display: none;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    .plan-discount-badge.is-visible {
+        display: flex;
+    }
+
+    .plan-discount-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        color: #92400e;
+        border: 1px solid #f59e0b;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 6px 12px;
+        border-radius: 999px;
+        letter-spacing: 0.01em;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.22);
+    }
+
+    .plan-card.is-discounted {
+        box-shadow: 0 18px 40px rgba(16, 185, 129, 0.12);
+    }
+
+    .checkout-deal-price {
+        color: #047857 !important;
+        font-size: 16px;
+        font-weight: 800;
+    }
+
+    .checkout-deal-total {
+        color: #047857 !important;
+        font-size: 22px !important;
+    }
+
+    .checkout-save-row strong {
+        color: #047857;
+        font-weight: 800;
+    }
+
+    .summary-card.has-scratch-deal {
+        background: #f0fdf4;
+        border-color: #86efac;
     }
 
     .plan-subtitle {
@@ -1169,7 +1277,8 @@
                 <div class="plan-header">
                     <div class="plan-name" style="color: #10b981;">Trial Plan</div>
                     <div class="plan-price" style="color: #10b981;">
-                        ₹{{ trial_base_price|floatformat:"0" }}/-<span>{{ trial_duration }} Days</span>
+                        ₹{{ trial_base_price|floatformat:"0" }}/-<span class="plan-price-term">{{ trial_duration }}
+                            Days</span>
                     </div>
                     <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
                         18% GST applicable at checkout</div>
@@ -1209,9 +1318,8 @@
                 <div class="recommended-ribbon glitch-badge scratch-ribbon"
                     style="background: #3b82f6; cursor: pointer; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;">
                     <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px; pointer-events: none;"><i
-                            class="fa-solid fa-wand-magic-sparkles me-1"></i> SCRATCH</span>
-                    <canvas class="ribbon-scratch-canvas" data-label="SCRATCH ME" data-plan="starter"
-                        data-color="#3b82f6"
+                            class="fa-solid fa-wand-magic-sparkles"></i></span>
+                    <canvas class="ribbon-scratch-canvas" data-plan="starter" data-color="#3b82f6"
                         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none;"></canvas>
                 </div>
                 {% else %}
@@ -1225,32 +1333,29 @@
                         <i class="fa-solid fa-bolt"></i>
                     </div>
                     <div class="plan-name">{{ starter_name|default:"Starter's Plan" }}</div>
-                    <div class="plan-price">
+                    <div class="plan-price{% if not starter_scratch_enabled and starter_final < starter_full %} is-discounted{% endif %}"
+                        id="starterPriceWrap">
                         {% if starter_scratch_enabled %}
-                        <span id="starterStrikePrice"
-                            style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px; display:none;">₹{{
-                            starter_full|floatformat:"0" }}</span>
-                        <span id="starterDisplayPrice">₹{{ starter_full|floatformat:"0" }}/-</span><span>2st Year
-                            Only</span>
-                        {% elif starter_final < starter_full %} <span id="starterStrikePrice"
-                            style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">
-                            ₹{{ starter_full|floatformat:"0" }}</span>
-                            <span id="starterDisplayPrice">₹{{ starter_base }}/-</span><span>1st Year Only</span>
-                            {% else %}
-                            <span id="starterStrikePrice" style="display:none;"></span>
-                            <span id="starterDisplayPrice">₹{{ starter_base }}/-</span><span>1st Year Only</span>
-                            {% endif %}
+                        <span id="starterStrikePrice" class="plan-price-strike" style="display:none;">₹{{ starter_full|floatformat:"0" }}</span>
+                        <span id="starterDisplayPrice" class="plan-price-amount">₹{{ starter_full|floatformat:"0" }}/-</span>
+                        {% elif starter_final < starter_full %}
+                        <span id="starterStrikePrice" class="plan-price-strike">₹{{ starter_full|floatformat:"0" }}</span>
+                        <span id="starterDisplayPrice" class="plan-price-amount">₹{{ starter_base }}/-</span>
+                        {% else %}
+                        <span id="starterStrikePrice" class="plan-price-strike" style="display:none;"></span>
+                        <span id="starterDisplayPrice" class="plan-price-amount">₹{{ starter_base }}/-</span>
+                        {% endif %}
+                        <span class="plan-price-term">1st Year Only</span>
                     </div>
                     <div id="starterDiscountBadge"
-                        style="text-align:center; margin-top:6px; {% if starter_scratch_enabled or starter_final >= starter_full %}display:none;{% endif %}">
-                        <span
-                            style="background:#dbeafe; color:#1e3a8a; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #93c5fd;">
-                            <i class="fa-solid fa-tag me-1"></i> Special Discount Applied
+                        class="plan-discount-badge{% if not starter_scratch_enabled and starter_final < starter_full %} is-visible{% endif %}">
+                        <span class="plan-discount-pill">
+                            <i class="fa-solid fa-tags"></i>
+                            <span id="starterSaveLabel">Special Discount Applied</span>
                         </span>
                     </div>
                     <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
                         18% GST applicable at checkout</div>
-                    <div class="plan-subtitle">{{ starter_desc }}</div>
                 </div>
 
                 <div class="plan-features">
@@ -1285,9 +1390,8 @@
                 <div class="recommended-ribbon glitch-badge scratch-ribbon"
                     style="background: #10b981; cursor: pointer; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); overflow: hidden; padding: 0; display: flex; align-items: center; justify-content: center; width: 140px; height: 26px; z-index: 10;">
                     <span style="font-size: 10px; font-weight: 800; letter-spacing: 0.5px; pointer-events: none;"><i
-                            class="fa-solid fa-gift me-1"></i> SCRATCH</span>
-                    <canvas class="ribbon-scratch-canvas" data-label="SCRATCH ME" data-plan="professional"
-                        data-color="#10b981"
+                            class="fa-solid fa-gift"></i></span>
+                    <canvas class="ribbon-scratch-canvas" data-plan="professional" data-color="#10b981"
                         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none;"></canvas>
                 </div>
                 {% else %}
@@ -1301,26 +1405,25 @@
                         <i class="fa-solid fa-crown"></i>
                     </div>
                     <div class="plan-name">{{ prof_name }}</div>
-                    <div class="plan-price">
+                    <div class="plan-price{% if not prof_scratch_enabled and prof_final < prof_full %} is-discounted{% endif %}"
+                        id="profPriceWrap">
                         {% if prof_scratch_enabled %}
-                        <span id="profStrikePrice"
-                            style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px; display:none;">₹{{
-                            prof_full|floatformat:"0" }}</span>
-                        <span id="profDisplayPrice">₹{{ prof_full|floatformat:"0" }}/-</span><span>1st Year Only</span>
-                        {% elif prof_final < prof_full %} <span id="profStrikePrice"
-                            style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">
-                            ₹{{ prof_full|floatformat:"0" }}</span>
-                            <span id="profDisplayPrice">₹{{ prof_base }}/-</span><span>1st Year Only</span>
-                            {% else %}
-                            <span id="profStrikePrice" style="display:none;"></span>
-                            <span id="profDisplayPrice">₹{{ prof_base }}/-</span><span>1st Year Only</span>
-                            {% endif %}
+                        <span id="profStrikePrice" class="plan-price-strike" style="display:none;">₹{{ prof_full|floatformat:"0" }}</span>
+                        <span id="profDisplayPrice" class="plan-price-amount">₹{{ prof_full|floatformat:"0" }}/-</span>
+                        {% elif prof_final < prof_full %}
+                        <span id="profStrikePrice" class="plan-price-strike">₹{{ prof_full|floatformat:"0" }}</span>
+                        <span id="profDisplayPrice" class="plan-price-amount">₹{{ prof_base }}/-</span>
+                        {% else %}
+                        <span id="profStrikePrice" class="plan-price-strike" style="display:none;"></span>
+                        <span id="profDisplayPrice" class="plan-price-amount">₹{{ prof_base }}/-</span>
+                        {% endif %}
+                        <span class="plan-price-term">1st Year Only</span>
                     </div>
                     <div id="profDiscountBadge"
-                        style="text-align:center; margin-top:6px; {% if prof_scratch_enabled or prof_final >= prof_full %}display:none;{% endif %}">
-                        <span
-                            style="background:#d1fae5; color:#059669; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #6ee7b7;">
-                            <i class="fa-solid fa-tag me-1"></i> Special Discount Applied
+                        class="plan-discount-badge{% if not prof_scratch_enabled and prof_final < prof_full %} is-visible{% endif %}">
+                        <span class="plan-discount-pill">
+                            <i class="fa-solid fa-tags"></i>
+                            <span id="profSaveLabel">Special Discount Applied</span>
                         </span>
                     </div>
                     <div style="text-align:center; font-size:11px; color:#94a3b8; font-weight:600; margin-top:4px;">+
@@ -1366,14 +1469,22 @@
 
             <!-- Order Summary -->
             <div class="section-title">Order Summary</div>
-            <div class="summary-card">
+            <div class="summary-card" id="selectedPlanSummaryCard">
                 <div class="detail-row">
                     <span>Selected Plan</span>
                     <strong id="selectedPlanName"></strong>
                 </div>
+                <div class="detail-row" id="selectedPlanOriginalRow" style="display:none;">
+                    <span>Original Fee</span>
+                    <s id="selectedPlanOriginal" style="color:#94a3b8;"></s>
+                </div>
                 <div class="detail-row">
-                    <span>Base Registration Fee</span>
+                    <span id="selectedPlanPriceLabel">Base Registration Fee</span>
                     <strong id="selectedPlanPrice"></strong>
+                </div>
+                <div class="detail-row checkout-save-row" id="selectedPlanSaveRow" style="display:none;">
+                    <span>Scratch Discount</span>
+                    <strong id="selectedPlanSave"></strong>
                 </div>
                 <div class="detail-row">
                     <span>GST (18%)</span>
@@ -1598,11 +1709,14 @@
         </div>
     </div>
 </div>
+{% include 'agents/partials/registration_celebration.html' %}
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://checkout.razorpay.com/v1/checkout.js" data-razorpay-sdk="1"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<script src="{% static 'js/registration-celebration.js' %}"></script>
+<script src="{% static 'js/payment-success-popup.js' %}"></script>
 <script>
     var is_upgrade_flow = {{ is_upgrade_flow|yesno:"true,false,false" }};
     var starterScratchEnabled = {{ starter_scratch_enabled|yesno:"true,false,false" }};
@@ -1669,44 +1783,53 @@
         }
     }
 
-    function applyScratchUi(planType) {
-        if (planType === 'starter') {
-            currentPrices.starter.base = discountedPrices.starter.base;
-            currentPrices.starter.total = discountedPrices.starter.total || payableTotal(discountedPrices.starter.base);
+    function formatInr(n) {
+        return Number(n || 0).toLocaleString('en-IN');
+    }
 
-            let strikeEl = document.getElementById('starterStrikePrice');
-            let dispEl = document.getElementById('starterDisplayPrice');
-            let badgeEl = document.getElementById('starterDiscountBadge');
+    function paintRevealedPrice(planType) {
+        const isStarter = planType === 'starter';
+        const prices = isStarter ? currentPrices.starter : currentPrices.professional;
+        const deal = isStarter ? discountedPrices.starter : discountedPrices.professional;
+        const prefix = isStarter ? 'starter' : 'prof';
+        const amountEl = document.getElementById(prefix + 'DisplayPrice');
+        const strikeEl = document.getElementById(prefix + 'StrikePrice');
+        const badgeEl = document.getElementById(prefix + 'DiscountBadge');
+        const saveEl = document.getElementById(prefix + 'SaveLabel');
+        const wrap = document.getElementById(prefix + 'PriceWrap');
+        const card = wrap ? wrap.closest('.plan-card') : (amountEl && amountEl.closest('.plan-card'));
 
-            if (strikeEl) {
-                strikeEl.innerText = '₹' + currentPrices.starter.full;
-                strikeEl.style.display = 'inline-block';
-            }
-            if (dispEl) {
-                dispEl.innerText = '₹' + discountedPrices.starter.base + '/-';
-            }
-            if (badgeEl) {
-                badgeEl.style.display = 'block';
-            }
-        } else if (planType === 'professional') {
-            currentPrices.professional.base = discountedPrices.professional.base;
-            currentPrices.professional.total = discountedPrices.professional.total || payableTotal(discountedPrices.professional.base);
+        prices.base = deal.base;
+        prices.total = deal.total || payableTotal(deal.base);
 
-            let strikeEl = document.getElementById('profStrikePrice');
-            let dispEl = document.getElementById('profDisplayPrice');
-            let badgeEl = document.getElementById('profDiscountBadge');
+        const full = Number(prices.full) || 0;
+        const disc = Number(deal.base) || 0;
+        const save = Math.max(0, full - disc);
+        const pct = full > 0 ? Math.round((save / full) * 100) : 0;
 
-            if (strikeEl) {
-                strikeEl.innerText = '₹' + currentPrices.professional.full;
-                strikeEl.style.display = 'inline-block';
-            }
-            if (dispEl) {
-                dispEl.innerText = '₹' + discountedPrices.professional.base + '/-';
-            }
-            if (badgeEl) {
-                badgeEl.style.display = 'block';
-            }
+        if (strikeEl) {
+            strikeEl.textContent = '₹' + formatInr(full);
+            strikeEl.style.display = 'inline';
         }
+        if (amountEl) {
+            amountEl.textContent = '₹' + formatInr(disc) + '/-';
+            amountEl.classList.add('is-revealed');
+        }
+        if (wrap) wrap.classList.add('is-discounted');
+        if (card) card.classList.add('is-discounted');
+        if (saveEl) {
+            saveEl.textContent = save > 0
+                ? ('You save ₹' + formatInr(save) + ' · ' + pct + '% OFF')
+                : 'Special Discount Applied';
+        }
+        if (badgeEl) {
+            badgeEl.classList.add('is-visible');
+            badgeEl.style.display = 'flex';
+        }
+    }
+
+    function applyScratchUi(planType) {
+        paintRevealedPrice(planType);
 
         if (selectedPlan && selectedPlan.type === planType) {
             selectPlanForPayment(planType);
@@ -1779,6 +1902,40 @@
             document.getElementById('selectedPlanPrice').textContent = `₹${price.toLocaleString('en-IN')}`;
             document.getElementById('selectedPlanGST').textContent = `₹${gst.toLocaleString('en-IN')}`;
             document.getElementById('selectedPlanTotal').textContent = `₹${total.toLocaleString('en-IN')}`;
+
+            const originalRow = document.getElementById('selectedPlanOriginalRow');
+            const saveRow = document.getElementById('selectedPlanSaveRow');
+            const priceEl = document.getElementById('selectedPlanPrice');
+            const totalEl = document.getElementById('selectedPlanTotal');
+            const priceLabel = document.getElementById('selectedPlanPriceLabel');
+            const summaryCard = document.getElementById('selectedPlanSummaryCard');
+            const revealed = (selectedPlan.type === 'starter' && starterScratchRevealed)
+                || (selectedPlan.type === 'professional' && profScratchRevealed);
+            const full = selectedPlan.type === 'starter'
+                ? Number(currentPrices.starter.full)
+                : (selectedPlan.type === 'professional' ? Number(currentPrices.professional.full) : 0);
+            const save = revealed ? Math.max(0, full - price) : 0;
+
+            if (revealed && save > 0) {
+                if (originalRow) originalRow.style.display = 'flex';
+                if (saveRow) saveRow.style.display = 'flex';
+                const originalEl = document.getElementById('selectedPlanOriginal');
+                const saveEl = document.getElementById('selectedPlanSave');
+                if (originalEl) originalEl.textContent = '₹' + full.toLocaleString('en-IN');
+                if (saveEl) saveEl.textContent = '− ₹' + save.toLocaleString('en-IN');
+                if (priceEl) priceEl.classList.add('checkout-deal-price');
+                if (totalEl) totalEl.classList.add('checkout-deal-total');
+                if (summaryCard) summaryCard.classList.add('has-scratch-deal');
+                if (priceLabel) priceLabel.textContent = 'Discounted Fee';
+            } else {
+                if (originalRow) originalRow.style.display = 'none';
+                if (saveRow) saveRow.style.display = 'none';
+                if (priceEl) priceEl.classList.remove('checkout-deal-price');
+                if (totalEl) totalEl.classList.remove('checkout-deal-total');
+                if (summaryCard) summaryCard.classList.remove('has-scratch-deal');
+                if (priceLabel) priceLabel.textContent = 'Base Registration Fee';
+            }
+
             syncPayButtonState();
             setTimeout(function () {
                 summary.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1810,10 +1967,22 @@
         Swal.close();
     }
 
-    function celebrateRegistration(data) {
+    function redirectAfterPaymentVerified(data) {
         hideLoadingPopup();
+        try { sessionStorage.removeItem('padosiPendingCheckout'); } catch (e) { }
         var redirectUrl = (data && data.redirect_url) || '{% url "agents:agent_dashboard" %}';
-        window.location.href = redirectUrl;
+        var agentName = (data && data.agent_name) || '';
+
+        if (typeof window.showPaymentSuccessPopup === 'function') {
+            window.showPaymentSuccessPopup({ agentName: agentName, redirectUrl: redirectUrl, duration: 3000 });
+            return;
+        }
+
+        window.setTimeout(function () { window.location.replace(redirectUrl); }, 3000);
+    }
+
+    function celebrateRegistration(data) {
+        redirectAfterPaymentVerified(data);
     }
 
     var lastCheckout = null;
@@ -1835,6 +2004,23 @@
         paymentBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Proceed to Secure Payment <i class="fa-solid fa-arrow-right ms-2"></i>';
     }
 
+    function checkoutUsesCallback(data) {
+        if (data && data.checkout_use_callback !== undefined && data.checkout_use_callback !== null) {
+            return !!data.checkout_use_callback;
+        }
+        return window.location.protocol === 'https:';
+    }
+
+    function isRazorpayInProgressError(err) {
+        var step = String((err && err.step) || '').toLowerCase();
+        var reason = String((err && err.reason) || '').toLowerCase();
+        if (step === 'payment_authentication' || step === 'payment_capture' ||
+            step === 'payment_redirect' || step === 'redirect') {
+            return true;
+        }
+        return reason === 'payment_pending' || reason === 'payment_redirect';
+    }
+
     function isRazorpayReady() {
         return typeof window.Razorpay === 'function';
     }
@@ -1842,13 +2028,13 @@
     function buildRazorpayOptions(data, selectedPlan, onSuccess) {
         var orderId = data.razorpay_order_id || data.order_id;
         var keyId = data.razorpay_key_id || data.key;
+        var useCallback = checkoutUsesCallback(data);
         var options = {
             key: keyId,
             currency: 'INR',
             name: 'PadosiAgent',
             description: (selectedPlan && selectedPlan.name) || 'PadosiAgent Plan',
             order_id: orderId,
-            handler: onSuccess,
             prefill: {
                 name: data.customer_name || data.name || '',
                 email: data.customer_email || data.email || '',
@@ -1857,19 +2043,21 @@
             theme: { color: '#273c8e' },
             modal: {
                 ondismiss: function () {
-                    var paymentBtn = document.getElementById('confirmPaymentBtn');
-                    resetPayButton(paymentBtn);
+                    resetPayButton(document.getElementById('confirmPaymentBtn'));
                 }
             }
         };
-        // callback_url only on HTTPS — HTTP localhost triggers browser Private Network Access blocks (EMI/netbanking fail).
-        var useCallback = data.checkout_use_callback;
-        if (useCallback === undefined || useCallback === null) {
-            useCallback = window.location.protocol === 'https:';
-        }
+
         if (useCallback) {
+            // HTTPS netbanking/UPI: Razorpay redirects back to callback_url after payment.
             options.callback_url = window.location.origin + '/agent-register/payment-callback/';
+            options.redirect = true;
+        } else {
+            // Local HTTP dev: stay in modal and confirm via handler + verify-payment.
+            options.handler = onSuccess;
+            options.redirect = false;
         }
+
         return options;
     }
 
@@ -1966,7 +2154,8 @@
                     agent_id: data.agent_id,
                     plan_type: selectedPlan.type,
                     plan_name: selectedPlan.name,
-                    order_id: orderId
+                    order_id: orderId,
+                    checkout_use_callback: checkoutUsesCallback(data)
                 };
                 try { sessionStorage.setItem('padosiPendingCheckout', JSON.stringify(lastCheckout)); } catch (e) { }
 
@@ -1991,11 +2180,14 @@
                     const options = buildRazorpayOptions(data, selectedPlan, function (response) {
                         verifyRazorpayPayment(response);
                     });
+                    const useCallback = checkoutUsesCallback(data);
                     const rzp1 = new Razorpay(options);
                     rzp1.on('payment.failed', function (resp) {
+                        if (useCallback) {
+                            return;
+                        }
                         const err = (resp && resp.error) || {};
-                        const step = String(err.step || '').toLowerCase();
-                        if (step === 'payment_authentication' || step === 'payment_capture') {
+                        if (isRazorpayInProgressError(err)) {
                             return;
                         }
                         fetch('/payment-failure/', {
@@ -2049,10 +2241,10 @@
                 body: JSON.stringify(payload)
             });
             const data = await response.json();
-            hideLoadingPopup();
             if (data.success) {
-                celebrateRegistration(data);
+                redirectAfterPaymentVerified(data);
             } else {
+                hideLoadingPopup();
                 Swal.fire('Payment Failed', userPaymentMessage(data.message), 'error');
                 resetPayButton(paymentBtn);
             }
@@ -2127,20 +2319,10 @@
                 discountedPrices.professional.total = data.prof_total;
 
                 if (!starterScratchEnabled || starterScratchRevealed) {
-                    currentPrices.starter.base = data.starter_base;
-                    currentPrices.starter.total = data.starter_total;
-                    let sDisp = document.getElementById('starterDisplayPrice');
-                    if (sDisp) sDisp.innerText = '₹' + data.starter_base + '/-';
-                    let sBadge = document.getElementById('starterDiscountBadge');
-                    if (sBadge) sBadge.style.display = 'block';
+                    paintRevealedPrice('starter');
                 }
                 if (!profScratchEnabled || profScratchRevealed) {
-                    currentPrices.professional.base = data.prof_base;
-                    currentPrices.professional.total = data.prof_total;
-                    let pDisp = document.getElementById('profDisplayPrice');
-                    if (pDisp) pDisp.innerText = '₹' + data.prof_base + '/-';
-                    let pBadge = document.getElementById('profDiscountBadge');
-                    if (pBadge) pBadge.style.display = 'block';
+                    paintRevealedPrice('professional');
                 }
 
                 // Update modal price and discount badge
@@ -2184,13 +2366,6 @@
             let bgColor = canvas.dataset.color || '#3b82f6';
             ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, 140, 26);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '800 10px "Plus Jakarta Sans", sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            let label = canvas.dataset.label || 'SCRATCH ME';
-            ctx.fillText(label, 70, 14);
 
             ctx.globalCompositeOperation = 'destination-out';
             canvas.ribbonScratchCompleted = false;
@@ -2306,6 +2481,12 @@
     // Initialize on DOM ready
     document.addEventListener('DOMContentLoaded', function () {
         initRibbonScratch();
+        try {
+            var storedCheckout = sessionStorage.getItem('padosiPendingCheckout');
+            if (storedCheckout) {
+                lastCheckout = JSON.parse(storedCheckout);
+            }
+        } catch (e) { }
         var callbackParams = new URLSearchParams(window.location.search);
         if (callbackParams.get('razorpay_payment_id') && callbackParams.get('razorpay_order_id')) {
             window.location.replace('/agent-register/payment-callback/' + window.location.search);

@@ -239,9 +239,178 @@ body.pa-qr-preview-open .modal-backdrop {
 
 .pa-upgrade-banner {
     background: linear-gradient(135deg, #1e3a8a 0%, #1d7d5d 100%);
-    border-radius: 16px; padding: 24px 28px; margin-bottom: 24px; color: #fff;
-    position: relative; overflow: hidden;
+    border-radius: 16px;
+    padding: 20px 22px;
+    margin-bottom: 24px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
     box-shadow: 0 8px 32px rgba(30, 58, 110, 0.25);
+}
+
+.pa-upgrade-banner__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.pa-upgrade-banner__content {
+    flex: 1 1 280px;
+    min-width: 0;
+}
+
+.pa-upgrade-banner__badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.pa-upgrade-banner__title {
+    margin: 10px 0 6px;
+    font-weight: 800;
+    color: #fff;
+    font-size: 1.15rem;
+    line-height: 1.3;
+}
+
+.pa-upgrade-banner__message {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 13.5px;
+    line-height: 1.5;
+    max-width: 640px;
+}
+
+.pa-upgrade-banner__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.pa-upgrade-banner__tags span {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 99px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.pa-upgrade-banner__aside {
+    flex: 0 0 auto;
+}
+
+.pa-upgrade-banner__btn {
+    background: #fff;
+    color: #1e3a8a;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-weight: 800;
+    min-width: 132px;
+    max-width: 160px;
+    text-align: center;
+    line-height: 1.2;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pa-upgrade-banner__btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.16);
+    color: #1e3a8a;
+}
+
+.pa-upgrade-banner__btn-label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.72;
+    font-weight: 700;
+}
+
+.pa-upgrade-banner__btn-price {
+    display: block;
+    font-size: 1.15rem;
+    margin-top: 2px;
+}
+
+.pa-upgrade-banner__btn-strike {
+    display: block;
+    font-size: 11px;
+    text-decoration: line-through;
+    opacity: 0.5;
+    font-weight: 600;
+    margin-top: 1px;
+}
+
+.pa-upgrade-banner__btn-gst {
+    display: block;
+    font-size: 10px;
+    opacity: 0.65;
+    font-weight: 600;
+    margin-top: 1px;
+}
+
+.pa-upgrade-progress-banner {
+    background: linear-gradient(135deg, #eff6ff 0%, #ecfdf5 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 16px;
+    padding: 20px 22px;
+    margin-bottom: 24px;
+    box-shadow: 0 6px 20px rgba(30, 58, 110, 0.08);
+}
+
+.pa-upgrade-progress-kicker {
+    display: inline-block;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.pa-upgrade-progress-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.35;
+}
+
+.pa-upgrade-progress-copy,
+.pa-upgrade-progress-foot {
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.5;
+}
+
+.pa-upgrade-progress-count {
+    text-align: right;
+    min-width: 72px;
+    color: #1e3a8a;
+}
+
+.pa-upgrade-progress-count strong {
+    font-size: 1.8rem;
+    line-height: 1;
+    font-weight: 800;
+}
+
+.pa-upgrade-progress-count span {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #64748b;
 }
 
 .review-share-progress { height: 6px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
@@ -260,4 +429,7 @@ body.pa-qr-preview-open .modal-backdrop {
     .pa-qr-dock-row { grid-template-columns: 1fr; }
     .pa-qr-mini { width: auto; }
     .pa-review-social-labels { gap: 8px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .pa-upgrade-banner__inner { flex-direction: column; align-items: stretch; }
+    .pa-upgrade-banner__aside { width: 100%; }
+    .pa-upgrade-banner__btn { width: 100%; max-width: none; }
 }

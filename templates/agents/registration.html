@@ -91,9 +91,14 @@
                     .reg-preview-overlay {
                         z-index: 200000 !important;
                     }
+                    .reg-preview-directory-card .react-agent-card {
+                        width: 100%;
+                        max-width: 980px;
+                        margin: 0 auto;
+                    }
                     .reg-preview-directory-card .rac-card {
                         margin-bottom: 0;
-                        max-width: 760px;
+                        max-width: 980px;
                         margin-left: auto;
                         margin-right: auto;
                         box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
@@ -326,7 +331,7 @@
                                                             <i data-lucide="map-pin" class="h-3 w-3 shrink-0"></i>
                                                             <input x-ref="pinInput" type="text" x-model="pincode"
                                                                 @focus="editPin = true"
-                                                                @input="pincode = pincode.replace(/\D/g, '').slice(0,6); if (pincode.length === 6) { checkPin(); } else { state = ''; city = ''; } delete errors.agent_pincode"
+                                                                @input="pincode = pincode.replace(/\D/g, '').slice(0,6); pinVerified = false; if (pincode.length === 6) { checkPin(); } else { state = ''; city = ''; } delete errors.agent_pincode"
                                                                 @blur="editPin = false" placeholder="Pin code *"
                                                                 class="h-8 w-full min-w-0 border border-dashed rounded border-primary/40 bg-primary/[0.04] px-2 text-sm font-bold outline-none focus-visible:ring-1"
                                                                 :class="{'border-destructive focus-visible:ring-destructive': errors.agent_pincode}">
@@ -556,7 +561,7 @@
                                                 class="flex h-10 min-w-0 flex-1 items-center gap-1 rounded-lg bg-[#25D366]/15 px-1.5">
                                                 <i data-lucide="message-circle" class="h-4 w-4 shrink-0 text-[#128C4B]"></i>
                                                 <input x-ref="waInput" type="tel" x-model="whatsapp" @focus="editWa = true"
-                                                    @input="whatsapp = whatsapp.replace(/\D/g, '').slice(0, 10); delete errors.whatsapp"
+                                                    @input="handleWhatsappInput(); delete errors.whatsapp"
                                                     @blur="editWa = false" placeholder="WhatsApp no"
                                                     class="h-7 min-w-0 flex-1 border border-dashed rounded border-[#25D366]/60 bg-card px-1 text-center text-sm font-bold placeholder:text-xs sm:text-sm outline-none focus-visible:ring-1"
                                                     :class="{'border-destructive focus-visible:ring-destructive': errors.whatsapp}">
@@ -795,7 +800,10 @@
                                         <div class="rac-d-name-row">
                                             <h3 class="rac-d-name" x-text="name || 'Your Name'"></h3>
                                             <span class="agent-recognition-badge badge-verified-official">
-                                                <i class="fas fa-id-badge"></i> Licensed
+                                                <i class="fas fa-circle-check"></i> Verified
+                                            </span>
+                                            <span class="agent-recognition-badge badge-irdai-official">
+                                                <i class="fas fa-medal"></i> Licensed
                                             </span>
                                         </div>
                                         <div class="rac-d-rating">
@@ -841,12 +849,61 @@
                                             </div>
                                         </div>
 
-                                        <div class="rac-tags">
+                                        <div class="rac-d-tags">
                                             <template x-for="seg in segments">
-                                                <span class="rac-tag rac-tag--default"
-                                                    x-text="seg.toUpperCase()"
+                                                <span class="rac-d-tag rac-tag--default"
+                                                    x-text="seg === 'sme' ? 'SME' : seg.charAt(0).toUpperCase() + seg.slice(1)"
                                                     :class="{'rac-tag--health': seg === 'health', 'rac-tag--life': seg === 'life', 'rac-tag--motor': seg === 'motor', 'rac-tag--sme': seg === 'sme'}"></span>
                                             </template>
+                                        </div>
+                                    </div>
+
+                                    <div class="rac-d-right">
+                                        <div class="rac-d-match rac-match--green">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                            </svg>
+                                            95% Match
+                                        </div>
+                                        <div class="rac-d-actions">
+                                            <a href="javascript:void(0)" class="rac-d-btn rac-d-btn--profile" @click.prevent="goPreviewSlide(1)">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                                    <circle cx="12" cy="7" r="4" />
+                                                </svg>
+                                                View Profile
+                                            </a>
+                                            <a :href="waHref" class="rac-d-btn rac-d-btn--whatsapp" target="_blank" rel="noopener" @click="openPreviewContact($event, 'whatsapp')">
+                                                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" width="14" height="14" aria-hidden="true">
+                                                    <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z" />
+                                                </svg>
+                                                WhatsApp
+                                            </a>
+                                            <a :href="callHref" class="rac-d-btn rac-d-btn--call" @click="openPreviewContact($event, 'call')">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M13 2a9 9 0 0 1 9 9" />
+                                                    <path d="M13 6a5 5 0 0 1 5 5" />
+                                                    <path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384" />
+                                                </svg>
+                                                Call Now
+                                            </a>
+                                            <div class="rac-d-icon-row">
+                                                <button type="button" class="rac-icon-btn" title="Compare Agent" aria-label="Compare Agent">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                        <circle cx="18" cy="18" r="3" />
+                                                        <circle cx="6" cy="6" r="3" />
+                                                        <path d="M13 6h3a2 2 0 0 1 2 2v7" />
+                                                        <path d="M11 18H8a2 2 0 0 1-2-2V9" />
+                                                    </svg>
+                                                    Compare
+                                                </button>
+                                                <button type="button" class="rac-icon-btn rac-icon-btn--fav" title="Add to Favourites" aria-label="Add to Favourites">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                                    </svg>
+                                                    Save
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -865,7 +922,10 @@
                                             <h3 class="rac-name" x-text="name || 'Your Name'"></h3>
                                             <div class="rac-badges">
                                                 <span class="agent-recognition-badge badge-verified-official">
-                                                    <i class="fas fa-id-badge"></i> Licensed
+                                                    <i class="fas fa-circle-check"></i> Verified
+                                                </span>
+                                                <span class="agent-recognition-badge badge-irdai-official">
+                                                    <i class="fas fa-medal"></i> Licensed
                                                 </span>
                                             </div>
                                         </div>
@@ -876,16 +936,24 @@
                                                 </template>
                                             </div>
                                             <span class="rac-rating-val">5.0</span>
+                                            <span class="rac-rating-count">(0 reviews)</span>
                                         </div>
-                                        <div class="flex flex-wrap gap-1 mt-1">
-                                            <div class="rac-dist-pill"><i data-lucide="map-pin"
-                                                    class="h-3 w-3 mr-0.5"></i> Nearby</div>
+                                        <div class="flex flex-wrap gap-1 mt-1" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:2px;">
+                                            <div class="rac-dist-pill">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                                                    <circle cx="12" cy="10" r="3" />
+                                                </svg>
+                                                Nearby
+                                            </div>
+                                            <div class="rac-match-pill rac-match--green">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                                </svg>
+                                                <span>95% Match</span>
+                                            </div>
                                         </div>
-                                        <div class="rac-location mt-1">
-                                            <i data-lucide="map-pin" class="h-3 w-3 mr-1"></i> <span
-                                                x-text="city || pincode || 'India'"></span>
-                                        </div>
-                                        <div class="rac-stats-grid">
+                                        <div class="rac-stats-grid" style="margin-top: 8px;">
                                             <div class="rac-stat-box">
                                                 <div class="rac-stat-num"
                                                     x-text="(yearsExperience || '0') + '+'"></div>
@@ -915,6 +983,44 @@
                                             </template>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="rac-actions">
+                                    <div class="rac-actions-right">
+                                        <button type="button" class="rac-icon-btn" title="Compare Agent" aria-label="Compare Agent">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <circle cx="18" cy="18" r="3" />
+                                                <circle cx="6" cy="6" r="3" />
+                                                <path d="M13 6h3a2 2 0 0 1 2 2v7" />
+                                                <path d="M11 18H8a2 2 0 0 1-2-2V9" />
+                                            </svg>
+                                        </button>
+                                        <button type="button" class="rac-icon-btn" title="Add to Favourites" aria-label="Add to Favourites">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <a href="javascript:void(0)" class="rac-btn rac-btn--profile" @click.prevent="goPreviewSlide(1)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                            <circle cx="12" cy="7" r="4" />
+                                        </svg>
+                                        Profile
+                                    </a>
+                                    <a :href="waHref" class="rac-btn rac-btn--whatsapp" target="_blank" rel="noopener" @click="openPreviewContact($event, 'whatsapp')">
+                                        <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 448 512" width="14" height="14" aria-hidden="true">
+                                            <path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z" />
+                                        </svg>
+                                        WhatsApp
+                                    </a>
+                                    <a :href="callHref" class="rac-btn rac-btn--call" @click="openPreviewContact($event, 'call')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M13 2a9 9 0 0 1 9 9" />
+                                            <path d="M13 6a5 5 0 0 1 5 5" />
+                                            <path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384" />
+                                        </svg>
+                                        Call Now
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -971,10 +1077,10 @@
                                             </div>
 
                                             <div class="action-btns">
-                                                <a href="javascript:void(0)" class="btn btn-whatsapp pointer-events-none">
+                                                <a :href="waHref" class="btn btn-whatsapp" target="_blank" rel="noopener" @click="openPreviewContact($event, 'whatsapp')">
                                                     <i class="fab fa-whatsapp"></i> WhatsApp
                                                 </a>
-                                                <a href="javascript:void(0)" class="btn btn-call pointer-events-none">
+                                                <a :href="callHref" class="btn btn-call" @click="openPreviewContact($event, 'call')">
                                                     <i class="fa-solid fa-phone"></i> Call Now
                                                 </a>
                                             </div>
@@ -1446,6 +1552,7 @@
                 editPhone: false,
                 editWa: false,
                 lookingUpPin: false,
+                pinVerified: false,
 
                 segmentOptions: [
                     { id: 'health', label: 'Health', icon: 'heart' },
@@ -1503,8 +1610,19 @@
                         return Swal.fire('Already Registered', this.emailCheckMessage || 'This email is already registered. Please login.', 'warning');
                     }
                     if (!/^[6-9]\d{9}$/.test(phoneStr)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit mobile number starting with 6-9.', 'warning');
-                    if (this.whatsapp && !/^\d{10}$/.test(this.whatsapp)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit WhatsApp number.', 'warning');
-                    if (!/^\d{6}$/.test(pinStr)) return Swal.fire('Invalid Detail', 'Please enter a valid 6-digit pincode.', 'warning');
+                    if (this.whatsapp && !/^[6-9]\d{9}$/.test(this.whatsapp)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit WhatsApp number starting with 6-9.', 'warning');
+                    if (!/^[1-9]\d{5}$/.test(pinStr)) {
+                        this.errors.agent_pincode = ['Please enter a valid 6-digit pincode.'];
+                        return Swal.fire({ icon: 'error', title: 'Validation Error', text: this.errors.agent_pincode[0] });
+                    }
+                    this.isSubmitting = true;
+                    let pinOk = false;
+                    try {
+                        pinOk = await this.ensureValidPincode(true);
+                    } finally {
+                        this.isSubmitting = false;
+                    }
+                    if (!pinOk) return;
                     if (this.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(this.pan)) return Swal.fire('Invalid Detail', 'PAN must be 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).', 'warning');
                     if (!this.segments || this.segments.length === 0) return Swal.fire('Missing Detail', 'Please select at least one insurance segment.', 'warning');
                     if (!this.agreeTerms) return Swal.fire('Missing Detail', 'Please agree to the Terms of Service to continue.', 'warning');
@@ -1636,15 +1754,42 @@
                 },
 
                 get isValidPincode() {
-                    return /^\d{6}$/.test(this.pincode);
+                    return /^[1-9]\d{5}$/.test(this.pincode);
                 },
 
                 get isPhoneValid() {
-                    return /^\d{10}$/.test(this.phone);
+                    return /^[6-9]\d{9}$/.test(this.phone);
                 },
 
                 get isWaValid() {
-                    return /^\d{10}$/.test(this.whatsapp || this.phone);
+                    return /^[6-9]\d{9}$/.test(this.whatsapp || this.phone);
+                },
+
+                get contactDigits() {
+                    const raw = String(this.whatsapp || this.phone || '').replace(/\D/g, '');
+                    return raw.length >= 10 ? raw.slice(-10) : raw;
+                },
+
+                get waHref() {
+                    return this.contactDigits.length === 10
+                        ? `https://wa.me/91${this.contactDigits}`
+                        : 'javascript:void(0)';
+                },
+
+                get callHref() {
+                    return this.contactDigits.length === 10
+                        ? `tel:+91${this.contactDigits}`
+                        : 'javascript:void(0)';
+                },
+
+                openPreviewContact(event, type) {
+                    if (this.contactDigits.length === 10) return true;
+                    event.preventDefault();
+                    const msg = type === 'whatsapp'
+                        ? 'Enter your WhatsApp number to preview this button.'
+                        : 'Enter your mobile number to preview this button.';
+                    Swal.fire('Add contact', msg, 'info');
+                    return false;
                 },
 
                 get isPanValid() {
@@ -1656,7 +1801,8 @@
                         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim()) &&
                         this.emailStatus !== 'taken' &&
                         /^[6-9]\d{9}$/.test(this.phone) &&
-                        /^\d{6}$/.test(this.pincode) &&
+                        (!this.whatsapp || /^[6-9]\d{9}$/.test(this.whatsapp)) &&
+                        /^[1-9]\d{5}$/.test(this.pincode) &&
                         this.segments.length > 0;
                 },
 
@@ -1695,6 +1841,10 @@
                     if (!this.whatsapp || this.whatsapp === this.phone.slice(0, -1)) {
                         this.whatsapp = this.phone;
                     }
+                },
+
+                handleWhatsappInput() {
+                    this.whatsapp = String(this.whatsapp || '').replace(/\D/g, '').slice(0, 10);
                 },
 
                 checkSlug() {
@@ -1756,24 +1906,54 @@
                     }
                 },
 
-                checkPin() {
-                    if (!this.isValidPincode) return;
+                async ensureValidPincode(showError) {
+                    if (this.pinVerified && this.state && /^[1-9]\d{5}$/.test(this.pincode || '')) {
+                        delete this.errors.agent_pincode;
+                        return true;
+                    }
+                    if (!/^[1-9]\d{5}$/.test(this.pincode || '')) {
+                        this.pinVerified = false;
+                        this.city = '';
+                        this.state = '';
+                        if (showError) {
+                            this.errors.agent_pincode = ['Please enter a valid 6-digit pincode.'];
+                            Swal.fire({ icon: 'error', title: 'Validation Error', text: this.errors.agent_pincode[0] });
+                        }
+                        return false;
+                    }
                     this.lookingUpPin = true;
-                    fetch(`/insurance/api/pincode/fetch/${this.pincode}`)
-                        .then(res => res.json())
-                        .then(res => {
-                            if (res.success && res.data) {
-                                this.city = res.data.formatted_location || res.data.district || 'Unknown Location';
-                                this.state = res.data.state || '';
-                            } else {
-                                this.city = 'Invalid Pincode';
-                                this.state = '';
-                            }
-                        })
-                        .catch(() => {
-                            this.city = 'Lookup Failed';
-                        })
-                        .finally(() => this.lookingUpPin = false);
+                    try {
+                        const res = await fetch('/insurance/api/pincode/fetch/' + this.pincode);
+                        const data = await res.json();
+                        if (data && data.success && data.data) {
+                            this.city = data.data.formatted_location || data.data.district || '';
+                            this.state = data.data.state || '';
+                            this.pinVerified = true;
+                            delete this.errors.agent_pincode;
+                            return true;
+                        }
+                        this.city = '';
+                        this.state = '';
+                        this.pinVerified = false;
+                        if (showError) {
+                            this.errors.agent_pincode = ['This pincode was not found. Please enter a valid pincode.'];
+                            Swal.fire({ icon: 'error', title: 'Validation Error', text: this.errors.agent_pincode[0] });
+                        }
+                        return false;
+                    } catch (e) {
+                        this.pinVerified = false;
+                        if (showError) {
+                            this.errors.agent_pincode = ['This pincode was not found. Please enter a valid pincode.'];
+                            Swal.fire({ icon: 'error', title: 'Validation Error', text: this.errors.agent_pincode[0] });
+                        }
+                        return false;
+                    } finally {
+                        this.lookingUpPin = false;
+                    }
+                },
+
+                checkPin() {
+                    this.ensureValidPincode(false);
                 },
 
                 toggleSegment(id) {
@@ -1851,8 +2031,13 @@
                             return Swal.fire('Already Registered', this.emailCheckMessage || 'This email is already registered. Please login.', 'warning');
                         }
                         if (!/^[6-9]\d{9}$/.test(phoneStr)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit mobile number starting with 6-9.', 'warning');
-                        if (this.whatsapp && !/^\d{10}$/.test(this.whatsapp)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit WhatsApp number.', 'warning');
-                        if (!/^\d{6}$/.test(pinStr)) return Swal.fire('Invalid Detail', 'Please enter a valid 6-digit pincode.', 'warning');
+                        if (this.whatsapp && !/^[6-9]\d{9}$/.test(this.whatsapp)) return Swal.fire('Invalid Detail', 'Please enter a valid 10-digit WhatsApp number starting with 6-9.', 'warning');
+                        if (!/^[1-9]\d{5}$/.test(pinStr)) {
+                            this.errors.agent_pincode = ['Please enter a valid 6-digit pincode.'];
+                            return Swal.fire({ icon: 'error', title: 'Validation Error', text: this.errors.agent_pincode[0] });
+                        }
+                        const pinOk = await this.ensureValidPincode(true);
+                        if (!pinOk) return;
                         if (this.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(this.pan)) return Swal.fire('Invalid Detail', 'PAN must be 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).', 'warning');
                         if (!this.segments || this.segments.length === 0) return Swal.fire('Missing Detail', 'Please select at least one insurance segment.', 'warning');
                         if (!this.agreeTerms) return Swal.fire('Missing Detail', 'Please agree to the Terms of Service to continue.', 'warning');

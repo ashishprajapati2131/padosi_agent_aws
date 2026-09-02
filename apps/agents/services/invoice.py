@@ -120,10 +120,13 @@ class InvoiceService:
     Service for managing agent payment invoices, PDF creation, and syncing.
     """
 
-    def generate_from_subscription(self, agent: Agent, subscription: AgentSubscription) -> Invoice:
+    def generate_from_subscription(self, agent: Agent, subscription: AgentSubscription, sync_sheet: bool = True) -> Invoice:
         """
-        Generate, compile, save, and sync invoice for a completed payment.
+        Generate, compile, save, and optionally sync invoice for a completed payment.
         Matches Laravel's InvoiceService::generateFromSubscription.
+
+        Pass sync_sheet=False when the caller will sync (or skip) later so PDF
+        generation is not blocked on the Google Sheet webhook.
         """
         try:
             # 1. Avoid duplicates
@@ -176,8 +179,8 @@ class InvoiceService:
                 invoice.pdf_path = pdf_path
                 invoice.save(update_fields=['pdf_path'])
 
-            # 7. Sync to Google Sheets asynchronously/non-blocking
-            self.sync_to_google_sheet(invoice)
+            if sync_sheet:
+                self.sync_to_google_sheet(invoice)
 
             logger.info(
                 f"[InvoiceService] Invoice generated successfully: {invoice_number} "
@@ -205,7 +208,6 @@ class InvoiceService:
             return 99.9
 
         from apps.home.models import SiteSetting
-        SiteSetting.flush_cache()
         pricing_config = SiteSetting.get_value('pricing_config')
         if not pricing_config:
             raise ValueError('pricing_config not found in site_settings')
@@ -376,8 +378,7 @@ class InvoiceService:
                 'pdf_url': f"{settings.MEDIA_URL}app/private/{invoice.pdf_path}" if invoice.pdf_path else '',
             }
 
-            # Call script endpoint with 10s timeout
-            response = requests.post(sheet_url, json=payload, timeout=10)
+            response = requests.post(sheet_url, json=payload, timeout=5)
 
             if response.status_code == 200:
                 invoice.synced_to_sheet = True

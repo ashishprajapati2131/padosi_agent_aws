@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Payment Successful — PadosiAgent{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/payment-success-popup.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center">
+    <p class="text-muted mb-0">Payment verified. Preparing your dashboard…</p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/payment-success-popup.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    try { sessionStorage.removeItem('padosiPendingCheckout'); } catch (e) { }
+    var redirectUrl = '{{ redirect_url|escapejs }}';
+    var agentName = '{{ agent_name|escapejs }}';
+
+    function goToDashboard() {
+        window.location.replace(redirectUrl);
+    }
+
+    function waitAndShow(tries) {
+        if (typeof window.showPaymentSuccessPopup === 'function') {
+            window.showPaymentSuccessPopup({
+                agentName: agentName,
+                redirectUrl: redirectUrl,
+                duration: 3000
+            });
+            return;
+        }
+        if (tries > 0) {
+            window.setTimeout(function () { waitAndShow(tries - 1); }, 100);
+            return;
+        }
+        window.setTimeout(goToDashboard, 3000);
+    }
+
+    waitAndShow(30);
+});
+</script>
+{% endblock %}
