@@ -1,5 +1,5 @@
 from django.urls import path, re_path
-from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites, participants, career_timeline as career_timeline_views, qr as qr_views
+from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites, participants, career_timeline as career_timeline_views, qr as qr_views, analytics as analytics_views
 
 app_name = 'agents'
 
@@ -95,7 +95,9 @@ urlpatterns = [
     # ── Career Timeline API (read-only) ──────────────────────────────────────
     path('agent/career-timeline/suggestions/', career_timeline_views.career_timeline_suggestions, name='agent_career_timeline_suggestions'),
 
+    # ── Profile Analytics API ────────────────────────────────────────────
+    path('agent/api/analytics/', analytics_views.agent_analytics_data, name='agent_analytics_data'),
+
     # ── Catch-all public agent profile share route ────────────────────────────
     path('agent/<str:slug>/',   dashboard.agent_public_share_profile, name='agent_public_share_profile'),
 ]
-
