@@ -738,6 +738,43 @@ def find_agents(request):
     else:
         favorite_ids = set()
 
+    # ── Profile Analytics Tracking ────────────────────────────────────────
+    # All tracking is wrapped in try/except so a DB hiccup never breaks the
+    # search page for visitors. Tracking only fires on real search renders
+    # (not resets, not filter-gate screens).
+    if not invalid_pincode and agents_page.object_list:
+        try:
+            from apps.agents.models import AgentCardImpression, AgentSearchEvent
+            from django.db.models import F
+            from datetime import date as _date
+            _today = _date.today()
+            _pincode = pincode or None
+
+            # Hook A — record that someone searched this pincode today
+            if _pincode:
+                _se, _se_created = AgentSearchEvent.objects.get_or_create(
+                    search_date=_today,
+                    pincode=_pincode,
+                    defaults={'event_count': 1},
+                )
+                if not _se_created:
+                    AgentSearchEvent.objects.filter(pk=_se.pk).update(event_count=F('event_count') + 1)
+
+            # Hook B — record a card impression for each agent on this page
+            for _agent in agents_page.object_list:
+                _ci, _ci_created = AgentCardImpression.objects.get_or_create(
+                    agent_id=_agent.id,
+                    impression_date=_today,
+                    search_pincode=_pincode,
+                    defaults={'impression_count': 1},
+                )
+                if not _ci_created:
+                    AgentCardImpression.objects.filter(pk=_ci.pk).update(impression_count=F('impression_count') + 1)
+
+        except Exception as _e:
+            logger.warning(f"Analytics tracking error in find_agents: {_e}")
+    # ── End Analytics Tracking ────────────────────────────────────────────
+
     context = {
         'agents': agents_page,
         'favorite_ids': favorite_ids,
