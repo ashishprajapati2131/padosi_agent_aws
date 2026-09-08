@@ -15,7 +15,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentLead, AgentProfileView, AgentInsuranceSegment, City, AgentDeviceToken, FavoriteAgent
-from apps.home.models import SiteSetting
+from apps.home.models import SiteSetting, UpcomingFeature
 from apps.admin_panel.models.referral_code import ReferralCode
 from apps.admin_panel.models.referral_usage import ReferralUsage
 from apps.agents.utils.file_validation import validate_magic_bytes
@@ -507,14 +507,24 @@ def agent_dashboard(request):
                 'facebook_url': 'https://www.facebook.com/sharer/sharer.php?u=' + quote(target, safe=''),
             })
 
-    # ── Coming Soon tab content – fetched from admin SiteSetting per plan ──
+    # ── Coming Soon features & legacy plan content ──
     _agent_plan_slug = normalize_plan_slug(agent.plan_type or '')
     if _agent_plan_slug in ('starter', 'basic'):
+        _plan_filter = ['all', 'starter']
         coming_soon_html = SiteSetting.get_value('coming_soon_starter_html', '') or ''
     elif _agent_plan_slug in ('professional', 'exclusive', 'pro'):
+        _plan_filter = ['all', 'professional']
         coming_soon_html = SiteSetting.get_value('coming_soon_professional_html', '') or ''
     else:
+        _plan_filter = ['all']
         coming_soon_html = ''
+
+    try:
+        upcoming_features = list(
+            UpcomingFeature.objects.filter(is_active=True, visible_to__in=_plan_filter).order_by('sort_order', 'id')
+        )
+    except Exception:
+        upcoming_features = []
 
     context = {
         'agent_plan': agent_plan,
@@ -573,6 +583,8 @@ def agent_dashboard(request):
         'prof_full': int(prof_full),
         'agent_id': agent.id,
         'coming_soon_html': coming_soon_html,
+        'upcoming_features': upcoming_features,
+        'has_upcoming_features': bool(upcoming_features),
     }
 
     return render(request, 'agents/dashboard.html', context)
