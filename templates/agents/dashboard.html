@@ -12,6 +12,21 @@
 .toggle::after { content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 2px rgba(0,0,0,.1); }
 .toggle.on { background:#22c55e; }
 .toggle.on::after { left:20px; }
+
+/* Coming Soon Section Styles */
+.cs-header-title { font-size: 24px; font-weight: 700; color: #1e293b; margin: 0; letter-spacing: -0.02em; display: inline-flex; align-items: center; gap: 10px; }
+.cs-header-badge { background-color: #2b6cb0; color: #ffffff; font-size: 12px; font-weight: 700; padding: 4px 14px; border-radius: 9999px; letter-spacing: 0.01em; }
+.cs-header-subtitle { font-size: 15px; color: #64748b; margin-top: 8px; margin-bottom: 26px; max-width: 800px; line-height: 1.5; }
+.cs-feature-card { background: #ffffff !important; border: 1.5px solid #e9ecef !important; border-radius: 14px !important; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important; box-shadow: 0 1px 3px rgba(0,0,0,0.03) !important; }
+.cs-feature-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(15,23,42,0.07) !important; border-color: #cbd5e1 !important; }
+.cs-card-icon-box { width: 48px; height: 48px; min-width: 48px; border-radius: 12px; background: #f0fdf9; border: 1.5px solid #ccfbf1; color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.cs-card-title { font-size: 16px; font-weight: 700; color: #1e293b; margin: 0; line-height: 1.35; }
+.cs-badge-pill { font-size: 11px; font-weight: 700; padding: 2.5px 9px; border-radius: 9999px; display: inline-block; line-height: 1.2; }
+.cs-badge-next_up { border: 1.5px solid #86efac; background: #f0fdf4; color: #166534; }
+.cs-badge-in_dev { border: 1.5px solid #93c5fd; background: #eff6ff; color: #1d4ed8; }
+.cs-badge-coming { border: 1.5px solid #fed7aa; background: #fff7ed; color: #c2410c; }
+.cs-badge-default { border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; }
+.cs-card-description { color: #64748b; font-size: 13.5px; line-height: 1.55; margin-top: 5px; margin-bottom: 0; }
 </style>
 {% endblock %}
 
@@ -205,7 +220,7 @@
                 <li class="nav-item">
                     <a class="nav-link" href="#qrcodes" data-tab="qrcodes" data-feature="qr_codes"><i class="fas fa-qrcode mr-2"></i>QR Codes</a>
                 </li>
-                {% if coming_soon_html %}
+                {% if has_upcoming_features or coming_soon_html %}
                 <li class="nav-item">
                     <a class="nav-link" href="#comingsoon" data-tab="comingsoon"><i class="fas fa-rocket mr-2"></i>Coming Soon</a>
                 </li>
@@ -477,11 +492,51 @@
             {% endif %}
         </div>
 
-        {% if coming_soon_html %}
-        <!-- Coming Soon Section – plan-specific content set by admin -->
+        {% if has_upcoming_features or coming_soon_html %}
+        <!-- Coming Soon Section -->
         <div id="comingsoon-content" style="display: none;">
             <div class="coming-soon-agent-wrapper px-2 py-3">
+                {% if has_upcoming_features %}
+                <!-- Dynamic Coming Soon Cards matching UI design -->
+                <div class="cs-dashboard-section">
+                    <div class="mb-2">
+                        <h3 class="cs-header-title">
+                            Coming Soon
+                            <span class="cs-header-badge">In development</span>
+                        </h3>
+                    </div>
+                    <p class="cs-header-subtitle">
+                        New tools we are building for PadosiAgent advisors. They will appear right here in your dashboard.
+                    </p>
+
+                    <div class="row g-3">
+                        {% for feature in upcoming_features %}
+                        <div class="col-lg-6 col-12 mb-3">
+                            <div class="card h-100 cs-feature-card">
+                                <div class="card-body p-3 p-sm-4 d-flex align-items-start gap-3">
+                                    <div class="cs-card-icon-box flex-shrink-0">
+                                        <i class="{{ feature.icon|default:'fa-solid fa-wand-magic-sparkles' }}"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                                            <span class="cs-card-title">{{ feature.title }}</span>
+                                            {% if feature.badge_label %}
+                                            <span class="cs-badge-pill {% if feature.status_badge == 'next_up' or 'next' in feature.badge_label|lower %}cs-badge-next_up{% elif feature.status_badge == 'in_development' %}cs-badge-in_dev{% elif feature.status_badge == 'coming_soon' %}cs-badge-coming{% else %}cs-badge-default{% endif %}">
+                                                {{ feature.badge_label }}
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="cs-card-description">{{ feature.description }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
                 {% autoescape off %}{{ coming_soon_html }}{% endautoescape %}
+                {% endif %}
             </div>
         </div>
         {% endif %}

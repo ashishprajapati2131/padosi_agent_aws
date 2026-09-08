@@ -3,65 +3,131 @@
 
 {% block extra_css %}
 <style>
-    .cs-plan-tab-btn {
-        border: 2px solid transparent;
+    .cs-stat-card {
+        background: #ffffff;
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 12px;
+        padding: 16px 20px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .cs-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .cs-stat-icon {
+        width: 44px;
+        height: 44px;
         border-radius: 10px;
-        padding: 9px 26px;
-        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+    .cs-main-tab {
+        border: none;
+        background: transparent;
         font-size: 14px;
+        font-weight: 700;
+        padding: 10px 18px;
+        border-radius: 8px;
+        color: var(--text-muted, #64748b);
         cursor: pointer;
-        background: var(--bg-body, #f8f9fa);
-        color: var(--text-muted, #6c757d);
         transition: all 0.2s;
     }
-    .cs-plan-tab-btn.active-starter {
-        background: linear-gradient(135deg, #f59e0b, #d97706);
-        color: #fff;
-        border-color: #d97706;
-        box-shadow: 0 2px 10px rgba(245,158,11,.35);
+    .cs-main-tab.active {
+        background: var(--primary, #1d7d5d);
+        color: #ffffff;
+        box-shadow: 0 2px 8px rgba(29,125,93,0.25);
     }
-    .cs-plan-tab-btn.active-professional {
-        background: linear-gradient(135deg, #10b981, #059669);
-        color: #fff;
-        border-color: #059669;
-        box-shadow: 0 2px 10px rgba(16,185,129,.35);
+    .cs-filter-btn {
+        border: 1px solid var(--border-color, #e2e8f0);
+        background: #ffffff;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 6px 14px;
+        border-radius: 20px;
+        color: var(--text-muted, #64748b);
+        cursor: pointer;
+        transition: all 0.2s;
     }
+    .cs-filter-btn.active {
+        background: #0f172a;
+        color: #ffffff;
+        border-color: #0f172a;
+    }
+    .cs-admin-card {
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 18px 20px;
+        transition: all 0.2s;
+    }
+    .cs-admin-card:hover {
+        border-color: #cbd5e1;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+    }
+    .cs-admin-card.is-inactive {
+        opacity: 0.6;
+        background: #f8fafc;
+    }
+    .cs-icon-preview {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        border-radius: 12px;
+        background: #f0fdf9;
+        border: 1.5px solid #ccfbf1;
+        color: #0d9488;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+    .cs-pill-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 9px;
+        border-radius: 9999px;
+        display: inline-block;
+    }
+    .cs-pill-next_up { border: 1.5px solid #86efac; background: #f0fdf4; color: #166534; }
+    .cs-pill-in_dev  { border: 1.5px solid #93c5fd; background: #eff6ff; color: #1d4ed8; }
+    .cs-pill-coming  { border: 1.5px solid #fed7aa; background: #fff7ed; color: #c2410c; }
+    .cs-pill-default { border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; }
+    .cs-plan-tag {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 6px;
+    }
+    .cs-plan-tag-all { background: #f1f5f9; color: #334155; }
+    .cs-plan-tag-starter { background: #fef3c7; color: #92400e; }
+    .cs-plan-tag-pro { background: #d1fae5; color: #065f46; }
+
     .cs-editor-area {
         font-family: "Courier New", Courier, monospace;
         font-size: 13px;
         border-radius: 8px;
-        resize: vertical;
-        background: var(--bg-body, #f8f9fa);
-        border: 1.5px solid var(--border-color, #e2e8f0);
-        color: var(--text-dark, #1a202c);
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        color: #1a202c;
         padding: 14px;
         line-height: 1.7;
-        transition: border-color 0.2s;
-        min-height: 360px;
+        min-height: 320px;
     }
-    .cs-editor-area:focus {
-        outline: none;
-        border-color: var(--primary, #1d7d5d);
-        box-shadow: 0 0 0 3px rgba(29,125,93,.1);
-    }
-    .cs-info-banner {
-        background: linear-gradient(135deg, rgba(29,125,93,.08), rgba(16,185,129,.05));
-        border: 1px solid rgba(29,125,93,.18);
-        border-radius: 12px;
-        padding: 16px 20px;
-    }
-    #csPreviewIframe {
-        width: 100%;
-        border: none;
+    .cs-icon-preset {
+        cursor: pointer;
+        padding: 6px 12px;
+        border: 1px solid #e2e8f0;
         border-radius: 8px;
-        min-height: 440px;
-        background: #fff;
+        font-size: 12px;
+        background: #ffffff;
+        transition: all 0.15s;
     }
-    .plan-badge-starter  { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 700; }
-    .plan-badge-pro      { background: #d1fae5; color: #065f46; border: 1px solid #10b981; border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 700; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .status-dot.has-content { background: #10b981; }
-    .status-dot.no-content  { background: #d1d5db; }
+    .cs-icon-preset:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
 </style>
 {% endblock %}
 
@@ -75,109 +141,211 @@
                 <i class="fa-solid fa-rocket me-2" style="color: var(--primary);"></i> Coming Soon Manager
             </h4>
             <p class="text-muted mb-0 small">
-                Write plan-specific HTML content that agents will see as a <strong>Coming Soon</strong> tab in their dashboard.
+                Manage dynamic feature roadmap cards displayed in the Agent Dashboard Coming Soon section.
             </p>
         </div>
-        <!-- Status Summary -->
-        <div class="d-flex gap-3">
-            <span class="d-flex align-items-center gap-2 small">
-                <span class="status-dot {% if coming_soon_starter_html %}has-content{% else %}no-content{% endif %}" title="{% if coming_soon_starter_html %}Starter: Content saved{% else %}Starter: No content yet{% endif %}"></span>
-                <span class="plan-badge-starter">⭐ Starter</span>
-            </span>
-            <span class="d-flex align-items-center gap-2 small">
-                <span class="status-dot {% if coming_soon_professional_html %}has-content{% else %}no-content{% endif %}" title="{% if coming_soon_professional_html %}Professional: Content saved{% else %}Professional: No content yet{% endif %}"></span>
-                <span class="plan-badge-pro">💎 Professional</span>
-            </span>
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 px-3" onclick="openPreviewModal()">
+                <i class="fa-solid fa-eye"></i> Dashboard Preview
+            </button>
+            <button class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2 px-3" onclick="seedDefaults()">
+                <i class="fa-solid fa-arrows-rotate"></i> Restore Defaults
+            </button>
+            <button class="btn btn-success btn-sm d-flex align-items-center gap-2 px-3 font-weight-bold" onclick="openFeatureModal()">
+                <i class="fa-solid fa-plus"></i> Add New Feature
+            </button>
         </div>
-
     </div>
 
-    <!-- Info Banner -->
-    <div class="cs-info-banner mb-4">
-        <div class="d-flex align-items-start gap-3">
-            <i class="fa-solid fa-circle-info fa-lg mt-1" style="color: var(--primary);"></i>
-            <div class="small text-muted">
-                <strong class="text-dark">How it works:</strong>
-                Write any HTML in the editor below and click <strong>Save</strong>. Agents on the matching plan will immediately see a
-                <strong>"🚀 Coming Soon"</strong> tab in their Agent Dashboard, placed after the QR Codes tab.
-                Leaving the editor empty and saving will <strong>hide the tab</strong> for agents on that plan.
+    {% if not table_exists %}
+    <div class="alert alert-warning border-0 shadow-sm mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3" style="border-radius:12px;">
+        <div class="d-flex align-items-center gap-3">
+            <i class="fa-solid fa-triangle-exclamation fa-2x text-warning"></i>
+            <div>
+                <strong class="d-block text-dark">Database Table Not Migrated Yet</strong>
+                <span class="small text-muted">The <code>upcoming_features</code> table has not been created in MySQL yet. Run <code>python manage.py migrate</code> to create the table and seed the roadmap cards.</span>
             </div>
         </div>
     </div>
+    {% endif %}
 
-    <!-- Plan Tab Switcher -->
-    <div class="d-flex gap-2 mb-4">
-        <button id="csPlanTabStarter" class="cs-plan-tab-btn active-starter" onclick="csShowPlan('starter')">
-            ⭐ Starter Plan
-        </button>
-        <button id="csPlanTabProfessional" class="cs-plan-tab-btn" onclick="csShowPlan('professional')">
-            💎 Professional Plan
-        </button>
-    </div>
-
-    <!-- ── Starter Plan Panel ── -->
-    <div id="csPanelStarter">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
+    <!-- Stat Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="cs-stat-card d-flex align-items-center gap-3">
+                <div class="cs-stat-icon" style="background:#ecfdf5; color:#059669;">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
                 <div>
-                    <h5 class="font-weight-bold mb-0 text-dark">
-                        <i class="fa-solid fa-code me-2 text-warning"></i> Starter Plan Content
-                    </h5>
-                    <p class="text-muted small mb-0 mt-1">This HTML will appear in the dashboard of every <strong>Starter Plan</strong> agent.</p>
+                    <div class="h5 mb-0 font-weight-bold text-dark" id="statTotalCount">{{ total_count }}</div>
+                    <div class="small text-muted">Total Features</div>
                 </div>
-                <span class="plan-badge-starter">⭐ Starter</span>
             </div>
-            <div class="card-body pb-4">
-                <textarea id="csStarterEditor" class="cs-editor-area w-100"
-                    placeholder="<div class=&quot;card p-4&quot;>&#10;  <h3>🚀 Coming Soon!</h3>&#10;  <p>Exciting new features are on the way for Starter plan agents.</p>&#10;</div>">{{ coming_soon_starter_html }}</textarea>
-
-                <div class="d-flex flex-wrap gap-2 mt-3">
-                    <button class="btn btn-warning text-white d-flex align-items-center gap-2 px-4 py-2"
-                        style="border-radius:8px; font-weight:700;" onclick="csSave('starter')">
-                        <i class="fa-solid fa-floppy-disk"></i> Save Starter Content
-                    </button>
-                    <button class="btn btn-outline-secondary d-flex align-items-center gap-2 px-3 py-2"
-                        style="border-radius:8px;" onclick="csPreview('starter')">
-                        <i class="fa-solid fa-eye"></i> Preview
-                    </button>
-                    <button class="btn btn-outline-danger d-flex align-items-center gap-2 px-3 py-2"
-                        style="border-radius:8px;" onclick="csClear('starter')">
-                        <i class="fa-solid fa-trash-can"></i> Clear
-                    </button>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="cs-stat-card d-flex align-items-center gap-3">
+                <div class="cs-stat-icon" style="background:#eff6ff; color:#2563eb;">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                    <div class="h5 mb-0 font-weight-bold text-dark" id="statActiveCount">{{ active_count }}</div>
+                    <div class="small text-muted">Active Visible</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="cs-stat-card d-flex align-items-center gap-3">
+                <div class="cs-stat-icon" style="background:#fef3c7; color:#d97706;">
+                    <i class="fa-solid fa-star"></i>
+                </div>
+                <div>
+                    <div class="h5 mb-0 font-weight-bold text-dark">{{ starter_count }}</div>
+                    <div class="small text-muted">Starter Plan Cards</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="cs-stat-card d-flex align-items-center gap-3">
+                <div class="cs-stat-icon" style="background:#f3e8ff; color:#7c3aed;">
+                    <i class="fa-solid fa-gem"></i>
+                </div>
+                <div>
+                    <div class="h5 mb-0 font-weight-bold text-dark">{{ pro_count }}</div>
+                    <div class="small text-muted">Pro Plan Cards</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ── Professional Plan Panel ── -->
-    <div id="csPanelProfessional" style="display:none;">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-transparent border-0 pt-4 pb-2 d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="font-weight-bold mb-0 text-dark">
-                        <i class="fa-solid fa-code me-2 text-success"></i> Professional Plan Content
-                    </h5>
-                    <p class="text-muted small mb-0 mt-1">This HTML will appear in the dashboard of every <strong>Professional Plan</strong> agent.</p>
-                </div>
-                <span class="plan-badge-pro">💎 Professional</span>
-            </div>
-            <div class="card-body pb-4">
-                <textarea id="csProfessionalEditor" class="cs-editor-area w-100"
-                    placeholder="<div class=&quot;card p-4&quot;>&#10;  <h3>💎 Coming Soon!</h3>&#10;  <p>Premium features are on the way for Professional plan agents.</p>&#10;</div>">{{ coming_soon_professional_html }}</textarea>
+    <!-- Main Navigation Tabs -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="d-flex gap-2">
+            <button class="cs-main-tab active" id="tabBtnDynamic" onclick="switchMainTab('dynamic')">
+                <i class="fa-solid fa-table-cells-large me-1"></i> Roadmap Cards (Dynamic)
+            </button>
+            <button class="cs-main-tab" id="tabBtnLegacy" onclick="switchMainTab('legacy')">
+                <i class="fa-solid fa-code me-1"></i> Legacy HTML Editor (Optional)
+            </button>
+        </div>
 
-                <div class="d-flex flex-wrap gap-2 mt-3">
-                    <button class="btn btn-success d-flex align-items-center gap-2 px-4 py-2"
-                        style="border-radius:8px; font-weight:700;" onclick="csSave('professional')">
-                        <i class="fa-solid fa-floppy-disk"></i> Save Professional Content
-                    </button>
-                    <button class="btn btn-outline-secondary d-flex align-items-center gap-2 px-3 py-2"
-                        style="border-radius:8px;" onclick="csPreview('professional')">
-                        <i class="fa-solid fa-eye"></i> Preview
-                    </button>
-                    <button class="btn btn-outline-danger d-flex align-items-center gap-2 px-3 py-2"
-                        style="border-radius:8px;" onclick="csClear('professional')">
-                        <i class="fa-solid fa-trash-can"></i> Clear
-                    </button>
+        <!-- Plan Filter (for dynamic cards) -->
+        <div class="d-flex gap-1" id="dynamicFilters">
+            <button class="cs-filter-btn active" data-filter="all" onclick="filterFeatures('all', this)">All ({{ total_count }})</button>
+            <button class="cs-filter-btn" data-filter="starter" onclick="filterFeatures('starter', this)">Starter</button>
+            <button class="cs-filter-btn" data-filter="professional" onclick="filterFeatures('professional', this)">Professional</button>
+        </div>
+    </div>
+
+    <!-- ── Panel 1: Dynamic Features Cards ── -->
+    <div id="panelDynamic">
+        <div class="row g-3" id="featuresContainer">
+            {% for feature in features %}
+            <div class="col-lg-6 col-12 feature-card-wrapper" data-plan="{{ feature.visible_to }}" data-active="{{ feature.is_active|yesno:'true,false' }}" data-id="{{ feature.id }}" data-order="{{ feature.sort_order }}">
+                <div class="cs-admin-card h-100 {% if not feature.is_active %}is-inactive{% endif %}">
+                    <div class="d-flex align-items-start justify-content-between gap-3">
+                        <div class="d-flex align-items-start gap-3 flex-grow-1">
+                            <div class="cs-icon-preview">
+                                <i class="{{ feature.icon|default:'fa-solid fa-wand-magic-sparkles' }}"></i>
+                            </div>
+                            <div>
+                                <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+                                    <h6 class="font-weight-bold mb-0 text-dark">{{ feature.title }}</h6>
+                                    {% if feature.badge_label %}
+                                    <span class="cs-pill-badge {% if feature.status_badge == 'next_up' or 'next' in feature.badge_label|lower %}cs-pill-next_up{% elif feature.status_badge == 'in_development' %}cs-pill-in_dev{% elif feature.status_badge == 'coming_soon' %}cs-pill-coming{% else %}cs-pill-default{% endif %}">
+                                        {{ feature.badge_label }}
+                                    </span>
+                                    {% endif %}
+                                    <span class="cs-plan-tag {% if feature.visible_to == 'all' %}cs-plan-tag-all{% elif feature.visible_to == 'starter' %}cs-plan-tag-starter{% else %}cs-plan-tag-pro{% endif %}">
+                                        {% if feature.visible_to == 'all' %}All Plans{% elif feature.visible_to == 'starter' %}Starter Only{% else %}Pro Only{% endif %}
+                                    </span>
+                                </div>
+                                <p class="text-muted small mb-0" style="line-height: 1.5;">{{ feature.description }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Actions dropdown/buttons -->
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            <!-- Active Toggle -->
+                            <button class="btn btn-sm {% if feature.is_active %}btn-success{% else %}btn-outline-secondary{% endif %} px-2 py-1"
+                                style="font-size: 11px; font-weight: 700; border-radius: 6px;"
+                                onclick="toggleFeature({{ feature.id }})"
+                                title="Toggle display in dashboard">
+                                {% if feature.is_active %}Active{% else %}Hidden{% endif %}
+                            </button>
+                            <!-- Edit Button -->
+                            <button class="btn btn-sm btn-outline-primary px-2 py-1"
+                                style="border-radius: 6px;"
+                                onclick="editFeature({{ feature.id }}, '{{ feature.title|escapejs }}', '{{ feature.description|escapejs }}', '{{ feature.icon|escapejs }}', '{{ feature.status_badge|escapejs }}', '{{ feature.custom_badge_text|escapejs }}', '{{ feature.visible_to|escapejs }}', {{ feature.sort_order }}, {{ feature.is_active|yesno:'true,false' }})"
+                                title="Edit feature">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <!-- Delete Button -->
+                            <button class="btn btn-sm btn-outline-danger px-2 py-1"
+                                style="border-radius: 6px;"
+                                onclick="deleteFeature({{ feature.id }}, '{{ feature.title|escapejs }}')"
+                                title="Delete feature">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5">
+                <i class="fa-solid fa-folder-open fa-3x text-muted mb-3"></i>
+                <h6 class="text-muted">No upcoming features added yet.</h6>
+                <button class="btn btn-success btn-sm mt-2" onclick="seedDefaults()">Restore Default Features</button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ── Panel 2: Legacy HTML Editor (Optional) ── -->
+    <div id="panelLegacy" style="display: none;">
+        <div class="alert alert-info border-0 shadow-sm mb-4" style="border-radius: 12px;">
+            <div class="d-flex align-items-start gap-2">
+                <i class="fa-solid fa-circle-info fa-lg mt-1 text-info"></i>
+                <div class="small">
+                    <strong>Note:</strong> When dynamic roadmap cards exist above, the agent dashboard renders the structured cards automatically.
+                    If you empty the cards or want to override with raw custom HTML, the HTML saved below will be used as fallback.
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Starter Plan HTML -->
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                    <div class="card-header bg-transparent border-0 pt-3 pb-1 d-flex justify-content-between align-items-center">
+                        <span class="font-weight-bold text-dark"><i class="fa-solid fa-code text-warning me-1"></i> Starter Plan Fallback HTML</span>
+                        <span class="cs-plan-tag cs-plan-tag-starter">Starter</span>
+                    </div>
+                    <div class="card-body">
+                        <textarea id="csStarterEditor" class="cs-editor-area w-100" placeholder="Custom HTML for starter plan agents...">{{ coming_soon_starter_html }}</textarea>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-warning text-white btn-sm font-weight-bold px-3" onclick="csSaveLegacy('starter')">
+                                <i class="fa-solid fa-floppy-disk me-1"></i> Save Starter HTML
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pro Plan HTML -->
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                    <div class="card-header bg-transparent border-0 pt-3 pb-1 d-flex justify-content-between align-items-center">
+                        <span class="font-weight-bold text-dark"><i class="fa-solid fa-code text-success me-1"></i> Professional Plan Fallback HTML</span>
+                        <span class="cs-plan-tag cs-plan-tag-pro">Professional</span>
+                    </div>
+                    <div class="card-body">
+                        <textarea id="csProEditor" class="cs-editor-area w-100" placeholder="Custom HTML for professional plan agents...">{{ coming_soon_professional_html }}</textarea>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-success btn-sm font-weight-bold px-3" onclick="csSaveLegacy('professional')">
+                                <i class="fa-solid fa-floppy-disk me-1"></i> Save Professional HTML
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -185,25 +353,121 @@
 
 </div>
 
-<!-- Preview Modal -->
-<div class="modal fade" id="csPreviewModal" tabindex="-1" aria-labelledby="csPreviewModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
-        <div class="modal-content border-0 shadow-lg" style="border-radius:16px;">
+<!-- ── Add/Edit Feature Modal ── -->
+<div class="modal fade" id="featureModal" tabindex="-1" aria-labelledby="featureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title font-weight-bold text-dark" id="csPreviewModalLabel">
-                    <i class="fa-solid fa-eye me-2 text-primary"></i> Preview: <span id="csPreviewPlanLabel"></span>
+                <h5 class="modal-title font-weight-bold text-dark" id="featureModalLabel">
+                    <i class="fa-solid fa-sparkles text-success me-2"></i> Add Upcoming Feature
                 </h5>
-                <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"
-                    style="background:none;border:none;font-size:28px;line-height:1;color:var(--text-muted);opacity:.8;margin-top:-10px;">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body pt-2 pb-4 px-4">
-                <p class="text-muted small mb-3">
-                    This is how the <strong>Coming Soon</strong> tab content will appear to agents on this plan inside their dashboard.
-                </p>
-                <div style="border:1.5px solid var(--border-color,#e2e8f0);border-radius:12px;overflow:hidden;background:#fff;">
-                    <iframe id="csPreviewIframe" sandbox="allow-same-origin"></iframe>
+            <form id="featureForm" onsubmit="saveFeatureForm(event)">
+                <div class="modal-body px-4 py-3">
+                    <input type="hidden" id="fId" name="feature_id" value="">
+
+                    <div class="row g-3">
+                        <!-- Title -->
+                        <div class="col-12">
+                            <label class="form-label font-weight-bold small text-dark mb-1">Feature Title <span class="text-danger">*</span></label>
+                            <input type="text" id="fTitle" name="title" class="form-control" placeholder="e.g. AI Assist" required>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="col-12">
+                            <label class="form-label font-weight-bold small text-dark mb-1">Description</label>
+                            <textarea id="fDesc" name="description" class="form-control" rows="3" placeholder="Brief summary of what this tool will offer advisors..."></textarea>
+                        </div>
+
+                        <!-- Icon selection -->
+                        <div class="col-md-6">
+                            <label class="form-label font-weight-bold small text-dark mb-1">Icon Class</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text bg-light" id="fIconPreview"><i class="fa-solid fa-wand-magic-sparkles text-success"></i></span>
+                                <input type="text" id="fIcon" name="icon" class="form-control" value="fa-solid fa-wand-magic-sparkles" oninput="updateModalIconPreview(this.value)">
+                            </div>
+                            <div class="d-flex flex-wrap gap-1">
+                                <span class="cs-icon-preset" onclick="setIconPreset('fa-solid fa-wand-magic-sparkles')"><i class="fa-solid fa-wand-magic-sparkles me-1"></i> AI</span>
+                                <span class="cs-icon-preset" onclick="setIconPreset('fa-solid fa-arrows-rotate')"><i class="fa-solid fa-arrows-rotate me-1"></i> Cross Sell</span>
+                                <span class="cs-icon-preset" onclick="setIconPreset('fa-solid fa-headset')"><i class="fa-solid fa-headset me-1"></i> Support</span>
+                                <span class="cs-icon-preset" onclick="setIconPreset('fa-solid fa-gift')"><i class="fa-solid fa-gift me-1"></i> VAS</span>
+                                <span class="cs-icon-preset" onclick="setIconPreset('fa-solid fa-heart-circle-check')"><i class="fa-solid fa-heart-circle-check me-1"></i> Retention</span>
+                                <span class="cs-icon-preset" onclick="setIconPreset('fa-solid fa-store')"><i class="fa-solid fa-store me-1"></i> Marketplace</span>
+                            </div>
+                        </div>
+
+                        <!-- Badge selection -->
+                        <div class="col-md-6">
+                            <label class="form-label font-weight-bold small text-dark mb-1">Status Badge</label>
+                            <select id="fBadge" name="status_badge" class="form-select mb-2" onchange="toggleCustomBadgeInput(this.value)">
+                                <option value="">No Badge</option>
+                                <option value="next_up" selected>Next up (Green Pill)</option>
+                                <option value="in_development">In development (Blue Pill)</option>
+                                <option value="coming_soon">Coming soon (Orange Pill)</option>
+                                <option value="beta">Beta</option>
+                                <option value="custom">Custom Badge Text...</option>
+                            </select>
+                            <input type="text" id="fCustomBadge" name="custom_badge_text" class="form-control" placeholder="Type custom badge text..." style="display: none;">
+                        </div>
+
+                        <!-- Visible Plan -->
+                        <div class="col-md-6">
+                            <label class="form-label font-weight-bold small text-dark mb-1">Target Plan</label>
+                            <select id="fPlan" name="visible_to" class="form-select">
+                                <option value="all" selected>All Plans (Starter & Professional)</option>
+                                <option value="starter">Starter Plan Only</option>
+                                <option value="professional">Professional Plan Only</option>
+                            </select>
+                        </div>
+
+                        <!-- Sort Order & Active -->
+                        <div class="col-md-6">
+                            <label class="form-label font-weight-bold small text-dark mb-1">Display Order</label>
+                            <input type="number" id="fOrder" name="sort_order" class="form-control mb-2" value="1" min="0">
+                            <div class="form-check mt-1">
+                                <input class="form-check-input" type="checkbox" id="fActive" name="is_active" value="1" checked>
+                                <label class="form-check-label small font-weight-bold text-dark" for="fActive">
+                                    Feature is Active (Visible on Dashboard)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light btn-sm px-3" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm px-4 font-weight-bold" id="fSubmitBtn">Save Feature</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Live Dashboard Preview Modal ── -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title font-weight-bold text-dark" id="previewModalLabel">
+                    <i class="fa-solid fa-eye text-primary me-2"></i> Agent Dashboard Live Preview
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="p-4" style="background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;">
+                    <!-- Coming Soon Header -->
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <h4 class="font-weight-bold mb-0" style="color: #1e293b; font-size: 22px;">Coming Soon</h4>
+                        <span class="badge" style="background-color: #2b6cb0; color: #fff; font-size: 11px; padding: 4px 12px; border-radius: 9999px;">In development</span>
+                    </div>
+                    <p class="text-muted mb-4" style="font-size: 14px;">
+                        New tools we are building for PadosiAgent advisors. They will appear right here in your dashboard.
+                    </p>
+
+                    <!-- Cards -->
+                    <div class="row g-3" id="previewCardsContainer">
+                        <!-- Populated by JavaScript -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -213,23 +477,250 @@
 
 {% block extra_js %}
 <script>
-    var csActivePlan = 'starter';
+    var csrfToken = '{{ csrf_token }}';
 
-    function csShowPlan(plan) {
-        csActivePlan = plan;
-        document.getElementById('csPanelStarter').style.display      = (plan === 'starter')       ? 'block' : 'none';
-        document.getElementById('csPanelProfessional').style.display = (plan === 'professional')  ? 'block' : 'none';
+    function switchMainTab(mode) {
+        document.getElementById('panelDynamic').style.display = (mode === 'dynamic') ? 'block' : 'none';
+        document.getElementById('panelLegacy').style.display = (mode === 'legacy') ? 'block' : 'none';
+        document.getElementById('dynamicFilters').style.display = (mode === 'dynamic') ? 'flex' : 'none';
 
-        var btnS = document.getElementById('csPlanTabStarter');
-        var btnP = document.getElementById('csPlanTabProfessional');
-        btnS.className = 'cs-plan-tab-btn' + (plan === 'starter' ? ' active-starter' : '');
-        btnP.className = 'cs-plan-tab-btn' + (plan === 'professional' ? ' active-professional' : '');
+        var bDyn = document.getElementById('tabBtnDynamic');
+        var bLeg = document.getElementById('tabBtnLegacy');
+        if (mode === 'dynamic') {
+            bDyn.className = 'cs-main-tab active';
+            bLeg.className = 'cs-main-tab';
+        } else {
+            bDyn.className = 'cs-main-tab';
+            bLeg.className = 'cs-main-tab active';
+        }
     }
 
-    function csSave(plan) {
-        var editorId     = (plan === 'starter') ? 'csStarterEditor' : 'csProfessionalEditor';
-        var html_content = document.getElementById(editorId).value;
-        var csrfToken    = '{{ csrf_token }}';
+    function filterFeatures(plan, btn) {
+        document.querySelectorAll('.cs-filter-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+
+        var cards = document.querySelectorAll('.feature-card-wrapper');
+        cards.forEach(function(card) {
+            var cPlan = card.getAttribute('data-plan');
+            if (plan === 'all') {
+                card.style.display = 'block';
+            } else {
+                if (cPlan === 'all' || cPlan === plan) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    function updateModalIconPreview(iconClass) {
+        var prev = document.getElementById('fIconPreview');
+        if (!iconClass) iconClass = 'fa-solid fa-wand-magic-sparkles';
+        prev.innerHTML = '<i class="' + iconClass + ' text-success"></i>';
+    }
+
+    function setIconPreset(iconClass) {
+        document.getElementById('fIcon').value = iconClass;
+        updateModalIconPreview(iconClass);
+    }
+
+    function toggleCustomBadgeInput(val) {
+        var customInput = document.getElementById('fCustomBadge');
+        customInput.style.display = (val === 'custom') ? 'block' : 'none';
+    }
+
+    function openFeatureModal() {
+        document.getElementById('featureModalLabel').innerHTML = '<i class="fa-solid fa-sparkles text-success me-2"></i> Add Upcoming Feature';
+        document.getElementById('fId').value = '';
+        document.getElementById('fTitle').value = '';
+        document.getElementById('fDesc').value = '';
+        document.getElementById('fIcon').value = 'fa-solid fa-wand-magic-sparkles';
+        updateModalIconPreview('fa-solid fa-wand-magic-sparkles');
+        document.getElementById('fBadge').value = 'next_up';
+        toggleCustomBadgeInput('next_up');
+        document.getElementById('fCustomBadge').value = '';
+        document.getElementById('fPlan').value = 'all';
+        document.getElementById('fOrder').value = '0';
+        document.getElementById('fActive').checked = true;
+
+        var modal = new bootstrap.Modal(document.getElementById('featureModal'));
+        modal.show();
+    }
+
+    function editFeature(id, title, desc, icon, badge, customBadge, plan, order, active) {
+        document.getElementById('featureModalLabel').innerHTML = '<i class="fa-solid fa-pen-to-square text-primary me-2"></i> Edit Upcoming Feature';
+        document.getElementById('fId').value = id;
+        document.getElementById('fTitle').value = title;
+        document.getElementById('fDesc').value = desc;
+        document.getElementById('fIcon').value = icon;
+        updateModalIconPreview(icon);
+
+        var badgeSelect = document.getElementById('fBadge');
+        if (['', 'next_up', 'in_development', 'coming_soon', 'beta'].includes(badge)) {
+            badgeSelect.value = badge;
+            toggleCustomBadgeInput(badge);
+        } else {
+            badgeSelect.value = 'custom';
+            toggleCustomBadgeInput('custom');
+        }
+        document.getElementById('fCustomBadge').value = customBadge || '';
+        document.getElementById('fPlan').value = plan;
+        document.getElementById('fOrder').value = order;
+        document.getElementById('fActive').checked = (active === true || active === 'true');
+
+        var modal = new bootstrap.Modal(document.getElementById('featureModal'));
+        modal.show();
+    }
+
+    function saveFeatureForm(e) {
+        e.preventDefault();
+        var form = document.getElementById('featureForm');
+        var formData = new FormData(form);
+
+        fetch('{% url "admin_coming_soon_feature_save" %}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Saved!',
+                    text: data.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(function() {
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Error', data.message || 'Could not save feature', 'error');
+            }
+        })
+        .catch(function(err) {
+            Swal.fire('Error', 'Network error occurred.', 'error');
+        });
+    }
+
+    function toggleFeature(id) {
+        fetch('/admin/coming-soon/feature/' + id + '/toggle/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                location.reload();
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        });
+    }
+
+    function deleteFeature(id, title) {
+        Swal.fire({
+            title: 'Delete "' + title + '"?',
+            text: 'This feature card will be removed from the agent roadmap.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, delete'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                fetch('/admin/coming-soon/feature/' + id + '/delete/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken
+                    }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        Swal.fire('Error', data.message, 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    function seedDefaults() {
+        Swal.fire({
+            title: 'Restore Default Features?',
+            text: 'This will seed any missing default features from the UI roadmap.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, restore'
+        }).then(function(res) {
+            if (res.isConfirmed) {
+                fetch('{% url "admin_coming_soon_feature_seed" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken
+                    }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    Swal.fire('Restored', d.message, 'success').then(function() {
+                        location.reload();
+                    });
+                });
+            }
+        });
+    }
+
+    function openPreviewModal() {
+        var container = document.getElementById('previewCardsContainer');
+        container.innerHTML = '';
+
+        var cards = document.querySelectorAll('.feature-card-wrapper[data-active="true"]');
+        if (!cards.length) {
+            container.innerHTML = '<div class="col-12 text-center text-muted py-4">No active features to display.</div>';
+        } else {
+            cards.forEach(function(c) {
+                var title = c.querySelector('h6').textContent;
+                var desc = c.querySelector('p').textContent;
+                var iconClass = c.querySelector('.cs-icon-preview i').className;
+                var badgeEl = c.querySelector('.cs-pill-badge');
+                var badgeHtml = badgeEl ? '<span class="' + badgeEl.className + ' ms-2">' + badgeEl.textContent + '</span>' : '';
+
+                var html = `
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 p-3" style="background:#fff; border:1.5px solid #e2e8f0; border-radius:14px;">
+                            <div class="d-flex align-items-start gap-3">
+                                <div style="width:46px; height:46px; min-width:46px; border-radius:12px; background:#f0fdf9; border:1.5px solid #ccfbf1; color:#0d9488; display:flex; align-items:center; justify-content:center; font-size:18px;">
+                                    <i class="${iconClass}"></i>
+                                </div>
+                                <div>
+                                    <div class="d-flex align-items-center mb-1">
+                                        <span style="font-weight:700; color:#1e293b; font-size:15px;">${title}</span>
+                                        ${badgeHtml}
+                                    </div>
+                                    <p class="text-muted small mb-0" style="line-height:1.45;">${desc}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        var modal = new bootstrap.Modal(document.getElementById('previewModal'));
+        modal.show();
+    }
+
+    function csSaveLegacy(plan) {
+        var editorId = (plan === 'starter') ? 'csStarterEditor' : 'csProEditor';
+        var content = document.getElementById(editorId).value;
 
         fetch('{% url "admin_coming_soon_save" %}', {
             method: 'POST',
@@ -237,89 +728,17 @@
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'X-CSRFToken': csrfToken
             },
-            body: 'plan=' + encodeURIComponent(plan)
-                + '&html_content=' + encodeURIComponent(html_content)
-                + '&csrfmiddlewaretoken=' + encodeURIComponent(csrfToken)
+            body: 'plan=' + encodeURIComponent(plan) + '&html_content=' + encodeURIComponent(content)
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            var Toast = Swal.mixin({
-                toast: true, position: 'top-end',
-                showConfirmButton: false, timer: 3000, timerProgressBar: true
-            });
-            Toast.fire({ icon: data.success ? 'success' : 'error', title: data.message });
-
-            // Update status dots on success
-            if (data.success) {
-                var dotId = (plan === 'starter') ? 'dotStarter' : 'dotPro';
-                var labelId = (plan === 'starter') ? 'labelStarter' : 'labelPro';
-                var hasContent = html_content.trim().length > 0;
-                var dot = document.getElementById(dotId);
-                var label = document.getElementById(labelId);
-                if (dot) {
-                    dot.className = 'status-dot ' + (hasContent ? 'has-content' : 'no-content');
-                }
-                if (label) label.textContent = hasContent ? 'Active' : 'Empty';
-            }
-        })
-        .catch(function() {
             Swal.fire({
-                icon: 'error',
-                title: 'Network error',
-                text: 'Could not save content. Please try again.',
-                confirmButtonColor: '#d33'
+                icon: data.success ? 'success' : 'error',
+                title: data.success ? 'Saved!' : 'Error',
+                text: data.message,
+                timer: 2000,
+                showConfirmButton: false
             });
-        });
-    }
-
-    function csPreview(plan) {
-        var editorId     = (plan === 'starter') ? 'csStarterEditor' : 'csProfessionalEditor';
-        var html_content = document.getElementById(editorId).value.trim();
-        var label        = (plan === 'starter') ? '⭐ Starter Plan' : '💎 Professional Plan';
-
-        document.getElementById('csPreviewPlanLabel').textContent = label;
-
-        var iframe = document.getElementById('csPreviewIframe');
-        var doc    = iframe.contentDocument || iframe.contentWindow.document;
-        doc.open();
-        doc.write(
-            '<!DOCTYPE html><html><head>'
-            + '<meta charset="UTF-8">'
-            + '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            + '<style>'
-            + 'body{font-family:system-ui,sans-serif;padding:28px 32px;color:#1a202c;background:#fff;line-height:1.65;}'
-            + '.card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:16px;}'
-            + 'h1,h2,h3,h4,h5{color:#1a202c;} .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;}'
-            + 'img{max-width:100%;border-radius:8px;}'
-            + '</style>'
-            + '</head><body>'
-            + (html_content || '<p style="color:#6b7280;">No content written yet. Type some HTML in the editor above.</p>')
-            + '</body></html>'
-        );
-        doc.close();
-
-        iframe.onload = function() {
-            try { iframe.style.height = (iframe.contentDocument.body.scrollHeight + 40) + 'px'; } catch(e) {}
-        };
-
-        var modal = new bootstrap.Modal(document.getElementById('csPreviewModal'));
-        modal.show();
-    }
-
-    function csClear(plan) {
-        var editorId = (plan === 'starter') ? 'csStarterEditor' : 'csProfessionalEditor';
-        Swal.fire({
-            title: 'Clear content?',
-            text: 'This will empty the editor. Click Save afterwards to remove the tab from agents\u2019 dashboards.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Yes, clear it'
-        }).then(function(result) {
-            if (result.isConfirmed) {
-                document.getElementById(editorId).value = '';
-            }
         });
     }
 </script>
