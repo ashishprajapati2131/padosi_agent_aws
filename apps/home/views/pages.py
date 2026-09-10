@@ -25,7 +25,11 @@ from apps.home.services.agent_filters import (
     apply_location_text_filter,
     listed_agents_queryset,
 )
-from apps.home.services.distance import DistanceService, apply_search_proximity
+from apps.home.services.distance import (
+    FIND_AGENTS_PAGE_SIZE,
+    DistanceService,
+    rank_directory_agents,
+)
 from apps.home.services.geocoding import GeocodingService
 from apps.home.services.ai_picks import AIPicksService
 from django.db.models import Avg, Q
@@ -541,21 +545,29 @@ def fetch_filtered_agents_list(request):
     for agent in all_agents:
         agent.distance = None
 
-    # Exact service-pincode matches stay visible even outside the 50km geo radius.
-    all_agents = apply_search_proximity(all_agents, user_lat, user_lng, search_pincode=pincode)
+    # Nearby/pin matches first; farther agents stay available for Load More.
+    all_agents = rank_directory_agents(all_agents, user_lat, user_lng, search_pincode=pincode)
+
+    def _nearby_rank(agent):
+        # Keep local matches on page 1; Load More pages get farther agents.
+        return 0 if getattr(agent, 'is_nearby', False) else 1
 
     # In-memory sorting matching Laravel's logic
     if user_lat is not None and user_lng is not None and sort_by == 'distance':
-        all_agents.sort(key=lambda x: (x.distance if x.distance is not None else 999999, -(x.padosi_smart_rank or 0)))
+        all_agents.sort(key=lambda x: (
+            x.distance if x.distance is not None else 999999,
+            -(x.padosi_smart_rank or 0),
+        ))
     elif sort_by == 'rating':
-        all_agents.sort(key=lambda x: (-x.average_rating, -(x.padosi_smart_rank or 0)))
+        all_agents.sort(key=lambda x: (_nearby_rank(x), -x.average_rating, -(x.padosi_smart_rank or 0)))
     elif sort_by == 'experience':
-        all_agents.sort(key=lambda x: (-x.experience_years, -(x.padosi_smart_rank or 0)))
+        all_agents.sort(key=lambda x: (_nearby_rank(x), -x.experience_years, -(x.padosi_smart_rank or 0)))
     else:
         # Default: best match % (smart_rank desc), tiebreaker: distance asc
         all_agents.sort(key=lambda x: (
-            -(x.padosi_smart_rank or 0), 
-            x.distance if x.distance is not None else 999999
+            _nearby_rank(x),
+            -(x.padosi_smart_rank or 0),
+            x.distance if x.distance is not None else 999999,
         ))
 
     # Calculate match percentage and attach reviews/stats properties
@@ -589,7 +601,10 @@ def find_agents(request):
     lat_param = request.GET.get('lat', '').strip()
     lng_param = request.GET.get('lng', '').strip()
 
-    is_htmx = request.headers.get('HX-Request') == 'true'
+    is_htmx = (
+        request.headers.get('HX-Request') == 'true'
+        or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    )
 
     # Save to session and clear opposite parameters to prevent conflicts
     if pincode_param or location_param:
@@ -695,7 +710,7 @@ def find_agents(request):
     portfolio_companies_by_type = get_portfolio_companies_by_type()
 
     if should_require_filter_selection:
-        paginator = Paginator([], 10)
+        paginator = Paginator([], FIND_AGENTS_PAGE_SIZE)
         agents = paginator.page(1)
         context = {
             'agents': agents,
@@ -704,6 +719,8 @@ def find_agents(request):
             'filterPromptMessage': filter_prompt_message,
             'detectedArea': detected_area,
             'invalidPincode': invalid_pincode,
+            'next_page_url': None,
+            'has_next': False,
             'hide_header': True,
         }
         if is_htmx:
@@ -715,9 +732,9 @@ def find_agents(request):
     all_agents, user_lat, user_lng, sort_by, invalid_pincode, max_smart_rank = fetch_filtered_agents_list(request)
     detected_area = request.session.get('detected_area', '')
 
-    # Paginate results
+    # First page shows 5 agents; Load More fetches the next page.
     page = request.GET.get('page', 1)
-    paginator = Paginator(all_agents, 10)
+    paginator = Paginator(all_agents, FIND_AGENTS_PAGE_SIZE)
     try:
         agents_page = paginator.page(page)
     except PageNotAnInteger:
@@ -790,6 +807,7 @@ def find_agents(request):
         'maxSmartRank': max_smart_rank,
         'invalidPincode': invalid_pincode,
         'next_page_url': next_page_url,
+        'has_next': agents_page.has_next(),
         'selected_service_type': request.GET.getlist('ServiceType'),
         'selected_insurance_types': request.GET.getlist('InsuranceType'),
         'selected_insurance_companies': request.GET.getlist('InsuranceCompany'),
@@ -1335,33 +1353,40 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
     for agent in all_agents:
         agent.distance = None
 
-    all_agents = apply_search_proximity(all_agents, user_lat, user_lng, search_pincode=pincode)
-    
+    all_agents = rank_directory_agents(all_agents, user_lat, user_lng, search_pincode=pincode)
+
+    def _nearby_rank(agent):
+        return 0 if getattr(agent, 'is_nearby', False) else 1
+
     # In-memory sorting matching Laravel's logic
     if user_lat is not None and user_lng is not None and sort_by == 'distance':
-        all_agents.sort(key=lambda x: (x.distance if x.distance is not None else 999999, -(x.padosi_smart_rank or 0)))
+        all_agents.sort(key=lambda x: (
+            x.distance if x.distance is not None else 999999,
+            -(x.padosi_smart_rank or 0),
+        ))
     elif sort_by == 'rating':
-        all_agents.sort(key=lambda x: (-x.average_rating, -(x.padosi_smart_rank or 0)))
+        all_agents.sort(key=lambda x: (_nearby_rank(x), -x.average_rating, -(x.padosi_smart_rank or 0)))
     elif sort_by == 'experience':
-        all_agents.sort(key=lambda x: (-x.experience_years, -(x.padosi_smart_rank or 0)))
+        all_agents.sort(key=lambda x: (_nearby_rank(x), -x.experience_years, -(x.padosi_smart_rank or 0)))
     else:
         # Default: best match % (smart_rank desc), tiebreaker: distance asc
         all_agents.sort(key=lambda x: (
-            -(x.padosi_smart_rank or 0), 
-            x.distance if x.distance is not None else 999999
+            _nearby_rank(x),
+            -(x.padosi_smart_rank or 0),
+            x.distance if x.distance is not None else 999999,
         ))
-    
+
     # Calculate match percentage and attach reviews/stats properties
     max_smart_rank = max([a.padosi_smart_rank or 0 for a in all_agents]) if all_agents else 165
     if max_smart_rank <= 0:
         max_smart_rank = 165
-    
+
     for a in all_agents:
         rank = a.padosi_smart_rank or 0
         a.match_percent = int(min(99.0, max(80.0, 80.0 + (rank / max_smart_rank) * 19.0)))
         # Attach helper attributes for templates
         a.review_count_val = a.review_count
-    
+
     return all_agents, max_smart_rank, invalid_pincode, detected_area
 
 
