@@ -4,11 +4,15 @@ from unittest.mock import MagicMock, patch
 from django.test import SimpleTestCase
 from django.urls import resolve
 
+from django.core.paginator import Paginator
+
 from apps.home.services.distance import (
+    FIND_AGENTS_PAGE_SIZE,
     DistanceService,
     agent_serves_pincode,
     apply_search_proximity,
     iter_agent_service_pincodes,
+    rank_directory_agents,
 )
 
 
@@ -83,6 +87,55 @@ class SearchProximityTests(SimpleTestCase):
             search_pincode='384285',
         )
         self.assertEqual(kept, [])
+
+    def test_far_agent_kept_when_requested(self):
+        agent = make_agent(
+            profile_pins=['110001'],
+            latitude=28.6139,
+            longitude=77.2090,
+        )
+        kept = apply_search_proximity(
+            [agent],
+            user_lat=23.0225,
+            user_lng=72.5714,
+            search_pincode='384285',
+            keep_outside_radius=True,
+        )
+        self.assertEqual(len(kept), 1)
+        self.assertFalse(kept[0].is_nearby)
+
+
+class DirectoryRankingTests(SimpleTestCase):
+    def test_nearby_search_keeps_far_agents_for_load_more(self):
+        nearby = make_agent(profile_pins=['384285'], latitude=23.85, longitude=72.12)
+        far = make_agent(profile_pins=['110001'], latitude=28.6139, longitude=77.2090)
+        ranked = rank_directory_agents(
+            [nearby, far],
+            user_lat=23.0225,
+            user_lng=72.5714,
+            search_pincode='384285',
+        )
+        self.assertEqual(len(ranked), 2)
+        self.assertTrue(nearby.is_nearby)
+        self.assertFalse(far.is_nearby)
+
+    def test_no_nearby_agents_stays_empty(self):
+        far = make_agent(profile_pins=['110001'], latitude=28.6139, longitude=77.2090)
+        ranked = rank_directory_agents(
+            [far],
+            user_lat=23.0225,
+            user_lng=72.5714,
+            search_pincode='384285',
+        )
+        self.assertEqual(ranked, [])
+
+    def test_first_page_is_five_and_has_next(self):
+        agents = [object() for _ in range(8)]
+        paginator = Paginator(agents, FIND_AGENTS_PAGE_SIZE)
+        page = paginator.page(1)
+        self.assertEqual(len(page.object_list), 5)
+        self.assertTrue(page.has_next())
+        self.assertEqual(page.next_page_number(), 2)
 
 
 class PincodeCoordinateLookupTests(SimpleTestCase):

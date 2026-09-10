@@ -195,7 +195,6 @@ class AgentSearchService:
         if user_lat is not None and user_lng is not None:
             dist_sql = "(CASE WHEN agents.latitude IS NOT NULL AND agents.longitude IS NOT NULL THEN (6371 * acos(cos(radians(%s)) * cos(radians(agents.latitude)) * cos(radians(agents.longitude) - radians(%s)) + sin(radians(%s)) * sin(radians(agents.latitude)))) ELSE 999999 END)"
             query = query.annotate(distance_db=RawSQL(dist_sql, (user_lat, user_lng, user_lat)))
-            query = query.filter(distance_db__lte=50)
         else:
             query = query.annotate(distance_db=Value(999999.0, output_field=FloatField()))
 
@@ -214,20 +213,27 @@ class AgentSearchService:
         else:
             query = query.order_by('-padosi_smart_rank', 'distance_db', '-exp_years')
 
-        # Limit strictly to 3 records at database level
-        query = query[:3]
-        
         return query, user_lat, user_lng, invalid_pincode
 
 
     @staticmethod
     def search_agents(req: FindAgentsRequest) -> FindAgentsResponse:
         """
-        Executes Find Agent search using efficient DB limit (Top 3) without fetching all agents into memory.
+        Find Agent search with 5-per-page pagination and a real has_next flag.
         """
         query, user_lat, user_lng, invalid_pincode = AgentSearchService._build_agent_queryset(req)
-        
-        page_agents = list(query)
+
+        total_records = query.count()
+        page_size = req.page_size or 5
+        current_page = max(1, req.page or 1)
+        total_pages = max(1, (total_records + page_size - 1) // page_size) if total_records else 1
+        if current_page > total_pages:
+            current_page = total_pages
+        offset = (current_page - 1) * page_size
+        page_agents = list(query[offset:offset + page_size])
+        has_next = current_page < total_pages and total_records > 0
+        has_previous = current_page > 1
+
         detected_area = req.location or req.pincode or ""
         
         # Max smart rank logic
@@ -317,14 +323,14 @@ class AgentSearchService:
         }
 
         pagination = PaginationMeta(
-            total_records=len(page_agents),
-            current_page=1,
-            total_pages=1,
-            page_size=3,
-            has_next=False,
-            has_previous=False,
-            next_page_number=None,
-            previous_page_number=None,
+            total_records=total_records,
+            current_page=current_page,
+            total_pages=total_pages,
+            page_size=page_size,
+            has_next=has_next,
+            has_previous=has_previous,
+            next_page_number=current_page + 1 if has_next else None,
+            previous_page_number=current_page - 1 if has_previous else None,
         )
 
         message = "Agents retrieved successfully." if len(page_agents) > 0 else "No agents found matching the criteria."

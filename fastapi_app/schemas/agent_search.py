@@ -38,7 +38,7 @@ class FindAgentsRequest(BaseModel):
     sort_by: Optional[str] = Field("match", description="Sort option: distance | match | rating | experience")
 
     page: int = Field(1, ge=1, description="Page number (1-indexed)")
-    page_size: int = Field(10, ge=1, le=100, description="Number of agents per page")
+    page_size: int = Field(5, ge=1, le=100, description="Number of agents per page")
 
     class Config:
         populate_by_name = True

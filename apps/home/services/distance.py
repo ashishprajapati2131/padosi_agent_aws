@@ -280,11 +280,25 @@ def agent_serves_pincode(agent, pincode):
     return target in iter_agent_service_pincodes(agent)
 
 
-def apply_search_proximity(agents, user_lat, user_lng, search_pincode=None, radius_km=50):
+FIND_AGENTS_PAGE_SIZE = 5
+NEARBY_RADIUS_KM = 50
+
+
+def apply_search_proximity(
+    agents,
+    user_lat,
+    user_lng,
+    search_pincode=None,
+    radius_km=NEARBY_RADIUS_KM,
+    keep_outside_radius=False,
+):
     """
-    Attach .distance and keep agents who either:
+    Attach .distance / .is_nearby and keep agents who either:
     - explicitly service the searched pincode, or
     - are within radius_km of the search coordinates.
+
+    When keep_outside_radius=True, farther agents are still returned (with
+    is_nearby=False) so the directory can paginate them behind the first page.
     """
     search_pin = _normalize_pin(search_pincode)
     filtered = []
@@ -293,13 +307,16 @@ def apply_search_proximity(agents, user_lat, user_lng, search_pincode=None, radi
         serves = bool(search_pin) and agent_serves_pincode(agent, search_pin)
         agent.serves_search_pincode = serves
         agent.distance = None
+        agent.is_nearby = False
 
         if serves:
             agent.distance = 0
+            agent.is_nearby = True
             filtered.append(agent)
             continue
 
         if user_lat is None or user_lng is None:
+            agent.is_nearby = True
             filtered.append(agent)
             continue
 
@@ -330,7 +347,36 @@ def apply_search_proximity(agents, user_lat, user_lng, search_pincode=None, radi
                         )
 
         agent.distance = best if best is not None else 999999
-        if agent.distance <= radius_km:
+        agent.is_nearby = agent.distance <= radius_km
+        if agent.is_nearby or keep_outside_radius:
             filtered.append(agent)
 
     return filtered
+
+
+def rank_directory_agents(agents, user_lat, user_lng, search_pincode=None, radius_km=NEARBY_RADIUS_KM):
+    """
+    Directory ranking for Find Agents.
+
+    - No location: keep everyone.
+    - Location with zero nearby/pin matches: empty (coming-soon state).
+    - Location with nearby matches: keep farther agents too so Load More can
+      paginate beyond the first nearby page.
+    """
+    located = (
+        (user_lat is not None and user_lng is not None)
+        or bool(_normalize_pin(search_pincode))
+    )
+    ranked = apply_search_proximity(
+        agents,
+        user_lat,
+        user_lng,
+        search_pincode=search_pincode,
+        radius_km=radius_km,
+        keep_outside_radius=located,
+    )
+    if not located:
+        return ranked
+    if not any(getattr(agent, 'is_nearby', False) for agent in ranked):
+        return []
+    return ranked

@@ -1780,9 +1780,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
             <!-- Main Content Area: Agent List -->
             <div class="col-lg-8 col-xl-9" id="agent-list-container">
-                <div class="find-agents-list">
-                    {% include 'partials/find-agents-list.html' with agents=agents shouldGateGuest=shouldGateGuest %}
-                </div>
+                {% include 'partials/find-agents-list.html' with agents=agents shouldGateGuest=shouldGateGuest %}
             </div>
 
             <!-- Skeleton Template for HTMX Loading State (Animated Shimmer) -->
@@ -3626,48 +3624,63 @@ no spam calls, only trusted licensed agents.{% endblock %}
             (document.getElementById('filter_pincode') && document.getElementById('filter_pincode').value) ||
             (document.getElementById('filter_location') && document.getElementById('filter_location').value) ||
             {% if request.session.last_lat or request.session.last_pincode or request.session.last_location %}true{% else %} false{% endif %}
-            );
+        );
 
-    if (!hasLoc) {
-        alert('Please add your pincode or location before loading more agents.');
-        if (typeof window.showLocationPopup === 'function') {
-            window.showLocationPopup('{% url "home:find_agents" %}');
-        }
-        return;
-    }
-
-    const button = $('#load-more-button');
-    const textSpan = $('#load-more-text');
-    const spinner = $('#load-more-spinner');
-    const icon = $('#load-more-icon');
-
-    button.prop('disabled', true);
-    textSpan.text('Loading...');
-    spinner.show();
-    icon.hide();
-
-    $.ajax({
-        url: nextPageUrl,
-        type: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        success: function (response) {
-            const $response = $(response);
-            const $agentCards = $response.find('.find-agents-list-item');
-            const $newLoadMore = $response.find('#load-more-wrapper');
-
-            if ($agentCards.length > 0) {
-                $('#load-more-wrapper').before($agentCards);
-                if (typeof updateCompareBar === 'function') {
-                    updateCompareBar();
-                }
+        if (!hasLoc) {
+            alert('Please add your pincode or location before loading more agents.');
+            if (typeof window.showLocationPopup === 'function') {
+                window.showLocationPopup('{% url "home:find_agents" %}');
             }
+            return;
+        }
 
-            if ($newLoadMore.length > 0) {
-                $('#load-more-wrapper').replaceWith($newLoadMore);
-            } else {
-                $('#load-more-wrapper').html(`
+        const button = $('#load-more-button');
+        const textSpan = $('#load-more-text');
+        const spinner = $('#load-more-spinner');
+        const icon = $('#load-more-icon');
+        let requestUrl = (nextPageUrl || '').trim();
+        if (!requestUrl) {
+            const nextPage = button.data('next-page');
+            if (nextPage) {
+                const params = new URLSearchParams(window.location.search);
+                params.set('page', String(nextPage));
+                requestUrl = window.location.pathname + '?' + params.toString();
+            }
+        }
+        if (!requestUrl) {
+            alert('Failed to load more agents. Please try again.');
+            return;
+        }
+
+        button.prop('disabled', true);
+        textSpan.text('Loading...');
+        spinner.show();
+        icon.hide();
+
+        $.ajax({
+            url: requestUrl,
+            type: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'HX-Request': 'true'
+            },
+            success: function (response) {
+                const $response = $('<div>').append($.parseHTML(response));
+                const $agentCards = $response.find('.find-agents-list-item');
+                const $newLoadMore = $response.find('#load-more-wrapper');
+                const hasMoreButton = $newLoadMore.find('#load-more-button').length > 0;
+
+                if ($agentCards.length > 0) {
+                    $('#load-more-wrapper').before($agentCards);
+                    if (typeof updateCompareBar === 'function') {
+                        updateCompareBar();
+                    }
+                }
+
+                if (hasMoreButton) {
+                    $('#load-more-wrapper').replaceWith($newLoadMore);
+                } else {
+                    $('#load-more-wrapper').html(`
                             <div class="text-center" style="margin-top: 30px; margin-bottom: 40px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
                                 <i class="fas fa-check-circle" style="font-size: 32px; color: #10b981; margin-bottom: 10px;"></i>
                                 <p style="font-size: 15px; color: #475569; font-weight: 600; margin: 0;">
@@ -3675,24 +3688,24 @@ no spam calls, only trusted licensed agents.{% endblock %}
                                 </p>
                             </div>
                         `);
-            }
+                }
 
-            if ($agentCards.length > 0) {
-                $('html, body').animate({
-                    scrollTop: $agentCards.first().offset().top - 100
-                }, 500);
+                if ($agentCards.length > 0) {
+                    $('html, body').animate({
+                        scrollTop: $agentCards.first().offset().top - 100
+                    }, 500);
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('Load more failed:', error);
+                button.prop('disabled', false);
+                textSpan.text('Load More Agents');
+                spinner.hide();
+                icon.show();
+                alert('Failed to load more agents. Please try again.');
             }
-        },
-        error: function (xhr, status, error) {
-            console.error('Load more failed:', error);
-            button.prop('disabled', false);
-            textSpan.text('Load More Agents');
-            spinner.hide();
-            icon.show();
-            alert('Failed to load more agents. Please try again.');
-        }
-    });
-        };
+        });
+    };
 
     // Global sorting handler
     window.updateSortBy = function (val) {
