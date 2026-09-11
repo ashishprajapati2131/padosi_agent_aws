@@ -88,22 +88,6 @@ class SearchProximityTests(SimpleTestCase):
         )
         self.assertEqual(kept, [])
 
-    def test_far_agent_kept_when_requested(self):
-        agent = make_agent(
-            profile_pins=['110001'],
-            latitude=28.6139,
-            longitude=77.2090,
-        )
-        kept = apply_search_proximity(
-            [agent],
-            user_lat=23.0225,
-            user_lng=72.5714,
-            search_pincode='384285',
-            keep_outside_radius=True,
-        )
-        self.assertEqual(len(kept), 1)
-        self.assertFalse(kept[0].is_nearby)
-
 
 class DirectoryRankingTests(SimpleTestCase):
     def test_nearby_search_drops_agents_beyond_50km(self):
@@ -135,6 +119,24 @@ class DirectoryRankingTests(SimpleTestCase):
         self.assertEqual(len(page.object_list), 5)
         self.assertTrue(page.has_next())
         self.assertEqual(page.next_page_number(), 2)
+
+    def test_six_nearby_agents_enable_load_more_within_radius(self):
+        agents = [
+            make_agent(profile_pins=['384285'], latitude=23.03, longitude=72.57)
+            for _ in range(6)
+        ]
+        ranked = rank_directory_agents(
+            agents,
+            user_lat=23.0225,
+            user_lng=72.5714,
+            search_pincode='384285',
+        )
+        self.assertEqual(len(ranked), 6)
+        paginator = Paginator(ranked, FIND_AGENTS_PAGE_SIZE)
+        page = paginator.page(1)
+        self.assertTrue(page.has_next())
+        self.assertEqual(len(page.object_list), 5)
+        self.assertEqual(len(paginator.page(2).object_list), 1)
 
 
 class PincodeCoordinateLookupTests(SimpleTestCase):

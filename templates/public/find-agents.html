@@ -3665,7 +3665,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
                 'HX-Request': 'true'
             },
             success: function (response) {
-                const $response = $('<div>').append($.parseHTML(response));
+                const $response = $('<div>').append($.parseHTML(response, document, false));
                 const $agentCards = $response.find('.find-agents-list-item');
                 const $newLoadMore = $response.find('#load-more-wrapper');
                 const hasMoreButton = $newLoadMore.find('#load-more-button').length > 0;
@@ -3680,14 +3680,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
                 if (hasMoreButton) {
                     $('#load-more-wrapper').replaceWith($newLoadMore);
                 } else {
-                    $('#load-more-wrapper').html(`
-                            <div class="text-center" style="margin-top: 30px; margin-bottom: 40px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-                                <i class="fas fa-check-circle" style="font-size: 32px; color: #10b981; margin-bottom: 10px;"></i>
-                                <p style="font-size: 15px; color: #475569; font-weight: 600; margin: 0;">
-                                    You've viewed all available agents
-                                </p>
-                            </div>
-                        `);
+                    $('#load-more-wrapper').empty();
                 }
 
                 if ($agentCards.length > 0) {
