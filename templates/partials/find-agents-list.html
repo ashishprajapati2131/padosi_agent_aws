@@ -417,7 +417,7 @@
                     {% include 'partials/agent-card.html' with agent=agent maxSmartRank=maxSmartRank %}
                 {% endfor %}
 
-                {% include 'partials/find-agents-load-more-button.html' %}
+                {% include 'partials/find-agents-load-more-button.html' with agents=agents has_next=has_next next_page_url=next_page_url %}
             </div>
         {% endif %}
     {% endif %}

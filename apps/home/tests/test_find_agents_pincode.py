@@ -150,6 +150,20 @@ class PincodeCoordinateLookupTests(SimpleTestCase):
         self.assertAlmostEqual(coords['lat'], 23.803)
         self.assertAlmostEqual(coords['lng'], 72.391)
 
+    def test_precise_lookup_skips_regional_fallback(self):
+        with patch('apps.home.services.distance.Pincode.objects') as qs:
+            qs.filter.return_value.first.return_value = None
+            self.assertIsNone(DistanceService.get_precise_pincode_coordinates('384285'))
+
+    def test_regional_fallback_detection(self):
+        # 38xxxx regional center is Ahmedabad
+        self.assertTrue(
+            DistanceService.is_regional_fallback_coordinate('384285', 23.0225, 72.5714)
+        )
+        self.assertFalse(
+            DistanceService.is_regional_fallback_coordinate('384285', 23.803, 72.391)
+        )
+
 
 class ReviewUrlOrderTests(SimpleTestCase):
     def test_profile_review_is_not_captured_as_state_slug(self):

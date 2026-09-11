@@ -406,19 +406,20 @@ def fetch_filtered_agents_list(request):
         if not re.match(r'^[1-9]\d{5}$', pincode):
             invalid_pincode = True
         else:
-            coords = None
-            try:
-                geo_svc = GeocodingService()
-                coords = geo_svc.resolve_coordinates(pincode)
-            except Exception:
-                coords = None
+            coords = DistanceService.get_precise_pincode_coordinates(pincode)
             if not coords:
-                coords = DistanceService.get_pincode_coordinates(pincode)
+                try:
+                    geo_svc = GeocodingService()
+                    resolved = geo_svc.resolve_coordinates(pincode)
+                except Exception:
+                    resolved = None
+                if resolved and not resolved.get('regional_fallback'):
+                    coords = resolved
             if coords:
                 user_lat = coords['lat']
                 user_lng = coords['lng']
             # Valid 6-digit pins still match agents who list that service pincode
-            # even when geocoding cannot produce coordinates.
+            # even when geocoding cannot produce precise coordinates.
 
     if invalid_pincode:
         query = query.none()
@@ -1239,14 +1240,15 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
         if not re.match(r'^[1-9]\d{5}$', pincode):
             invalid_pincode = True
         else:
-            coords = None
-            try:
-                geo_svc = GeocodingService()
-                coords = geo_svc.resolve_coordinates(pincode)
-            except Exception:
-                coords = None
+            coords = DistanceService.get_precise_pincode_coordinates(pincode)
             if not coords:
-                coords = DistanceService.get_pincode_coordinates(pincode)
+                try:
+                    geo_svc = GeocodingService()
+                    resolved = geo_svc.resolve_coordinates(pincode)
+                except Exception:
+                    resolved = None
+                if resolved and not resolved.get('regional_fallback'):
+                    coords = resolved
             if coords:
                 user_lat = coords['lat']
                 user_lng = coords['lng']
