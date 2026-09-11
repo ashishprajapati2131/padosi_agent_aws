@@ -106,7 +106,7 @@ class SearchProximityTests(SimpleTestCase):
 
 
 class DirectoryRankingTests(SimpleTestCase):
-    def test_nearby_search_keeps_far_agents_for_load_more(self):
+    def test_nearby_search_drops_agents_beyond_50km(self):
         nearby = make_agent(profile_pins=['384285'], latitude=23.85, longitude=72.12)
         far = make_agent(profile_pins=['110001'], latitude=28.6139, longitude=77.2090)
         ranked = rank_directory_agents(
@@ -115,9 +115,8 @@ class DirectoryRankingTests(SimpleTestCase):
             user_lng=72.5714,
             search_pincode='384285',
         )
-        self.assertEqual(len(ranked), 2)
+        self.assertEqual(ranked, [nearby])
         self.assertTrue(nearby.is_nearby)
-        self.assertFalse(far.is_nearby)
 
     def test_no_nearby_agents_stays_empty(self):
         far = make_agent(profile_pins=['110001'], latitude=28.6139, longitude=77.2090)

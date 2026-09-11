@@ -545,11 +545,10 @@ def fetch_filtered_agents_list(request):
     for agent in all_agents:
         agent.distance = None
 
-    # Nearby/pin matches first; farther agents stay available for Load More.
+    # Only agents within 50 km (or exact service-pincode matches).
     all_agents = rank_directory_agents(all_agents, user_lat, user_lng, search_pincode=pincode)
 
     def _nearby_rank(agent):
-        # Keep local matches on page 1; Load More pages get farther agents.
         return 0 if getattr(agent, 'is_nearby', False) else 1
 
     # In-memory sorting matching Laravel's logic

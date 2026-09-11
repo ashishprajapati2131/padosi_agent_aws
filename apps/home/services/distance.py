@@ -359,9 +359,9 @@ def rank_directory_agents(agents, user_lat, user_lng, search_pincode=None, radiu
     Directory ranking for Find Agents.
 
     - No location: keep everyone.
-    - Location with zero nearby/pin matches: empty (coming-soon state).
-    - Location with nearby matches: keep farther agents too so Load More can
-      paginate beyond the first nearby page.
+    - With location/pincode: only agents within radius_km (or who explicitly
+      service the searched pincode). Farther agents are never listed.
+    - Zero nearby/pin matches: empty (coming-soon state).
     """
     located = (
         (user_lat is not None and user_lng is not None)
@@ -373,7 +373,7 @@ def rank_directory_agents(agents, user_lat, user_lng, search_pincode=None, radiu
         user_lng,
         search_pincode=search_pincode,
         radius_km=radius_km,
-        keep_outside_radius=located,
+        keep_outside_radius=False,
     )
     if not located:
         return ranked
