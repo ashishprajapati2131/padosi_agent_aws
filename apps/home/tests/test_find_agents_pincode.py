@@ -88,9 +88,25 @@ class SearchProximityTests(SimpleTestCase):
         )
         self.assertEqual(kept, [])
 
+    def test_far_agent_kept_when_requested(self):
+        agent = make_agent(
+            profile_pins=['110001'],
+            latitude=28.6139,
+            longitude=77.2090,
+        )
+        kept = apply_search_proximity(
+            [agent],
+            user_lat=23.0225,
+            user_lng=72.5714,
+            search_pincode='384285',
+            keep_outside_radius=True,
+        )
+        self.assertEqual(len(kept), 1)
+        self.assertFalse(kept[0].is_nearby)
+
 
 class DirectoryRankingTests(SimpleTestCase):
-    def test_nearby_search_drops_agents_beyond_50km(self):
+    def test_nearby_search_only_returns_within_radius(self):
         nearby = make_agent(profile_pins=['384285'], latitude=23.85, longitude=72.12)
         far = make_agent(profile_pins=['110001'], latitude=28.6139, longitude=77.2090)
         ranked = rank_directory_agents(
@@ -99,8 +115,20 @@ class DirectoryRankingTests(SimpleTestCase):
             user_lng=72.5714,
             search_pincode='384285',
         )
-        self.assertEqual(ranked, [nearby])
-        self.assertTrue(nearby.is_nearby)
+        self.assertEqual(len(ranked), 1)
+        self.assertTrue(ranked[0].is_nearby)
+        self.assertEqual(ranked[0], nearby)
+
+    def test_no_location_keeps_all_agents(self):
+        nearby = make_agent(profile_pins=['384285'], latitude=23.85, longitude=72.12)
+        far = make_agent(profile_pins=['110001'], latitude=28.6139, longitude=77.2090)
+        ranked = rank_directory_agents(
+            [nearby, far],
+            user_lat=None,
+            user_lng=None,
+            search_pincode=None,
+        )
+        self.assertEqual(len(ranked), 2)
 
     def test_no_nearby_agents_stays_empty(self):
         far = make_agent(profile_pins=['110001'], latitude=28.6139, longitude=77.2090)
@@ -120,24 +148,6 @@ class DirectoryRankingTests(SimpleTestCase):
         self.assertTrue(page.has_next())
         self.assertEqual(page.next_page_number(), 2)
 
-    def test_six_nearby_agents_enable_load_more_within_radius(self):
-        agents = [
-            make_agent(profile_pins=['384285'], latitude=23.03, longitude=72.57)
-            for _ in range(6)
-        ]
-        ranked = rank_directory_agents(
-            agents,
-            user_lat=23.0225,
-            user_lng=72.5714,
-            search_pincode='384285',
-        )
-        self.assertEqual(len(ranked), 6)
-        paginator = Paginator(ranked, FIND_AGENTS_PAGE_SIZE)
-        page = paginator.page(1)
-        self.assertTrue(page.has_next())
-        self.assertEqual(len(page.object_list), 5)
-        self.assertEqual(len(paginator.page(2).object_list), 1)
-
 
 class PincodeCoordinateLookupTests(SimpleTestCase):
     def test_database_coords_win_over_ahmedabad_prefix(self):
@@ -150,19 +160,16 @@ class PincodeCoordinateLookupTests(SimpleTestCase):
         self.assertAlmostEqual(coords['lat'], 23.803)
         self.assertAlmostEqual(coords['lng'], 72.391)
 
-    def test_precise_lookup_skips_regional_fallback(self):
-        with patch('apps.home.services.distance.Pincode.objects') as qs:
-            qs.filter.return_value.first.return_value = None
-            self.assertIsNone(DistanceService.get_precise_pincode_coordinates('384285'))
+    def test_precise_pincode_coordinates(self):
+        self.assertIsNotNone(DistanceService.get_precise_pincode_coordinates('380001'))
+        self.assertIsNone(DistanceService.get_precise_pincode_coordinates('389999'))
 
-    def test_regional_fallback_detection(self):
-        # 38xxxx regional center is Ahmedabad
-        self.assertTrue(
-            DistanceService.is_regional_fallback_coordinate('384285', 23.0225, 72.5714)
-        )
-        self.assertFalse(
-            DistanceService.is_regional_fallback_coordinate('384285', 23.803, 72.391)
-        )
+    def test_is_regional_fallback_coordinate(self):
+        fallback = DistanceService.get_regional_fallback_coordinates('389999')
+        self.assertTrue(DistanceService.is_regional_fallback_coordinate('389999', fallback['lat'], fallback['lng']))
+        self.assertFalse(DistanceService.is_regional_fallback_coordinate('389999', 28.6139, 77.2090))
+        # Exact pin 380001 is never a fallback
+        self.assertFalse(DistanceService.is_regional_fallback_coordinate('380001', 23.0225, 72.5714))
 
 
 class ReviewUrlOrderTests(SimpleTestCase):

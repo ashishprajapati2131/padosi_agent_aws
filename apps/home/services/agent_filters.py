@@ -179,7 +179,6 @@ def apply_location_text_filter(query, location, pincode=None, has_coords=False):
         q |= (
             Q(profile__address__icontains=token)
             | Q(profile__office_address__icontains=token)
-            | Q(profile__city__icontains=token)
             | Q(profile__state__icontains=token)
             | Q(serviceableCities__name__icontains=token)
             | Q(agent_pincode__icontains=token)
