@@ -27,7 +27,7 @@ class GeocodingService:
             return None
 
         # ─── Step 1: Authoritative pincodes table (before cache) ─────────────
-        # Cache may contain coarse regional fallbacks from older deploys; DB wins.
+        # Only use DB coordinates if they are NOT coarse regional fallbacks.
         try:
             existing = Pincode.objects.filter(
                 pincode=pincode,
@@ -35,7 +35,9 @@ class GeocodingService:
                 longitude__isnull=False
             ).first()
 
-            if existing:
+            if existing and not DistanceService.is_regional_fallback_coordinate(
+                pincode, existing.latitude, existing.longitude
+            ):
                 raw_name = existing.office_name or existing.district or ''
                 is_placeholder = bool(re.match(r'^(Area|Region)\s+\d', raw_name, re.IGNORECASE))
                 display_name = None
@@ -70,6 +72,13 @@ class GeocodingService:
             PincodeCache.store_coordinates(
                 pincode, postal_result['lat'], postal_result['lng'], postal_result.get('display_name')
             )
+            try:
+                Pincode.objects.filter(pincode=pincode).update(
+                    latitude=postal_result['lat'],
+                    longitude=postal_result['lng'],
+                )
+            except Exception:
+                pass
             return postal_result
 
         # ─── Step 4: Call Nominatim API ──────────────────────────
@@ -78,6 +87,13 @@ class GeocodingService:
             PincodeCache.store_coordinates(
                 pincode, api_result['lat'], api_result['lng'], api_result.get('display_name')
             )
+            try:
+                Pincode.objects.filter(pincode=pincode).update(
+                    latitude=api_result['lat'],
+                    longitude=api_result['lng'],
+                )
+            except Exception:
+                pass
             return api_result
 
         # ─── Step 5: Exact hardcoded pins only (never cache regional fallback)

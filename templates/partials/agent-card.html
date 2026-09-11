@@ -1,5 +1,5 @@
 {% load static %}
-<div class="react-agent-card find-agents-list-item">
+<div class="react-agent-card find-agents-list-item" data-agent-id="{{ agent.id }}">
     {% with profile=agent.profile performance=agent.performanceStats display_name=agent.display_name active_sub=agent.activeSubscription is_trusted=agent.is_trusted is_approved_by_admin=agent.is_approved_by_admin is_verified_agent=agent.is_verified_agent agent_slug=agent.agent_slug whatsapp_digits=agent.profile.whatsapp_digits whatsapp_raw=agent.whatsapp_raw exp_years=agent.experience_years client_base=agent.client_base claims_processed=performance.claims_processed|default:0 display_dist=agent.distance|default:0 has_distance=agent.has_distance rating=agent.average_rating smart_rank=agent.padosi_smart_rank calculated_match_percent=agent.calculated_match_percent badge=agent.badge|lower agent_city_display=agent.agent_city_display %}
 
     {% comment %} MOBILE CARD {% endcomment %}

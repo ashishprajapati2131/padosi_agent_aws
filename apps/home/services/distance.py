@@ -164,12 +164,42 @@ class DistanceService:
         }
         return region_map.get(major_region)
 
-    @classmethod
-    def get_precise_pincode_coordinates(cls, pincode):
+    @staticmethod
+    def get_precise_pincode_coordinates(pincode):
         """
-        Exact pin or DB coords only — never the 2-digit regional fallback.
-        Use this for Find Agents radius filtering so production does not center
-        every 38xxxx search on Ahmedabad when Nominatim is blocked.
+        Return coordinates only if this exact pincode has hardcoded coordinates.
+        Never returns regional/prefix fallbacks.
+        """
+        pincode = str(pincode or '').strip()
+        return EXACT_PINCODE_COORDS.get(pincode)
+
+    @classmethod
+    def is_regional_fallback_coordinate(cls, pincode, lat, lng):
+        """
+        Check if the given coordinates match the coarse regional fallback for this pincode.
+        Exact hardcoded pins (e.g. 380001 for Ahmedabad center) are never considered fallbacks.
+        """
+        pincode = str(pincode or '').strip()
+        if pincode in EXACT_PINCODE_COORDS:
+            return False
+        if lat is None or lng is None:
+            return False
+        fallback = cls.get_regional_fallback_coordinates(pincode)
+        if not fallback:
+            return False
+        try:
+            return (
+                abs(float(lat) - float(fallback['lat'])) < 0.001
+                and abs(float(lng) - float(fallback['lng'])) < 0.001
+            )
+        except (ValueError, TypeError):
+            return False
+
+    @classmethod
+    def get_pincode_coordinates(cls, pincode):
+        """
+        Resolve coordinates for a pincode: exact hardcoded → local DB (non-fallback) → None.
+        Coarse regional fallbacks are NOT returned as physical coordinates for proximity searches.
         """
         pincode = str(pincode or '').strip()
         if not pincode:
@@ -177,50 +207,20 @@ class DistanceService:
 
         exact = EXACT_PINCODE_COORDS.get(pincode)
         if exact:
-            return {'lat': exact['lat'], 'lng': exact['lng'], 'precise': True}
+            return exact
 
         try:
             record = Pincode.objects.filter(pincode=pincode).first()
             if record and record.latitude and record.longitude:
-                return {
-                    'lat': float(record.latitude),
-                    'lng': float(record.longitude),
-                    'precise': True,
-                }
+                if not cls.is_regional_fallback_coordinate(pincode, record.latitude, record.longitude):
+                    return {
+                        'lat': float(record.latitude),
+                        'lng': float(record.longitude)
+                    }
         except Exception as e:
-            logger.warning(f"DistanceService.get_precise_pincode_coordinates failed: {e}")
+            logger.warning(f"DistanceService.get_pincode_coordinates database lookup failed: {e}")
 
         return None
-
-    @classmethod
-    def is_regional_fallback_coordinate(cls, pincode, lat, lng):
-        """True when lat/lng match the coarse prefix fallback for this pin."""
-        fallback = cls.get_regional_fallback_coordinates(pincode)
-        if not fallback or lat is None or lng is None:
-            return False
-        try:
-            return (
-                abs(float(lat) - float(fallback['lat'])) < 0.02
-                and abs(float(lng) - float(fallback['lng'])) < 0.02
-            )
-        except (TypeError, ValueError):
-            return False
-
-    @classmethod
-    def get_pincode_coordinates(cls, pincode):
-        """
-        Resolve coordinates for a pincode: exact hardcoded → local DB → regional fallback.
-        Prefix fallbacks must not run before the database, or every 38xxxx pin maps to Ahmedabad.
-        """
-        pincode = str(pincode or '').strip()
-        if not pincode:
-            return None
-
-        precise = cls.get_precise_pincode_coordinates(pincode)
-        if precise:
-            return {'lat': precise['lat'], 'lng': precise['lng']}
-
-        return cls.get_regional_fallback_coordinates(pincode)
 
     @staticmethod
     def get_city_coordinates(city):
@@ -322,11 +322,15 @@ def apply_search_proximity(
     user_lng,
     search_pincode=None,
     radius_km=NEARBY_RADIUS_KM,
+    keep_outside_radius=False,
 ):
     """
     Attach .distance / .is_nearby and keep agents who either:
     - explicitly service the searched pincode, or
     - are within radius_km of the search coordinates.
+
+    When keep_outside_radius=True, farther agents are still returned (with
+    is_nearby=False) so the directory can paginate them behind the first page.
     """
     search_pin = _normalize_pin(search_pincode)
     filtered = []
@@ -344,9 +348,6 @@ def apply_search_proximity(
             continue
 
         if user_lat is None or user_lng is None:
-            # No reliable search center: do not list pan-India agents for a pincode search.
-            if search_pin:
-                continue
             agent.is_nearby = True
             filtered.append(agent)
             continue
@@ -355,15 +356,16 @@ def apply_search_proximity(
         if agent.latitude and agent.longitude:
             best = DistanceService.calculate(user_lat, user_lng, agent.latitude, agent.longitude)
 
-        for pin in iter_agent_service_pincodes(agent):
-            coords = DistanceService.get_pincode_coordinates(pin)
-            if not coords:
-                continue
-            dist = DistanceService.calculate(user_lat, user_lng, coords['lat'], coords['lng'])
-            if dist is None:
-                continue
-            if best is None or dist < best:
-                best = dist
+        if best is None:
+            for pin in iter_agent_service_pincodes(agent):
+                coords = DistanceService.get_pincode_coordinates(pin)
+                if not coords:
+                    continue
+                dist = DistanceService.calculate(user_lat, user_lng, coords['lat'], coords['lng'])
+                if dist is None:
+                    continue
+                if best is None or dist < best:
+                    best = dist
 
         if best is None:
             getter = getattr(agent, 'get_primary_profile', None)
@@ -379,7 +381,7 @@ def apply_search_proximity(
 
         agent.distance = best if best is not None else 999999
         agent.is_nearby = agent.distance <= radius_km
-        if agent.is_nearby:
+        if agent.is_nearby or keep_outside_radius:
             filtered.append(agent)
 
     return filtered
@@ -390,9 +392,8 @@ def rank_directory_agents(agents, user_lat, user_lng, search_pincode=None, radiu
     Directory ranking for Find Agents.
 
     - No location: keep everyone.
-    - With location/pincode: only agents within radius_km (or who explicitly
-      service the searched pincode). Farther agents are never listed.
-    - Zero nearby/pin matches: empty (coming-soon state).
+    - Location provided: only keep agents within radius_km (50 km) or servicing the pincode.
+    - If no agents within radius: return empty list.
     """
     located = (
         (user_lat is not None and user_lng is not None)
@@ -404,6 +405,7 @@ def rank_directory_agents(agents, user_lat, user_lng, search_pincode=None, radiu
         user_lng,
         search_pincode=search_pincode,
         radius_km=radius_km,
+        keep_outside_radius=not located,
     )
     if not located:
         return ranked
