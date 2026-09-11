@@ -417,22 +417,7 @@
                     {% include 'partials/agent-card.html' with agent=agent maxSmartRank=maxSmartRank %}
                 {% endfor %}
 
-                <div id="load-more-wrapper" class="w-100">
-                    {% if next_page_url or has_next or agents.has_next %}
-                        <div class="find-more-agent-btn text-center" style="margin-top: 30px; margin-bottom: 40px;">
-                            <button type="button" class="load-more-btn" onclick="loadMoreAgents('{{ next_page_url|default:''|escapejs }}')"
-                                id="load-more-button"
-                                data-next-page="{% if agents.has_next %}{{ agents.next_page_number }}{% endif %}"
-                                style="display: inline-flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 40px; background: linear-gradient(90deg, #1e40af 0%, #0f766e 100%); color: white; text-decoration: none; border-radius: 50px; font-weight: 700; font-size: 16px; box-shadow: 0 8px 20px rgba(15, 118, 110, 0.3); transition: all 0.3s ease; border: none; cursor: pointer;">
-                                <span id="load-more-text">Load More Agents</span>
-                                <span id="load-more-spinner" style="display: none;">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </span>
-                                <i class="fas fa-arrow-down" id="load-more-icon"></i>
-                            </button>
-                        </div>
-                    {% endif %}
-                </div>
+                {% include 'partials/find-agents-load-more-button.html' %}
             </div>
         {% endif %}
     {% endif %}

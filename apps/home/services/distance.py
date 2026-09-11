@@ -290,15 +290,11 @@ def apply_search_proximity(
     user_lng,
     search_pincode=None,
     radius_km=NEARBY_RADIUS_KM,
-    keep_outside_radius=False,
 ):
     """
     Attach .distance / .is_nearby and keep agents who either:
     - explicitly service the searched pincode, or
     - are within radius_km of the search coordinates.
-
-    When keep_outside_radius=True, farther agents are still returned (with
-    is_nearby=False) so the directory can paginate them behind the first page.
     """
     search_pin = _normalize_pin(search_pincode)
     filtered = []
@@ -348,7 +344,7 @@ def apply_search_proximity(
 
         agent.distance = best if best is not None else 999999
         agent.is_nearby = agent.distance <= radius_km
-        if agent.is_nearby or keep_outside_radius:
+        if agent.is_nearby:
             filtered.append(agent)
 
     return filtered
@@ -373,7 +369,6 @@ def rank_directory_agents(agents, user_lat, user_lng, search_pincode=None, radiu
         user_lng,
         search_pincode=search_pincode,
         radius_km=radius_km,
-        keep_outside_radius=False,
     )
     if not located:
         return ranked

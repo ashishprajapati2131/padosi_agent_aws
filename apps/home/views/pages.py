@@ -469,6 +469,10 @@ def fetch_filtered_agents_list(request):
     if user_lat and user_lng:
         request.session['lat'] = str(user_lat)
         request.session['lng'] = str(user_lng)
+        # Keep Load More on the same search center (pincode→coords must survive pagination).
+        if pincode:
+            request.session['last_lat'] = str(user_lat)
+            request.session['last_lng'] = str(user_lng)
 
     sort_by = request.GET.get('sort_by', '').strip()
     if not sort_by:
@@ -548,9 +552,6 @@ def fetch_filtered_agents_list(request):
     # Only agents within 50 km (or exact service-pincode matches).
     all_agents = rank_directory_agents(all_agents, user_lat, user_lng, search_pincode=pincode)
 
-    def _nearby_rank(agent):
-        return 0 if getattr(agent, 'is_nearby', False) else 1
-
     # In-memory sorting matching Laravel's logic
     if user_lat is not None and user_lng is not None and sort_by == 'distance':
         all_agents.sort(key=lambda x: (
@@ -558,13 +559,12 @@ def fetch_filtered_agents_list(request):
             -(x.padosi_smart_rank or 0),
         ))
     elif sort_by == 'rating':
-        all_agents.sort(key=lambda x: (_nearby_rank(x), -x.average_rating, -(x.padosi_smart_rank or 0)))
+        all_agents.sort(key=lambda x: (-x.average_rating, -(x.padosi_smart_rank or 0)))
     elif sort_by == 'experience':
-        all_agents.sort(key=lambda x: (_nearby_rank(x), -x.experience_years, -(x.padosi_smart_rank or 0)))
+        all_agents.sort(key=lambda x: (-x.experience_years, -(x.padosi_smart_rank or 0)))
     else:
         # Default: best match % (smart_rank desc), tiebreaker: distance asc
         all_agents.sort(key=lambda x: (
-            _nearby_rank(x),
             -(x.padosi_smart_rank or 0),
             x.distance if x.distance is not None else 999999,
         ))
@@ -731,7 +731,7 @@ def find_agents(request):
     all_agents, user_lat, user_lng, sort_by, invalid_pincode, max_smart_rank = fetch_filtered_agents_list(request)
     detected_area = request.session.get('detected_area', '')
 
-    # First page shows 5 agents; Load More fetches the next page.
+    # First page shows 5 nearby (≤50km) agents; Load More paginates the rest of that same set.
     page = request.GET.get('page', 1)
     paginator = Paginator(all_agents, FIND_AGENTS_PAGE_SIZE)
     try:
@@ -741,11 +741,17 @@ def find_agents(request):
     except EmptyPage:
         agents_page = paginator.page(paginator.num_pages)
 
+    has_next = agents_page.has_next()
     next_page_url = None
-    if agents_page.has_next():
+    if has_next:
         params = request.GET.copy()
         params['page'] = agents_page.next_page_number()
-        next_page_url = f"?{params.urlencode()}"
+        next_page_url = f"{request.path}?{params.urlencode()}"
+
+    # After pincode→coords resolve, reuse the saved search center in the template/filters.
+    lat = request.session.get('last_lat', lat)
+    lng = request.session.get('last_lng', lng)
+    is_load_more_request = is_htmx and agents_page.number > 1
 
     if request.user.is_authenticated:
         favorite_ids = set(
@@ -806,12 +812,15 @@ def find_agents(request):
         'maxSmartRank': max_smart_rank,
         'invalidPincode': invalid_pincode,
         'next_page_url': next_page_url,
-        'has_next': agents_page.has_next(),
+        'has_next': has_next,
         'selected_service_type': request.GET.getlist('ServiceType'),
         'selected_insurance_types': request.GET.getlist('InsuranceType'),
         'selected_insurance_companies': request.GET.getlist('InsuranceCompany'),
         'hide_header': True,
     }
+
+    if is_load_more_request:
+        return render(request, 'partials/find-agents-load-more.html', context)
 
     if is_htmx:
         return render(request, 'partials/find-agents-list.html', context)
@@ -1293,6 +1302,9 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
     if user_lat and user_lng and request:
         request.session['lat'] = str(user_lat)
         request.session['lng'] = str(user_lng)
+        if pincode:
+            request.session['last_lat'] = str(user_lat)
+            request.session['last_lng'] = str(user_lng)
     
     if not sort_by:
         sort_by = 'distance' if (user_lat is not None and user_lng is not None) else 'match'
@@ -1354,9 +1366,6 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
 
     all_agents = rank_directory_agents(all_agents, user_lat, user_lng, search_pincode=pincode)
 
-    def _nearby_rank(agent):
-        return 0 if getattr(agent, 'is_nearby', False) else 1
-
     # In-memory sorting matching Laravel's logic
     if user_lat is not None and user_lng is not None and sort_by == 'distance':
         all_agents.sort(key=lambda x: (
@@ -1364,13 +1373,12 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
             -(x.padosi_smart_rank or 0),
         ))
     elif sort_by == 'rating':
-        all_agents.sort(key=lambda x: (_nearby_rank(x), -x.average_rating, -(x.padosi_smart_rank or 0)))
+        all_agents.sort(key=lambda x: (-x.average_rating, -(x.padosi_smart_rank or 0)))
     elif sort_by == 'experience':
-        all_agents.sort(key=lambda x: (_nearby_rank(x), -x.experience_years, -(x.padosi_smart_rank or 0)))
+        all_agents.sort(key=lambda x: (-x.experience_years, -(x.padosi_smart_rank or 0)))
     else:
         # Default: best match % (smart_rank desc), tiebreaker: distance asc
         all_agents.sort(key=lambda x: (
-            _nearby_rank(x),
             -(x.padosi_smart_rank or 0),
             x.distance if x.distance is not None else 999999,
         ))
