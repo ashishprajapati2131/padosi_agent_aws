@@ -165,6 +165,48 @@ class DistanceService:
         return region_map.get(major_region)
 
     @classmethod
+    def get_precise_pincode_coordinates(cls, pincode):
+        """
+        Exact pin or DB coords only — never the 2-digit regional fallback.
+        Use this for Find Agents radius filtering so production does not center
+        every 38xxxx search on Ahmedabad when Nominatim is blocked.
+        """
+        pincode = str(pincode or '').strip()
+        if not pincode:
+            return None
+
+        exact = EXACT_PINCODE_COORDS.get(pincode)
+        if exact:
+            return {'lat': exact['lat'], 'lng': exact['lng'], 'precise': True}
+
+        try:
+            record = Pincode.objects.filter(pincode=pincode).first()
+            if record and record.latitude and record.longitude:
+                return {
+                    'lat': float(record.latitude),
+                    'lng': float(record.longitude),
+                    'precise': True,
+                }
+        except Exception as e:
+            logger.warning(f"DistanceService.get_precise_pincode_coordinates failed: {e}")
+
+        return None
+
+    @classmethod
+    def is_regional_fallback_coordinate(cls, pincode, lat, lng):
+        """True when lat/lng match the coarse prefix fallback for this pin."""
+        fallback = cls.get_regional_fallback_coordinates(pincode)
+        if not fallback or lat is None or lng is None:
+            return False
+        try:
+            return (
+                abs(float(lat) - float(fallback['lat'])) < 0.02
+                and abs(float(lng) - float(fallback['lng'])) < 0.02
+            )
+        except (TypeError, ValueError):
+            return False
+
+    @classmethod
     def get_pincode_coordinates(cls, pincode):
         """
         Resolve coordinates for a pincode: exact hardcoded → local DB → regional fallback.
@@ -174,19 +216,9 @@ class DistanceService:
         if not pincode:
             return None
 
-        exact = EXACT_PINCODE_COORDS.get(pincode)
-        if exact:
-            return exact
-
-        try:
-            record = Pincode.objects.filter(pincode=pincode).first()
-            if record and record.latitude and record.longitude:
-                return {
-                    'lat': float(record.latitude),
-                    'lng': float(record.longitude)
-                }
-        except Exception as e:
-            logger.warning(f"DistanceService.get_pincode_coordinates database lookup failed: {e}")
+        precise = cls.get_precise_pincode_coordinates(pincode)
+        if precise:
+            return {'lat': precise['lat'], 'lng': precise['lng']}
 
         return cls.get_regional_fallback_coordinates(pincode)
 
@@ -312,6 +344,9 @@ def apply_search_proximity(
             continue
 
         if user_lat is None or user_lng is None:
+            # No reliable search center: do not list pan-India agents for a pincode search.
+            if search_pin:
+                continue
             agent.is_nearby = True
             filtered.append(agent)
             continue

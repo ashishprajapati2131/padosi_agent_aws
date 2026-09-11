@@ -26,17 +26,8 @@ class GeocodingService:
             logger.warning(f"GeocodingService: Invalid pincode format rejected: {pincode}")
             return None
 
-        # ─── Step 1: Check pincode_cache table ────────────────────────────────
-        cached = PincodeCache.get_coordinates(pincode)
-        if cached:
-            dn = cached.get('display_name') or ''
-            # If display name is a placeholder, try to resolve a better one but keep coords
-            if not dn or re.match(r'^(Area|Region)\s+\d', dn, re.IGNORECASE):
-                pass  # Coords are good, but name needs upgrading — continue
-            else:
-                return cached
-
-        # ─── Step 2: Check existing pincodes table ────────────────────────────
+        # ─── Step 1: Authoritative pincodes table (before cache) ─────────────
+        # Cache may contain coarse regional fallbacks from older deploys; DB wins.
         try:
             existing = Pincode.objects.filter(
                 pincode=pincode,
@@ -47,52 +38,75 @@ class GeocodingService:
             if existing:
                 raw_name = existing.office_name or existing.district or ''
                 is_placeholder = bool(re.match(r'^(Area|Region)\s+\d', raw_name, re.IGNORECASE))
-
+                display_name = None
                 if not is_placeholder and raw_name:
-                    display_name = Pincode.format_location_name(existing.office_name, existing.district, existing.division)
-                    coords = {
-                        'lat': float(existing.latitude),
-                        'lng': float(existing.longitude),
-                        'display_name': display_name
-                    }
-                    PincodeCache.store_coordinates(pincode, coords['lat'], coords['lng'], coords['display_name'])
-                    return coords
-
-                if not cached:
-                    cached = {
-                        'lat': float(existing.latitude),
-                        'lng': float(existing.longitude),
-                        'display_name': None
-                    }
+                    display_name = Pincode.format_location_name(
+                        existing.office_name, existing.district, existing.division
+                    )
+                coords = {
+                    'lat': float(existing.latitude),
+                    'lng': float(existing.longitude),
+                    'display_name': display_name or f"PIN: {pincode}",
+                }
+                PincodeCache.store_coordinates(
+                    pincode, coords['lat'], coords['lng'], coords['display_name']
+                )
+                return coords
         except Exception as e:
             logger.warning(f"GeocodingService: pincodes lookup failed: {e}")
+
+        # ─── Step 2: Cache (skip entries that are only regional fallbacks) ───
+        cached = PincodeCache.get_coordinates(pincode)
+        if cached and not DistanceService.is_regional_fallback_coordinate(
+            pincode, cached.get('lat'), cached.get('lng')
+        ):
+            dn = cached.get('display_name') or ''
+            if dn and not re.match(r'^(Area|Region)\s+\d', dn, re.IGNORECASE):
+                return cached
 
         # ─── Step 3: Lookup via postalpincode.in and geocode place name ─────
         postal_result = self.call_postal_pincode_api(pincode)
         if postal_result:
-            PincodeCache.store_coordinates(pincode, postal_result['lat'], postal_result['lng'], postal_result.get('display_name'))
+            PincodeCache.store_coordinates(
+                pincode, postal_result['lat'], postal_result['lng'], postal_result.get('display_name')
+            )
             return postal_result
 
         # ─── Step 4: Call Nominatim API ──────────────────────────
         api_result = self.call_nominatim_with_retry(pincode)
         if api_result:
-            PincodeCache.store_coordinates(pincode, api_result['lat'], api_result['lng'], api_result.get('display_name'))
+            PincodeCache.store_coordinates(
+                pincode, api_result['lat'], api_result['lng'], api_result.get('display_name')
+            )
             return api_result
 
-        # ─── Step 5: Regional hardcoded fallback ──────────────────────────────
-        fallback = DistanceService.get_hardcoded_coordinates(pincode)
-        if fallback:
+        # ─── Step 5: Exact hardcoded pins only (never cache regional fallback)
+        exact = DistanceService.get_precise_pincode_coordinates(pincode)
+        if exact:
             coords = {
-                'lat': fallback['lat'],
-                'lng': fallback['lng'],
-                'display_name': self.resolve_state_from_pincode(pincode) + f" - {pincode}"
+                'lat': exact['lat'],
+                'lng': exact['lng'],
+                'display_name': self.resolve_state_from_pincode(pincode) + f" - {pincode}",
             }
-            PincodeCache.store_coordinates(pincode, coords['lat'], coords['lng'], coords['display_name'])
             return coords
 
-        # ─── Step 6: Return cached coords if all APIs failed ──────────────────
+        # ─── Step 6: Regional fallback for display only — do NOT cache ────────
+        fallback = DistanceService.get_regional_fallback_coordinates(pincode)
+        if fallback:
+            logger.warning(
+                f"GeocodingService: Using coarse regional fallback for {pincode}; not caching."
+            )
+            return {
+                'lat': fallback['lat'],
+                'lng': fallback['lng'],
+                'display_name': self.resolve_state_from_pincode(pincode) + f" - {pincode}",
+                'regional_fallback': True,
+            }
+
         if cached:
-            logger.info(f"GeocodingService: Returning cached coords for {pincode} (APIs failed for display_name).")
+            logger.info(
+                f"GeocodingService: Returning cached coords for {pincode} after API failures."
+            )
             return cached
 
         logger.error(f"GeocodingService: Could not resolve pincode {pincode} via any method.")

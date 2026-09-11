@@ -1,5 +1,5 @@
 <div id="load-more-wrapper" class="w-100">
-    {% if has_next or next_page_url %}
+    {% if agents.has_next or has_next or next_page_url %}
         <div class="find-more-agent-btn text-center" style="margin-top: 30px; margin-bottom: 40px;">
             <button type="button" class="load-more-btn" onclick="loadMoreAgents('{{ next_page_url|default:''|escapejs }}')"
                 id="load-more-button"
