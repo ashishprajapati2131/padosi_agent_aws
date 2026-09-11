@@ -195,6 +195,8 @@ class AgentSearchService:
         if user_lat is not None and user_lng is not None:
             dist_sql = "(CASE WHEN agents.latitude IS NOT NULL AND agents.longitude IS NOT NULL THEN (6371 * acos(cos(radians(%s)) * cos(radians(agents.latitude)) * cos(radians(agents.longitude) - radians(%s)) + sin(radians(%s)) * sin(radians(agents.latitude)))) ELSE 999999 END)"
             query = query.annotate(distance_db=RawSQL(dist_sql, (user_lat, user_lng, user_lat)))
+            # Hard radius: only agents within 50 km of the search coordinates.
+            query = query.filter(distance_db__lte=50)
         else:
             query = query.annotate(distance_db=Value(999999.0, output_field=FloatField()))
 
