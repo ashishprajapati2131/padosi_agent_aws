@@ -1,7 +1,8 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from urllib.parse import quote
 
 from sqlalchemy.orm import Session
 
@@ -10,19 +11,24 @@ from fastapi_app.models.agent_profile import AgentProfile
 from fastapi_app.models.agent_subscription import AgentSubscription
 from fastapi_app.models.agent_insurance_segment import AgentInsuranceSegment
 from fastapi_app.models.referral_code import ReferralCode
+from fastapi_app.models.agent_notification import AgentNotification
 
 from fastapi_app.repositories.agent_lead_repository import AgentLeadRepository
 from fastapi_app.repositories.agent_profile_view_repository import AgentProfileViewRepository
 from fastapi_app.repositories.agent_portfolio_repository import AgentPortfolioRepository
 from fastapi_app.repositories.agent_lead_preference_repository import AgentLeadPreferenceRepository
 from fastapi_app.repositories.agent_serviceable_city_repository import AgentServiceableCityRepository
-from fastapi_app.repositories.referral_code_repository import ReferralCodeRepository
+from fastapi_app.repositories.referral_repository import ReferralRepository as ReferralCodeRepository
 from fastapi_app.repositories.site_setting_repository import SiteSettingRepository
+from fastapi_app.repositories.agent_notification_repository import AgentNotificationRepository
+from fastapi_app.services.lock_unlock_service import LockUnlockService, normalize_plan_slug
+from fastapi_app.config import settings
 
 from fastapi_app.schemas.dashboard import (
     AgentSummary, SubscriptionInfo, TrialInfo,
     LeadStats, PerformanceOverview, RecentLead,
-    ProfileCompletion, ReferralInfo, TierInfo, DashboardResponse
+    ProfileCompletion, ReferralInfo, TierInfo, DashboardResponse,
+    FeatureAccessDetail, ReviewGrowthInfo, QrToolsInfo, QrToolItem, VisibilityInfo
 )
 
 logger = logging.getLogger(__name__)
@@ -37,6 +43,8 @@ class DashboardService:
         self.city_repo = AgentServiceableCityRepository(db)
         self.referral_repo = ReferralCodeRepository(db)
         self.setting_repo = SiteSettingRepository(db)
+        self.notif_repo = AgentNotificationRepository(db)
+        self.lock_service = LockUnlockService(db)
 
     def get_dashboard(self, agent: Agent) -> DashboardResponse:
         now = datetime.now(timezone.utc)
@@ -100,6 +108,17 @@ class DashboardService:
         trial_info = self._build_trial_info(agent, active_subscription)
         referral_info = self._build_referral_info(agent)
 
+        metrics = self.lock_service.collect_agent_metrics(agent)
+        features_access_raw = self.lock_service.get_feature_access_map(agent)
+        features_access = {
+            k: FeatureAccessDetail(**v) for k, v in features_access_raw.items()
+        }
+
+        review_growth_info = self._build_review_growth(agent, profile, metrics)
+        qr_tools_info = self._build_qr_tools(agent, profile, features_access_raw)
+        visibility_info = self._build_visibility(agent, features_access_raw)
+        unread_notifications_count = self.notif_repo.count_unread(agent.id)
+
         return DashboardResponse(
             success=True,
             agent=self._build_agent_summary(agent, profile),
@@ -127,13 +146,17 @@ class DashboardService:
             insurance_segments=segment_types,
             serviceable_cities=city_names,
             referral=referral_info,
+            review_growth=review_growth_info,
+            qr_tools=qr_tools_info,
+            visibility=visibility_info,
+            unread_notifications_count=unread_notifications_count,
+            features_access=features_access,
         )
 
     @staticmethod
     def _resolve_photo_url(path: str) -> Optional[str]:
         try:
             from apps.agents.models import resolve_stored_file_url
-
             return resolve_stored_file_url(
                 path,
                 fallback_subdirs=('app/public/profile', 'agent/profiles'),
@@ -156,8 +179,6 @@ class DashboardService:
             languages = profile.languages
             agency_name = profile.agency_name
             if profile.profile_photo_path:
-                # Stored paths are relative (or legacy Laravel paths). Resolve
-                # them the same way GET /profile does so clients get one shape.
                 photo_url = self._resolve_photo_url(profile.profile_photo_path)
 
         return AgentSummary(
@@ -266,59 +287,14 @@ class DashboardService:
         city_count: int,
         segment_count: int,
     ) -> ProfileCompletion:
-        completion = 15
-
-        has_address_and_languages = False
-        has_serviceable_cities = False
-        has_insurance_segments = False
-        has_portfolio = False
-        has_profile_photo = False
-        has_lead_preferences = False
-
-        if profile:
-            if profile.address and profile.languages:
-                completion += 15
-                has_address_and_languages = True
-
-            has_service_pincode = bool(
-                profile.service_pincodes
-                and json.loads(profile.service_pincodes) if isinstance(profile.service_pincodes, str)
-                else profile.service_pincodes
-            )
-            if has_service_pincode and city_count > 0:
-                completion += 15
-                has_serviceable_cities = True
-
-            if segment_count > 0:
-                completion += 15
-                has_insurance_segments = True
-
-            portfolio_count = self.portfolio_repo.count_by_agent(agent.id)
-            if portfolio_count > 0:
-                completion += 15
-                has_portfolio = True
-
-            if profile.profile_photo_path:
-                completion += 10
-                has_profile_photo = True
-
-            if self.lead_pref_repo.exists_for_agent(agent.id):
-                completion += 15
-                has_lead_preferences = True
-
-        if str(agent.status) == "pending":
-            completion = 100
-
-        completion = min(completion, 100)
-
         return ProfileCompletion(
-            percentage=completion,
-            has_address_and_languages=has_address_and_languages,
-            has_serviceable_cities=has_serviceable_cities,
-            has_insurance_segments=has_insurance_segments,
-            has_portfolio=has_portfolio,
-            has_profile_photo=has_profile_photo,
-            has_lead_preferences=has_lead_preferences,
+            percentage=self.lock_service.profile_completion_percent(agent, profile),
+            has_address_and_languages=bool(profile and profile.address and profile.languages),
+            has_serviceable_cities=bool(profile and profile.service_pincodes and city_count > 0),
+            has_insurance_segments=segment_count > 0,
+            has_portfolio=self.portfolio_repo.count_by_agent(agent.id) > 0,
+            has_profile_photo=bool(profile and profile.profile_photo_path),
+            has_lead_preferences=self.lead_pref_repo.exists_for_agent(agent.id),
         )
 
     def _build_referral_info(self, agent: Agent) -> ReferralInfo:
@@ -344,6 +320,79 @@ class DashboardService:
             total_referrals=ref_code.total_referrals,
             current_tier=TierInfo(**current_tier_data) if current_tier_data else None,
             next_tier=TierInfo(**next_tier_data) if next_tier_data else None,
+        )
+
+    def _build_review_growth(self, agent: Agent, profile: Optional[AgentProfile], metrics: Dict[str, Any]) -> ReviewGrowthInfo:
+        growth_cfg = self.setting_repo.get_json_value('review_growth_config', {})
+        threshold = int(growth_cfg.get('starter_upgrade_threshold', 5))
+        review_count = metrics.get('reviews', 0)
+        needed = max(0, threshold - review_count)
+        
+        slug = (profile.slug if profile and profile.slug else '') or getattr(agent, 'agent_slug', '') or str(agent.id)
+        app_url = settings.APP_URL.rstrip('/')
+        profile_url = f"{app_url}/profile/{slug}/" if slug else app_url
+        share_text = f"I'm now on PadosiAgent — India's trusted insurance agent network. View my profile and leave a review: {profile_url}"
+
+        plan_slug = normalize_plan_slug(agent.plan_type)
+        is_starter = plan_slug in ('starter', 'free_trial')
+
+        return ReviewGrowthInfo(
+            enabled=growth_cfg.get('enabled', True),
+            review_count=review_count,
+            target_reviews=threshold,
+            reviews_needed=needed,
+            show_upgrade_cta=is_starter and needed == 0,
+            show_upgrade_progress=is_starter and needed > 0,
+            share_profile_url=profile_url,
+            share_text=share_text,
+        )
+
+    def _build_qr_tools(self, agent: Agent, profile: Optional[AgentProfile], features_access: Dict[str, Any]) -> QrToolsInfo:
+        qr_access = not features_access.get('qr_codes', {}).get('is_locked', False)
+        allow_download = not features_access.get('qr_poster_download', {}).get('is_locked', False)
+        
+        slug = (profile.slug if profile and profile.slug else '') or getattr(agent, 'agent_slug', '') or str(agent.id)
+        app_url = settings.APP_URL.rstrip('/')
+
+        labels = {
+            'profile': 'Profile QR Code',
+            'card': 'Visiting Card QR Code',
+            'reviews': 'Client Review QR Code'
+        }
+
+        items = []
+        for qr_type, label in labels.items():
+            if qr_type == 'reviews':
+                target = f"{app_url}/profile/{slug}/review/"
+            elif qr_type == 'card':
+                target = f"{app_url}/card/{slug}/"
+            else:
+                target = f"{app_url}/profile/{slug}/"
+
+            whatsapp_msg = f"I'm on PadosiAgent. Scan my {label}: {target}"
+            items.append(QrToolItem(
+                type=qr_type,
+                label=label,
+                target_url=target,
+                preview_url=f"{app_url}/agent/qr/{qr_type}.png",
+                download_url=f"{app_url}/agent/qr/{qr_type}/download/",
+                whatsapp_url=f"https://api.whatsapp.com/send?text={quote(whatsapp_msg)}",
+                facebook_url=f"https://www.facebook.com/sharer/sharer.php?u={quote(target)}"
+            ))
+
+        return QrToolsInfo(
+            service_enabled=qr_access,
+            allow_download=allow_download,
+            items=items
+        )
+
+    def _build_visibility(self, agent: Agent, features_access: Dict[str, Any]) -> VisibilityInfo:
+        return VisibilityInfo(
+            is_listed_in_directory=not features_access.get('agent_directory_visibility', {}).get('is_locked', False),
+            show_visibility_aio=not features_access.get('visibility_aio', {}).get('is_locked', False),
+            show_visibility_geo=not features_access.get('visibility_geo', {}).get('is_locked', False),
+            show_visibility_seo=not features_access.get('visibility_seo', {}).get('is_locked', False),
+            show_visibility_priority_ranking=not features_access.get('visibility_priority_ranking', {}).get('is_locked', False),
         )
 
     def _get_segment_types(self, insurance_segments) -> list:

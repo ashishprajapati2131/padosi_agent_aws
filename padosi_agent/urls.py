@@ -41,8 +41,10 @@ urlpatterns = [
     path('events/', include('apps.agents.urls_events')),
     path('chatbot-api/', include('apps.chatbot.urls')),
     path('', include('apps.distributors.urls')),
-    path('', include('apps.home.urls')),
+    path('championship/', include('apps.referral_championship.urls')),
+    path('admin/championship/', include('apps.referral_championship.urls_admin')),
     path('insurance/', include('apps.insurance.urls')),
+    path('', include('apps.home.urls')),
 ]
 
 # Serve media files in development

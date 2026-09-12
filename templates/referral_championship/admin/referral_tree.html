@@ -1,0 +1,46 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Referral Tree | PadosiAgent{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/admin/championship/" class="text-muted text-decoration-none fw-bold" style="font-size:13px;">
+        <i class="fa-solid fa-arrow-left me-1"></i> Back to Championship Dashboard
+    </a>
+    <h4 class="fw-bold mt-1 mb-1"><i class="fa-solid fa-network-wired text-primary me-2"></i> Visual Referral Tree</h4>
+    <p class="text-muted mb-0" style="font-size:13.5px;">Hierarchy of active referrers and their attributed qualifying agents.</p>
+</div>
+
+<div class="row g-3">
+    {% for parent in top_referrers %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm border" style="border-radius:16px;">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="badge bg-primary me-1">{{ parent.referral_id }}</span>
+                    <strong style="font-size:14px;">{{ parent.agent.fullname }}</strong>
+                </div>
+                <span class="badge bg-success">{{ parent.qualifying_referrals_count }} Qualified</span>
+            </div>
+            <div class="card-body p-2">
+                <div class="list-group list-group-flush" style="font-size:12.5px;">
+                    {% for ref in parent.referrals.all %}
+                    <div class="list-group-item px-2 py-1.5 d-flex justify-content-between align-items-center border-0">
+                        <div>
+                            <i class="fa-solid fa-user-check text-success me-1"></i>
+                            {{ ref.referred_agent.fullname|default:ref.referred_agent.email|default:"New Registration" }}
+                        </div>
+                        <span class="badge bg-light text-dark" style="font-size:10px;">{{ ref.registration_state }}</span>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted text-center py-2" style="font-size:12px;">No referrals yet</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center text-muted py-5">No referral relationships established yet.</div>
+    {% endfor %}
+</div>
+{% endblock %}

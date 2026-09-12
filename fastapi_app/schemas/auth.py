@@ -12,6 +12,7 @@ class LoginResponse(BaseModel):
     token_type: Optional[str] = None
     expires_in: Optional[int] = None
     agent_status: Optional[str] = None
+    agent_data: Optional[Dict[str, Any]] = None
 
 class AgentMeResponse(BaseModel):
     success: bool
@@ -29,15 +30,12 @@ class ForgotPasswordResponse(BaseModel):
     success: bool
     message: str
 
-from typing import Optional, Literal
-
 class ResetPasswordRequest(BaseModel):
     token: Optional[str] = None
-    email: EmailStr
+    email: Optional[EmailStr] = None
     password: str
     password_confirmation: str
-    login_type: Literal["agent", "distributor"]
-
+    login_type: Optional[Literal["agent", "distributor"]] = "agent"
 
     @field_validator("password")
     @classmethod
@@ -61,5 +59,13 @@ class ResetPasswordRequest(BaseModel):
         return self
 
 class ResetPasswordResponse(BaseModel):
+    success: bool
+    message: str
+
+class PushTokenRequest(BaseModel):
+    token: str
+    platform: Optional[str] = "android"
+
+class PushTokenResponse(BaseModel):
     success: bool
     message: str

@@ -1,0 +1,216 @@
+{% load static %}
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- PRO-LEVEL LIVE CHAMPIONSHIP LEADERBOARD                             -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="overflow-hidden rounded-2xl sm:rounded-3xl border border-border bg-card shadow-sm">
+    
+    <!-- Leaderboard Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-border px-3 sm:px-5 py-3 sm:py-4 bg-muted/20">
+        <div>
+            <div class="flex items-center gap-1.5 sm:gap-2">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60"></span>
+                    <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary"></span>
+                </span>
+                <h3 class="text-sm sm:text-lg font-black text-foreground tracking-tight">National Standings</h3>
+                <span class="rounded-full bg-primary/10 border border-primary/20 px-2 sm:px-2.5 py-0.2 text-[9px] sm:text-[10px] font-black uppercase text-primary">
+                    Live Verified
+                </span>
+            </div>
+            <p class="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+                {{ agg_stats.total_participants|default:0 }} registered contenders · {{ agg_stats.total_qualified|default:0 }} verified qualifying referrals
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2 self-start sm:self-auto">
+            <button type="button" onclick="location.reload()" class="inline-flex h-8 sm:h-9 items-center gap-1.5 rounded-lg sm:rounded-xl border border-border bg-card px-2.5 sm:px-3.5 text-[11px] sm:text-xs font-bold text-foreground hover:bg-muted shadow-sm transition-all active:scale-95">
+                <i data-lucide="refresh-cw" class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary"></i> Refresh Ranks
+            </button>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TOP 3 CHAMPIONS PODIUM (Olympic 3D-Tier Styling - Responsive)   -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    {% if top_10 %}
+    <div class="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-2 sm:px-8 pt-5 sm:pt-7 pb-4 sm:pb-6 text-white">
+        <!-- Subtle ambient background glow -->
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-36 bg-amber-500/15 blur-3xl pointer-events-none rounded-full"></div>
+
+        <div class="relative z-10 flex items-end justify-center gap-1.5 sm:gap-6 max-w-xl mx-auto">
+            
+            <!-- ── RANK 2: SILVER PODIUM ── -->
+            <div class="flex w-1/3 flex-col items-center">
+                {% if top_10.1 %}
+                <div class="relative">
+                    <div class="flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-200 to-slate-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg ring-2 sm:ring-4 ring-slate-400/40">
+                        {{ top_10.1.name|slice:":2"|upper }}
+                    </div>
+                    <span class="absolute -bottom-1.5 -right-1 flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-slate-200 text-slate-900 text-[10px] sm:text-[11px] font-black border-2 border-slate-900 shadow">
+                        2
+                    </span>
+                </div>
+                <p class="mt-2 sm:mt-3 line-clamp-1 max-w-full text-center text-[10.5px] sm:text-xs font-bold text-white tracking-tight">
+                    {% if top_10.1.id == participant.id %}<span class="text-amber-300 font-black">You (Rank #2)</span>{% else %}{{ top_10.1.name }}{% endif %}
+                </p>
+                <p class="text-[10px] sm:text-[11px] font-extrabold text-slate-300 mt-0.5">{{ top_10.1.referrals }} <span class="text-[9px] font-normal text-white/60">refs</span></p>
+                
+                <!-- Silver Pedestal -->
+                <div class="mt-2 sm:mt-2.5 flex h-14 sm:h-20 w-full flex-col items-center justify-start rounded-t-xl sm:rounded-t-2xl bg-gradient-to-b from-slate-700/80 to-slate-800/60 border-t-2 border-slate-400/70 pt-1.5 sm:pt-2 shadow-inner">
+                    <i data-lucide="medal" class="h-4 w-4 sm:h-5 sm:w-5 text-slate-300"></i>
+                    <span class="text-[8.5px] sm:text-[10px] font-black uppercase tracking-widest text-slate-300 mt-0.5 sm:mt-1">Silver</span>
+                </div>
+                {% else %}
+                <div class="h-14 sm:h-20 w-full rounded-t-xl sm:rounded-t-2xl bg-white/5 border-t border-white/10"></div>
+                {% endif %}
+            </div>
+
+            <!-- ── RANK 1: GOLD CHAMPION PODIUM ── -->
+            <div class="flex w-1/3 flex-col items-center -mt-3 sm:-mt-4">
+                {% if top_10.0 %}
+                <div class="relative">
+                    <!-- Glowing Crown -->
+                    <div class="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 text-amber-400 animate-bounce">
+                        <i data-lucide="crown" class="h-5 w-5 sm:h-6 sm:w-6 stroke-[2.5] drop-shadow-[0_2px_8px_rgba(245,158,11,0.8)]"></i>
+                    </div>
+
+                    <div class="flex h-13 w-13 sm:h-18 sm:w-18 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-300 to-yellow-200 text-slate-950 font-black text-sm sm:text-base shadow-xl ring-2 sm:ring-4 ring-amber-400/50">
+                        {{ top_10.0.name|slice:":2"|upper }}
+                    </div>
+                    <span class="absolute -bottom-1.5 -right-1 flex h-5.5 w-5.5 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-amber-400 text-slate-950 text-[11px] sm:text-xs font-black border-2 border-slate-900 shadow">
+                        1
+                    </span>
+                </div>
+                <p class="mt-2 sm:mt-3 line-clamp-1 max-w-full text-center text-[11px] sm:text-sm font-black text-amber-300 tracking-tight">
+                    {% if top_10.0.id == participant.id %}<span class="text-amber-300 font-black">You (Champion)</span>{% else %}{{ top_10.0.name }}{% endif %}
+                </p>
+                <p class="text-[10.5px] sm:text-xs font-black text-white mt-0.5">{{ top_10.0.referrals }} <span class="text-[9px] font-normal text-white/70">refs</span></p>
+                
+                <!-- Gold Pedestal -->
+                <div class="mt-2 sm:mt-2.5 flex h-20 sm:h-28 w-full flex-col items-center justify-start rounded-t-xl sm:rounded-t-2xl bg-gradient-to-b from-amber-500/40 via-amber-500/20 to-slate-900/60 border-t-2 border-amber-400 pt-2 sm:pt-3 shadow-lg">
+                    <span class="rounded-full bg-amber-400/20 border border-amber-400/40 px-1.5 sm:px-2 py-0.2 text-[8.5px] sm:text-[10px] font-black uppercase tracking-widest text-amber-300">
+                        Leader
+                    </span>
+                </div>
+                {% else %}
+                <div class="h-20 sm:h-28 w-full rounded-t-xl sm:rounded-t-2xl bg-white/5 border-t border-white/10"></div>
+                {% endif %}
+            </div>
+
+            <!-- ── RANK 3: BRONZE PODIUM ── -->
+            <div class="flex w-1/3 flex-col items-center">
+                {% if top_10.2 %}
+                <div class="relative">
+                    <div class="flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-700 to-amber-900 text-amber-100 font-black text-xs sm:text-sm shadow-lg ring-2 sm:ring-4 ring-amber-700/40">
+                        {{ top_10.2.name|slice:":2"|upper }}
+                    </div>
+                    <span class="absolute -bottom-1.5 -right-1 flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-amber-700 text-white text-[10px] sm:text-[11px] font-black border-2 border-slate-900 shadow">
+                        3
+                    </span>
+                </div>
+                <p class="mt-2 sm:mt-3 line-clamp-1 max-w-full text-center text-[10.5px] sm:text-xs font-bold text-white tracking-tight">
+                    {% if top_10.2.id == participant.id %}<span class="text-amber-300 font-black">You (Rank #3)</span>{% else %}{{ top_10.2.name }}{% endif %}
+                </p>
+                <p class="text-[10px] sm:text-[11px] font-extrabold text-amber-200 mt-0.5">{{ top_10.2.referrals }} <span class="text-[9px] font-normal text-white/60">refs</span></p>
+                
+                <!-- Bronze Pedestal -->
+                <div class="mt-2 sm:mt-2.5 flex h-12 sm:h-16 w-full flex-col items-center justify-start rounded-t-xl sm:rounded-t-2xl bg-gradient-to-b from-amber-900/60 to-slate-900/70 border-t-2 border-amber-700/70 pt-1.5 sm:pt-2 shadow-inner">
+                    <i data-lucide="medal" class="h-4 w-4 sm:h-5 sm:w-5 text-amber-600"></i>
+                    <span class="text-[8.5px] sm:text-[10px] font-black uppercase tracking-widest text-amber-400 mt-0.5 sm:mt-1">Bronze</span>
+                </div>
+                {% else %}
+                <div class="h-12 sm:h-16 w-full rounded-t-xl sm:rounded-t-2xl bg-white/5 border-t border-white/10"></div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- YOUR LIVE POSITION BANNER                                      -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    {% if participant.current_rank %}
+    <div class="flex items-center justify-between gap-2.5 border-y border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-3 sm:px-5 py-2.5 sm:py-3">
+        <div class="flex items-center gap-2 sm:gap-2.5">
+            <div class="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-primary text-white shadow-sm font-black text-xs sm:text-sm">
+                #{{ participant.current_rank }}
+            </div>
+            <div>
+                <p class="text-xs font-black text-foreground">Your Current National Ranking</p>
+                <p class="text-[10px] sm:text-[11px] text-muted-foreground">
+                    {{ qualified_count }} verified referrals credited to your code
+                </p>
+            </div>
+        </div>
+
+        {% if next_rank_needed %}
+        <span class="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10.5px] sm:text-xs font-black text-amber-600 hidden sm:inline-flex items-center gap-1.5">
+            <i data-lucide="arrow-up-circle" class="w-3.5 h-3.5"></i> {{ next_rank_needed }} refs needed to climb rank
+        </span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- RANKED LIST TABLE (Scrollable, Clean Breakpoints)              -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="max-h-[460px] overflow-y-auto divide-y divide-border/70 scrollbar-thin">
+        {% for r in top_50 %}
+        <div class="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 transition-colors hover:bg-muted/30 {% if r.id == participant.id %}bg-primary/10 font-bold border-l-4 border-primary{% endif %}">
+            <div class="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                <!-- Rank Pill -->
+                <span class="flex h-7 w-7 sm:h-8 sm:w-8 flex-none items-center justify-center rounded-lg sm:rounded-xl font-black text-[11px] sm:text-xs shadow-sm
+                    {% if r.rank == 1 %}
+                        bg-amber-400 text-slate-950 ring-2 ring-amber-400/40
+                    {% elif r.rank == 2 %}
+                        bg-slate-300 text-slate-900 ring-2 ring-slate-300/40
+                    {% elif r.rank == 3 %}
+                        bg-amber-700 text-white ring-2 ring-amber-700/40
+                    {% else %}
+                        bg-muted text-muted-foreground
+                    {% endif %}">
+                    {{ r.rank }}
+                </span>
+
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1.5 sm:gap-2">
+                        <p class="truncate text-xs sm:text-sm font-extrabold text-foreground">
+                            {{ r.name }}
+                        </p>
+                        {% if r.id == participant.id %}
+                        <span class="rounded-full bg-primary text-white px-1.5 sm:px-2 py-0.2 text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider shadow-xs">
+                            YOU
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if r.city %}
+                    <p class="truncate text-[10px] sm:text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <i data-lucide="map-pin" class="w-3 h-3 text-muted-foreground/60"></i> {{ r.city }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Referrals count -->
+            <div class="text-right flex-none pl-2 sm:pl-3">
+                <span class="text-xs sm:text-base font-black text-foreground">{{ r.referrals }}</span>
+                <span class="text-[9px] sm:text-[10px] font-bold text-muted-foreground block leading-none">verified</span>
+            </div>
+        </div>
+        {% empty %}
+        <div class="p-6 sm:p-8 text-center text-xs text-muted-foreground space-y-1">
+            <i data-lucide="trophy" class="mx-auto h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground/40"></i>
+            <p class="font-bold text-foreground mt-2">The board is wide open!</p>
+            <p class="text-[11px]">Share your invite link with other agents to take the #1 spot.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Leaderboard Footer -->
+    <div class="border-t border-border px-3 sm:px-5 py-2.5 sm:py-3 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between text-[10px] sm:text-[11px] text-muted-foreground bg-muted/20 gap-1.5 sm:gap-2">
+        <span>Verified by PadosiAgent live registry · First attribution wins in ties</span>
+        <span class="font-bold text-foreground">Top 3 win the Grand Family Trip ✈️</span>
+    </div>
+</div>
+

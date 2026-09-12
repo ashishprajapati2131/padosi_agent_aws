@@ -30,3 +30,5 @@ from fastapi_app.models.security_threat_log import SecurityThreatLog
 from fastapi_app.models.password_reset_token import PasswordResetToken
 from fastapi_app.models.insurance_company import InsuranceCompany
 from fastapi_app.models.api_log import ApiLog
+from fastapi_app.models.agent_notification import AgentNotification
+from fastapi_app.models.agent_device_token import AgentDeviceToken

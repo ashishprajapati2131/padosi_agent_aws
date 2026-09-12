@@ -16,3 +16,8 @@ class AgentProfileRepository:
             self.db.add(profile)
             self.db.flush()
         return profile
+
+    def create(self, profile: AgentProfile) -> AgentProfile:
+        self.db.add(profile)
+        self.db.flush()
+        return profile

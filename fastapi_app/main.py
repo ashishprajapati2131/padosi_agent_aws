@@ -14,9 +14,9 @@ import logging
 
 from fastapi_app.config import settings
 from fastapi_app.routers import (
-    registration, promo_code, email,
     auth, dashboard, profile, public_profile,
-    pincode, leads, find_agents
+    pincode, leads, notifications, analytics,
+    qr, visibility, referral, find_agents
 )
 import fastapi_app.models
 
@@ -50,15 +50,17 @@ app.add_middleware(AdminAuthMiddleware)
 
 
 # Include all consolidated routers
-app.include_router(registration.router)
-app.include_router(promo_code.router)
-app.include_router(email.router)
 app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(profile.router)
 app.include_router(public_profile.router)
 app.include_router(pincode.router)
 app.include_router(leads.router)
+app.include_router(notifications.router)
+app.include_router(analytics.router)
+app.include_router(qr.router)
+app.include_router(visibility.router)
+app.include_router(referral.router)
 app.include_router(find_agents.router)
 
 # Mount local storage directory for static access

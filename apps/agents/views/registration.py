@@ -1499,6 +1499,27 @@ def chooseplan(request):
     if prof_full > 0 and prof_base < prof_full:
         prof_discount_percent = round((1 - (prof_base / prof_full)) * 100)
 
+    # Apply Referral Championship 50% Campaign Offer if candidate is referred
+    championship_ref_id = request.session.get('championship_ref_id')
+    if championship_ref_id:
+        try:
+            from apps.referral_championship.models import ChampionshipCampaign
+            champ = ChampionshipCampaign.get_current()
+            champ_pricing = champ.pricing_config or {}
+            dig_camp = float(champ_pricing.get('digital', {}).get('campaign_price', 999))
+            prof_camp = float(champ_pricing.get('professional', {}).get('campaign_price', 4999))
+            starter_final = dig_camp
+            starter_base = round(dig_camp / 1.18, 2)
+            starter_gst = round(starter_final - starter_base, 2)
+            starter_discount_percent = 50
+
+            prof_final = prof_camp
+            prof_base = round(prof_camp / 1.18, 2)
+            prof_gst = round(prof_final - prof_base, 2)
+            prof_discount_percent = 50
+        except Exception:
+            pass
+
     if comparison_price_mode == 'discounted':
         compare_starter_price = int(starter_base)
         compare_prof_price = int(prof_base)
@@ -2032,6 +2053,13 @@ def verify_and_activate_pending_payment(agent):
                 except Exception as ref_err:
                     logger.warning(f"[verify_and_activate_pending_payment] Referral credit conversion failed: {ref_err}")
 
+            # Referral Championship qualification hook
+            try:
+                from apps.referral_championship.services.qualification_service import process_championship_qualification
+                process_championship_qualification(agent, subscription)
+            except Exception as champ_err:
+                logger.warning(f"[verify_and_activate_pending_payment] Championship qualification hook failed: {champ_err}")
+
             # Auto-generate referral code for agent
             try:
                 from apps.admin_panel.models.referral_code import ReferralCode
@@ -2156,6 +2184,14 @@ def _agent_register_complete_impl(request):
         total_amount = _checkout_total_for_plan(
             pricing_config, follow_count, 'starter', request, data, checkout_promo,
         )
+        if request.session.get('championship_ref_id'):
+            try:
+                from apps.referral_championship.models import ChampionshipCampaign
+                champ = ChampionshipCampaign.get_current()
+                champ_pricing = champ.pricing_config or {}
+                total_amount = float(champ_pricing.get('digital', {}).get('campaign_price', 999))
+            except Exception:
+                pass
         plan_name = plan_name or starter_cfg.get('name') or "Starter's Plan"
         logger.info(
             'Starter checkout: full=%s displayed=%s follow=%s total=%s',
@@ -2169,6 +2205,14 @@ def _agent_register_complete_impl(request):
         total_amount = _checkout_total_for_plan(
             pricing_config, follow_count, 'professional', request, data, checkout_promo,
         )
+        if request.session.get('championship_ref_id'):
+            try:
+                from apps.referral_championship.models import ChampionshipCampaign
+                champ = ChampionshipCampaign.get_current()
+                champ_pricing = champ.pricing_config or {}
+                total_amount = float(champ_pricing.get('professional', {}).get('campaign_price', 4999))
+            except Exception:
+                pass
         plan_name = plan_name or prof_cfg.get('name') or "Professional's Plan"
         logger.info(
             'Professional checkout: full=%s displayed=%s follow=%s total=%s',
@@ -2209,15 +2253,19 @@ def _agent_register_complete_impl(request):
                     agent.referred_by_code = ref_obj.code
                 agent.save()
             else:
-                ref_code = request.session.get('ref_code') or request.session.get('applied_promo_code')
+                ref_code = request.session.get('ref_code') or request.session.get('applied_promo_code') or request.session.get('championship_ref_id')
                 if ref_code:
-                    from apps.admin_panel.models.referral_code import ReferralCode
-                    ref_obj = ReferralCode.objects.filter(code=ref_code, is_active=True).first()
-                    if ref_obj:
+                    if str(ref_code).startswith('PA-'):
                         agent.referred_by_code = ref_code
-                        if ref_obj.distributor_id:
-                            agent.distributor_id = ref_obj.distributor_id
                         agent.save()
+                    else:
+                        from apps.admin_panel.models.referral_code import ReferralCode
+                        ref_obj = ReferralCode.objects.filter(code=ref_code, is_active=True).first()
+                        if ref_obj:
+                            agent.referred_by_code = ref_code
+                            if ref_obj.distributor_id:
+                                agent.distributor_id = ref_obj.distributor_id
+                            agent.save()
             
             # Calculate subscription duration
             trial_days = int(trial_config.get('duration_days', 30))
@@ -2579,6 +2627,13 @@ def _finalize_razorpay_payment(request, data):
                 except Exception as ref_err:
                     logger.warning(f"Referral credit during payment success failed: {ref_err}")
 
+            # Referral Championship qualification hook
+            try:
+                from apps.referral_championship.services.qualification_service import process_championship_qualification
+                process_championship_qualification(agent, subscription)
+            except Exception as champ_err:
+                logger.warning(f"Championship qualification hook failed: {champ_err}")
+
             try:
                 if not ReferralCode.objects.filter(agent=agent).exists():
                     ReferralCode.generateForAgent(agent)
@@ -2722,9 +2777,17 @@ def referral_join(request, ref_code):
     """
     Referral link landing - captures ref code in session, increments clicks, and redirects to registration.
     Ported from Laravel route /join/{refCode}.
+    Supports both legacy Free Trial ReferralCode and National Championship codes (PA-XXXXXX).
     """
-    from apps.admin_panel.models.referral_code import ReferralCode
     code_val = str(ref_code).strip().upper()
+
+    # If code is for Referral Championship (PA-XXXXXX)
+    if code_val.startswith('PA-'):
+        from apps.referral_championship.models import ChampionshipParticipant
+        if ChampionshipParticipant.objects.filter(referral_id=code_val).exists():
+            return redirect('championship:public_landing', ref_id=code_val)
+
+    from apps.admin_panel.models.referral_code import ReferralCode
     code = ReferralCode.objects.filter(code=code_val, is_active=True).first()
     if code:
         code.clicks = (code.clicks or 0) + 1

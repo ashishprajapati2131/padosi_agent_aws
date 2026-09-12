@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List, Any
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 class AgentSummary(BaseModel):
@@ -43,10 +43,6 @@ class LeadStats(BaseModel):
     active_leads: int
     conversion_rate: float
 
-class PageViewStats(BaseModel):
-    total_page_views: int
-    monthly_visits: int
-
 class PerformanceOverview(BaseModel):
     conversion_rate: float
     monthly_target: int
@@ -88,6 +84,46 @@ class ReferralInfo(BaseModel):
     current_tier: Optional[TierInfo] = None
     next_tier: Optional[TierInfo] = None
 
+class FeatureAccessDetail(BaseModel):
+    feature_slug: str
+    label: str
+    is_locked: bool
+    unlocked_by: Optional[str] = None
+    unlock_hint: Optional[str] = None
+    upgrade_required: bool = False
+
+class ReviewGrowthInfo(BaseModel):
+    enabled: bool = True
+    review_count: int = 0
+    target_reviews: int = 5
+    reviews_needed: int = 5
+    upgrade_price: Optional[float] = None
+    show_upgrade_cta: bool = False
+    show_upgrade_progress: bool = False
+    share_profile_url: Optional[str] = None
+    share_text: Optional[str] = None
+
+class QrToolItem(BaseModel):
+    type: str  # profile, card, reviews
+    label: str
+    target_url: str
+    preview_url: str
+    download_url: str
+    whatsapp_url: str
+    facebook_url: str
+
+class QrToolsInfo(BaseModel):
+    service_enabled: bool = True
+    allow_download: bool = True
+    items: List[QrToolItem] = []
+
+class VisibilityInfo(BaseModel):
+    is_listed_in_directory: bool = True
+    show_visibility_aio: bool = False
+    show_visibility_geo: bool = False
+    show_visibility_seo: bool = False
+    show_visibility_priority_ranking: bool = False
+
 class DashboardResponse(BaseModel):
     success: bool
     agent: AgentSummary
@@ -100,3 +136,8 @@ class DashboardResponse(BaseModel):
     insurance_segments: List[str]
     serviceable_cities: List[str]
     referral: ReferralInfo
+    review_growth: Optional[ReviewGrowthInfo] = None
+    qr_tools: Optional[QrToolsInfo] = None
+    visibility: Optional[VisibilityInfo] = None
+    unread_notifications_count: int = 0
+    features_access: Dict[str, FeatureAccessDetail] = {}

@@ -1,0 +1,1134 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Championship Command Center | PadosiAgent{% endblock %}
+
+{% block extra_css %}
+<!-- Google Fonts: Jost & Urbanist (Exact font pairing from lovebal) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&family=Urbanist:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+<!-- Tailwind CSS with custom configuration matching lovebal tokens -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: {
+                    sans: ['Urbanist', 'Jost', 'sans-serif'],
+                    jost: ['Jost', 'sans-serif'],
+                },
+                colors: {
+                    background: '#f8fafc',
+                    foreground: '#1e293b',
+                    card: '#ffffff',
+                    'card-foreground': '#1e293b',
+                    primary: {
+                        DEFAULT: '#0d9488',
+                        light: '#14b8a6',
+                        lighter: '#f0fdfa',
+                        dark: '#0f766e',
+                    },
+                    border: '#e2e8f0',
+                    muted: {
+                        DEFAULT: '#f1f5f9',
+                        foreground: '#64748b',
+                    },
+                    amber: {
+                        300: '#fcd34d',
+                        400: '#fbbf24',
+                        500: '#f59e0b',
+                        600: '#d97706',
+                    }
+                },
+                borderRadius: {
+                    '2xl': '1rem',
+                    '3xl': '1.5rem',
+                }
+            }
+        }
+    }
+</script>
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+    body {
+        font-family: 'Urbanist', sans-serif;
+        background-color: #f8fafc;
+        color: #1e293b;
+    }
+    .tab-active {
+        background-color: #1e293b !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    /* Guarantee footer and Ask AI chatbot are completely hidden on Championship Command Center */
+    footer, .footer, #chatbot-trigger, #chatbot-container, .chatbot-trigger, .chatbot-container {
+        display: none !important;
+    }
+</style>
+{% endblock %}
+
+{% block chatbot_widget %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-background py-3 sm:py-5 px-2.5 sm:px-6 lg:px-8 xl:px-10">
+    <div class="w-full max-w-[1580px] mx-auto space-y-3 sm:space-y-4">
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- CINEMATIC CHAMPIONSHIP HERO (Widescreen + Responsive)          -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl shadow-xl border border-white/10">
+            <img
+                src="{% static 'championship/championship-hero.jpg' %}"
+                alt="Golden trophy celebrating the PadosiAgent Referral Championship"
+                class="absolute inset-0 h-full w-full object-cover"
+                onerror="this.style.display='none'"
+            />
+            <div class="absolute inset-0 bg-gradient-to-r from-black/95 via-black/80 to-black/40"></div>
+
+            <div class="relative p-3 sm:p-5 lg:p-7 text-white">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 items-center">
+                    <!-- Left: Campaign info & live countdown -->
+                    <div class="lg:col-span-7 space-y-1.5 sm:space-y-3">
+                        <div class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 border border-amber-400/30 px-2.5 py-0.5 text-[9.5px] sm:text-[11px] font-black uppercase tracking-wider text-amber-300">
+                            <i data-lucide="trophy" class="w-3.5 h-3.5"></i> Register → Refer → Reward
+                        </div>
+                        <h1 class="text-lg sm:text-2xl lg:text-3xl font-black leading-tight text-white tracking-tight">
+                            {{ campaign.name }}
+                        </h1>
+                        <p class="text-[11px] sm:text-xs text-white/80 max-w-xl leading-relaxed line-clamp-1 sm:line-clamp-none">
+                            {% if campaign.status == 'live' %}Campaign running live{% elif campaign.status == 'ended' %}Campaign closed{% else %}Starting soon{% endif %} · 
+                            Refer licensed insurance advisors across India to win Amazon vouchers, silver, 24k gold and international trips!
+                        </p>
+
+                        <!-- Live Countdown Timers (Compact Responsive Grid) -->
+                        <div class="pt-0.5 grid grid-cols-4 gap-1 sm:flex sm:gap-2.5 max-w-sm sm:max-w-none">
+                            <div class="rounded-lg sm:rounded-xl border border-white/20 bg-white/10 px-1 py-1 sm:px-3 sm:py-2 text-center backdrop-blur-md">
+                                <p id="timerDays" class="text-sm sm:text-2xl font-black leading-none text-white tabular-nums">{{ days_left }}</p>
+                                <p class="mt-0.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-white/70">Days</p>
+                            </div>
+                            <div class="rounded-lg sm:rounded-xl border border-white/20 bg-white/10 px-1 py-1 sm:px-3 sm:py-2 text-center backdrop-blur-md">
+                                <p id="timerHours" class="text-sm sm:text-2xl font-black leading-none text-white tabular-nums">00</p>
+                                <p class="mt-0.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-white/70">Hours</p>
+                            </div>
+                            <div class="rounded-lg sm:rounded-xl border border-white/20 bg-white/10 px-1 py-1 sm:px-3 sm:py-2 text-center backdrop-blur-md">
+                                <p id="timerMins" class="text-sm sm:text-2xl font-black leading-none text-white tabular-nums">00</p>
+                                <p class="mt-0.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-white/70">Mins</p>
+                            </div>
+                            <div class="rounded-lg sm:rounded-xl border border-white/20 bg-white/10 px-1 py-1 sm:px-3 sm:py-2 text-center backdrop-blur-md">
+                                <p id="timerSecs" class="text-sm sm:text-2xl font-black leading-none text-white tabular-nums">00</p>
+                                <p class="mt-0.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-white/70">Secs</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Performance highlights -->
+                    <div class="lg:col-span-5 flex flex-col justify-center space-y-2 sm:space-y-3">
+                        <div class="grid grid-cols-3 gap-1 sm:gap-2.5">
+                            <div class="rounded-lg sm:rounded-2xl border border-white/15 bg-white/10 p-1.5 sm:p-3 backdrop-blur-md text-center">
+                                <i data-lucide="award" class="h-3 w-3 sm:h-4 sm:w-4 text-amber-300 mx-auto"></i>
+                                <p class="mt-0.5 text-xs sm:text-xl font-black leading-none text-white">
+                                    {% if participant.current_rank %}#{{ participant.current_rank }}{% else %}-{% endif %}
+                                </p>
+                                <p class="mt-0.5 text-[8px] sm:text-[10px] font-bold text-white/70">Your Rank</p>
+                            </div>
+                            <div class="rounded-lg sm:rounded-2xl border border-white/15 bg-white/10 p-1.5 sm:p-3 backdrop-blur-md text-center">
+                                <i data-lucide="flame" class="h-3 w-3 sm:h-4 sm:w-4 text-amber-300 mx-auto"></i>
+                                <p class="mt-0.5 text-xs sm:text-xl font-black leading-none text-amber-300">{{ qualified_count }}</p>
+                                <p class="mt-0.5 text-[8px] sm:text-[10px] font-bold text-white/70">Verified Refs</p>
+                            </div>
+                            <div class="rounded-lg sm:rounded-2xl border border-white/15 bg-white/10 p-1.5 sm:p-3 backdrop-blur-md text-center">
+                                <i data-lucide="users" class="h-3 w-3 sm:h-4 sm:w-4 text-amber-300 mx-auto"></i>
+                                <p class="mt-0.5 text-xs sm:text-xl font-black leading-none text-white">{{ agg_stats.total_participants|default:0 }}</p>
+                                <p class="mt-0.5 text-[8px] sm:text-[10px] font-bold text-white/70">Contenders</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 sm:gap-2">
+                            <a href="javascript:void(0)" onclick="openWhatsApp()" class="flex-1 flex items-center justify-center gap-1 sm:gap-1.5 h-8 sm:h-11 rounded-lg sm:rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-[11px] sm:text-xs shadow-md transition-all">
+                                <i data-lucide="message-circle" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i> Invite on WhatsApp
+                            </a>
+                            <button type="button" onclick="copyText('{{ referral_url }}', 'Referral Link')" class="flex items-center justify-center gap-1 sm:gap-1.5 h-8 sm:h-11 px-2.5 sm:px-4 rounded-lg sm:rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-[11px] sm:text-xs border border-white/20 backdrop-blur-md transition-all" title="Copy Referral Link">
+                                <i data-lucide="copy" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i> <span class="hidden sm:inline">Copy Link</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if not is_unlocked %}
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- LOCKED GATE STATE (Profile < 80% or Reviews < 10)             -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div class="space-y-3.5 sm:space-y-6">
+            <div class="rounded-2xl sm:rounded-3xl border border-border bg-card p-3.5 sm:p-7 shadow-sm space-y-3.5 sm:space-y-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 border-b border-border pb-3 sm:pb-4">
+                    <div>
+                        <div class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.2 text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-600">
+                            <i data-lucide="shield-alert" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i> Championship Access Gate
+                        </div>
+                        <h2 class="text-base sm:text-2xl font-black text-foreground mt-1 tracking-tight">Complete 2 Steps to Unlock Referral Tools</h2>
+                        <p class="text-[11px] sm:text-sm text-muted-foreground mt-0.5">As a trusted insurance platform, we verify all championship participants before issuing referral codes.</p>
+                    </div>
+                    <span class="self-start sm:self-auto rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 sm:px-3.5 py-0.5 sm:py-1 text-[10px] sm:text-xs font-black text-amber-600">
+                        Gate Pending
+                    </span>
+                </div>
+
+                <!-- 2-Step Gate Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                    <!-- Step 1: Profile Completion -->
+                    <div class="rounded-xl sm:rounded-2xl border p-3.5 sm:p-5 flex flex-col justify-between transition-all {% if completion >= min_profile %}border-primary/40 bg-gradient-to-b from-primary/5 to-transparent ring-1 ring-primary/20{% else %}border-border bg-card/80{% endif %}">
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 sm:gap-2.5">
+                                    <span class="flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl {% if completion >= min_profile %}bg-primary text-white shadow-sm shadow-primary/30{% else %}bg-muted text-muted-foreground{% endif %} font-black text-xs">
+                                        {% if completion >= min_profile %}
+                                            <i data-lucide="check" class="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]"></i>
+                                        {% else %}
+                                            01
+                                        {% endif %}
+                                    </span>
+                                    <div>
+                                        <h3 class="text-xs sm:text-sm font-extrabold text-foreground">Agent Profile Complete</h3>
+                                        <p class="text-[10px] sm:text-[11px] text-muted-foreground">Minimum {{ min_profile }}% required</p>
+                                    </div>
+                                </div>
+                                <span class="text-xs sm:text-sm font-black {% if completion >= min_profile %}text-primary{% else %}text-muted-foreground{% endif %}">
+                                    {{ completion }}% / {{ min_profile }}%
+                                </span>
+                            </div>
+
+                            <div class="mt-3 sm:mt-4 h-2 sm:h-2.5 overflow-hidden rounded-full bg-muted">
+                                <div class="h-full bg-gradient-to-r from-primary to-primary-light transition-all duration-700" style="width: {% if completion > 100 %}100{% else %}{{ completion }}{% endif %}%;"></div>
+                            </div>
+                        </div>
+
+                        {% if completion < min_profile %}
+                        <a href="{% url 'agents:agent_edit_profile' %}" class="mt-3 sm:mt-4 inline-flex h-8 sm:h-10 w-full items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl bg-primary text-white text-[11px] sm:text-xs font-extrabold shadow hover:bg-primary-dark transition-all">
+                            Complete My Profile <i data-lucide="arrow-right" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+                        </a>
+                        {% else %}
+                        <div class="mt-3 sm:mt-4 flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-emerald-600 bg-emerald-500/10 py-1.5 sm:py-2 px-2.5 sm:px-3 rounded-lg sm:rounded-xl">
+                            <i data-lucide="check-circle" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i> Profile Requirement Satisfied
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Step 2: 10 Verified Reviews -->
+                    <div class="rounded-xl sm:rounded-2xl border p-3.5 sm:p-5 flex flex-col justify-between transition-all {% if review_count >= min_reviews %}border-primary/40 bg-gradient-to-b from-primary/5 to-transparent ring-1 ring-primary/20{% else %}border-border bg-card/80{% endif %}">
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 sm:gap-2.5">
+                                    <span class="flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl {% if review_count >= min_reviews %}bg-primary text-white shadow-sm shadow-primary/30{% else %}bg-muted text-muted-foreground{% endif %} font-black text-xs">
+                                        {% if review_count >= min_reviews %}
+                                            <i data-lucide="check" class="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]"></i>
+                                        {% else %}
+                                            02
+                                        {% endif %}
+                                    </span>
+                                    <div>
+                                        <h3 class="text-xs sm:text-sm font-extrabold text-foreground">Verified Client Reviews</h3>
+                                        <p class="text-[10px] sm:text-[11px] text-muted-foreground">Minimum {{ min_reviews }} reviews required</p>
+                                    </div>
+                                </div>
+                                <span class="text-xs sm:text-sm font-black {% if review_count >= min_reviews %}text-primary{% else %}text-muted-foreground{% endif %}">
+                                    {{ review_count }} / {{ min_reviews }}
+                                </span>
+                            </div>
+
+                            <div class="mt-3 sm:mt-4 h-2 sm:h-2.5 overflow-hidden rounded-full bg-muted">
+                                <div class="h-full bg-gradient-to-r from-primary to-primary-light transition-all duration-700" style="width: {% widthratio review_count min_reviews 100 %}%;"></div>
+                            </div>
+                        </div>
+
+                        {% if review_count < min_reviews %}
+                        <button type="button" onclick="copyText('{{ profile_url }}', 'Profile Link')" class="mt-3 sm:mt-4 inline-flex h-8 sm:h-10 w-full items-center justify-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl border border-border bg-muted/40 hover:bg-muted text-foreground text-[11px] sm:text-xs font-bold transition-all shadow-xs">
+                            <i data-lucide="copy" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary"></i> Copy Profile Link to Collect Reviews
+                        </button>
+                        {% else %}
+                        <div class="mt-3 sm:mt-4 flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-emerald-600 bg-emerald-500/10 py-1.5 sm:py-2 px-2.5 sm:px-3 rounded-lg sm:rounded-xl">
+                            <i data-lucide="check-circle" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i> Review Requirement Satisfied
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- The Championship Victory Trail (Horizontal Curved Line) -->
+            {% include "referral_championship/partials/victory_trail_curved.html" %}
+
+            <!-- Preview of Slab Tracker & Standings -->
+            {% include "referral_championship/partials/slab_pulse_board.html" %}
+            {% include "referral_championship/partials/leaderboard_table.html" %}
+        </div>
+
+        {% else %}
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- UNLOCKED STATE: TABBED DASHBOARD (World-Class Command Center) -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div class="space-y-4">
+            <!-- Modern Pill Tab Navigation (Responsive) -->
+            <div class="-mx-1 overflow-x-auto px-1 pb-1 scrollbar-hide">
+                <div class="inline-flex h-auto w-auto min-w-full gap-1 sm:gap-1.5 rounded-xl sm:rounded-2xl bg-slate-100/90 p-1 sm:p-1.5 shadow-inner">
+                    <button type="button" onclick="switchTab('progress')" id="tabBtn_progress" class="tab-btn flex-1 inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap rounded-lg sm:rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-black text-muted-foreground transition-all tab-active">
+                        <i data-lucide="flag" class="h-3.5 w-3.5 sm:h-4 sm:w-4"></i> My Journey
+                    </button>
+                    <button type="button" onclick="switchTab('insights')" id="tabBtn_insights" class="tab-btn flex-1 inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap rounded-lg sm:rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-black text-muted-foreground transition-all">
+                        <i data-lucide="line-chart" class="h-3.5 w-3.5 sm:h-4 sm:w-4"></i> Insights
+                    </button>
+                    <button type="button" onclick="switchTab('share')" id="tabBtn_share" class="tab-btn flex-1 inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap rounded-lg sm:rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-black text-muted-foreground transition-all">
+                        <i data-lucide="share-2" class="h-3.5 w-3.5 sm:h-4 sm:w-4"></i> Invite Studio
+                    </button>
+                    <button type="button" onclick="switchTab('rewards')" id="tabBtn_rewards" class="tab-btn flex-1 inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap rounded-lg sm:rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-black text-muted-foreground transition-all">
+                        <i data-lucide="gift" class="h-3.5 w-3.5 sm:h-4 sm:w-4"></i> My Rewards
+                        {% if my_claims %}
+                        <span class="rounded-full bg-amber-500 px-1.5 py-0.2 text-[9px] sm:text-[10px] font-black text-white">{{ my_claims|length }}</span>
+                        {% endif %}
+                    </button>
+                    <button type="button" onclick="switchTab('ranks')" id="tabBtn_ranks" class="tab-btn flex-1 inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap rounded-lg sm:rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-black text-muted-foreground transition-all">
+                        <i data-lucide="trophy" class="h-3.5 w-3.5 sm:h-4 sm:w-4"></i> Leaderboard
+                    </button>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- TAB 1: MY JOURNEY (Funnel Pipeline, Victory Trail, Slabs)    -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <div id="tabContent_progress" class="tab-content space-y-4 sm:space-y-4.5">
+                {% if qualified_count == 0 %}
+                <div class="rounded-xl sm:rounded-2xl border border-dashed border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-3 sm:p-4 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-8 w-8 sm:h-10 sm:w-10 flex-none items-center justify-center rounded-xl bg-primary text-white shadow-sm">
+                            <i data-lucide="sparkles" class="h-4 w-4 sm:h-5 sm:w-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xs sm:text-sm font-black text-foreground">5 referrals unlock 100% Membership Fee Back!</h3>
+                            <p class="text-[11px] text-muted-foreground mt-0.5 hidden sm:block">Send your invite link to fellow insurance agents across India to claim your full membership fee back.</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="switchTab('share')" class="inline-flex h-8 sm:h-9 flex-none items-center gap-1.5 rounded-lg sm:rounded-xl bg-primary px-3 sm:px-4 text-[11px] sm:text-xs font-extrabold text-white hover:bg-primary-dark shadow transition-all active:scale-95">
+                        <i data-lucide="share-2" class="h-3.5 w-3.5"></i> Send First Invite
+                    </button>
+                </div>
+                {% endif %}
+
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <!-- REFERRAL PIPELINE (CLEAN MINIMAL DESIGN)                     -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <div class="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-6 sm:mb-8">
+                        <div class="flex items-center gap-2 sm:gap-2.5">
+                            <span class="inline-flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-slate-100 text-slate-600">
+                                <i data-lucide="git-commit-horizontal" class="w-4 h-4 sm:w-[18px] sm:h-[18px]"></i>
+                            </span>
+                            <h3 class="text-sm sm:text-lg font-extrabold text-slate-900 tracking-tight">Referral Pipeline</h3>
+                        </div>
+                        <span class="text-xs sm:text-sm font-semibold text-slate-500">
+                            {{ qualified_count }} / 5 <span class="font-bold text-slate-700">Verified</span>
+                        </span>
+                    </div>
+
+                    <!-- Pipeline Steps -->
+                    <div class="relative w-full pb-2">
+                        <div class="grid grid-cols-4 gap-0">
+
+                            <!-- ── Step 1: Invite Sent ── -->
+                            <div class="relative flex flex-col items-center">
+                                <!-- Connecting Line -->
+                                <div class="absolute top-[20px] sm:top-[24px] left-1/2 right-0 flex items-center pointer-events-none" style="z-index:1;">
+                                    {% if invited_count > 0 %}
+                                        <div class="w-full h-[2px] bg-[#7c3aed]"></div>
+                                    {% else %}
+                                        <div class="w-full border-t-[2px] border-dashed border-slate-300"></div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Node -->
+                                <div class="relative z-10 mb-3 sm:mb-4">
+                                    <div class="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full transition-all duration-300
+                                        {% if invited_count > 0 %}
+                                            bg-emerald-500 text-white shadow-md shadow-emerald-200
+                                        {% else %}
+                                            bg-[#7c3aed] text-white ring-[5px] sm:ring-[6px] ring-purple-100 shadow-lg shadow-purple-200/60
+                                        {% endif %}">
+                                        {% if invited_count > 0 %}
+                                            <i data-lucide="check" class="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]"></i>
+                                        {% else %}
+                                            <span class="font-black text-sm sm:text-base">1</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Label -->
+                                <h4 class="text-[11px] sm:text-sm font-bold text-slate-800 text-center leading-tight">Invite Sent</h4>
+                                <p class="text-[10px] sm:text-xs text-slate-400 font-medium mt-0.5 text-center">{{ invited_count }} sent</p>
+                            </div>
+
+                            <!-- ── Step 2: Registration ── -->
+                            <div class="relative flex flex-col items-center">
+                                <!-- Connecting Lines -->
+                                <div class="absolute top-[20px] sm:top-[24px] left-0 right-0 flex items-center pointer-events-none" style="z-index:1;">
+                                    <div class="w-1/2 {% if invited_count > 0 %}h-[2px] bg-[#7c3aed]{% else %}border-t-[2px] border-dashed border-slate-300{% endif %}"></div>
+                                    <div class="w-1/2 {% if form_filled_count > 0 %}h-[2px] bg-[#7c3aed]{% else %}border-t-[2px] border-dashed border-slate-300{% endif %}"></div>
+                                </div>
+
+                                <!-- Node -->
+                                <div class="relative z-10 mb-3 sm:mb-4">
+                                    <div class="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full transition-all duration-300
+                                        {% if form_filled_count > 0 %}
+                                            bg-emerald-500 text-white shadow-md shadow-emerald-200
+                                        {% elif invited_count > 0 %}
+                                            bg-[#7c3aed] text-white ring-[5px] sm:ring-[6px] ring-purple-100 shadow-lg shadow-purple-200/60
+                                        {% else %}
+                                            bg-slate-100 text-slate-400 border-2 border-slate-200
+                                        {% endif %}">
+                                        {% if form_filled_count > 0 %}
+                                            <i data-lucide="check" class="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]"></i>
+                                        {% else %}
+                                            <span class="font-bold text-sm sm:text-base {% if invited_count > 0 %}text-white{% else %}text-slate-400{% endif %}">2</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if invited_count > 0 and form_filled_count == 0 %}
+                                    <div class="absolute -inset-0.5 rounded-full bg-purple-400/25 blur-[6px] -z-10 animate-pulse"></div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Label -->
+                                <h4 class="text-[11px] sm:text-sm font-bold text-slate-800 text-center leading-tight">Registration</h4>
+                                <p class="text-[10px] sm:text-xs text-slate-400 font-medium mt-0.5 text-center">{{ form_filled_count }} drafts</p>
+                            </div>
+
+                            <!-- ── Step 3: Verification ── -->
+                            <div class="relative flex flex-col items-center">
+                                <!-- Connecting Lines -->
+                                <div class="absolute top-[20px] sm:top-[24px] left-0 right-0 flex items-center pointer-events-none" style="z-index:1;">
+                                    <div class="w-1/2 {% if form_filled_count > 0 %}h-[2px] bg-[#7c3aed]{% else %}border-t-[2px] border-dashed border-slate-300{% endif %}"></div>
+                                    <div class="w-1/2 {% if paid_count > 0 %}h-[2px] bg-[#7c3aed]{% else %}border-t-[2px] border-dashed border-slate-300{% endif %}"></div>
+                                </div>
+
+                                <!-- Node -->
+                                <div class="relative z-10 mb-3 sm:mb-4">
+                                    <div class="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full transition-all duration-300
+                                        {% if paid_count > 0 %}
+                                            bg-emerald-500 text-white shadow-md shadow-emerald-200
+                                        {% elif form_filled_count > 0 %}
+                                            bg-[#7c3aed] text-white ring-[5px] sm:ring-[6px] ring-purple-100 shadow-lg shadow-purple-200/60
+                                        {% else %}
+                                            bg-slate-100 text-slate-400 border-2 border-slate-200
+                                        {% endif %}">
+                                        {% if paid_count > 0 %}
+                                            <i data-lucide="check" class="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]"></i>
+                                        {% else %}
+                                            <span class="font-bold text-sm sm:text-base {% if form_filled_count > 0 %}text-white{% else %}text-slate-400{% endif %}">3</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if form_filled_count > 0 and paid_count == 0 %}
+                                    <div class="absolute -inset-0.5 rounded-full bg-purple-400/25 blur-[6px] -z-10 animate-pulse"></div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Label -->
+                                <h4 class="text-[11px] sm:text-sm font-bold text-slate-800 text-center leading-tight">Verification</h4>
+                                <p class="text-[10px] sm:text-xs text-slate-400 font-medium mt-0.5 text-center">{{ paid_count }} paid</p>
+                            </div>
+
+                            <!-- ── Step 4: Reward ── -->
+                            <div class="relative flex flex-col items-center">
+                                <!-- Connecting Line -->
+                                <div class="absolute top-[20px] sm:top-[24px] left-0 right-1/2 flex items-center pointer-events-none" style="z-index:1;">
+                                    {% if paid_count > 0 %}
+                                        <div class="w-full h-[2px] bg-[#7c3aed]"></div>
+                                    {% else %}
+                                        <div class="w-full border-t-[2px] border-dashed border-slate-300"></div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Node -->
+                                <div class="relative z-10 mb-3 sm:mb-4">
+                                    <div class="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full transition-all duration-300
+                                        {% if qualified_count > 0 %}
+                                            bg-emerald-500 text-white shadow-md shadow-emerald-200
+                                        {% elif paid_count > 0 %}
+                                            bg-[#7c3aed] text-white ring-[5px] sm:ring-[6px] ring-purple-100 shadow-lg shadow-purple-200/60
+                                        {% else %}
+                                            bg-slate-100 text-slate-400 border-2 border-slate-200
+                                        {% endif %}">
+                                        {% if qualified_count > 0 %}
+                                            <i data-lucide="check" class="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]"></i>
+                                        {% else %}
+                                            <i data-lucide="calendar" class="w-4 h-4 sm:w-5 sm:h-5 stroke-[2] {% if paid_count > 0 %}text-white{% else %}text-slate-400{% endif %}"></i>
+                                        {% endif %}
+                                    </div>
+                                    {% if paid_count > 0 and qualified_count == 0 %}
+                                    <div class="absolute -inset-0.5 rounded-full bg-purple-400/25 blur-[6px] -z-10 animate-pulse"></div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Label -->
+                                <h4 class="text-[11px] sm:text-sm font-bold text-slate-800 text-center leading-tight">Reward</h4>
+                                <p class="text-[10px] sm:text-xs text-slate-400 font-medium mt-0.5 text-center">{{ qualified_count }}/5 refs</p>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- The Championship Victory Trail (Horizontal Curved Line) -->
+                {% include "referral_championship/partials/victory_trail_curved.html" %}
+
+                <!-- Slab Pulse Board -->
+                {% include "referral_championship/partials/slab_pulse_board.html" %}
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- TAB 2: INSIGHTS & ANALYTICS (12-Column Studio)               -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <div id="tabContent_insights" class="tab-content space-y-3.5 sm:space-y-5 hidden">
+                <!-- 4 KPI Conversion Metric Cards -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+                    <div class="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-sm">
+                        <div class="flex items-center justify-between text-muted-foreground">
+                            <i data-lucide="mouse-pointer-click" class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-teal-600"></i>
+                            <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">Reach</span>
+                        </div>
+                        <p class="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-black text-foreground leading-none">{{ invited_count }}</p>
+                        <p class="mt-1 text-[10.5px] sm:text-xs text-muted-foreground">Invites opened</p>
+                    </div>
+
+                    <div class="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-sm">
+                        <div class="flex items-center justify-between text-muted-foreground">
+                            <i data-lucide="user-check" class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sky-600"></i>
+                            <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">Intent</span>
+                        </div>
+                        <p class="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-black text-foreground leading-none">{{ form_filled_count }}</p>
+                        <p class="mt-1 text-[10.5px] sm:text-xs text-muted-foreground">Forms completed</p>
+                    </div>
+
+                    <div class="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-sm">
+                        <div class="flex items-center justify-between text-muted-foreground">
+                            <i data-lucide="badge-check" class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-600"></i>
+                            <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">Payments</span>
+                        </div>
+                        <p class="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-black text-foreground leading-none">{{ paid_count }}</p>
+                        <p class="mt-1 text-[10.5px] sm:text-xs text-muted-foreground">Paid subscribers</p>
+                    </div>
+
+                    <div class="rounded-xl sm:rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-sm">
+                        <div class="flex items-center justify-between text-muted-foreground">
+                            <i data-lucide="target" class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-600"></i>
+                            <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">Conversion</span>
+                        </div>
+                        <p class="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-black text-foreground leading-none">
+                            {% if invited_count > 0 %}{% widthratio qualified_count invited_count 100 %}%{% else %}0%{% endif %}
+                        </p>
+                        <p class="mt-1 text-[10.5px] sm:text-xs text-muted-foreground">Visitor to qualifying %</p>
+                    </div>
+                </div>
+
+                <!-- 12-Column Analytics Layout -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5">
+                    <!-- Left: Funnel Progression (7 Cols) -->
+                    <div class="lg:col-span-7 rounded-2xl sm:rounded-3xl border border-border bg-card p-3.5 sm:p-6 shadow-sm space-y-3 sm:space-y-4">
+                        <div class="border-b border-border pb-2.5 sm:pb-3">
+                            <h3 class="text-xs sm:text-base font-black text-foreground">Referral Funnel Progression</h3>
+                            <p class="text-[10.5px] sm:text-xs text-muted-foreground">Visual progression of your prospective agent invites</p>
+                        </div>
+
+                        <div class="space-y-2.5 sm:space-y-3.5">
+                            <div>
+                                <div class="flex justify-between text-[11px] sm:text-xs font-bold">
+                                    <span class="text-muted-foreground flex items-center gap-1.5"><i data-lucide="eye" class="w-3.5 h-3.5 text-slate-500"></i> Invites Opened</span>
+                                    <span class="text-foreground font-black">{{ invited_count }}</span>
+                                </div>
+                                <div class="mt-1 sm:mt-1.5 h-2 sm:h-2.5 rounded-full bg-muted overflow-hidden">
+                                    <div class="h-full bg-slate-400 rounded-full" style="width: 100%;"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-[11px] sm:text-xs font-bold">
+                                    <span class="text-muted-foreground flex items-center gap-1.5"><i data-lucide="edit-3" class="w-3.5 h-3.5 text-sky-500"></i> Forms Completed</span>
+                                    <span class="text-foreground font-black">{{ form_filled_count }}</span>
+                                </div>
+                                <div class="mt-1 sm:mt-1.5 h-2 sm:h-2.5 rounded-full bg-muted overflow-hidden">
+                                    <div class="h-full bg-sky-500 rounded-full transition-all duration-700" style="width: {% if invited_count > 0 %}{% widthratio form_filled_count invited_count 100 %}{% else %}0{% endif %}%;"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-[11px] sm:text-xs font-bold">
+                                    <span class="text-muted-foreground flex items-center gap-1.5"><i data-lucide="credit-card" class="w-3.5 h-3.5 text-indigo-500"></i> Paid Subscriptions</span>
+                                    <span class="text-foreground font-black">{{ paid_count }}</span>
+                                </div>
+                                <div class="mt-1 sm:mt-1.5 h-2 sm:h-2.5 rounded-full bg-muted overflow-hidden">
+                                    <div class="h-full bg-primary rounded-full transition-all duration-700" style="width: {% if invited_count > 0 %}{% widthratio paid_count invited_count 100 %}{% else %}0{% endif %}%;"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-[11px] sm:text-xs font-bold">
+                                    <span class="text-primary flex items-center gap-1.5 font-black"><i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-500"></i> Verified Qualifying Referrals</span>
+                                    <span class="text-primary font-black">{{ qualified_count }}</span>
+                                </div>
+                                <div class="mt-1 sm:mt-1.5 h-2.5 sm:h-3 rounded-full bg-muted overflow-hidden ring-1 ring-primary/30">
+                                    <div class="h-full bg-gradient-to-r from-primary to-amber-500 rounded-full transition-all duration-700" style="width: {% if invited_count > 0 %}{% widthratio qualified_count invited_count 100 %}{% else %}0{% endif %}%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Recent Activity Feed (5 Cols) -->
+                    <div class="lg:col-span-5 rounded-2xl sm:rounded-3xl border border-border bg-card p-3.5 sm:p-6 shadow-sm space-y-3 flex flex-col justify-between">
+                        <div class="border-b border-border pb-2.5 sm:pb-3 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-xs sm:text-base font-black text-foreground">Recent Activity</h3>
+                                <p class="text-[10.5px] sm:text-xs text-muted-foreground">Real-time status updates</p>
+                            </div>
+                            <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        </div>
+
+                        <div class="max-h-[300px] sm:max-h-[320px] overflow-y-auto divide-y divide-border/60 scrollbar-thin">
+                            {% for ref in recent_referrals %}
+                            <div class="py-2 sm:py-2.5 flex items-center justify-between text-xs">
+                                <div class="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                                    <div class="flex h-6.5 w-6.5 sm:h-7 sm:w-7 flex-none items-center justify-center rounded-lg bg-muted text-foreground font-black text-[10px] sm:text-[11px]">
+                                        {{ ref.referred_agent.fullname|default:"AG"|slice:":2"|upper }}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="font-extrabold text-foreground truncate text-[11px] sm:text-xs">
+                                            {% if ref.referred_agent %}{{ ref.referred_agent.fullname }}{% else %}Agent Registration{% endif %}
+                                        </p>
+                                        <p class="text-[9.5px] sm:text-[10.5px] text-muted-foreground">{{ ref.created_at|date:"d M, h:i A" }}</p>
+                                    </div>
+                                </div>
+                                <span class="rounded-full px-1.5 sm:px-2 py-0.2 sm:py-0.5 text-[8.5px] sm:text-[9.5px] font-black uppercase flex-none
+                                    {% if ref.registration_state == 'active' or ref.registration_state == 'paid' %}
+                                        bg-emerald-500/15 text-emerald-600 border border-emerald-500/20
+                                    {% elif ref.registration_state == 'fraud_blocked' %}
+                                        bg-red-500/15 text-red-600
+                                    {% else %}
+                                        bg-muted text-muted-foreground
+                                    {% endif %}">
+                                    {{ ref.registration_state }}
+                                </span>
+                            </div>
+                            {% empty %}
+                            <div class="py-8 sm:py-12 text-center text-xs text-muted-foreground space-y-1">
+                                <i data-lucide="clock" class="mx-auto h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground/40"></i>
+                                <p class="font-bold text-foreground mt-2 text-xs">No activity recorded yet</p>
+                                <p class="text-[10.5px] sm:text-[11px]">Share your referral link to start tracking real-time registrations.</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <button type="button" onclick="switchTab('share')" class="w-full h-8 sm:h-9 rounded-lg sm:rounded-xl border border-border bg-muted/40 hover:bg-muted text-[11px] sm:text-xs font-bold text-foreground transition-all">
+                            Share My Link Now →
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- TAB 3: INVITE STUDIO (12-Column Layout)                     -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <div id="tabContent_share" class="tab-content space-y-3.5 sm:space-y-5 hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5">
+                    
+                    <!-- Left: Credentials & WhatsApp Studio (7 Cols) -->
+                    <div class="lg:col-span-7 space-y-3.5 sm:space-y-5">
+                        <!-- Referral ID & Copy Bar -->
+                        <div class="rounded-2xl sm:rounded-3xl border border-border bg-card p-3.5 sm:p-6 shadow-sm space-y-3 sm:space-y-4">
+                            <div>
+                                <span class="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.2 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-primary">
+                                    Your Exclusive Code
+                                </span>
+                                <h3 class="text-sm sm:text-lg font-black text-foreground mt-1">Permanent Referral Credentials</h3>
+                                <p class="text-[10.5px] sm:text-xs text-muted-foreground">Every insurance advisor who enters this code or clicks your link is credited to you.</p>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5">
+                                <div class="flex-1 flex items-center justify-between rounded-xl sm:rounded-2xl bg-gradient-to-r from-primary/10 to-teal-500/5 border border-primary/30 px-3 sm:px-4 py-2 sm:py-2.5">
+                                    <span class="text-base sm:text-xl font-black text-primary font-mono tracking-wider">
+                                        {{ participant.referral_id }}
+                                    </span>
+                                    <button type="button" onclick="copyText('{{ participant.referral_id }}', 'Referral ID')" class="inline-flex h-7 sm:h-8 items-center gap-1 rounded-lg bg-primary px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold text-white hover:bg-primary-dark transition-all">
+                                        <i data-lucide="copy" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i> Copy ID
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="rounded-lg sm:rounded-xl border border-border bg-muted/30 p-2 sm:p-2.5 flex items-center justify-between gap-2">
+                                <span class="text-[11px] sm:text-xs font-mono text-muted-foreground truncate select-all">{{ referral_url }}</span>
+                                <button type="button" onclick="copyText('{{ referral_url }}', 'Invite Link')" class="inline-flex h-7 sm:h-8 flex-none items-center gap-1 rounded-lg border border-border bg-card px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold text-foreground hover:bg-muted shadow-xs transition-all">
+                                    <i data-lucide="copy" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i> Copy Link
+                                </button>
+                            </div>
+
+                            <!-- 1-Tap Quick Share Buttons -->
+                            <div class="pt-0.5 sm:pt-1">
+                                <p class="text-[10px] sm:text-[11px] font-bold text-muted-foreground mb-1.5 sm:mb-2">Quick 1-Tap Share:</p>
+                                <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2">
+                                    <a href="javascript:void(0)" onclick="openWhatsApp()" class="flex h-8 sm:h-10 items-center justify-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] sm:text-xs shadow-xs transition-all">
+                                        <i data-lucide="message-circle" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i> WhatsApp
+                                    </a>
+                                    <button type="button" onclick="shareNative('{{ referral_url }}')" class="flex h-8 sm:h-10 items-center justify-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border border-border bg-muted/40 hover:bg-muted text-foreground font-bold text-[11px] sm:text-xs transition-all">
+                                        <i data-lucide="share-2" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary"></i> Share...
+                                    </button>
+                                    <a href="https://t.me/share/url?url={{ referral_url }}&text={{ default_wa_text|urlencode }}" target="_blank" class="flex h-8 sm:h-10 items-center justify-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-[11px] sm:text-xs transition-all">
+                                        <i data-lucide="send" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i> Telegram
+                                    </a>
+                                    <a href="mailto:?subject=Join%20PadosiAgent%20Championship&body={{ default_wa_text|urlencode }}" class="flex h-8 sm:h-10 items-center justify-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border border-border bg-card hover:bg-muted text-foreground font-bold text-[11px] sm:text-xs transition-all">
+                                        <i data-lucide="mail" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i> Email
+                                    </a>
+                                    <button type="button" onclick="copyText('{{ referral_url }}', 'SMS Link')" class="flex h-8 sm:h-10 items-center justify-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl border border-border bg-card hover:bg-muted text-foreground font-bold text-[11px] sm:text-xs transition-all">
+                                        <i data-lucide="message-square" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i> SMS
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- WhatsApp Multi-Language Studio -->
+                        <div class="rounded-2xl sm:rounded-3xl border border-border bg-card p-3.5 sm:p-6 shadow-sm space-y-3 sm:space-y-3.5">
+                            <div class="flex items-center justify-between gap-2 border-b border-border pb-2.5 sm:pb-3">
+                                <div>
+                                    <h3 class="text-xs sm:text-base font-black text-foreground">WhatsApp Invite Studio</h3>
+                                    <p class="text-[10px] sm:text-xs text-muted-foreground">Select regional language for invite text</p>
+                                </div>
+                                <select id="waLangSelect" onchange="changeWaLanguage()" class="rounded-lg sm:rounded-xl border border-border bg-muted/70 px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs">
+                                    <option value="en">English</option>
+                                    <option value="hi">हिंदी (Hindi)</option>
+                                    <option value="gu">ગુજરાતી (Gujarati)</option>
+                                    <option value="mr">मराठी (Marathi)</option>
+                                    <option value="ta">தமிழ் (Tamil)</option>
+                                    <option value="te">తెలుగు (Telugu)</option>
+                                    <option value="bn">বাংলা (Bengali)</option>
+                                    <option value="ml">മലയാളം (Malayalam)</option>
+                                    <option value="kn">ಕನ್ನಡ (Kannada)</option>
+                                </select>
+                            </div>
+
+                            <textarea id="waMessageText" rows="4" class="w-full rounded-xl sm:rounded-2xl border border-border bg-muted/20 p-2.5 sm:p-3.5 text-[11px] sm:text-xs leading-relaxed text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans">{{ default_wa_text }}</textarea>
+
+                            <button type="button" onclick="openWhatsApp()" class="flex h-10 sm:h-12 w-full items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-extrabold text-xs sm:text-sm text-white transition-all shadow-md active:scale-98">
+                                <i data-lucide="message-circle" class="h-4 w-4 sm:h-5 sm:w-5"></i> Send on WhatsApp Now
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Branded QR Studio (5 Cols) -->
+                    <div class="lg:col-span-5 rounded-2xl sm:rounded-3xl border border-border bg-card p-3.5 sm:p-6 shadow-sm flex flex-col justify-between space-y-3 sm:space-y-4 text-center">
+                        <div>
+                            <span class="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.2 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-600">
+                                Printable Pass
+                            </span>
+                            <h3 class="text-sm sm:text-lg font-black text-foreground mt-1">Your Championship QR Code</h3>
+                            <p class="text-[10.5px] sm:text-xs text-muted-foreground mt-0.5">Other agents can scan this directly from your mobile screen or printed poster.</p>
+
+                            <!-- QR Viewfinder Frame -->
+                            <div class="mx-auto mt-3 sm:mt-4 flex h-40 w-40 sm:h-52 sm:w-52 items-center justify-center rounded-2xl sm:rounded-3xl border-2 border-dashed border-primary/40 bg-white p-2.5 sm:p-3 shadow-inner">
+                                <img src="{{ qr_base64 }}" alt="Championship Referral QR Code" class="h-full w-full object-contain rounded-lg sm:rounded-xl" />
+                            </div>
+
+                            <p class="mt-2.5 sm:mt-3 text-[11px] sm:text-xs font-mono font-bold text-foreground">
+                                Scan to claim 50% Championship Discount
+                            </p>
+                        </div>
+
+                        <div class="space-y-2.5 sm:space-y-3 pt-1 sm:pt-2">
+                            <a href="{% url 'championship:agent_qr_download' %}" class="inline-flex h-9 sm:h-11 w-full items-center justify-center gap-2 rounded-lg sm:rounded-xl bg-primary text-white text-[11px] sm:text-xs font-black shadow hover:bg-primary-dark transition-all">
+                                <i data-lucide="download" class="h-3.5 w-3.5 sm:h-4 sm:w-4"></i> Download High-Res QR (PNG)
+                            </a>
+
+                            <!-- Pro-Tips Card -->
+                            <div class="rounded-xl sm:rounded-2xl border border-border bg-muted/30 p-2.5 sm:p-3.5 text-left text-[10px] sm:text-[11px] text-muted-foreground space-y-1 sm:space-y-1.5">
+                                <p class="font-bold text-foreground flex items-center gap-1.5">
+                                    <i data-lucide="lightbulb" class="w-3.5 h-3.5 text-amber-500"></i> Pro Tips for Fast Referrals:
+                                </p>
+                                <p>• Put the printed QR on your office visitor desk.</p>
+                                <p>• Post your QR screenshot to WhatsApp status & stories.</p>
+                                <p>• Share in insurance club and branch advisor meetings.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- TAB 4: MY REWARDS & DRAWS (12-Column Studio)                -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <div id="tabContent_rewards" class="tab-content space-y-3.5 sm:space-y-5 hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5">
+                    
+                    <!-- Left: Claimed Milestone Rewards (7 Cols) -->
+                    <div class="lg:col-span-7 space-y-3 sm:space-y-4">
+                        <div class="border-b border-border pb-2.5 sm:pb-3">
+                            <h3 class="text-sm sm:text-lg font-black text-foreground">Your Claimed Rewards & Dispatches</h3>
+                            <p class="text-[10.5px] sm:text-xs text-muted-foreground">Status of Amazon/Flipkart vouchers, minted coins, and vacation vouchers</p>
+                        </div>
+
+                        <div class="space-y-2.5 sm:space-y-3">
+                            {% for c in my_claims %}
+                            <div class="rounded-xl sm:rounded-2xl border border-primary/30 bg-card p-3 sm:p-5 shadow-sm space-y-2.5 sm:space-y-3">
+                                <div class="flex items-start justify-between gap-2.5 sm:gap-3">
+                                    <div>
+                                        <span class="rounded-full bg-primary/10 text-primary text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.2">
+                                            Stage Achieved
+                                        </span>
+                                        <h4 class="text-xs sm:text-base font-black text-foreground mt-1">{{ c.reward_slab.title }}</h4>
+                                        <p class="text-[10.5px] sm:text-xs text-muted-foreground">
+                                            {{ c.reward_slab.threshold }} referrals unlocked · {% if c.reward_slab.value %}₹{{ c.reward_slab.value|floatformat:0 }}{% endif %}
+                                        </p>
+                                    </div>
+                                    <span class="rounded-full px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-black uppercase 
+                                        {% if c.status == 'delivered' or c.status == 'redeemed' %}
+                                            bg-emerald-500/15 text-emerald-600
+                                        {% else %}
+                                            bg-amber-500/15 text-amber-600
+                                        {% endif %}">
+                                        {{ c.status }}
+                                    </span>
+                                </div>
+
+                                {% if c.voucher_code %}
+                                <div class="flex items-center justify-between rounded-lg sm:rounded-xl bg-muted/60 border border-border px-3 sm:px-3.5 py-2 sm:py-2.5">
+                                    <div>
+                                        <p class="text-[9.5px] sm:text-[10px] font-bold text-muted-foreground">Your Voucher Code:</p>
+                                        <p class="text-xs sm:text-sm font-black text-foreground font-mono">{{ c.voucher_code }}</p>
+                                    </div>
+                                    <button type="button" onclick="copyText('{{ c.voucher_code }}', 'Voucher Code')" class="inline-flex h-7 sm:h-8 items-center gap-1 rounded-lg bg-primary px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold text-white hover:bg-primary-dark transition-all">
+                                        <i data-lucide="copy" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i> Copy
+                                    </button>
+                                </div>
+                                {% endif %}
+
+                                {% if c.tracking_number %}
+                                <div class="rounded-lg sm:rounded-xl bg-muted/30 border border-border px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs flex items-center justify-between">
+                                    <span class="text-muted-foreground">{{ c.courier_name|default:"Courier Dispatched" }}</span>
+                                    <span class="font-mono font-bold text-foreground">Tracking #{{ c.tracking_number }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% empty %}
+                            <div class="rounded-2xl sm:rounded-3xl border border-dashed border-border bg-card p-6 sm:p-8 text-center space-y-2">
+                                <div class="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-600 mx-auto">
+                                    <i data-lucide="gift" class="h-5 w-5 sm:h-6 sm:w-6"></i>
+                                </div>
+                                <h4 class="text-xs sm:text-sm font-black text-foreground mt-2">No rewards claimed yet</h4>
+                                <p class="text-[11px] sm:text-xs text-muted-foreground max-w-sm mx-auto">
+                                    Reach 5 verified referrals to unlock your 100% Membership Fee Back via Amazon or Flipkart voucher!
+                                </p>
+                                <button type="button" onclick="switchTab('share')" class="mt-2 inline-flex h-8 sm:h-9 items-center gap-1.5 rounded-lg sm:rounded-xl bg-primary px-3 sm:px-4 text-[11px] sm:text-xs font-bold text-white shadow">
+                                    Start Inviting Agents →
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Right: Grand Lucky Draws Overview (5 Cols) -->
+                    <div class="lg:col-span-5 rounded-2xl sm:rounded-3xl border border-border bg-card p-3.5 sm:p-6 shadow-sm space-y-3 sm:space-y-4">
+                        <div class="border-b border-border pb-2.5 sm:pb-3">
+                            <div class="flex items-center gap-1.5 sm:gap-2">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500"></i>
+                                <h3 class="text-xs sm:text-base font-black text-foreground">Championship Lucky Draws</h3>
+                            </div>
+                            <p class="text-[10.5px] sm:text-xs text-muted-foreground mt-0.5">Entries awarded automatically when qualifying referral tiers are reached</p>
+                        </div>
+
+                        <div class="space-y-2.5 sm:space-y-3">
+                            {% for d in draws %}
+                            <div class="rounded-xl sm:rounded-2xl border transition-all p-3 sm:p-3.5 space-y-1.5 sm:space-y-2
+                                {% if d.tier == 1 and qualified_count >= 50 or d.tier == 2 and qualified_count >= 100 or d.tier == 3 and qualified_count >= 200 %}
+                                    border-primary/40 bg-gradient-to-r from-primary/10 to-transparent ring-1 ring-primary/20
+                                {% else %}
+                                    border-border bg-muted/20
+                                {% endif %}">
+                                <div class="flex items-center justify-between">
+                                    <span class="rounded-md px-1.5 sm:px-2 py-0.2 sm:py-0.5 text-[8.5px] sm:text-[9.5px] font-black uppercase
+                                        {% if d.tier == 3 %}bg-purple-500/15 text-purple-700 dark:text-purple-300{% elif d.tier == 2 %}bg-sky-500/15 text-sky-700 dark:text-sky-300{% else %}bg-amber-500/15 text-amber-700 dark:text-amber-300{% endif %}">
+                                        Tier {{ d.tier }} Pass
+                                    </span>
+                                    <span class="text-[9.5px] sm:text-[10px] font-black
+                                        {% if d.tier == 1 and qualified_count >= 50 or d.tier == 2 and qualified_count >= 100 or d.tier == 3 and qualified_count >= 200 %}
+                                            text-emerald-600 flex items-center gap-1
+                                        {% else %}
+                                            text-muted-foreground
+                                        {% endif %}">
+                                        {% if d.tier == 1 and qualified_count >= 50 or d.tier == 2 and qualified_count >= 100 or d.tier == 3 and qualified_count >= 200 %}
+                                            <i data-lucide="check-circle-2" class="w-3 h-3"></i> Ticket Active
+                                        {% else %}
+                                            Locked
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <h4 class="font-black text-xs sm:text-sm text-foreground">{{ d.prize_name }}</h4>
+                                <p class="text-[10px] sm:text-[11px] text-muted-foreground leading-relaxed">
+                                    {{ d.winner_count }} winners · Requirement: {{ d.eligibility }} · Draw date: {{ d.draw_date }}
+                                </p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- TAB 5: LEADERBOARD & PULSE BOARD                            -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <div id="tabContent_ranks" class="tab-content space-y-6 hidden">
+                {% include "referral_championship/partials/leaderboard_table.html" %}
+                {% include "referral_championship/partials/slab_pulse_board.html" %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- CLAIM VOUCHER MODAL (Glassmorphic, Branded Choices)                 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="claimModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 hidden">
+    <div class="w-full max-w-md rounded-3xl bg-card p-6 shadow-2xl border border-border space-y-4">
+        <div class="flex items-center justify-between border-b border-border pb-3">
+            <div>
+                <span class="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-amber-600">
+                    Instant Voucher Claim
+                </span>
+                <h3 class="text-base font-black text-foreground mt-1" id="claimModalTitle">Claim Milestone Reward</h3>
+            </div>
+            <button type="button" onclick="closeClaimModal()" class="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted text-muted-foreground">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <p class="text-xs text-muted-foreground">Choose which gift card provider you want your milestone voucher issued through:</p>
+        
+        <div class="space-y-2.5">
+            <label class="flex items-center justify-between rounded-2xl border-2 border-border p-3.5 cursor-pointer hover:border-amber-500 transition-all has-[:checked]:border-amber-500 has-[:checked]:bg-amber-500/5">
+                <div class="flex items-center gap-3">
+                    <input type="radio" name="voucherPref" value="amazon" checked class="text-amber-500 focus:ring-amber-500 h-4 w-4">
+                    <div>
+                        <span class="text-xs font-black text-foreground block">Amazon Pay Gift Card</span>
+                        <span class="text-[11px] text-muted-foreground">Redeemable on Amazon.in for shopping, bills & travel</span>
+                    </div>
+                </div>
+                <span class="text-xs font-extrabold text-amber-600">Amazon</span>
+            </label>
+
+            <label class="flex items-center justify-between rounded-2xl border-2 border-border p-3.5 cursor-pointer hover:border-sky-500 transition-all has-[:checked]:border-sky-500 has-[:checked]:bg-sky-500/5">
+                <div class="flex items-center gap-3">
+                    <input type="radio" name="voucherPref" value="flipkart" class="text-sky-500 focus:ring-sky-500 h-4 w-4">
+                    <div>
+                        <span class="text-xs font-black text-foreground block">Flipkart Gift Voucher</span>
+                        <span class="text-[11px] text-muted-foreground">Redeemable on Flipkart.com products</span>
+                    </div>
+                </div>
+                <span class="text-xs font-extrabold text-sky-600">Flipkart</span>
+            </label>
+        </div>
+
+        <div class="mt-4 flex gap-2.5 pt-2">
+            <button type="button" onclick="closeClaimModal()" class="flex-1 h-10 rounded-xl border border-border text-xs font-bold text-foreground hover:bg-muted transition-all">Cancel</button>
+            <button type="button" onclick="submitClaim()" class="flex-1 h-10 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-black shadow transition-all active:scale-98">Confirm & Issue Voucher</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- FLOATING GLASS TOAST NOTIFICATION CONTAINER                         -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div id="toastContainer" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
+
+<script>
+    lucide.createIcons();
+
+    // ── Non-blocking Glass Toast System ──
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `pointer-events-auto flex items-center gap-3 rounded-2xl p-4 text-xs font-bold shadow-2xl backdrop-blur-md border transition-all duration-300 transform translate-y-3 opacity-0 ${
+            type === 'success'
+                ? 'bg-emerald-950/95 text-emerald-100 border-emerald-500/40 shadow-emerald-950/40'
+                : 'bg-slate-900/95 text-slate-100 border-slate-700 shadow-slate-950/50'
+        }`;
+
+        const icon = type === 'success' 
+            ? '<svg class="w-5 h-5 text-emerald-400 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>'
+            : '<svg class="w-5 h-5 text-amber-400 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+
+        toast.innerHTML = `${icon}<span class="flex-1 leading-snug">${message}</span>`;
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => {
+            toast.classList.remove('translate-y-3', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+        });
+
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-y-2');
+            setTimeout(() => toast.remove(), 300);
+        }, 3200);
+    }
+
+    // ── Live Countdown ──
+    const endsAt = new Date("{{ campaign.end_date|date:'Y-m-d' }}T23:59:59").getTime();
+    function updateCountdown() {
+        const now = new Date().getTime();
+        const diff = Math.max(0, endsAt - now);
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+        document.getElementById('timerDays').innerText = String(days).padStart(2, '0');
+        document.getElementById('timerHours').innerText = String(hours).padStart(2, '0');
+        document.getElementById('timerMins').innerText = String(mins).padStart(2, '0');
+        document.getElementById('timerSecs').innerText = String(secs).padStart(2, '0');
+    }
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    // ── Tab Switching ──
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+
+        document.getElementById(`tabBtn_${tabId}`)?.classList.add('tab-active');
+        document.getElementById(`tabContent_${tabId}`)?.classList.remove('hidden');
+    }
+
+    // ── WhatsApp Multi-Language ──
+    const waTemplates = {{ whatsapp_templates_json|safe }};
+    const agentName = "{{ agent.fullname|escapejs }}";
+    const refLink = "{{ referral_url|escapejs }}";
+    const profLink = "{{ referral_url|escapejs }}";
+    const digPrice = "{{ dig_price }}";
+    const profPrice = "{{ prof_price }}";
+
+    function changeWaLanguage() {
+        const lang = document.getElementById('waLangSelect').value;
+        const tmpl = waTemplates[lang]?.templates?.[0]?.text || waTemplates['en'].templates[0].text;
+        const msg = tmpl
+            .replace(/\{\{agent_name\}\}/g, agentName)
+            .replace(/\{\{referral_link\}\}/g, refLink)
+            .replace(/\{\{profile_link\}\}/g, profLink)
+            .replace(/\{\{digital_price\}\}/g, digPrice)
+            .replace(/\{\{professional_price\}\}/g, profPrice);
+        document.getElementById('waMessageText').value = msg;
+    }
+
+    function openWhatsApp() {
+        const text = document.getElementById('waMessageText').value;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+
+    // ── Copy & Share ──
+    function copyText(text, label) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(`${label} copied to clipboard!`, 'success');
+            }).catch(() => {
+                showToast(`Failed to copy ${label}`, 'error');
+            });
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            try {
+                document.execCommand('copy');
+                showToast(`${label} copied to clipboard!`, 'success');
+            } catch (err) {
+                showToast(`Failed to copy ${label}`, 'error');
+            }
+            document.body.removeChild(ta);
+        }
+    }
+
+    function shareNative(url) {
+        if (navigator.share) {
+            navigator.share({
+                title: "PadosiAgent Referral Championship",
+                text: "Join PadosiAgent Referral Championship!",
+                url: url
+            }).catch(() => {});
+        } else {
+            copyText(url, 'Invite link');
+        }
+    }
+
+    // ── Claim Reward Modal ──
+    let activeClaimSlabId = null;
+    function claimRewardModal(slabId, title) {
+        activeClaimSlabId = slabId;
+        document.getElementById('claimModalTitle').innerText = `Claim: ${title}`;
+        document.getElementById('claimModal').classList.remove('hidden');
+    }
+
+    function closeClaimModal() {
+        document.getElementById('claimModal').classList.add('hidden');
+    }
+
+    function submitClaim() {
+        if (!activeClaimSlabId) return;
+        const pref = document.querySelector('input[name="voucherPref"]:checked').value;
+        fetch(`/championship/agent/claim/${activeClaimSlabId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ voucher_provider: pref })
+        })
+        .then(res => res.json())
+        .then(data => {
+            closeClaimModal();
+            showToast(data.message || "Reward claim submitted successfully!", 'success');
+            setTimeout(() => location.reload(), 1400);
+        })
+        .catch(err => {
+            showToast("Failed to submit claim. Please try again.", 'error');
+        });
+    }
+
+    // ── Horizontal Curved Trail Navigation ──
+    function scrollTrail(direction) {
+        const container = document.getElementById('curvedTrailScroll');
+        if (!container) return;
+        const scrollAmount = 350;
+        if (direction === 'left') {
+            container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        } else {
+            container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    }
+
+    // Auto-center current target milestone on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            const currentTarget = document.querySelector('.milestone-node[data-current="true"]');
+            if (currentTarget) {
+                currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        }, 350);
+    });
+</script>
+{% endblock %}

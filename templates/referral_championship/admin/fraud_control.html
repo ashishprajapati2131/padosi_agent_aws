@@ -1,0 +1,69 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Championship Fraud Control | PadosiAgent{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/admin/championship/" class="text-muted text-decoration-none fw-bold" style="font-size:13px;">
+        <i class="fa-solid fa-arrow-left me-1"></i> Back to Championship Dashboard
+    </a>
+    <h4 class="fw-bold mt-1 mb-1"><i class="fa-solid fa-shield-halved text-danger me-2"></i> Fraud Detection &amp; Security</h4>
+    <p class="text-muted mb-0" style="font-size:13.5px;">Flagged self-referrals, duplicate identity flags, and automated actions.</p>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:13.5px;">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Participant</th>
+                        <th>Reason</th>
+                        <th>Details</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in flags %}
+                    <tr>
+                        <td class="text-muted" style="font-size:12px;">{{ f.created_at|date:"d M Y H:i" }}</td>
+                        <td>
+                            <strong>{{ f.participant.referral_id }}</strong>
+                            <div class="text-muted" style="font-size:12px;">{{ f.participant.agent.fullname }}</div>
+                        </td>
+                        <td class="text-danger fw-bold">{{ f.reason }}</td>
+                        <td style="font-size:12px;">{{ f.details }}</td>
+                        <td>
+                            <span class="badge bg-{% if f.status == 'blocked' %}danger{% elif f.status == 'restored' %}success{% else %}warning text-dark{% endif %}">
+                                {{ f.status }}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <form method="POST" action="/admin/championship/fraud/{{ f.id }}/resolve/" class="d-inline">
+                                {% csrf_token %}
+                                {% if f.status != 'blocked' %}
+                                <input type="hidden" name="action" value="block">
+                                <button type="submit" class="btn btn-sm btn-danger fw-bold">Block Agent</button>
+                                {% else %}
+                                <input type="hidden" name="action" value="restore">
+                                <button type="submit" class="btn btn-sm btn-success fw-bold">Restore</button>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-5">
+                            <i class="fa-solid fa-shield-check text-success fs-3 mb-2"></i>
+                            <div>No fraud alerts detected. System is clean and verified!</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

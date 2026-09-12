@@ -768,6 +768,11 @@
                 <span class="badge ms-auto" style="background:#7c3aed;">{{ unclaimed_rewards_count }}</span>
                 {% endif %}
             </a>
+
+            <a href="/admin/championship/" class="menu-item {% if '/admin/championship/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-trophy" style="color:#f59e0b;"></i> Referral Championship
+                <span class="badge bg-warning text-dark ms-auto">2026</span>
+            </a>
             {% endif %}
 
             <!-- Tools -->

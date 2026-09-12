@@ -56,10 +56,10 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     if user is None:
         raise credentials_exception
         
-    if user.status != "active":
+    if user.status in ("suspended", "inactive"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Inactive user account"
+            detail=f"User account is {user.status}"
         )
         
     return user
@@ -70,6 +70,8 @@ BLOCKED_AGENT_STATUSES = ("suspended", "blacklisted", "rejected")
 def get_current_agent(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Agent:
     agent_repo = AgentRepository(db)
     agent = agent_repo.get_by_email(current_user.email)
+    if not agent and current_user.id:
+        agent = db.query(Agent).filter(Agent.user_id == current_user.id).first()
     
     if not agent:
         raise HTTPException(

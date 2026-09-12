@@ -1,0 +1,285 @@
+{% extends "admin/base.html" %}
+{% load humanize %}
+
+{% block title %}Referral Championship Admin Control | PadosiAgent{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="fa-solid fa-trophy text-warning me-2"></i> Referral Championship Admin</h4>
+        <p class="text-muted mb-0" style="font-size: 13.5px;">Manage campaign parameters, pricing, rewards, liabilities &amp; fraud.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/admin/championship/leaderboard/" class="btn btn-outline-primary fw-bold" style="border-radius:10px;">
+            <i class="fa-solid fa-ranking-star me-1"></i> Live Leaderboard
+        </a>
+        <a href="/admin/championship/referral-tree/" class="btn btn-outline-secondary fw-bold" style="border-radius:10px;">
+            <i class="fa-solid fa-network-wired me-1"></i> Referral Tree
+        </a>
+        <a href="/admin/championship/fraud/" class="btn btn-outline-danger fw-bold" style="border-radius:10px;">
+            <i class="fa-solid fa-shield-halved me-1"></i> Fraud Control
+            {% if fraud_flags_count > 0 %}<span class="badge bg-danger ms-1">{{ fraud_flags_count }}</span>{% endif %}
+        </a>
+    </div>
+</div>
+
+<!-- FINANCIAL & LIABILITY SUMMARY -->
+<div class="stats-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-label">GROSS REVENUE</div>
+        <div class="stat-value text-primary">₹{{ gross_revenue|floatformat:2|intcomma }}</div>
+        <div class="text-muted" style="font-size:11.5px;">Paid Referrals: {{ total_qualifying }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">NET REVENUE</div>
+        <div class="stat-value text-success">₹{{ net_revenue|floatformat:2|intcomma }}</div>
+        <div class="text-muted" style="font-size:11.5px;">After refunds (₹{{ refund_amount|floatformat:2 }})</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">REWARD LIABILITY</div>
+        <div class="stat-value text-danger">₹{{ potential_liability|floatformat:2|intcomma }}</div>
+        <div class="text-muted" style="font-size:11.5px;">Issued: ₹{{ rewards_issued|floatformat:2 }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">CAMPAIGN HEALTH</div>
+        <div class="stat-value text-{{ health_color }}">
+            <span class="badge bg-{{ health_color }} fs-6">{{ health_status }}</span>
+        </div>
+        <div class="text-muted" style="font-size:11.5px;">Financial buffer status</div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- LEFT: CAMPAIGN CONFIGURATION -->
+    <div class="col-lg-7">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0"><i class="fa-solid fa-sliders text-primary me-2"></i> Campaign &amp; Pricing Control</h6>
+                <span class="badge bg-primary text-uppercase">{{ campaign.status }}</span>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/admin/championship/settings/update/">
+                    {% csrf_token %}
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold" style="font-size:12.5px;">Campaign Status</label>
+                            <select name="status" class="form-select">
+                                <option value="draft" {% if campaign.status == 'draft' %}selected{% endif %}>Draft</option>
+                                <option value="scheduled" {% if campaign.status == 'scheduled' %}selected{% endif %}>Scheduled</option>
+                                <option value="live" {% if campaign.status == 'live' %}selected{% endif %}>Live (Active)</option>
+                                <option value="paused" {% if campaign.status == 'paused' %}selected{% endif %}>Paused</option>
+                                <option value="ended" {% if campaign.status == 'ended' %}selected{% endif %}>Ended</option>
+                                <option value="archived" {% if campaign.status == 'archived' %}selected{% endif %}>Archived</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold" style="font-size:12.5px;">Campaign Name</label>
+                            <input type="text" name="name" class="form-control" value="{{ campaign.name }}">
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-dark border-top pt-3 mt-3 mb-2" style="font-size:14px;">Plan Pricing Settings (Annual)</h6>
+                    <div class="row g-3 mb-3">
+                        <!-- Digital -->
+                        <div class="col-md-6">
+                            <div class="p-3 rounded-3" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                                <div class="fw-bold text-primary mb-2" style="font-size:13px;">Digital Visibility</div>
+                                <div class="mb-2">
+                                    <label class="form-label" style="font-size:11.5px;">Regular Price (₹)</label>
+                                    <input type="number" name="digital_regular_price" class="form-control form-control-sm" value="{{ campaign.pricing_config.digital.regular_price|default:1999 }}">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label text-success fw-bold" style="font-size:11.5px;">Campaign Price (50% OFF) (₹)</label>
+                                    <input type="number" name="digital_campaign_price" class="form-control form-control-sm" value="{{ campaign.pricing_config.digital.campaign_price|default:999 }}">
+                                </div>
+                                <div>
+                                    <label class="form-label" style="font-size:11.5px;">Renewal Price (₹)</label>
+                                    <input type="number" name="digital_renewal_price" class="form-control form-control-sm" value="{{ campaign.pricing_config.digital.renewal_price|default:1999 }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Professional -->
+                        <div class="col-md-6">
+                            <div class="p-3 rounded-3" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                                <div class="fw-bold text-primary mb-2" style="font-size:13px;">Professional Visibility</div>
+                                <div class="mb-2">
+                                    <label class="form-label" style="font-size:11.5px;">Regular Price (₹)</label>
+                                    <input type="number" name="prof_regular_price" class="form-control form-control-sm" value="{{ campaign.pricing_config.professional.regular_price|default:9999 }}">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label text-success fw-bold" style="font-size:11.5px;">Campaign Price (50% OFF) (₹)</label>
+                                    <input type="number" name="prof_campaign_price" class="form-control form-control-sm" value="{{ campaign.pricing_config.professional.campaign_price|default:4999 }}">
+                                </div>
+                                <div>
+                                    <label class="form-label" style="font-size:11.5px;">Renewal Price (₹)</label>
+                                    <input type="number" name="prof_renewal_price" class="form-control form-control-sm" value="{{ campaign.pricing_config.professional.renewal_price|default:9999 }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-dark border-top pt-3 mt-3 mb-2" style="font-size:14px;">Unlock Gates &amp; Social Channels</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold" style="font-size:12px;">Min Profile Completion (%)</label>
+                            <input type="number" name="min_profile_percent" class="form-control" value="{{ campaign.unlock_config.min_profile_percent|default:80 }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold" style="font-size:12px;">Min Customer Reviews</label>
+                            <input type="number" name="min_reviews" class="form-control" value="{{ campaign.unlock_config.min_reviews|default:10 }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold" style="font-size:12px;">Google Review Link</label>
+                            <input type="url" name="google_review_url" class="form-control" value="{{ campaign.google_review_url }}">
+                        </div>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary fw-bold px-4" style="border-radius:10px;">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Save Campaign Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: REWARD BUILDER & RECENT CLAIMS -->
+    <div class="col-lg-5">
+        <div class="card mb-4" id="rewards">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0"><i class="fa-solid fa-gift text-warning me-2"></i> Reward Slabs</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" data-bs-toggle="modal" data-bs-target="#addSlabModal">
+                    + Add Slab
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size:13px;">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Target</th>
+                                <th>Reward</th>
+                                <th>Liability Value</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for slab in slabs %}
+                            <tr>
+                                <td class="fw-bold">{{ slab.threshold }} Refs</td>
+                                <td>
+                                    <div class="fw-bold">{{ slab.title }}</div>
+                                    <span class="badge bg-light text-dark">{{ slab.reward_type }}</span>
+                                </td>
+                                <td>₹{{ slab.value|floatformat:0 }}</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-link text-primary" onclick="editSlab({{ slab.id }}, {{ slab.threshold }}, '{{ slab.title|escapejs }}', '{{ slab.description|escapejs }}', '{{ slab.reward_type }}', {{ slab.value }})">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h6 class="fw-bold mb-0"><i class="fa-solid fa-clock-rotate-left text-secondary me-2"></i> Recent Reward Claims</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" style="font-size:12.5px;">
+                    {% for claim in recent_claims %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ claim.participant.referral_id }}</strong> ({{ claim.participant.agent.fullname }})
+                            <div class="text-muted">{{ claim.reward_slab.title }} · {{ claim.created_at|date:"d M H:i" }}</div>
+                        </div>
+                        <span class="badge bg-{% if claim.status == 'approved' %}success{% elif claim.status == 'dispatched' %}primary{% else %}warning text-dark{% endif %}">
+                            {{ claim.status }}
+                        </span>
+                    </div>
+                    {% empty %}
+                    <div class="p-3 text-center text-muted">No reward claims yet.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ADD/EDIT REWARD SLAB MODAL -->
+<div class="modal fade" id="addSlabModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="/admin/championship/rewards/manage/">
+                {% csrf_token %}
+                <input type="hidden" name="slab_id" id="modalSlabId">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalSlabTitle">Add Reward Slab</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" style="font-size:12.5px;">Referrals Threshold</label>
+                        <input type="number" name="threshold" id="modalThreshold" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" style="font-size:12.5px;">Reward Title</label>
+                        <input type="text" name="title" id="modalTitle" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" style="font-size:12.5px;">Description</label>
+                        <textarea name="description" id="modalDesc" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold" style="font-size:12.5px;">Reward Type</label>
+                            <select name="reward_type" id="modalType" class="form-select">
+                                <option value="membership_fee_back">Membership Fee Back</option>
+                                <option value="plan_upgrade">Plan Upgrade</option>
+                                <option value="silver">25g Silver Coin</option>
+                                <option value="gold">1g Gold Coin</option>
+                                <option value="domestic_trip">Solo Domestic Trip</option>
+                                <option value="international_trip">Solo International Trip</option>
+                                <option value="family_trip">Family International Trip</option>
+                                <option value="custom">Custom Reward</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold" style="font-size:12.5px;">Liability Value (₹)</label>
+                            <input type="number" step="0.01" name="value" id="modalVal" class="form-control" value="0.00">
+                        </div>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_active" value="1" id="modalActive" checked>
+                        <label class="form-check-label" for="modalActive">Active</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary fw-bold">Save Slab</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function editSlab(id, threshold, title, desc, type, val) {
+        document.getElementById('modalSlabId').value = id;
+        document.getElementById('modalSlabTitle').innerText = 'Edit Reward Slab';
+        document.getElementById('modalThreshold').value = threshold;
+        document.getElementById('modalTitle').value = title;
+        document.getElementById('modalDesc').value = desc;
+        document.getElementById('modalType').value = type;
+        document.getElementById('modalVal').value = val;
+        new bootstrap.Modal(document.getElementById('addSlabModal')).show();
+    }
+</script>
+{% endblock %}

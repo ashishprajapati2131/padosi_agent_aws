@@ -4,6 +4,7 @@ import logging
 from fastapi_app.repositories.agent_repository import AgentRepository
 from fastapi_app.schemas.profile import AgentProfileResponse, AgentProfileUpdateRequest
 from fastapi_app.config import settings
+from fastapi_app.services.lock_unlock_service import LockUnlockService
 
 logger = logging.getLogger(__name__)
 
@@ -280,9 +281,11 @@ class ProfileService:
                 "pan_number": profile.pan_number if profile else "",
                 "license_number": profile.license_number if profile else "",
                 "license_valid_till": profile.license_valid_till if profile else None,
+                "irdai_license_doc": get_media_url(profile.irdai_license_doc) if profile and profile.irdai_license_doc else None,
                 "arn_number": profile.arn_number if profile else "",
                 "euin_number": profile.euin_number if profile else "",
                 "investment_valid_till": profile.investment_valid_till if profile else None,
+                "amfi_license_doc": get_media_url(profile.amfi_license_doc) if profile and profile.amfi_license_doc else None,
                 "investment_types": clean_investment_types(parse_json_list(profile.investment_types)) if profile else [],
                 "agency_name": profile.agency_name if profile else "",
                 "office_address": profile.office_address if profile else "",
@@ -304,7 +307,8 @@ class ProfileService:
                     "facebook_url": social_links.get("facebook_url", social_links.get("facebook", "")),
                     "youtube_url": social_links.get("youtube_url", social_links.get("youtube", ""))
                 }
-            }
+            },
+            "features_access": LockUnlockService(self.agent_repo.db).get_feature_access_map(agent)
         }
         
         return AgentProfileResponse(**response_dict)
@@ -342,6 +346,26 @@ class ProfileService:
         if len(payload.agent.achievementPhotos) > max_photos:
             raise HTTPException(status_code=422, detail=f"Achievement photo limit exceeded. Your current plan allows up to {max_photos} photos.")
             
+        lock_service = LockUnlockService(db)
+        lock_service.require_feature_unlocked(agent, "edit_profile")
+
+        # Check sub-feature locks when modifying locked sections
+        existing_bio = getattr(agent.profile, 'professional_bio', '') if agent.profile else ''
+        new_bio = getattr(payload.profile, 'professional_bio', '') or ''
+        if new_bio and new_bio.strip() != (existing_bio or '').strip():
+            lock_service.require_feature_unlocked(agent, "edit_profile_professional_bio")
+
+        new_socials = payload.profile.social_links.model_dump() if hasattr(payload.profile.social_links, 'model_dump') else (payload.profile.social_links.dict() if hasattr(payload.profile.social_links, 'dict') else {})
+        has_new_socials = any(bool(v and str(v).strip()) for v in new_socials.values()) if isinstance(new_socials, dict) else False
+        existing_socials = getattr(agent.profile, 'social_links', {}) if agent.profile else {}
+        if has_new_socials and new_socials != existing_socials:
+            lock_service.require_feature_unlocked(agent, "edit_profile_social_media")
+
+        existing_claims = getattr(agent.profile, 'support_claims', False) if agent.profile else False
+        new_claims = getattr(payload.profile, 'support_claims', False)
+        if new_claims and not existing_claims:
+            lock_service.require_feature_unlocked(agent, "edit_profile_claim_support")
+
         try:
             # Step 1: Basic Info
             previous_email = agent.email
@@ -437,7 +461,15 @@ class ProfileService:
             stat.claims_processed = str(cp)
             stat.claims_settled = str(cs)
             stat.claims_amount = str(perf.claims_amount)
-            stat.response_time = perf.response_time
+            resp_time_val = 2
+            try:
+                import re
+                m = re.search(r'\d+', str(perf.response_time))
+                if m:
+                    resp_time_val = int(m.group())
+            except Exception:
+                pass
+            stat.response_time = resp_time_val
             stat.success_rate = str(success_rate)
             
             # Step 3: Insurance Segments & Expertise
@@ -647,3 +679,100 @@ class ProfileService:
         except Exception as e:
             db.rollback()
             raise e
+
+    def delete_achievement_photo(self, agent_id: int, photo_id: int) -> bool:
+        db = self.agent_repo.db
+        photo = db.query(AgentAchievementPhoto).filter(
+            AgentAchievementPhoto.id == photo_id,
+            AgentAchievementPhoto.agent_id == agent_id
+        ).first()
+        if not photo:
+            raise HTTPException(status_code=404, detail="Achievement photo not found.")
+        db.delete(photo)
+        db.commit()
+        return True
+
+    def get_career_timelines(self, agent_id: int) -> list:
+        db = self.agent_repo.db
+        timelines = db.query(AgentCareerTimeline).filter(
+            AgentCareerTimeline.agent_id == agent_id
+        ).order_by(AgentCareerTimeline.year.desc()).all()
+        return [
+            {
+                "id": t.id,
+                "year": str(t.year),
+                "month": t.month or "",
+                "type": t.event_type or "Career Event",
+                "event_text": t.event_text or "",
+                "title": t.event_text or ""
+            } for t in timelines
+        ]
+
+    def add_career_timeline(self, agent: Agent, data: dict) -> dict:
+        db = self.agent_repo.db
+        from fastapi_app.services.lock_unlock_service import LockUnlockService
+        LockUnlockService(db).require_feature_unlocked(agent, "edit_profile_career_timeline")
+
+        timeline = AgentCareerTimeline(
+            agent_id=agent.id,
+            year=str(data.get("year", "")),
+            month=data.get("month", ""),
+            event_type=data.get("type", "Career Event"),
+            event_text=data.get("title") or data.get("event_text", "")
+        )
+        db.add(timeline)
+        db.commit()
+        db.refresh(timeline)
+        return {
+            "id": timeline.id,
+            "year": str(timeline.year),
+            "month": timeline.month or "",
+            "type": timeline.event_type,
+            "event_text": timeline.event_text,
+            "title": timeline.event_text
+        }
+
+    def update_career_timeline(self, agent: Agent, timeline_id: int, data: dict) -> dict:
+        db = self.agent_repo.db
+        from fastapi_app.services.lock_unlock_service import LockUnlockService
+        LockUnlockService(db).require_feature_unlocked(agent, "edit_profile_career_timeline")
+
+        timeline = db.query(AgentCareerTimeline).filter(
+            AgentCareerTimeline.id == timeline_id,
+            AgentCareerTimeline.agent_id == agent.id
+        ).first()
+        if not timeline:
+            raise HTTPException(status_code=404, detail="Career timeline event not found.")
+
+        if "year" in data:
+            timeline.year = str(data["year"])
+        if "month" in data:
+            timeline.month = data["month"]
+        if "type" in data:
+            timeline.event_type = data["type"]
+        if "title" in data or "event_text" in data:
+            timeline.event_text = data.get("title") or data.get("event_text", "")
+
+        db.commit()
+        db.refresh(timeline)
+        return {
+            "id": timeline.id,
+            "year": str(timeline.year),
+            "month": timeline.month or "",
+            "type": timeline.event_type,
+            "event_text": timeline.event_text,
+            "title": timeline.event_text
+        }
+
+    def delete_career_timeline(self, agent: Agent, timeline_id: int) -> bool:
+        db = self.agent_repo.db
+        timeline = db.query(AgentCareerTimeline).filter(
+            AgentCareerTimeline.id == timeline_id,
+            AgentCareerTimeline.agent_id == agent.id
+        ).first()
+        if not timeline:
+            raise HTTPException(status_code=404, detail="Career timeline event not found.")
+        db.delete(timeline)
+        db.commit()
+        return True
+

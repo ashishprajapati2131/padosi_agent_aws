@@ -1,0 +1,489 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invited to {{ campaign.name }} | PadosiAgent</title>
+    <meta name="description" content="You have been personally invited to join PadosiAgent. Claim your digital profile, unlock 50% off membership and win vouchers, gold, silver and trips.">
+    <link rel="canonical" href="{{ request.build_absolute_uri }}">
+
+    <!-- Google Fonts: Jost & Urbanist (Exact font pairing from lovebal) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800&family=Urbanist:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS with custom configuration matching lovebal tokens -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Urbanist', 'Jost', 'sans-serif'],
+                        jost: ['Jost', 'sans-serif'],
+                    },
+                    colors: {
+                        background: '#f8fafc',
+                        foreground: '#1e293b',
+                        card: '#ffffff',
+                        'card-foreground': '#1e293b',
+                        primary: {
+                            DEFAULT: '#0d9488',
+                            light: '#14b8a6',
+                            lighter: '#f0fdfa',
+                            dark: '#0f766e',
+                        },
+                        border: '#e2e8f0',
+                        muted: {
+                            DEFAULT: '#f1f5f9',
+                            foreground: '#64748b',
+                        },
+                        amber: {
+                            300: '#fcd34d',
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    },
+                    borderRadius: {
+                        '2xl': '1rem',
+                        '3xl': '1.5rem',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Urbanist', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            -webkit-font-smoothing: antialiased;
+        }
+        .canvas-scratch-wrapper {
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.75rem;
+            user-select: none;
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-background text-foreground">
+
+    <!-- Header -->
+    <header class="border-b border-border bg-card sticky top-0 z-40">
+        <div class="mx-auto flex w-full max-w-2xl items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-2">
+                <img src="{% static 'championship/padosi-agent-logo-new.png' %}" alt="PadosiAgent" class="h-7 w-auto object-contain" onerror="this.src='/static/img/logo.png'">
+            </div>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-primary">
+                <i data-lucide="badge-check" class="h-3.5 w-3.5"></i> Personal invite
+            </span>
+        </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-2xl space-y-4 px-4 py-5 pb-24">
+
+        <!-- Referrer Card -->
+        <div class="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm">
+            {% if profile and profile.profile_image %}
+                <img src="{{ profile.profile_image.url }}" alt="{{ referring_agent.fullname }}" class="h-14 w-14 flex-none rounded-full object-cover border border-border" loading="lazy">
+            {% else %}
+                <div class="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-primary/10 text-xl font-extrabold text-primary">
+                    {{ referring_agent.fullname|slice:":1"|upper }}
+                </div>
+            {% endif %}
+            <div class="min-w-0 flex-1">
+                <p class="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Invited by</p>
+                <h2 class="truncate text-base font-extrabold text-foreground">{{ referring_agent.fullname }}</h2>
+                <div class="flex flex-wrap items-center gap-2 mt-0.5">
+                    {% if profile.office_address %}
+                        <p class="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <i data-lucide="map-pin" class="h-3 w-3 text-primary"></i> {{ profile.office_address|slice:":28" }}
+                        </p>
+                    {% else %}
+                        <p class="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <i data-lucide="map-pin" class="h-3 w-3 text-primary"></i> India
+                        </p>
+                    {% endif %}
+                    <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                        <i data-lucide="star" class="h-3 w-3 fill-amber-400 text-amber-400"></i> {{ average_rating }} ({{ review_count }})
+                    </span>
+                </div>
+            </div>
+            {% if referring_agent.agent_slug %}
+            <a href="{% url 'agents:agent_public_share_profile' referring_agent.agent_slug %}" target="_blank" class="flex-none rounded-xl border border-border bg-muted/50 px-3 py-1.5 text-xs font-bold text-foreground hover:bg-muted transition-colors">
+                Profile
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Dark Hero Card -->
+        <div class="rounded-2xl bg-foreground p-5 text-white shadow-md">
+            <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300">
+                Register → Refer → Reward
+            </p>
+            <h1 class="mt-1.5 text-2xl font-extrabold leading-tight text-white">
+                {{ campaign.name }}
+            </h1>
+            <p class="mt-2 text-sm text-white/80 leading-relaxed">
+                Licensed insurance and mutual fund advisors across India. Claim your digital profile, take your membership
+                at 50% off, then earn cash fee-back, pure silver, 24k gold, and domestic & international trips for every agent you bring in.
+            </p>
+            <a href="{{ reg_url }}" class="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white font-bold text-foreground hover:bg-white/90 transition-all shadow">
+                Register free with this invite <i data-lucide="arrow-right" class="h-4 w-4"></i>
+            </a>
+            <p class="mt-2 text-center text-[11px] text-white/60">
+                Closes {{ campaign.end_date|date:"j F Y" }} · No credit card required to register
+            </p>
+        </div>
+
+        <!-- Plans -->
+        <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <div class="rounded-2xl border border-border bg-card p-4 shadow-sm relative overflow-hidden">
+                <span class="absolute top-3 right-3 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">50% OFF</span>
+                <p class="text-sm font-bold text-foreground">Digital Visibility</p>
+                <p class="mt-1">
+                    <span class="text-xs text-muted-foreground line-through">₹{{ digital_cfg.regular_price|floatformat:0 }}</span>
+                    <span class="text-xl font-extrabold text-foreground">₹{{ digital_cfg.campaign_price|floatformat:0 }}</span>
+                    <span class="text-xs text-muted-foreground">/ year</span>
+                </p>
+                <p class="text-[11px] text-muted-foreground mt-1">12 months · renews at ₹{{ digital_cfg.regular_price|floatformat:0 }} · all features included</p>
+            </div>
+
+            <div class="rounded-2xl border border-primary/40 bg-card p-4 shadow-sm relative overflow-hidden ring-1 ring-primary/20">
+                <span class="absolute top-3 right-3 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-600">RECOMMENDED</span>
+                <p class="text-sm font-bold text-foreground">Professional Visibility</p>
+                <p class="mt-1">
+                    <span class="text-xs text-muted-foreground line-through">₹{{ pro_cfg.regular_price|floatformat:0 }}</span>
+                    <span class="text-xl font-extrabold text-foreground">₹{{ pro_cfg.campaign_price|floatformat:0 }}</span>
+                    <span class="text-xs text-muted-foreground">/ year</span>
+                </p>
+                <p class="text-[11px] text-muted-foreground mt-1">12 months · priority discovery & maximum customer visibility</p>
+            </div>
+        </div>
+
+        <!-- 3-Step 50% Discount Unlock (As in lovebal MembershipFlow) -->
+        <div class="rounded-2xl border border-border bg-card p-4 shadow-sm space-y-3.5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-600">Exclusive campaign perk</span>
+                    <h3 class="text-base font-extrabold text-foreground" id="unlockTitle">
+                        {% if is_50_unlocked %}50% OFF UNLOCKED 🎉{% else %}Unlock 50% Campaign Discount{% endif %}
+                    </h3>
+                </div>
+                <span id="discountBadge" class="rounded-full {% if is_50_unlocked %}bg-emerald-500 text-white{% else %}bg-primary/10 text-primary{% endif %} px-2.5 py-1 text-xs font-extrabold">
+                    {% if is_50_unlocked %}50% OFF ACTIVE{% else %}2 QUICK STEPS{% endif %}
+                </span>
+            </div>
+
+            <!-- Step 1: Follow -->
+            <div class="rounded-xl border border-border bg-muted/30 p-3">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-bold text-foreground">1. Follow PadosiAgent</p>
+                    <span id="step1Check" class="text-xs font-bold text-primary flex items-center gap-1 {% if not followed_platforms %}hidden{% endif %}">
+                        <i data-lucide="check" class="h-3.5 w-3.5"></i> Followed
+                    </span>
+                </div>
+                <p class="mt-0.5 text-[11px] text-muted-foreground">Follow our social channels to unlock the first 25% discount.</p>
+                <div class="mt-2.5 grid grid-cols-2 gap-2">
+                    {% for sc in social_channels %}
+                    <button type="button" onclick="recordFollow('{{ sc.platform }}', '{{ sc.url }}')" class="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors">
+                        <i data-lucide="external-link" class="h-3.5 w-3.5 text-primary"></i> {{ sc.name }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Step 2: Scratch Foil -->
+            <div class="rounded-xl border border-border bg-muted/30 p-3">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-bold text-foreground">2. Scratch to Reveal Extra 25%</p>
+                    <span id="step2Check" class="text-xs font-bold text-primary flex items-center gap-1 {% if not is_scratched %}hidden{% endif %}">
+                        <i data-lucide="check" class="h-3.5 w-3.5"></i> +25% Revealed
+                    </span>
+                </div>
+                <p class="mt-0.5 text-[11px] text-muted-foreground">Scratch the gold foil below to reveal your secret championship coupon.</p>
+
+                <div class="mt-2.5 canvas-scratch-wrapper h-24 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 flex items-center justify-center text-center">
+                    <div class="p-2">
+                        <p class="text-lg font-black text-amber-600 tracking-wider">🎉 25% OFF UNLOCKED!</p>
+                        <p class="text-[11px] font-semibold text-foreground">Combined with follow: <span class="font-extrabold text-primary">50% FLAT OFF!</span></p>
+                    </div>
+                    {% if not is_scratched %}
+                    <canvas id="scratchCanvas" class="absolute inset-0 w-full h-full cursor-pointer"></canvas>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Step 3: Unlocked Confirmation -->
+            <div id="unlockedBanner" class="rounded-xl bg-primary/10 border border-primary/30 p-3 flex items-center gap-2.5 {% if not is_50_unlocked %}hidden{% endif %}">
+                <i data-lucide="sparkles" class="h-5 w-5 text-primary flex-none"></i>
+                <div class="text-xs">
+                    <p class="font-extrabold text-primary">50% Campaign Discount Ready!</p>
+                    <p class="text-muted-foreground">Campaign price of ₹{{ digital_cfg.campaign_price|floatformat:0 }} (Digital) / ₹{{ pro_cfg.campaign_price|floatformat:0 }} (Pro) will be automatically applied at checkout.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reward Roadmap Preview -->
+        <div class="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <div class="flex items-center justify-between">
+                <p class="inline-flex items-center gap-1.5 text-sm font-bold text-foreground">
+                    <i data-lucide="gift" class="h-4 w-4 text-primary"></i> What you can win
+                </p>
+                <span class="text-[11px] font-semibold text-muted-foreground">Cumulative rewards</span>
+            </div>
+            <ul class="mt-3 space-y-2">
+                {% for slab in slabs %}
+                <li class="flex items-center gap-2.5 text-xs">
+                    <span class="w-16 flex-none rounded-full bg-muted px-2 py-0.5 text-center text-[11px] font-bold text-foreground">
+                        {{ slab.threshold }} refs
+                    </span>
+                    <span class="text-muted-foreground min-w-0 truncate">
+                        <span class="font-semibold text-foreground">{{ slab.title }}</span>
+                        {% if slab.value %} · ₹{{ slab.value|floatformat:0 }}{% endif %}
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+            <div class="mt-3.5 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 flex items-center gap-2">
+                <i data-lucide="trophy" class="h-4 w-4 text-amber-600 flex-none"></i>
+                <p class="text-xs font-bold text-foreground">
+                    Top 3 agents win a <span class="text-amber-600 font-extrabold">Family International Trip</span> (2 Adults + 1 Child)
+                </p>
+            </div>
+        </div>
+
+        <!-- Lucky Draws -->
+        {% if draws %}
+        <div class="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <p class="inline-flex items-center gap-1.5 text-sm font-bold text-foreground">
+                <i data-lucide="sparkles" class="h-4 w-4 text-amber-500"></i> Lucky draws
+            </p>
+            <ul class="mt-2.5 space-y-1.5">
+                {% for d in draws %}
+                <li class="text-xs text-muted-foreground">
+                    <span class="font-bold text-foreground">Tier {{ d.tier }}</span> · {{ d.prize_name }} · {{ d.winner_count }} winners · {{ d.eligibility }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Compact Leaderboard Standings -->
+        <div class="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+            <div class="flex items-center justify-between border-b border-border px-4 py-3">
+                <p class="inline-flex items-center gap-2 text-sm font-bold text-foreground">
+                    <span class="relative flex h-2 w-2">
+                        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60"></span>
+                        <span class="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
+                    </span>
+                    Live Leaderboard
+                </p>
+                <span class="text-[11px] font-semibold text-muted-foreground">Updated in real-time</span>
+            </div>
+            <ul class="divide-y divide-border">
+                {% for r in leaderboard_preview|slice:":5" %}
+                <li class="flex items-center gap-3 px-4 py-2.5">
+                    <span class="flex h-6 w-6 flex-none items-center justify-center rounded-full {% if r.rank == 1 %}bg-amber-400 text-white{% elif r.rank == 2 %}bg-slate-300 text-slate-800{% elif r.rank == 3 %}bg-amber-700 text-white{% else %}bg-muted text-muted-foreground{% endif %} text-[10px] font-bold">
+                        {{ r.rank }}
+                    </span>
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate text-xs font-bold text-foreground">{{ r.name }}</p>
+                        {% if r.city %}<p class="truncate text-[10px] text-muted-foreground">{{ r.city }}</p>{% endif %}
+                    </div>
+                    <span class="text-xs font-extrabold text-foreground">{{ r.referrals }} refs</span>
+                </li>
+                {% empty %}
+                <li class="p-4 text-center text-xs text-muted-foreground">
+                    Be the first agent to join and claim the #1 spot on the leaderboard!
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Google Review (Non-conditional) -->
+        <div class="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <div class="flex items-start gap-3">
+                <div class="h-9 w-9 rounded-xl bg-amber-500/10 flex items-center justify-center flex-none">
+                    <i data-lucide="star" class="h-5 w-5 text-amber-500 fill-amber-500"></i>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-bold text-foreground">Help everyone discover PadosiAgent</p>
+                    <p class="mt-0.5 text-xs text-muted-foreground">
+                        Leave an honest Google review. Honest feedback helps fellow insurance agents make the right choice.
+                    </p>
+                    <a href="{{ google_review_url }}" target="_blank" onclick="trackGoogleReview()" class="mt-2.5 inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 text-xs font-bold text-foreground hover:bg-muted transition-colors">
+                        Leave an Honest Google Review <i data-lucide="external-link" class="h-3 w-3"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="rounded-2xl border border-border bg-card p-4 shadow-sm">
+            <p class="inline-flex items-center gap-1.5 text-sm font-bold text-foreground">
+                <i data-lucide="plane" class="h-4 w-4 text-primary"></i> How it works
+            </p>
+            <ol class="mt-2 space-y-1.5 text-xs text-muted-foreground">
+                <li>1. Register free with this invite — your details stay strictly yours.</li>
+                <li>2. Follow our pages and scratch to unlock 50% off your annual membership.</li>
+                <li>3. Complete your profile and 10 reviews to unlock your unique referral code.</li>
+                <li>4. Refer fellow agents, climb the leaderboard, and unlock gold, silver, & trips!</li>
+            </ol>
+        </div>
+
+        <!-- Register CTA -->
+        <a href="{{ reg_url }}" class="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-white font-bold hover:bg-primary-dark transition-all shadow-md">
+            Register free with this invite <i data-lucide="arrow-right" class="h-4 w-4"></i>
+        </a>
+    </main>
+
+    <!-- Bottom Sticky CTA for Mobile -->
+    <div class="fixed bottom-0 inset-x-0 bg-card border-t border-border p-3 z-30 sm:hidden">
+        <a href="{{ reg_url }}" class="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-white text-sm font-bold shadow">
+            Register Free With This Invite <i data-lucide="arrow-right" class="h-4 w-4"></i>
+        </a>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // ── Scratch Foil Interactive Canvas (Exact lovebal ScratchReveal.tsx logic) ──
+        const canvas = document.getElementById('scratchCanvas');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            const wrap = canvas.parentElement;
+            let isDrawing = false;
+            let isRevealed = false;
+
+            function initCanvas() {
+                const rect = wrap.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+
+                // Gold foil linear gradient (#c9a227 -> #f5d76e -> #c9a227 -> #8f6b1f)
+                const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                grad.addColorStop(0, '#c9a227');
+                grad.addColorStop(0.45, '#f5d76e');
+                grad.addColorStop(0.75, '#c9a227');
+                grad.addColorStop(1, '#8f6b1f');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.font = '700 13px Urbanist, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('✨ SCRATCH HERE FOR 25% OFF ✨', canvas.width / 2, canvas.height / 2);
+            }
+
+            initCanvas();
+            window.addEventListener('resize', () => { if (!isRevealed) initCanvas(); });
+
+            function scratchAt(clientX, clientY) {
+                if (isRevealed) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath();
+                ctx.arc(x, y, 22, 0, Math.PI * 2);
+                ctx.fill();
+
+                checkProgress();
+            }
+
+            function checkProgress() {
+                if (isRevealed) return;
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+                let clear = 0;
+                for (let i = 3; i < data.length; i += 4 * 24) {
+                    if (data[i] === 0) clear++;
+                }
+                const total = Math.ceil(data.length / (4 * 24));
+                if (clear / total > 0.40) {
+                    isRevealed = true;
+                    canvas.style.transition = 'opacity 0.4s ease';
+                    canvas.style.opacity = '0';
+                    setTimeout(() => canvas.remove(), 400);
+
+                    // Call backend reveal AJAX
+                    fetch("{% url 'championship:ajax_scratch_reveal' %}", {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({})
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        document.getElementById('step2Check')?.classList.remove('hidden');
+                        if (data.is_50_unlocked) {
+                            unlock50();
+                        }
+                    });
+                }
+            }
+
+            canvas.addEventListener('mousedown', (e) => { isDrawing = true; scratchAt(e.clientX, e.clientY); });
+            canvas.addEventListener('mousemove', (e) => { if (isDrawing) scratchAt(e.clientX, e.clientY); });
+            window.addEventListener('mouseup', () => { isDrawing = false; });
+
+            canvas.addEventListener('touchstart', (e) => {
+                scratchAt(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                scratchAt(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: false });
+        }
+
+        // ── Follow Handler ──
+        function recordFollow(platform, url) {
+            window.open(url, '_blank', 'noopener,noreferrer');
+            fetch("{% url 'championship:ajax_social_follow' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ platform: platform })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('step1Check')?.classList.remove('hidden');
+                if (data.is_50_unlocked) {
+                    unlock50();
+                }
+            });
+        }
+
+        function unlock50() {
+            document.getElementById('unlockTitle').innerText = '50% OFF UNLOCKED 🎉';
+            const badge = document.getElementById('discountBadge');
+            badge.innerText = '50% OFF ACTIVE';
+            badge.className = 'rounded-full bg-emerald-500 text-white px-2.5 py-1 text-xs font-extrabold';
+            document.getElementById('unlockedBanner')?.classList.remove('hidden');
+        }
+
+        function trackGoogleReview() {
+            fetch("{% url 'championship:ajax_track_google_review' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+        }
+    </script>
+</body>
+</html>

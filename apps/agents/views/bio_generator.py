@@ -147,9 +147,16 @@ def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict)
     perf_stat = getattr(agent, "performanceStats", None)
     success_rate_post = payload.get("success_rate")
     if success_rate_post:
-        success_rate = f"{success_rate_post}%" if not str(success_rate_post).endswith("%") else success_rate_post
-    elif perf_stat and getattr(perf_stat, "success_rate", None) and float(perf_stat.success_rate) > 0:
-        success_rate = f"{perf_stat.success_rate}%"
+        success_rate = f"{success_rate_post}%" if not str(success_rate_post).endswith("%") else str(success_rate_post)
+    elif perf_stat and getattr(perf_stat, "success_rate", None):
+        val_str = str(perf_stat.success_rate).strip().rstrip("%")
+        try:
+            if float(val_str) > 0:
+                success_rate = f"{val_str}%"
+            else:
+                success_rate = ""
+        except (ValueError, TypeError):
+            success_rate = str(perf_stat.success_rate)
     else:
         success_rate = ""
 
@@ -257,12 +264,16 @@ def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict)
     )
 
     start_time = time.time()
-    generated_bio, raw_output, response, provider_name = _generate_bio_with_retries(
-        system_prompt,
-        user_prompt,
-        plain_system_prompt,
-        plain_user_prompt,
-    )
+    try:
+        generated_bio, raw_output, response, provider_name = _generate_bio_with_retries(
+            system_prompt,
+            user_prompt,
+            plain_system_prompt,
+            plain_user_prompt,
+        )
+    except Exception as e:
+        logger.warning(f"Bio LLM call failed completely: {e}")
+        generated_bio, raw_output, response, provider_name = "", "", None, "fallback"
     generation_time = time.time() - start_time
 
     tokens = 0
@@ -276,6 +287,15 @@ def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict)
             len(raw_output or ""),
             (raw_output or "")[:240],
         )
+        # Resilient fallback bio using agent's available details
+        city_part = f" in {city}" if city else ""
+        exp_part = f"with {experience} of experience " if experience else ""
+        ins_part = f" specializing in {insurance_str}" if insurance_str else ""
+        name_part = fullname or "an insurance professional"
+        generated_bio = (
+            f"I am {name_part}, a dedicated insurance advisor{city_part} {exp_part}{ins_part}. "
+            "I provide personalized guidance to help individuals, families, and businesses choose the right coverage with end-to-end claim support."
+        ).strip()
 
     try:
         AgentBioGenerationLog.objects.create(

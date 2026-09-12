@@ -15,6 +15,7 @@ class Agent(Base):
     user = relationship("User", back_populates="agent")
     
     # Registration specific fields
+    profession = Column(String(191), nullable=True, default="LIC Agent")
     status = Column(String(191), default="incomplete")
     badge = Column(String(191), nullable=True, default="none")
     registration_step = Column(Integer, default=1)
@@ -110,6 +111,16 @@ class Agent(Base):
     )
     reviews = relationship(
         "AgentReview",
+        back_populates="agent",
+        cascade="all, delete-orphan"
+    )
+    notifications = relationship(
+        "AgentNotification",
+        back_populates="agent",
+        cascade="all, delete-orphan"
+    )
+    device_tokens = relationship(
+        "AgentDeviceToken",
         back_populates="agent",
         cascade="all, delete-orphan"
     )
