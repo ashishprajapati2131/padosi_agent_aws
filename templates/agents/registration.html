@@ -1,10 +1,24 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Agent Registration | PadosiAgent{% endblock %}
+{% block title %}{% if referring_agent %}You're Invited by {{ referring_agent.name }} | PadosiAgent{% else %}Agent Registration | PadosiAgent{% endif %}{% endblock %}
+
+{% block og_title %}{% if referring_agent %}You're Invited by {{ referring_agent.name }} - Join PadosiAgent{% else %}Agent Registration | PadosiAgent{% endif %}{% endblock %}
+{% block og_description %}{% if referring_agent %}Register today on PadosiAgent with {{ referring_agent.name }}'s invitation. Grow your insurance & investment business.{% else %}Register as a PadosiAgent Insurance & Investment Advisor and grow your financial business.{% endif %}{% endblock %}
+{% block og_url %}{{ request.build_absolute_uri }}{% endblock %}
+{% block og_image %}{{ request.scheme }}://{{ request.get_host }}/static/images/image.png{% endblock %}
+
+{% block twitter_title %}{% if referring_agent %}You're Invited by {{ referring_agent.name }} - Join PadosiAgent{% else %}Agent Registration | PadosiAgent{% endif %}{% endblock %}
+{% block twitter_description %}{% if referring_agent %}Register today on PadosiAgent with {{ referring_agent.name }}'s invitation.{% else %}Register as a PadosiAgent Insurance & Investment Advisor.{% endif %}{% endblock %}
+{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}/static/images/image.png{% endblock %}
+
 {% block chatbot_widget %}{% endblock %}
 
 {% block extra_css %}
+    <meta property="og:image:secure_url" content="{{ request.scheme }}://{{ request.get_host }}/static/images/image.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
