@@ -83,7 +83,7 @@ def agent_championship_dashboard(request):
     # ── Referral Link & QR Code ──
     domain = request.get_host()
     scheme = 'https' if request.is_secure() else 'http'
-    referral_url = f"{scheme}://{domain}/join/{participant.referral_id}/"
+    referral_url = f"{scheme}://{domain}/agent-registration/join/{participant.referral_id}/"
     qr_base64 = generate_qr_base64(referral_url)
 
     # ── Leaderboard Data ──
@@ -242,7 +242,7 @@ def download_qr_code(request):
     participant = get_or_create_participant(agent)
     domain = request.get_host()
     scheme = 'https' if request.is_secure() else 'http'
-    referral_url = f"{scheme}://{domain}/join/{participant.referral_id}/"
+    referral_url = f"{scheme}://{domain}/agent-registration/join/{participant.referral_id}/"
 
     qr_bytes = generate_qr_bytes(referral_url)
     response = HttpResponse(qr_bytes, content_type='image/png')
