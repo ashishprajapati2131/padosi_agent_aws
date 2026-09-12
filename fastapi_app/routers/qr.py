@@ -39,13 +39,31 @@ def get_qr_tools(
     }
 
     items = []
+    STATE_CODE_MAP = {
+        'andaman and nicobar islands': 'an', 'andhra pradesh': 'ap', 'arunachal pradesh': 'ar', 'assam': 'as',
+        'bihar': 'br', 'chandigarh': 'ch', 'chhattisgarh': 'cg', 'dadra and nagar haveli': 'dn',
+        'daman and diu': 'dd', 'delhi': 'dl', 'goa': 'ga', 'gujarat': 'gj', 'haryana': 'hr', 'himachal pradesh': 'hp',
+        'jammu and kashmir': 'jk', 'jharkhand': 'jh', 'karnataka': 'ka', 'kerala': 'kl', 'lakshadweep': 'ld',
+        'madhya pradesh': 'mp', 'maharashtra': 'mh', 'manipur': 'mn', 'meghalaya': 'ml', 'mizoram': 'mz',
+        'nagaland': 'nl', 'odisha': 'or', 'orissa': 'or', 'puducherry': 'py', 'punjab': 'pb', 'rajasthan': 'rj',
+        'sikkim': 'sk', 'tamil nadu': 'tn', 'telangana': 'ts', 'tripura': 'tr', 'uttar pradesh': 'up',
+        'uttarakhand': 'uk', 'uttaranchal': 'uk', 'west bengal': 'wb'
+    }
+    state_code = 'gj'
+    if profile and profile.state:
+        key = profile.state.strip().lower()
+        if key in STATE_CODE_MAP:
+            state_code = STATE_CODE_MAP[key]
+        elif len(key) == 2:
+            state_code = key
+
     for qr_type, label in labels.items():
         if qr_type == 'reviews':
-            target = f"{app_url}/profile/{slug}/review/"
+            target = f"{app_url}/{state_code}/{slug}/review/"
         elif qr_type == 'card':
             target = f"{app_url}/card/{slug}/"
         else:
-            target = f"{app_url}/profile/{slug}/"
+            target = f"{app_url}/{state_code}/{slug}/"
 
         whatsapp_msg = f"I'm on PadosiAgent. Scan my {label}: {target}"
         items.append({

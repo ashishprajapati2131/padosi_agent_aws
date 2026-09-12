@@ -23,7 +23,7 @@
         <div class="public-card-brand">PadosiAgent</div>
         {% include 'partials/agent-card.html' %}
         <div class="public-card-cta">
-            <a href="{% url 'agents:agent_public_profile' slug=agent.agent_slug %}">View full profile</a>
+            <a href="/{{ agent.state_code|default:'gj' }}/{{ agent.agent_slug }}/">View full profile</a>
         </div>
     </div>
 </div>

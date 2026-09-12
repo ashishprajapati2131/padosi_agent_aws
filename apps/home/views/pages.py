@@ -191,12 +191,14 @@ def home(request):
             agent_name = rev.agent.fullname if rev.agent else None
             agent_slug = None
             agent_photo = None
+            agent_state = 'gj' # Default fallback
 
             if rev.agent:
                 try:
                     profile = rev.agent.get_primary_profile()
                     agent_slug = profile.slug
                     agent_photo = profile.profile_photo_url
+                    agent_state = profile.state_code
                 except Exception:
                     pass
 
@@ -205,7 +207,7 @@ def home(request):
             reviews.append({
                 'name': rev.reviewer_name or 'User',
                 'service': f"Client of {agent_name}" if agent_name else "Verified Client",
-                'agent_url': f"/profile/{agent_slug}/" if agent_slug else None,
+                'agent_url': f"/{agent_state}/{agent_slug}/" if agent_slug else None,
                 'rating': float(rev.rating),
                 'comment': rev.review or '',
                 'image': avatar_url
@@ -1083,25 +1085,31 @@ def check_pincode_agents(request, pincode):
 
 def custom_page(request, slug):
     """
-    Catch-all view to render custom CMS pages.
+    Catch-all view to render custom CMS pages, or route to agent public profile if slug matches an agent.
     """
     from apps.home.models.page import Page
+    from apps.agents.views.dashboard import agent_public_profile
+    from apps.agents.models import AgentProfile, Agent
     from django.http import HttpResponse, Http404
-    
+
     page = Page.objects.filter(slug=slug).first()
-    if not page:
-        raise Http404("Page not found")
-        
-    # Draft check: only admins can view drafts
-    is_admin = bool(request.session.get('admin_id'))
-    if not page.is_active and not is_admin:
-        raise Http404("Page not found")
-        
-    # Serve raw page content directly if raw code mode is active
-    if page.is_raw_code:
-        return HttpResponse(page.content, content_type='text/html; charset=utf-8')
-        
-    return render(request, 'public/page.html', {'page': page})
+    if page:
+        # Draft check: only admins can view drafts
+        is_admin = bool(request.session.get('admin_id'))
+        if not page.is_active and not is_admin:
+            raise Http404("Page not found")
+
+        # Serve raw page content directly if raw code mode is active
+        if page.is_raw_code:
+            return HttpResponse(page.content, content_type='text/html; charset=utf-8')
+
+        return render(request, 'public/page.html', {'page': page})
+
+    # Check if this slug belongs to an agent public profile
+    if AgentProfile.objects.filter(slug=slug).exists() or Agent.objects.filter(agent_slug=slug).exists():
+        return agent_public_profile(request, slug=slug)
+
+    raise Http404("Page not found")
 
 
 def blacklisted_agents(request):

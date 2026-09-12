@@ -100,4 +100,9 @@ urlpatterns = [
 
     # ── Catch-all public agent profile share route ────────────────────────────
     path('agent/<str:slug>/',   dashboard.agent_public_share_profile, name='agent_public_share_profile'),
+
+    # ── Direct state-prefixed agent profile routes (e.g. /gj/ashish-prajapati/) ──
+    re_path(r'^(?P<state_code>[a-zA-Z]{2})/(?P<slug>[a-zA-Z0-9_-]+)/review/$', dashboard.store_review, name='agent_store_review_state_direct'),
+    re_path(r'^(?P<state_code>[a-zA-Z]{2})/(?P<slug>[a-zA-Z0-9_-]+)/$', dashboard.agent_public_profile, name='agent_public_profile_state_direct'),
 ]
+

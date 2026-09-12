@@ -63,7 +63,7 @@
             <textarea id="paReviewText" name="review" rows="5" required minlength="10" maxlength="500" placeholder="Share your experience (minimum 10 characters)"></textarea>
             <button type="submit" class="pa-rv-submit">Submit Review</button>
         </form>
-        <a class="pa-rv-card-link" href="{% url 'agents:agent_public_profile' slug=advisor_slug %}">View full profile</a>
+        <a class="pa-rv-card-link" href="/{{ agent.state_code|default:'gj' }}/{{ advisor_slug }}/">View full profile</a>
     </div>
 </div>
 {% endblock %}

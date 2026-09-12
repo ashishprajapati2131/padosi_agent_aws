@@ -64,7 +64,10 @@ def build_qr_target_url(request, agent, qr_type):
     elif qr_type == 'reviews':
         path = reverse('agents:agent_public_review', kwargs={'slug': slug})
     else:
-        path = reverse('agents:agent_public_profile', kwargs={'slug': slug})
+        state_code = getattr(agent, 'state_code', 'gj')
+        if callable(state_code):
+            state_code = state_code()
+        path = reverse('agents:agent_public_profile_state_direct', kwargs={'state_code': state_code, 'slug': slug})
     return request.build_absolute_uri(path)
 
 
