@@ -213,15 +213,11 @@ class AuthService:
                 content={"success": False, "message": "Authentication failed due to database transaction error."}
             )
 
-        message = "Login successful."
-        if agent.status in ('pending', 'pending_approval'):
-            message = "Login successful. Your profile is pending admin approval."
-
         return JSONResponse(
             status_code=200,
             content={
                 "success": True,
-                "message": message,
+                "message": "Login successful.",
                 "access_token": access_token,
                 "token_type": "bearer",
                 "expires_in": 100 * 365 * 24 * 3600,  # 100 years in seconds

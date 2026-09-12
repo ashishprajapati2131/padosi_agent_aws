@@ -526,7 +526,35 @@ def agent_dashboard(request):
     except Exception:
         upcoming_features = []
 
+    # ── Referral Championship Context ──
+    champ_campaign = None
+    champ_participant = None
+    champ_is_unlocked = False
+    champ_min_profile = 80
+    champ_min_reviews = 10
+    champ_reviews = agent_review_count(agent)
+    champ_completion = completion
+    try:
+        from apps.referral_championship.models import ChampionshipCampaign
+        from apps.referral_championship.services.attribution_service import get_or_create_participant
+        champ_campaign = ChampionshipCampaign.get_current()
+        if champ_campaign:
+            champ_participant = get_or_create_participant(agent, champ_campaign)
+            champ_unlock_cfg = champ_campaign.unlock_config or {'min_profile_percent': 80, 'min_reviews': 10}
+            champ_min_profile = int(champ_unlock_cfg.get('min_profile_percent', 80))
+            champ_min_reviews = int(champ_unlock_cfg.get('min_reviews', 10))
+            champ_is_unlocked = (champ_completion >= champ_min_profile and champ_reviews >= champ_min_reviews)
+    except Exception as e:
+        logger.warning("Referral championship context error: %s", e)
+
     context = {
+        'champ_campaign': champ_campaign,
+        'champ_participant': champ_participant,
+        'champ_min_profile': champ_min_profile,
+        'champ_min_reviews': champ_min_reviews,
+        'champ_is_unlocked': champ_is_unlocked,
+        'champ_completion': champ_completion,
+        'champ_reviews': champ_reviews,
         'agent_plan': agent_plan,
         'agent': agent,
         'profile': profile,
@@ -697,6 +725,11 @@ def referral(request):
         progress_label = f"{total} / 15 ✓"
         next_goal_text = '🎉 All tiers unlocked! Claim your reward when upgrading.'
 
+    # Build absolute referral join URL
+    domain = request.get_host()
+    scheme = 'https' if request.is_secure() else 'http'
+    referral_url = f"{scheme}://{domain}/join/{ref_code.code}/"
+
     # WhatsApp & Email messages construction (with urlencode)
     import urllib.parse
     rocket_enc = '🚀'
@@ -707,11 +740,6 @@ def referral(request):
     wa_msg = urllib.parse.quote(wa_msg_raw)
     email_sub = urllib.parse.quote('Special Invitation: Join PadosiAgent Digital Growth')
     email_body = wa_msg
-
-    # Build absolute referral join URL
-    domain = request.get_host()
-    scheme = 'https' if request.is_secure() else 'http'
-    referral_url = f"{scheme}://{domain}/join/{ref_code.code}/"
 
     # Load referred usages
     referred_agents = ReferralUsage.objects.filter(referral_code=ref_code).order_by('-signed_up_at')

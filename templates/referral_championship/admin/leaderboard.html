@@ -1,0 +1,94 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Championship Leaderboard Admin | PadosiAgent{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <a href="/admin/championship/" class="text-muted text-decoration-none fw-bold" style="font-size:13px;">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Championship Dashboard
+        </a>
+        <h4 class="fw-bold mt-1 mb-0"><i class="fa-solid fa-ranking-star text-primary me-2"></i> Championship Leaderboard</h4>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="POST" action="/admin/championship/leaderboard/freeze/" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="freeze" value="1">
+            <button type="submit" class="btn btn-outline-warning fw-bold" style="border-radius:10px;">
+                <i class="fa-solid fa-snowflake me-1"></i> Freeze Leaderboard
+            </button>
+        </form>
+        <a href="?export=csv" class="btn btn-success fw-bold" style="border-radius:10px;">
+            <i class="fa-solid fa-file-csv me-1"></i> Export to CSV
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <form method="GET" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <input type="text" name="q" class="form-control form-control-sm" placeholder="Search agent name, email, or referral ID..." value="{{ query }}">
+            </div>
+            <div class="col-md-3">
+                <input type="text" name="city" class="form-control form-control-sm" placeholder="Filter by city..." value="{{ request.GET.city }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-primary w-100 fw-bold">Search</button>
+            </div>
+            <div class="col-md-2 text-end">
+                <span class="text-muted" style="font-size:12px;">Total: <strong>{{ total_count }}</strong></span>
+            </div>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:13.5px;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:70px;">Rank</th>
+                        <th>Referral ID</th>
+                        <th>Agent Name</th>
+                        <th>Email / Mobile</th>
+                        <th>City</th>
+                        <th class="text-center">Qualifying Referrals</th>
+                        <th>Unlocked</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in participants %}
+                    <tr>
+                        <td class="fw-bold">
+                            {% if p.current_rank == 1 %}🥇 1
+                            {% elif p.current_rank == 2 %}🥈 2
+                            {% elif p.current_rank == 3 %}🥉 3
+                            {% else %}#{{ p.current_rank }}
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-light text-dark fw-bold">{{ p.referral_id }}</span></td>
+                        <td class="fw-bold">{{ p.agent.fullname }}</td>
+                        <td>
+                            <div>{{ p.agent.email }}</div>
+                            <small class="text-muted">{{ p.agent.mobile }}</small>
+                        </td>
+                        <td>{{ p.agent.city|default:"—" }}</td>
+                        <td class="text-center fw-bold text-primary" style="font-size:15px;">{{ p.qualifying_referrals_count }}</td>
+                        <td>
+                            {% if p.is_unlocked %}
+                            <span class="badge bg-success">Yes</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Locked</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">No participants found matching criteria.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

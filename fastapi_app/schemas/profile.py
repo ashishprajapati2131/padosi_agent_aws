@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from datetime import date
 
 class SubscriptionSchema(BaseModel):
@@ -18,21 +18,21 @@ class ServicePincodeSchema(BaseModel):
     pincode: str
     city_name: str
     selected_areas: List[str] = []
-    postal_data: List[Dict[str, Any]] = []
+    postal_data: Optional[Any] = []
 
 class FamilyLicenseSchema(BaseModel):
-    full_name: Optional[str] = ""
     relationship: str
     license_number: Optional[str] = ""
     member_name: Optional[str] = ""
     license_type: Optional[str] = ""
+    full_name: Optional[str] = ""
 
 class PerformanceStatSchema(BaseModel):
     claims_processed: int = 0
     claims_settled: int = 0
     claims_amount: float = 0.0
     success_rate: Optional[float] = 0.0
-    response_time: Optional[str] = "2"
+    response_time: Optional[Union[str, int]] = "2"
 
 class PortfolioSchema(BaseModel):
     segment_type: str
@@ -40,6 +40,7 @@ class PortfolioSchema(BaseModel):
     secondary_companies: Dict[str, Any] = {}
 
 class CareerTimelineSchema(BaseModel):
+    id: Optional[int] = None
     month: Optional[str] = ""
     year: Any
     type: str = "Career Event"
@@ -97,9 +98,11 @@ class ProfileSchema(BaseModel):
     pan_number: Optional[str] = ""
     license_number: Optional[str] = ""
     license_valid_till: Optional[date] = None
+    irdai_license_doc: Optional[str] = None
     arn_number: Optional[str] = ""
     euin_number: Optional[str] = ""
     investment_valid_till: Optional[date] = None
+    amfi_license_doc: Optional[str] = None
     investment_types: List[str] = []
     agency_name: Optional[str] = ""
     office_address: Optional[str] = ""
@@ -110,8 +113,10 @@ class ProfileSchema(BaseModel):
     social_links: SocialLinksSchema
 
 class AgentProfileResponse(BaseModel):
+    success: bool = True
     agent: AgentSchema
     profile: ProfileSchema
+    features_access: Dict[str, Any] = {}
 
     class Config:
         from_attributes = True
@@ -158,3 +163,27 @@ class ProfileUpdateSchema(BaseModel):
 class AgentProfileUpdateRequest(BaseModel):
     agent: AgentUpdateSchema
     profile: ProfileUpdateSchema
+
+class CareerTimelineItem(BaseModel):
+    id: Optional[int] = None
+    month: Optional[str] = ""
+    year: str
+    type: str = "Career Event"
+    event_text: Optional[str] = ""
+    title: Optional[str] = ""
+
+class CareerTimelineCreateRequest(BaseModel):
+    year: str
+    title: str
+    event_text: Optional[str] = ""
+    month: Optional[str] = ""
+    type: str = "Career Event"
+
+class CareerTimelineResponse(BaseModel):
+    success: bool
+    data: List[CareerTimelineItem]
+    message: Optional[str] = None
+
+class DeleteItemResponse(BaseModel):
+    success: bool
+    message: str

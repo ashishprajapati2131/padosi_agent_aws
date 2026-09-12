@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     'apps.insurance',
     'apps.distributors',
     'apps.chatbot',
+    'apps.referral_championship',
     'rest_framework',
     'django.contrib.humanize',
 ]

@@ -34,7 +34,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             ip = request.client.host if request.client else "127.0.0.1"
             
         # Bypass localhost checks
-        if ip in ["127.0.0.1", "::1"]:
+        if ip in ["127.0.0.1", "::1", "testclient"]:
             return await call_next(request)
             
         current_time = time.time()

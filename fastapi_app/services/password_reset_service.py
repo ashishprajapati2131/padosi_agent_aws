@@ -7,7 +7,7 @@ from fastapi_app.utils.auth import generate_reset_token, get_password_hash, veri
 from fastapi_app.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from typing import Optional
+from typing import Optional, Any
 import secrets
 import urllib.parse
 
@@ -110,21 +110,26 @@ class PasswordResetService:
                 }
             )
 
-    def reset_password(self, request: ResetPasswordRequest, req: Optional[Request] = None) -> JSONResponse:
-        # Check if they are authenticated via Bearer token in the request header OR via JWT token in request body
+    def reset_password(self, request: ResetPasswordRequest, req: Optional[Request] = None, current_agent: Optional[Any] = None) -> JSONResponse:
         authenticated_user = None
+
+        if current_agent:
+            if hasattr(current_agent, "user") and current_agent.user:
+                authenticated_user = current_agent.user
+            else:
+                authenticated_user = self.user_repo.get_by_email(current_agent.email)
+
         jwt_token = None
-        
-        if req:
+        if not authenticated_user and req:
             auth_header = req.headers.get("Authorization")
             if auth_header and auth_header.startswith("Bearer "):
                 jwt_token = auth_header.split(" ")[1]
                 
-        if not jwt_token and request.token:
+        if not authenticated_user and not jwt_token and request.token:
             if request.token.startswith("ey") and request.token.count(".") == 2:
                 jwt_token = request.token
 
-        if jwt_token:
+        if not authenticated_user and jwt_token:
             try:
                 payload = decode_access_token(jwt_token)
                 email = payload.get("sub")

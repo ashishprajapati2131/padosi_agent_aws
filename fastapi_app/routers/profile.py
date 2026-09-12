@@ -26,6 +26,7 @@ import logging
 import hashlib
 
 from fastapi_app.services.local_storage_service import LocalStorageService
+from fastapi_app.services.lock_unlock_service import LockUnlockService
 from fastapi_app.utils.companies import INSURANCE_COMPANIES
 
 logger = logging.getLogger(__name__)
@@ -147,9 +148,10 @@ async def upload_achievement_image(
 ):
     """
     Upload one or more achievement images for the authenticated agent.
-    Supports up to 10 images. Validates actual file signature (magic bytes)
-    and sanitizes image payloads by re-saving.
+    Guarded by upload_achievements feature lock.
     """
+    lock_service = LockUnlockService(db)
+    lock_service.require_feature_unlocked(current_agent, "upload_achievements")
     # 1. Combine inputs and filter out empty placeholders
     raw_uploaded_files = []
     if file:
@@ -411,7 +413,11 @@ async def upload_irdai_license(
 ):
     """
     Upload IRDAI license document.
+    Guarded by edit_profile_certifications lock.
     """
+    lock_service = LockUnlockService(db)
+    lock_service.require_feature_unlocked(current_agent, "edit_profile_certifications")
+    
     # 1. Read file and validate
     file_bytes = await file.read()
     file_bytes = validate_document_file(file_bytes, file.filename or "irdai.pdf", file.content_type or "application/pdf")
@@ -462,7 +468,11 @@ async def upload_amfi_license(
 ):
     """
     Upload AMFI license document.
+    Guarded by edit_profile_certifications lock.
     """
+    lock_service = LockUnlockService(db)
+    lock_service.require_feature_unlocked(current_agent, "edit_profile_certifications")
+
     # 1. Read file and validate
     file_bytes = await file.read()
     file_bytes = validate_document_file(file_bytes, file.filename or "amfi.pdf", file.content_type or "application/pdf")
@@ -512,7 +522,11 @@ def generate_professional_bio(
     """
     Generate an AI professional bio using the authenticated agent's data.
     The data is pulled exclusively from the database using the agent's identity.
+    Guarded by edit_profile_professional_bio feature lock.
     """
+    lock_service = LockUnlockService(db)
+    lock_service.require_feature_unlocked(current_agent, "edit_profile_professional_bio")
+
     import os, sys
     src_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     if src_dir not in sys.path:
@@ -537,6 +551,8 @@ def generate_professional_bio(
         
         bio = generate_agent_bio_logic(django_agent, django_profile, {})
         return {"status": "success", "bio": bio}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Bio generation failed via FastAPI: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to generate professional bio. Please try again later.")
@@ -618,4 +634,115 @@ def add_serviceable_city(
         "message": "City added successfully.",
         "city": {"id": new_city.id, "name": new_city.name}
     }
+
+
+@router.delete("/profile/achievement/{photo_id}")
+def delete_achievement_photo_endpoint(
+    photo_id: int,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete an achievement / gallery photo for the authenticated agent.
+    Guarded by upload_achievements lock.
+    """
+    lock_service = LockUnlockService(db)
+    lock_service.require_feature_unlocked(current_agent, "upload_achievements")
+    profile_service = ProfileService(AgentRepository(db))
+    profile_service.delete_achievement_photo(current_agent.id, photo_id)
+    return {"success": True, "message": "Achievement photo deleted successfully."}
+
+
+@router.get("/profile/career-timeline")
+def get_career_timelines_endpoint(
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all career timeline milestones for the authenticated agent.
+    """
+    profile_service = ProfileService(AgentRepository(db))
+    items = profile_service.get_career_timelines(current_agent.id)
+    return {"success": True, "data": items}
+
+
+@router.post("/profile/career-timeline")
+def add_career_timeline_endpoint(
+    payload: dict,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Add a new career timeline milestone (Guarded by edit_profile_career_timeline lock).
+    """
+    lock_service = LockUnlockService(db)
+    lock_service.require_feature_unlocked(current_agent, "edit_profile_career_timeline")
+    profile_service = ProfileService(AgentRepository(db))
+    created = profile_service.add_career_timeline(current_agent, payload)
+    return {"success": True, "data": created, "message": "Career timeline event added."}
+
+
+@router.put("/profile/career-timeline/{timeline_id}")
+def update_career_timeline_endpoint(
+    timeline_id: int,
+    payload: dict,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Update a career timeline milestone (Guarded by edit_profile_career_timeline lock).
+    """
+    lock_service = LockUnlockService(db)
+    lock_service.require_feature_unlocked(current_agent, "edit_profile_career_timeline")
+    profile_service = ProfileService(AgentRepository(db))
+    updated = profile_service.update_career_timeline(current_agent, timeline_id, payload)
+    return {"success": True, "data": updated, "message": "Career timeline event updated."}
+
+
+@router.delete("/profile/career-timeline/{timeline_id}")
+def delete_career_timeline_endpoint(
+    timeline_id: int,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a career timeline milestone.
+    Guarded by edit_profile_career_timeline lock.
+    """
+    lock_service = LockUnlockService(db)
+    lock_service.require_feature_unlocked(current_agent, "edit_profile_career_timeline")
+    profile_service = ProfileService(AgentRepository(db))
+    profile_service.delete_career_timeline(current_agent, timeline_id)
+    return {"success": True, "message": "Career timeline event deleted successfully."}
+
+
+@router.delete("/profile/licenses/irdai")
+def delete_irdai_license_doc(
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Remove uploaded IRDAI certificate document.
+    """
+    profile = db.query(AgentProfile).filter(AgentProfile.agent_id == current_agent.id).first()
+    if profile:
+        profile.irdai_license_doc = None
+        db.commit()
+    return {"success": True, "message": "IRDAI certificate document removed."}
+
+
+@router.delete("/profile/licenses/amfi")
+def delete_amfi_license_doc(
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Remove uploaded AMFI certificate document.
+    """
+    profile = db.query(AgentProfile).filter(AgentProfile.agent_id == current_agent.id).first()
+    if profile:
+        profile.amfi_license_doc = None
+        db.commit()
+    return {"success": True, "message": "AMFI certificate document removed."}
+
 

@@ -1,0 +1,212 @@
+{% load static %}
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- CHAMPIONSHIP ROAD – Enhanced Visual Timeline with Reward Photos     -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white px-4 sm:px-6 py-4 sm:py-5 shadow-sm">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-2 mb-4 sm:mb-5 pb-3 sm:pb-3.5 border-b border-slate-100">
+        <!-- Left: Trophy Icon + Title & Milestone Tag -->
+        <div class="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <span class="flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-xl bg-purple-50 text-[#7c3aed]">
+                <i data-lucide="trophy" class="w-4 h-4 sm:w-[18px] sm:h-[18px]"></i>
+            </span>
+            <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-xs sm:text-base font-extrabold text-slate-900 tracking-tight whitespace-nowrap">
+                        Championship Road
+                    </h3>
+                    <span class="hidden sm:inline-flex items-center rounded-full bg-purple-50 border border-purple-200/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7c3aed] whitespace-nowrap">
+                        7 Milestones
+                    </span>
+                </div>
+                <p class="text-[10px] text-slate-400 font-medium sm:hidden flex items-center gap-1 mt-0.5 whitespace-nowrap">
+                    <span class="font-bold text-[#7c3aed]">7 Milestones</span>
+                    <span>•</span>
+                    <span>Swipe to explore →</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Right: Score + Controls -->
+        <div class="flex items-center gap-1.5 sm:gap-2 flex-none">
+            <div class="inline-flex items-center gap-1 sm:gap-1.5 rounded-xl border border-slate-200/90 bg-slate-50 px-2.5 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-xs font-semibold text-slate-600 whitespace-nowrap shadow-2xs">
+                <span class="text-slate-400 font-normal">Score:</span>
+                <strong class="font-extrabold text-slate-900">{{ qualified_count }} refs</strong>
+            </div>
+
+            <div class="hidden sm:flex items-center gap-1">
+                <button type="button" onclick="scrollTrail('left')" class="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-all shadow-2xs active:scale-95" title="Scroll Left">
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                </button>
+                <button type="button" onclick="scrollTrail('right')" class="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-all shadow-2xs active:scale-95" title="Scroll Right">
+                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- HORIZONTAL TIMELINE WITH REWARD CARDS                          -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <div class="relative w-full overflow-hidden">
+        <div id="curvedTrailScroll" class="overflow-x-auto snap-x snap-mandatory scrollbar-none pb-2 sm:pb-3 select-none">
+
+            <div class="flex items-start min-w-max relative">
+                {% for item in roadmap %}
+                <div class="w-[140px] sm:w-[170px] md:w-[190px] flex-shrink-0 snap-center flex flex-col items-center relative milestone-node px-1"
+                     data-index="{{ item.index }}"
+                     data-current="{% if item.is_current_target %}true{% else %}false{% endif %}">
+
+                    <!-- ── Horizontal Connecting Line ── -->
+                    <div class="absolute top-[18px] sm:top-[22px] left-0 right-0 flex items-center pointer-events-none" style="z-index:1;">
+                        <div class="flex-1 h-[2px]">
+                            {% if forloop.first %}
+                                <div class="w-full opacity-0"></div>
+                            {% elif item.is_unlocked or item.is_current_target %}
+                                <div class="w-full h-[2px] bg-[#7c3aed]"></div>
+                            {% else %}
+                                <div class="w-full border-t-[2px] border-dashed border-slate-300"></div>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1 h-[2px]">
+                            {% if forloop.last %}
+                                <div class="w-full opacity-0"></div>
+                            {% elif item.is_unlocked %}
+                                <div class="w-full h-[2px] bg-[#7c3aed]"></div>
+                            {% else %}
+                                <div class="w-full border-t-[2px] border-dashed border-slate-300"></div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- ── Circular Step Node (1, 2, 3... or check) ── -->
+                    <div class="relative z-10 mb-2 sm:mb-2.5">
+                        <div class="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full transition-all duration-300
+                            {% if item.is_unlocked %}
+                                bg-emerald-500 text-white shadow-md shadow-emerald-200
+                            {% elif item.is_current_target %}
+                                bg-[#7c3aed] text-white ring-[4px] sm:ring-[5px] ring-purple-100 shadow-lg shadow-purple-200/60
+                            {% else %}
+                                bg-slate-100 text-slate-400 border-2 border-slate-200
+                            {% endif %}">
+
+                            {% if item.is_unlocked %}
+                                <i data-lucide="check" class="w-4 h-4 sm:w-5 sm:h-5 stroke-[3]"></i>
+                            {% else %}
+                                <span class="font-bold text-xs sm:text-sm leading-none {% if item.is_current_target %}text-white{% else %}text-slate-400{% endif %}">
+                                    {{ item.index }}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        {% if item.is_current_target %}
+                        <div class="absolute -inset-0.5 rounded-full bg-purple-400/25 blur-[5px] -z-10 animate-pulse"></div>
+                        {% endif %}
+                    </div>
+
+                    <!-- ═══════════════════════════════════════════ -->
+                    <!-- REWARD CARD (With Product Photography)     -->
+                    <!-- ═══════════════════════════════════════════ -->
+                    <div class="w-full rounded-xl border transition-all duration-200 p-2 sm:p-2.5 text-center group flex flex-col justify-between
+                        {% if item.is_current_target %}
+                            bg-purple-50/60 border-purple-200 shadow-sm ring-1 ring-purple-300/40
+                        {% elif item.is_unlocked %}
+                            bg-emerald-50/50 border-emerald-200/80 shadow-xs
+                        {% else %}
+                            bg-slate-50/50 border-slate-200/60 hover:border-slate-300 hover:shadow-xs
+                        {% endif %}">
+
+                        <div>
+                            <!-- Reward Photography Image -->
+                            <div class="relative w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-xl overflow-hidden mb-1.5 sm:mb-2 bg-slate-100 border border-slate-200/80 shadow-2xs group-hover:scale-105 transition-all duration-300
+                                {% if item.is_current_target %}ring-2 ring-purple-500/50 ring-offset-1 shadow-purple-100
+                                {% elif item.is_unlocked %}ring-2 ring-emerald-500/40 ring-offset-1
+                                {% endif %}">
+                                <img src="{% if item.image_path %}{% static item.image_path %}{% elif item.reward_type == 'membership_fee_back' %}{% static 'championship/reward-cashback.jpg' %}{% elif item.reward_type == 'silver' %}{% static 'championship/reward-silver.jpg' %}{% elif item.reward_type == 'gold' %}{% static 'championship/reward-gold.jpg' %}{% elif item.reward_type == 'plan_upgrade' %}{% static 'championship/championship-rewards.jpg' %}{% else %}{% static 'championship/reward-trip.jpg' %}{% endif %}"
+                                     alt="{{ item.title }}"
+                                     class="w-full h-full object-cover transition-all duration-300 {% if not item.is_unlocked and not item.is_current_target %}grayscale opacity-45 contrast-75{% endif %}"
+                                     loading="lazy">
+
+                                {% if item.is_unlocked %}
+                                <span class="absolute bottom-0.5 right-0.5 rounded-full bg-emerald-500 text-white p-0.5 shadow-xs flex items-center justify-center">
+                                    <i data-lucide="check" class="w-2.5 h-2.5 stroke-[3]"></i>
+                                </span>
+                                {% elif item.is_current_target %}
+                                <span class="absolute top-1 right-1 flex h-2 w-2">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-[#7c3aed]"></span>
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Title -->
+                            <h4 class="text-[10px] sm:text-xs font-bold leading-tight line-clamp-2 min-h-[26px] sm:min-h-[30px]
+                                {% if item.is_current_target %}text-purple-900
+                                {% elif item.is_unlocked %}text-emerald-900
+                                {% else %}text-slate-700{% endif %}" title="{{ item.title }}">
+                                {{ item.title }}
+                            </h4>
+
+                            <!-- Prize Value -->
+                            <p class="text-[9px] sm:text-[10px] font-semibold mt-0.5
+                                {% if item.is_current_target %}text-purple-600
+                                {% elif item.is_unlocked %}text-emerald-600
+                                {% else %}text-slate-400{% endif %}">
+                                {{ item.value_formatted }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <!-- Divider -->
+                            <div class="border-t my-1.5 sm:my-2
+                                {% if item.is_current_target %}border-purple-200
+                                {% elif item.is_unlocked %}border-emerald-200
+                                {% else %}border-slate-200/60{% endif %}"></div>
+
+                            <!-- Refs Threshold -->
+                            <p class="text-[10px] sm:text-xs font-bold
+                                {% if item.is_unlocked or item.is_current_target %}text-[#7c3aed]{% else %}text-slate-400{% endif %}">
+                                {% if item.threshold >= 900 %}🏆 Top 3{% else %}{{ item.threshold }} refs{% endif %}
+                            </p>
+
+                            <!-- Status Action / Progress -->
+                            {% if item.is_unlocked %}
+                            <div class="mt-1.5">
+                                {% if item.slab.reward_type == 'membership_fee_back' or item.slab.reward_type == 'voucher' or item.slab.reward_type == 'cashback' %}
+                                    <button type="button" onclick="claimRewardModal('{{ item.slab.id }}', '{{ item.slab.title }}')" class="inline-flex items-center gap-0.5 rounded-lg bg-[#7c3aed] hover:bg-purple-700 text-white px-2.5 py-1 text-[9px] sm:text-[10px] font-bold shadow-xs active:scale-95 transition-all">
+                                        Claim <i data-lucide="arrow-right" class="w-2.5 h-2.5"></i>
+                                    </button>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-bold text-emerald-600 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                                        <i data-lucide="check-circle-2" class="w-2.5 h-2.5"></i> Won
+                                    </span>
+                                {% endif %}
+                            </div>
+                            {% elif item.is_current_target %}
+                            <div class="mt-1.5">
+                                <!-- Progress bar -->
+                                <div class="w-full bg-purple-100 rounded-full h-1 sm:h-1.5 mb-1">
+                                    <div class="bg-[#7c3aed] h-full rounded-full transition-all duration-500" style="width: {{ item.progress_percent }}%"></div>
+                                </div>
+                                <span class="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-bold text-[#7c3aed]">
+                                    <i data-lucide="flame" class="w-2.5 h-2.5 text-amber-500"></i> {{ item.referrals_needed }} away
+                                </span>
+                            </div>
+                            {% else %}
+                            <div class="mt-1">
+                                <span class="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-medium text-slate-400">
+                                    <i data-lucide="lock" class="w-2.5 h-2.5"></i> Locked
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                    </div>
+
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>

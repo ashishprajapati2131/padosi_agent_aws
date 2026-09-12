@@ -104,29 +104,6 @@ def decode_access_token(token: str) -> dict:
     """Decodes and validates a JWT access token, raising JWTError if invalid or expired."""
     return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
-def create_promo_validation_token(promo_code: str, promo_id: int) -> str:
-    now = datetime.utcnow()
-    expire = now + timedelta(minutes=20)
-    to_encode = {
-        "promo_code_id": promo_id,
-        "promo_code": promo_code,
-        "exp": expire,
-        "iat": now,
-        "jti": str(uuid4()),
-        "purpose": "promo_validation"
-    }
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
-
-def decode_promo_validation_token(token: str) -> Optional[dict]:
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        if payload.get("purpose") == "promo_validation":
-            return payload
-        return None
-    except JWTError:
-        return None
-
 def generate_reset_token(app_key: Optional[str]) -> str:
     import base64
     import hmac
