@@ -170,7 +170,8 @@ def admin_update_campaign_settings(request):
     campaign.save()
 
     # Audit log
-    admin = _get_admin_from_session(request)
+    admin_info = _get_admin_from_session(request)
+    admin_id = admin_info if isinstance(admin_info, (int, str)) else (admin_info.get('id') if isinstance(admin_info, dict) else getattr(admin_info, 'id', admin_info))
     ChampionshipAuditLog.objects.create(
         campaign=campaign,
         admin_user=request.user if request.user.is_authenticated else None,
@@ -182,7 +183,7 @@ def admin_update_campaign_settings(request):
             'unlock': campaign.unlock_config,
             'google_url': campaign.google_review_url
         },
-        reason=f"Admin #{admin.get('id')} updated campaign configuration."
+        reason=f"Admin #{admin_id} updated campaign configuration."
     )
 
     messages.success(request, "Referral Championship settings updated successfully!")

@@ -16,7 +16,7 @@ from fastapi_app.config import settings
 from fastapi_app.routers import (
     auth, dashboard, profile, public_profile,
     pincode, leads, notifications, analytics,
-    qr, visibility, referral, find_agents
+    qr, visibility, referral, find_agents, championship
 )
 import fastapi_app.models
 
@@ -62,6 +62,7 @@ app.include_router(qr.router)
 app.include_router(visibility.router)
 app.include_router(referral.router)
 app.include_router(find_agents.router)
+app.include_router(championship.router)
 
 # Mount local storage directory for static access
 os.makedirs(settings.LOCAL_STORAGE_PATH, exist_ok=True)

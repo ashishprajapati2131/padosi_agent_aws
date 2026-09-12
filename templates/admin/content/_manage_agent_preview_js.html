@@ -269,7 +269,8 @@
         const portfolio = document.getElementById('portfolio-content');
         const leads = document.getElementById('leads-content');
         const qr = document.getElementById('qr-content');
-        [overview, profile, portfolio, leads, qr].forEach(function(panel) {
+        const analytics = document.getElementById('analytics-content');
+        [overview, profile, portfolio, leads, qr, analytics].forEach(function(panel) {
             if (panel) panel.style.setProperty('display', 'block', 'important');
         });
 

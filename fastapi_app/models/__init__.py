@@ -32,3 +32,16 @@ from fastapi_app.models.insurance_company import InsuranceCompany
 from fastapi_app.models.api_log import ApiLog
 from fastapi_app.models.agent_notification import AgentNotification
 from fastapi_app.models.agent_device_token import AgentDeviceToken
+from fastapi_app.models.championship import (
+    ChampionshipCampaign,
+    ChampionshipParticipant,
+    ChampionshipReferral,
+    ChampionshipRewardSlab,
+    ChampionshipRewardClaim,
+    ChampionshipSocialAction,
+    ChampionshipScratchUnlock,
+    ChampionshipGoogleReviewLog,
+    ChampionshipFraudFlag,
+    ChampionshipAuditLog,
+    ChampionshipLeaderboardCache,
+)

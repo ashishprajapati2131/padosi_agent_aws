@@ -3,6 +3,7 @@
 
 {% block title %}{% if admin_lock_preview %}{{ preview_plan_label }} — Manage Agent{% else %}Agent Dashboard — PadosiAgent{% endif %}{% endblock %}
 {% block breadcrumb_title %}Content › Plans › {{ preview_plan_label }}{% endblock %}
+{% block chatbot_widget %}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/agent-dashboard.css' %}">
@@ -27,6 +28,106 @@
 .cs-badge-coming { border: 1.5px solid #fed7aa; background: #fff7ed; color: #c2410c; }
 .cs-badge-default { border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569; }
 .cs-card-description { color: #64748b; font-size: 13.5px; line-height: 1.55; margin-top: 5px; margin-bottom: 0; }
+
+/* Locked Section Blur & Glassmorphism Overlay */
+.locked-plan-section {
+    position: relative !important;
+    min-height: 220px !important;
+}
+
+.locked-blurred-content, .locked-content-wrapper > *:not(.locked-plan-overlay) {
+    filter: blur(8px) grayscale(30%) !important;
+    -webkit-filter: blur(8px) grayscale(30%) !important;
+    opacity: 0.42 !important;
+    pointer-events: none !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    transition: filter 0.3s ease, opacity 0.3s ease !important;
+}
+
+.locked-plan-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 999 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 32px 20px !important;
+    background: rgba(255, 255, 255, 0.72) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border: 2px dashed #38bdf8 !important;
+    border-radius: 16px !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.25s ease !important;
+}
+
+.locked-plan-overlay:hover {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 12px 36px rgba(2, 132, 199, 0.2) !important;
+}
+
+.locked-plan-overlay .locked-badge-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 12px;
+    box-shadow: 0 6px 18px rgba(2, 132, 199, 0.35);
+    transition: transform 0.2s ease;
+}
+
+.locked-plan-overlay:hover .locked-badge-icon {
+    transform: scale(1.1);
+}
+
+.locked-plan-overlay .locked-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 6px;
+}
+
+.locked-plan-overlay .locked-subtitle {
+    font-size: 13px;
+    color: #475569;
+    max-width: 420px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.locked-plan-overlay .locked-unlock-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 24px;
+    border-radius: 50px;
+    background: #0284c7;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.locked-plan-overlay:hover .locked-unlock-btn {
+    background: #0369a1;
+    transform: translateY(-2px);
+}
 </style>
 {% endblock %}
 
@@ -61,6 +162,9 @@
                 <button type="button" class="btn text-white shadow-sm px-4 d-flex align-items-center mb-2 mb-sm-0" data-feature="rank_boost_tips" data-toggle="modal" data-target="#rankingGuideModal" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; font-weight: 700; border-radius: 8px; margin-right: 12px; height: 42px; position: relative;">
                     <i class="fas fa-rocket mr-2"></i> Rank Boost Tips
                 </button>
+                {% if not admin_lock_preview and agent_plan and agent_plan.premium_priority_support %}
+                <a href="https://wa.me/919999999999" target="_blank" class="btn btn-outline-success mb-2 mb-sm-0" style="height: 42px; display: inline-flex; align-items: center; font-weight:700;"><i class="fab fa-whatsapp mr-2"></i>Priority Support</a>
+                {% endif %}
                 <a href="{% if admin_lock_preview %}#{% elif profile.slug %}/{{ agent.state_code|default:'gj' }}/{{ profile.slug }}/{% elif agent.agent_slug %}/{{ agent.state_code|default:'gj' }}/{{ agent.agent_slug }}/{% else %}#{% endif %}" class="btn btn-profile-view mb-2 mb-sm-0" data-feature="view_public_profile" style="height: 42px; display: inline-flex; align-items: center; position: relative;"><i class="fas fa-user mr-2"></i>View My Profile</a>
                 <a href="{% if admin_lock_preview %}#{% else %}{% url 'agents:agent_edit_profile' %}{% endif %}" class="btn btn-add-lead-top mb-2 mb-sm-0" data-feature="edit_profile" style="height: 42px; display: inline-flex; align-items: center; position: relative;"><i class="fas fa-edit mr-2"></i>Edit Profile</a>
             </div>
@@ -229,7 +333,7 @@
                 </li>
                 {% endif %}
                 <li class="nav-item">
-                    <a class="nav-link" href="#analytics" data-tab="analytics"><i class="fas fa-chart-line mr-2"></i>Profile Analytics</a>
+                    <a class="nav-link" href="#analytics" data-tab="analytics" data-feature="profile_analytics"><i class="fas fa-chart-line mr-2"></i>Profile Analytics</a>
                 </li>
             </ul>
         </div>
@@ -608,7 +712,7 @@
         {% endif %}
 
         <!-- Profile Analytics Section -->
-        <div id="analytics-content" style="display: none;">
+        <div id="analytics-content" class="tab-panel" data-feature="profile_analytics" style="display: none;">
             <div class="px-2 py-3">
 
                 <!-- Period toggle -->
@@ -1728,7 +1832,8 @@
       visibilityAio: {% if not agent_plan or agent_plan.show_visibility_aio %}true{% else %}false{% endif %},
       visibilityGeo: {% if not agent_plan or agent_plan.show_visibility_geo %}true{% else %}false{% endif %},
       visibilitySeo: {% if not agent_plan or agent_plan.show_visibility_seo %}true{% else %}false{% endif %},
-      visibilityPriority: {% if not agent_plan or agent_plan.show_visibility_priority_ranking %}true{% else %}false{% endif %}
+      visibilityPriority: {% if not agent_plan or agent_plan.show_visibility_priority_ranking %}true{% else %}false{% endif %},
+      profileAnalytics: {% if not agent_plan or agent_plan.show_profile_analytics %}true{% else %}false{% endif %}
     };
 
     const canOfferUpgrade = {% if show_starter_upgrade_cta %}true{% else %}false{% endif %};
@@ -1807,25 +1912,30 @@
     }
 
     function lockSection($el, sectionName, hintKey) {
-      if ($el.length === 0) return;
+      if (!$el || $el.length === 0) return;
 
-      let $body = $el.find('.card-body').length ? $el.find('.card-body').first() : $el;
-
-      if ($body.find('.locked-content-wrapper').length === 0) {
-          $body.wrapInner('<div class="locked-content-wrapper" style="position:relative; min-height: 150px; flex-grow: 1; display: flex; flex-direction: column;"></div>');
-      }
-      const $target = $body.find('.locked-content-wrapper');
-
-      $target.css({
-          'position': 'relative',
-          'pointer-events': 'none',
-          'opacity': '1'
+      let $container = $el;
+      $container.addClass('locked-plan-section').css({
+        'position': 'relative',
+        'min-height': '240px'
       });
-      if ($target.find('.locked-plan-overlay').length === 0) {
-        const name = sectionName || "This feature";
+
+      if ($container.find('> .locked-blurred-content').length === 0) {
+        $container.children().not('.locked-plan-overlay').wrapAll('<div class="locked-blurred-content"></div>');
+      }
+
+      if ($container.find('> .locked-plan-overlay').length === 0) {
+        const name = sectionName || "This section";
         const $overlay = $(`
-          <div class="locked-plan-overlay" role="button" tabindex="0" aria-label="Unlock ${name}" title="Locked — tap to see how to unlock" style="position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:auto; text-align:center; border-radius: 12px;">
-            <i class="fas fa-lock" style="font-size: 32px; color: #64748b; transition: transform .15s ease, color .15s ease;"></i>
+          <div class="locked-plan-overlay" role="button" tabindex="0" aria-label="Unlock ${name}" title="Locked — tap to see how to unlock">
+            <div class="locked-badge-icon">
+              <i class="fas fa-lock"></i>
+            </div>
+            <div class="locked-title">${name} Locked</div>
+            <div class="locked-subtitle">This section is disabled under your current plan. Tap to view unlock options.</div>
+            <div class="locked-unlock-btn">
+              <i class="fas fa-lock-open me-1"></i> Unlock ${name}
+            </div>
           </div>
         `);
         $overlay.on('click keydown', function(e) {
@@ -1834,7 +1944,7 @@
           e.stopPropagation();
           showLockedFeaturePopup(name, hintKey);
         });
-        $target.append($overlay);
+        $container.append($overlay);
       }
     }
 
@@ -1850,6 +1960,19 @@
       $el.off('click.planLock').on('click.planLock', function(e) {
         e.preventDefault();
         e.stopImmediatePropagation();
+        var tabId = $el.attr('data-tab');
+        if (tabId) {
+          var panelEl = document.getElementById(tabId + '-content') || document.getElementById(tabId === 'qrcodes' ? 'qr-content' : tabId);
+          if (panelEl) {
+            $('.dashboard-main-tabs .nav-link').removeClass('active');
+            $el.addClass('active');
+            $('.tab-panel, #overview-content, #profile-content, #leads-content, #qr-content, #analytics-content').hide();
+            $(panelEl).show();
+            if (tabId === 'analytics' && typeof initAnalyticsTab === 'function') {
+              initAnalyticsTab();
+            }
+          }
+        }
         showLockedFeaturePopup(name, hintKey);
       });
     }
@@ -1871,6 +1994,16 @@
         'QR Codes',
         'show_qr_codes',
         '<i class="fas fa-lock mr-2"></i>QR Codes'
+      );
+    }
+
+    if (!planPermissions.profileAnalytics) {
+      lockSection($('#analytics-content'), "Profile Analytics", "show_profile_analytics");
+      lockControl(
+        $('.dashboard-main-tabs .nav-link[data-tab="analytics"]'),
+        'Profile Analytics',
+        'show_profile_analytics',
+        '<i class="fas fa-lock mr-2"></i>Profile Analytics'
       );
     }
 
@@ -2092,6 +2225,29 @@
     }
 
     function loadAnalytics(period) {
+        if (window.MANAGE_AGENT) {
+            renderAnalytics({
+                summary: {
+                    card_impressions: 128, card_impressions_change: 15,
+                    profile_views: 42, profile_views_change: 8,
+                    ctr: 32.8, ctr_change: 5,
+                    pincode_searches: 86, pincode_searches_change: 12
+                },
+                top_pincodes: [
+                    { pincode: '384285', area: 'Unjha', count: 48 },
+                    { pincode: '384001', area: 'Mehsana', count: 26 },
+                    { pincode: '380001', area: 'Ahmedabad', count: 12 }
+                ],
+                insight: 'Your profile had 32.8% CTR from pincode searches in Unjha and Mehsana.',
+                chart: {
+                    labels: ['Day 1', 'Day 5', 'Day 10', 'Day 15', 'Day 20', 'Day 25', 'Day 30'],
+                    impressions: [10, 15, 25, 30, 20, 35, 42],
+                    views: [3, 5, 8, 12, 7, 10, 14],
+                    searches: [8, 12, 18, 22, 15, 28, 32]
+                }
+            });
+            return;
+        }
         if (analyticsLoaded[period]) {
             renderAnalytics(analyticsLoaded[period]);
             return;
@@ -2155,11 +2311,14 @@
         }
     });
 
-    // Also handle hash navigation to #analytics on page load
-    if (window.location.hash === '#analytics') {
+    // Also handle hash navigation or admin lock preview mode
+    if (window.location.hash === '#analytics' || window.MANAGE_AGENT) {
         document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(initAnalyticsTab, 400);
+            setTimeout(initAnalyticsTab, 300);
         });
+        if (document.readyState !== 'loading') {
+            setTimeout(initAnalyticsTab, 300);
+        }
     }
 })();
 </script>

@@ -102,6 +102,7 @@ STARTER_BASE_FEATURE_SLUGS = (
     'edit_profile_professional_bio',
     'qr_codes',
     'qr_poster_download',
+    'profile_analytics',
 )
 
 # Unlocked on Starter only after admin review-growth threshold (configurable in admin)
@@ -169,6 +170,7 @@ FEATURE_ATTR_MAP = {
     'visibility_priority_ranking': ['show_visibility_priority_ranking'],
     'qr_codes': ['show_qr_codes'],
     'qr_poster_download': ['show_qr_poster_download'],
+    'profile_analytics': ['show_profile_analytics'],
 }
 
 FEATURE_LABELS = {
@@ -204,6 +206,7 @@ FEATURE_LABELS = {
     'visibility_priority_ranking': 'More Visibility: Priority Ranking',
     'qr_codes': 'QR Code Service',
     'qr_poster_download': 'Allow QR poster download',
+    'profile_analytics': 'Profile Analytics',
 }
 
 NUMERIC_OPS = ('gte', 'gt', 'lte', 'lt', 'eq')
