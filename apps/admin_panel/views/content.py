@@ -598,6 +598,7 @@ def plans(request):
         ('visibility_priority_ranking', 'More Visibility: Priority Ranking'),
         ('qr_codes', 'QR Code Service'),
         ('qr_poster_download', 'Allow QR poster download'),
+        ('profile_analytics', 'Profile Analytics'),
     ]
 
     legacy_features = [

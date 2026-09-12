@@ -12,6 +12,7 @@ Edit Profile — PadosiAgent
 {% endblock %}
 
 {% block breadcrumb_title %}{% if admin_lock_preview %}Content › Plans › {{ preview_plan_label }}{% elif isAdminView %}Agents › Edit Profile{% endif %}{% endblock %}
+{% block chatbot_widget %}{% endblock %}
 
 {% block breadcrumb %}
 {% if isAdminView %}
@@ -209,6 +210,99 @@ Overview
             grid-template-columns: 1fr;
         }
     }
+
+/* Locked Section Blur & Glassmorphism Overlay */
+.locked-content-wrapper, .locked-plan-section {
+    position: relative !important;
+    min-height: 160px;
+    overflow: hidden !important;
+    border-radius: 14px;
+}
+.locked-content-wrapper > *:not(.locked-plan-overlay),
+.locked-plan-section > *:not(.locked-plan-overlay) {
+    filter: blur(7px) grayscale(20%);
+    -webkit-filter: blur(7px) grayscale(20%);
+    opacity: 0.45 !important;
+    pointer-events: none !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
+.locked-plan-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 100 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 24px 16px !important;
+    background: rgba(248, 250, 252, 0.65) !important;
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+    border: 2px dashed #cbd5e1 !important;
+    border-radius: 14px !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    transition: all 0.25s ease !important;
+}
+.locked-plan-overlay:hover {
+    background: rgba(241, 245, 249, 0.82) !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 8px 24px rgba(2, 132, 199, 0.15) !important;
+}
+.locked-plan-overlay .locked-badge-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin-bottom: 12px;
+    box-shadow: 0 6px 16px rgba(2, 132, 199, 0.3);
+    transition: transform 0.2s ease;
+}
+.locked-plan-overlay:hover .locked-badge-icon {
+    transform: scale(1.08);
+}
+.locked-plan-overlay .locked-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 4px;
+}
+.locked-plan-overlay .locked-subtitle {
+    font-size: 12px;
+    color: #64748b;
+    max-width: 380px;
+    margin-bottom: 14px;
+    line-height: 1.45;
+}
+.locked-plan-overlay .locked-unlock-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 20px;
+    border-radius: 50px;
+    background: #0284c7;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    border: none;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+.locked-plan-overlay:hover .locked-unlock-btn {
+    background: #0369a1;
+    transform: translateY(-1px);
+}
 </style>
 {% endblock %}
 
@@ -5020,8 +5114,15 @@ Overview
       if ($target.find('.locked-plan-overlay').length) return;
       const sectionName = name || 'This section';
       const $overlay = $(`
-        <div class="locked-plan-overlay" role="button" tabindex="0" aria-label="Unlock ${sectionName}" title="Locked — tap to see how to unlock" style="position:absolute; top:0; left:0; right:0; bottom:0; z-index:10; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:auto; text-align:center; border-radius: 8px;">
-          <i class="fas fa-lock" style="font-size: 32px; color: #64748b;"></i>
+        <div class="locked-plan-overlay" role="button" tabindex="0" aria-label="Unlock ${sectionName}" title="Locked — tap to see how to unlock">
+          <div class="locked-badge-icon">
+            <i class="fas fa-lock"></i>
+          </div>
+          <div class="locked-title">${sectionName} Locked</div>
+          <div class="locked-subtitle">This section is disabled under your current plan. Tap to view unlock options.</div>
+          <div class="locked-unlock-btn">
+            <i class="fas fa-lock-open me-1"></i> Unlock ${sectionName}
+          </div>
         </div>
       `);
       $overlay.on('click keydown', function(e) {
@@ -5034,27 +5135,23 @@ Overview
     }
 
     function lockSection($el, sectionName, hintKey) {
-      if ($el.length === 0) return;
+      if (!$el || $el.length === 0) return;
       
       let $target = $el;
-      
-      if ($target.hasClass('form-step')) {
-          if ($target.find('.locked-content-wrapper').length === 0) {
-              $target.children().not('.step-header').wrapAll('<div class="locked-content-wrapper" style="position:relative; min-height: 100%; display: flex; flex-direction: column;"></div>');
-          }
-          $target = $target.find('.locked-content-wrapper');
-      } else if ($target.hasClass('card-body')) {
-          if ($target.find('.locked-content-wrapper').length === 0) {
-              $target.wrapInner('<div class="locked-content-wrapper" style="position:relative; min-height: 100%; display: flex; flex-direction: column;"></div>');
-          }
-          $target = $target.find('.locked-content-wrapper');
-      }
-
       $target.addClass('locked-plan-section').css({
-          'position': 'relative',
-          'pointer-events': 'none',
-          'opacity': '1'
+        'position': 'relative',
+        'min-height': '180px'
       });
+
+      if ($target.hasClass('form-step')) {
+          if ($target.find('> .locked-blurred-content').length === 0) {
+              $target.children().not('.step-header').not('.locked-plan-overlay').wrapAll('<div class="locked-blurred-content"></div>');
+          }
+      } else {
+          if ($target.find('> .locked-blurred-content').length === 0) {
+              $target.children().not('.locked-plan-overlay').wrapAll('<div class="locked-blurred-content"></div>');
+          }
+      }
 
       attachLockOverlay($target, sectionName, hintKey);
     }

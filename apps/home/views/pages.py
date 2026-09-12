@@ -475,7 +475,7 @@ def fetch_filtered_agents_list(request):
 
     sort_by = request.GET.get('sort_by', '').strip()
     if not sort_by:
-        sort_by = 'distance' if (user_lat is not None and user_lng is not None) else 'match'
+        sort_by = 'rating'
 
     # Inject Padosi Smart Rank score calculation (MySQL-specific)
     if db_types:
@@ -1292,7 +1292,7 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
         request.session['lng'] = str(user_lng)
     
     if not sort_by:
-        sort_by = 'distance' if (user_lat is not None and user_lng is not None) else 'match'
+        sort_by = 'rating'
     
     # Inject Padosi Smart Rank score calculation (MySQL-specific)
     if db_types:
