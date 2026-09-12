@@ -729,7 +729,7 @@ def referral(request):
     # Build absolute referral join URL
     domain = request.get_host()
     scheme = 'https' if request.is_secure() else 'http'
-    referral_url = f"{scheme}://{domain}/join/{ref_code.code}/"
+    referral_url = f"{scheme}://{domain}/agent-registration/join/{ref_code.code}/"
 
     # WhatsApp & Email messages construction (with urlencode)
     import urllib.parse
