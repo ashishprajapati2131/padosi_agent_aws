@@ -751,7 +751,8 @@ def _execute_find_agents(function_args, messages):
                 result_parts = []
                 agent_cards = []  # Rich card data — passed directly through the return chain, never shared
                 for idx, a in enumerate(top_agents):
-                    profile_url = reverse('agents:agent_public_profile', kwargs={'slug': a.agent_slug})
+                    state_code = a.state_code() if callable(getattr(a, 'state_code', None)) else getattr(a, 'state_code', 'gj')
+                    profile_url = reverse('agents:agent_public_profile_state_direct', kwargs={'state_code': state_code, 'slug': a.agent_slug})
                     result_parts.append(f"{idx+1}. {a.fullname} (Match: {a.match_percent}%, Reviews: {a.review_count_val}) - Profile URL: {profile_url}")
                     # Build card payload — scoped entirely to this request's local variable
                     profile = getattr(a, 'profile', None)

@@ -794,7 +794,7 @@ Overview
                                     id="experience-input" value="{{ agent.experience_range|default:'' }}"
                                     placeholder="15" min="0" max="60"
                                     onkeydown="return event.keyCode !== 187 && event.keyCode !== 107 && event.keyCode !== 189 && event.keyCode !== 109 && event.keyCode !== 69"
-                                    oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length > 2) this.value = this.value.slice(0, 2);">
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(this.value.length > 2) this.value = this.value.slice(0, 2); if(parseInt(this.value, 10) > 60) this.value = '60';">
                             </div>
                             <div class="col-md-6 mb-4">
                                 <label class="form-label">Approx Active Client Base <span class="text-danger">*</span>

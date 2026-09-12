@@ -70,7 +70,11 @@ class AgentSitemap(Sitemap):
         return obj.updated_at
 
     def location(self, obj):
-        return reverse('agents:agent_public_profile', kwargs={'slug': obj.agent_slug})
+        state_code = getattr(obj, 'state_code', 'gj')
+        if callable(state_code):
+            state_code = state_code()
+        slug = getattr(obj, 'agent_slug', str(obj.id))
+        return reverse('agents:agent_public_profile_state_direct', kwargs={'state_code': state_code, 'slug': slug})
 
 sitemaps = {
     'static': StaticViewSitemap,

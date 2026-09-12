@@ -483,8 +483,9 @@ def agent_dashboard(request):
     prof_name = prof_cfg.get('name', "Professional's Plan")
     prof_desc = prof_cfg.get('description', 'Maximum visibility and premium tools for top agents.')
     slug = (profile.slug if profile and profile.slug else '') or getattr(agent, 'agent_slug', '') or str(agent.id)
+    state_code = agent.state_code() if callable(getattr(agent, 'state_code', None)) else getattr(agent, 'state_code', 'gj')
     profile_url = request.build_absolute_uri(
-        reverse('agents:agent_public_profile', kwargs={'slug': slug})
+        reverse('agents:agent_public_profile_state_direct', kwargs={'state_code': state_code, 'slug': slug})
     ) if slug else request.build_absolute_uri('/')
     share_text = (
         f"I'm now on PadosiAgent — India's trusted insurance agent network. "

@@ -347,7 +347,7 @@
                             <i class="fab fa-whatsapp me-2"></i> Chat on WhatsApp
                         </button>
                         {% endif %}
-                        <a href="{% url 'agents:agent_public_profile' agent.profile.slug %}" class="btn btn-action-main btn-view-full w-100 py-3 text-center">
+                        <a href="{% url 'agents:agent_public_profile_state_direct' state_code=agent.state_code slug=agent.profile.slug %}" class="btn btn-action-main btn-view-full w-100 py-3 text-center">
                             <i class="fas fa-user-circle me-2"></i> View Full Profile & Reviews
                         </a>
                         <button type="button" class="btn btn-link text-center text-secondary font-weight-bold mt-2" onclick="openShareModal()">

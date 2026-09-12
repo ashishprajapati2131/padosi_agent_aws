@@ -267,6 +267,13 @@
                             height: 14px;
                         }
                     }
+                    .no-scrollbar::-webkit-scrollbar {
+                        display: none;
+                    }
+                    .no-scrollbar {
+                        -ms-overflow-style: none;
+                        scrollbar-width: none;
+                    }
                 </style>
     <!-- Registration spark celebration -->
     <link rel="stylesheet" href="{% static 'css/registration-celebration.css' %}">
@@ -321,8 +328,8 @@
                 </div>
                 {% endif %}
 
-                <div class="rounded-xl border border-border/60 shadow-xl bg-card/95 backdrop-blur-sm overflow-hidden">
-                    <div class="px-3 sm:px-6 pb-6 pt-5 sm:pt-6">
+                <div class="border-0 sm:border border-border/60 shadow-none sm:shadow-xl bg-transparent sm:bg-card/95 backdrop-blur-none sm:backdrop-blur-sm rounded-none sm:rounded-xl overflow-visible sm:overflow-hidden">
+                    <div class="p-0 sm:px-6 sm:pb-6 sm:pt-6">
 
                         <!-- AGENT FORM -->
                         <div>
@@ -410,7 +417,7 @@
                                                         <span
                                                             class="inline-flex min-w-0 items-center gap-1 font-semibold text-foreground">
                                                             <i data-lucide="map-pin"
-                                                                class="h-3 w-3 shrink-0 text-muted-foreground"></i>
+                                                                 class="h-3 w-3 shrink-0 text-muted-foreground"></i>
                                                             <span class="truncate" x-text="city || pincode"></span>
                                                             <template x-if="lookingUpPin"><span
                                                                     x-html="`<i data-lucide='loader-2' class='h-3 w-3 shrink-0 animate-spin'></i>`"></span></template>
@@ -491,14 +498,14 @@
 
                                         <!-- Stats -->
                                         <div
-                                            class="reg-form-stats-grid mt-4 grid divide-x divide-border rounded-lg border border-border grid-cols-2 sm:grid-cols-4">
+                                            class="reg-form-stats-grid mt-4 grid divide-x divide-border rounded-lg border border-border grid-cols-2 sm:grid-cols-4 overflow-hidden">
                                             <!-- Experience -->
-                                            <div class="min-w-0 px-1 py-1.5 text-center">
+                                            <div class="min-w-0 px-1 py-1.5 text-center flex flex-col justify-between">
                                                 <p
                                                     class="mb-1 truncate text-[10px] sm:text-xs font-bold uppercase tracking-wide text-muted-foreground">
                                                     Experience</p>
                                                 <div x-show="!editExp && yearsExperience"
-                                                    class="group flex min-w-0 items-center justify-center gap-1">
+                                                    class="group flex min-w-0 items-center justify-center gap-1 mt-auto">
                                                     <span class="truncate text-sm font-extrabold text-foreground"
                                                         x-text="yearsExperience + ' y'"></span>
                                                     <button type="button"
@@ -507,22 +514,22 @@
                                                         <i data-lucide="pencil" class="h-3 w-3"></i>
                                                     </button>
                                                 </div>
-                                                <div x-show="editExp || !yearsExperience">
+                                                <div x-show="editExp || !yearsExperience" class="mt-auto">
                                                     <input x-ref="expInput" type="text" inputmode="numeric" maxlength="2"
                                                         x-model="yearsExperience"
                                                         @focus="editExp = true"
-                                                        @input="advanceStat('yearsExperience', 2, 'clientInput', 'editClients')"
+                                                        @input="onExperienceInput()"
                                                         @blur="editExp = false" placeholder="yrs"
                                                         class="h-9 w-full rounded-md border border-dashed border-primary/40 bg-primary/[0.04] px-1 text-center text-sm font-extrabold text-foreground placeholder:text-xs sm:text-sm placeholder:font-semibold placeholder:text-muted-foreground/70 focus-visible:ring-1 outline-none">
                                                 </div>
                                             </div>
                                             <!-- Clients -->
-                                            <div class="min-w-0 px-1 py-1.5 text-center">
+                                            <div class="min-w-0 px-1 py-1.5 text-center flex flex-col justify-between">
                                                 <p
                                                     class="mb-1 truncate text-[10px] sm:text-xs font-bold uppercase tracking-wide text-muted-foreground">
                                                     Clients</p>
                                                 <div x-show="!editClients && clientBase"
-                                                    class="group flex min-w-0 items-center justify-center gap-1">
+                                                    class="group flex min-w-0 items-center justify-center gap-1 mt-auto">
                                                     <span class="truncate text-sm font-extrabold text-foreground"
                                                         x-text="clientBase"></span>
                                                     <button type="button"
@@ -531,7 +538,7 @@
                                                         <i data-lucide="pencil" class="h-3 w-3"></i>
                                                     </button>
                                                 </div>
-                                                <div x-show="editClients || !clientBase">
+                                                <div x-show="editClients || !clientBase" class="mt-auto">
                                                     <input x-ref="clientInput" type="text" inputmode="numeric" maxlength="4"
                                                         x-model="clientBase"
                                                         @focus="editClients = true"
@@ -540,53 +547,60 @@
                                                         class="h-9 w-full rounded-md border border-dashed border-primary/40 bg-primary/[0.04] px-1 text-center text-sm font-extrabold text-foreground placeholder:text-xs sm:text-sm placeholder:font-semibold placeholder:text-muted-foreground/70 focus-visible:ring-1 outline-none">
                                                 </div>
                                             </div>
-                                            <!-- Claims Settled -->
-                                            <div class="min-w-0 px-1 py-1.5 text-center border-t sm:border-t-0">
-                                                <p
-                                                    class="mb-1 text-[10px] sm:text-xs font-bold uppercase tracking-wide leading-tight text-muted-foreground">
-                                                    Claim Settled</p>
-                                                <div x-show="!editSettled && claimsSettled"
-                                                    class="group flex min-w-0 items-center justify-center gap-1">
-                                                    <span class="truncate text-sm font-extrabold text-foreground"
-                                                        x-text="claimsSettled"></span>
-                                                    <button type="button"
-                                                        @click="editSettled = true; $nextTick(() => $refs.settledInput.focus())"
-                                                        class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted">
-                                                        <i data-lucide="pencil" class="h-3 w-3"></i>
-                                                    </button>
+                                            <!-- Claim Settled Group (Nos | Amounts) -->
+                                            <div class="col-span-2 min-w-0 text-center border-t sm:border-t-0 border-border flex flex-col justify-between">
+                                                <div class="py-1 px-1 bg-muted/20 border-b border-border/60">
+                                                    <p class="truncate text-[10px] sm:text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                                                        Claim Settled</p>
                                                 </div>
-                                                <div x-show="editSettled || !claimsSettled">
-                                                    <input x-ref="settledInput" type="text" inputmode="numeric" maxlength="4"
-                                                        x-model="claimsSettled"
-                                                        @focus="editSettled = true"
-                                                        @input="advanceStat('claimsSettled', 4, 'claimsInput', 'editClaims')"
-                                                        @blur="editSettled = false" placeholder="0"
-                                                        class="h-9 w-full rounded-md border border-dashed border-primary/40 bg-primary/[0.04] px-1 text-center text-sm font-extrabold text-foreground placeholder:text-xs sm:text-sm placeholder:font-semibold placeholder:text-muted-foreground/70 focus-visible:ring-1 outline-none">
-                                                </div>
-                                            </div>
-                                            <!-- Claim Amount -->
-                                            <div class="min-w-0 px-1 py-1.5 text-center border-t sm:border-t-0">
-                                                <p
-                                                    class="mb-1 truncate text-[10px] sm:text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                                                    Claim Amount</p>
-                                                <div x-show="!editClaims && claimAmount"
-                                                    class="group flex min-w-0 items-center justify-center gap-1">
-                                                    <span class="truncate text-sm font-extrabold text-foreground"
-                                                        x-text="'₹' + claimAmount + 'L'"></span>
-                                                    <button type="button"
-                                                        @click="editClaims = true; $nextTick(() => $refs.claimsInput.focus())"
-                                                        class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted">
-                                                        <i data-lucide="pencil" class="h-3 w-3"></i>
-                                                    </button>
-                                                </div>
-                                                <div x-show="editClaims || !claimAmount">
-                                                    <input x-ref="claimsInput" type="text" inputmode="numeric" maxlength="3"
-                                                        x-model="claimAmount"
-                                                        @focus="editClaims = true; insuranceCapture = false"
-                                                        @input="onClaimAmountInput()"
-                                                        @keydown="onClaimAmountKeydown($event)"
-                                                        @blur="editClaims = false" placeholder="₹ Lacs"
-                                                        class="h-9 w-full rounded-md border border-dashed border-primary/40 bg-primary/[0.04] px-1 text-center text-sm font-extrabold text-foreground placeholder:text-xs sm:text-sm placeholder:font-semibold placeholder:text-muted-foreground/70 focus-visible:ring-1 outline-none">
+                                                <div class="grid grid-cols-2 divide-x divide-border flex-1">
+                                                    <!-- Settled Numbers -->
+                                                    <div class="min-w-0 px-1 py-1 text-center flex flex-col justify-between">
+                                                        <p class="mb-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                                                            Numbers</p>
+                                                        <div x-show="!editSettled && claimsSettled"
+                                                            class="group flex min-w-0 items-center justify-center gap-1 mt-auto">
+                                                            <span class="truncate text-sm font-extrabold text-foreground"
+                                                                x-text="claimsSettled"></span>
+                                                            <button type="button"
+                                                                @click="editSettled = true; $nextTick(() => $refs.settledInput.focus())"
+                                                                class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted">
+                                                                <i data-lucide="pencil" class="h-3 w-3"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div x-show="editSettled || !claimsSettled" class="mt-auto">
+                                                            <input x-ref="settledInput" type="text" inputmode="numeric" maxlength="4"
+                                                                x-model="claimsSettled"
+                                                                @focus="editSettled = true"
+                                                                @input="advanceStat('claimsSettled', 4, 'claimsInput', 'editClaims')"
+                                                                @blur="editSettled = false" placeholder="0"
+                                                                class="h-9 w-full rounded-md border border-dashed border-primary/40 bg-primary/[0.04] px-1 text-center text-sm font-extrabold text-foreground placeholder:text-xs sm:text-sm placeholder:font-semibold placeholder:text-muted-foreground/70 focus-visible:ring-1 outline-none">
+                                                        </div>
+                                                    </div>
+                                                    <!-- Claim Amount -->
+                                                    <div class="min-w-0 px-1 py-1 text-center flex flex-col justify-between">
+                                                        <p class="mb-0.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                                                            Amount</p>
+                                                        <div x-show="!editClaims && claimAmount"
+                                                            class="group flex min-w-0 items-center justify-center gap-1 mt-auto">
+                                                            <span class="truncate text-sm font-extrabold text-foreground"
+                                                                x-text="'₹' + claimAmount + 'L'"></span>
+                                                            <button type="button"
+                                                                @click="editClaims = true; $nextTick(() => $refs.claimsInput.focus())"
+                                                                class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted">
+                                                                <i data-lucide="pencil" class="h-3 w-3"></i>
+                                                            </button>
+                                                        </div>
+                                                        <div x-show="editClaims || !claimAmount" class="mt-auto">
+                                                            <input x-ref="claimsInput" type="text" inputmode="numeric" maxlength="3"
+                                                                x-model="claimAmount"
+                                                                @focus="editClaims = true; insuranceCapture = false"
+                                                                @input="onClaimAmountInput()"
+                                                                @keydown="onClaimAmountKeydown($event)"
+                                                                @blur="editClaims = false" placeholder="₹ Lacs"
+                                                                class="h-9 w-full rounded-md border border-dashed border-primary/40 bg-primary/[0.04] px-1 text-center text-sm font-extrabold text-foreground placeholder:text-xs sm:text-sm placeholder:font-semibold placeholder:text-muted-foreground/70 focus-visible:ring-1 outline-none">
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -600,14 +614,14 @@
                                             <p
                                                 class="text-xs sm:text-sm font-bold uppercase tracking-[0.12em] text-primary">
                                                 Insurance you sell</p>
-                                            <div class="mt-1 flex flex-wrap gap-2">
+                                            <div class="mt-1.5 flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
                                                 <template x-for="seg in segmentOptions" :key="seg.id">
                                                     <button type="button"
                                                         @click="toggleSegment(seg.id); delete errors.segments"
-                                                        :class="segments.includes(seg.id) ? 'border-primary bg-primary/10 text-foreground' : 'border-dashed border-primary/35 text-muted-foreground hover:border-primary'"
-                                                        class="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs sm:text-sm font-semibold transition-colors"
+                                                        :class="segments.includes(seg.id) ? 'border-primary bg-primary/10 text-foreground shadow-sm' : 'border-dashed border-primary/35 text-muted-foreground hover:border-primary'"
+                                                        class="inline-flex shrink-0 items-center justify-center gap-1 rounded-full border px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold whitespace-nowrap transition-colors flex-1 sm:flex-initial text-center"
                                                         :class="{'border-destructive text-destructive bg-destructive/5': errors.segments}">
-                                                        <span x-html="`<i data-lucide='${seg.icon}' class='h-3 w-3'></i>`"
+                                                        <span x-html="`<i data-lucide='${seg.icon}' class='h-3 w-3 shrink-0'></i>`"
                                                             :class="segments.includes(seg.id) ? 'text-primary' : (errors.segments ? 'text-destructive' : 'text-muted-foreground')"></span>
                                                         <span x-text="seg.label"></span>
                                                     </button>
@@ -719,7 +733,7 @@
                                             class="flex items-center rounded-lg border border-border bg-muted/30 p-1 overflow-hidden">
                                             <span
                                                 class="pl-2 pr-1 text-sm font-medium text-muted-foreground truncate max-w-[50%] sm:max-w-none"
-                                                x-text="profileBaseUrl">padosiagent.com/profile/</span>
+                                                x-text="profileBaseUrl">padosiagent.com/</span>
                                             <input x-ref="slugInput" type="text" inputmode="text" enterkeyhint="next" autocapitalize="none" autocomplete="off" x-model="slug"
                                                 @input="onSlugInput()"
                                                 @keydown.enter.prevent="if (slug.length >= 3) focusEmail()"
@@ -1759,6 +1773,12 @@
                     }
                     if (!pinOk) return;
                     if (this.pan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(this.pan)) return Swal.fire('Invalid Detail', 'PAN must be 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).', 'warning');
+                    if (this.yearsExperience) {
+                        const expNum = parseInt(this.yearsExperience, 10);
+                        if (!isNaN(expNum) && expNum > 60) {
+                            this.yearsExperience = '60';
+                        }
+                    }
                     if (!this.segments || this.segments.length === 0) return Swal.fire('Missing Detail', 'Please select at least one insurance segment.', 'warning');
                     if (!this.agreeTerms) return Swal.fire('Missing Detail', 'Please agree to the Terms of Service to continue.', 'warning');
 
@@ -1940,7 +1960,7 @@
                 },
 
                 get stateCode() {
-                    if (!this.state) return '';
+                    if (!this.state) return 'gj';
                     const key = this.state.toString().trim().toLowerCase();
                     if (this.stateCodeMap[key]) {
                         return this.stateCodeMap[key];
@@ -1948,11 +1968,11 @@
                     if (/^[a-z]{2}$/i.test(key)) {
                         return key.toLowerCase();
                     }
-                    return '';
+                    return 'gj';
                 },
 
                 get profileBaseUrl() {
-                    return `padosiagent.com/profile/${this.stateCode ? this.stateCode + '/' : ''}`;
+                    return `padosiagent.com/${this.stateCode}/`;
                 },
 
                 get profileHighlightUrl() {
@@ -1963,8 +1983,7 @@
                         .replace(/\s+/g, '-')
                         .replace(/[^a-z0-9-]/g, '')
                         .replace(/^-+|-+$/g, '') || 'your-name';
-                    const state = this.stateCode || 'in';
-                    return `padosiagent.com/profile/${state}/${slug}`;
+                    return `padosiagent.com/${this.stateCode}/${slug}`;
                 },
 
                 get initials() {
@@ -2107,8 +2126,31 @@
                     if (this.pan.length === 10) this.focusExperience();
                 },
 
+                onExperienceInput() {
+                    let val = String(this.yearsExperience || '').replace(/\D/g, '').slice(0, 2);
+                    if (val !== '') {
+                        const num = parseInt(val, 10);
+                        if (num > 60) {
+                            val = '60';
+                        }
+                    }
+                    this.yearsExperience = val;
+                    if (this.yearsExperience.length === 2) {
+                        this.$nextTick(() => {
+                            this.editClients = true;
+                            const el = this.$refs.clientInput;
+                            if (el) el.focus();
+                        });
+                    }
+                },
+
                 advanceStat(field, maxLen, nextRef, nextEditFlag) {
-                    this[field] = String(this[field] || '').replace(/\D/g, '').slice(0, maxLen);
+                    let val = String(this[field] || '').replace(/\D/g, '').slice(0, maxLen);
+                    if (field === 'yearsExperience' && val !== '') {
+                        const num = parseInt(val, 10);
+                        if (num > 60) val = '60';
+                    }
+                    this[field] = val;
                     if (this[field].length === maxLen && nextRef) {
                         this.$nextTick(() => {
                             if (nextEditFlag) this[nextEditFlag] = true;

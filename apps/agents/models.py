@@ -73,6 +73,53 @@ def clean_investment_types(types):
     return normalized
 
 
+STATE_CODE_MAP = {
+    'andaman and nicobar islands': 'an',
+    'andhra pradesh': 'ap',
+    'arunachal pradesh': 'ar',
+    'assam': 'as',
+    'bihar': 'br',
+    'chandigarh': 'ch',
+    'chhattisgarh': 'cg',
+    'dadra and nagar haveli': 'dn',
+    'daman and diu': 'dd',
+    'dadra and nagar haveli and daman and diu': 'dn',
+    'delhi': 'dl',
+    'national capital territory of delhi': 'dl',
+    'nct of delhi': 'dl',
+    'goa': 'ga',
+    'gujarat': 'gj',
+    'haryana': 'hr',
+    'himachal pradesh': 'hp',
+    'jammu and kashmir': 'jk',
+    'jharkhand': 'jh',
+    'karnataka': 'ka',
+    'kerala': 'kl',
+    'ladakh': 'la',
+    'lakshadweep': 'ld',
+    'madhya pradesh': 'mp',
+    'maharashtra': 'mh',
+    'manipur': 'mn',
+    'meghalaya': 'ml',
+    'mizoram': 'mz',
+    'nagaland': 'nl',
+    'odisha': 'od',
+    'orissa': 'od',
+    'puducherry': 'py',
+    'pondicherry': 'py',
+    'punjab': 'pb',
+    'rajasthan': 'rj',
+    'sikkim': 'sk',
+    'tamil nadu': 'tn',
+    'telangana': 'ts',
+    'tripura': 'tr',
+    'uttar pradesh': 'up',
+    'uttarakhand': 'uk',
+    'uttaranchal': 'uk',
+    'west bengal': 'wb'
+}
+
+
 class AgentDraft(models.Model):
     """
     Stores in-progress agent registration data, keyed by Django session.
@@ -147,6 +194,17 @@ class AgentDraft(models.Model):
     @property
     def normalized_investment_types(self):
         return clean_investment_types(self.investment_types)
+
+    @property
+    def state_code(self):
+        if not self.state:
+            return 'gj'
+        key = str(self.state).strip().lower()
+        if key in STATE_CODE_MAP:
+            return STATE_CODE_MAP[key]
+        if len(key) == 2 and key.isalpha():
+            return key.lower()
+        return 'gj'
 
 
 class PromoCode(models.Model):
@@ -453,6 +511,20 @@ class Agent(models.Model):
         return str(self.id)
 
     @property
+    def state_code(self):
+        state_val = getattr(self, 'state', None)
+        if not state_val and hasattr(self, 'profile') and self.profile:
+            state_val = getattr(self.profile, 'state', None)
+        if not state_val:
+            return 'gj'
+        key = str(state_val).strip().lower()
+        if key in STATE_CODE_MAP:
+            return STATE_CODE_MAP[key]
+        if len(key) == 2 and key.isalpha():
+            return key.lower()
+        return 'gj'
+
+    @property
     def whatsapp_raw(self):
         if hasattr(self, 'profile') and self.profile and self.profile.whatsapp:
             return self.profile.whatsapp
@@ -680,6 +752,20 @@ class AgentProfile(models.Model):
     @property
     def normalized_investment_types(self):
         return clean_investment_types(self.investment_types)
+
+    @property
+    def state_code(self):
+        state_val = self.state
+        if not state_val and hasattr(self, 'agent') and self.agent:
+            state_val = getattr(self.agent, 'state', None)
+        if not state_val:
+            return 'gj'
+        key = str(state_val).strip().lower()
+        if key in STATE_CODE_MAP:
+            return STATE_CODE_MAP[key]
+        if len(key) == 2 and key.isalpha():
+            return key.lower()
+        return 'gj'
 
     @property
     def profile_photo_url(self):

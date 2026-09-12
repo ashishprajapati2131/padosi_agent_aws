@@ -4,7 +4,7 @@
 {% block title %}{{ agentDisplayName|default:agent.fullname }} | PadosiAgent{% endblock %}
 {% block og_title %}{{ agentDisplayName|default:agent.fullname }} | PadosiAgent{% endblock %}
 {% block og_description %}{{ profile.career_highlights|striptags|truncatechars:150|default:"View my professional insurance agent profile on PadosiAgent." }}{% endblock %}
-{% block og_url %}{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_public_profile' profile.slug %}{% endblock %}
+{% block og_url %}{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/{% endblock %}
 {% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}{% endblock %}
 {% block og_type %}profile{% endblock %}
 {% block twitter_card %}summary_large_image{% endblock %}
@@ -12,7 +12,7 @@
 {% block twitter_description %}{{ profile.career_highlights|striptags|truncatechars:150|default:"View my professional insurance agent profile on PadosiAgent." }}{% endblock %}
 {% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}{% endblock %}
 {% block meta_description %}{{ profile.career_highlights|striptags|truncatechars:150|default:"View my professional insurance agent profile on PadosiAgent." }}{% endblock %}
-{% block canonical_url %}{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_public_profile' profile.slug %}{% endblock %}
+{% block canonical_url %}{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/{% endblock %}
 
 {% block extra_head %}
     <meta property="og:image:secure_url" content="{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}">
@@ -197,7 +197,7 @@
     <script src="{% static 'js/carousel.js' %}"></script>
     
     <script>
-        var shareUrl = '{{ request.scheme }}://{{ request.get_host }}{% url "agents:agent_public_profile" agent.profile.slug %}';
+        var shareUrl = '{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/';
         var shareTitle = 'I recommend {{ agent.fullname|escapejs }} on PadosiAgent';
         var shareText = '{{ agent.profile.career_highlights|striptags|truncatechars:150|escapejs|default:"View my professional insurance agent profile on PadosiAgent." }}';
 

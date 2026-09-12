@@ -928,7 +928,8 @@ def _public_profile_path(agent):
         slug = getattr(agent, 'agent_slug', '') or ''
     if not slug:
         return reverse('agents:agent_dashboard')
-    return reverse('agents:agent_public_profile', kwargs={'slug': slug})
+    
+    return f"/{slug}/"
 
 
 def _activation_success_payload(request, agent, message='Payment successful and account activated.'):
@@ -956,7 +957,15 @@ def _assign_step1_draft_fields(draft, request, extra=None):
     draft.mobile = extra.get('mobile', request.POST.get('mobile', '').strip())
     draft.agent_pincode = extra.get('agent_pincode', request.POST.get('agent_pincode', '').strip())
     draft.state = extra.get('state', request.POST.get('state', '').strip())
-    draft.experience_range = extra.get('experience', request.POST.get('experience_range', ''))
+    exp_raw = extra.get('experience', request.POST.get('experience_range', ''))
+    if exp_raw:
+        try:
+            exp_digits = re.sub(r'\D', '', str(exp_raw))
+            if exp_digits and int(exp_digits) > 60:
+                exp_raw = '60'
+        except (TypeError, ValueError):
+            pass
+    draft.experience_range = exp_raw
     draft.segments = extra.get('segments', request.POST.getlist('segments[]') or request.POST.getlist('segments'))
     draft.investment_types = extra.get(
         'investment_types',
@@ -981,15 +990,26 @@ def check_slug_availability(request):
     """Check if a custom slug is available for an agent profile."""
     from django.utils.text import slugify
     from apps.agents.models import AgentProfile
+    from apps.home.models.page import Page
 
     raw_slug = request.GET.get('slug', '').strip()
     if not raw_slug:
         return JsonResponse({'success': False, 'available': False, 'message': 'Slug is required.'})
 
     slug = slugify(raw_slug)
-    exists = AgentProfile.objects.filter(slug=slug).exists()
 
-    if exists:
+    RESERVED_SLUGS = {
+        'admin', 'django-admin', 'about', 'contact', 'terms', 'privacy', 'faq',
+        'find-agents', 'calculators', 'calculator', 'coming-soon', 'lic-agent',
+        'cancellation-refund-policy', 'blacklisted-agents', 'marketing', 'media',
+        'static', 'agent-registration', 'agent-register-step1', 'agent-register-step2',
+        'agent-login', 'forgot-password', 'reset-password', 'agent-logout', 'logout',
+        'profile', 'card', 'review', 'review-card', 'join', 'auth', 'events',
+        'chatbot-api', 'championship', 'insurance', 'insurance-login', 'api',
+        'manifest.webmanifest', 'sw.js', 'offline.html', 'sitemap.xml', 'robots.txt'
+    }
+
+    if slug.lower() in RESERVED_SLUGS or Page.objects.filter(slug=slug).exists() or AgentProfile.objects.filter(slug=slug).exists():
         return JsonResponse({
             'success': True,
             'available': False,
@@ -1051,6 +1071,13 @@ def register_step1(request):
     agent_pincode = request.POST.get('agent_pincode', '').strip()
     state = request.POST.get('state', '').strip()
     experience = request.POST.get('experience_range', '')
+    if experience:
+        try:
+            exp_digits = re.sub(r'\D', '', str(experience))
+            if exp_digits and int(exp_digits) > 60:
+                experience = '60'
+        except (TypeError, ValueError):
+            pass
     segments = request.POST.getlist('segments[]') or request.POST.getlist('segments')
     investment_types = request.POST.getlist('investment_types[]') or request.POST.getlist('investment_types')
     promo_code = request.POST.get('promo_code', '').strip()
