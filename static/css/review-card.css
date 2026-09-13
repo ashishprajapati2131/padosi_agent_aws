@@ -23,9 +23,11 @@
     max-width: var(--rc-card-max);
     margin: 0 auto 14px;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
     justify-content: flex-end;
+    align-items: center;
+    width: 100%;
 }
 
 .pa-rc-tool {
@@ -37,9 +39,14 @@
     font-size: 13px;
     border-radius: 999px;
     padding: 10px 16px;
-    min-height: 44px;
+    min-height: 42px;
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
 }
 
 .pa-rc-tool:hover,
@@ -56,22 +63,30 @@
 }
 
 .pa-rc-stage {
+    width: 100%;
     max-width: var(--rc-card-max);
     margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: hidden;
+    position: relative;
 }
 
 /* Card shell */
 .pa-review-card {
     position: relative;
-    width: 100%;
-    max-width: var(--rc-card-max);
+    width: 780px;
+    min-width: 780px;
+    max-width: 780px;
     margin: 0 auto;
     background: var(--rc-white);
-    border-radius: 4px;
+    border-radius: 8px;
     overflow: hidden;
     border: 1px solid rgba(11, 31, 77, 0.08);
     box-shadow: 0 20px 50px rgba(11, 31, 77, 0.12);
     isolation: isolate;
+    flex-shrink: 0;
 }
 
 /* Decorative background */
@@ -540,48 +555,24 @@
     background: rgba(201, 162, 39, 0.45);
 }
 
-/* Responsive */
-@media (max-width: 720px) {
+@media (max-width: 640px) {
+    #paDownloadCard {
+        display: none !important;
+    }
+
     .pa-rc-toolbar {
         justify-content: center;
+        gap: 6px;
+        flex-wrap: nowrap;
+        padding: 0;
     }
 
-    .pa-rc-inner {
-        padding: 22px 16px 16px;
-    }
-
-    .pa-rc-body {
-        grid-template-columns: 1fr;
-        gap: 20px;
-    }
-
-    .pa-rc-thanks {
-        grid-template-columns: 1fr;
-        text-align: center;
-    }
-
-    .pa-rc-thanks-left {
-        border-right: none;
-        border-bottom: 1px solid var(--rc-border);
-        padding-right: 0;
-        padding-bottom: 12px;
-    }
-
-    .pa-rc-foot-inner {
-        grid-template-columns: 1fr;
-        text-align: center;
-        padding: 16px;
-        gap: 12px;
-    }
-
-    .pa-rc-foot-col,
-    .pa-rc-foot-col--right {
-        justify-content: center;
-        text-align: center;
-    }
-
-    .pa-rc-foot-divider {
-        display: none;
+    .pa-rc-tool {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 8px 6px;
+        font-size: 11px;
+        min-height: 38px;
     }
 }
 

@@ -16,9 +16,10 @@
 {% block content %}
 <div class="pa-rc-page">
     <div class="pa-rc-toolbar" data-html2canvas-ignore="true">
-        <button type="button" class="pa-rc-tool pa-rc-tool--primary" id="paDownloadCard" aria-label="Download review card as PNG">Download Card</button>
-        <button type="button" class="pa-rc-tool" id="paShareCard" aria-label="Share review link">Share</button>
-        <button type="button" class="pa-rc-tool" id="paCopyReviewLink" aria-label="Copy review link">Copy Review Link</button>
+        <button type="button" class="pa-rc-tool pa-rc-tool--primary" id="paDownloadPdf" aria-label="Download review card as PDF"><i class="fa-solid fa-file-pdf"></i> <span>Download PDF</span></button>
+        <button type="button" class="pa-rc-tool" id="paDownloadCard" aria-label="Download review card as PNG"><i class="fa-solid fa-file-image"></i> <span>Download PNG</span></button>
+        <button type="button" class="pa-rc-tool" id="paShareCard" aria-label="Share review link"><i class="fa-solid fa-share-nodes"></i> <span>Share</span></button>
+        <button type="button" class="pa-rc-tool" id="paCopyReviewLink" aria-label="Copy review link"><i class="fa-solid fa-copy"></i> <span>Copy Link</span></button>
     </div>
 
     <div class="pa-rc-stage">
@@ -78,7 +79,7 @@
                         <div class="pa-rc-qr-body">
                             <div class="pa-rc-qr-frame">
                                 <div id="paReviewQr" role="img" aria-label="Review QR code"></div>
-                                <img class="pa-rc-qr-logo" src="{{ brand_logo_url }}" alt="" crossorigin="anonymous" aria-hidden="true">
+                                <img class="pa-rc-qr-logo" src="{% static 'img/logo-icon.png' %}" alt="PadosiAgent Icon" crossorigin="anonymous" aria-hidden="true">
                             </div>
                             <a class="pa-rc-url-pill" href="{{ review_url }}" target="_blank" rel="noopener">
                                 <i class="fa-solid fa-globe" aria-hidden="true"></i>
@@ -135,5 +136,6 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="{% static 'js/review-card.js' %}?v=ref3"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="{% static 'js/review-card.js' %}?v=ref4"></script>
 {% endblock %}

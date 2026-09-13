@@ -117,7 +117,7 @@ def _load_brand_logo():
         if img:
             return img
 
-    for name in ('img/logo.webp', 'img/logo.png', 'img/logo-icon.webp', 'img/logo-icon.png'):
+    for name in ('img/logo-icon.png', 'img/logo-icon.webp', 'favicon.ico', 'img/logo.png', 'img/logo.webp'):
         found = finders.find(name)
         img = _open_image(found)
         if img:
