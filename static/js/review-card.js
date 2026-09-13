@@ -14,10 +14,45 @@
         return document.getElementById(id);
     }
 
+    function fitCardToScreen() {
+        const stage = document.querySelector('.pa-rc-stage');
+        const card = document.getElementById('padosiReviewCard');
+        if (!stage || !card) return;
+
+        if (card.getAttribute('data-capturing') === 'true') return;
+
+        card.style.transform = '';
+        card.style.transformOrigin = '';
+        stage.style.height = '';
+
+        const page = document.querySelector('.pa-rc-page');
+        let padding = 28;
+        if (page) {
+            const cs = getComputedStyle(page);
+            padding = (parseFloat(cs.paddingLeft) || 14) + (parseFloat(cs.paddingRight) || 14);
+        }
+        
+        const availableWidth = Math.min(window.innerWidth - padding, stage.parentElement ? stage.parentElement.clientWidth - padding : window.innerWidth - padding);
+        const cardWidth = 780;
+
+        if (availableWidth < cardWidth && availableWidth > 0) {
+            const scale = availableWidth / cardWidth;
+            card.style.transform = `scale(${scale})`;
+            card.style.transformOrigin = 'top center';
+            const unscaledHeight = card.offsetHeight;
+            stage.style.height = `${unscaledHeight * scale}px`;
+        }
+    }
+
     function ReviewCard() {
         renderQRCodeSection();
         bindToolbar();
         bindCopyFallback();
+        fitCardToScreen();
+        window.addEventListener('resize', fitCardToScreen);
+        window.addEventListener('orientationchange', fitCardToScreen);
+        setTimeout(fitCardToScreen, 200);
+        setTimeout(fitCardToScreen, 800);
     }
 
     function AdvisorProfile() {
@@ -40,6 +75,7 @@
         if (img) {
             img.alt = `QR code to review ${advisor.name} on PadosiAgent`;
         }
+        setTimeout(fitCardToScreen, 100);
     }
 
     function ReviewCTA() {
@@ -99,18 +135,80 @@
         }));
     }
 
+    async function downloadPDF() {
+        const card = document.getElementById('padosiReviewCard');
+        const stage = document.querySelector('.pa-rc-stage');
+        if (!card || typeof html2canvas === 'undefined') {
+            window.print();
+            return;
+        }
+        const btn = $('paDownloadPdf');
+        const origText = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Preparing PDF...';
+        }
+        try {
+            card.setAttribute('data-capturing', 'true');
+            card.style.transform = 'none';
+            card.style.transformOrigin = 'initial';
+            if (stage) stage.style.height = 'auto';
+
+            await waitForImages(card);
+            const canvas = await html2canvas(card, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                logging: false
+            });
+            const imgData = canvas.toDataURL('image/jpeg', 0.98);
+            const cardWidth = canvas.width / 2;
+            const cardHeight = canvas.height / 2;
+            
+            const { jsPDF } = window.jspdf || {};
+            if (jsPDF) {
+                const pdf = new jsPDF({
+                    orientation: cardWidth > cardHeight ? 'landscape' : 'portrait',
+                    unit: 'px',
+                    format: [cardWidth, cardHeight]
+                });
+                pdf.addImage(imgData, 'JPEG', 0, 0, cardWidth, cardHeight);
+                pdf.save(`PadosiAgent-review-card-${advisor.slug || 'advisor'}.pdf`);
+            } else {
+                window.print();
+            }
+        } catch (err) {
+            console.error('PDF Download Error:', err);
+            window.print();
+        } finally {
+            card.removeAttribute('data-capturing');
+            fitCardToScreen();
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origText || '<i class="fa-solid fa-file-pdf mr-1"></i> Download PDF';
+            }
+        }
+    }
+
     async function downloadCard() {
         const card = document.getElementById('padosiReviewCard');
+        const stage = document.querySelector('.pa-rc-stage');
         if (!card || typeof html2canvas === 'undefined') {
             window.print();
             return;
         }
         const btn = $('paDownloadCard');
+        const origText = btn ? btn.innerHTML : '';
         if (btn) {
             btn.disabled = true;
-            btn.textContent = 'Preparing...';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Preparing PNG...';
         }
         try {
+            card.setAttribute('data-capturing', 'true');
+            card.style.transform = 'none';
+            card.style.transformOrigin = 'initial';
+            if (stage) stage.style.height = 'auto';
+
             await waitForImages(card);
             const canvas = await html2canvas(card, {
                 scale: 2,
@@ -126,17 +224,21 @@
             console.error(err);
             window.print();
         } finally {
+            card.removeAttribute('data-capturing');
+            fitCardToScreen();
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = 'Download Card';
+                btn.innerHTML = origText || '<i class="fa-solid fa-file-image mr-1"></i> Download PNG';
             }
         }
     }
 
     function bindToolbar() {
+        const downloadPdfBtn = $('paDownloadPdf');
         const downloadBtn = $('paDownloadCard');
         const shareBtn = $('paShareCard');
         const copyBtn = $('paCopyReviewLink');
+        if (downloadPdfBtn) downloadPdfBtn.addEventListener('click', downloadPDF);
         if (downloadBtn) downloadBtn.addEventListener('click', downloadCard);
         if (shareBtn) shareBtn.addEventListener('click', shareCard);
         if (copyBtn) copyBtn.addEventListener('click', copyReviewLink);
@@ -149,9 +251,11 @@
         AdvisorProfile: AdvisorProfile,
         QRCodeSection: renderQRCodeSection,
         ReviewCTA: ReviewCTA,
+        downloadPDF: downloadPDF,
         downloadCard: downloadCard,
         shareCard: shareCard,
-        copyReviewLink: copyReviewLink
+        copyReviewLink: copyReviewLink,
+        fitCardToScreen: fitCardToScreen
     };
 
     document.addEventListener('DOMContentLoaded', ReviewCard);

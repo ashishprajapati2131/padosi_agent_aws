@@ -1021,19 +1021,31 @@
     const profPrice = "{{ prof_price }}";
 
     function changeWaLanguage() {
-        const lang = document.getElementById('waLangSelect').value;
-        const tmpl = waTemplates[lang]?.templates?.[0]?.text || waTemplates['en'].templates[0].text;
+        const langSelect = document.getElementById('waLangSelect');
+        const waMsgBox = document.getElementById('waMessageText');
+        if (!langSelect || !waMsgBox) return;
+        const lang = langSelect.value;
+        const tmpl = waTemplates[lang]?.templates?.[0]?.text || waTemplates['en']?.templates?.[0]?.text || '';
         const msg = tmpl
             .replace(/\{\{agent_name\}\}/g, agentName)
             .replace(/\{\{referral_link\}\}/g, refLink)
             .replace(/\{\{profile_link\}\}/g, profLink)
             .replace(/\{\{digital_price\}\}/g, digPrice)
             .replace(/\{\{professional_price\}\}/g, profPrice);
-        document.getElementById('waMessageText').value = msg;
+        waMsgBox.value = msg;
     }
 
     function openWhatsApp() {
-        const text = document.getElementById('waMessageText').value;
+        let text = "";
+        const waElem = document.getElementById('waMessageText');
+        if (waElem && waElem.value) {
+            text = waElem.value;
+        } else {
+            text = "{{ default_wa_text|escapejs }}";
+        }
+        if (!text) {
+            text = "Join the PadosiAgent Referral Championship! " + refLink;
+        }
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
 
