@@ -271,10 +271,10 @@
                             <div class="input-group">
                                 <span class="input-group-text">₹</span>
                                 <input type="number" name="professional_full_price" class="form-control price-calc-input"
-                                       value="{{ pricing.professional.full_price|default:6999 }}" min="0"
+                                       value="{{ pricing.professional.full_price|default:9999 }}" min="0"
                                        id="proFullPrice" data-target="proFullGst">
                             </div>
-                            <small class="text-muted d-block mt-1" id="proFullGst" style="font-size:11px;">+ 18% GST = ₹8,259 Total</small>
+                            <small class="text-muted d-block mt-1" id="proFullGst" style="font-size:11px;">+ 18% GST = ₹11,799 Total</small>
                         </div>
                         <div class="col-4">
                             <label class="form-label fw-semibold" style="font-size:13px;">Standard Price <small class="text-muted">(Excl. GST)</small></label>
@@ -505,7 +505,7 @@
                     <label class="form-label fw-semibold" style="font-size:13px;">Plan comparison table prices</label>
                     <select name="comparison_price_display" class="form-select">
                         <option value="original" {% if pricing.comparison_price_display|default:'original' == 'original' %}selected{% endif %}>
-                            Original list price (full_price — e.g. ₹1999 / ₹6999)
+                            Original list price (full_price — e.g. ₹1999 / ₹9999)
                         </option>
                         <option value="discounted" {% if pricing.comparison_price_display == 'discounted' %}selected{% endif %}>
                             Current discounted price (after social tiers / promo)
@@ -816,7 +816,7 @@
                             <label class="form-label fw-bold" style="font-size:12px;">Full price <small class="text-muted">(strike-through)</small></label>
                             <div class="input-group">
                                 <span class="input-group-text">₹</span>
-                                <input type="number" min="0" class="form-control growth-field" name="growth_upgrade_full_price" value="{{ review_growth.upgrade_full_price|default:6999 }}">
+                                <input type="number" min="0" class="form-control growth-field" name="growth_upgrade_full_price" value="{{ review_growth.upgrade_full_price|default:9999 }}">
                             </div>
                         </div>
                         <div class="col-md-4 d-flex align-items-end">

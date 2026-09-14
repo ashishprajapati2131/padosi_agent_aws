@@ -17,6 +17,7 @@
                     More reviews help unlock dashboard features.
                 </p>
 
+                {% comment %}QR code section hidden per requirement — code preserved below
                 {% if qr_service_enabled and qr_items %}
                 <h6 class="pa-review-section-title">Share your QR codes</h6>
                 <div class="pa-qr-popup-grid">
@@ -45,6 +46,8 @@
                     {% endfor %}
                 </div>
                 {% endif %}
+                {% endcomment %}
+
 
                 <div class="pa-review-social">
                     <a class="pa-fab pa-fab-wa" href="https://api.whatsapp.com/send?text={{ share_text_encoded }}" target="_blank" rel="noopener" aria-label="Share on WhatsApp">

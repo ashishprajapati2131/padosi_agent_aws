@@ -1771,6 +1771,49 @@
         </div>
         {% endif %}
 
+        <!-- ── Promo Code Widget ─────────────────────────────────────────── -->
+        <div id="promoCodeWidget" class="promo-code-widget mb-3"
+             style="max-width: 540px; margin-left: auto; margin-right: auto;">
+            {% if applied_promo_code %}
+            <!-- Already applied state -->
+            <div class="d-flex align-items-center gap-2 p-3 rounded-3"
+                 style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.3);">
+                <i class="fa-solid fa-tag text-success"></i>
+                <span class="fw-semibold text-success" style="font-size:14px;">
+                    Promo <strong>{{ applied_promo_code }}</strong> applied!
+                </span>
+                <button type="button" id="removePromoBtn" class="btn btn-sm ms-auto"
+                        style="border:1px solid rgba(16,185,129,0.4);color:#10b981;font-size:12px;padding:2px 10px;border-radius:8px;background:transparent;"
+                        onclick="removePromoCode()">
+                    <i class="fa-solid fa-xmark me-1"></i>Remove
+                </button>
+            </div>
+            {% else %}
+            <!-- Entry state -->
+            <div id="promoToggleRow" class="text-center">
+                <button type="button" class="btn btn-sm"
+                        style="border:1px solid #d1d5db;color:#6b7280;font-size:13px;padding:4px 16px;border-radius:20px;background:transparent;"
+                        onclick="document.getElementById('promoInputRow').style.display='flex'; this.style.display='none';">
+                    <i class="fa-solid fa-tag me-1"></i> Have a promo code?
+                </button>
+            </div>
+            <div id="promoInputRow" class="align-items-center gap-2" style="display:none;">
+                <input type="text" id="promoCodeInput" placeholder="Enter promo code"
+                       class="form-control"
+                       style="border-radius:10px;font-size:14px;flex:1;text-transform:uppercase;"
+                       oninput="this.value=this.value.toUpperCase()"
+                       onkeydown="if(event.key==='Enter'){applyPromoCode();}">
+                <button type="button" id="applyPromoBtn" class="btn btn-primary"
+                        style="border-radius:10px;font-size:14px;white-space:nowrap;"
+                        onclick="applyPromoCode()">
+                    Apply
+                </button>
+            </div>
+            <div id="promoMsg" class="mt-1 text-center" style="font-size:13px;display:none;"></div>
+            {% endif %}
+        </div>
+        <!-- ── End Promo Code Widget ─────────────────────────────────────── -->
+
         <!-- Default: Plan Cards View -->
         <div id="plansCardsView" class="plans-cards-view">
             <div class="header-section">
@@ -2279,6 +2322,75 @@
         compare.classList.remove('plans-view-hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    // ── Promo Code Widget ────────────────────────────────────────────────────
+    function applyPromoCode() {
+        var input = document.getElementById('promoCodeInput');
+        var btn   = document.getElementById('applyPromoBtn');
+        var msg   = document.getElementById('promoMsg');
+        if (!input) return;
+        var code = input.value.trim().toUpperCase();
+        if (!code) {
+            _showPromoMsg(msg, 'Please enter a promo code.', false);
+            return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Applying…';
+        fetch('/agent/verify-promo/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': _getCsrfToken(),
+            },
+            body: JSON.stringify({ promo_code: code }),
+        })
+        .then(function(r) {
+            if (!r.ok) {
+                return { success: false, message: 'Server error (' + r.status + '). Please refresh and try again.' };
+            }
+            return r.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                _showPromoMsg(msg, '✔ ' + (data.message || 'Promo code applied!'), true);
+                setTimeout(function() { window.location.reload(); }, 800);
+            } else {
+                _showPromoMsg(msg, '✘ ' + (data.message || 'Invalid promo code.'), false);
+                btn.disabled = false;
+                btn.textContent = 'Apply';
+            }
+        })
+        .catch(function(err) {
+            _showPromoMsg(msg, 'Network error. Please check your connection and try again.', false);
+            btn.disabled = false;
+            btn.textContent = 'Apply';
+        });
+    }
+
+    function removePromoCode() {
+        fetch('/agent/clear-promo/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': _getCsrfToken(),
+            },
+        })
+        .then(function() { window.location.reload(); })
+        .catch(function() { window.location.reload(); });
+    }
+
+    function _showPromoMsg(el, text, success) {
+        if (!el) return;
+        el.textContent = text;
+        el.style.display = 'block';
+        el.style.color = success ? '#10b981' : '#ef4444';
+    }
+
+    // CSRF token injected directly from Django template — reliable regardless of cookie settings
+    var _DJANGO_CSRF_TOKEN = '{{ csrf_token }}';
+    function _getCsrfToken() {
+        return _DJANGO_CSRF_TOKEN;
+    }
+    // ── End Promo Code Widget ─────────────────────────────────────────────────
 
     function showPlanCardsView() {
         var cards = document.getElementById('plansCardsView');

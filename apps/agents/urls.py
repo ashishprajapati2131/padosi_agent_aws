@@ -25,6 +25,7 @@ urlpatterns = [
     path('agent-registration/failed/', registration.agent_register_failed, name='agent_register_failed'),
     path('razorpay-webhook/',   registration.razorpay_webhook,   name='razorpay_webhook'),
     path('agent/verify-promo/', registration.agent_verify_promo, name='agent_verify_promo'),
+    path('agent/clear-promo/',  registration.agent_clear_promo,  name='agent_clear_promo'),
     path('agent-login/',        auth.agent_login,                name='agent_login'),
     path('forgot-password/',    auth.forgot_password,            name='forgot_password'),
     path('reset-password/<str:uidb64>/<str:token>/', auth.reset_password, name='reset_password'),
