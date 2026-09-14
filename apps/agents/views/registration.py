@@ -25,7 +25,7 @@ from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.utils import timezone
 from django.conf import settings
 
-from apps.agents.models import Agent, AgentDraft, PromoCode
+from apps.agents.models import Agent, AgentDraft, PromoCode, RegistrationActivityLog
 from apps.home.models import SiteSetting
 from apps.home.models.pincode import Pincode
 from apps.agents.services.brevo import send_otp_email
@@ -90,9 +90,9 @@ _DEFAULT_PRICING = {
     },
     'professional': {
         'name': "Professional's Plan",
-        'full_price': 6999,
-        'promo_price': 4999,
-        'scratch_price': 4799,
+        'full_price': 9999,
+        'promo_price': 7999,
+        'scratch_price': 7799,
         'description': 'For Established Professionals',
         'badge': 'RECOMMENDED',
         'scratch_text': 'SCRATCH',
@@ -109,10 +109,10 @@ _DEFAULT_PRICING = {
         {'platform': 'LinkedIn', 'url': 'https://linkedin.com/company/padosiagent', 'icon': 'fa-linkedin'},
     ],
     'follow_tiers': [
-        {'follows': 1, 'discount_amount': 100, 'starter_discount': 100, 'prof_discount': 100, 'starter_price': 1399, 'prof_price': 4899},
-        {'follows': 2, 'discount_amount': 200, 'starter_discount': 200, 'prof_discount': 200, 'starter_price': 1299, 'prof_price': 4799},
-        {'follows': 3, 'discount_amount': 300, 'starter_discount': 300, 'prof_discount': 300, 'starter_price': 1199, 'prof_price': 4699},
-        {'follows': 4, 'discount_amount': 500, 'starter_discount': 500, 'prof_discount': 500, 'starter_price': 999, 'prof_price': 4499},
+        {'follows': 1, 'discount_amount': 100, 'starter_discount': 100, 'prof_discount': 100, 'starter_price': 1399, 'prof_price': 7899},
+        {'follows': 2, 'discount_amount': 200, 'starter_discount': 200, 'prof_discount': 200, 'starter_price': 1299, 'prof_price': 7799},
+        {'follows': 3, 'discount_amount': 300, 'starter_discount': 300, 'prof_discount': 300, 'starter_price': 1199, 'prof_price': 7699},
+        {'follows': 4, 'discount_amount': 500, 'starter_discount': 500, 'prof_discount': 500, 'starter_price': 999, 'prof_price': 7499},
     ],
 }
 
@@ -386,8 +386,8 @@ def _get_tier_prices(pricing_config, follow_count):
     starter_scratch = float(starter_cfg.get('scratch_price', starter_promo) or starter_promo)
     starter_scratch_enabled = _is_scratch_enabled(starter_cfg)
 
-    prof_full = float(prof_cfg.get('full_price', 6999) or 6999)
-    prof_promo = float(prof_cfg.get('promo_price', 4999) or 4999)
+    prof_full = float(prof_cfg.get('full_price', 9999) or 9999)
+    prof_promo = float(prof_cfg.get('promo_price', 7999) or 7999)
     prof_scratch = float(prof_cfg.get('scratch_price', prof_promo) or prof_promo)
     prof_scratch_enabled = _is_scratch_enabled(prof_cfg)
 
@@ -604,7 +604,7 @@ def _plan_payable_total(pricing_config, follow_count, plan_type, scratch_reveale
     starter_cfg = pricing_config.get('starter') or _DEFAULT_PRICING['starter']
     prof_cfg = pricing_config.get('professional') or _DEFAULT_PRICING['professional']
     starter_full = float(starter_cfg.get('full_price', 1999) or 1999)
-    prof_full = float(prof_cfg.get('full_price', 6999) or 6999)
+    prof_full = float(prof_cfg.get('full_price', 9999) or 9999)
     tier_info = _get_tier_prices(pricing_config, follow_count)
 
     if plan_type == 'starter':
@@ -635,7 +635,7 @@ def _checkout_total_for_plan(pricing_config, follow_count, plan_type, request, d
         pricing_config, follow_count, plan_type, scratch_revealed=False, promo_obj=promo_obj,
     )
     cfg_key = 'starter' if plan_type == 'starter' else 'professional'
-    default_full = 1999 if plan_type == 'starter' else 6999
+    default_full = 1999 if plan_type == 'starter' else 9999
     full = float((pricing_config.get(cfg_key) or {}).get('full_price', default_full) or default_full)
     full_total = _gst_bundle_from_base(full)[2]
     if _scratch_revealed_for_checkout(request, data, plan_type, full_total, revealed_total):
@@ -1309,6 +1309,22 @@ def register_step1(request):
 
         logger.info(f'Agent Step 1 reused & updated — draft #{draft.pk}, email={email}')
 
+        # ── Event: FORM_SUBMIT (existing agent reuse) ───────────────────────
+        RegistrationActivityLog.log(
+            RegistrationActivityLog.EVENT_FORM_SUBMIT,
+            request=request,
+            agent=existing_agent,
+            draft_id=draft.pk,
+            extra_details={
+                'email': email,
+                'fullname': draft.fullname,
+                'agent_pincode': draft.agent_pincode,
+                'state': draft.state,
+                'promo_code': draft.promo_code or '',
+                'reuse': True,
+            },
+        )
+
         return JsonResponse({
             'success': True,
             'message': 'Basic information updated!',
@@ -1344,6 +1360,21 @@ def register_step1(request):
     request.session['reg_step'] = 2
 
     logger.info(f'Agent Step 1 saved — draft #{draft.pk}, email={email}')
+
+    # ── Event: FORM_SUBMIT ──────────────────────────────────────────────────
+    RegistrationActivityLog.log(
+        RegistrationActivityLog.EVENT_FORM_SUBMIT,
+        request=request,
+        draft_id=draft.pk,
+        extra_details={
+            'email': email,
+            'fullname': draft.fullname,
+            'agent_pincode': draft.agent_pincode,
+            'state': draft.state,
+            'plan_type': '',
+            'promo_code': draft.promo_code or '',
+        },
+    )
 
     return JsonResponse({
         'success': True,
@@ -1936,7 +1967,21 @@ def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment
         agent.agent_pincode = draft.agent_pincode
         agent.email_verified_at = now
         agent.save()
-    
+
+    # ── Event: PENDING_FOR_REGISTRATION ─────────────────────────────────────
+    if status == 'pending_payment':
+        RegistrationActivityLog.log(
+            RegistrationActivityLog.EVENT_PENDING_REGISTRATION,
+            agent=agent,
+            draft_id=draft.pk,
+            extra_details={
+                'plan_type': plan_type,
+                'plan_name': plan_name,
+                'draft_email': draft.email,
+                'created_new': created,
+            },
+        )
+
     # Create insurance segments (delete + insert like PHP)
     AgentInsuranceSegment.objects.filter(agent=agent).delete()
     for seg in (draft.segments or []):
@@ -2403,6 +2448,18 @@ def _agent_register_complete_impl(request):
                 if ref_obj:
                     agent.referred_by_code = ref_obj.code
                 agent.save()
+                # ── Event: DISTRIBUTION ──────────────────────────────────
+                RegistrationActivityLog.log(
+                    RegistrationActivityLog.EVENT_DISTRIBUTION,
+                    request=request,
+                    agent=agent,
+                    draft_id=draft.pk,
+                    extra_details={
+                        'distributor_id': dist_id_from_session,
+                        'referred_by_code': agent.referred_by_code or '',
+                        'plan_type': plan_type,
+                    },
+                )
             else:
                 ref_code = request.session.get('ref_code') or request.session.get('applied_promo_code') or request.session.get('championship_ref_id')
                 if ref_code:
@@ -2416,6 +2473,19 @@ def _agent_register_complete_impl(request):
                             agent.referred_by_code = ref_code
                             if ref_obj.distributor_id:
                                 agent.distributor_id = ref_obj.distributor_id
+                                # ── Event: DISTRIBUTION (via referral code) ────────────
+                                RegistrationActivityLog.log(
+                                    RegistrationActivityLog.EVENT_DISTRIBUTION,
+                                    request=request,
+                                    agent=agent,
+                                    draft_id=draft.pk,
+                                    extra_details={
+                                        'distributor_id': ref_obj.distributor_id,
+                                        'referred_by_code': ref_code,
+                                        'plan_type': plan_type,
+                                        'via_ref_code': True,
+                                    },
+                                )
                             agent.save()
             
             # Calculate subscription duration
@@ -2447,6 +2517,23 @@ def _agent_register_complete_impl(request):
                     status='inactive',
                     razorpay_order_id=razorpay_order_id
                 )
+
+            # ── Event: CLAIM_BUTTON ───────────────────────────────────────
+            RegistrationActivityLog.log(
+                RegistrationActivityLog.EVENT_CLAIM_BUTTON,
+                request=request,
+                agent=agent,
+                draft_id=draft.pk,
+                subscription_id=subscription.pk,
+                extra_details={
+                    'plan_type': plan_type,
+                    'plan_name': plan_name,
+                    'amount': str(total_amount),
+                    'razorpay_order_id': razorpay_order_id or '',
+                    'promo_code': applied_promo_code or '',
+                    'is_mock': mock_checkout,
+                },
+            )
 
             # If 0 amount: complete instantly
             if amount_paise == 0:
@@ -2791,6 +2878,21 @@ def _finalize_razorpay_payment(request, data):
             except Exception:
                 pass
 
+            # ── Event: PAYMENT_BUTTON ──────────────────────────────────────
+            RegistrationActivityLog.log(
+                RegistrationActivityLog.EVENT_PAYMENT_BUTTON,
+                request=request,
+                agent=agent,
+                subscription_id=subscription.pk,
+                extra_details={
+                    'plan_type': plan_type,
+                    'plan_name': plan_name,
+                    'razorpay_payment_id': razorpay_payment_id or '',
+                    'razorpay_order_id': razorpay_order_id or '',
+                    'promo_code': (subscription.promo_code or ''),
+                },
+            )
+
             queue_invoice_and_welcome(agent.id, subscription.id)
 
         try:
@@ -2922,6 +3024,18 @@ def agent_verify_promo(request):
         'success': False,
         'message': 'Invalid or expired promo code.',
     })
+
+
+@require_POST
+@csrf_protect
+def agent_clear_promo(request):
+    """
+    Clear the applied promo code from the session.
+    Called when the user clicks 'Remove' on the plans page promo widget.
+    """
+    request.session.pop('applied_promo_code', None)
+    request.session.modified = True
+    return JsonResponse({'success': True, 'message': 'Promo code removed.'})
 
 
 def referral_join(request, ref_code):

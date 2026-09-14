@@ -1607,3 +1607,83 @@ class UserPlanProgress(models.Model):
 
     def __str__(self):
         return f"UserPlanProgress({self.plan_key}, unlocked={self.discount_unlocked})"
+
+
+# ── Registration Activity Logging ─────────────────────────────────────────────
+# Tracks key events in the agent registration funnel:
+#   FORM_SUBMIT, PENDING_FOR_REGISTRATION, DISTRIBUTION, CLAIM_BUTTON, PAYMENT_BUTTON
+
+class RegistrationActivityLog(models.Model):
+    """
+    Records registration funnel events for analytics and audit.
+    Captured automatically from the backend when each action occurs.
+
+    Event names:
+        FORM_SUBMIT             – Agent completes Step 1 and submits the form
+        PENDING_FOR_REGISTRATION – Agent record created with status=pending_payment
+        DISTRIBUTION            – Agent registration attributed to a distributor
+        CLAIM_BUTTON            – Agent initiates checkout (claim/pay button clicked)
+        PAYMENT_BUTTON          – Payment verified and registration activated
+    """
+    EVENT_FORM_SUBMIT             = 'FORM_SUBMIT'
+    EVENT_PENDING_REGISTRATION    = 'PENDING_FOR_REGISTRATION'
+    EVENT_DISTRIBUTION            = 'DISTRIBUTION'
+    EVENT_CLAIM_BUTTON            = 'CLAIM_BUTTON'
+    EVENT_PAYMENT_BUTTON          = 'PAYMENT_BUTTON'
+
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='registration_activity_logs',
+        db_constraint=False,
+    )
+    draft_id = models.IntegerField(null=True, blank=True, db_index=True)
+    subscription_id = models.IntegerField(null=True, blank=True)
+    event_name = models.CharField(max_length=64, db_index=True)
+    details = models.JSONField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'registration_activity_logs'
+        managed = True
+        ordering = ['-created_at']
+
+    def __str__(self):
+        agent_info = f"agent={self.agent_id}" if self.agent_id else f"draft={self.draft_id}"
+        return f"RegistrationActivityLog({self.event_name}, {agent_info}, {self.created_at})"
+
+    @classmethod
+    def log(cls, event_name, request=None, agent=None, draft_id=None, subscription_id=None, extra_details=None):
+        """
+        Convenience method to capture a registration event.
+        Silently swallows exceptions so it never breaks the main flow.
+        """
+        try:
+            ip = None
+            if request:
+                x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+                ip = x_forwarded.split(',')[0].strip() if x_forwarded else request.META.get('REMOTE_ADDR')
+
+            details = {}
+            if agent:
+                details['agent_email'] = agent.email
+                details['agent_status'] = agent.status
+                details['plan_type'] = agent.plan_type or ''
+            if extra_details and isinstance(extra_details, dict):
+                details.update(extra_details)
+
+            cls.objects.create(
+                agent=agent,
+                draft_id=draft_id,
+                subscription_id=subscription_id,
+                event_name=event_name,
+                details=details or None,
+                ip_address=ip,
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception(
+                'RegistrationActivityLog.log failed for event=%s', event_name
+            )

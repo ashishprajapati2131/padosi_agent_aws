@@ -39,7 +39,7 @@ from padosi_agent.razorpay_env import USER_PAYMENT_UNAVAILABLE
 logger = logging.getLogger(__name__)
 
 # ─── Pricing (matches Laravel getPricing) ────────────────────────────────────
-PROFESSIONAL_BASE = 6999.00
+PROFESSIONAL_BASE = 9999.00
 BASIC_BASE = 1999.00
 GST_RATE = 0.18
 
@@ -365,7 +365,7 @@ def _render_plans(request, event_registration, pricing, promo_code_str):
     follow_count = len(followed)
     discount_unlocked = follow_count > 0
 
-    exc_strikeout = float(exclusive_config.get('strikeout_price', 6999))
+    exc_strikeout = float(exclusive_config.get('strikeout_price', 9999))
     exc_base = float(exclusive_config.get('base_price', 1999))
     exc_discounted = _exclusive_base_price(exclusive_config, follow_count, discount_unlocked)
 
@@ -477,7 +477,8 @@ def _render_plans(request, event_registration, pricing, promo_code_str):
         'razorpay_key': key,
         'promo_code': promo_code_str or '',
         'promo_discount_amount': round(PROFESSIONAL_BASE - pricing['professional']['base'], 2),
-        'base_minus_6999': round(PROFESSIONAL_BASE - pricing['professional']['base'], 2),
+        'base_minus_6999': round(PROFESSIONAL_BASE - pricing['professional']['base'], 2),  # kept for backward compat
+        'base_minus_9999': round(PROFESSIONAL_BASE - pricing['professional']['base'], 2),
         'selected_professional': selected_plan_key == 'professional',
         'selected_basic': selected_plan_key == 'basic',
 

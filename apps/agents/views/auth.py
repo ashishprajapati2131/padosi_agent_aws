@@ -148,7 +148,7 @@ def agent_login(request):
         # Enforce rate limiting
         if not check_login_throttle(ip):
             portal_error(request, "Too many login attempts. Please try again after 1 minute.", PORTAL_AGENT)
-            return render(request, 'agents/login.html')
+            return render(request, 'agents/login.html', {'hide_footer': True, 'hide_chatbot': True})
 
         email = request.POST.get('email', '').strip()
         password = request.POST.get('password', '')
@@ -156,7 +156,7 @@ def agent_login(request):
         if not email or not password:
             record_login_attempt(ip)
             portal_error(request, "Please enter both email and password.", PORTAL_AGENT)
-            return render(request, 'agents/login.html', {'email': email})
+            return render(request, 'agents/login.html', {'email': email, 'hide_footer': True, 'hide_chatbot': True})
 
         try:
             agent = find_agent(email)
@@ -164,7 +164,7 @@ def agent_login(request):
         except Exception as e:
             logger.error("Database error during login email lookup: %s", e)
             portal_error(request, "Login service is temporarily unavailable. Please try again.", PORTAL_AGENT)
-            return render(request, 'agents/login.html', {'email': email})
+            return render(request, 'agents/login.html', {'email': email, 'hide_footer': True, 'hide_chatbot': True})
 
         if not password_ok:
             record_login_attempt(ip)
@@ -236,9 +236,9 @@ def agent_login(request):
         except Exception as e:
             logger.exception("Agent login session setup failed for %s: %s", email, e)
             portal_error(request, "Login service is temporarily unavailable. Please try again.", PORTAL_AGENT)
-            return render(request, 'agents/login.html', {'email': email})
+            return render(request, 'agents/login.html', {'email': email, 'hide_footer': True, 'hide_chatbot': True})
 
-    return render(request, 'agents/login.html')
+    return render(request, 'agents/login.html', {'hide_footer': True, 'hide_chatbot': True})
 
 @csrf_exempt
 def agent_logout(request):

@@ -50,8 +50,8 @@ DEFAULT_REVIEW_GROWTH = {
         'and open every remaining locked section.'
     ),
     'upgrade_price_enabled': True,
-    'upgrade_promo_price': 4999,
-    'upgrade_full_price': 6999,
+    'upgrade_promo_price': 7999,
+    'upgrade_full_price': 9999,
     'upgrade_show_full_price': True,
     'review_scroll_delay_ms': 3000,
     'visibility_section_enabled': True,

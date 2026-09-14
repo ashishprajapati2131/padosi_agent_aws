@@ -917,20 +917,20 @@
                 <div class="plan-header">
                     <div class="plan-name">Professional's Plan</div>
                     <div class="plan-price">
-                        {% if event_registration.promocode and pricing.professional.base < 6999 %} <span
+                        {% if event_registration.promocode and pricing.professional.base < 9999 %} <span
                             style="font-size:18px; color:#94a3b8; text-decoration:line-through; font-weight:600; margin-right:8px;">
-                            ₹6,999</span>
+                            ₹9,999</span>
                             ₹{{ pricing.professional.base|floatformat:0 }}/-<span>1st Year Only</span>
                             {% else %}
                             ₹{{ pricing.professional.base|floatformat:0 }}/-<span>1st Year Only</span>
                             {% endif %}
                     </div>
-                    {% if event_registration.promocode and pricing.professional.base < 6999 %} <div
+                    {% if event_registration.promocode and pricing.professional.base < 9999 %} <div
                         style="text-align:center; margin-top:6px;">
                         <span
                             style="background:#d1fae5; color:#059669; font-size:11px; font-weight:700; padding:3px 10px; border-radius:50px; border:1px solid #6ee7b7;">
                             <i class="fa-solid fa-tag me-1"></i> Promo Applied — You Save ₹{{
-                            base_minus_6999|floatformat:0 }}
+                            base_minus_9999|floatformat:0 }}
                         </span>
                 </div>
                 {% endif %}
@@ -1171,14 +1171,14 @@
             <div class="detail-row"><span>Selected Plan</span><strong>{{ selected_plan.name }}</strong></div>
             <div class="detail-row">
                 <span>Base Registration Fee</span>
-                {% if event_registration.promocode and selected_plan_key == 'professional' and selected_plan.base < 6999
-                    %} <strong><s style="color:#94a3b8; font-weight:500;">₹6,999.00</s> ₹{{
+                {% if event_registration.promocode and selected_plan_key == 'professional' and selected_plan.base < 9999
+                    %} <strong><s style="color:#94a3b8; font-weight:500;">₹9,999.00</s> ₹{{
                     selected_plan.base|floatformat:2 }}</strong>
                     {% else %}
                     <strong>₹{{ selected_plan.base|floatformat:2 }}</strong>
                     {% endif %}
             </div>
-            {% if event_registration.promocode and selected_plan_key == 'professional' and selected_plan.base < 6999 %}
+            {% if event_registration.promocode and selected_plan_key == 'professional' and selected_plan.base < 9999 %}
                 <div class="detail-row" style="color:#059669;">
                 <span><i class="fa-solid fa-tag me-1"></i> Promo Discount ({{ event_registration.promocode }})</span>
                 <strong>− ₹{{ promo_discount_amount|floatformat:2 }}</strong>
