@@ -1023,20 +1023,149 @@ def agent_pending_registrations(request):
     except Exception as e:
         logger.error(f"Error fetching pending registrations list: {e}")
 
-    for agent in agents:
+    # ── Also fetch AgentDraft entries (Step 1 done, plan not yet chosen) ──
+    # Only include drafts whose email does NOT already exist in the agents table.
+    draft_entries = []
+    if (not plan_filter or plan_filter == 'All Plans') and (not event_filter or event_filter == 'All Events'):
+        try:
+            from django.db import connection as _dc
+            draft_query = """
+                SELECT
+                    d.id, d.fullname, d.email, d.mobile,
+                    d.address, d.state, d.agent_pincode,
+                    d.registration_step, d.created_at, d.updated_at,
+                    TIMESTAMPDIFF(HOUR, d.created_at, NOW()) AS hours_waiting
+                FROM agent_drafts AS d
+                WHERE d.registration_step >= 1
+                  AND d.email NOT IN (SELECT email FROM agents WHERE email IS NOT NULL AND email != '')
+            """
+            draft_params = []
+            if search:
+                draft_query += " AND (d.fullname LIKE %s OR d.email LIKE %s)"
+                sp = f"%{search}%"
+                draft_params.extend([sp, sp])
+            if city_filter:
+                draft_query += " AND (d.address LIKE %s OR d.state LIKE %s)"
+                cp = f"%{city_filter}%"
+                draft_params.extend([cp, cp])
+            if sort_by == 'oldest':
+                draft_query += " ORDER BY d.created_at ASC"
+            elif sort_by == 'waiting':
+                draft_query += " ORDER BY TIMESTAMPDIFF(HOUR, d.created_at, NOW()) DESC"
+            else:
+                draft_query += " ORDER BY d.created_at DESC"
+            with _dc.cursor() as _cur:
+                _cur.execute(draft_query, draft_params)
+                draft_cols = [col[0] for col in _cur.description]
+                raw_drafts = [dict(zip(draft_cols, row)) for row in _cur.fetchall()]
+            for d in raw_drafts:
+                reg_step = d.get('registration_step') or 1
+                is_claimed = (reg_step >= 2)
+                draft_entries.append({
+                    'id': d['id'],
+                    'fullname': d['fullname'] or '',
+                    'email': d['email'] or '',
+                    'mobile': d['mobile'] or '',
+                    'status': 'claim' if is_claimed else 'draft',
+                    'registration_step': reg_step,
+                    'draft_badge': 'CLAIM' if is_claimed else 'DRAFT',
+                    'is_claimed': is_claimed,
+                    'address': d.get('address') or d.get('state') or '',
+                    'display_name': d['fullname'] or '',
+                    'profile_photo_path': None,
+                    'pan_number': None,
+                    'is_blacklisted': False,
+                    'is_blacklisted_by_pan': 0,
+                    'badge': None,
+                    'selected_plan': None,
+                    'razorpay_order_id': None,
+                    'sub_payment_status': None,
+                    'sub_created_at': None,
+                    'sub_minutes_ago': None,
+                    'registration_amount': None,
+                    'avg_rating': None,
+                    'review_count': 0,
+                    'created_at': d['created_at'],
+                    'updated_at': d['updated_at'],
+                    'hours_waiting': d.get('hours_waiting') or 0,
+                    'is_draft': True,
+                    'last_event': '',
+                    'event_label': '',
+                })
+        except Exception as _e:
+            logger.error(f'Error fetching draft registrations: {_e}')
+
+    # Merge and re-sort
+    all_entries = agents + draft_entries
+    if sort_by == 'oldest':
+        all_entries.sort(key=lambda x: str(x.get('created_at') or ''), reverse=False)
+    elif sort_by == 'waiting':
+        all_entries.sort(key=lambda x: x.get('hours_waiting') or 0, reverse=True)
+    else:
+        all_entries.sort(key=lambda x: str(x.get('created_at') or ''), reverse=True)
+
+    # ── Bulk-fetch latest RegistrationActivityLog event per entry ──
+    _EVENT_LABELS = {
+        'FORM_SUBMIT':             'Form Submitted',
+        'PENDING_FOR_REGISTRATION':'Pending Payment',
+        'DISTRIBUTION':            'Distributor Assigned',
+        'CLAIM_BUTTON':            'Choosing Plan',
+        'PAYMENT_BUTTON':          'Payment Done',
+    }
+    draft_event_map = {}
+    agent_event_map = {}
+    _draft_ids = [str(e['id']) for e in all_entries if e.get('is_draft')]
+    _agent_ids = [str(e['id']) for e in all_entries if not e.get('is_draft')]
+    try:
+        from django.db import connection as _ec
+        with _ec.cursor() as _cur:
+            if _draft_ids:
+                placeholders = ','.join(['%s'] * len(_draft_ids))
+                _cur.execute(
+                    f'SELECT draft_id, event_name FROM registration_activity_logs '
+                    f'WHERE draft_id IN ({placeholders}) ORDER BY created_at DESC',
+                    _draft_ids
+                )
+                for row in _cur.fetchall():
+                    did, ev = str(row[0]), row[1]
+                    if did not in draft_event_map:
+                        draft_event_map[did] = ev
+            if _agent_ids:
+                placeholders = ','.join(['%s'] * len(_agent_ids))
+                _cur.execute(
+                    f'SELECT agent_id, event_name FROM registration_activity_logs '
+                    f'WHERE agent_id IN ({placeholders}) ORDER BY created_at DESC',
+                    _agent_ids
+                )
+                for row in _cur.fetchall():
+                    aid, ev = str(row[0]), row[1]
+                    if aid not in agent_event_map:
+                        agent_event_map[aid] = ev
+    except Exception as _e:
+        logger.warning(f'Event lookup failed: {_e}')
+
+    for entry in all_entries:
+        _eid = str(entry.get('id', ''))
+        last_ev = draft_event_map.get(_eid, '') if entry.get('is_draft') else agent_event_map.get(_eid, '')
+        entry['last_event'] = last_ev
+        entry['event_label'] = _EVENT_LABELS.get(last_ev, '')
+        if last_ev == 'CLAIM_BUTTON' and entry.get('is_draft'):
+            entry['draft_badge'] = 'CLAIM'
+            entry['is_claimed'] = True
+
+    for entry in all_entries:
         total_pending += 1
-        hours_waiting = agent.get('hours_waiting') or 0
+        hours_waiting = entry.get('hours_waiting') or 0
         total_wait_hours += hours_waiting
         if hours_waiting > 48:
             urgent_count += 1
-        # Count agents who initiated payment (have order_id) but subscription still pending
-        if agent.get('razorpay_order_id') and agent.get('sub_payment_status') == 'pending':
+        if entry.get('razorpay_order_id') and entry.get('sub_payment_status') == 'pending':
             payment_initiated_count += 1
 
     avg_wait_hours = (total_wait_hours / total_pending) if total_pending > 0 else 0
 
     context = {
-        'agents': agents,
+        'agents': all_entries,
         'search': search,
         'plan_filter': plan_filter,
         'city_filter': city_filter,
