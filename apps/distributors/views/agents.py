@@ -50,9 +50,44 @@ def agents_index(request):
             query &= Q(subscriptions__selected_plan__icontains='professional', subscriptions__status='active')
 
     # PHP parity: paginate(10)
-    agents_list = Agent.objects.filter(query).select_related('user').annotate(leads_count=Count('leads')).order_by('-created_at').distinct()
+    agents_list_qs = Agent.objects.filter(query).select_related('user').annotate(leads_count=Count('leads')).order_by('-created_at').distinct()
 
-    paginator = Paginator(agents_list, 10)
+    # Fetch AgentDrafts
+    from apps.agents.models import AgentDraft
+    
+    drafts_query = Q(distributor_id=distributor_id, registration_step__gte=1)
+    if search:
+        drafts_query &= (Q(fullname__icontains=search) | Q(email__icontains=search) | Q(mobile__icontains=search))
+        
+    if status and status != 'all' and status not in ['draft', 'claim', 'incomplete', 'pending_payment']:
+        drafts = []
+    elif plan and plan != 'all':
+        drafts = []
+    else:
+        drafts = list(AgentDraft.objects.filter(drafts_query).order_by('-created_at'))
+
+    agent_emails = set(agents_list_qs.values_list('email', flat=True))
+    
+    class MockDraftAgent:
+        def __init__(self, draft):
+            self.id = draft.id
+            self.fullname = draft.fullname
+            self.email = draft.email
+            self.mobile = draft.mobile
+            self.status = 'claim' if draft.registration_step >= 2 else 'draft'
+            self.activeSubscription = None
+            self.leads_count = 0
+            self.created_at = draft.created_at
+            self.is_draft = True
+
+    combined_list = list(agents_list_qs)
+    for d in drafts:
+        if d.email not in agent_emails:
+            combined_list.append(MockDraftAgent(d))
+            
+    combined_list.sort(key=lambda x: x.created_at, reverse=True)
+
+    paginator = Paginator(combined_list, 10)
     page_number = request.GET.get('page')
     agents = paginator.get_page(page_number)
 
