@@ -77,7 +77,13 @@
                 {% for agent in agents %}
                 <tr>
                     <td class="ps-4 py-3">
-                        <div class="fw-bold" style="color: #1e293b;"><a href="{% url 'distributors:agents_show' agent.id %}" class="text-decoration-none text-dark">{{ agent.fullname }}</a></div>
+                        <div class="fw-bold" style="color: #1e293b;">
+                            {% if agent.is_draft %}
+                                {{ agent.fullname }}
+                            {% else %}
+                                <a href="{% url 'distributors:agents_show' agent.id %}" class="text-decoration-none text-dark">{{ agent.fullname }}</a>
+                            {% endif %}
+                        </div>
                     </td>
                     <td class="py-3">
                         <div style="color: #475569;">{{ agent.email }}</div>

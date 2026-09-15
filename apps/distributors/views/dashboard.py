@@ -43,17 +43,30 @@ def dashboard(request):
 
     now = timezone.now()
     
+    from apps.agents.models import AgentDraft
+
     # Stats
-    total_agents = Agent.objects.filter(distributor_id=distributor_id).count()
-    active_agents = Agent.objects.filter(distributor_id=distributor_id, status='active').count()
+    agent_qs = Agent.objects.filter(distributor_id=distributor_id)
+    agent_emails = list(agent_qs.values_list('email', flat=True))
+    
+    total_agents = agent_qs.count()
+    draft_agents = AgentDraft.objects.filter(distributor_id=distributor_id, registration_step__gte=1).exclude(email__in=agent_emails).count()
+    total_agents += draft_agents
+
+    active_agents = agent_qs.filter(status='active').count()
     
     total_leads = AgentLead.objects.filter(agent__distributor_id=distributor_id).count()
     
-    new_agents_this_month = Agent.objects.filter(
-        distributor_id=distributor_id,
+    new_agents_this_month = agent_qs.filter(
         created_at__year=now.year,
         created_at__month=now.month
     ).count()
+    new_drafts_this_month = AgentDraft.objects.filter(
+        distributor_id=distributor_id,
+        created_at__year=now.year,
+        created_at__month=now.month
+    ).exclude(email__in=agent_emails).count()
+    new_agents_this_month += new_drafts_this_month
 
     professional_agents = Agent.objects.filter(
         distributor_id=distributor_id,

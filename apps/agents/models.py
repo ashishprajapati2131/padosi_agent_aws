@@ -177,6 +177,10 @@ class AgentDraft(models.Model):
     registration_step = models.PositiveSmallIntegerField(default=0)
     # 0 = OTP pending, 1 = Step1 completed, 2 = Step2 completed
 
+    # Referral / Distributor tracking
+    distributor_id = models.IntegerField(null=True, blank=True)
+    referred_by_code = models.CharField(max_length=50, blank=True, default='')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

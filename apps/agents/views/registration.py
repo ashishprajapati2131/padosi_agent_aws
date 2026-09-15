@@ -1106,6 +1106,28 @@ def _assign_step1_draft_fields(draft, request, extra=None):
     photo = request.FILES.get('photo')
     if photo:
         draft.photo = photo
+
+    # Capture distributor/referral binding from session
+    dist_id_from_session = request.session.get('distributor_id')
+    if dist_id_from_session:
+        draft.distributor_id = dist_id_from_session
+        from apps.admin_panel.models.referral_code import ReferralCode
+        ref_obj = ReferralCode.objects.filter(distributor_id=dist_id_from_session, is_active=True).first()
+        if ref_obj:
+            draft.referred_by_code = ref_obj.code
+    else:
+        ref_code = request.session.get('ref_code') or request.session.get('applied_promo_code') or request.session.get('championship_ref_id')
+        if ref_code:
+            if str(ref_code).startswith('PA-'):
+                draft.referred_by_code = ref_code
+            else:
+                from apps.admin_panel.models.referral_code import ReferralCode
+                ref_obj = ReferralCode.objects.filter(code=ref_code, is_active=True).first()
+                if ref_obj:
+                    draft.referred_by_code = ref_code
+                    if ref_obj.distributor_id:
+                        draft.distributor_id = ref_obj.distributor_id
+
     return draft
 
 
@@ -1325,6 +1347,21 @@ def register_step1(request):
             },
         )
 
+        if getattr(draft, 'distributor_id', None) or getattr(draft, 'referred_by_code', None):
+            RegistrationActivityLog.log(
+                RegistrationActivityLog.EVENT_DISTRIBUTION,
+                request=request,
+                agent=existing_agent,
+                draft_id=draft.pk,
+                extra_details={
+                    'distributor_id': draft.distributor_id,
+                    'referred_by_code': draft.referred_by_code,
+                    'via_ref_code': True if getattr(draft, 'referred_by_code', None) and not getattr(draft, 'distributor_id', None) else False,
+                    'reuse': True,
+                },
+            )
+
+
         return JsonResponse({
             'success': True,
             'message': 'Basic information updated!',
@@ -1375,6 +1412,18 @@ def register_step1(request):
             'promo_code': draft.promo_code or '',
         },
     )
+
+    if getattr(draft, 'distributor_id', None) or getattr(draft, 'referred_by_code', None):
+        RegistrationActivityLog.log(
+            RegistrationActivityLog.EVENT_DISTRIBUTION,
+            request=request,
+            draft_id=draft.pk,
+            extra_details={
+                'distributor_id': draft.distributor_id,
+                'referred_by_code': draft.referred_by_code,
+                'via_ref_code': True if getattr(draft, 'referred_by_code', None) and not getattr(draft, 'distributor_id', None) else False,
+            },
+        )
 
     return JsonResponse({
         'success': True,
