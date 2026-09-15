@@ -56,11 +56,25 @@ def admin_badge_counts(request):
             )
             counts['pending_agents_count'] = cursor.fetchone()[0]
 
-            # 2. Registration Pending ── agents.status IN ('incomplete','pending_payment')
+            # 2. Registration Pending ── agents + unmatched draft entries
             cursor.execute(
                 "SELECT COUNT(*) FROM agents WHERE status IN ('incomplete', 'pending_payment')"
             )
-            counts['incomplete_agents_count'] = cursor.fetchone()[0]
+            agent_pending_count = cursor.fetchone()[0]
+            # Also count drafts whose email isn't in agents yet
+            try:
+                cursor.execute("""
+                    SELECT COUNT(*) FROM agent_drafts d
+                    WHERE d.registration_step >= 1
+                      AND d.email NOT IN (
+                          SELECT email FROM agents
+                          WHERE email IS NOT NULL AND email != ''
+                      )
+                """)
+                draft_pending_count = cursor.fetchone()[0]
+            except Exception:
+                draft_pending_count = 0
+            counts['incomplete_agents_count'] = agent_pending_count + draft_pending_count
 
             # 2b. Payment Initiated but Pending ── agents with razorpay order but no success callback
             try:

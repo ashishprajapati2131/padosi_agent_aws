@@ -1856,6 +1856,17 @@
                     if (!this.segments || this.segments.length === 0) return Swal.fire('Missing Detail', 'Please select at least one insurance segment.', 'warning');
                     if (!this.agreeTerms) return Swal.fire('Missing Detail', 'Please agree to the Terms of Service to continue.', 'warning');
 
+                    // Silent draft save: register in DB before preview opens
+                    try {
+                        const _draftForm = new FormData(document.getElementById('step1Form'));
+                        if (this.photoFile) { _draftForm.append('photo', this.photoFile); }
+                        await fetch("{% url 'agents:agent_register_step1' %}", {
+                            method: 'POST',
+                            body: _draftForm,
+                            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                        });
+                    } catch (_e) { /* silent - preview still opens */ }
+
                     const self = this;
                     if (typeof window.showRegCelebration === 'function') {
                         this.celebrationShowing = true;

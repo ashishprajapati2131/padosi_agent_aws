@@ -1574,6 +1574,23 @@ def chooseplan(request):
         request.session.pop('current_draft_id', None)
         return redirect('agents:agent_registration')
 
+    # ── Mark as CLAIM stage: user is now viewing plans ──────────────────────
+    # This runs BEFORE any agent is created, so the draft entry in admin
+    # pending registrations correctly shows CLAIM badge on next refresh.
+    if (agent.registration_step or 1) < 2:
+        try:
+            agent.registration_step = 2
+            agent.save(update_fields=['registration_step'])
+            RegistrationActivityLog.log(
+                RegistrationActivityLog.EVENT_CLAIM_BUTTON,
+                draft_id=agent.pk,
+                request=request,
+                email=agent.email or '',
+            )
+        except Exception as _e:
+            import logging as _lg; _lg.getLogger(__name__).warning(f'CLAIM stage update failed: {_e}')
+    # ─────────────────────────────────────────────────────────────────────────
+
     _clear_scratch_reveal_session(request)
 
     # Load site settings pricing config from DB only
