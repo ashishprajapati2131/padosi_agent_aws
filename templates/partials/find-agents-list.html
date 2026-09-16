@@ -100,7 +100,7 @@
                 <h3 class="mb-0" style="font-family: 'Urbanist', sans-serif; font-weight: 800; font-size: 22px; color: #1e3a8a;">
                     Active PadosiAgents
                 </h3>
-                <div class="d-flex align-items-center gap-2 sort-by-wrapper" style="gap: 8px;">
+                <div class="d-flex align-items-center gap-2 sort-by-wrapper">
                     <style>
                         .ai-picks-trigger-btn:hover {
                             opacity: 0.95;
@@ -116,6 +116,43 @@
                         }
                         .header-compare-trigger-btn:active {
                             transform: translateY(0);
+                        }
+                        .sort-by-label {
+                            white-space: nowrap !important;
+                        }
+                        @media (max-width: 576px) {
+                            .sort-by-wrapper {
+                                width: 100% !important;
+                                display: flex !important;
+                                align-items: center !important;
+                                justify-content: space-between !important;
+                                gap: 6px !important;
+                                margin-top: 6px !important;
+                            }
+                            .sort-by-wrapper .sort-by-label {
+                                display: none !important;
+                            }
+                            .sort-by-wrapper .ai-picks-trigger-btn {
+                                flex: 1 1 0% !important;
+                                padding: 6px 8px !important;
+                                font-size: 12px !important;
+                                height: 34px !important;
+                                justify-content: center !important;
+                            }
+                            .sort-by-wrapper .header-compare-trigger-btn {
+                                flex: 1 1 0% !important;
+                                padding: 6px 8px !important;
+                                font-size: 12px !important;
+                                height: 34px !important;
+                                justify-content: center !important;
+                            }
+                            .sort-by-wrapper #sort_by_select {
+                                flex: 1.15 1 0% !important;
+                                padding: 5px 26px 5px 8px !important;
+                                font-size: 12px !important;
+                                height: 34px !important;
+                                min-width: 0 !important;
+                            }
                         }
                     </style>
                     <button type="button" class="btn btn-sm ai-picks-trigger-btn" onclick="triggerAIPicks()"
@@ -137,7 +174,7 @@
                         </svg>
                         Compare
                     </button>
-                    <span class="text-muted" style="font-size: 13px; font-weight: 600;">Sort by:</span>
+                    <span class="text-muted sort-by-label d-none d-sm-inline" style="font-size: 13px; font-weight: 600; white-space: nowrap;">Sort by:</span>
                     <select id="sort_by_select" onchange="window.updateSortBy(this.value)"
                         class="form-select form-select-sm"
                         style="width: auto; border-radius: 8px; font-weight: 600; padding: 6px 36px 6px 12px; font-size: 13px; color: #1e293b; border: 1px solid #cbd5e1; background-color: #fff; cursor: pointer; outline: none; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23334155%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px top 50%; background-size: 10px auto; appearance: none; -webkit-appearance: none; -moz-appearance: none;">

@@ -108,7 +108,7 @@
                         <div class="rac-stat-num">{{ performance.formatted_claims_processed|default:"0" }}</div>
                         <div class="rac-stat-lbl">CLAIMS</div>
                     </div>
-                    <div class="rac-stat-box">
+                    <div class="rac-stat-box rac-stat-box--amount">
                         <div class="rac-stat-num">₹{{ performance.formatted_claims_amount|default:"0" }}</div>
                         <div class="rac-stat-lbl">SETTLED</div>
                     </div>
@@ -290,7 +290,7 @@
                         <div class="rac-stat-num">{{ performance.formatted_claims_processed|default:"0" }}</div>
                         <div class="rac-stat-lbl">CLAIMS</div>
                     </div>
-                    <div class="rac-stat-box">
+                    <div class="rac-stat-box rac-stat-box--amount">
                         <div class="rac-stat-num">₹{{ performance.formatted_claims_amount|default:"0" }}</div>
                         <div class="rac-stat-lbl">SETTLED</div>
                     </div>
@@ -395,7 +395,7 @@
 
     {% comment %} SHARED CSS {% endcomment %}
     {% if not agent_card_styles_included %}
-    <link rel="stylesheet" href="{% static 'css/agent-card-shared.css' %}">
+    <link rel="stylesheet" href="{% static 'css/agent-card-shared.css' %}?v=20260916-1">
     {% endif %}
     {% endwith %}
 </div>
