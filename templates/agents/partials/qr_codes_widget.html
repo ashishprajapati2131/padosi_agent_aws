@@ -4,11 +4,79 @@
         <span class="pa-qr-dock-badge"><i class="fas fa-qrcode"></i> Share QR</span>
         <strong>Your QR Codes</strong>
         <span>Profile, visiting card, and reviews — scan, download, or share</span>
-        {% if agent.agent_slug %}
-        <a class="btn btn-sm mt-2" href="{% url 'agents:agent_review_card' slug=agent.agent_slug %}" style="background:#0b1f4d;color:#fff;border-radius:999px;padding:8px 14px;font-weight:700;">
-            Open Review Card
-        </a>
-        {% endif %}
+
+        <!-- Side-by-Side Action Buttons on Mobile and Desktop -->
+        <style>
+            .pa-qr-header-actions {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                align-items: center !important;
+                gap: 8px !important;
+                margin-top: 10px !important;
+                width: 100% !important;
+                max-width: 480px !important;
+            }
+            .pa-qr-btn-pill {
+                flex: 1 1 0 !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+                white-space: nowrap !important;
+                border-radius: 999px !important;
+                font-weight: 700 !important;
+                font-size: clamp(10.5px, 2.8vw, 13px) !important;
+                padding: 8px 12px !important;
+                text-decoration: none !important;
+                box-sizing: border-box !important;
+                line-height: 1.2 !important;
+                min-height: 36px !important;
+                cursor: pointer !important;
+                transition: all 0.15s ease !important;
+            }
+            .pa-qr-btn-card {
+                background: #0b1f4d !important;
+                color: #ffffff !important;
+                border: none !important;
+            }
+            .pa-qr-btn-card:hover {
+                background: #071536 !important;
+                color: #ffffff !important;
+                transform: translateY(-1px) !important;
+            }
+            .pa-qr-btn-studio {
+                background: linear-gradient(135deg, #0d9488 0%, #1e40af 100%) !important;
+                color: #ffffff !important;
+                border: none !important;
+                box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15) !important;
+            }
+            .pa-qr-btn-studio:hover {
+                background: linear-gradient(135deg, #0f766e 0%, #1e3a8a 100%) !important;
+                color: #ffffff !important;
+                transform: translateY(-1px) !important;
+            }
+            @media (max-width: 480px) {
+                .pa-qr-header-actions {
+                    gap: 6px !important;
+                }
+                .pa-qr-btn-pill {
+                    padding: 7px 8px !important;
+                    font-size: 11px !important;
+                    min-height: 34px !important;
+                }
+            }
+        </style>
+        <div class="pa-qr-header-actions">
+            {% if agent.agent_slug %}
+            <a class="btn btn-sm pa-qr-btn-pill pa-qr-btn-card" href="{% url 'agents:agent_review_card' slug=agent.agent_slug %}">
+                Open Review Card
+            </a>
+            {% endif %}
+            <button type="button" class="btn btn-sm pa-qr-btn-pill pa-qr-btn-studio" onclick="window.openInviteStudio ? window.openInviteStudio() : $('#reviewShareModal').modal('show')">
+                <i class="fas fa-paper-plane" style="color:#fbbf24; margin-right:4px;"></i> Share &amp; Invite Studio
+            </button>
+        </div>
     </div>
     <div class="pa-qr-dock-row">
         {% for item in qr_items %}
@@ -26,8 +94,8 @@
                         <i class="fas fa-download"></i>
                     </a>
                     {% endif %}
-                    <button type="button" class="pa-qr-chip pa-qr-share-btn" title="Share" aria-label="Share {{ item.label }} QR"
-                        data-url="{{ item.target_url }}" data-label="{{ item.label }}">
+                    <button type="button" class="pa-qr-chip pa-qr-share-btn" title="Share &amp; Invite Studio" aria-label="Share {{ item.label }} QR"
+                        data-type="{{ item.type }}" data-url="{{ item.target_url }}" data-label="{{ item.label }}">
                         <i class="fas fa-share-alt"></i>
                     </button>
                 </div>
@@ -78,6 +146,8 @@
     function toast(msg) {
         if (typeof Swal !== 'undefined') {
             Swal.fire({ toast: true, position: 'top-end', timer: 2200, showConfirmButton: false, icon: 'success', title: msg });
+        } else {
+            alert(msg);
         }
     }
     function openPreview(src, label) {
@@ -111,22 +181,35 @@
             openPreview(btn.getAttribute('data-src'), btn.getAttribute('data-label'));
         });
     });
+
+    function openStudioFromQR(mode) {
+        if (window.openInviteStudio) {
+            window.openInviteStudio(mode);
+        } else if (typeof $ !== 'undefined' && $.fn.modal) {
+            $('#reviewShareModal').modal('show');
+        } else if (typeof bootstrap !== 'undefined') {
+            new bootstrap.Modal(document.getElementById('reviewShareModal')).show();
+        }
+    }
+
+    // Share button opens Invite Studio with matching mode
     document.querySelectorAll('.pa-qr-dock .pa-qr-share-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var url = btn.getAttribute('data-url') || '';
-            var label = btn.getAttribute('data-label') || 'QR';
-            if (navigator.share) {
-                navigator.share({ title: 'PadosiAgent ' + label, text: 'I am on PadosiAgent. Scan my ' + label + ' QR.', url: url }).catch(function() {});
-                return;
-            }
-            copyText(url).then(function() { toast(label + ' link copied'); });
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var type = btn.getAttribute('data-type') || '';
+            var mode = (type === 'reviews') ? 'review' : 'social';
+            openStudioFromQR(mode);
         });
     });
-    document.querySelectorAll('.pa-qr-dock .pa-ig-copy').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            copyText(btn.getAttribute('data-copy') || '').then(function() {
-                toast('Link copied. Open Instagram to share.');
-            });
+
+    // Social icons inside QR mini cards also open Invite Studio
+    document.querySelectorAll('.pa-qr-dock .pa-qr-mini-social a, .pa-qr-dock .pa-qr-mini-social button').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var card = btn.closest('.pa-qr-mini');
+            var isReview = card && card.classList.contains('pa-qr-mini--reviews');
+            var mode = isReview ? 'review' : 'social';
+            openStudioFromQR(mode);
         });
     });
 })();

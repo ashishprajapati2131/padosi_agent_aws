@@ -548,7 +548,11 @@ def agent_dashboard(request):
     except Exception as e:
         logger.warning("Referral championship context error: %s", e)
 
+    from apps.agents.services.invite_studio import get_studio_context
+    studio_context = get_studio_context(request, agent, profile=profile, champ_participant=champ_participant)
+
     context = {
+        **studio_context,
         'champ_campaign': champ_campaign,
         'champ_participant': champ_participant,
         'champ_min_profile': champ_min_profile,
