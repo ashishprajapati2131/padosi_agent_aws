@@ -1,76 +1,642 @@
-{% if show_review_share_popup %}
-<div class="modal fade" id="reviewShareModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="reviewShareModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered pa-review-dialog">
-        <div class="modal-content border-0 shadow pa-review-content">
+        <div class="modal-content border-0 shadow-lg pa-review-content">
+            <!-- Self-contained Modal Styles to bypass any CSS caching -->
+            <style>
+                #reviewShareModal .pa-review-dialog {
+                    max-width: 580px !important;
+                    width: calc(100% - 24px) !important;
+                    margin: 1rem auto !important;
+                }
+                #reviewShareModal .pa-review-content {
+                    border-radius: 20px !important;
+                    overflow: hidden !important;
+                    border: none !important;
+                    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35) !important;
+                    background: #ffffff !important;
+                }
+                #reviewShareModal .pa-review-header {
+                    background: linear-gradient(135deg, #0d9488 0%, #1e40af 100%) !important;
+                    color: #ffffff !important;
+                    padding: 14px 20px !important;
+                    border: 0 !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                }
+                #reviewShareModal .pa-review-header .modal-title {
+                    font-size: 16px !important;
+                    font-weight: 800 !important;
+                    color: #ffffff !important;
+                    letter-spacing: -0.01em !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    margin: 0 !important;
+                }
+                #reviewShareModal .pa-review-close-btn {
+                    background: rgba(255, 255, 255, 0.18) !important;
+                    border: none !important;
+                    border-radius: 50% !important;
+                    width: 32px !important;
+                    height: 32px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    color: #ffffff !important;
+                    font-size: 20px !important;
+                    cursor: pointer !important;
+                    transition: background 0.15s ease !important;
+                    line-height: 1 !important;
+                    padding: 0 !important;
+                }
+                #reviewShareModal .pa-review-close-btn:hover {
+                    background: rgba(255, 255, 255, 0.3) !important;
+                }
+                #reviewShareModal .pa-review-body {
+                    padding: 18px 20px 14px !important;
+                    background: #ffffff !important;
+                }
+                #reviewShareModal .pa-review-tagline {
+                    color: #475569 !important;
+                    font-size: 12.5px !important;
+                    font-weight: 500 !important;
+                    line-height: 1.45 !important;
+                    margin: 0 0 14px !important;
+                }
+
+                /* 2-Section Tabs Segmented Control */
+                #reviewShareModal .pa-studio-tabs {
+                    display: grid !important;
+                    grid-template-columns: 1fr 1fr !important;
+                    background: #f1f5f9 !important;
+                    border-radius: 12px !important;
+                    padding: 4px !important;
+                    gap: 4px !important;
+                    margin-bottom: 14px !important;
+                }
+                #reviewShareModal .pa-studio-tab-btn {
+                    border: none !important;
+                    outline: none !important;
+                    background: transparent !important;
+                    padding: 9px 12px !important;
+                    font-size: 13px !important;
+                    font-weight: 700 !important;
+                    color: #64748b !important;
+                    border-radius: 9px !important;
+                    cursor: pointer !important;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 6px !important;
+                    white-space: nowrap !important;
+                }
+                #reviewShareModal .pa-studio-tab-btn:hover {
+                    color: #0f172a !important;
+                    background: rgba(255, 255, 255, 0.6) !important;
+                }
+                #reviewShareModal .pa-studio-tab-btn.active {
+                    background: #ffffff !important;
+                    color: #1e3a8a !important;
+                    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12) !important;
+                }
+
+                /* Language row */
+                #reviewShareModal .pa-studio-lang-row {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    margin-bottom: 12px !important;
+                }
+                #reviewShareModal .pa-studio-lang-label {
+                    font-size: 12.5px !important;
+                    font-weight: 700 !important;
+                    color: #1e293b !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 6px !important;
+                    margin: 0 !important;
+                }
+                #reviewShareModal .pa-studio-lang-select {
+                    border-radius: 8px !important;
+                    border: 1.5px solid #cbd5e1 !important;
+                    background-color: #ffffff !important;
+                    font-size: 12px !important;
+                    font-weight: 700 !important;
+                    color: #0f172a !important;
+                    padding: 5px 12px !important;
+                    cursor: pointer !important;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+                    outline: none !important;
+                }
+                #reviewShareModal .pa-studio-lang-select:focus {
+                    border-color: #2563eb !important;
+                }
+
+                /* Pre-drafted Template Chips */
+                #reviewShareModal .pa-studio-templates-box {
+                    margin-bottom: 12px !important;
+                }
+                #reviewShareModal .pa-studio-templates-header {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    margin-bottom: 6px !important;
+                }
+                #reviewShareModal .pa-studio-templates-label {
+                    font-size: 11.5px !important;
+                    font-weight: 700 !important;
+                    color: #64748b !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.04em !important;
+                }
+                #reviewShareModal .pa-studio-mode-pill {
+                    font-size: 11px !important;
+                    font-weight: 700 !important;
+                    padding: 2px 8px !important;
+                    border-radius: 999px !important;
+                }
+                #reviewShareModal .pa-studio-template-chips {
+                    display: flex !important;
+                    flex-wrap: wrap !important;
+                    gap: 6px !important;
+                }
+                #reviewShareModal .pa-studio-template-chip {
+                    border: 1.5px solid #e2e8f0 !important;
+                    background: #f8fafc !important;
+                    color: #334155 !important;
+                    border-radius: 999px !important;
+                    padding: 5px 12px !important;
+                    font-size: 11.5px !important;
+                    font-weight: 600 !important;
+                    cursor: pointer !important;
+                    transition: all 0.15s ease !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    gap: 4px !important;
+                    line-height: 1.2 !important;
+                    white-space: nowrap !important;
+                }
+                #reviewShareModal .pa-studio-template-chip:hover {
+                    background: #e2e8f0 !important;
+                    color: #0f172a !important;
+                    transform: translateY(-1px) !important;
+                }
+                #reviewShareModal .pa-studio-template-chip.active {
+                    background: #eff6ff !important;
+                    border-color: #3b82f6 !important;
+                    color: #1d4ed8 !important;
+                    font-weight: 700 !important;
+                    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2) !important;
+                }
+
+                /* Editable Textarea */
+                #reviewShareModal .pa-studio-textarea {
+                    width: 100% !important;
+                    min-height: 145px !important;
+                    border-radius: 12px !important;
+                    border: 1.5px solid #cbd5e1 !important;
+                    background: #f8fafc !important;
+                    color: #0f172a !important;
+                    font-size: 13px !important;
+                    line-height: 1.55 !important;
+                    padding: 12px 14px !important;
+                    resize: vertical !important;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+                    display: block !important;
+                    box-sizing: border-box !important;
+                    transition: all 0.2s ease !important;
+                }
+                #reviewShareModal .pa-studio-textarea:focus {
+                    background: #ffffff !important;
+                    border-color: #2563eb !important;
+                    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16) !important;
+                    outline: none !important;
+                }
+                #reviewShareModal .pa-studio-textarea-helper {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    margin-top: 6px !important;
+                    padding: 0 2px !important;
+                }
+                #reviewShareModal .pa-studio-textarea-tip {
+                    font-size: 11.5px !important;
+                    color: #64748b !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 4px !important;
+                }
+                #reviewShareModal .pa-studio-reset-btn {
+                    font-size: 11.5px !important;
+                    font-weight: 600 !important;
+                    color: #64748b !important;
+                    background: none !important;
+                    border: none !important;
+                    cursor: pointer !important;
+                    padding: 0 !important;
+                    text-decoration: none !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 4px !important;
+                }
+                #reviewShareModal .pa-studio-reset-btn:hover {
+                    color: #0f172a !important;
+                    text-decoration: underline !important;
+                }
+
+                /* Primary WhatsApp CTA Button */
+                #reviewShareModal .pa-studio-wa-btn {
+                    width: 100% !important;
+                    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+                    color: #ffffff !important;
+                    border: none !important;
+                    border-radius: 12px !important;
+                    padding: 12px 20px !important;
+                    font-size: 14.5px !important;
+                    font-weight: 800 !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 8px !important;
+                    box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35) !important;
+                    cursor: pointer !important;
+                    transition: all 0.2s ease !important;
+                    margin: 12px 0 14px !important;
+                    text-decoration: none !important;
+                }
+                #reviewShareModal .pa-studio-wa-btn:hover {
+                    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+                    box-shadow: 0 6px 20px rgba(22, 163, 74, 0.45) !important;
+                    transform: translateY(-1px) !important;
+                    color: #ffffff !important;
+                }
+                #reviewShareModal .pa-studio-wa-btn:active {
+                    transform: scale(0.99) !important;
+                }
+
+                /* Social Media & Copy Bar */
+                #reviewShareModal .pa-studio-social-bar {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    flex-wrap: wrap !important;
+                    gap: 8px !important;
+                    padding-top: 12px !important;
+                    border-top: 1px dashed #e2e8f0 !important;
+                }
+                #reviewShareModal .pa-studio-copy-action {
+                    border: 1.5px solid #cbd5e1 !important;
+                    background: #ffffff !important;
+                    color: #334155 !important;
+                    font-size: 12px !important;
+                    font-weight: 700 !important;
+                    border-radius: 10px !important;
+                    padding: 7px 14px !important;
+                    cursor: pointer !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    gap: 6px !important;
+                    transition: all 0.15s ease !important;
+                }
+                #reviewShareModal .pa-studio-copy-action:hover {
+                    background: #f1f5f9 !important;
+                    color: #0f172a !important;
+                    border-color: #94a3b8 !important;
+                }
+                #reviewShareModal .pa-studio-social-actions {
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 8px !important;
+                }
+                #reviewShareModal .pa-fab {
+                    width: 34px !important;
+                    height: 34px !important;
+                    border-radius: 50% !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    color: #ffffff !important;
+                    border: none !important;
+                    cursor: pointer !important;
+                    box-shadow: 0 3px 8px rgba(15, 23, 42, 0.16) !important;
+                    transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+                    font-size: 15px !important;
+                    padding: 0 !important;
+                }
+                #reviewShareModal .pa-fab:hover {
+                    transform: translateY(-2px) !important;
+                    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.22) !important;
+                }
+                #reviewShareModal .pa-fab-wa { background: #25D366 !important; }
+                #reviewShareModal .pa-fab-ig { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%) !important; }
+                #reviewShareModal .pa-fab-fb { background: #1877F2 !important; }
+                #reviewShareModal .pa-fab-in { background: #0A66C2 !important; }
+                #reviewShareModal .pa-fab-x { background: #111827 !important; }
+
+                /* Progress Meter */
+                #reviewShareModal .pa-review-progress-row {
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    font-size: 12.5px !important;
+                    font-weight: 700 !important;
+                    color: #0f172a !important;
+                    margin-top: 14px !important;
+                    margin-bottom: 5px !important;
+                }
+                #reviewShareModal .pa-review-count {
+                    color: #16a34a !important;
+                    font-weight: 800 !important;
+                }
+                #reviewShareModal .review-share-progress {
+                    height: 6px !important;
+                    background: #e2e8f0 !important;
+                    border-radius: 999px !important;
+                    overflow: hidden !important;
+                }
+                #reviewShareModal .review-share-progress span {
+                    display: block !important;
+                    height: 100% !important;
+                    background: linear-gradient(90deg, #16a34a, #2563eb) !important;
+                    border-radius: 999px !important;
+                }
+
+                /* Modal Footer */
+                #reviewShareModal .pa-review-footer {
+                    border: none !important;
+                    padding: 8px 20px 16px !important;
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    background: #ffffff !important;
+                }
+                #reviewShareModal #reviewShareLaterBtn {
+                    border: 1px solid #cbd5e1 !important;
+                    background: #ffffff !important;
+                    color: #475569 !important;
+                    font-weight: 600 !important;
+                    border-radius: 8px !important;
+                    padding: 6px 16px !important;
+                    cursor: pointer !important;
+                }
+                #reviewShareModal #reviewShareLaterBtn:hover {
+                    background: #f1f5f9 !important;
+                }
+                #reviewShareModal #reviewShareDontShowBtn {
+                    background: #1e3a8a !important;
+                    color: #ffffff !important;
+                    border: none !important;
+                    font-weight: 700 !important;
+                    border-radius: 8px !important;
+                    padding: 6px 16px !important;
+                    cursor: pointer !important;
+                }
+                #reviewShareModal #reviewShareDontShowBtn:hover {
+                    background: #172554 !important;
+                }
+
+                /* Mobile-specific responsive optimizations (Phones & small screens) */
+                @media (max-width: 576px) {
+                    #reviewShareModal .modal-dialog.pa-review-dialog {
+                        width: calc(100% - 16px) !important;
+                        max-width: 100% !important;
+                        margin: 0.5rem auto !important;
+                    }
+                    #reviewShareModal .pa-review-content {
+                        border-radius: 16px !important;
+                        max-height: 92vh !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                    }
+                    #reviewShareModal .pa-review-header {
+                        padding: 10px 14px !important;
+                        flex-shrink: 0 !important;
+                    }
+                    #reviewShareModal .pa-review-header .modal-title {
+                        font-size: 14px !important;
+                    }
+                    #reviewShareModal .pa-review-close-btn {
+                        width: 28px !important;
+                        height: 28px !important;
+                        font-size: 18px !important;
+                    }
+                    #reviewShareModal .pa-review-body {
+                        padding: 12px 14px 10px !important;
+                        overflow-y: auto !important;
+                        -webkit-overflow-scrolling: touch !important;
+                        flex: 1 1 auto !important;
+                    }
+                    #reviewShareModal .pa-review-tagline {
+                        font-size: 11px !important;
+                        line-height: 1.35 !important;
+                        margin: 0 0 10px !important;
+                    }
+                    #reviewShareModal .pa-studio-tabs {
+                        padding: 3px !important;
+                        gap: 3px !important;
+                        margin-bottom: 10px !important;
+                    }
+                    #reviewShareModal .pa-studio-tab-btn {
+                        padding: 8px 4px !important;
+                        font-size: 11.5px !important;
+                        gap: 4px !important;
+                        border-radius: 7px !important;
+                    }
+                    #reviewShareModal .pa-studio-lang-row {
+                        margin-bottom: 8px !important;
+                    }
+                    #reviewShareModal .pa-studio-lang-label {
+                        font-size: 11px !important;
+                    }
+                    #reviewShareModal .pa-studio-lang-select {
+                        font-size: 11.5px !important;
+                        padding: 4px 8px !important;
+                    }
+                    #reviewShareModal .pa-studio-templates-box {
+                        margin-bottom: 8px !important;
+                    }
+                    #reviewShareModal .pa-studio-templates-header {
+                        margin-bottom: 4px !important;
+                    }
+                    #reviewShareModal .pa-studio-templates-label {
+                        font-size: 10.5px !important;
+                    }
+                    #reviewShareModal .pa-studio-mode-pill {
+                        font-size: 10px !important;
+                        padding: 1px 6px !important;
+                    }
+                    #reviewShareModal .pa-studio-template-chips {
+                        display: flex !important;
+                        flex-wrap: nowrap !important;
+                        overflow-x: auto !important;
+                        -webkit-overflow-scrolling: touch !important;
+                        scrollbar-width: none !important;
+                        padding-bottom: 3px !important;
+                        gap: 5px !important;
+                    }
+                    #reviewShareModal .pa-studio-template-chips::-webkit-scrollbar {
+                        display: none !important;
+                    }
+                    #reviewShareModal .pa-studio-template-chip {
+                        flex-shrink: 0 !important;
+                        padding: 4px 10px !important;
+                        font-size: 11px !important;
+                    }
+                    #reviewShareModal .pa-studio-textarea {
+                        min-height: 110px !important;
+                        font-size: 13px !important;
+                        padding: 10px 12px !important;
+                        line-height: 1.45 !important;
+                        border-radius: 10px !important;
+                    }
+                    #reviewShareModal .pa-studio-textarea-tip {
+                        font-size: 10.5px !important;
+                    }
+                    #reviewShareModal .pa-studio-reset-btn {
+                        font-size: 10.5px !important;
+                    }
+                    #reviewShareModal .pa-studio-wa-btn {
+                        padding: 11px 16px !important;
+                        font-size: 14px !important;
+                        margin: 10px 0 10px !important;
+                        border-radius: 10px !important;
+                    }
+                    #reviewShareModal .pa-studio-social-bar {
+                        display: flex !important;
+                        flex-direction: column !important;
+                        align-items: stretch !important;
+                        gap: 8px !important;
+                        padding-top: 10px !important;
+                    }
+                    #reviewShareModal .pa-studio-copy-action {
+                        width: 100% !important;
+                        justify-content: center !important;
+                        padding: 8px 12px !important;
+                        font-size: 12px !important;
+                        border-radius: 8px !important;
+                    }
+                    #reviewShareModal .pa-studio-social-actions {
+                        width: 100% !important;
+                        justify-content: space-between !important;
+                        margin-top: 2px !important;
+                    }
+                    #reviewShareModal .pa-studio-social-actions .pa-fab {
+                        width: 38px !important;
+                        height: 38px !important;
+                        font-size: 17px !important;
+                    }
+                    #reviewShareModal .pa-review-progress-row {
+                        margin-top: 10px !important;
+                        font-size: 11.5px !important;
+                    }
+                    #reviewShareModal .pa-review-footer {
+                        padding: 8px 14px 12px !important;
+                        flex-shrink: 0 !important;
+                    }
+                    #reviewShareModal #reviewShareLaterBtn,
+                    #reviewShareModal #reviewShareDontShowBtn {
+                        padding: 6px 14px !important;
+                        font-size: 12px !important;
+                    }
+                }
+            </style>
+
+            <!-- Modal Header -->
             <div class="modal-header pa-review-header">
-                <h5 class="modal-title fw-bold d-flex align-items-center mb-0">
-                    <i class="fas fa-star mr-2" style="color:#fbbf24;"></i>
-                    Collect reviews on PadosiAgent
+                <h5 class="modal-title">
+                    <i class="fas fa-paper-plane mr-2" style="color:#fbbf24; margin-right:8px;"></i>
+                    PadosiAgent Invite &amp; Share Studio
                 </h5>
-                <button type="button" class="btn text-white p-0" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
-                    <span style="font-size:20px;">&times;</span>
+                <button type="button" class="pa-review-close-btn" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                    &times;
                 </button>
             </div>
+
+            <!-- Modal Body -->
             <div class="modal-body pa-review-body">
                 <p class="pa-review-tagline">
-                    Share that you are on <strong>PadosiAgent</strong> and ask clients to leave a review and rating.
-                    More reviews help unlock dashboard features.
+                    Send pre-drafted or customized invites to collect 5-star client reviews or share your digital presence across social networks.
                 </p>
 
-                {% comment %}QR code section hidden per requirement — code preserved below
-                {% if qr_service_enabled and qr_items %}
-                <h6 class="pa-review-section-title">Share your QR codes</h6>
-                <div class="pa-qr-popup-grid">
-                    {% for item in qr_items %}
-                    <div class="pa-qr-popup-item pa-qr-mini--{{ item.type }}">
-                        <div class="pa-qr-hover">
-                            <img src="{{ item.preview_url }}" alt="{{ item.label }} QR" class="pa-qr-popup-thumb" loading="lazy">
-                            <div class="pa-qr-hover-actions">
-                                <button type="button" class="pa-qr-chip pa-qr-view-btn" title="View" aria-label="View {{ item.label }} QR"
-                                    data-src="{{ item.preview_url }}" data-label="{{ item.label }}">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                {% if qr_allow_download %}
-                                <a class="pa-qr-chip" href="{{ item.download_url }}" title="Download" aria-label="Download {{ item.label }} QR">
-                                    <i class="fas fa-download"></i>
-                                </a>
-                                {% endif %}
-                                <button type="button" class="pa-qr-chip pa-qr-share-btn" title="Share" aria-label="Share {{ item.label }} QR"
-                                    data-url="{{ item.target_url }}" data-label="{{ item.label }}">
-                                    <i class="fas fa-share-alt"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="pa-qr-mini-label">{{ item.label }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                {% endcomment %}
-
-
-                <div class="pa-review-social">
-                    <a class="pa-fab pa-fab-wa" href="https://api.whatsapp.com/send?text={{ share_text_encoded }}" target="_blank" rel="noopener" aria-label="Share on WhatsApp">
-                        <i class="fab fa-whatsapp"></i>
-                    </a>
-                    <button type="button" class="pa-fab pa-fab-ig pa-ig-copy" data-copy="{{ share_profile_url }}" aria-label="Copy link for Instagram">
-                        <i class="fab fa-instagram"></i>
+                <!-- Section Switcher Tabs -->
+                <div class="pa-studio-tabs" role="tablist">
+                    <button type="button" class="pa-studio-tab-btn active" id="studioTabReview" data-mode="review">
+                        <i class="fas fa-star" style="color:#f59e0b;"></i> <span>1. Review &amp; Rating</span>
                     </button>
-                    <a class="pa-fab pa-fab-fb" href="https://www.facebook.com/sharer/sharer.php?u={{ share_url_encoded }}" target="_blank" rel="noopener" aria-label="Share on Facebook">
-                        <i class="fab fa-facebook-f"></i>
-                    </a>
-                    <a class="pa-fab pa-fab-in" href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url_encoded }}" target="_blank" rel="noopener" aria-label="Share on LinkedIn">
-                        <i class="fab fa-linkedin-in"></i>
-                    </a>
-                    <a class="pa-fab pa-fab-x" href="https://twitter.com/intent/tweet?text={{ share_text_encoded }}&url={{ share_url_encoded }}" target="_blank" rel="noopener" aria-label="Share on X">
-                        <i class="fab fa-x-twitter"></i>
-                    </a>
-                </div>
-                <div class="pa-review-social-labels">
-                    <span>WhatsApp</span><span>Instagram</span><span>Facebook</span><span>LinkedIn</span><span>X</span>
+                    <button type="button" class="pa-studio-tab-btn" id="studioTabSocial" data-mode="social">
+                        <i class="fas fa-share-alt" style="color:#2563eb;"></i> <span>2. Social Media Share</span>
+                    </button>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center pa-review-progress-row">
+                <!-- Language Selector Row -->
+                <div class="pa-studio-lang-row">
+                    <label for="studioLangSelect" class="pa-studio-lang-label">
+                        <i class="fas fa-language text-primary" style="font-size:16px;"></i> Select regional language:
+                    </label>
+                    <select id="studioLangSelect" class="pa-studio-lang-select">
+                        <option value="en" selected>English</option>
+                        <option value="hi">हिन्दी (Hindi)</option>
+                        <option value="gu">ગુજરાતી (Gujarati)</option>
+                        <option value="mr">मराठी (Marathi)</option>
+                    </select>
+                </div>
+
+                <!-- Pre-drafted Template Chips -->
+                <div class="pa-studio-templates-box">
+                    <div class="pa-studio-templates-header">
+                        <span class="pa-studio-templates-label">Pre-drafted Messages:</span>
+                        <span id="studioModeBadge" class="pa-studio-mode-pill bg-warning text-dark border">⭐ Review Mode</span>
+                    </div>
+                    <div id="studioTemplateChips" class="pa-studio-template-chips">
+                        <!-- Chips rendered dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- Custom Editable Message Box -->
+                <div style="margin-bottom: 6px;">
+                    <textarea id="studioMessageBox" class="pa-studio-textarea" rows="6" placeholder="Type or edit your message here..."></textarea>
+                    <div class="pa-studio-textarea-helper">
+                        <span class="pa-studio-textarea-tip">
+                            <i class="fas fa-pen text-primary"></i> You can freely edit this text before sending
+                        </span>
+                        <button type="button" id="studioResetBtn" class="pa-studio-reset-btn">
+                            <i class="fas fa-undo-alt"></i> Reset to template
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Primary CTA: Send on WhatsApp Now -->
+                <button type="button" id="studioWaBtn" class="pa-studio-wa-btn">
+                    <i class="fab fa-whatsapp" style="font-size:19px;"></i> Send on WhatsApp Now
+                </button>
+
+                <!-- Quick Share & Social Row -->
+                <div class="pa-studio-social-bar">
+                    <button type="button" class="pa-studio-copy-action" id="studioCopyBtn" title="Copy Message">
+                        <i class="fas fa-copy"></i> Copy Message
+                    </button>
+                    <div class="pa-studio-social-actions">
+                        <span style="font-size:11.5px; font-weight:700; color:#64748b; margin-right:4px;">Share:</span>
+                        <button type="button" class="pa-fab pa-fab-wa" id="studioQuickWaBtn" title="WhatsApp" aria-label="Share on WhatsApp">
+                            <i class="fab fa-whatsapp"></i>
+                        </button>
+                        <button type="button" class="pa-fab pa-fab-ig" id="studioIgBtn" title="Instagram (Copy &amp; Open)" aria-label="Share on Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </button>
+                        <button type="button" class="pa-fab pa-fab-fb" id="studioFbBtn" title="Facebook" aria-label="Share on Facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </button>
+                        <button type="button" class="pa-fab pa-fab-in" id="studioInBtn" title="LinkedIn" aria-label="Share on LinkedIn">
+                            <i class="fab fa-linkedin-in"></i>
+                        </button>
+                        <button type="button" class="pa-fab pa-fab-x" id="studioXBtn" title="X (Twitter)" aria-label="Share on X">
+                            <i class="fab fa-x-twitter"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reviews Collected Progress Row -->
+                <div class="pa-review-progress-row">
                     <span>Reviews collected</span>
                     <span class="pa-review-count">{{ review_count_display }} / {{ review_growth.min_reviews }}</span>
                 </div>
@@ -78,20 +644,27 @@
                     <span style="width:{% widthratio review_count_display review_growth.min_reviews 100 %}%;max-width:100%;"></span>
                 </div>
             </div>
+
+            <!-- Modal Footer -->
             <div class="modal-footer pa-review-footer">
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="reviewShareLaterBtn" data-dismiss="modal" data-bs-dismiss="modal">Later</button>
-                <button type="button" class="btn btn-sm text-white" id="reviewShareDontShowBtn" style="background:#1e3a8a;">Don't show again</button>
+                <button type="button" id="reviewShareLaterBtn" data-dismiss="modal" data-bs-dismiss="modal">Later</button>
+                <button type="button" id="reviewShareDontShowBtn">Don't show again</button>
             </div>
         </div>
     </div>
 </div>
+
 <script>
 (function() {
     var delay = {{ review_growth.popup_delay_ms|default:2500 }};
     var storageKey = 'pa_review_share_hide_{{ agent.id }}';
-    function showModal() {
-        if (window.sessionStorage && sessionStorage.getItem(storageKey + '_session')) return;
-        if (window.localStorage && localStorage.getItem(storageKey)) return;
+    var shouldAutoShow = {{ show_review_share_popup|yesno:"true,false" }};
+
+    function showModal(force) {
+        if (!force) {
+            if (window.sessionStorage && sessionStorage.getItem(storageKey + '_session')) return;
+            if (window.localStorage && localStorage.getItem(storageKey)) return;
+        }
         var el = document.getElementById('reviewShareModal');
         if (!el) return;
         if (typeof $ !== 'undefined' && $.fn.modal) {
@@ -100,7 +673,182 @@
             new bootstrap.Modal(el).show();
         }
     }
-    setTimeout(showModal, delay);
+
+    // Global testing helper
+    window.openInviteStudio = function(mode) {
+        if (mode && (mode === 'review' || mode === 'social')) {
+            currentMode = mode;
+            currentTemplateIdx = 0;
+            if (typeof updateStudioUI === 'function') {
+                updateStudioUI(true);
+            }
+        }
+        showModal(true);
+    };
+
+    // Open immediately if URL hash is #invite-studio, #share-studio, or #review-popup
+    if (window.location.hash === '#invite-studio' || window.location.hash === '#share-studio' || window.location.hash === '#review-popup') {
+        setTimeout(function() { showModal(true); }, 350);
+    } else if (shouldAutoShow) {
+        setTimeout(function() { showModal(false); }, delay);
+    }
+
+    // Studio Data & Variables
+    var studioTemplates = {{ studio_templates_json|safe }};
+    var agentName = "{{ studio_agent_name|escapejs }}";
+    var profileUrl = "{{ studio_profile_url|escapejs }}";
+    var reviewUrl = "{{ studio_review_url|escapejs }}";
+    var cardUrl = "{{ studio_card_url|escapejs }}";
+    var referralUrl = "{{ studio_referral_url|escapejs }}";
+    var digitalPrice = "{{ studio_dig_price|escapejs }}";
+    var profPrice = "{{ studio_prof_price|escapejs }}";
+
+    var currentMode = 'review'; // 'review' or 'social'
+    var currentLang = 'en';     // 'en', 'hi', 'gu', 'mr'
+    var currentTemplateIdx = 0;
+
+    var modeBadge = document.getElementById('studioModeBadge');
+    var langSelect = document.getElementById('studioLangSelect');
+    var chipsContainer = document.getElementById('studioTemplateChips');
+    var messageBox = document.getElementById('studioMessageBox');
+    var resetBtn = document.getElementById('studioResetBtn');
+    var waBtn = document.getElementById('studioWaBtn');
+    var copyBtn = document.getElementById('studioCopyBtn');
+    var tabReview = document.getElementById('studioTabReview');
+    var tabSocial = document.getElementById('studioTabSocial');
+
+    function renderTemplate(rawText) {
+        if (!rawText) return '';
+        return rawText
+            .replace(/\{\{agent_name\}\}/g, agentName)
+            .replace(/\{\{profile_link\}\}/g, profileUrl)
+            .replace(/\{\{review_link\}\}/g, reviewUrl)
+            .replace(/\{\{card_link\}\}/g, cardUrl)
+            .replace(/\{\{referral_link\}\}/g, referralUrl)
+            .replace(/\{\{digital_price\}\}/g, digitalPrice)
+            .replace(/\{\{professional_price\}\}/g, profPrice);
+    }
+
+    function getTemplatesList() {
+        var modeObj = studioTemplates[currentMode];
+        if (!modeObj || !modeObj.languages) return [];
+        var langObj = modeObj.languages[currentLang] || modeObj.languages['en'];
+        return (langObj && langObj.templates) ? langObj.templates : [];
+    }
+
+    function updateStudioUI(resetText) {
+        // Update tab buttons active state
+        if (tabReview && tabSocial) {
+            tabReview.classList.toggle('active', currentMode === 'review');
+            tabSocial.classList.toggle('active', currentMode === 'social');
+        }
+
+        // Update mode badge
+        if (modeBadge) {
+            if (currentMode === 'review') {
+                modeBadge.innerText = '⭐ Review Mode';
+                modeBadge.className = 'pa-studio-mode-pill bg-warning text-dark border';
+            } else {
+                modeBadge.innerText = '🌐 Social Share Mode';
+                modeBadge.className = 'pa-studio-mode-pill bg-primary text-white border';
+            }
+        }
+
+        var templates = getTemplatesList();
+        if (currentTemplateIdx >= templates.length) {
+            currentTemplateIdx = 0;
+        }
+
+        // Render chips
+        if (chipsContainer) {
+            chipsContainer.innerHTML = '';
+            templates.forEach(function(tmpl, idx) {
+                var chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'pa-studio-template-chip' + (idx === currentTemplateIdx ? ' active' : '');
+                chip.innerText = tmpl.title || ('Template ' + (idx + 1));
+                chip.addEventListener('click', function() {
+                    currentTemplateIdx = idx;
+                    document.querySelectorAll('.pa-studio-template-chip').forEach(function(c, i) {
+                        c.classList.toggle('active', i === idx);
+                    });
+                    if (messageBox) {
+                        messageBox.value = renderTemplate(tmpl.text);
+                    }
+                });
+                chipsContainer.appendChild(chip);
+            });
+        }
+
+        // Update message box if requested or empty
+        if (resetText !== false && messageBox && templates[currentTemplateIdx]) {
+            messageBox.value = renderTemplate(templates[currentTemplateIdx].text);
+        }
+    }
+
+    // Tab switching
+    if (tabReview) {
+        tabReview.addEventListener('click', function() {
+            if (currentMode === 'review') return;
+            currentMode = 'review';
+            currentTemplateIdx = 0;
+            updateStudioUI(true);
+        });
+    }
+
+    if (tabSocial) {
+        tabSocial.addEventListener('click', function() {
+            if (currentMode === 'social') return;
+            currentMode = 'social';
+            currentTemplateIdx = 0;
+            updateStudioUI(true);
+        });
+    }
+
+    // Language change
+    if (langSelect) {
+        langSelect.addEventListener('change', function() {
+            currentLang = langSelect.value;
+            currentTemplateIdx = 0;
+            updateStudioUI(true);
+        });
+    }
+
+    // Reset button
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            var templates = getTemplatesList();
+            if (messageBox && templates[currentTemplateIdx]) {
+                messageBox.value = renderTemplate(templates[currentTemplateIdx].text);
+                toast('Message reset to default template.');
+            }
+        });
+    }
+
+    function getCurrentMessage() {
+        if (messageBox && messageBox.value && messageBox.value.trim()) {
+            return messageBox.value.trim();
+        }
+        var templates = getTemplatesList();
+        if (templates[currentTemplateIdx]) {
+            return renderTemplate(templates[currentTemplateIdx].text);
+        }
+        return 'Connect with me on PadosiAgent: ' + profileUrl;
+    }
+
+    function openWhatsApp() {
+        var msg = getCurrentMessage();
+        var url = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(msg);
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
+    if (waBtn) {
+        waBtn.addEventListener('click', openWhatsApp);
+    }
+    var quickWaBtn = document.getElementById('studioQuickWaBtn');
+    if (quickWaBtn) {
+        quickWaBtn.addEventListener('click', openWhatsApp);
+    }
 
     function copyText(text) {
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -108,70 +856,97 @@
         }
         var ta = document.createElement('textarea');
         ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
         document.body.appendChild(ta);
+        ta.focus();
         ta.select();
-        document.execCommand('copy');
+        try {
+            document.execCommand('copy');
+        } catch (e) {}
         document.body.removeChild(ta);
         return Promise.resolve();
     }
+
     function toast(msg) {
         if (typeof Swal !== 'undefined') {
-            Swal.fire({ toast: true, position: 'top-end', timer: 2200, showConfirmButton: false, icon: 'success', title: msg });
+            Swal.fire({ toast: true, position: 'top-end', timer: 2500, showConfirmButton: false, icon: 'success', title: msg });
         } else {
             alert(msg);
         }
     }
-    document.querySelectorAll('#reviewShareModal .pa-ig-copy').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            copyText(btn.getAttribute('data-copy') || '').then(function() {
-                toast('Link copied. Open Instagram to share.');
+
+    // Copy Message Button
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+            var msg = getCurrentMessage();
+            copyText(msg).then(function() {
+                toast('Message copied to clipboard! Ready to paste & send.');
             });
         });
-    });
-    document.querySelectorAll('#reviewShareModal .pa-qr-share-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var url = btn.getAttribute('data-url') || '';
-            var label = btn.getAttribute('data-label') || 'QR';
-            var payload = { title: 'PadosiAgent ' + label, text: 'I am on PadosiAgent. Scan my ' + label + ' QR.', url: url };
-            if (navigator.share) {
-                navigator.share(payload).catch(function() {});
-                return;
-            }
-            copyText(url).then(function() { toast(label + ' link copied'); });
+    }
+
+    // Social buttons
+    var igBtn = document.getElementById('studioIgBtn');
+    if (igBtn) {
+        igBtn.addEventListener('click', function() {
+            var msg = getCurrentMessage();
+            copyText(msg).then(function() {
+                toast('Message copied! Open Instagram to paste in Story or DM.');
+            });
         });
-    });
-    document.querySelectorAll('#reviewShareModal .pa-qr-view-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var src = btn.getAttribute('data-src') || '';
-            var label = btn.getAttribute('data-label') || 'QR code';
-            var img = document.getElementById('qrPreviewImg');
-            if (img) {
-                img.src = src;
-                img.alt = label + ' — PadosiAgent';
-            }
-            var el = document.getElementById('qrPreviewModal');
-            if (!el) return;
-            document.body.classList.add('pa-qr-preview-open');
+    }
+
+    var fbBtn = document.getElementById('studioFbBtn');
+    if (fbBtn) {
+        fbBtn.addEventListener('click', function() {
+            var targetUrl = (currentMode === 'review') ? reviewUrl : profileUrl;
+            var msg = getCurrentMessage();
+            var url = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(targetUrl) + '&quote=' + encodeURIComponent(msg);
+            window.open(url, '_blank', 'noopener,noreferrer');
+        });
+    }
+
+    var inBtn = document.getElementById('studioInBtn');
+    if (inBtn) {
+        inBtn.addEventListener('click', function() {
+            var targetUrl = (currentMode === 'review') ? reviewUrl : profileUrl;
+            var url = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(targetUrl);
+            window.open(url, '_blank', 'noopener,noreferrer');
+        });
+    }
+
+    var xBtn = document.getElementById('studioXBtn');
+    if (xBtn) {
+        xBtn.addEventListener('click', function() {
+            var msg = getCurrentMessage();
+            var url = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(msg);
+            window.open(url, '_blank', 'noopener,noreferrer');
+        });
+    }
+
+    // Later & Don't show again
+    var laterBtn = document.getElementById('reviewShareLaterBtn');
+    if (laterBtn) {
+        laterBtn.addEventListener('click', function() {
+            try { sessionStorage.setItem(storageKey + '_session', '1'); } catch (e) {}
+        });
+    }
+
+    var dontShowBtn = document.getElementById('reviewShareDontShowBtn');
+    if (dontShowBtn) {
+        dontShowBtn.addEventListener('click', function() {
+            try { localStorage.setItem(storageKey, '1'); } catch (e) {}
             if (typeof $ !== 'undefined' && $.fn.modal) {
-                $('#qrPreviewModal').modal('show');
+                $('#reviewShareModal').modal('hide');
             } else if (typeof bootstrap !== 'undefined') {
-                new bootstrap.Modal(el).show();
+                var inst = bootstrap.Modal.getInstance(document.getElementById('reviewShareModal'));
+                if (inst) inst.hide();
             }
         });
-    });
-    var later = document.getElementById('reviewShareLaterBtn');
-    if (later) later.addEventListener('click', function() {
-        try { sessionStorage.setItem(storageKey + '_session', '1'); } catch (e) {}
-    });
-    var never = document.getElementById('reviewShareDontShowBtn');
-    if (never) never.addEventListener('click', function() {
-        try { localStorage.setItem(storageKey, '1'); } catch (e) {}
-        if (typeof $ !== 'undefined' && $.fn.modal) $('#reviewShareModal').modal('hide');
-        else if (typeof bootstrap !== 'undefined') {
-            var inst = bootstrap.Modal.getInstance(document.getElementById('reviewShareModal'));
-            if (inst) inst.hide();
-        }
-    });
+    }
+
+    // Initialize UI on load
+    updateStudioUI(true);
 })();
 </script>
-{% endif %}
