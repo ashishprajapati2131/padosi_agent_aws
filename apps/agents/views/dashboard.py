@@ -2452,9 +2452,19 @@ def agent_og_image(request, agent_id=None, slug=None):
         if not agent:
             try:
                 from apps.referral_championship.models import ChampionshipParticipant
-                participant = ChampionshipParticipant.objects.filter(referral_id=slug).select_related('agent').first()
-                if participant and participant.agent:
-                    agent = participant.agent
+                participant = ChampionshipParticipant.objects.filter(referral_id=slug.strip().upper()).select_related('agent').first()
+                if participant:
+                    from django.conf import settings
+                    import os
+                    champ_img_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'championship_og.jpg')
+                    if os.path.exists(champ_img_path):
+                        with open(champ_img_path, 'rb') as f:
+                            content = f.read()
+                        response = HttpResponse(content, content_type="image/jpeg")
+                        response["Cache-Control"] = "public, max-age=86400"
+                        return response
+                    if participant.agent:
+                        agent = participant.agent
             except Exception:
                 pass
         if not agent:
