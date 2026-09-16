@@ -4,6 +4,10 @@ from apps.referral_championship.views import landing, agent_dashboard
 app_name = 'championship'
 
 urlpatterns = [
+    # OG Image
+    path('og-image/', landing.championship_og_image, name='og_image'),
+    path('og-image/<str:ref_id>/preview.jpg', landing.championship_og_image, name='og_image_preview'),
+
     # Public invitation landing
     path('', landing.referral_landing_page, {'ref_id': 'general'}, name='public_root'),
     path('join/<str:ref_id>/', landing.referral_landing_page, name='public_landing'),

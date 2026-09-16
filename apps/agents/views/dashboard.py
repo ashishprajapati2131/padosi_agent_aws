@@ -2437,7 +2437,7 @@ def agent_capture_lead(request):
         return JsonResponse({'success': False, 'message': 'An unexpected error occurred.'}, status=500)
 
 
-def agent_og_image(request, agent_id):
+def agent_og_image(request, agent_id=None, slug=None):
     from django.core.cache import cache
     from django.http import HttpResponse, Http404
     from PIL import Image
@@ -2445,12 +2445,44 @@ def agent_og_image(request, agent_id):
     from apps.agents.models import Agent, og_image_cache_key
     from apps.agents.services.og_image import render_agent_og_jpeg
 
-    try:
-        agent = Agent.objects.get(id=agent_id)
-    except Agent.DoesNotExist:
+    agent = None
+    if agent_id:
+        agent = Agent.objects.filter(id=agent_id).first()
+    elif slug:
+        agent = Agent.objects.filter(profile__slug=slug).first()
+        if not agent and slug.isdigit():
+            agent = Agent.objects.filter(id=int(slug)).first()
+        if not agent:
+            try:
+                from apps.referral_championship.models import ChampionshipParticipant
+                participant = ChampionshipParticipant.objects.filter(referral_id=slug.strip().upper()).select_related('agent').first()
+                if participant:
+                    from django.conf import settings
+                    import os
+                    champ_img_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'championship_og.jpg')
+                    if os.path.exists(champ_img_path):
+                        with open(champ_img_path, 'rb') as f:
+                            content = f.read()
+                        response = HttpResponse(content, content_type="image/jpeg")
+                        response["Cache-Control"] = "public, max-age=86400"
+                        return response
+                    if participant.agent:
+                        agent = participant.agent
+            except Exception:
+                pass
+        if not agent:
+            try:
+                from apps.admin_panel.models.referral_code import ReferralCode
+                ref_obj = ReferralCode.objects.filter(code=slug).select_related('agent').first()
+                if ref_obj and ref_obj.agent:
+                    agent = ref_obj.agent
+            except Exception:
+                pass
+
+    if not agent:
         raise Http404("Agent not found")
 
-    cache_key = og_image_cache_key(agent_id)
+    cache_key = og_image_cache_key(agent.id)
     nocache = request.GET.get("nocache") == "1"
 
     if not nocache:

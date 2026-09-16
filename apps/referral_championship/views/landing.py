@@ -202,3 +202,19 @@ def track_google_review_ajax(request):
         link_clicked_at=timezone.now()
     )
     return JsonResponse({'success': True})
+
+
+def championship_og_image(request, ref_id=None):
+    """Serve the high-res Agent Championship promotional OG image."""
+    import os
+    from django.conf import settings
+    from django.http import HttpResponse, Http404
+
+    champ_img_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'championship_og.jpg')
+    if os.path.exists(champ_img_path):
+        with open(champ_img_path, 'rb') as f:
+            content = f.read()
+        response = HttpResponse(content, content_type="image/jpeg")
+        response["Cache-Control"] = "public, max-age=86400"
+        return response
+    raise Http404("Championship OG image not found")

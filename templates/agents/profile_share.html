@@ -15,6 +15,7 @@
 {% block canonical_url %}{{ request.scheme }}://{{ request.get_host }}{{ request.path }}{% endblock %}
 
 {% block extra_head %}
+    <meta property="og:image:secure_url" content="{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:type" content="image/jpeg">
