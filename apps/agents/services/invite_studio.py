@@ -319,6 +319,36 @@ STUDIO_TEMPLATES = {
 }
 
 
+def get_invite_studio_config():
+    """
+    Fetches the dynamic Invite & Share Studio config from SiteSetting DB table.
+    Falls back to STUDIO_TEMPLATES default dictionary if not set.
+    """
+    from apps.home.models.site_setting import SiteSetting
+    default_config = {
+        'modal_title': 'PadosiAgent Invite & Share Studio',
+        'modal_subtitle': 'Send pre-drafted or customized invites to collect 5-star client reviews or share your digital presence across social networks.',
+        'tab_review_label': 'Review & Rating',
+        'tab_social_label': 'Social Media Share',
+        'digital_price': '999',
+        'professional_price': '4999',
+        'templates': STUDIO_TEMPLATES,
+    }
+    config = SiteSetting.get_value('invite_studio_config', default_config)
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except Exception:
+            config = default_config
+    if not isinstance(config, dict):
+        config = default_config
+
+    for k, v in default_config.items():
+        if k not in config or config[k] is None or config[k] == '':
+            config[k] = v
+    return config
+
+
 def render_template_text(raw_text, agent_name, profile_link, review_link, card_link, referral_link, digital_price="999", professional_price="4999"):
     """
     Replaces template variables with real agent values.
@@ -326,7 +356,7 @@ def render_template_text(raw_text, agent_name, profile_link, review_link, card_l
     if not raw_text:
         return ""
     return (
-        raw_text
+        str(raw_text)
         .replace("{{agent_name}}", agent_name or "Insurance Advisor")
         .replace("{{profile_link}}", profile_link or "")
         .replace("{{review_link}}", review_link or "")
@@ -340,7 +370,13 @@ def render_template_text(raw_text, agent_name, profile_link, review_link, card_l
 def get_studio_context(request, agent, profile=None, champ_participant=None):
     """
     Builds all context variables needed for the WhatsApp & Social Invite Studio.
+    Integrates dynamic admin configuration from SiteSetting.
     """
+    config = get_invite_studio_config()
+    templates = config.get('templates') or STUDIO_TEMPLATES
+    dig_price = str(config.get('digital_price', '999'))
+    prof_price = str(config.get('professional_price', '4999'))
+
     slug = (profile.slug if profile and profile.slug else '') or getattr(agent, 'agent_slug', '') or str(agent.id)
     state_code = agent.state_code() if callable(getattr(agent, 'state_code', None)) else getattr(agent, 'state_code', 'gj')
     
@@ -378,12 +414,22 @@ def get_studio_context(request, agent, profile=None, champ_participant=None):
         referral_url = f"{scheme}://{domain}/agent-registration/join/{ref_id}/"
 
     agent_name = (profile.display_name if profile and profile.display_name else '') or agent.fullname or 'Insurance Agent'
-    dig_price = "999"
-    prof_price = "4999"
 
-    # Default initial message for Review & Rating (Section 1)
+    # Initial template text resolution
+    rev_tpl_text = ''
+    try:
+        rev_tpl_text = templates['review']['languages']['en']['templates'][0]['text']
+    except Exception:
+        rev_tpl_text = STUDIO_TEMPLATES['review']['languages']['en']['templates'][0]['text']
+
+    soc_tpl_text = ''
+    try:
+        soc_tpl_text = templates['social']['languages']['en']['templates'][0]['text']
+    except Exception:
+        soc_tpl_text = STUDIO_TEMPLATES['social']['languages']['en']['templates'][0]['text']
+
     default_review_text = render_template_text(
-        STUDIO_TEMPLATES['review']['languages']['en']['templates'][0]['text'],
+        rev_tpl_text,
         agent_name=agent_name,
         profile_link=profile_url,
         review_link=review_url,
@@ -393,9 +439,8 @@ def get_studio_context(request, agent, profile=None, champ_participant=None):
         professional_price=prof_price,
     )
 
-    # Default initial message for Social Share (Section 2)
     default_social_text = render_template_text(
-        STUDIO_TEMPLATES['social']['languages']['en']['templates'][0]['text'],
+        soc_tpl_text,
         agent_name=agent_name,
         profile_link=profile_url,
         review_link=review_url,
@@ -406,7 +451,12 @@ def get_studio_context(request, agent, profile=None, champ_participant=None):
     )
 
     return {
-        'studio_templates_json': json.dumps(STUDIO_TEMPLATES, ensure_ascii=False),
+        'studio_config': config,
+        'studio_templates_json': json.dumps(templates, ensure_ascii=False),
+        'studio_modal_title': config.get('modal_title', 'PadosiAgent Invite & Share Studio'),
+        'studio_modal_subtitle': config.get('modal_subtitle', 'Send pre-drafted or customized invites to collect 5-star client reviews or share your digital presence across social networks.'),
+        'studio_tab_review_label': config.get('tab_review_label', 'Review & Rating'),
+        'studio_tab_social_label': config.get('tab_social_label', 'Social Media Share'),
         'studio_profile_url': profile_url,
         'studio_review_url': review_url,
         'studio_card_url': card_url,

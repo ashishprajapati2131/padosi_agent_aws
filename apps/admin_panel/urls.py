@@ -304,6 +304,8 @@ urlpatterns = [
     # Phase 5: Content Manager
     path('admin/content/about/',          content.about,          name='admin_content_about'),
     path('admin/content/about/update/',   content.update_about,   name='admin_content_about_update'),
+    path('admin/content/invite-studio/',        content.invite_studio,        name='admin_content_invite_studio'),
+    path('admin/content/invite-studio/update/', content.update_invite_studio, name='admin_content_invite_studio_update'),
     path('admin/content/faqs/',                          content.faqs,                name='admin_content_faqs'),
     path('admin/content/faqs/settings/update/',          content.faq_settings_update, name='admin_content_faqs_settings_update'),
     path('admin/content/faqs/store/',                    content.faq_store,           name='admin_content_faqs_store'),

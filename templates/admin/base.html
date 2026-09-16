@@ -669,6 +669,11 @@
             {% if is_super_admin or 'content' in admin_permissions %}
             <div class="menu-label">Content Control</div>
 
+            <a href="{% url 'admin_content_invite_studio' %}"
+                class="menu-item {% if '/admin/content/invite-studio/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-share-nodes"></i> Invite Studio Editor
+            </a>
+
             <a href="{% url 'admin_investment_types_index' %}"
                 class="menu-item {% if '/admin/investment-types/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-chart-pie"></i> Investment Types

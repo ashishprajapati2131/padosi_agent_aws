@@ -741,12 +741,34 @@ def _deactivate_superseded_subscriptions(agent, keep_subscription_id):
 
 
 def _display_plan_name(agent, pricing_config):
-    """Dashboard header plan label — agent.plan_type is the source of truth."""
-    from apps.agents.services.feature_unlock import normalize_plan_slug
+    """Dashboard header plan label — checks active subscription selected_plan first to match admin listing, falling back to agent.plan_type slug."""
+    from apps.agents.services.feature_unlock import normalize_plan_slug, plan_slug_from_name
+
+    active_sub = getattr(agent, 'activeSubscription', None)
+    if not active_sub and hasattr(agent, 'subscriptions'):
+        try:
+            active_sub = (
+                agent.subscriptions.filter(status='active')
+                .order_by('-starts_at', '-created_at', '-id')
+                .first()
+            ) or agent.subscriptions.order_by('-id').first()
+        except Exception:
+            active_sub = None
+
+    if active_sub and active_sub.selected_plan:
+        raw_plan = str(active_sub.selected_plan).strip()
+        try:
+            decoded = json.loads(raw_plan)
+            if isinstance(decoded, dict) and decoded.get('name'):
+                raw_plan = str(decoded['name']).strip()
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+        if raw_plan:
+            return raw_plan
 
     slug = normalize_plan_slug(getattr(agent, 'plan_type', '') or '')
-    starter_name = (pricing_config.get('starter') or {}).get('name', "Starter's Plan")
-    prof_name = (pricing_config.get('professional') or {}).get('name', "Professional's Plan")
+    starter_name = (pricing_config.get('starter') or {}).get('name') or "Starter's Plan"
+    prof_name = (pricing_config.get('professional') or {}).get('name') or "Professional's Plan"
 
     if slug == 'professional':
         return prof_name
@@ -758,22 +780,6 @@ def _display_plan_name(agent, pricing_config):
         from apps.home.models import SiteSetting
         ex_cfg = SiteSetting.get_value('exclusive_plan_config') or {}
         return ex_cfg.get('name') or 'Exclusive Plan'
-
-    active_sub = getattr(agent, 'activeSubscription', None)
-    if active_sub and active_sub.selected_plan:
-        raw_plan = str(active_sub.selected_plan)
-        try:
-            decoded = json.loads(raw_plan)
-            if isinstance(decoded, dict) and decoded.get('name'):
-                raw_plan = str(decoded['name'])
-        except (json.JSONDecodeError, TypeError, ValueError):
-            pass
-        named_slug = plan_slug_from_name(raw_plan)
-        if named_slug == 'professional':
-            return prof_name
-        if named_slug == 'starter':
-            return starter_name
-        return raw_plan.replace('_', ' ').replace('-', ' ').title()
 
     return starter_name
 
@@ -2709,6 +2715,7 @@ def _agent_register_complete_impl(request):
         request.session.pop('reg_step', None)
         request.session.pop('ref_code', None)
         request.session.pop('pending_checkout', None)
+        request.session['auto_show_invite_studio'] = True
 
         return JsonResponse(_activation_success_payload(
             request,
@@ -3001,6 +3008,7 @@ def _finalize_razorpay_payment(request, data):
         request.session.pop('reg_step', None)
         request.session.pop('ref_code', None)
         request.session.pop('pending_checkout', None)
+        request.session['auto_show_invite_studio'] = True
 
         return _activation_success_payload(
             request,

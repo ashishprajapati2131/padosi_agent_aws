@@ -1376,3 +1376,69 @@ def manage_agent_toggle(request, plan_slug):
         'enabled_features': new_config.get(slug) or [],
         'rules': rules,
     })
+
+
+# ─── INVITE & SHARE STUDIO CMS ───────────────────────────────────────────────
+
+def invite_studio(request):
+    """Admin panel view to manage Invite & Share Studio templates, header, and prices."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect('admin_login')
+
+    from apps.agents.services.invite_studio import get_invite_studio_config
+    config = get_invite_studio_config()
+    config_json = json.dumps(config.get('templates', {}), indent=2, ensure_ascii=False)
+
+    return render(request, 'admin/content/invite_studio.html', {
+        'config': config,
+        'config_json': config_json,
+    })
+
+
+def update_invite_studio(request):
+    """Saves updated Invite & Share Studio config from Admin Panel."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect('admin_login')
+
+    if request.method == 'POST':
+        modal_title = request.POST.get('modal_title', '').strip() or 'PadosiAgent Invite & Share Studio'
+        modal_subtitle = request.POST.get('modal_subtitle', '').strip() or 'Send pre-drafted or customized invites to collect 5-star client reviews or share your digital presence across social networks.'
+        tab_review_label = request.POST.get('tab_review_label', '').strip() or 'Review & Rating'
+        tab_social_label = request.POST.get('tab_social_label', '').strip() or 'Social Media Share'
+        digital_price = request.POST.get('digital_price', '').strip() or '999'
+        professional_price = request.POST.get('professional_price', '').strip() or '4999'
+        raw_json = request.POST.get('config_json', '').strip()
+
+        from apps.agents.services.invite_studio import STUDIO_TEMPLATES, get_invite_studio_config
+        existing = get_invite_studio_config()
+        templates_data = existing.get('templates', STUDIO_TEMPLATES)
+
+        if raw_json:
+            try:
+                parsed_json = json.loads(raw_json)
+                if isinstance(parsed_json, dict):
+                    if 'templates' in parsed_json and isinstance(parsed_json['templates'], dict):
+                        templates_data = parsed_json['templates']
+                    elif 'review' in parsed_json or 'social' in parsed_json:
+                        templates_data = parsed_json
+            except json.JSONDecodeError as e:
+                messages.error(request, f'JSON formatting error in templates: {e}')
+                return redirect('admin_content_invite_studio')
+
+        config_data = {
+            'modal_title': modal_title,
+            'modal_subtitle': modal_subtitle,
+            'tab_review_label': tab_review_label,
+            'tab_social_label': tab_social_label,
+            'digital_price': digital_price,
+            'professional_price': professional_price,
+            'templates': templates_data,
+        }
+
+        SiteSetting.set_value('invite_studio_config', config_data, group='content')
+        AdminActivityLog.log('Update Invite & Share Studio content', 'SiteSetting', request=request)
+        messages.success(request, 'Invite & Share Studio content updated successfully.')
+
+    return redirect('admin_content_invite_studio')

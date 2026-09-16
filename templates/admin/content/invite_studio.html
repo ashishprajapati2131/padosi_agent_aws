@@ -1,0 +1,119 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Invite & Share Studio Editor — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}Content Control › Invite & Share Studio Editor{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1"><i class="fa-solid fa-share-nodes text-primary me-2"></i>Invite &amp; Share Studio Content Control</h4>
+        <p class="text-muted small mb-0">Manage the dynamic messages, campaign prices, titles, and templates displayed to agents in their Invite &amp; Share Studio modal.</p>
+    </div>
+</div>
+
+<form method="POST" action="{% url 'admin_content_invite_studio_update' %}" id="inviteStudioForm">
+    {% csrf_token %}
+
+    <!-- Popup Header & General Settings Card -->
+    <div class="card mb-4 border-0 shadow-sm" style="border-left: 4px solid var(--primary) !important;">
+        <div class="card-header bg-white py-3 border-0">
+            <h6 class="m-0 fw-bold"><i class="fa-solid fa-sliders text-primary me-2"></i>Popup Headers &amp; Campaign Settings</h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-dark">Modal Title</label>
+                    <input type="text" name="modal_title" value="{{ config.modal_title|default:'PadosiAgent Invite & Share Studio' }}" class="form-control">
+                    <div class="form-text small">Header title displayed at the top of the agent studio modal.</div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-dark">Modal Subtitle / Tagline</label>
+                    <input type="text" name="modal_subtitle" value="{{ config.modal_subtitle|default:'' }}" class="form-control">
+                    <div class="form-text small">Brief instruction displayed below the header title.</div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-dark">Tab 1 Name (Review Mode)</label>
+                    <input type="text" name="tab_review_label" value="{{ config.tab_review_label|default:'Review & Rating' }}" class="form-control">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-dark">Tab 2 Name (Social Mode)</label>
+                    <input type="text" name="tab_social_label" value="{{ config.tab_social_label|default:'Social Media Share' }}" class="form-control">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-dark">Digital Visibility Price (₹)</label>
+                    <input type="text" name="digital_price" value="{{ config.digital_price|default:'999' }}" class="form-control">
+                    {% verbatim %}<div class="form-text small">Replaces <code>{{digital_price}}</code> placeholder.</div>{% endverbatim %}
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-dark">Professional Visibility Price (₹)</label>
+                    <input type="text" name="professional_price" value="{{ config.professional_price|default:'4999' }}" class="form-control">
+                    {% verbatim %}<div class="form-text small">Replaces <code>{{professional_price}}</code> placeholder.</div>{% endverbatim %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pre-Drafted Templates JSON Editor Card -->
+    <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-0">
+            <h6 class="m-0 fw-bold"><i class="fa-solid fa-code text-primary me-2"></i>Pre-Drafted Message Templates (JSON Configuration)</h6>
+            <span id="jsonStatusBadge" class="badge bg-success"><i class="fa-solid fa-check-circle me-1"></i>Valid JSON</span>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-light border mb-3">
+                <h6 class="fw-bold mb-2 small text-uppercase text-secondary"><i class="fa-solid fa-circle-info me-1"></i> Available Template Placeholders:</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    {% verbatim %}
+                    <span class="badge bg-secondary">{{agent_name}}</span>
+                    <span class="badge bg-secondary">{{profile_link}}</span>
+                    <span class="badge bg-secondary">{{review_link}}</span>
+                    <span class="badge bg-secondary">{{card_link}}</span>
+                    <span class="badge bg-secondary">{{referral_link}}</span>
+                    <span class="badge bg-secondary">{{digital_price}}</span>
+                    <span class="badge bg-secondary">{{professional_price}}</span>
+                    {% endverbatim %}
+                </div>
+            </div>
+
+            <textarea name="config_json" id="configJsonEditor" class="form-control font-monospace" rows="18" style="font-size: 13px; line-height: 1.5; background-color: #0f172a; color: #38bdf8; border-radius: 8px;">{{ config_json }}</textarea>
+            <div class="form-text text-muted mt-2">Edit template messages for English, Hindi, Gujarati, Marathi, or add custom templates. Changes will reflect instantly on the Agent Studio modal.</div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-3 align-items-center mb-5">
+        <button type="submit" class="btn btn-primary px-5 py-2 fw-bold shadow-sm" id="saveBtn">
+            <i class="fa-solid fa-save me-2"></i> Save Invite Studio Changes
+        </button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const editor = document.getElementById('configJsonEditor');
+    const badge = document.getElementById('jsonStatusBadge');
+    const saveBtn = document.getElementById('saveBtn');
+
+    function validateJSON() {
+        try {
+            JSON.parse(editor.value);
+            badge.className = 'badge bg-success';
+            badge.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i>Valid JSON';
+            saveBtn.disabled = false;
+        } catch (e) {
+            badge.className = 'badge bg-danger';
+            badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>Invalid JSON Syntax';
+            saveBtn.disabled = true;
+        }
+    }
+
+    if (editor) {
+        editor.addEventListener('input', validateJSON);
+    }
+});
+</script>
+{% endblock %}
