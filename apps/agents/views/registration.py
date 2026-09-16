@@ -888,7 +888,7 @@ def _get_registration_context(request):
 
 # ─── Views ──────────────────────────────────────────────────────────────────────
 
-def _build_referring_agent_data(referring_agent):
+def _build_referring_agent_data(referring_agent, is_championship=False):
     """Build standardized dictionary for referring agent card and OG preview."""
     if not referring_agent:
         return None
@@ -944,6 +944,7 @@ def _build_referring_agent_data(referring_agent):
     return {
         'id': referring_agent.id,
         'name': name,
+        'fullname': referring_agent.fullname or name,
         'initials': initials,
         'photo_url': photo_url,
         'avg_rating': avg_rating if avg_rating > 0 else 5.0,
@@ -951,7 +952,8 @@ def _build_referring_agent_data(referring_agent):
         'profile_url': profile_url,
         'segments': segments,
         'slug': profile_slug,
-        'og_image_url': reverse('agents:agent_og_image', kwargs={'agent_id': referring_agent.id}),
+        'is_championship': bool(is_championship),
+        'og_image_url': '/static/img/championship_og.jpg' if is_championship else reverse('agents:agent_og_image', kwargs={'agent_id': referring_agent.id}),
     }
 
 
@@ -975,6 +977,7 @@ def agent_registration(request):
         ref_val = str(ref_param).strip().upper()
         request.session['ref_code'] = ref_val
         referring_agent = None
+        is_champ = False
 
         if ref_val.startswith('PA-'):
             try:
@@ -984,6 +987,7 @@ def agent_registration(request):
                 participant = ChampionshipParticipant.objects.filter(referral_id=ref_val).select_related('agent').first()
                 if participant and participant.agent:
                     referring_agent = participant.agent
+                    is_champ = True
             except Exception:
                 pass
 
@@ -1001,7 +1005,7 @@ def agent_registration(request):
                 pass
 
         if referring_agent:
-            referring_agent_data = _build_referring_agent_data(referring_agent)
+            referring_agent_data = _build_referring_agent_data(referring_agent, is_championship=is_champ)
 
     context = _get_registration_context(request)
     if referring_agent_data:
@@ -1035,6 +1039,7 @@ def agent_registration_referral(request, ref_code):
 
     # ── Look up the referring agent ──
     referring_agent = None
+    is_champ = False
 
     # 1. Try Championship participant code (PA-XXXXXX)
     if code_val.startswith('PA-'):
@@ -1045,6 +1050,7 @@ def agent_registration_referral(request, ref_code):
             participant = ChampionshipParticipant.objects.filter(referral_id=code_val).select_related('agent').first()
             if participant and participant.agent:
                 referring_agent = participant.agent
+                is_champ = True
         except Exception:
             pass
 
@@ -1063,7 +1069,7 @@ def agent_registration_referral(request, ref_code):
             pass
 
     # ── Build referring agent context for the card ──
-    referring_agent_data = _build_referring_agent_data(referring_agent) if referring_agent else None
+    referring_agent_data = _build_referring_agent_data(referring_agent, is_championship=is_champ) if referring_agent else None
 
     # ── Build normal registration context + referring agent ──
     context = _get_registration_context(request)
