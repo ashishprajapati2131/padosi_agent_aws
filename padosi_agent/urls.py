@@ -36,13 +36,13 @@ urlpatterns = [
     # Removed overriding logout view, now handled by apps.agents.urls
     path('media/app/private/<path:file_path>', serve_private_file, name='serve_private_file'),
     path('django-admin/', admin.site.urls),
+    path('agent/championship/', include('apps.referral_championship.urls')),
+    path('admin/championship/', include('apps.referral_championship.urls_admin')),
     path('', include('apps.admin_panel.urls')),
     path('', include('apps.agents.urls')),
     path('events/', include('apps.agents.urls_events')),
     path('chatbot-api/', include('apps.chatbot.urls')),
     path('', include('apps.distributors.urls')),
-    path('agent/championship/', include('apps.referral_championship.urls')),
-    path('admin/championship/', include('apps.referral_championship.urls_admin')),
     path('insurance/', include('apps.insurance.urls')),
     path('', include('apps.home.urls')),
 ]

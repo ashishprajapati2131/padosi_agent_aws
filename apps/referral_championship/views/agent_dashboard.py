@@ -52,136 +52,151 @@ def agent_championship_dashboard(request):
         messages.error(request, "Please log in with your agent account.")
         return redirect('agents:agent_login')
 
-    campaign = ChampionshipCampaign.get_current()
-    participant = get_or_create_participant(agent, campaign)
+    try:
+        campaign = ChampionshipCampaign.get_current()
+        participant = get_or_create_participant(agent, campaign)
 
-    # ── Unlock Gate Requirements ──
-    completion = profile_completion_percent(agent)
-    review_count = agent_review_count(agent)
+        # ── Unlock Gate Requirements ──
+        completion = profile_completion_percent(agent)
+        review_count = agent_review_count(agent)
 
-    unlock_cfg = campaign.unlock_config or {'min_profile_percent': 80, 'min_reviews': 10}
-    min_profile = int(unlock_cfg.get('min_profile_percent', 80))
-    min_reviews = int(unlock_cfg.get('min_reviews', 10))
+        unlock_cfg = campaign.unlock_config if isinstance(campaign.unlock_config, dict) else {}
+        min_profile = int(unlock_cfg.get('min_profile_percent') or 80)
+        min_reviews = int(unlock_cfg.get('min_reviews') or 10)
 
-    is_unlocked = (completion >= min_profile and review_count >= min_reviews)
-    if is_unlocked and not participant.is_unlocked:
-        participant.is_unlocked = True
-        participant.profile_completed_at = timezone.now()
-        participant.reviews_completed_at = timezone.now()
-        participant.save(update_fields=['is_unlocked', 'profile_completed_at', 'reviews_completed_at'])
+        is_unlocked = (completion >= min_profile and review_count >= min_reviews)
+        if is_unlocked and not participant.is_unlocked:
+            participant.is_unlocked = True
+            participant.profile_completed_at = timezone.now()
+            participant.reviews_completed_at = timezone.now()
+            participant.save(update_fields=['is_unlocked', 'profile_completed_at', 'reviews_completed_at'])
 
-    # ── Funnel Metrics ──
-    referrals_qs = ChampionshipReferral.objects.filter(referrer=participant)
-    invited_count = referrals_qs.count()
-    form_filled_count = referrals_qs.exclude(registration_state='started').count()
-    paid_count = referrals_qs.filter(registration_state__in=['paid', 'active']).count()
-    qualified_count = participant.qualifying_referrals_count
+        # ── Funnel Metrics ──
+        referrals_qs = ChampionshipReferral.objects.filter(referrer=participant)
+        invited_count = referrals_qs.count()
+        form_filled_count = referrals_qs.exclude(registration_state='started').count()
+        paid_count = referrals_qs.filter(registration_state__in=['paid', 'active']).count()
+        qualified_count = participant.qualifying_referrals_count
 
-    # ── Roadmap & Next Reward ──
-    roadmap_data = get_participant_roadmap(participant)
+        # ── Roadmap & Next Reward ──
+        roadmap_data = get_participant_roadmap(participant)
 
-    # ── Referral Link & QR Code ──
-    domain = request.get_host()
-    scheme = 'https' if request.is_secure() else 'http'
-    referral_url = f"{scheme}://{domain}/agent-registration/join/{participant.referral_id}/"
-    qr_base64 = generate_qr_base64(referral_url)
+        # ── Referral Link & QR Code ──
+        domain = request.get_host()
+        scheme = 'https' if request.is_secure() else 'http'
+        referral_url = f"{scheme}://{domain}/agent-registration/join/{participant.referral_id}/"
+        qr_base64 = generate_qr_base64(referral_url)
 
-    # ── Leaderboard Data ──
-    top_10 = get_leaderboard_data(campaign, limit=10)
-    top_50 = get_leaderboard_data(campaign, limit=50)
-    agg_stats = get_campaign_aggregate_stats(campaign)
+        # ── Leaderboard Data ──
+        top_10 = get_leaderboard_data(campaign, limit=10)
+        top_50 = get_leaderboard_data(campaign, limit=50)
+        agg_stats = get_campaign_aggregate_stats(campaign)
 
-    # WhatsApp default message
-    pricing = campaign.pricing_config or {}
-    dig_price = pricing.get('digital', {}).get('campaign_price', 999)
-    prof_price = pricing.get('professional', {}).get('campaign_price', 4999)
-    profile_url = f"{scheme}://{domain}/agent/{agent.agent_slug or agent.id}/"
+        # WhatsApp default message
+        pricing = campaign.pricing_config if isinstance(campaign.pricing_config, dict) else {}
+        dig_price_raw = (pricing.get('digital') or {}).get('campaign_price', 999) if isinstance(pricing.get('digital'), dict) else 999
+        prof_price_raw = (pricing.get('professional') or {}).get('campaign_price', 4999) if isinstance(pricing.get('professional'), dict) else 4999
+        try:
+            dig_price = int(dig_price_raw or 999)
+        except (TypeError, ValueError):
+            dig_price = 999
+        try:
+            prof_price = int(prof_price_raw or 4999)
+        except (TypeError, ValueError):
+            prof_price = 4999
 
-    default_wa_text = render_whatsapp_message(
-        WHATSAPP_TEMPLATES['en']['templates'][0]['text'],
-        agent_name=agent.fullname,
-        referral_link=referral_url,
-        profile_link=profile_url,
-        digital_price=dig_price,
-        professional_price=prof_price
-    )
-    default_wa_url = get_whatsapp_share_url(default_wa_text)
+        agent_slug_val = getattr(agent, 'agent_slug', None) or getattr(agent, 'id', '')
+        profile_url = f"{scheme}://{domain}/agent/{agent_slug_val}/"
 
-    # ── Slab Pulse Board Stats (How many participants have achieved each slab) ──
-    all_slabs = ChampionshipRewardSlab.objects.filter(campaign=campaign, is_active=True).order_by('threshold')
-    slab_stats = []
-    for s in all_slabs:
-        achieved_count = ChampionshipParticipant.objects.filter(
-            campaign=campaign,
-            qualifying_referrals_count__gte=s.threshold
-        ).count()
-        slab_stats.append({
-            'slab': s,
-            'id': s.id,
-            'name': s.title,
-            'threshold': s.threshold,
-            'reward_type': s.reward_type,
-            'value_label': format_inr(s.value),
-            'achieved': achieved_count,
-            'seats_left': max(0, (s.winner_limit or 9999) - achieved_count) if s.winner_limit else None,
-        })
+        default_wa_text = render_whatsapp_message(
+            WHATSAPP_TEMPLATES['en']['templates'][0]['text'],
+            agent_name=agent.fullname,
+            referral_link=referral_url,
+            profile_link=profile_url,
+            digital_price=dig_price,
+            professional_price=prof_price
+        )
+        default_wa_url = get_whatsapp_share_url(default_wa_text)
 
-    # ── User Claims & Draws ──
-    my_claims = ChampionshipRewardClaim.objects.filter(participant=participant).select_related('reward_slab').order_by('-created_at')
-    draws = [
-        {'tier': 1, 'prize_name': 'Gold & Tech Goodies', 'eligibility': '50+ referrals', 'winner_count': 5, 'draw_date': '2026-11-05'},
-        {'tier': 2, 'prize_name': 'Domestic Trip Upgrade', 'eligibility': '100+ referrals', 'winner_count': 3, 'draw_date': '2026-11-05'},
-        {'tier': 3, 'prize_name': 'Mega International Luxury Draw', 'eligibility': '200+ referrals', 'winner_count': 1, 'draw_date': '2026-11-05'},
-    ]
-    recent_referrals = referrals_qs.order_by('-created_at')[:20]
+        # ── Slab Pulse Board Stats (How many participants have achieved each slab) ──
+        all_slabs = ChampionshipRewardSlab.objects.filter(campaign=campaign, is_active=True).order_by('threshold')
+        slab_stats = []
+        for s in all_slabs:
+            achieved_count = ChampionshipParticipant.objects.filter(
+                campaign=campaign,
+                qualifying_referrals_count__gte=s.threshold
+            ).count()
+            slab_stats.append({
+                'slab': s,
+                'id': s.id,
+                'name': s.title,
+                'threshold': s.threshold,
+                'reward_type': s.reward_type,
+                'value_label': format_inr(s.value),
+                'achieved': achieved_count,
+                'seats_left': max(0, (s.winner_limit or 9999) - achieved_count) if s.winner_limit else None,
+            })
 
-    # ── Calculate referrals to beat next rank ──
-    next_rank_needed = 1
-    if participant.current_rank and participant.current_rank > 1:
-        prev_participant = ChampionshipParticipant.objects.filter(
-            campaign=campaign,
-            current_rank=participant.current_rank - 1
-        ).first()
-        if prev_participant:
-            diff = prev_participant.qualifying_referrals_count - participant.qualifying_referrals_count
-            next_rank_needed = max(1, diff + 1)
+        # ── User Claims & Draws ──
+        my_claims = ChampionshipRewardClaim.objects.filter(participant=participant).select_related('reward_slab').order_by('-created_at')
+        draws = [
+            {'tier': 1, 'prize_name': 'Gold & Tech Goodies', 'eligibility': '50+ referrals', 'winner_count': 5, 'draw_date': '2026-11-05'},
+            {'tier': 2, 'prize_name': 'Domestic Trip Upgrade', 'eligibility': '100+ referrals', 'winner_count': 3, 'draw_date': '2026-11-05'},
+            {'tier': 3, 'prize_name': 'Mega International Luxury Draw', 'eligibility': '200+ referrals', 'winner_count': 1, 'draw_date': '2026-11-05'},
+        ]
+        recent_referrals = referrals_qs.order_by('-created_at')[:20]
 
-    context = {
-        'campaign': campaign,
-        'agent': agent,
-        'participant': participant,
-        'completion': completion,
-        'review_count': review_count,
-        'min_profile': min_profile,
-        'min_reviews': min_reviews,
-        'is_unlocked': is_unlocked,
-        'days_left': campaign.days_left,
-        'invited_count': invited_count,
-        'form_filled_count': form_filled_count,
-        'paid_count': paid_count,
-        'qualified_count': qualified_count,
-        'roadmap': roadmap_data['roadmap'],
-        'next_reward': roadmap_data['next_reward'],
-        'referrals_needed': roadmap_data['referrals_needed'],
-        'referral_url': referral_url,
-        'qr_base64': qr_base64,
-        'top_10': top_10,
-        'top_50': top_50,
-        'agg_stats': agg_stats,
-        'next_rank_needed': next_rank_needed,
-        'slab_stats': slab_stats,
-        'my_claims': my_claims,
-        'draws': draws,
-        'recent_referrals': recent_referrals,
-        'whatsapp_templates_json': json.dumps(WHATSAPP_TEMPLATES),
-        'default_wa_url': default_wa_url,
-        'default_wa_text': default_wa_text,
-        'dig_price': dig_price,
-        'prof_price': prof_price,
-        'hide_footer': True,
-        'hide_chatbot': True,
-    }
-    return render(request, 'referral_championship/agent_dashboard.html', context)
+        # ── Calculate referrals to beat next rank ──
+        next_rank_needed = 1
+        if participant.current_rank and participant.current_rank > 1:
+            prev_participant = ChampionshipParticipant.objects.filter(
+                campaign=campaign,
+                current_rank=participant.current_rank - 1
+            ).first()
+            if prev_participant:
+                diff = prev_participant.qualifying_referrals_count - participant.qualifying_referrals_count
+                next_rank_needed = max(1, diff + 1)
+
+        context = {
+            'campaign': campaign,
+            'agent': agent,
+            'participant': participant,
+            'completion': completion,
+            'review_count': review_count,
+            'min_profile': min_profile,
+            'min_reviews': min_reviews,
+            'is_unlocked': is_unlocked,
+            'days_left': getattr(campaign, 'days_left', 0),
+            'invited_count': invited_count,
+            'form_filled_count': form_filled_count,
+            'paid_count': paid_count,
+            'qualified_count': qualified_count,
+            'roadmap': roadmap_data['roadmap'],
+            'next_reward': roadmap_data['next_reward'],
+            'referrals_needed': roadmap_data['referrals_needed'],
+            'referral_url': referral_url,
+            'qr_base64': qr_base64,
+            'top_10': top_10,
+            'top_50': top_50,
+            'agg_stats': agg_stats,
+            'next_rank_needed': next_rank_needed,
+            'slab_stats': slab_stats,
+            'my_claims': my_claims,
+            'draws': draws,
+            'recent_referrals': recent_referrals,
+            'whatsapp_templates_json': json.dumps(WHATSAPP_TEMPLATES),
+            'default_wa_url': default_wa_url,
+            'default_wa_text': default_wa_text,
+            'dig_price': dig_price,
+            'prof_price': prof_price,
+            'hide_footer': True,
+            'hide_chatbot': True,
+        }
+        return render(request, 'referral_championship/agent_dashboard.html', context)
+    except Exception as e:
+        logger.exception(f"Error loading agent championship dashboard: {e}")
+        messages.error(request, "Unable to load championship dashboard right now. Please try again.")
+        return redirect('agents:agent_dashboard')
 
 
 @require_POST

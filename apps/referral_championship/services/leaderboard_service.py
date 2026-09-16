@@ -64,30 +64,43 @@ def get_leaderboard_data(campaign=None, limit=50):
 
     results = []
     for entry in entries:
-        agent = entry.participant.agent
-        profile = agent.get_primary_profile() if hasattr(agent, 'get_primary_profile') else None
-        
-        city = 'India'
         try:
-            if hasattr(agent, 'serviceableCities'):
-                c = agent.serviceableCities.first()
-                if c and getattr(c, 'name', None):
-                    city = c.name
-        except Exception:
-            pass
-        city = city.title()
-        name = agent.fullname or f"Agent #{agent.id}"
-        # Privacy: show initials or first name + initial
-        parts = name.split()
-        masked_name = f"{parts[0]} {parts[1][0]}." if len(parts) > 1 else name
+            participant = getattr(entry, 'participant', None)
+            if not participant:
+                continue
+            agent = getattr(participant, 'agent', None)
+            if not agent:
+                continue
 
-        results.append({
-            'rank': entry.rank,
-            'agent_name': masked_name,
-            'city': city,
-            'referral_count': entry.referral_count,
-            'referral_id': entry.participant.referral_id,
-        })
+            city = 'India'
+            try:
+                if hasattr(agent, 'serviceableCities'):
+                    c = agent.serviceableCities.first()
+                    if c and getattr(c, 'name', None):
+                        city = c.name
+            except Exception:
+                pass
+            city = city.title()
+
+            raw_name = (getattr(agent, 'fullname', '') or '').strip() or f"Agent #{getattr(agent, 'id', '')}"
+            parts = raw_name.split()
+            if len(parts) > 1 and parts[1]:
+                masked_name = f"{parts[0]} {parts[1][0]}."
+            elif len(parts) > 0:
+                masked_name = parts[0]
+            else:
+                masked_name = f"Agent #{getattr(agent, 'id', '')}"
+
+            results.append({
+                'rank': entry.rank,
+                'agent_name': masked_name,
+                'city': city,
+                'referral_count': entry.referral_count,
+                'referral_id': participant.referral_id,
+            })
+        except Exception as e:
+            logger.warning(f"Error reading leaderboard entry #{getattr(entry, 'id', None)}: {e}")
+            continue
     return results
 
 
