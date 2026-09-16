@@ -545,7 +545,7 @@
             <div class="modal-header pa-review-header">
                 <h5 class="modal-title">
                     <i class="fas fa-paper-plane mr-2" style="color:#fbbf24; margin-right:8px;"></i>
-                    PadosiAgent Invite &amp; Share Studio
+                    {{ studio_modal_title|default:'PadosiAgent Invite & Share Studio' }}
                 </h5>
                 <button type="button" class="pa-review-close-btn" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
                     &times;
@@ -555,16 +555,16 @@
             <!-- Modal Body -->
             <div class="modal-body pa-review-body">
                 <p class="pa-review-tagline">
-                    Send pre-drafted or customized invites to collect 5-star client reviews or share your digital presence across social networks.
+                    {{ studio_modal_subtitle|default:'Send pre-drafted or customized invites to collect 5-star client reviews or share your digital presence across social networks.' }}
                 </p>
 
                 <!-- Section Switcher Tabs -->
                 <div class="pa-studio-tabs" role="tablist">
                     <button type="button" class="pa-studio-tab-btn active" id="studioTabReview" data-mode="review">
-                        <i class="fas fa-star" style="color:#f59e0b;"></i> <span>1. Review &amp; Rating</span>
+                        <i class="fas fa-star" style="color:#f59e0b;"></i> <span>1. {{ studio_tab_review_label|default:'Review & Rating' }}</span>
                     </button>
                     <button type="button" class="pa-studio-tab-btn" id="studioTabSocial" data-mode="social">
-                        <i class="fas fa-share-alt" style="color:#2563eb;"></i> <span>2. Social Media Share</span>
+                        <i class="fas fa-share-alt" style="color:#2563eb;"></i> <span>2. {{ studio_tab_social_label|default:'Social Media Share' }}</span>
                     </button>
                 </div>
 
@@ -948,5 +948,26 @@
 
     // Initialize UI on load
     updateStudioUI(true);
+
+    window.openInviteStudioModal = function() {
+        if (typeof $ !== 'undefined' && $.fn.modal) {
+            $('#reviewShareModal').modal('show');
+        } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            var myModal = new bootstrap.Modal(document.getElementById('reviewShareModal'));
+            myModal.show();
+        } else {
+            var m = document.getElementById('reviewShareModal');
+            if (m) {
+                m.classList.add('show');
+                m.style.display = 'block';
+            }
+        }
+    };
+
+    {% if auto_show_invite_studio %}
+    setTimeout(function() {
+        window.openInviteStudioModal();
+    }, 600);
+    {% endif %}
 })();
 </script>
