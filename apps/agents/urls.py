@@ -6,6 +6,7 @@ app_name = 'agents'
 urlpatterns = [
     path('agent-registration/join/<str:ref_code>/', registration.agent_registration_referral, name='agent_registration_referral'),
     path('agent-registration/', registration.agent_registration, name='agent_registration'),
+    path('register/',           registration.agent_registration, name='register_alias'),
     path('agent-register-step1/', registration.register_step1,   name='agent_register_step1'),
     path('agent-register-step2/', registration.register_step2,   name='agent_register_step2'),
     path('agent-check-slug/',     registration.check_slug_availability, name='agent_check_slug'),

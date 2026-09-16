@@ -1106,7 +1106,7 @@ def custom_page(request, slug):
         return render(request, 'public/page.html', {'page': page})
 
     # Check if this slug belongs to an agent public profile
-    if AgentProfile.objects.filter(slug=slug).exists() or Agent.objects.filter(agent_slug=slug).exists():
+    if AgentProfile.objects.filter(slug=slug).exists() or Agent.objects.filter(profile__slug=slug).exists():
         return agent_public_profile(request, slug=slug)
 
     raise Http404("Page not found")
@@ -1501,4 +1501,44 @@ def ai_picks_comparison(request):
     except Exception as e:
         logger.error(f"Error in ai_picks_comparison view: {e}", exc_info=True)
         return JsonResponse({'success': False, 'message': 'Internal Server Error'}, status=500)
+
+
+@require_POST
+def save_user_location(request):
+    """
+    Saves user latitude/longitude or pincode into session from global client-side Geolocation API.
+    """
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        data = request.POST
+
+    lat = str(data.get('lat', '') or '').strip()
+    lng = str(data.get('lng', '') or '').strip()
+    pincode = str(data.get('pincode', '') or '').strip()
+
+    if lat and lng:
+        request.session['last_lat'] = lat
+        request.session['last_lng'] = lng
+        for k in ['last_pincode', 'last_location', 'pincode', 'location', 'detected_area']:
+            request.session.pop(k, None)
+        try:
+            request.session.modified = True
+        except AttributeError:
+            pass
+        return JsonResponse({'success': True, 'message': 'Location saved', 'lat': lat, 'lng': lng})
+
+    if pincode and re.match(r'^[1-9]\d{5}$', pincode):
+        request.session['last_pincode'] = pincode
+        request.session['detected_area'] = pincode
+        for k in ['last_lat', 'last_lng', 'lat', 'lng', 'last_location']:
+            request.session.pop(k, None)
+        try:
+            request.session.modified = True
+        except AttributeError:
+            pass
+        return JsonResponse({'success': True, 'message': 'Pincode saved', 'pincode': pincode})
+
+    return JsonResponse({'success': False, 'message': 'No valid location data provided'}, status=400)
+
 

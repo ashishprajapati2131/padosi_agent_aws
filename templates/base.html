@@ -293,5 +293,48 @@
             }
         });
     </script>
+    <script>
+        // Global Location Permission Request on Any Public Page
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!('geolocation' in navigator)) return;
+
+            const hasSessionLocation = {% if request.session.last_lat or request.session.last_pincode %}true{% else %}false{% endif %};
+            const permissionStatus = localStorage.getItem('padosi_location_status');
+
+            if (!hasSessionLocation && permissionStatus !== 'denied' && permissionStatus !== 'prompted') {
+                localStorage.setItem('padosi_location_status', 'prompted');
+                navigator.geolocation.getCurrentPosition(
+                    function (position) {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        localStorage.setItem('padosi_location_status', 'granted');
+                        localStorage.setItem('user_lat', lat);
+                        localStorage.setItem('user_lng', lng);
+
+                        fetch("{% url 'home:save_user_location' %}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({ lat: lat, lng: lng })
+                        }).then(function() {
+                            if (window.location.pathname.indexOf('/find-agents') !== -1) {
+                                window.location.reload();
+                            }
+                        }).catch(function() {});
+                    },
+                    function (error) {
+                        if (error.code === error.PERMISSION_DENIED) {
+                            localStorage.setItem('padosi_location_status', 'denied');
+                        } else {
+                            localStorage.setItem('padosi_location_status', 'failed');
+                        }
+                    },
+                    { timeout: 8000, maximumAge: 300000 }
+                );
+            }
+        });
+    </script>
 </body>
 </html>

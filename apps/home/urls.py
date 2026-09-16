@@ -18,6 +18,7 @@ urlpatterns = [
     path('privacy/',        pages.privacy,        name='privacy'),
     path('insurance/api/pincode/fetch/<str:pincode>', pages.pincode_fetch, name='pincode_fetch'),
     path('api/pincode/check-agents/<str:pincode>', pages.check_pincode_agents, name='check_pincode_agents'),
+    path('api/save-location/', pages.save_user_location, name='save_user_location'),
     path('check-pincode', pages.check_pincode, name='check_pincode'),
     path('marketing/', pages.marketing, name='marketing'),
     path('calculators/', calculators.hub, name='calculators'),
