@@ -21,8 +21,24 @@ class SingleThreadedCompressedManifestStaticFilesStorage(
 ):
     """
     Drop-in replacement for WhiteNoise's CompressedManifestStaticFilesStorage
-    that compresses static files one-by-one (no threads).
+    that compresses static files one-by-one (no threads) and gracefully falls back
+    if a static file is missing from manifest or STATIC_ROOT instead of throwing 500 errors.
     """
+    manifest_strict = False
+
+    def stored_name(self, name):
+        try:
+            return super().stored_name(name)
+        except Exception:
+            return name
+
+    def url(self, name, force=False):
+        try:
+            return super().url(name, force=force)
+        except Exception:
+            prefix = getattr(settings, "STATIC_URL", "/static/").rstrip("/")
+            clean_name = name.lstrip("/ ")
+            return f"{prefix}/{clean_name}"
 
     def compress_files(self, paths):
         extensions = getattr(settings, "WHITENOISE_SKIP_COMPRESS_EXTENSIONS", None)

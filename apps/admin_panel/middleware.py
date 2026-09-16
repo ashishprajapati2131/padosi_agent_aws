@@ -282,7 +282,7 @@ class AdminPermissionMiddleware:
         admin_id = _get_admin_from_session(request)
         if not admin_id:
             import logging
-            logging.getLogger(__name__).error(f"Unauthorized admin access from path: {request.path}")
+            logging.getLogger(__name__).warning(f"Unauthorized admin access from path: {request.path}")
             # For AJAX / JSON requests, return a clean 403 JSON — never add flash messages
             # that would leak into the agent login page after logout.
             is_ajax = (
