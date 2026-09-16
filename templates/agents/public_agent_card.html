@@ -6,7 +6,9 @@
 {% block og_description %}Connect with {{ agentDisplayName }}, Licensed Insurance Advisor on PadosiAgent. View services, ratings, and instant contact options.{% endblock %}
 {% block og_url %}{{ request.build_absolute_uri }}{% endblock %}
 {% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}{% endblock %}
-{% block og_type %}profile{% endblock %}
+{% block og_type %}website{% endblock %}
+{% block og_image_width %}800{% endblock %}
+{% block og_image_height %}800{% endblock %}
 {% block twitter_card %}summary_large_image{% endblock %}
 {% block twitter_title %}{{ agentDisplayName }} | Digital Visiting Card | PadosiAgent{% endblock %}
 {% block twitter_description %}Connect with {{ agentDisplayName }}, Licensed Insurance Advisor on PadosiAgent.{% endblock %}
@@ -14,9 +16,6 @@
 
 {% block extra_head %}
     <meta property="og:image:secure_url" content="{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}">
-    <meta property="og:image:type" content="image/jpeg">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="{{ agentDisplayName }} — Digital Visiting Card">
 {% endblock %}
 

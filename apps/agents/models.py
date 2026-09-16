@@ -1521,7 +1521,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.cache import cache
 
-OG_IMAGE_CACHE_VERSION = 'v2'
+OG_IMAGE_CACHE_VERSION = 'v3'
 
 
 def og_image_cache_key(agent_id):

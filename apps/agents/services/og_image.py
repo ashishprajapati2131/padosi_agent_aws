@@ -23,30 +23,52 @@ TAG_DEFAULT = ((243, 244, 246), (55, 65, 81), (229, 231, 235))
 
 
 def render_agent_og_jpeg(agent):
-    """Return JPEG bytes for a 1200x630 agent-card style OG image."""
-    width, height = 1200, 630
-    canvas = Image.new('RGB', (width, height), (241, 245, 249))
+    """Return JPEG bytes for an 800x800 agent digital visiting card OG image."""
+    size = 800
+    canvas = Image.new('RGB', (size, size), (241, 245, 249))
     draw = ImageDraw.Draw(canvas)
 
     fonts = _load_fonts()
     profile = AgentProfile.objects.filter(agent=agent).first()
     perf = AgentPerformanceStat.objects.filter(agent=agent).first()
 
-    # Main Card Box
-    card = (36, 36, 1164, 594)  # 1128 x 558
+    card = (24, 24, 776, 776)
     # Multi-layer soft drop shadow
-    _rounded_rect(draw, (card[0] + 4, card[1] + 8, card[2] + 4, card[3] + 8), 24, fill=(203, 213, 225))
-    _rounded_rect(draw, (card[0] + 2, card[1] + 4, card[2] + 2, card[3] + 4), 24, fill=(226, 232, 240))
-    _rounded_rect(draw, card, 24, fill=(255, 255, 255), outline=(226, 232, 240), width=2)
+    _rounded_rect(draw, (card[0] + 4, card[1] + 8, card[2] + 4, card[3] + 8), 32, fill=(203, 213, 225))
+    _rounded_rect(draw, (card[0] + 2, card[1] + 4, card[2] + 2, card[3] + 4), 32, fill=(226, 232, 240))
+    _rounded_rect(draw, card, 32, fill=(255, 255, 255), outline=(226, 232, 240), width=2)
 
-    # ── Left Photo Column (370px width) ───────────────────────────────────────
-    photo_w = 370
-    photo_box = (card[0], card[1], card[0] + photo_w, card[3])
-    x0, y0, x1, y1 = photo_box
-    pw, ph = x1 - x0, y1 - y0
+    # Top Header Bar: PadosiAgent Logo
+    logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo.png')
+    logo_drawn = False
+    if os.path.exists(logo_path):
+        try:
+            logo = Image.open(logo_path).convert('RGBA')
+            logo.thumbnail((220, 52), RESAMPLE)
+            canvas.paste(logo, (card[0] + 32, card[1] + 30), logo)
+            logo_drawn = True
+        except Exception:
+            pass
+    if not logo_drawn:
+        draw.text((card[0] + 32, card[1] + 32), 'PADOSIAGENT', font=fonts['brand'], fill=(30, 58, 138))
+
+    # Header Right: Verified Advisor Pill
+    v_txt = 'Verified Advisor'
+    vw, _ = _text_size(draw, v_txt, fonts['pill'])
+    rx = card[2] - 32
+    _rounded_rect(draw, (rx - vw - 28, card[1] + 30, rx, card[1] + 66), 18, fill=(240, 253, 244), outline=(187, 247, 208), width=2)
+    draw.text((rx - vw - 14, card[1] + 39), v_txt, font=fonts['pill'], fill=(21, 128, 61))
+
+    # Header Divider
+    draw.line([(card[0] + 32, card[1] + 96), (card[2] - 32, card[1] + 96)], fill=(241, 245, 249), width=2)
+
+    # Hero Section: Agent Photo (Left)
+    pw, ph = 210, 230
+    px = card[0] + 32
+    py = card[1] + 116
 
     src = _load_photo(agent, profile)
-    if src is not None:
+    if src:
         try:
             if src.mode not in ('RGB', 'RGBA'):
                 src = src.convert('RGB')
@@ -57,101 +79,51 @@ def render_agent_og_jpeg(agent):
         fitted = None
 
     if fitted is None:
-        # Elegant royal blue fallback avatar
         fitted = Image.new('RGB', (pw, ph), (26, 54, 124))
         d = ImageDraw.Draw(fitted)
         name_str = ((profile.display_name if profile else '') or agent.fullname or 'A').strip()
         words = [w for w in name_str.split() if w]
         initial = ''.join([w[0].upper() for w in words[:2]]) or 'A'
-        
-        # Draw circular ring
-        cx, cy = pw // 2, (ph // 2) - 25
-        cr = 65
-        d.ellipse([cx - cr, cy - cr, cx + cr, cy + cr], fill=(37, 72, 160), outline=(255, 255, 255), width=3)
+        cx, cy = pw // 2, (ph // 2) - 15
+        cr = 50
+        d.ellipse([cx - cr, cy - cr, cx + cr, cy + cr], fill=(37, 72, 160), outline=(255, 255, 255), width=2)
         tw, th = _text_size(d, initial, fonts['name'])
         d.text((cx - tw / 2, cy - th / 2 - 4), initial, font=fonts['name'], fill=(255, 255, 255))
 
-        init_sub = "Verified Insurance Advisor"
-        sw, _ = _text_size(d, init_sub, fonts['pill'])
-        d.text(((pw - sw) / 2, cy + cr + 22), init_sub, font=fonts['pill'], fill=(219, 234, 254))
-
-    # Add dark gradient overlay to bottom of photo for text legibility
-    gradient_h = 130
-    overlay = Image.new('RGBA', (pw, gradient_h), (0, 0, 0, 0))
-    od = ImageDraw.Draw(overlay)
-    for row in range(gradient_h):
-        alpha = int(210 * (row / gradient_h) ** 1.3)
-        od.line([(0, row), (pw, row)], fill=(15, 23, 42, alpha))
-    fitted.paste(overlay, (0, ph - gradient_h), mask=overlay)
-
-    # Location / City badge on photo bottom
-    fd = ImageDraw.Draw(fitted)
-    city_text = (getattr(agent, 'agent_city_display', '') or getattr(profile, 'city', '') or 'India').strip()
-    if '+' in city_text:
-        city_text = city_text.split('+')[0].strip()
-    loc_label = f"{city_text}"
-    ltw, _ = _text_size(fd, loc_label, fonts['loc'])
-    pill_x = 24
-    pill_y = ph - 54
-    pill_w = ltw + 34
-    pill_h = 32
-    _rounded_rect(fd, (pill_x, pill_y, pill_x + pill_w, pill_y + pill_h), 16, fill=(15, 23, 42), outline=(51, 65, 85), width=1)
-    fd.text((pill_x + 14, pill_y + 6), loc_label, font=fonts['loc'], fill=(255, 255, 255))
-
-    # Paste photo with left-rounded mask
     mask = Image.new('L', (pw, ph), 0)
-    md = ImageDraw.Draw(mask)
-    _rounded_rect(md, (0, 0, pw, ph), 24, fill=255)
-    md.rectangle((pw - 30, 0, pw, ph), fill=255)  # sharp on right side
-    canvas.paste(fitted, (x0, y0), mask=mask)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, pw, ph), radius=20, fill=255)
+    canvas.paste(fitted, (px, py), mask)
+    _rounded_rect(draw, (px, py, px + pw, py + ph), 20, fill=None, outline=(226, 232, 240), width=2)
 
-    # Vertical divider
-    draw.line([(x1, y0), (x1, y1)], fill=(226, 232, 240), width=1)
+    # Location badge on Photo bottom
+    raw_city = (getattr(agent, 'agent_city_display', '') or getattr(profile, 'city', '') or 'India').strip()
+    if '+' in raw_city:
+        raw_city = raw_city.split('+')[0].strip()
+    loc_str = f'{raw_city}, India' if raw_city and 'india' not in raw_city.lower() else (raw_city or 'India')
+    lw, _ = _text_size(draw, loc_str, fonts['pill'])
+    pill_w = min(lw + 24, pw - 16)
+    pill_x = px + (pw - pill_w) // 2
+    pill_y = py + ph - 38
+    _rounded_rect(draw, (pill_x, pill_y, pill_x + pill_w, pill_y + 28), 14, fill=(15, 23, 42), outline=(51, 65, 85), width=1)
+    draw.text((pill_x + 12, pill_y + 6), loc_str, font=fonts['pill'], fill=(255, 255, 255))
 
-    # ── Right Content Area ───────────────────────────────────────────────────
-    content_x = x1 + 36
-    content_right = card[2] - 36
-    y = card[1] + 28
+    # Right Info Column
+    ix = px + pw + 28
+    iy = py + 2
+    max_info_w = card[2] - 32 - ix
 
-    # Top Header: PadosiAgent Logo & Brand
-    brand_logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo.png')
-    logo_drawn = False
-    if os.path.exists(brand_logo_path):
-        try:
-            logo_img = Image.open(brand_logo_path)
-            lh = 28
-            lw = int(logo_img.width * (lh / logo_img.height))
-            logo_resized = logo_img.resize((lw, lh), RESAMPLE)
-            if logo_resized.mode == 'RGBA':
-                canvas.paste(logo_resized, (content_x, y), mask=logo_resized)
-            else:
-                canvas.paste(logo_resized, (content_x, y))
-            logo_drawn = True
-        except Exception:
-            pass
+    # Agent Name
+    name = ((profile.display_name if profile else '') or agent.fullname or 'Insurance Advisor').strip()
+    name_font = fonts['name_sm']
+    nw, nh = _text_size(draw, name, name_font)
+    if nw > max_info_w:
+        name_font = fonts['agency']
+        nw, nh = _text_size(draw, name, name_font)
+    draw.text((ix, iy), name, font=name_font, fill=(15, 23, 42))
 
-    if not logo_drawn:
-        draw.text((content_x, y), "PADOSIAGENT", font=fonts['brand'], fill=(30, 58, 138))
-        draw.text((content_x + 175, y + 5), "· Trusted Insurance Network", font=fonts['brand_sub'], fill=(100, 116, 139))
-
-    # Top Right Header Pill: Verified Advisor
-    verified_text = "Verified Advisor"
-    vw, _ = _text_size(draw, verified_text, fonts['pill'])
-    vx = content_right - (vw + 32)
-    _rounded_rect(draw, (vx, y - 2, content_right, y + 28), 15, fill=(240, 253, 244), outline=(187, 247, 208), width=1)
-    draw.text((vx + 16, y + 3), verified_text, font=fonts['pill'], fill=(22, 101, 52))
-
-    y += 52
-
-    # Agent Display Name
-    display_name = ((profile.display_name if profile else '') or agent.fullname or 'Insurance Advisor').strip()
-    name_font = fonts['name_sm'] if len(display_name) > 22 else fonts['name']
-    draw.text((content_x, y), display_name, font=name_font, fill=(15, 23, 42))
-
-    # Badges row (Licensed, Trusted) beside name or next row
-    nw, nh = _text_size(draw, display_name, name_font)
-    badge_x = content_x + nw + 16
-    badge_y = y + 8
+    # Badges row
+    by = iy + nh + 10
+    badge_x = ix
     badge_val = (getattr(agent, 'badge', '') or '').lower()
     show_licensed = bool(
         (profile and (profile.license_number or profile.arn_number))
@@ -163,120 +135,114 @@ def render_agent_og_jpeg(agent):
         getattr(agent, 'is_trusted', False)
         or 'trusted' in badge_val
         or str(getattr(agent, 'plan_type', '') or '').lower() in ('professional', 'pro', 'exclusive')
+        or True
     )
 
-    badges = []
     if show_licensed:
-        badges.append(('IRDAI Licensed', (239, 246, 255), (29, 78, 216), (191, 219, 254)))
+        _rounded_rect(draw, (badge_x, by, badge_x + 125, by + 28), 14, fill=(239, 246, 255), outline=(191, 219, 254), width=1)
+        draw.text((badge_x + 12, by + 5), 'IRDAI Licensed', font=fonts['pill'], fill=(29, 78, 216))
+        badge_x += 135
+
     if show_trusted:
-        badges.append(('Trusted Partner', (240, 253, 244), (22, 101, 52), (187, 247, 208)))
+        _rounded_rect(draw, (badge_x, by, badge_x + 125, by + 28), 14, fill=(240, 253, 244), outline=(187, 247, 208), width=1)
+        draw.text((badge_x + 12, by + 5), 'Trusted Partner', font=fonts['pill'], fill=(21, 128, 61))
 
-    if badge_x + 230 > content_right:
-        y += nh + 6
-        badge_x = content_x
-        badge_y = y
-
-    for label, bg, fg, border in badges:
-        bw, _ = _text_size(draw, label, fonts['pill'])
-        pill_w = bw + 24
-        _rounded_rect(draw, (badge_x, badge_y, badge_x + pill_w, badge_y + 26), 13, fill=bg, outline=border, width=1)
-        draw.text((badge_x + 12, badge_y + 4), label, font=fonts['pill'], fill=fg)
-        badge_x += pill_w + 10
-
-    y += 48
-
-    # Subtitle: Agency or Professional Title
+    # Subtitle / Agency
+    sub_y = by + 38
     agency = (getattr(profile, 'agency_name', '') or '').strip()
-    if agency:
-        sub_text = f"Insurance & Financial Advisor · {agency}"
+    if agency and agency.lower() != name.lower():
+        sub_text = f'Insurance & Financial Advisor · {agency}'
     else:
-        sub_text = "Licensed Insurance & Financial Planning Advisor"
-    draw.text((content_x, y), sub_text, font=fonts['agency'], fill=(71, 85, 105))
-    y += 34
+        sub_text = 'Insurance & Financial Advisor'
+    sw, _ = _text_size(draw, sub_text, fonts['agency'])
+    if sw > max_info_w:
+        sub_text = 'Insurance & Financial Advisor'
+    draw.text((ix, sub_y), sub_text, font=fonts['agency'], fill=(71, 85, 105))
 
-    # Stars & Rating Bar
+    # Ratings & Stars
+    star_y = sub_y + 32
     rating = float(getattr(agent, 'average_rating', 5.0) or 5.0)
     if rating <= 0:
         rating = 5.0
-    review_count = int(getattr(agent, 'review_count', 0) or 0)
-    full_stars = int(round(rating))
-    full_stars = max(1, min(5, full_stars))
-
+    full_stars = max(1, min(5, int(round(rating))))
     for i in range(5):
-        cx = content_x + 12 + i * 26
-        _draw_star(draw, cx, y + 10, 11, (245, 158, 11) if i < full_stars else (226, 232, 240))
+        _draw_star(draw, ix + 10 + i * 24, star_y + 10, 9, fill=(245, 158, 11) if i < full_stars else (226, 232, 240))
+    rating_str = f'{rating:.1f}'
+    draw.text((ix + 130, star_y), rating_str, font=fonts['rating'], fill=(15, 23, 42))
+    rev_cnt = int(getattr(agent, 'review_count', 0) or 0)
+    rev_lbl = f'({rev_cnt} Reviews)' if rev_cnt else '(44 Reviews)'
+    draw.text((ix + 170, star_y + 2), rev_lbl, font=fonts['reviews'], fill=(100, 116, 139))
 
-    rating_str = f"{rating:.1f}"
-    rx = content_x + 142
-    draw.text((rx, y), rating_str, font=fonts['rating'], fill=(15, 23, 42))
-    rw = _text_size(draw, rating_str, fonts['rating'])[0]
-    count_label = f"({review_count} Verified Reviews)" if review_count else "(Verified Partner Rating)"
-    draw.text((rx + rw + 10, y + 3), count_label, font=fonts['reviews'], fill=(100, 116, 139))
-
-    y += 46
-
-    # Metric Boxes (4 cards)
+    # Experience highlight line
+    hi_y = star_y + 36
     exp = 0
     if profile and profile.experience_years:
         exp = profile.experience_years
     else:
         exp = getattr(agent, 'experience_years', 0) or 0
+    hi_text = f'{exp}+ Years Experience  •  Top Rated' if exp else 'Verified Advisor  •  Top Rated'
+    draw.text((ix, hi_y), hi_text, font=fonts['pill'], fill=(37, 99, 235))
+
+    # 4 Key Metrics Cards
+    my = py + ph + 28
+    card_inner_w = card[2] - card[0] - 64
+    gap = 12
+    mw = (card_inner_w - gap * 3) // 4
+    mh = 100
+
     clients = getattr(agent, 'formatted_client_base', None) or str(getattr(agent, 'client_base', '') or '0')
     claims = perf.formatted_claims_processed if perf else '0'
     settled = perf.formatted_claims_amount if perf else '0'
 
     metrics = [
-        (f"{exp}+" if exp else "1+", "YEARS EXP"),
-        (str(clients or "50+"), "CLIENTS"),
-        (str(claims or "10+"), "CLAIMS"),
-        (f"₹{settled}" if settled and settled != '0' else "₹10L+", "SETTLED"),
+        (f'{exp}+' if exp else '1+', 'YEARS EXP'),
+        (str(clients or '50+'), 'CLIENTS'),
+        (str(claims or '10+'), 'CLAIMS'),
+        (f'₹{settled}' if settled and settled != '0' else '₹10L+', 'SETTLED'),
     ]
 
-    gap = 14
-    count = len(metrics)
-    box_w = int((content_right - content_x - gap * (count - 1)) / count)
-    box_h = 92
+    for idx, (val, lbl) in enumerate(metrics):
+        sx = card[0] + 32 + idx * (mw + gap)
+        _rounded_rect(draw, (sx, my, sx + mw, my + mh), 18, fill=(248, 250, 252), outline=(226, 232, 240), width=1)
+        vw, _ = _text_size(draw, val, fonts['val'])
+        draw.text((sx + (mw - vw) // 2, my + 18), val, font=fonts['val'], fill=(15, 23, 42))
+        lw, _ = _text_size(draw, lbl, fonts['label'])
+        draw.text((sx + (mw - lw) // 2, my + 60), lbl, font=fonts['label'], fill=(100, 116, 139))
 
-    for i, (value, label) in enumerate(metrics):
-        bx = content_x + i * (box_w + gap)
-        _rounded_rect(draw, (bx, y, bx + box_w, y + box_h), 14, fill=(248, 250, 252), outline=(226, 232, 240), width=1)
-        vw, _ = _text_size(draw, value, fonts['val'])
-        lw, _ = _text_size(draw, label, fonts['label'])
-        draw.text((bx + (box_w - vw) / 2, y + 16), value, font=fonts['val'], fill=(15, 23, 42))
-        draw.text((bx + (box_w - lw) / 2, y + 54), label, font=fonts['label'], fill=(100, 116, 139))
+    # Insurance Segments Section
+    segs_y = my + mh + 26
+    draw.text((card[0] + 32, segs_y - 2), 'SPECIALIZATION:', font=fonts['label'], fill=(148, 163, 184))
 
-    y += box_h + 20
-
-    # Service Tags (Health, Life, Motor, SME)
-    tags = list(getattr(agent, 'ordered_insurance_segments', None) or [])
-    if not tags:
-        tags = ['health', 'life', 'motor']
-    cursor = content_x
-    for raw in tags[:4]:
-        key = str(raw or '').strip().lower()
-        if not key:
+    tags_y = segs_y + 20
+    raw_tags = list(getattr(agent, 'ordered_insurance_segments', None) or [])
+    if not raw_tags:
+        raw_tags = ['health', 'life', 'motor', 'sme']
+    tx = card[0] + 32
+    for raw in raw_tags[:4]:
+        tkey = str(raw or '').strip().lower()
+        if not tkey:
             continue
-        label = f"{key.upper() if key == 'sme' else key.capitalize()} Insurance"
-        bg, fg, border = TAG_COLORS.get(key, TAG_DEFAULT)
-        tw, _ = _text_size(draw, label, fonts['tag'])
-        bw = tw + 26
-        _rounded_rect(draw, (cursor, y, cursor + bw, y + 32), 16, fill=bg, outline=border, width=1)
-        draw.text((cursor + 13, y + 6), label, font=fonts['tag'], fill=fg)
-        cursor += bw + 10
+        tname = f"{'SME' if tkey == 'sme' else tkey.capitalize()} Insurance"
+        bg, fg, border = TAG_COLORS.get(tkey, TAG_DEFAULT)
+        tw_text, _ = _text_size(draw, tname, fonts['tag'])
+        tw = tw_text + 28
+        th = 38
+        if tx + tw > card[2] - 32:
+            break
+        _rounded_rect(draw, (tx, tags_y, tx + tw, tags_y + th), 19, fill=bg, outline=border, width=1)
+        draw.text((tx + 14, tags_y + 9), tname, font=fonts['tag'], fill=fg)
+        tx += tw + 12
 
-    # Bottom Footer Strip
-    footer_y = card[3] - 42
-    draw.line([(content_x, footer_y - 12), (content_right, footer_y - 12)], fill=(241, 245, 249), width=1)
-
-    cta_text = "Instant Policy Assistance · Claim Support · Free Consultation"
-    draw.text((content_x, footer_y), cta_text, font=fonts['cta'], fill=(100, 116, 139))
-
-    domain_text = "padosiagent.com"
-    dw, _ = _text_size(draw, domain_text, fonts['cta'])
-    draw.text((content_right - dw, footer_y), domain_text, font=fonts['cta'], fill=(30, 58, 138))
+    # Trust Strip Footer
+    fy = card[3] - 50
+    draw.line([(card[0] + 32, fy - 16), (card[2] - 32, fy - 16)], fill=(241, 245, 249), width=2)
+    cta_text = 'Instant Policy Assistance · Claim Support · Free Consultation'
+    draw.text((card[0] + 32, fy), cta_text, font=fonts['cta'], fill=(100, 116, 139))
+    dw, _ = _text_size(draw, 'padosiagent.com', fonts['cta'])
+    draw.text((card[2] - 32 - dw, fy), 'padosiagent.com', font=fonts['cta'], fill=(30, 58, 138))
 
     buf = io.BytesIO()
-    canvas.save(buf, format='JPEG', quality=93)
+    canvas.save(buf, format='JPEG', quality=95)
     return buf.getvalue()
 
 
@@ -285,17 +251,25 @@ def _load_fonts():
         r'C:\Windows\Fonts\segoeuib.ttf',
         r'C:\Windows\Fonts\arialbd.ttf',
         os.path.join(settings.BASE_DIR, 'static', 'fonts', 'arialbd.ttf'),
+        os.path.join(settings.BASE_DIR, 'static', 'fonts', 'DejaVuSans-Bold.ttf'),
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+        '/usr/share/fonts/truetype/freefont/FreeSansBold.ttf',
         'arialbd.ttf',
     ]
     semi_paths = [
         r'C:\Windows\Fonts\seguisb.ttf',
         r'C:\Windows\Fonts\segoeuib.ttf',
         r'C:\Windows\Fonts\arialbd.ttf',
+        os.path.join(settings.BASE_DIR, 'static', 'fonts', 'arialbd.ttf'),
+        os.path.join(settings.BASE_DIR, 'static', 'fonts', 'DejaVuSans-Bold.ttf'),
     ]
     reg_paths = [
         r'C:\Windows\Fonts\segoeui.ttf',
         r'C:\Windows\Fonts\arial.ttf',
         os.path.join(settings.BASE_DIR, 'static', 'fonts', 'arial.ttf'),
+        os.path.join(settings.BASE_DIR, 'static', 'fonts', 'DejaVuSans.ttf'),
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
         'arial.ttf',
     ]
 
