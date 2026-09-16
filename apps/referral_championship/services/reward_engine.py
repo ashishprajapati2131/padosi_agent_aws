@@ -60,19 +60,24 @@ def format_inr(val):
     return f"₹{','.join(parts)},{last3}"
 
 
-def get_reward_image(reward_type):
-    """Map reward_type to static asset image path."""
-    if reward_type in ('family_trip', 'international_trip', 'domestic_trip'):
-        return 'championship/reward-trip.jpg'
-    elif reward_type == 'gold':
-        return 'championship/reward-gold.jpg'
-    elif reward_type == 'silver':
-        return 'championship/reward-silver.jpg'
-    elif reward_type == 'plan_upgrade':
-        return 'championship/championship-rewards.jpg'
-    elif reward_type in ('membership_fee_back', 'cashback', 'voucher'):
-        return 'championship/reward-cashback.jpg'
-    return 'championship/championship-rewards.jpg'
+def get_reward_image(reward_type, threshold=None):
+    """Map reward_type or threshold to static asset image path from banner."""
+    if threshold == 5 or reward_type in ('membership_fee_back', 'cashback', 'voucher'):
+        return 'championship/step-1-feeback.png'
+    elif threshold == 10 or reward_type == 'plan_upgrade':
+        return 'championship/step-2-profree.png'
+    elif threshold == 25 or reward_type == 'silver':
+        return 'championship/step-3-silver.png'
+    elif threshold == 50 or reward_type == 'gold':
+        return 'championship/step-4-gold.png'
+    elif threshold == 100 or reward_type == 'domestic_trip':
+        return 'championship/step-5-domestictrip.png'
+    elif threshold == 200 or reward_type == 'international_trip':
+        return 'championship/step-6-intltrip.png'
+    elif (threshold and threshold >= 900) or reward_type == 'family_trip':
+        return 'championship/step-7-topchampions.png'
+    return 'championship/step-1-feeback.png'
+
 
 
 def get_participant_roadmap(participant):
@@ -145,7 +150,7 @@ def get_participant_roadmap(participant):
             'value': slab.value,
             'value_formatted': format_inr(slab.value),
             'reward_type': slab.reward_type,
-            'image_path': get_reward_image(slab.reward_type),
+            'image_path': get_reward_image(slab.reward_type, slab.threshold),
             'badge_icon': slab.badge_icon,
             'dispatch_date': slab.dispatch_date_default,
         })
