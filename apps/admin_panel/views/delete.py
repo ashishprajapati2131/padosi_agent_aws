@@ -35,19 +35,64 @@ def admin_delete(request):
     try:
         with connection.cursor() as cursor:
             if model == 'agent':
-                # 1. Fetch user_id from agents
-                cursor.execute("SELECT user_id FROM agents WHERE id = %s", [record_id])
+                # 1. Fetch agent details
+                cursor.execute("SELECT id, user_id FROM agents WHERE id = %s", [record_id])
                 agent_row = cursor.fetchone()
                 if not agent_row:
                     return JsonResponse({'success': False, 'message': 'Record not found'}, status=404)
-                user_id = agent_row[0]
+                user_id = agent_row[1]
                 
-                # 2. Suspend the linked user account
+                # 2. Backup agent record into agent_backup table
+                try:
+                    cursor.execute("""
+                        INSERT INTO agent_backup (
+                            id, user_id, event_id, distributor_id, fullname, email, google_id,
+                            email_verified_at, mobile, registration_step, agent_pincode, latitude, longitude,
+                            plan_type, trial_ends_at, upgrade_discount_percent, referred_by_code,
+                            referral_reward_type, referral_reward_claimed, status, is_approved, approved_at,
+                            badge, admin_notes, registration_draft, user_types, insurance_companies,
+                            experience_range, client_base, achievement_photo_limit, profession, created_at, updated_at
+                        )
+                        SELECT
+                            id, user_id, event_id, distributor_id, fullname, email, google_id,
+                            email_verified_at, mobile, registration_step, agent_pincode, latitude, longitude,
+                            plan_type, trial_ends_at, upgrade_discount_percent, referred_by_code,
+                            referral_reward_type, referral_reward_claimed, status, is_approved, approved_at,
+                            badge, admin_notes, registration_draft, user_types, insurance_companies,
+                            experience_range, client_base, achievement_photo_limit, profession, created_at, updated_at
+                        FROM agents WHERE id = %s
+                        ON DUPLICATE KEY UPDATE
+                            fullname = VALUES(fullname),
+                            email = VALUES(email),
+                            status = VALUES(status),
+                            updated_at = NOW()
+                    """, [record_id])
+                except Exception as backup_err:
+                    logger.warning(f"Agent backup warning for agent {record_id}: {backup_err}")
+
+                # 3. Suspend linked user account
                 if user_id:
                     cursor.execute("UPDATE users SET status = 'suspended' WHERE id = %s", [user_id])
                 
-                # 3. Delete the agent record
-                cursor.execute("DELETE FROM agents WHERE id = %s", [record_id])
+                # 4. Delete the agent record with foreign key check guard
+                cursor.execute("SET FOREIGN_KEY_CHECKS=0")
+                try:
+                    cursor.execute("DELETE FROM registration_activity_logs WHERE agent_id = %s", [record_id])
+                    cursor.execute("DELETE FROM agents WHERE id = %s", [record_id])
+                finally:
+                    cursor.execute("SET FOREIGN_KEY_CHECKS=1")
+
+            elif model == 'agent_draft':
+                cursor.execute("SELECT id FROM agent_drafts WHERE id = %s", [record_id])
+                if not cursor.fetchone():
+                    return JsonResponse({'success': False, 'message': 'Draft not found'}, status=404)
+                
+                cursor.execute("SET FOREIGN_KEY_CHECKS=0")
+                try:
+                    cursor.execute("DELETE FROM registration_activity_logs WHERE draft_id = %s", [record_id])
+                    cursor.execute("DELETE FROM agent_drafts WHERE id = %s", [record_id])
+                finally:
+                    cursor.execute("SET FOREIGN_KEY_CHECKS=1")
 
             elif model == 'user':
                 cursor.execute("SELECT id, role FROM users WHERE id = %s", [record_id])
