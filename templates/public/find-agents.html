@@ -2819,40 +2819,31 @@ no spam calls, only trusted licensed agents.{% endblock %}
             }
         });
 
-        // --- Auto-show Location Popup if missing ---
+        // --- Auto-show Location Popup after 5 seconds if location is missing/rejected ---
         const urlParams = new URLSearchParams(window.location.search);
         const hasLocation = {% if request.session.last_pincode or request.session.last_lat %}true{% else %}false{% endif %} ||
-        urlParams.has('pincode') || urlParams.has('location') ||
-    (urlParams.has('lat') && urlParams.has('lng'));
-    const findAgentsPath = "{% url 'home:find_agents' %}";
-    const isFindAgentsPage = function () {
-        return window.location.pathname.replace(/\/+$/, '') === findAgentsPath.replace(/\/+$/, '');
-    };
-    let locationPopupTimer = null;
+            urlParams.has('pincode') || urlParams.has('location') ||
+            (urlParams.has('lat') && urlParams.has('lng'));
+        const findAgentsPath = "{% url 'home:find_agents' %}";
+        const isFindAgentsPage = function () {
+            return window.location.pathname.replace(/\/+$/, '') === findAgentsPath.replace(/\/+$/, '');
+        };
+        let locationPopupTimer = null;
 
-    $(document).ready(function () {
-        if (!hasLocation && isFindAgentsPage()) {
-            const triggerPincodePopup = () => {
-                if (typeof window.showLocationPopup === 'function' && isFindAgentsPage()) {
-                    window.showLocationPopup('{% url 'home:find_agents' %}');
-                }
-            };
-
-            if (typeof window.showGpsPopup === 'function') {
-                // Show GPS popup first
-                window.showGpsPopup('{% url 'home:find_agents' %}', () => {
-                    // On dismiss or fail: wait 5 seconds, then show pincode popup
-                    if (locationPopupTimer) {
-                        clearTimeout(locationPopupTimer);
+        $(document).ready(function () {
+            if (!hasLocation && isFindAgentsPage()) {
+                const triggerLocationPopup = () => {
+                    if (typeof window.showLocationPopup === 'function' && isFindAgentsPage()) {
+                        if (typeof Swal === 'undefined' || !Swal.isVisible()) {
+                            window.showLocationPopup('{% url 'home:find_agents' %}');
+                        }
                     }
-                    locationPopupTimer = setTimeout(triggerPincodePopup, 5000);
-                });
-            } else {
-                // Fallback to pincode popup after 5 seconds
-                locationPopupTimer = setTimeout(triggerPincodePopup, 5000);
+                };
+
+                if (locationPopupTimer) clearTimeout(locationPopupTimer);
+                locationPopupTimer = setTimeout(triggerLocationPopup, 5000);
             }
-        }
-    });
+        });
 
     window.addEventListener('pagehide', function () {
         if (locationPopupTimer) {

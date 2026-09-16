@@ -842,10 +842,24 @@ def _get_registration_context(request):
     if request.user.is_authenticated and is_distributor(request.user):
         layout_template = 'distributors/layout.html'
 
-    from apps.agents.models import InvestmentType
+    from apps.agents.models import InvestmentType, PromoCode
     active_investment_types = InvestmentType.objects.filter(is_active=True)
 
-    prefilled_promo = request.GET.get('promo') or request.GET.get('ref') or request.session.get('ref_code', '')
+    # prefilled_promo should ONLY be set if an actual valid PromoCode is passed via ?promo= or already applied in session.
+    # Referral codes (ref, refCode, ref_code) are for distributor/agent referral tracking and must NOT be used as promo codes.
+    prefilled_promo = ''
+    promo_param = (request.GET.get('promo') or '').strip().upper()
+    if promo_param:
+        p_obj = PromoCode.objects.filter(code__iexact=promo_param).first()
+        if p_obj and p_obj.is_valid():
+            prefilled_promo = p_obj.code
+            request.session['applied_promo_code'] = p_obj.code
+    elif request.session.get('applied_promo_code'):
+        p_obj = PromoCode.objects.filter(code__iexact=request.session.get('applied_promo_code')).first()
+        if p_obj and p_obj.is_valid():
+            prefilled_promo = p_obj.code
+        else:
+            request.session.pop('applied_promo_code', None)
 
     from apps.admin_panel.views.content import get_registration_swipe_config
     swipe = get_registration_swipe_config(visible_only=True)
@@ -886,6 +900,17 @@ def agent_registration(request):
             if agent_can_access_dashboard(agent):
                 return redirect('agents:agent_dashboard')
             return redirect('agents:chooseplan')
+
+    # Capture referral parameter if provided in GET query params (?ref= or ?refCode=)
+    ref_param = request.GET.get('ref') or request.GET.get('refCode')
+    if ref_param:
+        ref_val = str(ref_param).strip().upper()
+        request.session['ref_code'] = ref_val
+        from apps.admin_panel.models.referral_code import ReferralCode
+        ref_obj = ReferralCode.objects.filter(code=ref_val, is_active=True).first()
+        if ref_obj and ref_obj.distributor_id:
+            request.session['distributor_id'] = ref_obj.distributor_id
+            request.session['distributor_led_registration'] = True
 
     context = _get_registration_context(request)
     return render(request, 'agents/registration.html', context)
@@ -1116,7 +1141,7 @@ def _assign_step1_draft_fields(draft, request, extra=None):
         if ref_obj:
             draft.referred_by_code = ref_obj.code
     else:
-        ref_code = request.session.get('ref_code') or request.session.get('applied_promo_code') or request.session.get('championship_ref_id')
+        ref_code = request.session.get('ref_code') or request.session.get('championship_ref_id')
         if ref_code:
             if str(ref_code).startswith('PA-'):
                 draft.referred_by_code = ref_code
@@ -2532,7 +2557,7 @@ def _agent_register_complete_impl(request):
                     },
                 )
             else:
-                ref_code = request.session.get('ref_code') or request.session.get('applied_promo_code') or request.session.get('championship_ref_id')
+                ref_code = request.session.get('ref_code') or request.session.get('championship_ref_id')
                 if ref_code:
                     if str(ref_code).startswith('PA-'):
                         agent.referred_by_code = ref_code
@@ -3128,6 +3153,9 @@ def referral_join(request, ref_code):
         code.clicks = (code.clicks or 0) + 1
         code.save()
         request.session['ref_code'] = code.code
+        if code.distributor_id:
+            request.session['distributor_id'] = code.distributor_id
+            request.session['distributor_led_registration'] = True
     
     # Redirect to registration page with query params
     url = reverse('agents:agent_registration') + f"?ref={code_val}&show_trial=1"
