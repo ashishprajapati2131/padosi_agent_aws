@@ -59,8 +59,12 @@ except Exception:
     logging.getLogger(__name__).exception("ASGI/FastAPI could not be loaded")
     FASTAPI_ENABLED = False
 
+FASTAPI_PREFIXES = ("/api/v1", "/api/reset-password", "/api/docs", "/api/openapi.json", "/api/redoc")
+
+
 def application(environ, start_response):
     path = environ.get("PATH_INFO", "")
-    if FASTAPI_ENABLED and path.startswith("/api"):
+    if FASTAPI_ENABLED and any(path.startswith(prefix) for prefix in FASTAPI_PREFIXES):
         return asgi_wsgi_application(environ, start_response)
     return django_wsgi_application(environ, start_response)
+
