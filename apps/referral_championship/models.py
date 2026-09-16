@@ -3,6 +3,7 @@ import random
 import string
 from django.db import models
 from django.utils import timezone
+from django.conf import settings
 from django.contrib.auth.models import User
 from apps.agents.models import Agent
 
@@ -61,11 +62,13 @@ class ChampionshipCampaign(models.Model):
         """Retrieve the primary live campaign, or create the default one if missing."""
         campaign = cls.objects.filter(is_active=True).exclude(status__in=['ended', 'archived']).first()
         if not campaign:
+            start_dt = timezone.make_aware(timezone.datetime(2026, 9, 15, 0, 0, 0)) if settings.USE_TZ else timezone.datetime(2026, 9, 15, 0, 0, 0)
+            end_dt = timezone.make_aware(timezone.datetime(2026, 10, 31, 23, 59, 59)) if settings.USE_TZ else timezone.datetime(2026, 10, 31, 23, 59, 59)
             campaign = cls.objects.create(
                 name="PadosiAgent Referral Championship",
                 slug="championship-2026",
-                start_date=timezone.datetime(2026, 9, 15, 0, 0, 0),
-                end_date=timezone.datetime(2026, 10, 31, 23, 59, 59),
+                start_date=start_dt,
+                end_date=end_dt,
                 status='live',
                 is_active=True,
                 pricing_config={
@@ -117,9 +120,16 @@ class ChampionshipCampaign(models.Model):
     @property
     def days_left(self):
         now = timezone.now()
-        if now >= self.end_date:
+        end = self.end_date
+        if end is None:
             return 0
-        diff = (self.end_date - now).total_seconds()
+        if timezone.is_naive(end):
+            end = timezone.make_aware(end)
+        if timezone.is_naive(now):
+            now = timezone.make_aware(now)
+        if now >= end:
+            return 0
+        diff = (end - now).total_seconds()
         return max(0, int(diff // 86400))
 
 

@@ -43,9 +43,12 @@ def evaluate_participant_rewards(participant):
 
 
 def format_inr(val):
-    if not val:
+    if val is None or val == '':
         return ""
-    val_int = int(val)
+    try:
+        val_int = int(float(val))
+    except (TypeError, ValueError):
+        return ""
     s = str(val_int)
     if len(s) <= 3:
         return f"₹{s}"

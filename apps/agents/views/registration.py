@@ -843,32 +843,54 @@ def _get_registration_context(request):
         except AgentDraft.DoesNotExist:
             pass
 
-    from apps.distributors.views.dashboard import is_distributor
     layout_template = 'base.html'
-    if request.user.is_authenticated and is_distributor(request.user):
-        layout_template = 'distributors/layout.html'
+    try:
+        from apps.distributors.views.dashboard import is_distributor
+        if request.user.is_authenticated and is_distributor(request.user):
+            layout_template = 'distributors/layout.html'
+    except Exception:
+        pass
 
-    from apps.agents.models import InvestmentType, PromoCode
-    active_investment_types = InvestmentType.objects.filter(is_active=True)
+    active_investment_types = []
+    try:
+        from apps.agents.models import InvestmentType
+        active_investment_types = list(InvestmentType.objects.filter(is_active=True))
+    except Exception as e:
+        logger.warning(f"Error fetching active_investment_types: {e}")
 
-    # prefilled_promo should ONLY be set if an actual valid PromoCode is passed via ?promo= or already applied in session.
-    # Referral codes (ref, refCode, ref_code) are for distributor/agent referral tracking and must NOT be used as promo codes.
     prefilled_promo = ''
-    promo_param = (request.GET.get('promo') or '').strip().upper()
-    if promo_param:
-        p_obj = PromoCode.objects.filter(code__iexact=promo_param).first()
-        if p_obj and p_obj.is_valid():
-            prefilled_promo = p_obj.code
-            request.session['applied_promo_code'] = p_obj.code
-    elif request.session.get('applied_promo_code'):
-        p_obj = PromoCode.objects.filter(code__iexact=request.session.get('applied_promo_code')).first()
-        if p_obj and p_obj.is_valid():
-            prefilled_promo = p_obj.code
-        else:
-            request.session.pop('applied_promo_code', None)
+    try:
+        from apps.agents.models import PromoCode
+        promo_param = (request.GET.get('promo') or '').strip().upper()
+        if promo_param:
+            p_obj = PromoCode.objects.filter(code__iexact=promo_param).first()
+            if p_obj and p_obj.is_valid():
+                prefilled_promo = p_obj.code
+                request.session['applied_promo_code'] = p_obj.code
+        elif request.session.get('applied_promo_code'):
+            p_obj = PromoCode.objects.filter(code__iexact=request.session.get('applied_promo_code')).first()
+            if p_obj and p_obj.is_valid():
+                prefilled_promo = p_obj.code
+            else:
+                request.session.pop('applied_promo_code', None)
+    except Exception as e:
+        logger.warning(f"Error resolving promo code in registration context: {e}")
 
-    from apps.admin_panel.views.content import get_registration_swipe_config
-    swipe = get_registration_swipe_config(visible_only=True)
+    swipe = {}
+    try:
+        from apps.admin_panel.views.content import get_registration_swipe_config
+        swipe = get_registration_swipe_config(visible_only=True)
+    except Exception as e:
+        logger.warning(f"Error resolving registration swipe config: {e}")
+        swipe = {'enabled': False, 'slides': []}
+
+    default_states = ALL_INDIAN_STATES
+    try:
+        fetched_states = list(Pincode.objects.values_list('state', flat=True).distinct().order_by('state'))
+        if fetched_states:
+            default_states = fetched_states
+    except Exception as e:
+        logger.warning(f"Error fetching pincodes table/states: {e}")
 
     return {
         'layout_template': layout_template,
@@ -876,11 +898,11 @@ def _get_registration_context(request):
         'email_verified': email_verified,
         'verified_email': verified_email,
         'draft': draft,
-        'default_states': list(Pincode.objects.values_list('state', flat=True).distinct().order_by('state')) or ALL_INDIAN_STATES,
+        'default_states': default_states,
         'segments': INSURANCE_SEGMENTS,
         'language_options': LANGUAGE_OPTIONS,
-        'agent_segments': draft.segments if draft else [],
-        'agent_languages': draft.languages if draft else [],
+        'agent_segments': getattr(draft, 'segments', []) if draft else [],
+        'agent_languages': getattr(draft, 'languages', []) if draft else [],
         'active_investment_types': active_investment_types,
         'prefilledPromo': prefilled_promo,
         'registration_swipe_enabled': bool(swipe.get('enabled')) and bool(swipe.get('slides')),
@@ -966,57 +988,62 @@ def _build_referring_agent_data(referring_agent, is_championship=False):
 @require_http_methods(["GET"])
 def agent_registration(request):
     """Render the registration page. Shows OTP, Step 1, or Step 2 based on session."""
-    if request.user.is_authenticated:
-        from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
-        if request.user.is_staff or request.user.is_superuser:
-            return redirect('agents:agent_dashboard')
-        agent = resolve_agent_for_user(request.user)
-        if agent:
-            if agent_can_access_dashboard(agent):
+    try:
+        if request.user.is_authenticated:
+            from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
+            if request.user.is_staff or request.user.is_superuser:
                 return redirect('agents:agent_dashboard')
-            return redirect('agents:chooseplan')
+            agent = resolve_agent_for_user(request.user)
+            if agent:
+                if agent_can_access_dashboard(agent):
+                    return redirect('agents:agent_dashboard')
+                return redirect('agents:chooseplan')
 
-    # Capture referral parameter if provided in GET query params (?ref= or ?refCode=)
-    ref_param = request.GET.get('ref') or request.GET.get('refCode')
-    referring_agent_data = None
-    if ref_param:
-        ref_val = str(ref_param).strip().upper()
-        request.session['ref_code'] = ref_val
-        referring_agent = None
-        is_champ = False
+        # Capture referral parameter if provided in GET query params (?ref= or ?refCode=)
+        ref_param = request.GET.get('ref') or request.GET.get('refCode')
+        referring_agent_data = None
+        if ref_param:
+            ref_val = str(ref_param).strip().upper()
+            request.session['ref_code'] = ref_val
+            referring_agent = None
+            is_champ = False
 
-        if ref_val.startswith('PA-'):
-            try:
-                from apps.referral_championship.services.attribution_service import bind_referral_session
-                bind_referral_session(request, ref_val)
-                from apps.referral_championship.models import ChampionshipParticipant
-                participant = ChampionshipParticipant.objects.filter(referral_id=ref_val).select_related('agent').first()
-                if participant and participant.agent:
-                    referring_agent = participant.agent
-                    is_champ = True
-            except Exception:
-                pass
+            if ref_val.startswith('PA-'):
+                try:
+                    from apps.referral_championship.services.attribution_service import bind_referral_session
+                    bind_referral_session(request, ref_val)
+                    from apps.referral_championship.models import ChampionshipParticipant
+                    participant = ChampionshipParticipant.objects.filter(referral_id=ref_val).select_related('agent').first()
+                    if participant and participant.agent:
+                        referring_agent = participant.agent
+                        is_champ = True
+                except Exception:
+                    pass
 
-        if not referring_agent:
-            try:
-                from apps.admin_panel.models.referral_code import ReferralCode
-                ref_obj = ReferralCode.objects.filter(code=ref_val, is_active=True).select_related('agent').first()
-                if ref_obj:
-                    if ref_obj.distributor_id:
-                        request.session['distributor_id'] = ref_obj.distributor_id
-                        request.session['distributor_led_registration'] = True
-                    if ref_obj.agent:
-                        referring_agent = ref_obj.agent
-            except Exception:
-                pass
+            if not referring_agent:
+                try:
+                    from apps.admin_panel.models.referral_code import ReferralCode
+                    ref_obj = ReferralCode.objects.filter(code=ref_val, is_active=True).select_related('agent').first()
+                    if ref_obj:
+                        if ref_obj.distributor_id:
+                            request.session['distributor_id'] = ref_obj.distributor_id
+                            request.session['distributor_led_registration'] = True
+                        if ref_obj.agent:
+                            referring_agent = ref_obj.agent
+                except Exception:
+                    pass
 
-        if referring_agent:
-            referring_agent_data = _build_referring_agent_data(referring_agent, is_championship=is_champ)
+            if referring_agent:
+                referring_agent_data = _build_referring_agent_data(referring_agent, is_championship=is_champ)
 
-    context = _get_registration_context(request)
-    if referring_agent_data:
-        context['referring_agent'] = referring_agent_data
-    return render(request, 'agents/registration.html', context)
+        context = _get_registration_context(request)
+        if referring_agent_data:
+            context['referring_agent'] = referring_agent_data
+        return render(request, 'agents/registration.html', context)
+    except Exception as e:
+        logger.exception(f"Error in agent_registration view: {e}")
+        context = _get_registration_context(request)
+        return render(request, 'agents/registration.html', context)
 
 
 @require_http_methods(["GET"])
@@ -1027,60 +1054,65 @@ def agent_registration_referral(request, ref_code):
     and renders the same registration page with the referring agent's card.
     The actual registration flow remains completely unchanged.
     """
-    # If already logged in, redirect same as normal registration
-    if request.user.is_authenticated:
-        from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
-        if request.user.is_staff or request.user.is_superuser:
-            return redirect('agents:agent_dashboard')
-        agent = resolve_agent_for_user(request.user)
-        if agent:
-            if agent_can_access_dashboard(agent):
+    try:
+        # If already logged in, redirect same as normal registration
+        if request.user.is_authenticated:
+            from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
+            if request.user.is_staff or request.user.is_superuser:
                 return redirect('agents:agent_dashboard')
-            return redirect('agents:chooseplan')
+            agent = resolve_agent_for_user(request.user)
+            if agent:
+                if agent_can_access_dashboard(agent):
+                    return redirect('agents:agent_dashboard')
+                return redirect('agents:chooseplan')
 
-    code_val = str(ref_code).strip().upper()
+        code_val = str(ref_code).strip().upper()
 
-    # ── Store ref code in session for the existing flow to pick up ──
-    request.session['ref_code'] = code_val
+        # ── Store ref code in session for the existing flow to pick up ──
+        request.session['ref_code'] = code_val
 
-    # ── Look up the referring agent ──
-    referring_agent = None
-    is_champ = False
+        # ── Look up the referring agent ──
+        referring_agent = None
+        is_champ = False
 
-    # 1. Try Championship participant code (PA-XXXXXX)
-    if code_val.startswith('PA-'):
-        try:
-            from apps.referral_championship.services.attribution_service import bind_referral_session
-            bind_referral_session(request, code_val)
-            from apps.referral_championship.models import ChampionshipParticipant
-            participant = ChampionshipParticipant.objects.filter(referral_id=code_val).select_related('agent').first()
-            if participant and participant.agent:
-                referring_agent = participant.agent
-                is_champ = True
-        except Exception:
-            pass
+        # 1. Try Championship participant code (PA-XXXXXX)
+        if code_val.startswith('PA-'):
+            try:
+                from apps.referral_championship.services.attribution_service import bind_referral_session
+                bind_referral_session(request, code_val)
+                from apps.referral_championship.models import ChampionshipParticipant
+                participant = ChampionshipParticipant.objects.filter(referral_id=code_val).select_related('agent').first()
+                if participant and participant.agent:
+                    referring_agent = participant.agent
+                    is_champ = True
+            except Exception:
+                pass
 
-    # 2. Try legacy ReferralCode
-    if not referring_agent:
-        try:
-            from apps.admin_panel.models.referral_code import ReferralCode
-            ref_obj = ReferralCode.objects.filter(code=code_val, is_active=True).select_related('agent').first()
-            if ref_obj:
-                # Increment clicks for tracking
-                ref_obj.clicks = (ref_obj.clicks or 0) + 1
-                ref_obj.save(update_fields=['clicks'])
-                if ref_obj.agent:
-                    referring_agent = ref_obj.agent
-        except Exception:
-            pass
+        # 2. Try legacy ReferralCode
+        if not referring_agent:
+            try:
+                from apps.admin_panel.models.referral_code import ReferralCode
+                ref_obj = ReferralCode.objects.filter(code=code_val, is_active=True).select_related('agent').first()
+                if ref_obj:
+                    # Increment clicks for tracking
+                    ref_obj.clicks = (ref_obj.clicks or 0) + 1
+                    ref_obj.save(update_fields=['clicks'])
+                    if ref_obj.agent:
+                        referring_agent = ref_obj.agent
+            except Exception:
+                pass
 
-    # ── Build referring agent context for the card ──
-    referring_agent_data = _build_referring_agent_data(referring_agent, is_championship=is_champ) if referring_agent else None
+        # ── Build referring agent context for the card ──
+        referring_agent_data = _build_referring_agent_data(referring_agent, is_championship=is_champ) if referring_agent else None
 
-    # ── Build normal registration context + referring agent ──
-    context = _get_registration_context(request)
-    context['referring_agent'] = referring_agent_data
-    return render(request, 'agents/registration.html', context)
+        # ── Build normal registration context + referring agent ──
+        context = _get_registration_context(request)
+        context['referring_agent'] = referring_agent_data
+        return render(request, 'agents/registration.html', context)
+    except Exception as e:
+        logger.exception(f"Error in agent_registration_referral view for ref_code {ref_code}: {e}")
+        context = _get_registration_context(request)
+        return render(request, 'agents/registration.html', context)
 
 
 def _int_or_zero(value):
