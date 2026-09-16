@@ -59,8 +59,12 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
             EXISTS (SELECT 1 FROM invoices WHERE invoices.agent_id = a.id AND invoices.promo_code = %s)
             OR
             EXISTS (SELECT 1 FROM free_trial_history WHERE free_trial_history.agent_id = a.id AND free_trial_history.promo_code = %s)
+            OR
+            EXISTS (SELECT 1 FROM agent_subscriptions WHERE agent_subscriptions.agent_id = a.id AND agent_subscriptions.promo_code = %s)
+            OR
+            a.referred_by_code = %s
         )"""
-        params.extend([promo_code_filter, promo_code_filter])
+        params.extend([promo_code_filter, promo_code_filter, promo_code_filter, promo_code_filter])
 
     if city_filter:
         query += " AND ap.address LIKE %s"

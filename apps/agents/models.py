@@ -245,9 +245,15 @@ class PromoCode(models.Model):
             return False
         if self.max_uses is not None and self.times_used >= self.max_uses:
             return False
-        if plan_type is not None and self.applicable_plan is not None:
-            if self.applicable_plan not in ('all', plan_type):
-                return False
+        if plan_type is not None:
+            app_plan = (self.applicable_plan or '').strip().lower()
+            p_type = str(plan_type).strip().lower()
+            if app_plan and app_plan != 'all':
+                # Treat 'basic' and 'starter' as equivalent plan aliases
+                if app_plan in ('basic', 'starter') and p_type in ('basic', 'starter'):
+                    pass
+                elif app_plan != p_type:
+                    return False
         return True
 
     def calculate_discount(self, amount):

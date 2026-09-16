@@ -1721,11 +1721,12 @@ def chooseplan(request):
     starter_gst = tier_info['starter_gst']
     starter_final = tier_info['starter_total']
 
-    if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('basic'):
+    if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('starter'):
         starter_base = int(round(max(0.0, starter_full - promo_obj.calculate_discount(starter_full))))
         starter_gst = round(starter_base * 0.18, 2)
         starter_final = int(round(starter_base + starter_gst))
         has_starter_promo = True
+        starter_scratch_enabled = False
 
     starter_discount_percent = 0
     if starter_full > 0 and starter_base < starter_full:
@@ -1742,6 +1743,9 @@ def chooseplan(request):
         prof_gst = round(prof_base * 0.18, 2)
         prof_final = int(round(prof_base + prof_gst))
         has_prof_promo = True
+        prof_scratch_enabled = False
+
+    scratch_card_enabled = starter_scratch_enabled or prof_scratch_enabled
 
     prof_discount_percent = 0
     if prof_full > 0 and prof_base < prof_full:
@@ -1952,6 +1956,7 @@ def chooseplan(request):
         'prof_discount_percent': prof_discount_percent,
 
         'applied_promo_code': applied_promo_code,
+        'promo_obj': promo_obj,
         'has_promo': has_promo,
         'has_free_trial_promo': has_free_trial_promo,
         'has_starter_promo': has_starter_promo,
@@ -3069,22 +3074,21 @@ def agent_verify_promo(request):
         return JsonResponse({'success': False, 'message': 'Promo code is required.'})
 
     try:
-        promo = PromoCode.objects.get(code=promo_code)
-        if promo.is_valid():
+        promo = PromoCode.objects.filter(code__iexact=promo_code).first()
+        if promo and promo.is_valid():
             request.session['applied_promo_code'] = promo.code
+            request.session.modified = True
             return JsonResponse({
                 'success': True,
                 'message': f'Promo code "{promo.code}" is valid and will be applied at checkout!',
             })
-        else:
+        elif promo:
             return JsonResponse({
                 'success': False,
-                'message': 'Promo code has expired or is invalid.',
+                'message': 'Promo code has expired or is no longer valid.',
             })
-    except PromoCode.DoesNotExist:
-        pass
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Promo verification error: {e}")
 
     return JsonResponse({
         'success': False,
