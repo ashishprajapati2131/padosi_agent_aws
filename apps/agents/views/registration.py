@@ -888,6 +888,73 @@ def _get_registration_context(request):
 
 # ─── Views ──────────────────────────────────────────────────────────────────────
 
+def _build_referring_agent_data(referring_agent):
+    """Build standardized dictionary for referring agent card and OG preview."""
+    if not referring_agent:
+        return None
+
+    photo_url = '/static/img/avatar-icon.jpg'
+    try:
+        profile = getattr(referring_agent, 'profile', None)
+        if profile and hasattr(profile, 'profile_photo_url'):
+            photo_url = profile.profile_photo_url or photo_url
+        elif referring_agent.photo:
+            photo_url = referring_agent.photo.url
+    except Exception:
+        pass
+
+    avg_rating = 0.0
+    review_count = 0
+    try:
+        avg_rating = round(float(referring_agent.average_rating), 1)
+        review_count = referring_agent.review_count
+    except Exception:
+        pass
+
+    profile_slug = referring_agent.agent_slug
+    profile_url = f'/profile/{referring_agent.state_code}/{profile_slug}/' if profile_slug else ''
+
+    name = referring_agent.fullname or ''
+    initials = ''.join(word[0].upper() for word in name.split()[:2] if word) or 'A'
+
+    segments = []
+    try:
+        raw_segs = referring_agent.ordered_insurance_segments
+        for seg_item in raw_segs:
+            s_lower = str(seg_item).strip().lower()
+            if s_lower == 'sme':
+                name_seg = 'SME'
+                badge_cls = 'bg-purple-50 text-purple-700 border-purple-200/80'
+            elif 'health' in s_lower:
+                name_seg = 'Health'
+                badge_cls = 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+            elif 'life' in s_lower:
+                name_seg = 'Life'
+                badge_cls = 'bg-blue-50 text-blue-700 border-blue-200/80'
+            elif 'motor' in s_lower:
+                name_seg = 'Motor'
+                badge_cls = 'bg-amber-50 text-amber-700 border-amber-200/80'
+            else:
+                name_seg = s_lower.replace('_', ' ').title()
+                badge_cls = 'bg-slate-100 text-slate-700 border-slate-200'
+            segments.append({'id': s_lower, 'name': name_seg, 'badge_cls': badge_cls})
+    except Exception:
+        pass
+
+    return {
+        'id': referring_agent.id,
+        'name': name,
+        'initials': initials,
+        'photo_url': photo_url,
+        'avg_rating': avg_rating if avg_rating > 0 else 5.0,
+        'review_count': review_count,
+        'profile_url': profile_url,
+        'segments': segments,
+        'slug': profile_slug,
+        'og_image_url': reverse('agents:agent_og_image', kwargs={'agent_id': referring_agent.id}),
+    }
+
+
 @require_http_methods(["GET"])
 def agent_registration(request):
     """Render the registration page. Shows OTP, Step 1, or Step 2 based on session."""
@@ -903,16 +970,42 @@ def agent_registration(request):
 
     # Capture referral parameter if provided in GET query params (?ref= or ?refCode=)
     ref_param = request.GET.get('ref') or request.GET.get('refCode')
+    referring_agent_data = None
     if ref_param:
         ref_val = str(ref_param).strip().upper()
         request.session['ref_code'] = ref_val
-        from apps.admin_panel.models.referral_code import ReferralCode
-        ref_obj = ReferralCode.objects.filter(code=ref_val, is_active=True).first()
-        if ref_obj and ref_obj.distributor_id:
-            request.session['distributor_id'] = ref_obj.distributor_id
-            request.session['distributor_led_registration'] = True
+        referring_agent = None
+
+        if ref_val.startswith('PA-'):
+            try:
+                from apps.referral_championship.services.attribution_service import bind_referral_session
+                bind_referral_session(request, ref_val)
+                from apps.referral_championship.models import ChampionshipParticipant
+                participant = ChampionshipParticipant.objects.filter(referral_id=ref_val).select_related('agent').first()
+                if participant and participant.agent:
+                    referring_agent = participant.agent
+            except Exception:
+                pass
+
+        if not referring_agent:
+            try:
+                from apps.admin_panel.models.referral_code import ReferralCode
+                ref_obj = ReferralCode.objects.filter(code=ref_val, is_active=True).select_related('agent').first()
+                if ref_obj:
+                    if ref_obj.distributor_id:
+                        request.session['distributor_id'] = ref_obj.distributor_id
+                        request.session['distributor_led_registration'] = True
+                    if ref_obj.agent:
+                        referring_agent = ref_obj.agent
+            except Exception:
+                pass
+
+        if referring_agent:
+            referring_agent_data = _build_referring_agent_data(referring_agent)
 
     context = _get_registration_context(request)
+    if referring_agent_data:
+        context['referring_agent'] = referring_agent_data
     return render(request, 'agents/registration.html', context)
 
 
@@ -970,70 +1063,7 @@ def agent_registration_referral(request, ref_code):
             pass
 
     # ── Build referring agent context for the card ──
-    referring_agent_data = None
-    if referring_agent:
-        # Get photo URL
-        photo_url = '/static/img/avatar-icon.jpg'
-        try:
-            profile = getattr(referring_agent, 'profile', None)
-            if profile and hasattr(profile, 'profile_photo_url'):
-                photo_url = profile.profile_photo_url or photo_url
-            elif referring_agent.photo:
-                photo_url = referring_agent.photo.url
-        except Exception:
-            pass
-
-        # Get rating & review count
-        avg_rating = 0.0
-        review_count = 0
-        try:
-            avg_rating = round(float(referring_agent.average_rating), 1)
-            review_count = referring_agent.review_count
-        except Exception:
-            pass
-
-        # Get profile URL for "Profile" button
-        profile_slug = referring_agent.agent_slug
-        profile_url = f'/profile/{referring_agent.state_code}/{profile_slug}/' if profile_slug else ''
-
-        # Agent initials fallback & name
-        name = referring_agent.fullname or ''
-        initials = ''.join(word[0].upper() for word in name.split()[:2] if word) or 'A'
-
-        # Get segments
-        segments = []
-        try:
-            raw_segs = referring_agent.ordered_insurance_segments
-            for seg_item in raw_segs:
-                s_lower = str(seg_item).strip().lower()
-                if s_lower == 'sme':
-                    name_seg = 'SME'
-                    badge_cls = 'bg-purple-50 text-purple-700 border-purple-200/80'
-                elif 'health' in s_lower:
-                    name_seg = 'Health'
-                    badge_cls = 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                elif 'life' in s_lower:
-                    name_seg = 'Life'
-                    badge_cls = 'bg-blue-50 text-blue-700 border-blue-200/80'
-                elif 'motor' in s_lower:
-                    name_seg = 'Motor'
-                    badge_cls = 'bg-amber-50 text-amber-700 border-amber-200/80'
-                else:
-                    name_seg = s_lower.replace('_', ' ').title()
-                    badge_cls = 'bg-slate-100 text-slate-700 border-slate-200'
-                segments.append({'id': s_lower, 'name': name_seg, 'badge_cls': badge_cls})
-        except Exception:
-            pass
-
-        referring_agent_data = {
-            'name': name,
-            'initials': initials,
-            'photo_url': photo_url,
-            'avg_rating': avg_rating if avg_rating > 0 else 5.0,
-            'review_count': review_count,
-            'profile_url': profile_url,
-            'segments': segments,
-        }
+    referring_agent_data = _build_referring_agent_data(referring_agent) if referring_agent else None
 
     # ── Build normal registration context + referring agent ──
     context = _get_registration_context(request)
