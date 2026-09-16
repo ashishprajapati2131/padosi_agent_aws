@@ -377,20 +377,22 @@
             {% endif %}
 
             {% if profile.show_contact_info %}
-            <div class="profile-right-actions">
+            <div class="profile-right-actions action-btns" style="display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; gap: 10px !important; width: 100% !important; margin-top: 16px !important;">
                 <a href="javascript:void(0)" 
                    class="btn btn-whatsapp" 
+                   style="flex: 1 1 0% !important; min-width: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; white-space: nowrap !important; margin: 0 !important; padding: 11px 12px !important; font-size: 13.5px !important; font-weight: 600 !important; border-radius: 12px !important; text-decoration: none !important; box-sizing: border-box !important;"
                    onclick="return handleAgentContactClick(event, this, 'whatsapp')"
                    data-agent-id="{{ agent.id }}"
                    data-interaction-type="whatsapp">
-                    <i class="fab fa-whatsapp"></i> WhatsApp
+                    <i class="fab fa-whatsapp" style="font-size: 16px;"></i> <span>WhatsApp</span>
                 </a>
                 <a href="javascript:void(0)" 
                    class="btn btn-call" 
+                   style="flex: 1 1 0% !important; min-width: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; white-space: nowrap !important; margin: 0 !important; padding: 10px 12px !important; font-size: 13.5px !important; font-weight: 600 !important; border-radius: 12px !important; text-decoration: none !important; box-sizing: border-box !important;"
                    onclick="return handleAgentContactClick(event, this, 'call')"
                    data-agent-id="{{ agent.id }}"
                    data-interaction-type="call">
-                    <i class="fa-solid fa-phone"></i> Call Now
+                    <i class="fa-solid fa-phone" style="font-size: 14px;"></i> <span>Call Now</span>
                 </a>
             </div>
             {% endif %}
@@ -471,55 +473,51 @@
 
 <div class="profile-content-grid">
     <div class="left-section">
-        {% if agent_plan.show_career_timeline != False %}
-        <!-- Career Timeline -->
-        <div class="section-card">
-            <h2 class="section-title"><i class="far fa-calendar-alt"></i> Career Timeline</h2>
-            <div class="timeline">
-                {% for timeline in agent.sorted_career_timelines %}
-                    <div class="timeline-item">
-                        <i class="{% if timeline.event_type == 'Award' %}fas fa-trophy{% elif timeline.event_type == 'Achievement' %}fas fa-medal{% elif timeline.event_type == 'Certification' %}fas fa-award{% elif timeline.event_type == 'Career Event' %}fas fa-calendar-check{% elif timeline.event_type == 'Experience' %}fas fa-briefcase{% else %}fas fa-circle{% endif %} timeline-custom-icon"></i>
-                        <div class="timeline-year">{{ timeline.month }} {{ timeline.year }}</div>
-                        <div class="timeline-text">{{ timeline.event_text }}</div>
-                    </div>
-                {% empty %}
-                    <div class="text-muted small">No timeline events recorded.</div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
         {% if profile.show_certificates and agent_plan.show_agent_certificate != False %}
-        <!-- Certifications -->
-        <div class="section-card">
+        <!-- Certifications & Licenses (Section 2) -->
+        <div class="section-card section-certifications">
             <h2 class="section-title"><i class="fas fa-award"></i> Certifications & Licenses</h2>
-            {% if profile.license_number %}
-                <div class="icon-list-item" style="align-items: flex-start; gap: 10px; margin-bottom: 12px;">
-                    <i class="fas fa-certificate item-icon" style="color: #0d9488; font-size: 20px;"></i>
-                    <div class="item-text" style="line-height: 1.4;">
-                        <strong style="color: #0f172a; font-size: 14px;">IRDAI Certified Insurance Agent</strong><br>
-                        <span class="text-muted small">License No: {{ profile.license_number }}</span>
+            {% if profile.license_number or profile.arn_number %}
+            <div class="licenses-row-grid{% if profile.license_number and profile.arn_number %} dual-licenses{% endif %}">
+                {% if profile.license_number %}
+                <div class="license-badge-card license-irdai">
+                    <div class="license-badge-header">
+                        <i class="fas fa-certificate item-icon text-emerald"></i>
+                        <div>
+                            <strong class="license-title">IRDAI Certified</strong>
+                            <span class="license-subtitle">Insurance Agent</span>
+                        </div>
+                    </div>
+                    <div class="license-details">
+                        <div><span class="label">License No:</span> {{ profile.license_number }}</div>
                         {% if profile.license_valid_till %}
-                            <span class="text-muted small d-block">Valid till: {{ profile.license_valid_till|date:"d M Y" }}</span>
+                            <div class="text-muted small"><span class="label">Valid till:</span> {{ profile.license_valid_till|date:"d M Y" }}</div>
                         {% endif %}
                     </div>
                 </div>
-            {% endif %}
+                {% endif %}
 
-            {% if profile.arn_number %}
-                <div class="icon-list-item" style="align-items: flex-start; gap: 10px; margin-bottom: 12px;">
-                    <i class="fas fa-certificate item-icon" style="color: #2563eb; font-size: 20px;"></i>
-                    <div class="item-text" style="line-height: 1.4;">
-                        <strong style="color: #0f172a; font-size: 14px;">AMFI Certified Mutual Fund Distributor</strong><br>
-                        <span class="text-muted small">ARN Number: {{ profile.arn_number }}</span>
+                {% if profile.arn_number %}
+                <div class="license-badge-card license-amfi">
+                    <div class="license-badge-header">
+                        <i class="fas fa-certificate item-icon text-blue"></i>
+                        <div>
+                            <strong class="license-title">AMFI Certified</strong>
+                            <span class="license-subtitle">MF Distributor</span>
+                        </div>
+                    </div>
+                    <div class="license-details">
+                        <div><span class="label">ARN:</span> {{ profile.arn_number }}</div>
                         {% if profile.euin_number %}
-                            <span class="text-muted small d-block">EUIN: {{ profile.euin_number }}</span>
+                            <div><span class="label">EUIN:</span> {{ profile.euin_number }}</div>
                         {% endif %}
                         {% if profile.investment_valid_till %}
-                            <span class="text-muted small d-block">Valid till: {{ profile.investment_valid_till|date:"d M Y" }}</span>
+                            <div class="text-muted small"><span class="label">Valid till:</span> {{ profile.investment_valid_till|date:"d M Y" }}</div>
                         {% endif %}
                     </div>
                 </div>
+                {% endif %}
+            </div>
             {% endif %}
 
             {% for certification in agent.certification_entries %}
@@ -540,9 +538,27 @@
         </div>
         {% endif %}
 
+        {% if agent_plan.show_career_timeline != False %}
+        <!-- Career Timeline (Section 5) -->
+        <div class="section-card section-career">
+            <h2 class="section-title"><i class="far fa-calendar-alt"></i> Career Timeline</h2>
+            <div class="timeline">
+                {% for timeline in agent.sorted_career_timelines %}
+                    <div class="timeline-item">
+                        <i class="{% if timeline.event_type == 'Award' %}fas fa-trophy{% elif timeline.event_type == 'Achievement' %}fas fa-medal{% elif timeline.event_type == 'Certification' %}fas fa-award{% elif timeline.event_type == 'Career Event' %}fas fa-calendar-check{% elif timeline.event_type == 'Experience' %}fas fa-briefcase{% else %}fas fa-circle{% endif %} timeline-custom-icon"></i>
+                        <div class="timeline-year">{{ timeline.month }} {{ timeline.year }}</div>
+                        <div class="timeline-text">{{ timeline.event_text }}</div>
+                    </div>
+                {% empty %}
+                    <div class="text-muted small">No timeline events recorded.</div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if profile.show_achievements and agent_plan.show_achievement != False %}
-        <!-- Achievements -->
-        <div class="section-card">
+        <!-- Achievements (Section 6) -->
+        <div class="section-card section-achievements">
             <h2 class="section-title"><i class="fas fa-trophy"></i> Achievements</h2>
             {% if agent.achievement_entries %}
                 <div class="achievements-row">
@@ -563,8 +579,8 @@
 
     <div class="right-section">
         {% if profile.show_claims_stats and agent_plan.show_claim_support != False %}
-        <!-- Performance Stats -->
-        <div class="section-card">
+        <!-- Performance Stats (Section 4) -->
+        <div class="section-card section-performance">
             <h2 class="section-title"><i class="fas fa-chart-line"></i> Performance Stats</h2>
             <div class="stats-grid">
                 <div class="stat-box">
@@ -601,8 +617,8 @@
         </div>
         {% endif %}
 
-        <!-- Service Fees -->
-        <div class="section-card">
+        <!-- Service Fees (Section 3) -->
+        <div class="section-card section-services">
             <h2 class="section-title"><i class="fas fa-hand-holding-usd"></i> Service Fees</h2>
             <div class="fees-grid">
                 <div class="fee-box">
@@ -641,8 +657,8 @@
         </div>
 
         {% if profile.show_gallery and agent_plan.show_achievement != False %}
-        <!-- Media Gallery -->
-        <div class="section-card">
+        <!-- Media Gallery (Section 7) -->
+        <div class="section-card section-media">
             <div class="media-header">
                 <h2 class="section-title mb-0"><i class="fas fa-images"></i> Media</h2>
             </div>
@@ -664,8 +680,8 @@
         {% endif %}
 
         {% if profile.show_reviews and agent_plan.show_review_management != False %}
-        <!-- Reviews -->
-        <div class="section-card" id="reviews-section" data-scroll-delay="{{ review_scroll_delay_ms|default:3000 }}">
+        <!-- Reviews (Section 8) -->
+        <div class="section-card section-reviews" id="reviews-section" data-scroll-delay="{{ review_scroll_delay_ms|default:3000 }}">
             <div class="reviews-header">
                 <h2 class="section-title mb-0"><i class="far fa-star"></i> Reviews</h2>
                 <span class="total-reviews">{{ agent.review_count }} total</span>

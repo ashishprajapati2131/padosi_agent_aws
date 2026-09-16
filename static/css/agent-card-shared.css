@@ -252,7 +252,7 @@
 
         .rac-mobile-card .rac-photo-col {
             position: relative;
-            width: 110px;
+            width: 95px;
             flex-shrink: 0;
             overflow: hidden;
             background: #e5e7eb;
@@ -281,7 +281,7 @@
         .rac-info-col {
             flex: 1;
             min-width: 0;
-            padding: 10px 8px 10px 12px;
+            padding: 10px 8px 10px 10px;
             display: flex;
             flex-direction: column;
             gap: 5px;
@@ -299,12 +299,13 @@
             font-size: 15px;
             font-weight: 800;
             color: #111827;
-            line-height: 1.2;
+            line-height: 1.25;
             margin: 0;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 140px;
+            max-width: 100%;
+            flex: 1 1 auto;
         }
 
         .rac-badges {
@@ -394,9 +395,105 @@
 
         .rac-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
 
-        .rac-tag { display: inline-flex; align-items: center; justify-content: center; padding: 4px 10px; border-radius: 999px; border: 1px solid; font-size: 10px; font-weight: 700; line-height: 1; white-space: nowrap; }
+        .rac-mobile-card .rac-tags {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            gap: 5px !important;
+            margin-top: 6px !important;
+            overflow-x: auto !important;
+            scrollbar-width: none !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
 
-        /* Mobile stats sidebar */
+        .rac-mobile-card .rac-tags::-webkit-scrollbar {
+            display: none !important;
+        }
+
+        .rac-tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid;
+            font-size: 9.5px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* ── Mobile stats row (Years · Clients · Claims · Settled) ── */
+        .rac-mobile-card .rac-stats-grid {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: stretch !important;
+            gap: 4px !important;
+            margin-top: 6px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .rac-mobile-card .rac-stat-box {
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+            padding: 5px 2px !important;
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 6px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+
+        .rac-mobile-card .rac-stat-box.rac-stat-box--amount {
+            flex: 1.35 1 0% !important;
+            background: #f0fdf4 !important;
+            border-color: #bbf7d0 !important;
+        }
+
+        .rac-mobile-card .rac-stat-num {
+            font-size: 11.5px !important;
+            font-weight: 800 !important;
+            color: #0f172a !important;
+            line-height: 1.15 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            max-width: 100% !important;
+            display: block !important;
+        }
+
+        .rac-mobile-card .rac-stat-box.rac-stat-box--amount .rac-stat-num {
+            font-size: 10px !important;
+            color: #15803d !important;
+            letter-spacing: -0.3px !important;
+        }
+
+        .rac-mobile-card .rac-stat-lbl {
+            font-size: 7.5px !important;
+            font-weight: 700 !important;
+            color: #64748b !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.3px !important;
+            margin-top: 2px !important;
+            line-height: 1 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            max-width: 100% !important;
+            display: block !important;
+        }
+
+        .rac-mobile-card .rac-stat-box.rac-stat-box--amount .rac-stat-lbl {
+            color: #166534 !important;
+        }
+
+        /* Mobile stats sidebar (legacy fallback) */
         .rac-stats-col {
             flex-shrink: 0;
             width: 68px;
@@ -534,25 +631,68 @@
             height: 12px;
         }
 
-        @media (max-width: 400px) {
+        @media (max-width: 480px) {
             .rac-mobile-card .rac-photo-col {
-                width: 88px;
+                width: 90px;
             }
 
-            .rac-stat-num {
-                font-size: 10px;
+            .rac-mobile-card .rac-info-col {
+                padding: 8px 6px 8px 8px;
             }
 
-            .rac-btn {
-                font-size: 10px;
-                padding: 7px 2px;
+            .rac-mobile-card .rac-actions {
+                padding: 6px 8px;
+                gap: 4px;
+            }
+
+            .rac-mobile-card .rac-btn {
+                font-size: 10.5px;
+                padding: 6px 4px;
                 gap: 3px;
             }
+        }
 
-            .rac-btn svg {
+        @media (max-width: 375px) {
+            .rac-mobile-card .rac-photo-col {
+                width: 82px;
+            }
+
+            .rac-mobile-card .rac-stats-grid {
+                gap: 2.5px !important;
+            }
+
+            .rac-mobile-card .rac-stat-box {
+                padding: 4px 1px !important;
+            }
+
+            .rac-mobile-card .rac-stat-num {
+                font-size: 10px !important;
+            }
+
+            .rac-mobile-card .rac-stat-box.rac-stat-box--amount .rac-stat-num {
+                font-size: 9px !important;
+            }
+
+            .rac-mobile-card .rac-stat-lbl {
+                font-size: 6.5px !important;
+                letter-spacing: 0.1px !important;
+            }
+
+            .rac-mobile-card .rac-btn {
+                font-size: 9.5px;
+                padding: 6px 2px;
+                gap: 2px;
+            }
+
+            .rac-mobile-card .rac-btn svg {
                 width: 11px;
                 height: 11px;
                 display: inline-block !important;
+            }
+
+            .rac-mobile-card .rac-icon-btn {
+                width: 26px;
+                height: 26px;
             }
         }
 
