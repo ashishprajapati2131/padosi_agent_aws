@@ -6,7 +6,9 @@
 {% block og_description %}{{ profile.career_highlights|striptags|truncatechars:150|default:"View my professional insurance agent profile on PadosiAgent." }}{% endblock %}
 {% block og_url %}{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/{% endblock %}
 {% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}{% endblock %}
-{% block og_type %}profile{% endblock %}
+{% block og_type %}website{% endblock %}
+{% block og_image_width %}800{% endblock %}
+{% block og_image_height %}800{% endblock %}
 {% block twitter_card %}summary_large_image{% endblock %}
 {% block twitter_title %}{{ agentDisplayName|default:agent.fullname }} | PadosiAgent{% endblock %}
 {% block twitter_description %}{{ profile.career_highlights|striptags|truncatechars:150|default:"View my professional insurance agent profile on PadosiAgent." }}{% endblock %}
@@ -16,9 +18,6 @@
 
 {% block extra_head %}
     <meta property="og:image:secure_url" content="{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}">
-    <meta property="og:image:type" content="image/jpeg">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="{{ agentDisplayName|default:agent.fullname }} — PadosiAgent profile">
 {% endblock %}
 

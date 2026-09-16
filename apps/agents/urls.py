@@ -65,7 +65,9 @@ urlpatterns = [
     path('agent/update-visibility/', dashboard.agent_update_visibility, name='agent_update_visibility'),
     path('client/quick-register/', registration.client_quick_register, name='client_quick_register'),
     path('og-image/<int:agent_id>/preview.jpg', dashboard.agent_og_image, name='agent_og_image'),
+    path('og-image/<int:agent_id>/og.jpg', dashboard.agent_og_image),
     path('og-image/<str:slug>/preview.jpg', dashboard.agent_og_image, name='agent_og_image_slug'),
+    path('og-image/<str:slug>/og.jpg', dashboard.agent_og_image),
 
     # ── Google Business Profile OAuth & API ──────────────────────────────────
     path('agent/gbp/auth/',     gbp_views.agent_gbp_auth,     name='agent_gbp_auth'),
