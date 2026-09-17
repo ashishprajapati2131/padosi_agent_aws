@@ -244,60 +244,66 @@ def agent_dashboard(request):
     Includes self-healing logic and pricing calculation.
     """
     user = request.user
-    from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
+    from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard, find_agent
 
+    is_admin = user.is_staff or user.is_superuser
     agent = resolve_agent_for_user(user)
-    if not agent:
+    if not agent and getattr(user, 'email', None):
+        agent = find_agent(user.email)
+
+    if not agent and not is_admin:
         messages.error(request, "Please complete your registration.")
         return redirect('agents:agent_registration')
 
     # Always re-check Razorpay before allowing dashboard (netbanking / lost callback recovery).
-    try:
-        verify_and_activate_pending_payment(agent)
-    except Exception as e:
-        logger.warning("Dashboard payment re-verify failed for agent #%s: %s", agent.id, e)
-    agent.refresh_from_db()
-
-    latest_completed_sub = AgentSubscription.objects.filter(
-        agent=agent,
-        payment_status='completed',
-        status='active',
-    ).order_by('-starts_at', '-created_at', '-id').first()
-    if latest_completed_sub:
-        synced_plan = plan_slug_from_name(latest_completed_sub.selected_plan or '')
-        if synced_plan and synced_plan != normalize_plan_slug(agent.plan_type or ''):
-            agent.plan_type = synced_plan
-            agent.save(update_fields=['plan_type', 'updated_at'])
+    if agent:
         try:
-            _deactivate_superseded_subscriptions(agent, latest_completed_sub.pk)
-        except Exception:
-            logger.exception('Failed to deactivate superseded subscriptions for agent #%s', agent.id)
+            verify_and_activate_pending_payment(agent)
+        except Exception as e:
+            logger.warning("Dashboard payment re-verify failed for agent #%s: %s", agent.id, e)
+        agent.refresh_from_db()
 
-    # ── Self-Heal: Stuck in pending_payment but subscription completed ──
-    if agent.status in ['pending_payment', 'pending_accounts_payment', 'incomplete'] or agent.registration_step < 2:
-        completed_sub = AgentSubscription.objects.filter(
+        latest_completed_sub = AgentSubscription.objects.filter(
             agent=agent,
             payment_status='completed',
-            status='active'
-        ).order_by('-created_at').first()
+            status='active',
+        ).order_by('-starts_at', '-created_at', '-id').first()
+        if latest_completed_sub:
+            synced_plan = plan_slug_from_name(latest_completed_sub.selected_plan or '')
+            if synced_plan and synced_plan != normalize_plan_slug(agent.plan_type or ''):
+                agent.plan_type = synced_plan
+                agent.save(update_fields=['plan_type', 'updated_at'])
+            try:
+                _deactivate_superseded_subscriptions(agent, latest_completed_sub.pk)
+            except Exception:
+                logger.exception('Failed to deactivate superseded subscriptions for agent #%s', agent.id)
 
-        if completed_sub:
-            plan_name = (completed_sub.selected_plan or '').lower()
-            plan_type = plan_slug_from_name(plan_name) or 'professional'
+        # ── Self-Heal: Stuck in pending_payment but subscription completed ──
+        if agent.status in ['pending_payment', 'pending_accounts_payment', 'incomplete'] or agent.registration_step < 2:
+            completed_sub = AgentSubscription.objects.filter(
+                agent=agent,
+                payment_status='completed',
+                status='active'
+            ).order_by('-created_at').first()
 
-            if plan_type == 'free_trial':
-                agent.status = 'active'
-                if not agent.trial_ends_at:
-                    agent.trial_ends_at = completed_sub.expires_at or (timezone.now() + timezone.timedelta(days=30))
-            else:
-                agent.status = 'pending_approval'
-            agent.plan_type = plan_type
-            agent.registration_step = 2
-            agent.save()
-            logger.info(f"AgentDashboard self-heal: agent #{agent.id} promoted to {agent.status}.")
+            if completed_sub:
+                plan_name = (completed_sub.selected_plan or '').lower()
+                plan_type = plan_slug_from_name(plan_name) or 'professional'
 
-    agent.refresh_from_db()
-    if not agent_can_access_dashboard(agent):
+                if plan_type == 'free_trial':
+                    agent.status = 'active'
+                    if not agent.trial_ends_at:
+                        agent.trial_ends_at = completed_sub.expires_at or (timezone.now() + timezone.timedelta(days=30))
+                else:
+                    agent.status = 'pending_approval'
+                agent.plan_type = plan_type
+                agent.registration_step = 2
+                agent.save()
+                logger.info(f"AgentDashboard self-heal: agent #{agent.id} promoted to {agent.status}.")
+
+        agent.refresh_from_db()
+
+    if not is_admin and (not agent or not agent_can_access_dashboard(agent)):
         messages.warning(request, "Please complete your payment to access the dashboard.")
         return redirect('agents:chooseplan')
 

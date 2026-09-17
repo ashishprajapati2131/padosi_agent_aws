@@ -3441,10 +3441,13 @@ def payment_failure(request):
         if agent and agent.status not in ('active', 'pending_approval'):
             agent.status = 'pending_payment'
             agent.save(update_fields=['status'])
+        
+        request.session.pop('pending_checkout', None)
+
         return JsonResponse({
             'success': True,
             'message': 'Payment failure logged.',
-            'redirect_url': f"{reverse('agents:agent_register_failed')}?agent_id={agent.id if agent else ''}"
+            'redirect_url': reverse('agents:chooseplan')
         })
     except Exception as e:
         logger.error(f"PAYMENT FAILURE LOG ERR: {e}")
