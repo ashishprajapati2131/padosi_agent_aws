@@ -1852,7 +1852,7 @@ def chooseplan(request):
     if prof_full > 0 and prof_base < prof_full:
         prof_discount_percent = round((1 - (prof_base / prof_full)) * 100)
 
-    # Apply Referral Championship 50% Campaign Offer if candidate is referred
+    # Apply Referral Championship 50% Campaign Offer if candidate is referred AND promo code does not give a lower price
     championship_ref_id = request.session.get('championship_ref_id')
     if championship_ref_id:
         try:
@@ -1861,15 +1861,18 @@ def chooseplan(request):
             champ_pricing = champ.pricing_config or {}
             dig_camp = float(champ_pricing.get('digital', {}).get('campaign_price', 999))
             prof_camp = float(champ_pricing.get('professional', {}).get('campaign_price', 4999))
-            starter_final = dig_camp
-            starter_base = round(dig_camp / 1.18, 2)
-            starter_gst = round(starter_final - starter_base, 2)
-            starter_discount_percent = 50
 
-            prof_final = prof_camp
-            prof_base = round(prof_camp / 1.18, 2)
-            prof_gst = round(prof_final - prof_base, 2)
-            prof_discount_percent = 50
+            if not has_starter_promo or starter_final > dig_camp:
+                starter_final = dig_camp
+                starter_base = round(dig_camp / 1.18, 2)
+                starter_gst = round(starter_final - starter_base, 2)
+                starter_discount_percent = 50
+
+            if not has_prof_promo or prof_final > prof_camp:
+                prof_final = prof_camp
+                prof_base = round(prof_camp / 1.18, 2)
+                prof_gst = round(prof_final - prof_base, 2)
+                prof_discount_percent = 50
         except Exception:
             pass
 
@@ -2552,7 +2555,7 @@ def _agent_register_complete_impl(request):
         total_amount = _checkout_total_for_plan(
             pricing_config, follow_count, 'starter', request, data, checkout_promo,
         )
-        if request.session.get('championship_ref_id'):
+        if request.session.get('championship_ref_id') and not checkout_promo:
             try:
                 from apps.referral_championship.models import ChampionshipCampaign
                 champ = ChampionshipCampaign.get_current()
@@ -2573,7 +2576,7 @@ def _agent_register_complete_impl(request):
         total_amount = _checkout_total_for_plan(
             pricing_config, follow_count, 'professional', request, data, checkout_promo,
         )
-        if request.session.get('championship_ref_id'):
+        if request.session.get('championship_ref_id') and not checkout_promo:
             try:
                 from apps.referral_championship.models import ChampionshipCampaign
                 champ = ChampionshipCampaign.get_current()
