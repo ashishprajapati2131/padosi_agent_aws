@@ -1,6 +1,6 @@
 import logging
 from django.http import JsonResponse, HttpResponseRedirect
-from django.middleware.csrf import get_token, REASON_BAD_TOKEN, REASON_NO_CSRF_COOKIE, REASON_NO_REFERER
+from django.middleware.csrf import get_token
 from django.contrib import messages
 from django.urls import reverse
 
