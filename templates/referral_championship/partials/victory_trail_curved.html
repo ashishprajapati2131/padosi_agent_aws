@@ -148,14 +148,6 @@
                                 {% else %}text-slate-700{% endif %}" title="{{ item.title }}">
                                 {{ item.title }}
                             </h4>
-
-                            <!-- Prize Value -->
-                            <p class="text-[9px] sm:text-[10px] font-semibold mt-0.5
-                                {% if item.is_current_target %}text-purple-600
-                                {% elif item.is_unlocked %}text-emerald-600
-                                {% else %}text-slate-400{% endif %}">
-                                {{ item.value_formatted }}
-                            </p>
                         </div>
 
                         <div>
