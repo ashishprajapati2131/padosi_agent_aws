@@ -25,8 +25,10 @@ from apps.agents.views import pwa as pwa_views
 from django.contrib.auth import views as auth_views
 from django.contrib.sitemaps.views import sitemap
 from padosi_agent.sitemaps import sitemaps
+from padosi_agent.views import csrf_refresh_api
 
 urlpatterns = [
+    path('api/v1/csrf-refresh/', csrf_refresh_api, name='csrf_refresh_api'),
     # ── PWA (mirrors Laravel pwa.manifest / pwa.sw / pwa.offline) ────────────
     path('manifest.webmanifest', pwa_views.manifest,       name='pwa.manifest'),
     path('sw.js',                pwa_views.service_worker, name='pwa.sw'),

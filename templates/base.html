@@ -340,5 +340,93 @@
             }
         });
     </script>
+
+    <!-- Global CSRF Auto-Recovery & Dynamic Cookie Interceptor -->
+    <script>
+    (function () {
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function getCsrfToken() {
+            return getCookie('padosi_csrf_token') || getCookie('csrftoken') || '{{ csrf_token }}';
+        }
+
+        // 1. Auto-inject fresh CSRF token into all forms right before submission
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            if (!form || (form.method && form.method.toUpperCase() !== 'POST')) return;
+            let csrfInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
+            const token = getCsrfToken();
+            if (!csrfInput) {
+                csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                form.appendChild(csrfInput);
+            }
+            if (token) {
+                csrfInput.value = token;
+            }
+        }, true);
+
+        // 2. Intercept window.fetch to attach X-CSRFToken header and auto-retry on CSRF failure
+        const originalFetch = window.fetch;
+        window.fetch = async function (url, options) {
+            options = options || {};
+            const method = (options.method || 'GET').toUpperCase();
+            if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+                options.headers = options.headers || {};
+                const token = getCsrfToken();
+                if (options.headers instanceof Headers) {
+                    if (!options.headers.has('X-CSRFToken')) options.headers.append('X-CSRFToken', token);
+                } else if (!options.headers['X-CSRFToken']) {
+                    options.headers['X-CSRFToken'] = token;
+                }
+            }
+            let response = await originalFetch(url, options);
+            if (response.status === 403) {
+                try {
+                    const clone = response.clone();
+                    const data = await clone.json();
+                    if (data && data.csrf_error) {
+                        const refreshRes = await originalFetch('/api/v1/csrf-refresh/');
+                        const refreshData = await refreshRes.json();
+                        if (refreshData && refreshData.csrf_token) {
+                            if (options.headers instanceof Headers) {
+                                options.headers.set('X-CSRFToken', refreshData.csrf_token);
+                            } else {
+                                options.headers['X-CSRFToken'] = refreshData.csrf_token;
+                            }
+                            return await originalFetch(url, options);
+                        }
+                    }
+                } catch (err) {}
+            }
+            return response;
+        };
+
+        // 3. Configure jQuery.ajax defaults if jQuery is loaded
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function (xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        xhr.setRequestHeader("X-CSRFToken", getCsrfToken());
+                    }
+                }
+            });
+        }
+    })();
+    </script>
 </body>
 </html>

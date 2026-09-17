@@ -108,12 +108,14 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'padosi_agent.middleware.StaleCookieSanitizerMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    'padosi_agent.middleware.AutoCsrfCookieMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'apps.agents.middleware.AgentPaymentGateMiddleware',
@@ -125,6 +127,8 @@ MIDDLEWARE = [
     'apps.admin_panel.middleware.ExceptionLoggerMiddleware',
     'padosi_agent.middleware.SEOMiddleware',
 ]
+
+CSRF_FAILURE_VIEW = 'padosi_agent.views.csrf_failure_view'
 
 ROOT_URLCONF = 'padosi_agent.urls'
 
