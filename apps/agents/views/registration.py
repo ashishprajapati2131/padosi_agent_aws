@@ -1271,8 +1271,7 @@ def check_slug_availability(request):
 
 @require_http_methods(["GET"])
 def check_email_availability(request):
-    """Tell the registration form if this email already belongs to a paid agent."""
-    from django.contrib.auth.models import User
+    """Tell the registration form if this email already belongs to an active/paid agent."""
     from apps.agents.models import Agent, Invoice
 
     email = (request.GET.get('email') or '').strip().lower()
@@ -1285,9 +1284,8 @@ def check_email_availability(request):
         })
 
     registered = (
-        User.objects.filter(email__iexact=email).exists()
-        or Invoice.objects.filter(agent_email__iexact=email, payment_status='paid').exists()
-        or Agent.objects.filter(email__iexact=email, status='active').exists()
+        Invoice.objects.filter(agent_email__iexact=email, payment_status='paid').exists()
+        or Agent.objects.filter(email__iexact=email, status__in=['active', 'pending_approval']).exists()
     )
     if registered:
         return JsonResponse({
@@ -1379,8 +1377,12 @@ def register_step1(request):
     from django.contrib.auth.models import User
     from apps.agents.models import Agent, Invoice, AgentDraft
 
-    # Check if a paid invoice exists matching this email (or user exists)
-    if User.objects.filter(email=email).exists() or Invoice.objects.filter(agent_email=email, payment_status='paid').exists():
+    # Check if a paid invoice or active agent exists matching this email
+    paid_agent_exists = (
+        Invoice.objects.filter(agent_email__iexact=email, payment_status='paid').exists()
+        or Agent.objects.filter(email__iexact=email, status__in=['active', 'pending_approval']).exists()
+    )
+    if paid_agent_exists:
         return JsonResponse({
             'success': False,
             'message': f'You are already registered with {email}. Please login to access your dashboard.',
