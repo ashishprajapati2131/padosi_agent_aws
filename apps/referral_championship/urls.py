@@ -21,6 +21,9 @@ urlpatterns = [
 
     # Agent Dashboard
     path('agent/dashboard/', agent_dashboard.agent_championship_dashboard, name='agent_dashboard'),
+    path('agent/dashboard/api/', agent_dashboard.agent_championship_dashboard_api, name='agent_dashboard_api_alt'),
+    path('api/agent/dashboard/', agent_dashboard.agent_championship_dashboard_api, name='agent_dashboard_api'),
     path('agent/claim/<int:slab_id>/', agent_dashboard.claim_reward_ajax, name='agent_claim_reward'),
     path('agent/qr-download/', agent_dashboard.download_qr_code, name='agent_qr_download'),
 ]
+

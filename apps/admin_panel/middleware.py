@@ -38,7 +38,7 @@ class ThreatMonitorMiddleware:
         # 4. Identify potential Malicious Payloads (Basic WAF functionality)
         url_to_check = request.build_absolute_uri()
         
-        # Check if user is an authenticated Admin (to allow safe HTML saving)
+        # Check if user is an authenticated Admin (to allow safe HTML and template saving)
         is_admin = False
         try:
             from apps.admin_panel.views.dashboard import _get_admin_from_session
@@ -46,16 +46,51 @@ class ThreatMonitorMiddleware:
                 is_admin = True
         except Exception:
             pass
-        
-        safe_html_fields = ['file_content', 'content', 'html_content', 'template', 'email_body', 'email_header', 'html_code']
-        
+
+        if not is_admin:
+            try:
+                if hasattr(request, 'session') and request.session and (
+                    request.session.get('admin_id') or
+                    request.session.get('admin_user_id') or
+                    request.session.get('admin_name') or
+                    request.session.get('is_admin') or
+                    request.session.get('user_type') == 'admin'
+                ):
+                    is_admin = True
+            except Exception:
+                pass
+
+        if not is_admin:
+            try:
+                if hasattr(request, 'user') and request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser):
+                    is_admin = True
+            except Exception:
+                pass
+
+        is_admin_path = request.path.startswith('/admin/') or request.path.startswith('/padosi-admin/') or request.path.startswith('/django-admin/')
+        if is_admin_path and not is_admin:
+            try:
+                if hasattr(request, 'session') and request.session and request.session.get('admin_id'):
+                    is_admin = True
+            except Exception:
+                pass
+
+        safe_html_fields = [
+            'file_content', 'content', 'html_content', 'template', 'email_body', 'email_header',
+            'html_code', 'config_json', 'digital_price', 'professional_price', 'modal_title',
+            'modal_subtitle', 'tab_review_label', 'tab_social_label', 'config', 'settings',
+            'json_data', 'template_text', 'body', 'message', 'subject', 'description',
+            'custom_css', 'custom_js', 'html', 'raw_html', 'payload', 'json_config'
+        ]
+
         # Collect request input fields
         payload_dict = {}
         if request.method in ['POST', 'PUT', 'PATCH']:
             # Try to load POST parameters
             for k, v in request.POST.items():
-                if is_admin and k in safe_html_fields:
-                    payload_dict[k] = "[HTML_CONTENT_REDACTED_FOR_WAF]"
+                if (is_admin or is_admin_path) and (k in safe_html_fields or '{{' in str(v) or '{%' in str(v)):
+                    v_clean = re.sub(r"({{\s*[\s\S]*?\s*}}|{%\s*[\s\S]*?\s*%}|\[\[\s*[\s\S]*?\s*\]\])", "[TEMPLATE_TAG]", str(v))
+                    payload_dict[k] = v_clean
                 else:
                     payload_dict[k] = v
             # If JSON body, try parsing it
@@ -64,20 +99,22 @@ class ThreatMonitorMiddleware:
                     json_data = json.loads(request.body.decode('utf-8', errors='ignore'))
                     if isinstance(json_data, dict):
                         for k, v in json_data.items():
-                            if is_admin and k in safe_html_fields:
-                                payload_dict[k] = "[HTML_CONTENT_REDACTED_FOR_WAF]"
+                            if (is_admin or is_admin_path):
+                                v_clean = re.sub(r"({{\s*[\s\S]*?\s*}}|{%\s*[\s\S]*?\s*%}|\[\[\s*[\s\S]*?\s*\]\])", "[TEMPLATE_TAG]", str(v))
+                                payload_dict[k] = v_clean
                             else:
                                 payload_dict[k] = v
             except Exception:
                 pass
-        
+
         # Include GET parameters too
         for k, v in request.GET.items():
             payload_dict[k] = v
 
         input_str = json.dumps(payload_dict)
+        input_str_for_crlf = input_str.replace('\\r\\n', ' ').replace('\r\n', ' ')
 
-        # Hardened WAF regex patterns (Identical to Laravel's signatures)
+        # Hardened WAF regex patterns
         patterns = {
             'SQL Injection': r"(union select\s|select\s+\*\s+from|insert\s+into|update\s+\w+\s+set|'\s*or\s*'1'\s*=\s*'1|sleep\(\d+\)|benchmark\s*\(|group_concat|information_schema)",
             'Cross Site Scripting (XSS)': r"(<script\b[^>]*>|javascript:|onerror=|onload=|eval\(|setTimeout\(|setInterval\(|alert\(|document\.cookie|document\.domain|window\.location)",
@@ -86,14 +123,18 @@ class ThreatMonitorMiddleware:
             'SSRF / Metadata API': r"(169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data\/)",
             'XML External Entity (XXE)': r"(<!ENTITY\s+|SYSTEM\s+[\"']|PUBLIC\s+[\"'])",
             'Server-Side Template Injection': r"({{\s*[\s\S]*\s*}}|{%\s*[\s\S]*\s*%}|\[\[\s*[\s\S]*\s*\]\])",
-            'CRLF / Header Injection': r"(\%0d\%0a|\r\n|Set-Cookie:|Content-Type:)",
+            'CRLF / Header Injection': r"(\%0d\%0a|Set-Cookie:|Content-Type:)",
         }
 
         matched_type = None
         for threat_type, pattern in patterns.items():
-            if re.search(pattern, input_str, re.IGNORECASE) or re.search(pattern, url_to_check, re.IGNORECASE):
+            if threat_type == 'Server-Side Template Injection' and (is_admin or is_admin_path):
+                continue
+            str_to_check = input_str_for_crlf if threat_type == 'CRLF / Header Injection' else input_str
+            if re.search(pattern, str_to_check, re.IGNORECASE) or re.search(pattern, url_to_check, re.IGNORECASE):
                 matched_type = threat_type
                 break
+
 
         if matched_type:
             # 5. Profile Hacker

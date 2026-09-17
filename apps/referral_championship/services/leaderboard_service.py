@@ -93,15 +93,20 @@ def get_leaderboard_data(campaign=None, limit=50):
 
             results.append({
                 'rank': entry.rank,
+                'id': participant.id,
+                'agent_id': agent.id,
                 'agent_name': masked_name,
+                'name': masked_name,
                 'city': city,
                 'referral_count': entry.referral_count,
+                'referrals': entry.referral_count,
                 'referral_id': participant.referral_id,
             })
         except Exception as e:
             logger.warning(f"Error reading leaderboard entry #{getattr(entry, 'id', None)}: {e}")
             continue
     return results
+
 
 
 def get_campaign_aggregate_stats(campaign=None):

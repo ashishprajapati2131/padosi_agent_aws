@@ -54,8 +54,11 @@ class ThreatMonitorMiddleware(BaseHTTPMiddleware):
                 input_str = body_bytes.decode("utf-8", errors="ignore")
 
             url_str = str(request.url)
+            is_admin_route = "/admin/" in url_str or "/api/v1/championship/admin" in url_str
 
-            # WAF Regex Patterns matching PHP Laravel exactly
+            input_str_for_crlf = input_str.replace('\\r\\n', ' ').replace('\r\n', ' ')
+
+            # WAF Regex Patterns
             patterns = {
                 "SQL Injection": r"(union select\s|select\s+\*\s+from|insert\s+into|update\s+\w+\s+set|'\s*or\s*'1'\s*=\s*'1|sleep\(\d+\)|benchmark\s*\(|group_concat|information_schema)",
                 "Cross Site Scripting (XSS)": r"(<script\b[^>]*>|javascript:|onerror=|onload=|eval\(|setTimeout\(|setInterval\(|alert\(|document\.cookie|document\.domain|window\.location)",
@@ -64,14 +67,18 @@ class ThreatMonitorMiddleware(BaseHTTPMiddleware):
                 "SSRF / Metadata API": r"(169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data\/)",
                 "XML External Entity (XXE)": r"(<!ENTITY\s+|SYSTEM\s+[\"']|PUBLIC\s+[\"'])",
                 "Server-Side Template Injection": r"({{\s*[\s\S]*\s*}}|{%\s*[\s\S]*\s*%}|\[\[\s*[\s\S]*\s*\]\])",
-                "CRLF / Header Injection": r"(\%0d\%0a|\r\n|Set-Cookie:|Content-Type:)",
+                "CRLF / Header Injection": r"(\%0d\%0a|Set-Cookie:|Content-Type:)",
             }
 
             type_matched = None
             for type_name, pattern in patterns.items():
-                if re.search(pattern, input_str, re.IGNORECASE) or re.search(pattern, url_str, re.IGNORECASE):
+                if type_name == "Server-Side Template Injection" and is_admin_route:
+                    continue
+                str_to_check = input_str_for_crlf if type_name == "CRLF / Header Injection" else input_str
+                if re.search(pattern, str_to_check, re.IGNORECASE) or re.search(pattern, url_str, re.IGNORECASE):
                     type_matched = type_name
                     break
+
 
             if type_matched:
                 # 6. Malicious Activity Detected - Gather Hacker details

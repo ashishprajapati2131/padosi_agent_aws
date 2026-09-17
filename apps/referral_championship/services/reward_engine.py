@@ -150,12 +150,12 @@ def get_participant_roadmap(participant):
             'threshold': slab.threshold,
             'title': slab.title,
             'description': slab.description,
-            'value': slab.value,
+            'value': float(slab.value) if slab.value is not None else None,
             'value_formatted': format_inr(slab.value),
             'reward_type': slab.reward_type,
             'image_path': get_reward_image(slab.reward_type, slab.threshold),
             'badge_icon': slab.badge_icon,
-            'dispatch_date': slab.dispatch_date_default,
+            'dispatch_date': str(slab.dispatch_date_default) if slab.dispatch_date_default else None,
         })
         idx += 1
 
@@ -165,3 +165,4 @@ def get_participant_roadmap(participant):
         'next_reward': next_reward.title if next_reward else ("Grand Family Trip (Top 3)" if count >= 200 else "All Slabs Achieved!"),
         'referrals_needed': referrals_needed,
     }
+
