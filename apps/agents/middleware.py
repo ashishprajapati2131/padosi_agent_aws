@@ -46,10 +46,13 @@ class AgentPaymentGateMiddleware:
 
         try:
             agent = resolve_agent_for_user(user)
+            if not agent and getattr(user, 'email', None):
+                from apps.agents.services.account_auth import find_agent
+                agent = find_agent(user.email)
         except Exception:
             agent = None
 
-        if agent and not agent_can_access_dashboard(agent):
+        if not agent or not agent_can_access_dashboard(agent):
             messages.warning(
                 request,
                 'Please complete your payment to access the agent dashboard.',

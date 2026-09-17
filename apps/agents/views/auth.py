@@ -94,15 +94,18 @@ def _finish_agent_session_login(request, django_user, ip, agent=None):
     logger.info("Agent/Admin user %s logged in successfully.", getattr(django_user, 'email', ''))
 
     if agent is None:
-        agent = resolve_agent_for_user(django_user)
-    if agent and not agent_can_access_dashboard(agent):
-        portal_error(
-            request,
-            "Payment is pending. Please complete your plan payment to continue.",
-            PORTAL_AGENT,
-        )
-        response = redirect('agents:chooseplan')
-        return _clear_admin_session_on(response, request)
+        agent = resolve_agent_for_user(django_user) or find_agent(getattr(django_user, 'email', ''))
+    
+    is_admin = getattr(django_user, 'is_staff', False) or getattr(django_user, 'is_superuser', False)
+    if not is_admin:
+        if not agent or not agent_can_access_dashboard(agent):
+            portal_error(
+                request,
+                "Payment is pending. Please complete your plan payment to continue.",
+                PORTAL_AGENT,
+            )
+            response = redirect('agents:chooseplan')
+            return _clear_admin_session_on(response, request)
 
     response = redirect('agents:agent_dashboard')
     return _clear_admin_session_on(response, request)
@@ -121,26 +124,31 @@ def agent_login(request):
     """
     # If already logged in, route by verified payment status.
     if request.user.is_authenticated:
+        is_admin = request.user.is_staff or request.user.is_superuser
+        if is_admin:
+            return redirect('agents:agent_dashboard')
+
         try:
-            agent = resolve_agent_for_user(request.user)
-            is_agent = bool(agent)
+            agent = resolve_agent_for_user(request.user) or find_agent(request.user.email or '')
         except Exception as e:
             logger.error("Already-authenticated agent lookup failed: %s", e)
             agent = None
-            is_agent = Agent.objects.filter(email__iexact=request.user.email or '').exists()
-        is_admin = request.user.is_staff or request.user.is_superuser
-        if is_agent and agent:
+
+        if agent:
             try:
                 from apps.agents.views.registration import verify_and_activate_pending_payment
                 verify_and_activate_pending_payment(agent)
                 agent.refresh_from_db()
             except Exception:
                 pass
-            if not agent_can_access_dashboard(agent):
+
+            if agent_can_access_dashboard(agent):
+                return redirect('agents:agent_dashboard')
+            else:
                 return redirect('agents:chooseplan')
-        if is_agent or is_admin:
-            return redirect('agents:agent_dashboard')
-        return redirect('/')
+
+        # If user is authenticated but not an admin or paid agent
+        return redirect('agents:chooseplan')
 
     if request.method == 'POST':
         ip = get_client_ip(request)
@@ -148,7 +156,7 @@ def agent_login(request):
         # Enforce rate limiting
         if not check_login_throttle(ip):
             portal_error(request, "Too many login attempts. Please try again after 1 minute.", PORTAL_AGENT)
-            return render(request, 'agents/login.html', {'hide_footer': True, 'hide_chatbot': True})
+            return render(request, 'agents/login.html', {'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         email = request.POST.get('email', '').strip()
         password = request.POST.get('password', '')
@@ -156,7 +164,7 @@ def agent_login(request):
         if not email or not password:
             record_login_attempt(ip)
             portal_error(request, "Please enter both email and password.", PORTAL_AGENT)
-            return render(request, 'agents/login.html', {'email': email, 'hide_footer': True, 'hide_chatbot': True})
+            return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         try:
             agent = find_agent(email)
@@ -164,13 +172,13 @@ def agent_login(request):
         except Exception as e:
             logger.error("Database error during login email lookup: %s", e)
             portal_error(request, "Login service is temporarily unavailable. Please try again.", PORTAL_AGENT)
-            return render(request, 'agents/login.html', {'email': email, 'hide_footer': True, 'hide_chatbot': True})
+            return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         if not password_ok:
             record_login_attempt(ip)
             logger.warning("Failed login attempt for email: %s from IP: %s", email, ip)
             portal_error(request, "Please Enter Valid Login Details", PORTAL_AGENT)
-            return render(request, 'agents/login.html', {'email': email})
+            return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         canonical_email = (agent.email if agent else None) or (laravel_user.email if laravel_user else email)
         fullname = (agent.fullname if agent else None) or (laravel_user.fullname if laravel_user else canonical_email)
@@ -180,7 +188,7 @@ def agent_login(request):
             record_login_attempt(ip)
             logger.warning("Login rejected for user %s: Incorrect role/type", email)
             portal_error(request, "Please use the correct login page for your account type.", PORTAL_AGENT)
-            return render(request, 'agents/login.html', {'email': email})
+            return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         is_admin = bool(
             django_user
@@ -190,7 +198,7 @@ def agent_login(request):
             record_login_attempt(ip)
             logger.warning("Login rejected for user %s: Incorrect role/type", email)
             portal_error(request, "Please use the correct login page for your account type.", PORTAL_AGENT)
-            return render(request, 'agents/login.html', {'email': email})
+            return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         try:
             if agent:
@@ -204,7 +212,7 @@ def agent_login(request):
 
                 if agent.status in ['suspended', 'blacklisted', 'rejected']:
                     portal_error(request, f"Your account is currently {agent.status}.", PORTAL_AGENT)
-                    return render(request, 'agents/login.html', {'email': email})
+                    return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
                 if agent.status in INCOMPLETE_STATUSES:
                     try:
@@ -236,9 +244,9 @@ def agent_login(request):
         except Exception as e:
             logger.exception("Agent login session setup failed for %s: %s", email, e)
             portal_error(request, "Login service is temporarily unavailable. Please try again.", PORTAL_AGENT)
-            return render(request, 'agents/login.html', {'email': email, 'hide_footer': True, 'hide_chatbot': True})
+            return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
-    return render(request, 'agents/login.html', {'hide_footer': True, 'hide_chatbot': True})
+    return render(request, 'agents/login.html', {'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
 @csrf_exempt
 def agent_logout(request):
@@ -483,7 +491,7 @@ def forgot_password(request):
 
         if not email or '@' not in email:
             portal_error(request, "Please enter a valid email address.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
+            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         agent = find_agent(email)
         laravel_user = find_laravel_user(email)
@@ -495,25 +503,25 @@ def forgot_password(request):
         # Generic response to prevent email enumeration (matching PHP logic)
         if not user and not agent:
             portal_success(request, "If that email is registered, you will receive a reset link shortly.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'type': login_type})
+            return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         if not user:
             portal_success(request, "If that email is registered, you will receive a reset link shortly.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'type': login_type})
+            return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         if user.is_staff or user.is_superuser:
             portal_error(request, "Admin accounts cannot use this reset flow.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
+            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         # Check if user role matches login_type
         is_agent = bool(agent) or Agent.objects.filter(user=user).exists()
         laravel_role = (laravel_user.role or '').lower() if laravel_user else ''
         if login_type == 'agent' and not is_agent:
             portal_error(request, "This email belongs to a Distributor account. Please use the Distributor login page.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
+            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
         if login_type == 'agent' and laravel_role and laravel_role != 'agent' and not is_agent:
             portal_error(request, "This email belongs to a Distributor account. Please use the Distributor login page.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
+            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         try:
             token = default_token_generator.make_token(user)
@@ -531,13 +539,13 @@ def forgot_password(request):
                 logger.error(f"Failed to send password reset email to {user.email}")
 
             portal_success(request, "Password reset link has been sent to your email address!", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'type': login_type})
+            return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
         except Exception as e:
             logger.error(f"Error sending password reset email: {e}")
             portal_error(request, "Unable to send reset email. Please try again later.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type})
+            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
-    return render(request, 'agents/forgot_password.html', {'type': login_type})
+    return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
 
 @csrf_protect
@@ -570,13 +578,15 @@ def reset_password(request, uidb64=None, token=None):
         if not password or len(password) < 8:
             portal_error(request, "Password must be at least 8 characters long.", PORTAL_AGENT)
             return render(request, 'agents/reset_password.html', {
-                'token': token, 'uidb64': uidb64, 'email': email, 'type': login_type
+                'token': token, 'uidb64': uidb64, 'email': email, 'type': login_type,
+                'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True,
             })
 
         if password != password_confirmation:
             portal_error(request, "Passwords do not match.", PORTAL_AGENT)
             return render(request, 'agents/reset_password.html', {
-                'token': token, 'uidb64': uidb64, 'email': email, 'type': login_type
+                'token': token, 'uidb64': uidb64, 'email': email, 'type': login_type,
+                'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True,
             })
 
         bcrypt_hash = hash_password(password)
@@ -591,6 +601,7 @@ def reset_password(request, uidb64=None, token=None):
         return redirect('agents:agent_login')
 
     return render(request, 'agents/reset_password.html', {
-        'token': token, 'uidb64': uidb64, 'email': email, 'type': login_type
+        'token': token, 'uidb64': uidb64, 'email': email, 'type': login_type,
+        'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True,
     })
 
