@@ -353,13 +353,22 @@ TEST_RUNNER = 'apps.home.test_runner.ManagedModelsTestRunner'
 
 # Ensure Django trusts the reverse proxy's HTTPS header (required for CSRF validation behind GoDaddy Apache proxy)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
+# Explicit Cookie Path & SameSite configuration to prevent cross-origin/stale cookie errors
+SESSION_COOKIE_PATH = '/'
+CSRF_COOKIE_PATH = '/'
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
-    CSRF_COOKIE_HTTPONLY = True
+    # Keep CSRF_COOKIE_HTTPONLY False so AJAX/Fetch scripts can read token if needed
+    CSRF_COOKIE_HTTPONLY = False
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
