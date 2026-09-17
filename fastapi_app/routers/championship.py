@@ -126,13 +126,18 @@ def get_agent_championship_dashboard(
     )
 
     # 3. Roadmap & Next Target
+    app_url = settings.APP_URL.rstrip('/')
     roadmap_data = get_participant_roadmap(db, participant)
-    roadmap_items = [RewardSlabSchema(**item) for item in roadmap_data['roadmap']]
+    roadmap_items = []
+    for item in roadmap_data['roadmap']:
+        img_path = item.get('image_path', '')
+        item['image_url'] = f"{app_url}/static/{img_path}" if img_path else None
+        roadmap_items.append(RewardSlabSchema(**item))
 
     # 4. Referral URL & QR Code
-    app_url = settings.APP_URL.rstrip('/')
     referral_url = f"{app_url}/agent-registration/join/{participant.referral_id}/"
     qr_base64 = generate_qr_base64(referral_url)
+    qr_download_url = f"{app_url}/api/v1/championship/qr-code"
 
     # 5. WhatsApp Message Defaults
     pricing = campaign.pricing_config or {}
@@ -176,9 +181,11 @@ def get_agent_championship_dashboard(
         campaign_name=campaign.name,
         campaign_status=campaign.status,
         days_left=days_left,
+        hero_image_url=f"{app_url}/static/championship/championship-hero.jpg",
         referral_id=participant.referral_id,
         referral_url=referral_url,
         qr_base64=qr_base64,
+        qr_download_url=qr_download_url,
         unlock_gate=unlock_gate_data,
         funnel=funnel_data,
         roadmap=roadmap_items,
@@ -191,6 +198,7 @@ def get_agent_championship_dashboard(
         default_whatsapp_text=default_text,
         default_whatsapp_url=default_wa_url
     )
+
 
 
 @router.get("/leaderboard", response_model=LeaderboardResponse)

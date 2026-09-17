@@ -33,6 +33,7 @@ class RewardSlabSchema(BaseModel):
     progress_percent: int
     referrals_needed: int
     claim_status: str
+    image_url: Optional[str] = None
 
 
 class LeaderboardEntrySchema(BaseModel):
@@ -55,9 +56,11 @@ class ChampionshipDashboardResponse(BaseModel):
     campaign_name: str
     campaign_status: str
     days_left: int
+    hero_image_url: Optional[str] = None
     referral_id: str
     referral_url: str
     qr_base64: str
+    qr_download_url: Optional[str] = None
     unlock_gate: UnlockProgressSchema
     funnel: FunnelMetricsSchema
     roadmap: List[RewardSlabSchema]
@@ -69,6 +72,7 @@ class ChampionshipDashboardResponse(BaseModel):
     aggregate_stats: AggregateStatsSchema
     default_whatsapp_text: str
     default_whatsapp_url: str
+
 
 
 class LeaderboardResponse(BaseModel):
