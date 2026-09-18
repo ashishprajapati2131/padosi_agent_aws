@@ -30,10 +30,12 @@
     <meta charset="utf-8">
     <meta name="theme-color" content="#ffffff">
 
-    {% if request.path|slice:':6' == '/agent' %}
+    {% block pwa_manifest %}
+    {% if request.path|slice:':7' == '/agent/' and '/upgrade-plan' not in request.path and '/agent-registration' not in request.path and '/agent-login' not in request.path %}
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="apple-touch-icon" href="{% static 'pwa/pwa-192.png' %}">
     {% endif %}
+    {% endblock %}
 
     <!-- Critical inline CSS: eliminates FOUC, zero render-blocking for above-fold -->
     <style>
@@ -283,11 +285,34 @@
     {% block modals %}{% endblock %}
     {% block extra_js %}{% endblock %}
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function () {
-                navigator.serviceWorker.register('/sw.js');
-            });
-        }
+        // Suppress PWA install popup/prompt on agent registration flow (registration, choose plan, login)
+        (function () {
+            var path = window.location.pathname.toLowerCase();
+            var isExcludedFlow =
+                path.indexOf('/agent-registration') !== -1 ||
+                path.indexOf('/agent-register') !== -1 ||
+                path.indexOf('/register') !== -1 ||
+                path.indexOf('/chooseplan') !== -1 ||
+                path.indexOf('/agent-login') !== -1 ||
+                path.indexOf('/insurance-login') !== -1 ||
+                path.indexOf('/forgot-password') !== -1 ||
+                path.indexOf('/reset-password') !== -1 ||
+                path.indexOf('/upgrade-plan') !== -1 ||
+                path.indexOf('/join/') === 0 ||
+                path === '/join' ||
+                path.indexOf('/login') !== -1;
+
+            if (isExcludedFlow) {
+                window.addEventListener('beforeinstallprompt', function (e) {
+                    e.preventDefault();
+                    return false;
+                });
+            } else if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                    navigator.serviceWorker.register('/sw.js');
+                });
+            }
+        })();
     </script>
     <script>
         // Global fix: Prevent number inputs from changing value on mouse scroll
