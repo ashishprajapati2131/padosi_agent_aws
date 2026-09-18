@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% block pwa_manifest %}{% endblock %}
 
 {% block title %}{% if referring_agent %}{% if referring_agent.is_championship %}Agent Championship — Invited by {{ referring_agent.name }} | PadosiAgent{% else %}You're Invited by {{ referring_agent.name }} | PadosiAgent{% endif %}{% else %}Agent Registration | PadosiAgent{% endif %}{% endblock %}
 
