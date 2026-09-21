@@ -163,25 +163,9 @@ class ThreatMonitorMiddleware:
                 except Exception:
                     pass
 
-            # 6. Retrieve Location / Geo-IP Details
+            # 6. Location / Geo-IP Details (non-blocking, avoids external HTTP DoS vulnerability)
             location = "Unknown Location"
             isp = "Unknown ISP"
-            try:
-                # Safe HTTP request using Python's standard library
-                with urllib.request.urlopen(f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,isp", timeout=2.0) as conn:
-                    geo_data = json.loads(conn.read().decode('utf-8'))
-                    if geo_data.get('status') == 'success':
-                        location = f"{geo_data.get('city', '')}, {geo_data.get('regionName', '')}, {geo_data.get('country', '')}".strip(', ')
-                        isp = geo_data.get('isp', 'N/A')
-                    else:
-                        # Fallback to ipwho.is if ip-api fails
-                        with urllib.request.urlopen(f"https://ipwho.is/{ip}", timeout=2.0) as conn2:
-                            geo_data2 = json.loads(conn2.read().decode('utf-8'))
-                            if geo_data2.get('success'):
-                                location = f"{geo_data2.get('city', '')}, {geo_data2.get('region', '')}, {geo_data2.get('country', '')}".strip(', ')
-                                isp = geo_data2.get('connection', {}).get('isp', 'N/A')
-            except Exception as e:
-                logger.error(f"ThreatMonitorMiddleware: Geolocation lookup failed: {e}")
 
             # 7. Auto-Block check (3 offenses in last 1 hour)
             one_hour_ago = timezone.now() - timezone.timedelta(hours=1)
@@ -517,7 +501,6 @@ class AdminPermissionMiddleware:
             'admin_contacts_show':                      'contacts',
             'admin_contacts_update_status':             'contacts',
             'admin_contacts_delete':                    'contacts',
-            'admin_contacts_bulk_action':               'contacts',
             # ── Reviews ───────────────────────────────────────────────────
             'admin_reviews_index':                      'reviews',
             'admin_reviews_toggle_approval':            'reviews',

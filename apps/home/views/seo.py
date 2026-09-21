@@ -3,6 +3,7 @@ from django.http import HttpResponse
 def robots_txt(request):
     lines = [
         "User-agent: *",
+        "Disallow: /admin/",
         "Disallow: /django-admin/",
         "Disallow: /agent-login/",
         "Disallow: /agent/dashboard/",

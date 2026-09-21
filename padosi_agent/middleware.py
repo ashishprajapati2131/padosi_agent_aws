@@ -47,6 +47,7 @@ class SEOMiddleware(MiddlewareMixin):
     def __init__(self, get_response):
         super().__init__(get_response)
         self.private_paths = [
+            r'^/admin/',
             r'^/django-admin/',
             r'^/agent-login/',
             r'^/agent/dashboard/',

@@ -1,4 +1,5 @@
 from django.db import connection
+from django.core.cache import cache
 
 
 def admin_badge_counts(request):
@@ -6,7 +7,8 @@ def admin_badge_counts(request):
     Injects dynamic sidebar badge counts for all admin pages.
 
     Mirrors Laravel's layout.blade.php @php badge queries exactly.
-    All queries are run in a single DB connection to minimise round-trips.
+    Queries are cached for 30 seconds to avoid running 14 COUNT queries
+    on every single admin page load.
 
     Variables injected into every admin template context:
         pending_agents_count    – Pending Approvals  (bg-success)
@@ -47,177 +49,192 @@ def admin_badge_counts(request):
         'admin_permissions':       set(),
     }
 
+    # 1. Check if aggregate badge counts are already cached
+    badge_cache_key = 'admin_sidebar_counts'
+    cached_counts = cache.get(badge_cache_key)
+    if cached_counts and isinstance(cached_counts, dict):
+        counts.update(cached_counts)
+    else:
+        try:
+            with connection.cursor() as cursor:
+                # 1. Pending Approvals  ── agents.status = 'pending_approval'
+                cursor.execute(
+                    "SELECT COUNT(*) FROM agents WHERE status = 'pending_approval'"
+                )
+                counts['pending_agents_count'] = cursor.fetchone()[0]
+
+                # 2. Registration Pending ── agents + unmatched draft entries
+                cursor.execute(
+                    "SELECT COUNT(*) FROM agents WHERE status IN ('incomplete', 'pending_payment')"
+                )
+                agent_pending_count = cursor.fetchone()[0]
+                # Also count drafts whose email isn't in agents yet
+                try:
+                    cursor.execute("""
+                        SELECT COUNT(*) FROM agent_drafts d
+                        WHERE d.registration_step >= 1
+                          AND d.email NOT IN (
+                              SELECT email FROM agents
+                              WHERE email IS NOT NULL AND email != ''
+                          )
+                    """)
+                    draft_pending_count = cursor.fetchone()[0]
+                except Exception:
+                    draft_pending_count = 0
+                counts['incomplete_agents_count'] = agent_pending_count + draft_pending_count
+
+                # 2b. Payment Initiated but Pending ── agents with razorpay order but no success callback
+                try:
+                    cursor.execute("""
+                        SELECT COUNT(*)
+                        FROM agents a
+                        JOIN agent_subscriptions s ON a.id = s.agent_id
+                            AND s.id = (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
+                        WHERE a.status IN ('incomplete', 'pending_payment')
+                          AND s.razorpay_order_id IS NOT NULL
+                          AND s.payment_status = 'pending'
+                          AND s.created_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+                    """)
+                    counts['payment_pending_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['payment_pending_count'] = 0
+
+                # 3. Renewal Tracker ── subscriptions expiring within 30 days for active agents
+                try:
+                    cursor.execute("""
+                        SELECT COUNT(*)
+                        FROM agent_subscriptions s
+                        JOIN agents a ON s.agent_id = a.id
+                        WHERE a.status = 'active'
+                          AND s.expires_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 30 DAY)
+                    """)
+                    counts['expiring_soon_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['expiring_soon_count'] = 0
+
+                # 4. Agent Leads ── agent_leads.lead_status = 'new'
+                try:
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM agent_leads WHERE lead_status = 'new'"
+                    )
+                    counts['new_leads_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['new_leads_count'] = 0
+
+                # 5. Contact Inbox ── contact_submissions.status = 'pending'
+                try:
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM contact_submissions WHERE status = 'pending'"
+                    )
+                    counts['pending_contacts_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['pending_contacts_count'] = 0
+
+                # 6. Review Moderation ── agent_reviews.is_approved = 0
+                try:
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM agent_reviews WHERE is_approved = 0"
+                    )
+                    counts['pending_reviews_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['pending_reviews_count'] = 0
+
+                # 7. Invoices (unsynced to Google Sheet)
+                try:
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM invoices WHERE synced_to_sheet = 0"
+                    )
+                    counts['unsynced_invoice_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['unsynced_invoice_count'] = 0
+
+                # 8. Free Trial Manager ── active trial agents (trial not yet expired)
+                try:
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM agents "
+                        "WHERE plan_type = 'free_trial' AND trial_ends_at > NOW()"
+                    )
+                    counts['active_trial_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['active_trial_count'] = 0
+
+                # 9. Referral System ── unclaimed rewards
+                try:
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM referral_codes "
+                        "WHERE reward_type IS NOT NULL AND reward_claimed = 0"
+                    )
+                    counts['unclaimed_rewards_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['unclaimed_rewards_count'] = 0
+
+                # 10. Geocoding Manager ── agents with pincode but no lat/lng
+                try:
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM agents "
+                        "WHERE latitude IS NULL AND agent_pincode IS NOT NULL"
+                    )
+                    counts['geo_missing_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['geo_missing_count'] = 0
+
+                # 11. Pincode Manager ── total pincodes (always shown if > 0)
+                try:
+                    cursor.execute("SELECT COUNT(*) FROM pincodes")
+                    counts['total_pincodes_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['total_pincodes_count'] = 0
+
+                # 11b. Insurance Approvals Pending
+                try:
+                    cursor.execute("SELECT COUNT(*) FROM agent_approval_requests WHERE status = 'pending'")
+                    counts['insurance_pending_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['insurance_pending_count'] = 0
+
+                # 12. Notification Bell ── sum of:
+                try:
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM agents WHERE status != 'active'"
+                    )
+                    non_active_agents = cursor.fetchone()[0]
+                except Exception:
+                    non_active_agents = 0
+
+                notif_count = (
+                    non_active_agents
+                    + counts['pending_reviews_count']
+                    + counts['pending_contacts_count']
+                )
+                counts['notif_count'] = min(notif_count, 99)
+
+            # Store aggregated counts in cache for 30s
+            badge_keys = [
+                'pending_agents_count', 'incomplete_agents_count',
+                'expiring_soon_count', 'new_leads_count',
+                'pending_contacts_count', 'pending_reviews_count',
+                'unsynced_invoice_count', 'active_trial_count',
+                'unclaimed_rewards_count', 'geo_missing_count',
+                'total_pincodes_count', 'insurance_pending_count',
+                'payment_pending_count', 'notif_count'
+            ]
+            cache.set(badge_cache_key, {k: counts[k] for k in badge_keys}, timeout=30)
+        except Exception:
+            pass
+
+    # 13. Fetch logged in admin details + inject permission-gate context
     try:
-        with connection.cursor() as cursor:
-
-            # 1. Pending Approvals  ── agents.status = 'pending_approval'
-            cursor.execute(
-                "SELECT COUNT(*) FROM agents WHERE status = 'pending_approval'"
-            )
-            counts['pending_agents_count'] = cursor.fetchone()[0]
-
-            # 2. Registration Pending ── agents + unmatched draft entries
-            cursor.execute(
-                "SELECT COUNT(*) FROM agents WHERE status IN ('incomplete', 'pending_payment')"
-            )
-            agent_pending_count = cursor.fetchone()[0]
-            # Also count drafts whose email isn't in agents yet
-            try:
-                cursor.execute("""
-                    SELECT COUNT(*) FROM agent_drafts d
-                    WHERE d.registration_step >= 1
-                      AND d.email NOT IN (
-                          SELECT email FROM agents
-                          WHERE email IS NOT NULL AND email != ''
-                      )
-                """)
-                draft_pending_count = cursor.fetchone()[0]
-            except Exception:
-                draft_pending_count = 0
-            counts['incomplete_agents_count'] = agent_pending_count + draft_pending_count
-
-            # 2b. Payment Initiated but Pending ── agents with razorpay order but no success callback
-            try:
-                cursor.execute("""
-                    SELECT COUNT(*)
-                    FROM agents a
-                    JOIN agent_subscriptions s ON a.id = s.agent_id
-                        AND s.id = (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
-                    WHERE a.status IN ('incomplete', 'pending_payment')
-                      AND s.razorpay_order_id IS NOT NULL
-                      AND s.payment_status = 'pending'
-                      AND s.created_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)
-                """)
-                counts['payment_pending_count'] = cursor.fetchone()[0]
-            except Exception:
-                counts['payment_pending_count'] = 0
-
-            # 3. Renewal Tracker ── subscriptions expiring within 30 days for active agents
-            # Mirrors: DB::table('agent_subscriptions as s')
-            #   ->join('agents as a', 's.agent_id', '=', 'a.id')
-            #   ->where('a.status', 'active')
-            #   ->whereBetween('s.expires_at', [now(), now()->addDays(30)])
-            try:
-                cursor.execute("""
-                    SELECT COUNT(*)
-                    FROM agent_subscriptions s
-                    JOIN agents a ON s.agent_id = a.id
-                    WHERE a.status = 'active'
-                      AND s.expires_at BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 30 DAY)
-                """)
-                counts['expiring_soon_count'] = cursor.fetchone()[0]
-            except Exception:
-                counts['expiring_soon_count'] = 0
-
-            # 4. Agent Leads ── agent_leads.lead_status = 'new'
-            try:
-                cursor.execute(
-                    "SELECT COUNT(*) FROM agent_leads WHERE lead_status = 'new'"
-                )
-                counts['new_leads_count'] = cursor.fetchone()[0]
-            except Exception:
-                counts['new_leads_count'] = 0
-
-            # 5. Contact Inbox ── contact_submissions.status = 'pending'
-            try:
-                cursor.execute(
-                    "SELECT COUNT(*) FROM contact_submissions WHERE status = 'pending'"
-                )
-                counts['pending_contacts_count'] = cursor.fetchone()[0]
-            except Exception:
-                counts['pending_contacts_count'] = 0
-
-            # 6. Review Moderation ── agent_reviews.is_approved = 0
-            try:
-                cursor.execute(
-                    "SELECT COUNT(*) FROM agent_reviews WHERE is_approved = 0"
-                )
-                counts['pending_reviews_count'] = cursor.fetchone()[0]
-            except Exception:
-                counts['pending_reviews_count'] = 0
-
-            # 7. Invoices (unsynced to Google Sheet)
-            # Mirrors: Invoice::where('synced_to_sheet', false)->count()
-            try:
-                cursor.execute(
-                    "SELECT COUNT(*) FROM invoices WHERE synced_to_sheet = 0"
-                )
-                counts['unsynced_invoice_count'] = cursor.fetchone()[0]
-            except Exception:
-                counts['unsynced_invoice_count'] = 0
-
-            # 8. Free Trial Manager ── active trial agents (trial not yet expired)
-            # Mirrors: agents WHERE plan_type='free_trial' AND trial_ends_at > now()
-            try:
-                cursor.execute(
-                    "SELECT COUNT(*) FROM agents "
-                    "WHERE plan_type = 'free_trial' AND trial_ends_at > NOW()"
-                )
-                counts['active_trial_count'] = cursor.fetchone()[0]
-            except Exception:
-                counts['active_trial_count'] = 0
-
-            # 9. Referral System ── unclaimed rewards
-            # Mirrors: referral_codes WHERE reward_type IS NOT NULL AND reward_claimed = false
-            try:
-                cursor.execute(
-                    "SELECT COUNT(*) FROM referral_codes "
-                    "WHERE reward_type IS NOT NULL AND reward_claimed = 0"
-                )
-                counts['unclaimed_rewards_count'] = cursor.fetchone()[0]
-            except Exception:
-                counts['unclaimed_rewards_count'] = 0
-
-            # 10. Geocoding Manager ── agents with pincode but no lat/lng
-            # Mirrors: agents WHERE latitude IS NULL AND agent_pincode IS NOT NULL
-            try:
-                cursor.execute(
-                    "SELECT COUNT(*) FROM agents "
-                    "WHERE latitude IS NULL AND agent_pincode IS NOT NULL"
-                )
-                counts['geo_missing_count'] = cursor.fetchone()[0]
-            except Exception:
-                counts['geo_missing_count'] = 0
-
-            # 11. Pincode Manager ── total pincodes (always shown if > 0)
-            try:
-                cursor.execute("SELECT COUNT(*) FROM pincodes")
-                counts['total_pincodes_count'] = cursor.fetchone()[0]
-            except Exception:
-                counts['total_pincodes_count'] = 0
-
-            # 11b. Insurance Approvals Pending
-            try:
-                cursor.execute("SELECT COUNT(*) FROM agent_approval_requests WHERE status = 'pending'")
-                counts['insurance_pending_count'] = cursor.fetchone()[0]
-            except Exception:
-                counts['insurance_pending_count'] = 0
-
-            # 12. Notification Bell ── sum of:
-            #     agents WHERE status != 'active'  (includes pending_approval, incomplete, etc.)
-            #   + agent_reviews WHERE is_approved = 0
-            #   + contact_submissions WHERE status = 'pending'
-            # Mirrors Laravel's $notifCount calculation exactly.
-            try:
-                cursor.execute(
-                    "SELECT COUNT(*) FROM agents WHERE status != 'active'"
-                )
-                non_active_agents = cursor.fetchone()[0]
-            except Exception:
-                non_active_agents = 0
-
-            notif_count = (
-                non_active_agents
-                + counts['pending_reviews_count']
-                + counts['pending_contacts_count']
-            )
-            counts['notif_count'] = min(notif_count, 99)
-
-            # 13. Fetch logged in admin details + inject permission-gate context
-            try:
-                from apps.admin_panel.models.admin_auth import Admin
-                token = request.COOKIES.get("session_token")
-                if token:
+        from apps.admin_panel.models.admin_auth import Admin
+        token = request.COOKIES.get("session_token")
+        if token:
+            admin_cache_key = f'admin_session_{token}'
+            cached_admin_info = cache.get(admin_cache_key)
+            if cached_admin_info and isinstance(cached_admin_info, dict):
+                counts['logged_in_admin'] = cached_admin_info.get('admin_obj')
+                counts['is_super_admin'] = cached_admin_info.get('is_super', False)
+                counts['admin_permissions'] = cached_admin_info.get('permissions', set())
+            else:
+                with connection.cursor() as cursor:
                     cursor.execute("SELECT id FROM user_sessions WHERE session_token = %s AND expires_at > NOW() LIMIT 1", [token])
                     row = cursor.fetchone()
                     if row:
@@ -231,13 +248,13 @@ def admin_badge_counts(request):
                             if admin_obj:
                                 is_super = (admin_obj.role == 'super')
                                 counts['is_super_admin'] = is_super
-                                # For staff admins, expose a set for O(1) 'in' checks in templates.
-                                # Super admins get an empty set; is_super_admin=True short-circuits all guards.
-                                if not is_super and isinstance(admin_obj.permissions, list):
-                                    counts['admin_permissions'] = set(admin_obj.permissions)
-            except Exception:
-                pass
-
+                                perms = set(admin_obj.permissions) if (not is_super and isinstance(admin_obj.permissions, list)) else set()
+                                counts['admin_permissions'] = perms
+                                cache.set(admin_cache_key, {
+                                    'admin_obj': admin_obj,
+                                    'is_super': is_super,
+                                    'permissions': perms
+                                }, timeout=30)
     except Exception:
         pass
 

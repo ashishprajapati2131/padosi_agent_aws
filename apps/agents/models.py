@@ -1098,16 +1098,6 @@ class AgentPortfolio(models.Model):
         db_table = 'agent_portfolios'
         managed = True
 
-    @property
-    def primary_companies_json(self):
-        import json
-        return json.dumps(self.primary_companies or {})
-
-    @property
-    def secondary_companies_json(self):
-        import json
-        return json.dumps(self.secondary_companies or {})
-
 
 def resolve_stored_file_url(path, fallback_subdirs=None, missing='/static/img/avatar-icon.jpg'):
     path = (path or '').strip()
@@ -1675,7 +1665,7 @@ class RegistrationActivityLog(models.Model):
         return f"RegistrationActivityLog({self.event_name}, {agent_info}, {self.created_at})"
 
     @classmethod
-    def log(cls, event_name, request=None, agent=None, draft_id=None, subscription_id=None, extra_details=None, **kwargs):
+    def log(cls, event_name, request=None, agent=None, draft_id=None, subscription_id=None, extra_details=None):
         """
         Convenience method to capture a registration event.
         Silently swallows exceptions so it never breaks the main flow.
@@ -1693,8 +1683,6 @@ class RegistrationActivityLog(models.Model):
                 details['plan_type'] = agent.plan_type or ''
             if extra_details and isinstance(extra_details, dict):
                 details.update(extra_details)
-            if kwargs:
-                details.update(kwargs)
 
             cls.objects.create(
                 agent=agent,

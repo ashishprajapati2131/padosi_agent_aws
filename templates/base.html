@@ -45,14 +45,13 @@
         /* Accessibility utilities */
         .skip-link { position: absolute; top: -40px; left: 0; background: #273c8e; color: #fff; padding: 8px; z-index: 999999; transition: top 0.2s; }
         .skip-link:focus { top: 0; outline: 3px solid #f9a826; }
-        :focus-visible { outline: none !important; }
-        input:focus, select:focus, textarea:focus, 
+        /* Accessible focus indicators (WCAG 2.1 AA compliant) */
+        :focus-visible { outline: 2px solid #273c8e; outline-offset: 2px; }
         input:focus-visible, select:focus-visible, textarea:focus-visible,
-        .form-control:focus, .form-select:focus,
-        [type="text"]:focus, [type="email"]:focus, [type="password"]:focus, [type="number"]:focus, [type="tel"]:focus, [type="url"]:focus { 
-            outline: none !important; 
-            box-shadow: none !important; 
-            border-color: inherit !important;
+        .form-control:focus, .form-select:focus { 
+            outline: 2px solid #273c8e !important; 
+            outline-offset: 1px;
+            box-shadow: 0 0 0 3px rgba(39, 60, 142, 0.2) !important; 
         }
 
         .loader-mask{position:fixed;inset:0;z-index:99999;background:#fff;display:flex;align-items:center;justify-content:center;transition:opacity 0.3s ease}

@@ -179,3 +179,30 @@ class HowItWorksStep(models.Model):
 
     def __str__(self):
         return self.title
+
+
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+from django.core.cache import cache
+
+@receiver(post_save, sender=HomePageSettings)
+@receiver(post_delete, sender=HomePageSettings)
+@receiver(post_save, sender=HeroTrustBadge)
+@receiver(post_delete, sender=HeroTrustBadge)
+@receiver(post_save, sender=HeroStatistic)
+@receiver(post_delete, sender=HeroStatistic)
+@receiver(post_save, sender=HeroProductTile)
+@receiver(post_delete, sender=HeroProductTile)
+@receiver(post_save, sender=HeroSlide)
+@receiver(post_delete, sender=HeroSlide)
+@receiver(post_save, sender=DidYouKnowSlide)
+@receiver(post_delete, sender=DidYouKnowSlide)
+@receiver(post_save, sender=QuickPickItem)
+@receiver(post_delete, sender=QuickPickItem)
+@receiver(post_save, sender=WhyChooseCard)
+@receiver(post_delete, sender=WhyChooseCard)
+@receiver(post_save, sender=HowItWorksStep)
+@receiver(post_delete, sender=HowItWorksStep)
+def clear_homepage_cms_cache(sender, instance, **kwargs):
+    cache.delete('homepage_cms_context')
+

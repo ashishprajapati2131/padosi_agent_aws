@@ -21,7 +21,7 @@ from fastapi_app.utils.auth import decode_access_token
 from fastapi_app.models.user_token import UserToken
 
 router = APIRouter(
-    prefix="/api/v1/agents",
+    prefix="/v1/agents",
     tags=["Authentication"]
 )
 

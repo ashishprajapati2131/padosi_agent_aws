@@ -104,34 +104,9 @@ class ThreatMonitorMiddleware(BaseHTTPMiddleware):
                     except Exception:
                         pass
 
-                # 7. Query Location & ISP
-                location = "N/A"
-                isp = "N/A"
-                try:
-                    req_geo = urllib.request.Request(
-                        f"http://ip-api.com/json/{ip}?fields=status,country,regionName,city,isp",
-                        headers={"User-Agent": "Mozilla/5.0 (Security Grid)"},
-                        timeout=2.0
-                    )
-                    with urllib.request.urlopen(req_geo) as resp_geo:
-                        geo_data = json.loads(resp_geo.read().decode("utf-8"))
-                        if geo_data.get("status") == "success":
-                            location = f"{geo_data.get('city')}, {geo_data.get('regionName')}, {geo_data.get('country')}"
-                            isp = geo_data.get("isp")
-                except Exception:
-                    try:
-                        req_geo2 = urllib.request.Request(
-                            f"https://ipwho.is/{ip}",
-                            headers={"User-Agent": "Mozilla/5.0 (Security Grid)"},
-                            timeout=2.0
-                        )
-                        with urllib.request.urlopen(req_geo2) as resp_geo2:
-                            geo_data2 = json.loads(resp_geo2.read().decode("utf-8"))
-                            if geo_data2.get("success"):
-                                location = f"{geo_data2.get('city')}, {geo_data2.get('region')}, {geo_data2.get('country')}"
-                                isp = geo_data2.get("connection", {}).get("isp", "N/A")
-                    except Exception:
-                        pass
+                # 7. Location & ISP (non-blocking, avoids external HTTP DoS vulnerability)
+                location = "Unknown"
+                isp = "Unknown"
 
                 # 8. Check auto-ban threshold (3 threats within 1 hour)
                 is_auto_blocked = False

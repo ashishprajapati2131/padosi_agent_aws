@@ -410,17 +410,6 @@ def verify_agent_password(email, password, agent=None):
     if django_hash and check_password_hash(password, django_hash):
         return True, laravel_user, django_user
 
-    if (
-        agent
-        and agent.status in INCOMPLETE_STATUSES
-        and not laravel_hash
-        and not django_hash
-        and password
-        and agent.email
-        and password.lower() == agent.email.lower()
-    ):
-        return True, laravel_user, django_user
-
     return False, laravel_user, django_user
 
 
