@@ -192,11 +192,11 @@ def export_contacts(request):
         return redirect('admin_login_page')
 
     qs = ContactSubmission.objects.order_by('-created_at')
-    header = ['ID', 'Name', 'Email', 'Phone', 'Subject', 'Message', 'Status', 'Date']
+    header = ['ID', 'Reference ID', 'Name', 'Email', 'Phone', 'Company', 'Subject', 'Message', 'Status', 'Date']
     rows = [
         [
-            r.id, r.name or '', r.email or '',
-            r.mobile or '',
+            r.id, r.reference_id or '', r.name or '', r.email or '',
+            r.mobile or '', r.company or '',
             r.subject or '', r.message or '', r.status or '',
             str(r.created_at) if r.created_at else '',
         ]

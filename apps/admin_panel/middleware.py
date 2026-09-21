@@ -517,6 +517,7 @@ class AdminPermissionMiddleware:
             'admin_contacts_show':                      'contacts',
             'admin_contacts_update_status':             'contacts',
             'admin_contacts_delete':                    'contacts',
+            'admin_contacts_bulk_action':               'contacts',
             # ── Reviews ───────────────────────────────────────────────────
             'admin_reviews_index':                      'reviews',
             'admin_reviews_toggle_approval':            'reviews',

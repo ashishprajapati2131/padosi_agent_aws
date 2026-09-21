@@ -69,6 +69,7 @@ from .views.contacts import (
     contacts_show,
     contacts_update_status,
     contacts_delete,
+    contacts_bulk_action,
 )
 from .views.geocoding import (
     index as geocoding_index,
@@ -421,6 +422,7 @@ urlpatterns = [
     path("admin/contacts/<int:submission_id>/",   contacts_show,          name="admin_contacts_show"),
     path("admin/contacts/update-status/",         contacts_update_status, name="admin_contacts_update_status"),
     path("admin/contacts/delete/",                contacts_delete,        name="admin_contacts_delete"),
+    path("admin/contacts/bulk-action/",           contacts_bulk_action,   name="admin_contacts_bulk_action"),
 
     # Phase GEOCODING: Geocoding Manager
     path("admin/geocoding-manager/",               geocoding_index,  name="admin_geocoding_index"),
