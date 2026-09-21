@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 import re
+import math
 import logging
 import json
 import requests as http_requests
@@ -338,6 +339,32 @@ def get_portfolio_companies_by_type():
     return companies_by_type
 
 
+def _find_closest_pincode(lat, lng, max_km=50.0):
+    """
+    Find closest pincode using a bounding-box pre-filter to leverage indexes
+    and avoid expensive full-table acos() calculations across all pincodes.
+    """
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except (ValueError, TypeError):
+        return None
+
+    lat_delta = max_km / 111.0
+    cos_lat = max(0.1, math.cos(math.radians(lat)))
+    lng_delta = max_km / (111.0 * cos_lat)
+
+    return Pincode.objects.filter(
+        latitude__range=(lat - lat_delta, lat + lat_delta),
+        longitude__range=(lng - lng_delta, lng + lng_delta),
+    ).annotate(
+        distance=RawSQL(
+            "(6371 * acos(cos(radians(%s)) * cos(radians(latitude)) * cos(radians(longitude) - radians(%s)) + sin(radians(%s)) * sin(radians(latitude))))",
+            (lat, lng, lat)
+        )
+    ).order_by('distance').first()
+
+
 def fetch_filtered_agents_list(request):
     pincode = request.session.get('last_pincode', '').strip()
     location = request.session.get('last_location', '').strip()
@@ -435,12 +462,7 @@ def fetch_filtered_agents_list(request):
     )
     if user_lat and user_lng and needs_area_res:
         try:
-            pincode_match = Pincode.objects.annotate(
-                distance=RawSQL(
-                    "(6371 * acos(cos(radians(%s)) * cos(radians(latitude)) * cos(radians(longitude) - radians(%s)) + sin(radians(%s)) * sin(radians(latitude))))",
-                    (user_lat, user_lng, user_lat)
-                )
-            ).order_by('distance').first()
+            pincode_match = _find_closest_pincode(user_lat, user_lng, max_km=50.0)
             
             resolved_from_db = False
             if pincode_match and pincode_match.distance < 50:
@@ -815,6 +837,11 @@ def pincode_fetch(request, pincode):
     if not re.match(r'^[1-9]\d{5}$', pincode):
         return JsonResponse({'success': False, 'message': 'Invalid pincode format.'})
 
+    cache_key = f'pincode_fetch_json_{pincode}'
+    cached_payload = cache.get(cache_key)
+    if cached_payload is not None and isinstance(cached_payload, dict):
+        return JsonResponse(cached_payload)
+
     record = Pincode.objects.filter(pincode=pincode).first()
     if not record:
         record = _get_or_create_pincode(pincode)
@@ -837,7 +864,7 @@ def pincode_fetch(request, pincode):
             record.district = ''
             record.save()
 
-    return JsonResponse({
+    payload = {
         'success': True,
         'data': {
             'office_name': record.office_name,
@@ -847,7 +874,9 @@ def pincode_fetch(request, pincode):
             'latitude': str(record.latitude),
             'longitude': str(record.longitude),
         }
-    })
+    }
+    cache.set(cache_key, payload, timeout=86400 * 7)
+    return JsonResponse(payload)
 
 
 def _get_or_create_pincode(pincode):
@@ -1006,12 +1035,7 @@ def marketing(request):
         try:
             u_lat = float(user_lat)
             u_lng = float(user_lng)
-            pincode_match = Pincode.objects.annotate(
-                distance=RawSQL(
-                    "(6371 * acos(cos(radians(%s)) * cos(radians(latitude)) * cos(radians(longitude) - radians(%s)) + sin(radians(%s)) * sin(radians(latitude))))",
-                    (u_lat, u_lng, u_lat)
-                )
-            ).order_by('distance').first()
+            pincode_match = _find_closest_pincode(u_lat, u_lng, max_km=50.0)
 
             if pincode_match and pincode_match.distance < 50:
                 detected_area = pincode_match.formatted_location
@@ -1079,7 +1103,12 @@ def check_pincode_agents(request, pincode):
     GET /api/pincode/check-agents/{pincode} → {success, pincode, count}."""
     if not pincode or not pincode.isdigit() or len(pincode) != 6:
         return JsonResponse({'success': False, 'message': 'Invalid pincode format'}, status=400)
-    count = Agent.objects.filter(agent_pincode=pincode).count()
+    
+    cache_key = f'pincode_agent_count_{pincode}'
+    count = cache.get(cache_key)
+    if count is None:
+        count = Agent.objects.filter(agent_pincode=pincode).count()
+        cache.set(cache_key, count, timeout=60)
     return JsonResponse({'success': True, 'pincode': pincode, 'count': count})
 
 
@@ -1252,12 +1281,7 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
     )
     if user_lat and user_lng and needs_area_res:
         try:
-            pincode_match = Pincode.objects.annotate(
-                distance=RawSQL(
-                    "(6371 * acos(cos(radians(%s)) * cos(radians(latitude)) * cos(radians(longitude) - radians(%s)) + sin(radians(%s)) * sin(radians(latitude))))",
-                    (user_lat, user_lng, user_lat)
-                )
-            ).order_by('distance').first()
+            pincode_match = _find_closest_pincode(user_lat, user_lng, max_km=50.0)
             
             resolved_from_db = False
             if pincode_match and pincode_match.distance < 50:

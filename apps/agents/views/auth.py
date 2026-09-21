@@ -62,11 +62,17 @@ def record_login_attempt(ip):
     Record a failed login attempt and increment the count in cache.
     """
     key = f"login_throttle_{ip}"
-    attempts = cache.get(key, 0)
-    if attempts == 0:
-        cache.set(key, 1, timeout=60)
-    else:
-        cache.incr(key)
+    try:
+        attempts = cache.get(key, 0)
+        if attempts == 0:
+            cache.set(key, 1, timeout=60)
+        else:
+            try:
+                cache.incr(key)
+            except (ValueError, Exception):
+                cache.set(key, (attempts or 0) + 1, timeout=60)
+    except Exception:
+        pass
 
 def clear_login_throttle(ip):
     """

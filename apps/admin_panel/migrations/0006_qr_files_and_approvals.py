@@ -49,23 +49,29 @@ class Migration(migrations.Migration):
                 'db_table': 'qr_files',
             },
         ),
-        migrations.CreateModel(
-            name='AgentApprovalRequest',
-            fields=[
-                ('id', models.BigAutoField(primary_key=True, serialize=False)),
-                ('insurance_id', models.BigIntegerField()),
-                ('agent_id', models.BigIntegerField()),
-                ('action', models.CharField(max_length=50)),
-                ('status', models.CharField(max_length=50, default='pending')),
-                ('reason', models.TextField(null=True, blank=True)),
-                ('admin_note', models.TextField(null=True, blank=True)),
-                ('processed_by', models.BigIntegerField(null=True, blank=True)),
-                ('processed_at', models.DateTimeField(null=True, blank=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.CreateModel(
+                    name='AgentApprovalRequest',
+                    fields=[
+                        ('id', models.BigAutoField(primary_key=True, serialize=False)),
+                        ('insurance_id', models.BigIntegerField()),
+                        ('agent_id', models.BigIntegerField()),
+                        ('action', models.CharField(max_length=50)),
+                        ('status', models.CharField(max_length=50, default='pending')),
+                        ('reason', models.TextField(null=True, blank=True)),
+                        ('admin_note', models.TextField(null=True, blank=True)),
+                        ('processed_by', models.BigIntegerField(null=True, blank=True)),
+                        ('processed_at', models.DateTimeField(null=True, blank=True)),
+                        ('created_at', models.DateTimeField(auto_now_add=True)),
+                        ('updated_at', models.DateTimeField(auto_now=True)),
+                    ],
+                    options={
+                        'db_table': 'agent_approval_requests',
+                        'managed': False,
+                    },
+                ),
             ],
-            options={
-                'db_table': 'agent_approval_requests',
-            },
+            database_operations=[]
         ),
     ]

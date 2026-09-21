@@ -32,11 +32,11 @@ class PasswordHashingTests(SimpleTestCase):
 class VerifyAgentPasswordTests(SimpleTestCase):
     @patch('apps.agents.services.account_auth.find_django_user', return_value=None)
     @patch('apps.agents.services.account_auth.fetch_users_row', return_value=None)
-    def test_orphan_pending_agent_accepts_email_as_temp_password(self, _lu, _du):
+    def test_orphan_pending_agent_rejects_email_as_password(self, _lu, _du):
         email = 'coderparth2587@gmail.com'
         agent = SimpleNamespace(email=email, status='pending_payment')
         ok, _, _ = verify_agent_password(email, email, agent=agent)
-        self.assertTrue(ok)
+        self.assertFalse(ok)
 
     @patch('apps.agents.services.account_auth.find_django_user', return_value=None)
     @patch('apps.agents.services.account_auth.fetch_users_row', return_value=None)
@@ -63,6 +63,8 @@ class VerifyAgentPasswordTests(SimpleTestCase):
 
 
 class AgentLoginViewTests(SimpleTestCase):
+    databases = '__all__'
+
     def setUp(self):
         self.login_url = reverse('agents:agent_login')
 

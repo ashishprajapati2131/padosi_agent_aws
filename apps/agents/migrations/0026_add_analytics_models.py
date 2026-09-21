@@ -8,17 +8,11 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
-class Migration(migrations.Migration):
-
-    dependencies = [
-        ('agents', '0025_subscriptionplan_display_fields_safe'),
-    ]
-
-    operations = [
-
-        # ── Create both tables via raw SQL (IF NOT EXISTS = idempotent) ────
-        migrations.RunSQL(
-            sql="""
+def create_analytics_tables(apps, schema_editor):
+    connection = schema_editor.connection
+    if connection.vendor == 'mysql':
+        with connection.cursor() as cursor:
+            cursor.execute("""
             CREATE TABLE IF NOT EXISTS `agent_search_events` (
                 `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 `search_date` DATE            NOT NULL,
@@ -29,7 +23,8 @@ class Migration(migrations.Migration):
                 PRIMARY KEY (`id`),
                 UNIQUE KEY `ase_date_pincode` (`search_date`, `pincode`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
+            """)
+            cursor.execute("""
             CREATE TABLE IF NOT EXISTS `agent_card_impressions` (
                 `id`               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
                 `agent_id`         BIGINT UNSIGNED NOT NULL,
@@ -44,12 +39,48 @@ class Migration(migrations.Migration):
                     FOREIGN KEY (`agent_id`) REFERENCES `agents` (`id`)
                     ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-            """,
-            reverse_sql="""
-            DROP TABLE IF EXISTS `agent_card_impressions`;
-            DROP TABLE IF EXISTS `agent_search_events`;
-            """,
-        ),
+            """)
+    else:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS agent_search_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                search_date DATE NOT NULL,
+                pincode VARCHAR(10) NULL,
+                event_count INTEGER NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                UNIQUE (search_date, pincode)
+            );
+            """)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS agent_card_impressions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                agent_id INTEGER NOT NULL,
+                impression_date DATE NOT NULL,
+                search_pincode VARCHAR(10) NULL,
+                impression_count INTEGER NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                UNIQUE (agent_id, impression_date, search_pincode)
+            );
+            """)
+
+
+def drop_analytics_tables(apps, schema_editor):
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute("DROP TABLE IF EXISTS agent_card_impressions;")
+        cursor.execute("DROP TABLE IF EXISTS agent_search_events;")
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('agents', '0025_subscriptionplan_display_fields_safe'),
+    ]
+
+    operations = [
+        migrations.RunPython(create_analytics_tables, reverse_code=drop_analytics_tables),
 
         # ── Register both models in Django's migration state ───────────────
         migrations.SeparateDatabaseAndState(

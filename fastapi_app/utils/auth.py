@@ -64,10 +64,9 @@ def generate_and_register_token(db: Session, email: str, role: str, user_id: int
     token_version = 1
     now = datetime.utcnow()
     
-    # For agent login, we want the token to never expire (100 years duration)
-    # unless explicitly requested otherwise.
+    # Issue standard expiration token according to configured ACCESS_TOKEN_EXPIRE_MINUTES
     if not expires_delta:
-        expires_delta = timedelta(days=365 * 100)
+        expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         
     expire = now + expires_delta
         

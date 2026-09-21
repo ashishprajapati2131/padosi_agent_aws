@@ -11,7 +11,7 @@ from fastapi_app.schemas.leads import (
 )
 
 router = APIRouter(
-    prefix="/api/v1/agents/leads",
+    prefix="/v1/agents/leads",
     tags=["Agent Leads"]
 )
 

@@ -9,8 +9,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def log_request_to_db(service: str, url: str, method: str, payload_str: str, response_code: int, ip_address: str):
-    """Background task to save the API log to DB."""
+def _sync_log_request_to_db(service: str, url: str, method: str, payload_str: str, response_code: int, ip_address: str):
+    """Sync helper to save API log to DB, runs in a separate thread pool."""
     db = SessionLocal()
     try:
         # Convert payload string to dict if possible
@@ -43,10 +43,23 @@ async def log_request_to_db(service: str, url: str, method: str, payload_str: st
         db.close()
 
 
+async def log_request_to_db(service: str, url: str, method: str, payload_str: str, response_code: int, ip_address: str):
+    """Background task to save the API log to DB without blocking the event loop."""
+    return await asyncio.to_thread(
+        _sync_log_request_to_db,
+        service,
+        url,
+        method,
+        payload_str,
+        response_code,
+        ip_address
+    )
+
+
 class APILoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # We only want to log requests that go to our API endpoints
-        if not request.url.path.startswith("/api/"):
+        if not (request.url.path.startswith("/api/") or request.url.path.startswith("/v1/")):
             return await call_next(request)
 
         # For GET requests or requests without a body, this is simple.

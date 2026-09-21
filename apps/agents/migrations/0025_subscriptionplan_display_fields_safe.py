@@ -3,12 +3,17 @@ from django.utils.text import slugify
 
 
 def _existing_columns(schema_editor):
-    with schema_editor.connection.cursor() as cursor:
+    connection = schema_editor.connection
+    if connection.vendor != 'mysql':
+        return set()
+    with connection.cursor() as cursor:
         cursor.execute('SHOW COLUMNS FROM subscription_plans')
         return {row[0] for row in cursor.fetchall()}
 
 
 def add_subscription_plan_display_fields(apps, schema_editor):
+    if schema_editor.connection.vendor != 'mysql':
+        return
     existing = _existing_columns(schema_editor)
     SubscriptionPlan = apps.get_model('agents', 'SubscriptionPlan')
     table = SubscriptionPlan._meta.db_table

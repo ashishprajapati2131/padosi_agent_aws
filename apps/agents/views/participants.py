@@ -154,6 +154,7 @@ def participants_store(request):
             participant_data['mf_plan'] = None
 
         participant = Participant.objects.create(**participant_data)
+        request.session['participant_id'] = participant.id
     except Exception as e:
         logger.error("PARTICIPANT REGISTRATION - Error: %s", e, exc_info=True)
         return JsonResponse({
@@ -213,9 +214,18 @@ def _get_participant_or_error(request):
     participant_id = request.POST.get('participant_id')
     if not participant_id or not str(participant_id).isdigit():
         return None, _validation_failure({'participant_id': ['The participant id field is required.']})
-    participant = Participant.objects.filter(id=participant_id).first()
+    participant = Participant.objects.filter(id=int(participant_id)).first()
     if not participant:
         return None, _validation_failure({'participant_id': ['The selected participant id is invalid.']})
+
+    # Authorization verification: ensure matching session or shareable token
+    session_pid = request.session.get('participant_id')
+    shareable_token = request.POST.get('shareable_id') or request.headers.get('X-Participant-Token')
+    if session_pid and session_pid != participant.id:
+        return None, JsonResponse({'success': False, 'message': 'Unauthorized participant access.'}, status=403)
+    if shareable_token and participant.shareable_id != shareable_token:
+        return None, JsonResponse({'success': False, 'message': 'Invalid participant token.'}, status=403)
+
     return participant, None
 
 
@@ -447,9 +457,12 @@ def facebook_confirm_manual_share(request):
         if screenshot.size > 5 * 1024 * 1024:
             errors['screenshot'] = ['The screenshot must not be greater than 5 MB.']
         else:
-            ext = os.path.splitext(screenshot.name)[1].lower()
-            if ext not in ('.jpeg', '.jpg', '.png'):
-                errors['screenshot'] = ['The screenshot must be a file of type: jpeg, png, jpg.']
+            file_content = screenshot.read()
+            screenshot.seek(0)
+            from apps.agents.utils.file_validation import validate_magic_bytes
+            is_valid, err_msg = validate_magic_bytes(file_content, screenshot.name)
+            if not is_valid:
+                errors['screenshot'] = [err_msg or 'The screenshot must be a valid image file (PNG, JPG, JPEG, WEBP).']
     if errors:
         return _validation_failure(errors)
 

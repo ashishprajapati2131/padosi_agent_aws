@@ -10,7 +10,7 @@ from fastapi_app.services.lock_unlock_service import LockUnlockService
 from fastapi_app.config import settings
 
 router = APIRouter(
-    prefix="/api/v1/agents/qr",
+    prefix="/v1/agents/qr",
     tags=["QR Codes & Reviews"]
 )
 
