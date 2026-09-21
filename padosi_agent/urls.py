@@ -27,7 +27,36 @@ from django.contrib.sitemaps.views import sitemap
 from padosi_agent.sitemaps import sitemaps
 from padosi_agent.views import csrf_refresh_api
 
+def serve_storage_file(request, file_path):
+    import os
+    from django.views.static import serve
+    from django.http import Http404, HttpResponseRedirect
+
+    normalized_path = file_path.replace('\\', '/').lstrip('/')
+    
+    # Candidate paths under MEDIA_ROOT
+    candidates = [
+        normalized_path,
+        os.path.join('app', 'public', normalized_path),
+        os.path.join('app', 'public', 'profile', os.path.basename(normalized_path)),
+        os.path.join('app', 'public', 'achievement', os.path.basename(normalized_path)),
+        os.path.join('app', 'public', 'insurance', os.path.basename(normalized_path)),
+        os.path.join('app', 'public', 'investment', os.path.basename(normalized_path)),
+    ]
+    for rel_path in candidates:
+        full_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+        if os.path.exists(full_path) and os.path.isfile(full_path):
+            return serve(request, rel_path, document_root=settings.MEDIA_ROOT)
+            
+    # Fallback to default avatar image for missing images to avoid broken images
+    ext = os.path.splitext(normalized_path)[1].lower()
+    if ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
+        return HttpResponseRedirect('/static/img/avatar-icon.jpg')
+
+    raise Http404("File not found")
+
 urlpatterns = [
+    path('storage/<path:file_path>', serve_storage_file, name='serve_storage_file'),
     path('api/v1/csrf-refresh/', csrf_refresh_api, name='csrf_refresh_api'),
     # ── PWA (mirrors Laravel pwa.manifest / pwa.sw / pwa.offline) ────────────
     path('manifest.webmanifest', pwa_views.manifest,       name='pwa.manifest'),
@@ -58,6 +87,7 @@ if settings.DEBUG:
 else:
     urlpatterns += [
         re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+        re_path(r'^storage/(?P<path>.*)$', serve_storage_file),
     ]
 
 

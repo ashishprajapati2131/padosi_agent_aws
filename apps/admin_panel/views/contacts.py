@@ -1,12 +1,11 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 
 from apps.admin_panel.models.contact_submission import ContactSubmission
 from apps.admin_panel.views.dashboard import _get_admin_from_session
-from django.shortcuts import redirect
 
 
 # ─── CONTACT INBOX ────────────────────────────────────────────────────────────
@@ -26,7 +25,9 @@ def contacts_index(request):
             Q(email__icontains=search) |
             Q(mobile__icontains=search) |
             Q(reference_id__icontains=search) |
-            Q(subject__icontains=search)
+            Q(subject__icontains=search) |
+            Q(message__icontains=search) |
+            Q(company__icontains=search)
         )
 
     if status_filter != 'all':
@@ -53,6 +54,7 @@ def contacts_index(request):
     })
 
 
+@require_GET
 def contacts_show(request, submission_id):
     admin_id = _get_admin_from_session(request)
     if not admin_id: return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=401)
@@ -107,3 +109,28 @@ def contacts_delete(request):
     sub.delete()
 
     return JsonResponse({'success': True, 'message': 'Submission deleted.'})
+
+
+@require_POST
+def contacts_bulk_action(request):
+    admin_id = _get_admin_from_session(request)
+    if not admin_id: return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=401)
+    """AJAX bulk delete or bulk status update."""
+    action = request.POST.get('action')
+    ids = request.POST.getlist('ids[]') or request.POST.getlist('ids')
+
+    if not ids:
+        return JsonResponse({'success': False, 'message': 'No submissions selected.'}, status=400)
+
+    subs = ContactSubmission.objects.filter(id__in=ids)
+    count = subs.count()
+
+    if action == 'delete':
+        subs.delete()
+        return JsonResponse({'success': True, 'message': f'Successfully deleted {count} submission(s).'})
+    elif action in ('pending', 'replied', 'closed'):
+        subs.update(status=action)
+        return JsonResponse({'success': True, 'message': f'Updated status for {count} submission(s) to {action}.'})
+    else:
+        return JsonResponse({'success': False, 'message': 'Invalid bulk action.'}, status=400)
+

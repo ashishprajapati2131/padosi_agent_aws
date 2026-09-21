@@ -1257,7 +1257,62 @@ def apply_profile_update(request, agent, is_admin_edit=False):
     
     # helper for step processing
     def should_process(step):
-        return not current_step or str(current_step) == str(step)
+        if not current_step:
+            return True
+        s = str(current_step)
+        if str(step) == s:
+            return True
+        if s in ('3', '4') and str(step) in ('3', '4'):
+            return True
+        return False
+
+    def process_license_docs():
+        if 'irdai_license_doc' in request.FILES:
+            irdai_file = request.FILES['irdai_license_doc']
+            file_content = irdai_file.read()
+            irdai_file.seek(0)
+            is_valid, error_msg = validate_magic_bytes(file_content, irdai_file.name)
+            if not is_valid:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Invalid file type for IRDAI certificate: {error_msg}',
+                    'errors': {'irdai_license_doc': [error_msg]}
+                }, status=422)
+            
+            ext = os.path.splitext(irdai_file.name)[1].lower()
+            if irdai_file.size <= 5 * 1024 * 1024:
+                doc_path = f"app/public/insurance/irdai_{agent.id}_{int(time.time())}{ext}"
+                profile.irdai_license_doc = default_storage.save(doc_path, irdai_file)
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'IRDAI certificate file size must be under 5MB.',
+                    'errors': {'irdai_license_doc': ['File too large.']}
+                }, status=422)
+
+        if 'amfi_license_doc' in request.FILES:
+            amfi_file = request.FILES['amfi_license_doc']
+            file_content = amfi_file.read()
+            amfi_file.seek(0)
+            is_valid, error_msg = validate_magic_bytes(file_content, amfi_file.name)
+            if not is_valid:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Invalid file type for AMFI certificate: {error_msg}',
+                    'errors': {'amfi_license_doc': [error_msg]}
+                }, status=422)
+            
+            ext = os.path.splitext(amfi_file.name)[1].lower()
+            if amfi_file.size <= 5 * 1024 * 1024:
+                doc_path = f"app/public/investment/amfi_{agent.id}_{int(time.time())}{ext}"
+                profile.amfi_license_doc = default_storage.save(doc_path, amfi_file)
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'AMFI certificate file size must be under 5MB.',
+                    'errors': {'amfi_license_doc': ['File too large.']}
+                }, status=422)
+        return None
         
     try:
         with transaction.atomic():
@@ -1434,7 +1489,11 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                     
                 if errors:
                     return JsonResponse({'status': 'error', 'message': 'Validation failed', 'errors': errors}, status=422)
-                    
+
+                doc_res = process_license_docs()
+                if doc_res:
+                    return doc_res
+
                 profile.pan_number = pan
                 profile.agency_name = agency_name
                 profile.office_address = office_address
@@ -1558,13 +1617,13 @@ def apply_profile_update(request, agent, is_admin_edit=False):
             if should_process(4):
                 # Always sync segments on step 4 even if empty, so unselecting all works
                 segments = request.POST.getlist('segments[]') or request.POST.getlist('segments')
-                if 'segments[]' in request.POST or 'segments' in request.POST or str(current_step) == '4':
+                if 'segments[]' in request.POST or 'segments' in request.POST or str(current_step) in ('3', '4'):
                     agent.insuranceSegments.all().delete()
                     for segment_type in segments:
                         AgentInsuranceSegment.objects.create(agent=agent, segment_type=segment_type)
                         
                 investment_types = request.POST.getlist('investment_types[]') or request.POST.getlist('investment_types')
-                if 'investment_types[]' in request.POST or 'investment_types' in request.POST or str(current_step) == '4':
+                if 'investment_types[]' in request.POST or 'investment_types' in request.POST or str(current_step) in ('3', '4'):
                     profile.investment_types = investment_types
                     profile.save()
                         
@@ -1635,12 +1694,18 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                         
             # ── Step 5: Additional Info ──
             if should_process(5):
-                website = (request.POST.get('website') or '').strip()
-                google_business = (request.POST.get('google_business') or '').strip()
-                linkedin = (request.POST.get('linkedin_url') or '').strip()
-                instagram = (request.POST.get('instagram_url') or '').strip()
-                facebook = (request.POST.get('facebook_url') or '').strip()
-                youtube = (request.POST.get('youtube_url') or '').strip()
+                def sanitize_url(u):
+                    u = (u or '').strip()
+                    if u and not (u.startswith('http://') or u.startswith('https://')):
+                        return 'https://' + u
+                    return u
+
+                website = sanitize_url(request.POST.get('website'))
+                google_business = sanitize_url(request.POST.get('google_business'))
+                linkedin = sanitize_url(request.POST.get('linkedin_url'))
+                instagram = sanitize_url(request.POST.get('instagram_url'))
+                facebook = sanitize_url(request.POST.get('facebook_url'))
+                youtube = sanitize_url(request.POST.get('youtube_url'))
                 career_highlights = (request.POST.get('career_highlights') or '').strip()
                 
                 # Validation
@@ -1668,7 +1733,7 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                 
                 if career_highlights and len(career_highlights) > 500:
                     errors['career_highlights'] = ['Professional Bio cannot exceed 500 characters.']
-                    return JsonResponse({'status': 'error', 'message': 'Professional Bio cannot exceed 500 characters.', 'errors': errors}, status=400)
+                    return JsonResponse({'status': 'error', 'message': 'Professional Bio cannot exceed 500 characters.', 'errors': errors}, status=422)
                     
                 if errors:
                     return JsonResponse({'status': 'error', 'message': 'Validation failed', 'errors': errors}, status=422)
@@ -1695,53 +1760,9 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                         }
                     }, status=422)
                     
-                # Process license document uploads
-                allowed_doc_exts = ['.pdf', '.jpg', '.jpeg', '.png']
-                if 'irdai_license_doc' in request.FILES:
-                    irdai_file = request.FILES['irdai_license_doc']
-                    file_content = irdai_file.read()
-                    irdai_file.seek(0)
-                    is_valid, error_msg = validate_magic_bytes(file_content, irdai_file.name)
-                    if not is_valid:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': f'Invalid file type for IRDAI certificate: {error_msg}',
-                            'errors': {'irdai_license_doc': [error_msg]}
-                        }, status=422)
-                    
-                    ext = os.path.splitext(irdai_file.name)[1].lower()
-                    if irdai_file.size <= 5 * 1024 * 1024:
-                        doc_path = f"app/public/insurance/irdai_{agent.id}_{int(time.time())}{ext}"
-                        profile.irdai_license_doc = default_storage.save(doc_path, irdai_file)
-                    else:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'IRDAI certificate file size must be under 5MB.',
-                            'errors': {'irdai_license_doc': ['File too large.']}
-                        }, status=422)
-
-                if 'amfi_license_doc' in request.FILES:
-                    amfi_file = request.FILES['amfi_license_doc']
-                    file_content = amfi_file.read()
-                    amfi_file.seek(0)
-                    is_valid, error_msg = validate_magic_bytes(file_content, amfi_file.name)
-                    if not is_valid:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': f'Invalid file type for AMFI certificate: {error_msg}',
-                            'errors': {'amfi_license_doc': [error_msg]}
-                        }, status=422)
-                    
-                    ext = os.path.splitext(amfi_file.name)[1].lower()
-                    if amfi_file.size <= 5 * 1024 * 1024:
-                        doc_path = f"app/public/investment/amfi_{agent.id}_{int(time.time())}{ext}"
-                        profile.amfi_license_doc = default_storage.save(doc_path, amfi_file)
-                    else:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'AMFI certificate file size must be under 5MB.',
-                            'errors': {'amfi_license_doc': ['File too large.']}
-                        }, status=422)
+                doc_res = process_license_docs()
+                if doc_res:
+                    return doc_res
 
                 profile.website_url = website
                 profile.social_links = {
