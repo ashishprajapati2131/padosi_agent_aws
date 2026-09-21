@@ -2,7 +2,14 @@ from fastapi import HTTPException
 import json
 import logging
 from fastapi_app.repositories.agent_repository import AgentRepository
-from fastapi_app.schemas.profile import AgentProfileResponse, AgentProfileUpdateRequest
+from fastapi_app.schemas.profile import (
+    AgentProfileResponse,
+    AgentProfileUpdateRequest,
+    BasicProfileUpdateRequest,
+    ProfessionalProfileUpdateRequest,
+    PortfolioProfileUpdateRequest,
+    AdditionalProfileUpdateRequest,
+)
 from fastapi_app.config import settings
 from fastapi_app.services.lock_unlock_service import LockUnlockService
 
@@ -629,6 +636,375 @@ class ProfileService:
         except Exception as e:
             db.rollback()
             logger.exception("Profile update failed for agent_id=%s", agent_id)
+            raise HTTPException(status_code=500, detail="An error occurred while updating the profile.")
+
+        return self.get_profile(agent_id)
+
+    def _get_agent_or_404(self, agent_id: int):
+        agent = self.agent_repo.get_agent_with_full_profile(agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        return agent
+
+    def _ensure_profile(self, db, agent):
+        if not agent.profile:
+            agent.profile = AgentProfile(agent_id=agent.id)
+            db.add(agent.profile)
+            db.flush()
+        return agent.profile
+
+    def _mark_pending_approval(self, agent):
+        if agent.status not in ('suspended', 'blacklisted', 'rejected'):
+            agent.status = 'pending_approval'
+
+    @staticmethod
+    def _socials_as_dict(social_links) -> dict:
+        if not social_links:
+            return {}
+        if hasattr(social_links, 'model_dump'):
+            return social_links.model_dump()
+        if hasattr(social_links, 'dict'):
+            return social_links.dict()
+        return social_links if isinstance(social_links, dict) else {}
+
+    def _validate_service_pincodes(self, service_pincodes):
+        if not service_pincodes:
+            raise HTTPException(status_code=422, detail="At least one service pincode is required.")
+        seen_pincodes = set()
+        for p in service_pincodes:
+            if p.pincode in seen_pincodes:
+                raise HTTPException(status_code=422, detail=f"Duplicate pincode detected: {p.pincode}")
+            seen_pincodes.add(p.pincode)
+            if not p.selected_areas:
+                raise HTTPException(status_code=422, detail=f"Please select at least one area for pincode {p.pincode}.")
+
+    def _save_service_pincodes_and_cities(self, db, agent, agent_id, service_pincodes, serviceable_cities):
+        db.query(AgentServicePincode).filter(AgentServicePincode.agent_id == agent_id).delete(synchronize_session=False)
+        db.query(AgentServiceableCity).filter(AgentServiceableCity.agent_id == agent_id).delete(synchronize_session=False)
+
+        unique_cities = set(serviceable_cities or [])
+        for p in service_pincodes:
+            db.add(AgentServicePincode(
+                agent_id=agent_id,
+                service_pincode=p.pincode,
+                city_name=p.city_name,
+                selected_areas_json=p.selected_areas,
+                postal_data_json=p.postal_data
+            ))
+            if p.city_name:
+                unique_cities.add(p.city_name)
+
+        if service_pincodes:
+            agent.agent_pincode = service_pincodes[0].pincode
+            agent.profile.service_pincodes = [sp.pincode for sp in service_pincodes]
+
+        for city_name in unique_cities:
+            city = db.query(City).filter(City.name == city_name).first()
+            if not city:
+                city_slug = city_name.lower().replace(' ', '-')
+                city = City(name=city_name, slug=city_slug)
+                db.add(city)
+                db.flush()
+            db.add(AgentServiceableCity(agent_id=agent_id, city_id=city.id))
+
+    def _apply_lead_preferences(self, db, agent_id, prefs, experience_range):
+        lead = db.query(AgentLeadPreference).filter(AgentLeadPreference.agent_id == agent_id).first()
+        if not lead:
+            lead = AgentLeadPreference(agent_id=agent_id)
+            db.add(lead)
+
+        exp_years = 0
+        if experience_range:
+            import re
+            match = re.search(r'\d+', experience_range)
+            if match:
+                try:
+                    exp_years = int(match.group())
+                except ValueError:
+                    pass
+
+        leads_new_business = prefs.leads_new_business
+        leads_portfolio_analysis = prefs.leads_portfolio_analysis
+        portfolio_charging = prefs.portfolio_charging
+        portfolio_fee = prefs.portfolio_fee
+        leads_claims_support = prefs.leads_claims_support
+        claims_charging = prefs.claims_charging
+        claims_fee_amount = prefs.claims_fee_amount
+        claims_percent = prefs.claims_percent
+
+        if exp_years < 5:
+            leads_portfolio_analysis = False
+            portfolio_charging = "free"
+            portfolio_fee = 0.0
+            leads_claims_support = False
+            claims_charging = "free"
+            claims_fee_amount = 0.0
+            claims_percent = 0.0
+        elif exp_years < 10:
+            leads_claims_support = False
+            claims_charging = "free"
+            claims_fee_amount = 0.0
+            claims_percent = 0.0
+
+        lead.leads_new_business = leads_new_business
+        lead.leads_portfolio_analysis = leads_portfolio_analysis
+        lead.portfolio_charging = portfolio_charging
+        lead.portfolio_fee = portfolio_fee
+        lead.leads_claims_support = leads_claims_support
+        lead.claims_charging = claims_charging
+        lead.claims_fee_amount = claims_fee_amount
+        lead.claims_percent = claims_percent
+
+    def _save_performance_stats(self, db, agent_id, perf):
+        cp = perf.claims_processed
+        cs = perf.claims_settled
+        success_rate = round((cs / cp) * 100, 2) if cp > 0 else 0.0
+
+        stat = db.query(AgentPerformanceStat).filter(AgentPerformanceStat.agent_id == agent_id).first()
+        if not stat:
+            stat = AgentPerformanceStat(agent_id=agent_id)
+            db.add(stat)
+
+        stat.claims_processed = str(cp)
+        stat.claims_settled = str(cs)
+        stat.claims_amount = str(perf.claims_amount)
+        resp_time_val = 2
+        try:
+            import re
+            m = re.search(r'\d+', str(perf.response_time))
+            if m:
+                resp_time_val = int(m.group())
+        except Exception:
+            pass
+        stat.response_time = resp_time_val
+        stat.success_rate = str(success_rate)
+
+    def update_basic_profile(self, agent_id: int, payload: BasicProfileUpdateRequest) -> AgentProfileResponse:
+        db = self.agent_repo.db
+        agent = self._get_agent_or_404(agent_id)
+
+        fullname = (payload.agent.fullname or "").strip()
+        email = (payload.agent.email or "").strip()
+        mobile = (payload.agent.mobile or "").strip()
+        languages = (payload.profile.languages or "").strip()
+        address = (payload.profile.address or "").strip()
+
+        if not fullname:
+            raise HTTPException(status_code=422, detail="Full name is required.")
+        if not email:
+            raise HTTPException(status_code=422, detail="Email is required.")
+        if not mobile:
+            raise HTTPException(status_code=422, detail="Mobile number is required.")
+        if not languages:
+            raise HTTPException(status_code=422, detail="Languages are required.")
+        if not address:
+            raise HTTPException(status_code=422, detail="Residence address is required.")
+
+        existing_email = db.query(Agent).filter(Agent.email == email, Agent.id != agent_id).first()
+        if existing_email:
+            raise HTTPException(status_code=409, detail="The email has already been taken.")
+
+        lock_service = LockUnlockService(db)
+        lock_service.require_feature_unlocked(agent, "edit_profile_basic")
+
+        try:
+            previous_email = agent.email
+            agent.fullname = fullname
+            agent.email = email
+            agent.mobile = mobile
+            self._sync_login_identity(db, previous_email, email, fullname)
+
+            profile = self._ensure_profile(db, agent)
+            profile.display_name = payload.profile.display_name
+            profile.whatsapp = payload.profile.whatsapp
+            profile.languages = languages
+            profile.address = address
+
+            self._mark_pending_approval(agent)
+            db.commit()
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception:
+            db.rollback()
+            logger.exception("Basic profile update failed for agent_id=%s", agent_id)
+            raise HTTPException(status_code=500, detail="An error occurred while updating the profile.")
+
+        return self.get_profile(agent_id)
+
+    def update_professional_profile(self, agent_id: int, payload: ProfessionalProfileUpdateRequest) -> AgentProfileResponse:
+        db = self.agent_repo.db
+        agent = self._get_agent_or_404(agent_id)
+
+        self._validate_service_pincodes(payload.profile.service_pincodes)
+
+        lock_service = LockUnlockService(db)
+        lock_service.require_feature_unlocked(agent, "edit_profile_professional")
+        if payload.agent.performanceStats is not None:
+            lock_service.require_feature_unlocked(agent, "edit_profile_claim_support")
+        if payload.agent.leadPreferences is not None:
+            lock_service.require_feature_unlocked(agent, "lead_preferences")
+
+        try:
+            profile = self._ensure_profile(db, agent)
+            profile.pan_number = payload.profile.pan_number
+            profile.license_number = payload.profile.license_number
+            profile.license_valid_till = payload.profile.license_valid_till
+            profile.arn_number = payload.profile.arn_number
+            profile.euin_number = payload.profile.euin_number
+            profile.investment_valid_till = payload.profile.investment_valid_till
+            profile.agency_name = payload.profile.agency_name
+            profile.office_address = payload.profile.office_address
+            profile.has_pos_license = payload.profile.has_pos_license
+
+            agent.experience_range = payload.agent.experience_range
+            agent.client_base = payload.agent.client_base
+
+            self._save_service_pincodes_and_cities(
+                db,
+                agent,
+                agent_id,
+                payload.profile.service_pincodes,
+                payload.agent.serviceableCities,
+            )
+
+            db.query(AgentFamilyLicense).filter(AgentFamilyLicense.agent_id == agent_id).delete(synchronize_session=False)
+            for f in payload.agent.familyLicenses:
+                full_name = f.full_name or f.member_name or ""
+                license_number = f.license_number or f.license_type or ""
+                db.add(AgentFamilyLicense(
+                    agent_id=agent_id,
+                    full_name=full_name,
+                    relationship=f.relationship,
+                    license_number=license_number
+                ))
+
+            if payload.agent.performanceStats is not None:
+                self._save_performance_stats(db, agent_id, payload.agent.performanceStats)
+
+            if payload.agent.leadPreferences is not None:
+                self._apply_lead_preferences(
+                    db,
+                    agent_id,
+                    payload.agent.leadPreferences,
+                    payload.agent.experience_range or agent.experience_range,
+                )
+
+            self._mark_pending_approval(agent)
+            db.commit()
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception:
+            db.rollback()
+            logger.exception("Professional profile update failed for agent_id=%s", agent_id)
+            raise HTTPException(status_code=500, detail="An error occurred while updating the profile.")
+
+        return self.get_profile(agent_id)
+
+    def update_portfolio_profile(self, agent_id: int, payload: PortfolioProfileUpdateRequest) -> AgentProfileResponse:
+        db = self.agent_repo.db
+        agent = self._get_agent_or_404(agent_id)
+
+        lock_service = LockUnlockService(db)
+        lock_service.require_feature_unlocked(agent, "edit_profile_portfolio")
+        if payload.agent.portfolios:
+            lock_service.require_feature_unlocked(agent, "manage_portfolio")
+            has_companies = any(
+                bool(port.primary_companies) or bool(port.secondary_companies)
+                for port in payload.agent.portfolios
+            )
+            if has_companies:
+                lock_service.require_feature_unlocked(agent, "edit_profile_companies")
+
+        try:
+            profile = self._ensure_profile(db, agent)
+            if payload.profile is not None:
+                profile.investment_types = clean_investment_types(payload.profile.investment_types)
+
+            db.query(AgentInsuranceSegment).filter(AgentInsuranceSegment.agent_id == agent_id).delete(synchronize_session=False)
+            for s in payload.agent.insuranceSegments:
+                db.add(AgentInsuranceSegment(agent_id=agent_id, segment_type=s.segment_type))
+
+            db.query(AgentProductExpertise).filter(AgentProductExpertise.agent_id == agent_id).delete(synchronize_session=False)
+            for e in payload.agent.productExpertise:
+                segment = e.segment_type
+                if not segment:
+                    prod_lower = e.product_name.lower() if e.product_name else ""
+                    if "term" in prod_lower or "life" in prod_lower:
+                        segment = "life"
+                    elif "health" in prod_lower or "medical" in prod_lower:
+                        segment = "health"
+                    elif "car" in prod_lower or "motor" in prod_lower or "bike" in prod_lower:
+                        segment = "motor"
+                    elif "sme" in prod_lower or "commercial" in prod_lower or "business" in prod_lower:
+                        segment = "sme"
+                    else:
+                        segment = "life"
+                db.add(AgentProductExpertise(
+                    agent_id=agent_id,
+                    segment_type=segment,
+                    product_name=e.product_name,
+                    expertise_level=e.expertise_level,
+                    is_custom=e.is_custom
+                ))
+
+            db.query(AgentPortfolio).filter(AgentPortfolio.agent_id == agent_id).delete(synchronize_session=False)
+            for port in payload.agent.portfolios:
+                db.add(AgentPortfolio(
+                    agent_id=agent_id,
+                    segment_type=port.segment_type,
+                    primary_companies=json.dumps(port.primary_companies),
+                    secondary_companies=json.dumps(port.secondary_companies)
+                ))
+
+            self._mark_pending_approval(agent)
+            db.commit()
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception:
+            db.rollback()
+            logger.exception("Portfolio profile update failed for agent_id=%s", agent_id)
+            raise HTTPException(status_code=500, detail="An error occurred while updating the profile.")
+
+        return self.get_profile(agent_id)
+
+    def update_additional_profile(self, agent_id: int, payload: AdditionalProfileUpdateRequest) -> AgentProfileResponse:
+        db = self.agent_repo.db
+        agent = self._get_agent_or_404(agent_id)
+
+        lock_service = LockUnlockService(db)
+        lock_service.require_feature_unlocked(agent, "edit_profile_additional")
+
+        existing_bio = (agent.profile.career_highlights or "") if agent.profile else ""
+        new_bio = payload.profile.career_highlights or ""
+        if new_bio.strip() != existing_bio.strip():
+            lock_service.require_feature_unlocked(agent, "edit_profile_professional_bio")
+
+        new_socials = self._socials_as_dict(payload.profile.social_links)
+        existing_socials = getattr(agent.profile, 'social_links', {}) if agent.profile else {}
+        if not isinstance(existing_socials, dict):
+            existing_socials = {}
+        existing_website = (agent.profile.website_url or "") if agent.profile else ""
+        new_website = payload.profile.website or ""
+        if new_website.strip() != existing_website.strip() or new_socials != existing_socials:
+            lock_service.require_feature_unlocked(agent, "edit_profile_social_media")
+
+        try:
+            profile = self._ensure_profile(db, agent)
+            profile.website_url = payload.profile.website
+            profile.career_highlights = payload.profile.career_highlights
+            profile.social_links = new_socials
+
+            self._mark_pending_approval(agent)
+            db.commit()
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception:
+            db.rollback()
+            logger.exception("Additional profile update failed for agent_id=%s", agent_id)
             raise HTTPException(status_code=500, detail="An error occurred while updating the profile.")
 
         return self.get_profile(agent_id)

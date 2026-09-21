@@ -164,6 +164,77 @@ class AgentProfileUpdateRequest(BaseModel):
     agent: AgentUpdateSchema
     profile: ProfileUpdateSchema
 
+
+class BasicAgentUpdateSchema(BaseModel):
+    fullname: str
+    email: str
+    mobile: str
+
+
+class BasicProfileUpdateSchema(BaseModel):
+    display_name: Optional[str] = ""
+    whatsapp: Optional[str] = ""
+    languages: str
+    address: str
+
+
+class BasicProfileUpdateRequest(BaseModel):
+    agent: BasicAgentUpdateSchema
+    profile: BasicProfileUpdateSchema
+
+
+class ProfessionalAgentUpdateSchema(BaseModel):
+    experience_range: Optional[str] = ""
+    client_base: Optional[str] = ""
+    familyLicenses: List[FamilyLicenseSchema] = []
+    performanceStats: Optional[PerformanceStatSchema] = None
+    leadPreferences: Optional[LeadPreferenceSchema] = None
+    serviceableCities: List[str] = []
+
+
+class ProfessionalProfileUpdateSchema(BaseModel):
+    pan_number: Optional[str] = ""
+    license_number: Optional[str] = ""
+    license_valid_till: Optional[date] = None
+    arn_number: Optional[str] = ""
+    euin_number: Optional[str] = ""
+    investment_valid_till: Optional[date] = None
+    agency_name: Optional[str] = ""
+    office_address: Optional[str] = ""
+    service_pincodes: List[ServicePincodeSchema] = []
+    has_pos_license: bool = False
+
+
+class ProfessionalProfileUpdateRequest(BaseModel):
+    agent: ProfessionalAgentUpdateSchema
+    profile: ProfessionalProfileUpdateSchema
+
+
+class PortfolioAgentUpdateSchema(BaseModel):
+    insuranceSegments: List[InsuranceSegmentSchema] = []
+    productExpertise: List[ProductExpertiseSchema] = []
+    portfolios: List[PortfolioSchema] = []
+
+
+class PortfolioProfileUpdateSchema(BaseModel):
+    investment_types: List[str] = []
+
+
+class PortfolioProfileUpdateRequest(BaseModel):
+    agent: PortfolioAgentUpdateSchema
+    profile: Optional[PortfolioProfileUpdateSchema] = None
+
+
+class AdditionalProfileUpdateSchema(BaseModel):
+    website: Optional[str] = ""
+    social_links: SocialLinksSchema = SocialLinksSchema()
+    career_highlights: Optional[str] = ""
+
+
+class AdditionalProfileUpdateRequest(BaseModel):
+    profile: AdditionalProfileUpdateSchema
+
+
 class CareerTimelineItem(BaseModel):
     id: Optional[int] = None
     month: Optional[str] = ""
