@@ -5,7 +5,7 @@ from fastapi_app.schemas.agent_search import FindAgentsRequest, FindAgentsRespon
 from fastapi_app.services.agent_search_service import AgentSearchService
 
 router = APIRouter(
-    prefix="/api/v1/find-agents",
+    prefix="/v1/find-agents",
     tags=["Find Agents"]
 )
 

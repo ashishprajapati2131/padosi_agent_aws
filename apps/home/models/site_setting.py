@@ -53,6 +53,7 @@ class SiteSetting(models.Model):
     def flush_cache(cls):
         cache.delete(cls.CACHE_KEY)
         cache.delete('footer_settings_data')
+        cache.delete('homepage_cms_context')
 
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver

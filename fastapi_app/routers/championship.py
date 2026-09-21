@@ -58,7 +58,7 @@ from fastapi_app.services.championship_service import (
 from fastapi_app.config import settings
 
 router = APIRouter(
-    prefix="/api/v1/championship",
+    prefix="/v1/championship",
     tags=["Agent Referral Championship"]
 )
 

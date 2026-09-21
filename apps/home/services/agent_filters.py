@@ -74,7 +74,20 @@ _PIN_RE = re.compile(r'^[1-9]\d{5}$')
 
 def listed_agents_queryset():
     """Active directory agents, including PHP imports with no auth_user FK."""
-    return Agent.objects.filter(status='active').exclude(profile__is_card_visible=False)
+    return (
+        Agent.objects.filter(status='active')
+        .exclude(profile__is_card_visible=False)
+        .select_related('profile', 'performanceStats')
+        .prefetch_related(
+            'insuranceSegments',
+            'reviews',
+            'serviceableCities',
+            'productExpertise',
+            'servicePincodes',
+            'achievementPhotos',
+            'subscriptions'
+        )
+    )
 
 
 def map_insurance_types(raw_types):

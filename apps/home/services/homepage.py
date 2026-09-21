@@ -5,6 +5,7 @@ from apps.home.models.homepage import (
     HeroSlide, DidYouKnowSlide, QuickPickItem, WhyChooseCard, HowItWorksStep,
 )
 from apps.home.models.site_setting import SiteSetting
+from django.core.cache import cache
 
 
 DEFAULT_TRUST_BADGES = [
@@ -366,6 +367,10 @@ def map_custom_testimonials(custom_list):
 
 
 def build_homepage_cms_context():
+    cached_ctx = cache.get('homepage_cms_context')
+    if cached_ctx is not None and isinstance(cached_ctx, dict):
+        return cached_ctx
+
     settings = HomePageSettings.load()
     hero = SiteSetting.get_value('hero_section', {}) or {}
     content = SiteSetting.get_value('homepage_content', {}) or {}
@@ -435,7 +440,7 @@ def build_homepage_cms_context():
     if _is_visible(testimonials.get('use_custom'), default=False):
         custom_reviews = map_custom_testimonials(testimonials.get('custom_list'))
 
-    return {
+    context = {
         'settings': settings,
         'hero': hero,
         'trust_badges': trust_badges,
@@ -450,3 +455,5 @@ def build_homepage_cms_context():
         'custom_reviews': custom_reviews,
         'hero_heading': settings.hero_heading,
     }
+    cache.set('homepage_cms_context', context, timeout=300)
+    return context

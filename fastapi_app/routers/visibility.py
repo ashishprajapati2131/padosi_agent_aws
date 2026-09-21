@@ -9,7 +9,7 @@ from fastapi_app.models.agent_profile import AgentProfile
 from fastapi_app.services.lock_unlock_service import LockUnlockService
 
 router = APIRouter(
-    prefix="/api/v1/agents/visibility",
+    prefix="/v1/agents/visibility",
     tags=["Visibility & Profile Toggles"]
 )
 

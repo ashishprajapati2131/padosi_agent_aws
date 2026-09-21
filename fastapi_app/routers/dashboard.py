@@ -7,7 +7,7 @@ from fastapi_app.services.dashboard_service import DashboardService
 from fastapi_app.schemas.dashboard import DashboardResponse
 
 router = APIRouter(
-    prefix="/api/v1/agents",
+    prefix="/v1/agents",
     tags=["Dashboard"]
 )
 

@@ -29,10 +29,8 @@ class Command(BaseCommand):
             self.stderr.write("Database name or user not configured in settings.")
             return
 
-        # Prepare backup directory
-        # Project root -> storage/backups
-        project_root = Path(settings.BASE_DIR).parent
-        backup_dir = project_root / 'storage' / 'backups'
+        # Prepare backup directory inside project backups folder
+        backup_dir = Path(settings.BASE_DIR) / 'backups'
         backup_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')

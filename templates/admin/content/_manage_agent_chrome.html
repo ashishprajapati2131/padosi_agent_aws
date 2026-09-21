@@ -283,9 +283,9 @@ window.MANAGE_AGENT = {
     toggleUrl: "{% url 'admin_content_plans_manage_agent_toggle' plan_slug=preview_plan_slug %}",
     csrfToken: "{{ csrf_token }}",
     csrfCookieName: "padosi_csrf_token",
-    enabled: JSON.parse('{{ preview_enabled_features_json|default:"[]"|escapejs }}' || '[]'),
-    labels: JSON.parse('{{ preview_feature_labels_json|default:"{}"|escapejs }}' || '{}'),
-    builder: JSON.parse('{{ preview_unlock_builder_json|default:"{}"|escapejs }}' || '{}')
+    enabled: {{ preview_enabled_features_json|default:"[]"|safe }},
+    labels: {{ preview_feature_labels_json|default:"{}"|safe }},
+    builder: {{ preview_unlock_builder_json|default:"{}"|safe }}
 };
 </script>
 {% endif %}

@@ -9,7 +9,7 @@ from fastapi_app.schemas.notifications import (
 )
 
 router = APIRouter(
-    prefix="/api/v1/agents/notifications",
+    prefix="/v1/agents/notifications",
     tags=["Notifications"]
 )
 

@@ -158,11 +158,11 @@ ASGI_APPLICATION = 'padosi_agent.asgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DB_NAME'),
-        'USER': os.environ.get('DB_USER'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST'),
-        'PORT': os.environ.get('DB_PORT'),
+        'NAME': os.environ.get('DB_NAME', '') or '',
+        'USER': os.environ.get('DB_USER', '') or '',
+        'PASSWORD': os.environ.get('DB_PASSWORD', '') or '',
+        'HOST': os.environ.get('DB_HOST', '127.0.0.1') or '127.0.0.1',
+        'PORT': os.environ.get('DB_PORT', '3306') or '3306',
         'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
         'CONN_HEALTH_CHECKS': True,
     }
@@ -172,12 +172,22 @@ DATABASES = {
 
 # Cache
 # https://docs.djangoproject.com/en/6.0/ref/settings/#cache
+CACHE_DIR = BASE_DIR / 'cache'
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
-        'LOCATION': BASE_DIR / 'cache',
+        'LOCATION': CACHE_DIR,
+        'TIMEOUT': 300,
+        'OPTIONS': {
+            'MAX_ENTRIES': 2000,
+        }
     }
 }
+
+# Session Optimization: Use cached_db so sessions read from cache first instead of querying MySQL on every request
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
 
 
 # Password validation
@@ -220,6 +230,7 @@ STATICFILES_DIRS = [
 ]
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT.mkdir(parents=True, exist_ok=True)
 
 # Whitenoise and Caching Optimization
 STORAGES = {
@@ -312,9 +323,9 @@ FACEBOOK_APP_ID     = os.environ.get('FACEBOOK_APP_ID', '759405373797845')
 FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
-# Keep Python logs inside the project media folder so they can be managed
-# (viewed/downloaded/archived) alongside the other media assets.
-LOGS_DIR = MEDIA_ROOT / 'logs'
+# Keep Python logs inside the project root (BASE_DIR / 'logs') so they are
+# NEVER exposed via the public MEDIA_URL or web server static routes.
+LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 LOGGING = {
