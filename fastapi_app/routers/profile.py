@@ -15,7 +15,14 @@ from fastapi_app.config import settings
 from fastapi_app.database import get_db
 from fastapi_app.dependencies.auth import get_current_agent
 from fastapi_app.models.agent import Agent
-from fastapi_app.schemas.profile import AgentProfileResponse, AgentProfileUpdateRequest
+from fastapi_app.schemas.profile import (
+    AgentProfileResponse,
+    AgentProfileUpdateRequest,
+    BasicProfileUpdateRequest,
+    ProfessionalProfileUpdateRequest,
+    PortfolioProfileUpdateRequest,
+    AdditionalProfileUpdateRequest,
+)
 from fastapi_app.repositories.agent_repository import AgentRepository
 from fastapi_app.services.profile_service import ProfileService
 from fastapi_app.services.cloudinary_service import CloudinaryService
@@ -61,6 +68,66 @@ def update_agent_profile(
     profile_service = ProfileService(agent_repo)
     
     return profile_service.update_profile(current_agent.id, payload)
+
+
+@router.put("/profile/basic", response_model=AgentProfileResponse)
+def update_agent_profile_basic(
+    payload: BasicProfileUpdateRequest,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Update Step 1 basic details only. Does not touch professional, portfolio, or additional data.
+    Profile photo stays on POST /profile/image.
+    """
+    agent_repo = AgentRepository(db)
+    profile_service = ProfileService(agent_repo)
+    return profile_service.update_basic_profile(current_agent.id, payload)
+
+
+@router.put("/profile/professional", response_model=AgentProfileResponse)
+def update_agent_profile_professional(
+    payload: ProfessionalProfileUpdateRequest,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Update Step 2 professional details only. License documents stay on the license upload APIs.
+    """
+    agent_repo = AgentRepository(db)
+    profile_service = ProfileService(agent_repo)
+    return profile_service.update_professional_profile(current_agent.id, payload)
+
+
+@router.put("/profile/portfolio", response_model=AgentProfileResponse)
+def update_agent_profile_portfolio(
+    payload: PortfolioProfileUpdateRequest,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Update Step 3 product portfolio only: segments, investment types, expertise, and companies.
+    """
+    agent_repo = AgentRepository(db)
+    profile_service = ProfileService(agent_repo)
+    return profile_service.update_portfolio_profile(current_agent.id, payload)
+
+
+@router.put("/profile/additional", response_model=AgentProfileResponse)
+def update_agent_profile_additional(
+    payload: AdditionalProfileUpdateRequest,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db)
+):
+    """
+    Update Step 4 additional info only: website, social links, and saved professional bio.
+    Bio generation stays on GET /profile/generate-bio.
+    Achievement photos and career timeline stay on their existing APIs.
+    """
+    agent_repo = AgentRepository(db)
+    profile_service = ProfileService(agent_repo)
+    return profile_service.update_additional_profile(current_agent.id, payload)
+
 
 @router.post("/profile/image")
 async def upload_profile_image(
