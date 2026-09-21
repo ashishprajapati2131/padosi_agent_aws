@@ -1098,6 +1098,16 @@ class AgentPortfolio(models.Model):
         db_table = 'agent_portfolios'
         managed = True
 
+    @property
+    def primary_companies_json(self):
+        import json
+        return json.dumps(self.primary_companies or {})
+
+    @property
+    def secondary_companies_json(self):
+        import json
+        return json.dumps(self.secondary_companies or {})
+
 
 def resolve_stored_file_url(path, fallback_subdirs=None, missing='/static/img/avatar-icon.jpg'):
     path = (path or '').strip()

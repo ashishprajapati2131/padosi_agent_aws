@@ -1192,6 +1192,7 @@ def render_edit_profile(request, agent, is_admin_view=False):
         professional_plan_features = []
         prof_name = prof_desc = ''
         prof_base = prof_full = 0
+        review_growth_status_json = '{}'
 
     context = {
         'agent_plan': agent_plan,
