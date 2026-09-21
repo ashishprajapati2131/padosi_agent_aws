@@ -3572,7 +3572,7 @@ Overview
                 }
             });
         }
-    })("{{ portfolio.segment_type|escapejs }}", JSON.parse('{{ portfolio.primary_companies_json|escapejs }}'), JSON.parse('{{ portfolio.secondary_companies_json|escapejs }}'));
+    })("{{ portfolio.segment_type|escapejs }}", {{ portfolio.primary_companies|default:"{}"|safe }}, {{ portfolio.secondary_companies|default:"{}"|safe }});
     {% endfor %}
     {% endif %}
 
@@ -4319,14 +4319,14 @@ Overview
             $('#gbp-modal-body').html(
                 '<div style="font-size:2.2rem; color: #f29900; margin-bottom:8px;">&#9888;</div>' +
                 '<h5 class="font-weight-bold" style="color: #202124; font-size:16px; margin-bottom:8px;">Link Your Google Business Profile</h5>' +
-                '<p class="text-muted small style="line-height: 1.4; margin-bottom:12px;">We could not detect a Google Business Profile URL for your account. Establishing your business on Google Search and Maps helps local customers find you.</p>' +
+                '<p class="text-muted small" style="line-height: 1.4; margin-bottom:12px;">We could not detect a Google Business Profile URL for your account. Establishing your business on Google Search and Maps helps local customers find you.</p>' +
                 '<div class="alert text-left py-2 px-3 mb-2" style="background:#f8f9fa; border:1px solid #dadce0; font-size:12px; border-radius:8px; line-height:1.5;">' +
                     '<strong style="color:#5f6368; display:block; margin-bottom:4px; font-size:11px; text-transform:uppercase;">Use your registered details:</strong>' +
-                    '<span class="text-dark font-weight-500">{{ agent.fullname|default:"" }}</span>' +
-                    '{% if agent.mobile %} &bull; <span class="text-dark">{{ agent.mobile }}</span>{% endif %}' +
-                    '{% if profile.office_address %} &bull; <span class="text-dark">{{ profile.office_address }}</span>{% elif agent.agent_pincode %} &bull; <span class="text-dark">{{ agent.agent_pincode }}</span>{% endif %}' +
+                    '<span class="text-dark font-weight-500">{{ agent.fullname|default:""|escapejs }}</span>' +
+                    '{% if agent.mobile %} &bull; <span class="text-dark">{{ agent.mobile|escapejs }}</span>{% endif %}' +
+                    '{% if profile.office_address %} &bull; <span class="text-dark">{{ profile.office_address|escapejs }}</span>{% elif agent.agent_pincode %} &bull; <span class="text-dark">{{ agent.agent_pincode|escapejs }}</span>{% endif %}' +
                 '</div>' +
-                '<p class="text-muted style="font-size: 11px; margin-bottom: 0; line-height: 1.3;">Once created, simply copy and paste your Google Maps URL into the input field above and click save.</p>'
+                '<p class="text-muted" style="font-size: 11px; margin-bottom: 0; line-height: 1.3;">Once created, simply copy and paste your Google Maps URL into the input field above and click save.</p>'
             );
             $('#gbp-modal-footer')
                 .html(
@@ -4854,10 +4854,10 @@ Overview
     }
 
     {% if not admin_lock_preview %}
-    const featureUnlockHints = JSON.parse('{{ feature_unlock_hints_json|default:"{}"|escapejs }}' || '{}');
+    const featureUnlockHints = {{ feature_unlock_hints_json|default:"{}"|safe }};
     const canOfferUpgrade = {% if show_starter_upgrade_cta %}true{% else %}false{% endif %};
     const showReviewProgress = {% if show_starter_upgrade_progress %}true{% else %}false{% endif %};
-    const reviewGrowthStatus = JSON.parse('{{ review_growth_status_json|default:"{}"|escapejs }}' || '{}');
+    const reviewGrowthStatus = {{ review_growth_status_json|default:"{}"|safe }};
     const choosePlanUrl = "{% url 'agents:chooseplan' %}?plan=professional";
 
     function lockReason(name, hintKey) {

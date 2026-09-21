@@ -1,4 +1,5 @@
 from django.urls import path, re_path
+from django.views.decorators.csrf import csrf_exempt
 from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites, participants, career_timeline as career_timeline_views, qr as qr_views, analytics as analytics_views
 
 app_name = 'agents'
@@ -24,7 +25,7 @@ urlpatterns = [
     path('payment-success/',    registration.payment_success,    name='payment_success'),
     path('payment-failure/',    registration.payment_failure,    name='payment_failure'),
     path('agent-registration/failed/', registration.agent_register_failed, name='agent_register_failed'),
-    path('razorpay-webhook/',   registration.razorpay_webhook,   name='razorpay_webhook'),
+    path('razorpay-webhook/',   csrf_exempt(registration.razorpay_webhook), name='razorpay_webhook'),
     path('agent/verify-promo/', registration.agent_verify_promo, name='agent_verify_promo'),
     path('agent/clear-promo/',  registration.agent_clear_promo,  name='agent_clear_promo'),
     path('agent-login/',        auth.agent_login,                name='agent_login'),

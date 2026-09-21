@@ -10,7 +10,7 @@ from fastapi_app.models.agent import Agent
 from fastapi_app.models.agent_profile_view import AgentProfileView
 
 router = APIRouter(
-    prefix="/api/v1/agents/analytics",
+    prefix="/v1/agents/analytics",
     tags=["Analytics"]
 )
 

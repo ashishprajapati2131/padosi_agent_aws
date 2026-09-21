@@ -164,6 +164,9 @@
                 </button>
                 <a href="{% if admin_lock_preview %}#{% elif profile.slug %}/{{ agent.state_code|default:'gj' }}/{{ profile.slug }}/{% elif agent.agent_slug %}/{{ agent.state_code|default:'gj' }}/{{ agent.agent_slug }}/{% else %}#{% endif %}" class="btn btn-profile-view mb-2 mb-sm-0" data-feature="view_public_profile" style="height: 42px; display: inline-flex; align-items: center; position: relative;"><i class="fas fa-user mr-2"></i>View My Profile</a>
                 <a href="{% if admin_lock_preview %}#{% else %}{% url 'agents:agent_edit_profile' %}{% endif %}" class="btn btn-add-lead-top mb-2 mb-sm-0" data-feature="edit_profile" style="height: 42px; display: inline-flex; align-items: center; position: relative;"><i class="fas fa-edit mr-2"></i>Edit Profile</a>
+                {% if not admin_lock_preview and agent_plan and agent_plan.premium_priority_support %}
+                <a href="https://wa.me/919999999999" target="_blank" class="btn btn-outline-primary mb-2 mb-sm-0" data-feature="priority_support" style="height: 42px; display: inline-flex; align-items: center; position: relative;"><i class="fas fa-headset mr-2"></i>Priority Support</a>
+                {% endif %}
             </div>
         </div>
 
@@ -1530,9 +1533,9 @@
                 description: 'Plan Upgrade — ' + (planType === 'basic' || planType === 'starter' ? "Starter's Plan" : "Professional's Plan"),
                 order_id:    data.order_id,
                 prefill: {
-                    name:  '{{ agent.fullname }}',
-                    email: '{{ agent.email }}',
-                    contact: '{{ agent.mobile }}'
+                    name:  '{{ agent.fullname|escapejs }}',
+                    email: '{{ agent.email|escapejs }}',
+                    contact: '{{ agent.mobile|escapejs }}'
                 },
                 theme: { color: '#1d7d5d' },
                 modal: { ondismiss: function() {
@@ -1811,7 +1814,7 @@
 
     // Handle SubscriptionPlan Feature Locks Dynamically for Dashboard
     {% if not admin_lock_preview %}
-    const featureUnlockHints = JSON.parse('{{ feature_unlock_hints_json|default:"{}"|escapejs }}' || '{}');
+    const featureUnlockHints = {{ feature_unlock_hints_json|default:"{}"|safe }};
     const planPermissions = {
       recentLeads: {% if not agent_plan or agent_plan.show_recent_leads %}true{% else %}false{% endif %},
       salesInsights: {% if not agent_plan or agent_plan.show_sales_insights %}true{% else %}false{% endif %},
@@ -1839,7 +1842,7 @@
 
     const canOfferUpgrade = {% if show_starter_upgrade_cta %}true{% else %}false{% endif %};
     const showReviewProgress = {% if show_starter_upgrade_progress %}true{% else %}false{% endif %};
-    const reviewGrowthStatus = JSON.parse('{{ review_growth_status_json|default:"{}"|escapejs }}' || '{}');
+    const reviewGrowthStatus = {{ review_growth_status_json|default:"{}"|safe }};
     const choosePlanUrl = "{% url 'agents:chooseplan' %}?plan=professional";
 
     function lockReason(name, hintKey) {

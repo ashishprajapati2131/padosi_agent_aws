@@ -59,7 +59,7 @@
         <form method="GET" action="{% url 'admin_contacts_index' %}" class="row g-2 align-items-end">
             <div class="col-md-5">
                 <label class="form-label text-muted" style="font-size: 12px;">Search</label>
-                <input type="text" class="form-control form-control-sm" name="search" value="{{ search }}" placeholder="Name, Email, Phone, Company, Subject, Ref ID...">
+                <input type="text" class="form-control form-control-sm" name="search" value="{{ search }}" placeholder="Name, Email, Subject, Ref ID...">
             </div>
             <div class="col-md-3">
                 <label class="form-label text-muted" style="font-size: 12px;">Status</label>
@@ -80,38 +80,15 @@
     </div>
 </div>
 
-<!-- Table Card -->
+<!-- Table -->
 <div class="card">
-    <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+    <div class="card-header bg-white py-3">
         <h6 class="m-0 fw-bold">Contact Submissions ({{ submissions.paginator.count }})</h6>
-        <a href="{% url 'export_contacts' %}" class="btn btn-sm btn-outline-success">
-            <i class="fa-solid fa-file-csv me-1"></i> Download CSV
-        </a>
     </div>
-
-    <!-- Bulk Actions Toolbar -->
-    <div id="bulk-actions-bar" class="p-3 bg-light border-bottom d-none align-items-center justify-content-between">
-        <div class="d-flex align-items-center gap-2">
-            <span id="selected-count-badge" class="badge bg-primary">0 selected</span>
-            <span class="text-muted" style="font-size: 13px;">Bulk status:</span>
-            <button type="button" class="btn btn-sm btn-outline-warning bulk-status-btn" data-status="pending">Mark Pending</button>
-            <button type="button" class="btn btn-sm btn-outline-info bulk-status-btn" data-status="replied">Mark Replied</button>
-            <button type="button" class="btn btn-sm btn-outline-secondary bulk-status-btn" data-status="closed">Mark Closed</button>
-        </div>
-        <div>
-            <button type="button" class="btn btn-sm btn-danger" id="bulk-delete-btn">
-                <i class="fas fa-trash me-1"></i> Delete Selected
-            </button>
-        </div>
-    </div>
-
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
                 <tr>
-                    <th style="width: 40px;" class="text-center">
-                        <input type="checkbox" id="select-all-contacts" class="form-check-input">
-                    </th>
                     <th>Ref ID</th>
                     <th>Sender</th>
                     <th>Subject</th>
@@ -123,28 +100,23 @@
             </thead>
             <tbody>
                 {% for sub in submissions %}
-                <tr data-row-id="{{ sub.id }}">
-                    <td class="text-center">
-                        <input type="checkbox" class="form-check-input contact-select-check" value="{{ sub.id }}">
-                    </td>
-                    <td>
-                        <a href="javascript:void(0)" class="view-message-btn text-decoration-none" data-id="{{ sub.id }}">
-                            <code style="font-size: 11px;">{% if sub.reference_id %}{{ sub.reference_id }}{% else %}#{{ sub.id }}{% endif %}</code>
-                        </a>
-                    </td>
+                <tr>
+                    <td><code style="font-size: 11px;">{% if sub.reference_id %}{{ sub.reference_id }}{% else %}#{{ sub.id }}{% endif %}</code></td>
                     <td>
                         <div style="font-weight: 600; font-size: 13px;">{{ sub.name }}</div>
                         <div style="font-size: 11px; color: #64748b;">
                             {{ sub.email }}{% if sub.mobile %} · {{ sub.mobile }}{% endif %}
                         </div>
                         {% if sub.company %}
-                            <span class="badge bg-light text-dark border mt-1" style="font-size: 10px; font-weight: 500;">{{ sub.company }}</span>
+                            <span style="font-size: 10px; color: #94a3b8;">{{ sub.company }}</span>
                         {% endif %}
                     </td>
                     <td style="font-weight: 600; font-size: 13px; max-width: 180px;">{{ sub.subject|truncatechars:40 }}</td>
                     <td style="font-size: 12px; color: #475569; max-width: 250px;">
                         {{ sub.message|truncatechars:80 }}
-                        <a href="javascript:void(0)" class="view-message-btn ms-1" data-id="{{ sub.id }}" style="font-size: 11px; color: var(--primary); font-weight: 600;">View Details</a>
+                        {% if sub.message|length > 80 %}
+                            <a href="javascript:void(0)" class="view-message-btn" data-id="{{ sub.id }}" style="font-size: 11px; color: var(--primary);">Read more</a>
+                        {% endif %}
                     </td>
                     <td>
                         <select class="form-select form-select-sm contact-status-select" data-id="{{ sub.id }}" style="width: 110px; font-size: 12px;">
@@ -159,9 +131,6 @@
                     </td>
                     <td>
                         <div class="d-flex gap-1">
-                            <button type="button" class="btn btn-sm btn-outline-info view-message-btn" data-id="{{ sub.id }}" title="View Full Details">
-                                <i class="fa-solid fa-eye"></i>
-                            </button>
                             {% if sub.email %}
                             <a href="mailto:{{ sub.email }}?subject=Re: {{ sub.subject }}" class="btn btn-sm btn-outline-primary" title="Reply via Email"><i class="fa-solid fa-reply"></i></a>
                             {% endif %}
@@ -171,7 +140,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center py-5 text-muted">
+                    <td colspan="7" class="text-center py-5 text-muted">
                         <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i> No submissions found.
                     </td>
                 </tr>
@@ -186,7 +155,7 @@
             <ul class="pagination mb-0">
                 {% if submissions.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ submissions.previous_page_number }}&search={{ search|urlencode }}&status={{ status_filter|urlencode }}">&laquo;</a>
+                        <a class="page-link" href="?page={{ submissions.previous_page_number }}&search={{ search }}&status={{ status_filter }}">&laquo;</a>
                     </li>
                 {% else %}
                     <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
@@ -197,14 +166,14 @@
                         <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                     {% elif num > submissions.number|add:'-3' and num < submissions.number|add:'3' %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}&search={{ search|urlencode }}&status={{ status_filter|urlencode }}">{{ num }}</a>
+                            <a class="page-link" href="?page={{ num }}&search={{ search }}&status={{ status_filter }}">{{ num }}</a>
                         </li>
                     {% endif %}
                 {% endfor %}
 
                 {% if submissions.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ submissions.next_page_number }}&search={{ search|urlencode }}&status={{ status_filter|urlencode }}">&raquo;</a>
+                        <a class="page-link" href="?page={{ submissions.next_page_number }}&search={{ search }}&status={{ status_filter }}">&raquo;</a>
                     </li>
                 {% else %}
                     <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
@@ -224,59 +193,21 @@
     {% endif %}
 </div>
 
-<!-- Expanded Message Detail Modal -->
-<div class="modal fade" id="messageModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-light py-3">
-                <div class="d-flex align-items-center gap-2">
-                    <h5 class="modal-title fw-bold m-0" id="modal-title-ref">Submission Details</h5>
-                    <span id="modal-status-badge" class="badge bg-secondary ms-2"></span>
-                </div>
+<!-- Message Modal -->
+<div class="modal fade" id="messageModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Full Message</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
-                <div class="row g-3 mb-3 p-3 rounded" style="background: var(--bg-body, #f8fafc); border: 1px solid var(--border-color, #e2e8f0);">
-                    <div class="col-md-6">
-                        <div class="text-muted" style="font-size: 11px; text-transform: uppercase; font-weight: 700;">Sender Name</div>
-                        <div id="modal-sender-name" class="fw-bold text-dark" style="font-size: 14px;"></div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted" style="font-size: 11px; text-transform: uppercase; font-weight: 700;">Email Address</div>
-                        <div id="modal-sender-email" class="fw-bold text-primary" style="font-size: 14px;"></div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted" style="font-size: 11px; text-transform: uppercase; font-weight: 700;">Mobile Number</div>
-                        <div id="modal-sender-mobile" class="fw-bold text-dark" style="font-size: 14px;"></div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted" style="font-size: 11px; text-transform: uppercase; font-weight: 700;">Company</div>
-                        <div id="modal-sender-company" class="fw-bold text-dark" style="font-size: 14px;"></div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted" style="font-size: 11px; text-transform: uppercase; font-weight: 700;">Submission Date</div>
-                        <div id="modal-created-at" class="text-dark" style="font-size: 13px;"></div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="text-muted" style="font-size: 11px; text-transform: uppercase; font-weight: 700;">Reference ID</div>
-                        <div id="modal-ref-id" class="fw-mono text-dark" style="font-size: 13px;"></div>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="text-muted mb-1" style="font-size: 11px; text-transform: uppercase; font-weight: 700;">Subject</label>
-                    <div id="modal-subject" class="p-2 border rounded fw-semibold bg-white text-dark" style="font-size: 15px;"></div>
-                </div>
-
-                <div>
-                    <label class="text-muted mb-1" style="font-size: 11px; text-transform: uppercase; font-weight: 700;">Message Content</label>
-                    <div id="modal-message" class="p-3 border rounded bg-white" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6; color: #334155; min-height: 120px; max-height: 300px; overflow-y: auto;"></div>
-                </div>
+            <div class="modal-body">
+                <div id="modal-sender" class="mb-2"></div>
+                <div id="modal-subject" class="mb-3 fw-bold text-dark"></div>
+                <hr>
+                <div id="modal-message" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6; color: #333;"></div>
             </div>
-            <div class="modal-footer bg-light py-2">
-                <a id="modal-reply-btn" href="#" target="_blank" class="btn btn-primary btn-sm">
-                    <i class="fa-solid fa-reply me-1"></i> Reply via Email
-                </a>
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
@@ -288,34 +219,21 @@
 <script>
 const CSRF_TOKEN = '{{ csrf_token }}';
 
-/* ── Track original select status to revert on AJAX failure ──────────────────── */
-$(document).on('focus mousedown', '.contact-status-select', function() {
-    $(this).data('prev-val', $(this).val());
-});
-
-/* ── Status update AJAX ────────────────────────────────────────────────────── */
+/* ── Status update ─────────────────────────────────────────────────────────── */
 $(document).on('change', '.contact-status-select', function() {
     const $el = $(this);
-    const prevVal = $el.data('prev-val') || $el.val();
-    const newVal = $el.val();
-
     $.ajax({
         url: '{% url "admin_contacts_update_status" %}',
         method: 'POST',
         headers: { 'X-CSRFToken': CSRF_TOKEN },
-        data: { id: $el.data('id'), status: newVal },
+        data: { id: $el.data('id'), status: $el.val() },
         success: function(res) {
             if (res.success) {
-                $el.data('prev-val', newVal);
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Status updated', showConfirmButton: false, timer: 1500 });
-            } else {
-                $el.val(prevVal);
-                Swal.fire('Error', res.message || 'Failed to update status.', 'error');
             }
         },
-        error: function(xhr) {
-            $el.val(prevVal);
-            Swal.fire('Error', 'Server error: ' + (xhr.responseJSON?.message || 'Failed to update status'), 'error');
+        error: function() {
+            Swal.fire('Error', 'Failed to update status.', 'error');
         }
     });
 });
@@ -323,37 +241,21 @@ $(document).on('change', '.contact-status-select', function() {
 /* ── Read-more / detail modal ──────────────────────────────────────────────── */
 $(document).on('click', '.view-message-btn', function(e) {
     e.preventDefault();
-    const id = $(this).data('id');
+    const id  = $(this).data('id');
+    const $btn = $(this);
+    const originalText = $btn.text();
+    $btn.text('Loading...').css('pointer-events', 'none');
 
     $.ajax({
         url: '/admin/contacts/' + id + '/',
         type: 'GET',
         headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
         success: function(res) {
+            $btn.text(originalText).css('pointer-events', 'auto');
             if (res.success && res.data) {
-                const d = res.data;
-                $('#modal-title-ref').text('Submission Details (' + (d.reference_id || ('#' + d.id)) + ')');
-                $('#modal-ref-id').text(d.reference_id || ('#' + d.id));
-                $('#modal-sender-name').text(d.name || 'N/A');
-                $('#modal-sender-email').text(d.email || 'N/A');
-                $('#modal-sender-mobile').text(d.mobile || 'N/A');
-                $('#modal-sender-company').text(d.company || '—');
-                $('#modal-created-at').text(d.created_at || '');
-                $('#modal-subject').text(d.subject || 'No Subject');
-                $('#modal-message').text(d.message || '');
-
-                const statusMap = {
-                    'pending': '<span class="badge bg-warning text-dark">🟡 Pending</span>',
-                    'replied': '<span class="badge bg-primary">🔵 Replied</span>',
-                    'closed':  '<span class="badge bg-secondary">⚫ Closed</span>'
-                };
-                $('#modal-status-badge').html(statusMap[d.status] || d.status);
-
-                if (d.email) {
-                    $('#modal-reply-btn').attr('href', 'mailto:' + d.email + '?subject=Re: ' + encodeURIComponent(d.subject || '')).show();
-                } else {
-                    $('#modal-reply-btn').hide();
-                }
+                $('#modal-sender').html('<span class="text-muted" style="font-size:12px;">From: <b>' + res.data.name + '</b> (' + (res.data.email || 'No email') + ')</span>');
+                $('#modal-subject').text(res.data.subject || 'No Subject');
+                $('#modal-message').text(res.data.message);
 
                 const modalEl = document.getElementById('messageModal');
                 bootstrap.Modal.getOrCreateInstance(modalEl).show();
@@ -362,6 +264,7 @@ $(document).on('click', '.view-message-btn', function(e) {
             }
         },
         error: function(xhr) {
+            $btn.text(originalText).css('pointer-events', 'auto');
             Swal.fire('Error', 'Server error: ' + xhr.status, 'error');
         }
     });
@@ -397,9 +300,7 @@ $(document).on('click', '.contact-delete-btn', function(e) {
                         Swal.fire({ title: 'Deleted!', text: response.message, icon: 'success', timer: 1500, showConfirmButton: false });
                         row.fadeOut(300, function() {
                             $(this).remove();
-                            if ($('table tbody tr').length === 0) {
-                                location.reload();
-                            }
+                            setTimeout(() => location.reload(), 500);
                         });
                     } else {
                         Swal.fire('Error', response.message || 'Failed to delete', 'error');
@@ -409,95 +310,6 @@ $(document).on('click', '.contact-delete-btn', function(e) {
                 error: function(xhr) {
                     Swal.fire('Error', 'Server error: ' + (xhr.responseJSON?.message || 'Unknown'), 'error');
                     button.prop('disabled', false).html('<i class="fas fa-trash"></i>');
-                }
-            });
-        }
-    });
-});
-
-/* ── Bulk Selection & Actions ──────────────────────────────────────────────── */
-function updateBulkBar() {
-    const checkedCount = $('.contact-select-check:checked').length;
-    if (checkedCount > 0) {
-        $('#bulk-actions-bar').removeClass('d-none').addClass('d-flex');
-        $('#selected-count-badge').text(checkedCount + ' selected');
-    } else {
-        $('#bulk-actions-bar').addClass('d-none').removeClass('d-flex');
-        $('#select-all-contacts').prop('checked', false);
-    }
-}
-
-$(document).on('change', '#select-all-contacts', function() {
-    $('.contact-select-check').prop('checked', $(this).is(':checked'));
-    updateBulkBar();
-});
-
-$(document).on('change', '.contact-select-check', function() {
-    if (!$(this).is(':checked')) {
-        $('#select-all-contacts').prop('checked', false);
-    } else if ($('.contact-select-check:checked').length === $('.contact-select-check').length) {
-        $('#select-all-contacts').prop('checked', true);
-    }
-    updateBulkBar();
-});
-
-/* Bulk Status Update */
-$(document).on('click', '.bulk-status-btn', function() {
-    const status = $(this).data('status');
-    const selectedIds = $('.contact-select-check:checked').map(function() { return $(this).val(); }).get();
-
-    if (selectedIds.length === 0) return;
-
-    $.ajax({
-        url: '{% url "admin_contacts_bulk_action" %}',
-        type: 'POST',
-        headers: { 'X-CSRFToken': CSRF_TOKEN },
-        data: { action: status, 'ids[]': selectedIds },
-        success: function(res) {
-            if (res.success) {
-                Swal.fire({ title: 'Success', text: res.message, icon: 'success', timer: 1500, showConfirmButton: false });
-                setTimeout(() => location.reload(), 600);
-            } else {
-                Swal.fire('Error', res.message || 'Bulk update failed', 'error');
-            }
-        },
-        error: function(xhr) {
-            Swal.fire('Error', 'Server error: ' + (xhr.responseJSON?.message || 'Bulk action failed'), 'error');
-        }
-    });
-});
-
-/* Bulk Delete */
-$(document).on('click', '#bulk-delete-btn', function() {
-    const selectedIds = $('.contact-select-check:checked').map(function() { return $(this).val(); }).get();
-    if (selectedIds.length === 0) return;
-
-    Swal.fire({
-        title: 'Delete ' + selectedIds.length + ' submissions?',
-        text: 'This action cannot be undone!',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, delete selected!',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: '{% url "admin_contacts_bulk_action" %}',
-                type: 'POST',
-                headers: { 'X-CSRFToken': CSRF_TOKEN },
-                data: { action: 'delete', 'ids[]': selectedIds },
-                success: function(res) {
-                    if (res.success) {
-                        Swal.fire({ title: 'Deleted!', text: res.message, icon: 'success', timer: 1500, showConfirmButton: false });
-                        setTimeout(() => location.reload(), 600);
-                    } else {
-                        Swal.fire('Error', res.message || 'Bulk delete failed', 'error');
-                    }
-                },
-                error: function(xhr) {
-                    Swal.fire('Error', 'Server error: ' + (xhr.responseJSON?.message || 'Bulk delete failed'), 'error');
                 }
             });
         }

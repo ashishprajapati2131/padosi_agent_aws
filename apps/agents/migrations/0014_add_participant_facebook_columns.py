@@ -24,6 +24,8 @@ PARTICIPANT_FB_COLUMNS = {
 
 def add_participant_columns(apps, schema_editor):
     connection = schema_editor.connection
+    if connection.vendor != 'mysql':
+        return
     with connection.cursor() as cursor:
         cursor.execute(
             "SELECT column_name FROM information_schema.columns "
@@ -38,6 +40,8 @@ def add_participant_columns(apps, schema_editor):
 
 def remove_participant_columns(apps, schema_editor):
     connection = schema_editor.connection
+    if connection.vendor != 'mysql':
+        return
     with connection.cursor() as cursor:
         cursor.execute(
             "SELECT column_name FROM information_schema.columns "

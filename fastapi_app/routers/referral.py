@@ -11,7 +11,7 @@ from fastapi_app.models.site_setting import SiteSetting
 from fastapi_app.config import settings
 
 router = APIRouter(
-    prefix="/api/v1/agents/referral",
+    prefix="/v1/agents/referral",
     tags=["Referral Program"]
 )
 

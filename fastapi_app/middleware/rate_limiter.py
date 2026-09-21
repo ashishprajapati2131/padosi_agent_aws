@@ -40,10 +40,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         current_time = time.time()
         
         # Keep only requests within the sliding window
-        self.client_records[ip] = [
-            t for t in self.client_records[ip] 
+        valid_timestamps = [
+            t for t in self.client_records.get(ip, []) 
             if current_time - t < self.window_seconds
         ]
+        if valid_timestamps:
+            self.client_records[ip] = valid_timestamps
+        elif ip in self.client_records:
+            del self.client_records[ip]
+        
+        # Periodic memory cleanup if dict grows large
+        if len(self.client_records) > 2000:
+            stale_ips = [
+                k for k, timestamps in self.client_records.items()
+                if not timestamps or (current_time - timestamps[-1] >= self.window_seconds)
+            ]
+            for k in stale_ips:
+                self.client_records.pop(k, None)
         
         # Enforce rate limits (e.g. login or checkouts can have lower limits in the future,
         # but here we apply a general limit per IP)
@@ -51,7 +64,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if any(marker in path for marker in SENSITIVE_PATH_MARKERS):
             limit = 15  # Tighter limit on sensitive endpoints
             
-        if len(self.client_records[ip]) >= limit:
+        if len(self.client_records.get(ip, [])) >= limit:
             return JSONResponse(
                 status_code=429,
                 content={"error": "Too Many Requests", "message": "Rate limit exceeded. Please try again later."}

@@ -79,7 +79,7 @@ def logs(request):
     """
     Logs viewer.
     """
-    log_path = settings.MEDIA_ROOT / 'logs' / 'django.log'
+    log_path = getattr(settings, 'LOGS_DIR', settings.BASE_DIR / 'logs') / 'django.log'
     logs_data = []
     
     if log_path.exists():
@@ -174,7 +174,9 @@ def api_logs(request):
     })
 
 def get_backup_dir():
-    return Path(settings.BASE_DIR).parent / 'storage' / 'backups'
+    backup_path = Path(settings.BASE_DIR) / 'backups'
+    backup_path.mkdir(parents=True, exist_ok=True)
+    return backup_path
 
 def backups(request):
     """

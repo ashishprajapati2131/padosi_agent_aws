@@ -38,7 +38,7 @@ from fastapi_app.utils.companies import INSURANCE_COMPANIES
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/agents", tags=["Profile"])
+router = APIRouter(prefix="/v1/agents", tags=["Profile"])
 
 @router.get("/profile", response_model=AgentProfileResponse)
 def get_agent_profile(

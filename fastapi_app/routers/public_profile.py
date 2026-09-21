@@ -6,7 +6,7 @@ from fastapi_app.services.public_profile_service import PublicProfileService
 from fastapi_app.schemas.public_profile import PublicProfileResponse
 
 router = APIRouter(
-    prefix="/api/v1/agents/public-profile",
+    prefix="/v1/agents/public-profile",
     tags=["Agent Public Profile"]
 )
 

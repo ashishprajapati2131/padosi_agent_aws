@@ -3,6 +3,7 @@ from django.http import JsonResponse, HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.contrib import messages
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ def csrf_failure_view(request, reason=""):
     
     # 1. Force generate a brand new fresh CSRF token for the client
     fresh_token = get_token(request)
+    is_secure = request.is_secure()
 
     is_ajax = (
         request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -35,7 +37,7 @@ def csrf_failure_view(request, reason=""):
             'message': 'Your security session was refreshed. Please try submitting again.'
         }, status=403)
         # Ensure fresh token is set in response cookie
-        response.set_cookie('padosi_csrf_token', fresh_token, path='/', samesite='Lax')
+        response.set_cookie('padosi_csrf_token', fresh_token, path='/', samesite='Lax', secure=is_secure)
         return response
 
     # Standard HTML Form Submission handling
@@ -45,13 +47,14 @@ def csrf_failure_view(request, reason=""):
     )
     
     referer = request.META.get('HTTP_REFERER')
-    if referer and referer.startswith(('http://', 'https://')):
+    allowed_hosts = {request.get_host()}
+    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts=allowed_hosts, require_https=is_secure):
         redirect_url = referer
     else:
         redirect_url = request.path or '/'
 
     response = HttpResponseRedirect(redirect_url)
-    response.set_cookie('padosi_csrf_token', fresh_token, path='/', samesite='Lax')
+    response.set_cookie('padosi_csrf_token', fresh_token, path='/', samesite='Lax', secure=is_secure)
     return response
 
 
@@ -64,5 +67,5 @@ def csrf_refresh_api(request):
         'success': True,
         'csrf_token': fresh_token
     })
-    response.set_cookie('padosi_csrf_token', fresh_token, path='/', samesite='Lax')
+    response.set_cookie('padosi_csrf_token', fresh_token, path='/', samesite='Lax', secure=request.is_secure())
     return response

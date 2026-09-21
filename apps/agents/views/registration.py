@@ -1735,7 +1735,7 @@ def chooseplan(request):
                 RegistrationActivityLog.EVENT_CLAIM_BUTTON,
                 draft_id=agent.pk,
                 request=request,
-                extra_details={'email': agent.email or ''},
+                email=agent.email or '',
             )
         except Exception as _e:
             import logging as _lg; _lg.getLogger(__name__).warning(f'CLAIM stage update failed: {_e}')
