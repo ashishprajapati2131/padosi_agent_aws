@@ -3572,7 +3572,7 @@ Overview
                 }
             });
         }
-    })("{{ portfolio.segment_type|escapejs }}", {{ portfolio.primary_companies|default:"{}"|safe }}, {{ portfolio.secondary_companies|default:"{}"|safe }});
+    })("{{ portfolio.segment_type|escapejs }}", JSON.parse('{{ portfolio.primary_companies_json|escapejs }}'), JSON.parse('{{ portfolio.secondary_companies_json|escapejs }}'));
     {% endfor %}
     {% endif %}
 
@@ -4854,10 +4854,10 @@ Overview
     }
 
     {% if not admin_lock_preview %}
-    const featureUnlockHints = {{ feature_unlock_hints_json|default:"{}"|safe }};
+    const featureUnlockHints = JSON.parse('{{ feature_unlock_hints_json|default:"{}"|escapejs }}' || '{}');
     const canOfferUpgrade = {% if show_starter_upgrade_cta %}true{% else %}false{% endif %};
     const showReviewProgress = {% if show_starter_upgrade_progress %}true{% else %}false{% endif %};
-    const reviewGrowthStatus = {{ review_growth_status_json|default:"{}"|safe }};
+    const reviewGrowthStatus = JSON.parse('{{ review_growth_status_json|default:"{}"|escapejs }}' || '{}');
     const choosePlanUrl = "{% url 'agents:chooseplan' %}?plan=professional";
 
     function lockReason(name, hintKey) {
