@@ -220,7 +220,7 @@ class AuthService:
                 "message": "Login successful.",
                 "access_token": access_token,
                 "token_type": "bearer",
-                "expires_in": 100 * 365 * 24 * 3600,  # 100 years in seconds
+                "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
                 "agent_status": agent.status
             }
         )

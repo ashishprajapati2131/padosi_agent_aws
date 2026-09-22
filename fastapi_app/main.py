@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -64,9 +64,41 @@ app.include_router(referral.router)
 app.include_router(find_agents.router)
 app.include_router(championship.router)
 
-# Mount local storage directory for static access
+class RestrictedStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        # Disallow direct unauthenticated access to private documents / invoices
+        normalized = path.replace("\\", "/").strip("/")
+        if normalized.startswith("app/private") or "/app/private/" in f"/{normalized}/":
+            return Response("Access Denied: Private media files must be accessed through authenticated Django routes.", status_code=403)
+        return await super().get_response(path, scope)
+
+# Mount local storage directory with private directory protection
 os.makedirs(settings.LOCAL_STORAGE_PATH, exist_ok=True)
-app.mount("/media", StaticFiles(directory=settings.LOCAL_STORAGE_PATH), name="media")
+app.mount("/media", RestrictedStaticFiles(directory=settings.LOCAL_STORAGE_PATH), name="media")
+
+@app.get("/v1/csrf-refresh/", response_class=JSONResponse)
+@app.get("/v1/csrf-refresh", response_class=JSONResponse)
+def csrf_refresh_api(request: Request):
+    """
+    Lightweight API endpoint for client-side JS to fetch a fresh CSRF token on-demand
+    when mounted under ASGI (/api/v1/csrf-refresh/).
+    """
+    try:
+        from django.middleware.csrf import _get_new_csrf_string
+        fresh_token = _get_new_csrf_string()
+    except Exception:
+        import secrets
+        fresh_token = secrets.token_hex(32)
+
+    is_secure = request.url.scheme == "https"
+    response = JSONResponse(
+        content={
+            "success": True,
+            "csrf_token": fresh_token
+        }
+    )
+    response.set_cookie("padosi_csrf_token", fresh_token, path="/", samesite="lax", secure=is_secure)
+    return response
 
 @app.get("/reset-password/{token}", response_class=HTMLResponse)
 def get_reset_password_page(request: Request, token: str, email: str, type: str = "agent"):

@@ -37,38 +37,35 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if ip in ["127.0.0.1", "::1", "testclient"]:
             return await call_next(request)
             
-        current_time = time.time()
+        is_sensitive = any(marker in path for marker in SENSITIVE_PATH_MARKERS)
+        bucket = "sensitive" if is_sensitive else "general"
+        bucket_key = (ip, bucket)
+        limit = 15 if is_sensitive else self.requests_limit
         
-        # Keep only requests within the sliding window
+        # Keep only requests within the sliding window for this specific bucket
         valid_timestamps = [
-            t for t in self.client_records.get(ip, []) 
+            t for t in self.client_records.get(bucket_key, []) 
             if current_time - t < self.window_seconds
         ]
         if valid_timestamps:
-            self.client_records[ip] = valid_timestamps
-        elif ip in self.client_records:
-            del self.client_records[ip]
+            self.client_records[bucket_key] = valid_timestamps
+        elif bucket_key in self.client_records:
+            del self.client_records[bucket_key]
         
         # Periodic memory cleanup if dict grows large
         if len(self.client_records) > 2000:
-            stale_ips = [
+            stale_keys = [
                 k for k, timestamps in self.client_records.items()
                 if not timestamps or (current_time - timestamps[-1] >= self.window_seconds)
             ]
-            for k in stale_ips:
+            for k in stale_keys:
                 self.client_records.pop(k, None)
         
-        # Enforce rate limits (e.g. login or checkouts can have lower limits in the future,
-        # but here we apply a general limit per IP)
-        limit = self.requests_limit
-        if any(marker in path for marker in SENSITIVE_PATH_MARKERS):
-            limit = 15  # Tighter limit on sensitive endpoints
-            
-        if len(self.client_records.get(ip, [])) >= limit:
+        if len(self.client_records.get(bucket_key, [])) >= limit:
             return JSONResponse(
                 status_code=429,
                 content={"error": "Too Many Requests", "message": "Rate limit exceeded. Please try again later."}
             )
             
-        self.client_records[ip].append(current_time)
+        self.client_records[bucket_key].append(current_time)
         return await call_next(request)

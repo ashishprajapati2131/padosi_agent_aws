@@ -1,4 +1,5 @@
-from fastapi import Depends, HTTPException, status
+from typing import Optional, Any
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from fastapi_app.database import get_db
@@ -7,9 +8,11 @@ from fastapi_app.repositories.user_repository import UserRepository
 from fastapi_app.repositories.agent_repository import AgentRepository
 from fastapi_app.models.agent import Agent
 from fastapi_app.models.user import User
+from fastapi_app.middleware.admin_auth import is_valid_admin_session
 from jose.exceptions import ExpiredSignatureError, JWTError
 
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
     token = credentials.credentials
@@ -71,7 +74,10 @@ def get_current_agent(current_user: User = Depends(get_current_user), db: Sessio
     agent_repo = AgentRepository(db)
     agent = agent_repo.get_by_email(current_user.email)
     if not agent and current_user.id:
-        agent = db.query(Agent).filter(Agent.user_id == current_user.id).first()
+        # Cross-verify email to protect against IDOR when users.id diverges from auth_user.id
+        candidate = db.query(Agent).filter(Agent.user_id == current_user.id).first()
+        if candidate and candidate.email.lower() == current_user.email.lower():
+            agent = candidate
     
     if not agent:
         raise HTTPException(
@@ -86,3 +92,46 @@ def get_current_agent(current_user: User = Depends(get_current_user), db: Sessio
         )
 
     return agent
+
+
+def get_optional_agent(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+    db: Session = Depends(get_db)
+) -> Optional[Agent]:
+    """Optional agent dependency for endpoints that work both authenticated and unauthenticated."""
+    if not credentials:
+        return None
+    try:
+        current_user = get_current_user(credentials=credentials, db=db)
+        return get_current_agent(current_user=current_user, db=db)
+    except Exception:
+        return None
+
+
+def require_admin(request: Request) -> Any:
+    """
+    Ensure the request originates from an authenticated administrator.
+    Validates either:
+      1. Django admin session_token cookie against user_sessions / user_session_data
+      2. Bearer JWT with administrative role ('admin', 'staff', 'superuser')
+    """
+    session_token = request.cookies.get("session_token")
+    if session_token and is_valid_admin_session(session_token):
+        return {"auth_type": "session", "session_token": session_token}
+
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+        try:
+            payload = decode_access_token(token)
+            role = payload.get("role", "")
+            if role in ("admin", "staff", "superuser"):
+                return {"auth_type": "bearer", "role": role, "sub": payload.get("sub")}
+        except Exception:
+            pass
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Administrative access required."
+    )
+

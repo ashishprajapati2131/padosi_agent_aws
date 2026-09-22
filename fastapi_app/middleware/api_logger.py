@@ -94,15 +94,18 @@ class APILoggingMiddleware(BaseHTTPMiddleware):
             status_code = 500
             raise e
         finally:
-            # We don't block the response to save logs.
-            # Using asyncio.create_task to run it in the background.
-            asyncio.create_task(log_request_to_db(
-                service=service,
-                url=url_path,
-                method=request.method,
-                payload_str=None, # Skipping body to avoid stream issues
-                response_code=status_code,
-                ip_address=client_host
-            ))
+            duration_ms = round((time.time() - start_time) * 1000, 2)
+            logger.info(f"{request.method} {url_path} -> {status_code} ({duration_ms}ms) [IP: {client_host}]")
+            # Only persist to database for critical external integrations or server errors (>= 500)
+            # to prevent pool exhaustion on high-frequency read endpoints.
+            if service in ("razorpay", "fcm") or status_code >= 500:
+                asyncio.create_task(log_request_to_db(
+                    service=service,
+                    url=url_path,
+                    method=request.method,
+                    payload_str=None,
+                    response_code=status_code,
+                    ip_address=client_host
+                ))
 
         return response
