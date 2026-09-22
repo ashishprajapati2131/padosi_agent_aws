@@ -15,7 +15,13 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'padosi_agent.settings')
 from django.apps import apps
 if not apps.ready:
-    django.setup()
+    try:
+        # Fallback to local debug settings if no production secrets are set in the environment
+        if not os.environ.get('SECRET_KEY') and not os.environ.get('DEBUG'):
+            os.environ.setdefault('DEBUG', 'True')
+        django.setup()
+    except Exception as e:
+        logger.warning(f"Django setup deferred during import: {e}")
 
 from django.db.models import Q, Value, FloatField
 from django.db.models.expressions import RawSQL
@@ -220,6 +226,21 @@ class AgentSearchService:
         """
         Find Agent search with 5-per-page pagination and a real has_next flag.
         """
+        if not apps.ready:
+            try:
+                django.setup()
+            except Exception:
+                pass
+
+        from django.db import close_old_connections
+        close_old_connections()
+        try:
+            return AgentSearchService._execute_search_agents(req)
+        finally:
+            close_old_connections()
+
+    @staticmethod
+    def _execute_search_agents(req: FindAgentsRequest) -> FindAgentsResponse:
         query, user_lat, user_lng, invalid_pincode = AgentSearchService._build_agent_queryset(req)
 
         total_records = query.count()

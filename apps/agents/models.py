@@ -1380,6 +1380,8 @@ class Invoice(models.Model):
 
 
 class AgentBioGenerationLog(models.Model):
+    objects = models.Manager()
+
     agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='bio_generation_logs', db_constraint=False)
     generated_at = models.DateTimeField(auto_now_add=True)
     prompt_version = models.CharField(max_length=50, default='v1.0')

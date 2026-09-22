@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 
 from fastapi_app.database import get_db
-from fastapi_app.dependencies.auth import get_current_agent
+from fastapi_app.dependencies.auth import get_current_agent, require_admin
 from fastapi_app.models.agent import Agent
 from fastapi_app.models.agent_profile import AgentProfile
 from fastapi_app.models.championship import (
@@ -522,7 +522,8 @@ def record_scratch_reveal(
 
 @router.get("/admin/financial-liability", response_model=AdminFinancialLiabilityResponse)
 def get_admin_financial_liability(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    admin: Any = Depends(require_admin)
 ):
     """
     Get financial & liability metrics for referral championship.
@@ -609,7 +610,8 @@ def get_admin_financial_liability(
 @router.post("/admin/settings")
 def update_admin_campaign_settings(
     payload: AdminCampaignSettingsRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    admin: Any = Depends(require_admin)
 ):
     """
     Update campaign status, dynamic pricing, and unlock thresholds.

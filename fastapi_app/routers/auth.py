@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, status, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -12,7 +13,7 @@ from fastapi_app.services.password_reset_service import PasswordResetService
 from fastapi_app.repositories.user_repository import UserRepository
 from fastapi_app.repositories.agent_repository import AgentRepository
 from fastapi_app.repositories.agent_device_token_repository import AgentDeviceTokenRepository
-from fastapi_app.dependencies.auth import get_current_agent, security
+from fastapi_app.dependencies.auth import get_current_agent, get_optional_agent, security
 from fastapi_app.models.agent import Agent
 from fastapi_app.models.agent_profile import AgentProfile
 from fastapi_app.services.lock_unlock_service import LockUnlockService
@@ -103,11 +104,11 @@ async def forgot_password(
 def reset_password(
     request: ResetPasswordRequest,
     req: Request,
-    current_agent: Agent = Depends(get_current_agent),
+    current_agent: Optional[Agent] = Depends(get_optional_agent),
     password_reset_service: PasswordResetService = Depends(get_password_reset_service)
 ):
     """
-    Reset or change password for the authenticated agent (Protected with Bearer Token lock).
+    Reset password using email reset token or authenticated session.
     """
     return password_reset_service.reset_password(request, req, current_agent=current_agent)
 
