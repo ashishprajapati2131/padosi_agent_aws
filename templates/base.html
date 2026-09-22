@@ -281,7 +281,9 @@
     <script src="{% static 'js/preloader.js' %}" defer></script>
     {% block chatbot_widget %}
         {% if not hide_chatbot %}
-        {% include 'chatbot/widget.html' %}
+            {% if request.path == '/' or request.path == '/faq/' or request.path == '/about/' or request.path == '/contact/' %}
+                {% include 'chatbot/widget.html' %}
+            {% endif %}
         {% endif %}
     {% endblock %}
     {% block modals %}{% endblock %}

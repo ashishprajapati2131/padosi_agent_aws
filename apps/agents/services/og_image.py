@@ -22,228 +22,120 @@ TAG_COLORS = {
 TAG_DEFAULT = ((243, 244, 246), (55, 65, 81), (229, 231, 235))
 
 
-def render_agent_og_jpeg(agent):
-    """Return JPEG bytes for an 800x800 agent digital visiting card OG image."""
-    size = 800
-    canvas = Image.new('RGB', (size, size), (241, 245, 249))
-    draw = ImageDraw.Draw(canvas)
+import base64
+from django.template.loader import render_to_string
+from playwright.sync_api import sync_playwright
 
-    fonts = _load_fonts()
+def render_agent_og_jpeg(agent):
+    """Return JPEG bytes for an 800x800 agent digital visiting card OG image using Playwright."""
+    
     profile = AgentProfile.objects.filter(agent=agent).first()
     perf = AgentPerformanceStat.objects.filter(agent=agent).first()
 
-    card = (24, 24, 776, 776)
-    # Multi-layer soft drop shadow
-    _rounded_rect(draw, (card[0] + 4, card[1] + 8, card[2] + 4, card[3] + 8), 32, fill=(203, 213, 225))
-    _rounded_rect(draw, (card[0] + 2, card[1] + 4, card[2] + 2, card[3] + 4), 32, fill=(226, 232, 240))
-    _rounded_rect(draw, card, 32, fill=(255, 255, 255), outline=(226, 232, 240), width=2)
+    # Image processing
+    photo_base64 = ""
+    photo = _load_photo(agent, profile)
+    if photo:
+        if photo.mode not in ('RGB', 'RGBA'):
+            photo = photo.convert('RGB')
+        # resize down to save base64 size
+        photo.thumbnail((300, 300))
+        buf = io.BytesIO()
+        photo.save(buf, format='JPEG', quality=85)
+        photo_base64 = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode('utf-8')
 
-    # Top Header Bar: PadosiAgent Logo
+    logo_base64 = ""
     logo_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'logo.png')
-    logo_drawn = False
     if os.path.exists(logo_path):
-        try:
-            logo = Image.open(logo_path).convert('RGBA')
-            logo.thumbnail((220, 52), RESAMPLE)
-            canvas.paste(logo, (card[0] + 32, card[1] + 30), logo)
-            logo_drawn = True
-        except Exception:
-            pass
-    if not logo_drawn:
-        draw.text((card[0] + 32, card[1] + 32), 'PADOSIAGENT', font=fonts['brand'], fill=(30, 58, 138))
+        with open(logo_path, "rb") as f:
+            logo_base64 = "data:image/png;base64," + base64.b64encode(f.read()).decode('utf-8')
 
-    # Header Right: Verified Advisor Pill
-    v_txt = 'Verified Advisor'
-    vw, _ = _text_size(draw, v_txt, fonts['pill'])
-    rx = card[2] - 32
-    _rounded_rect(draw, (rx - vw - 28, card[1] + 30, rx, card[1] + 66), 18, fill=(240, 253, 244), outline=(187, 247, 208), width=2)
-    draw.text((rx - vw - 14, card[1] + 39), v_txt, font=fonts['pill'], fill=(21, 128, 61))
-
-    # Header Divider
-    draw.line([(card[0] + 32, card[1] + 96), (card[2] - 32, card[1] + 96)], fill=(241, 245, 249), width=2)
-
-    # Hero Section: Agent Photo (Left)
-    pw, ph = 210, 230
-    px = card[0] + 32
-    py = card[1] + 116
-
-    src = _load_photo(agent, profile)
-    if src:
-        try:
-            if src.mode not in ('RGB', 'RGBA'):
-                src = src.convert('RGB')
-            fitted = _cover_crop(src.convert('RGB'), pw, ph)
-        except Exception:
-            fitted = None
-    else:
-        fitted = None
-
-    if fitted is None:
-        fitted = Image.new('RGB', (pw, ph), (26, 54, 124))
-        d = ImageDraw.Draw(fitted)
-        name_str = ((profile.display_name if profile else '') or agent.fullname or 'A').strip()
-        words = [w for w in name_str.split() if w]
-        initial = ''.join([w[0].upper() for w in words[:2]]) or 'A'
-        cx, cy = pw // 2, (ph // 2) - 15
-        cr = 50
-        d.ellipse([cx - cr, cy - cr, cx + cr, cy + cr], fill=(37, 72, 160), outline=(255, 255, 255), width=2)
-        tw, th = _text_size(d, initial, fonts['name'])
-        d.text((cx - tw / 2, cy - th / 2 - 4), initial, font=fonts['name'], fill=(255, 255, 255))
-
-    mask = Image.new('L', (pw, ph), 0)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, pw, ph), radius=20, fill=255)
-    canvas.paste(fitted, (px, py), mask)
-    _rounded_rect(draw, (px, py, px + pw, py + ph), 20, fill=None, outline=(226, 232, 240), width=2)
-
-    # Location badge on Photo bottom
-    raw_city = (getattr(agent, 'agent_city_display', '') or getattr(profile, 'city', '') or 'India').strip()
-    if '+' in raw_city:
-        raw_city = raw_city.split('+')[0].strip()
-    loc_str = f'{raw_city}, India' if raw_city and 'india' not in raw_city.lower() else (raw_city or 'India')
-    lw, _ = _text_size(draw, loc_str, fonts['pill'])
-    pill_w = min(lw + 24, pw - 16)
-    pill_x = px + (pw - pill_w) // 2
-    pill_y = py + ph - 38
-    _rounded_rect(draw, (pill_x, pill_y, pill_x + pill_w, pill_y + 28), 14, fill=(15, 23, 42), outline=(51, 65, 85), width=1)
-    draw.text((pill_x + 12, pill_y + 6), loc_str, font=fonts['pill'], fill=(255, 255, 255))
-
-    # Right Info Column
-    ix = px + pw + 28
-    iy = py + 2
-    max_info_w = card[2] - 32 - ix
-
-    # Agent Name
+    # Agent details
     name = ((profile.display_name if profile else '') or agent.fullname or 'Insurance Advisor').strip()
-    name_font = fonts['name_sm']
-    nw, nh = _text_size(draw, name, name_font)
-    if nw > max_info_w:
-        name_font = fonts['agency']
-        nw, nh = _text_size(draw, name, name_font)
-    draw.text((ix, iy), name, font=name_font, fill=(15, 23, 42))
+    agent_initial = ''.join([w[0].upper() for w in name.split()[:2]]) or 'A'
+    
+    raw_city = (getattr(agent, 'agent_city_display', '') or getattr(profile, 'city', '') or 'India').strip()
+    if '+' in raw_city: raw_city = raw_city.split('+')[0].strip()
+    location = f'{raw_city}, India' if raw_city and 'india' not in raw_city.lower() else (raw_city or 'India')
 
-    # Badges row
-    by = iy + nh + 10
-    badge_x = ix
     badge_val = (getattr(agent, 'badge', '') or '').lower()
-    show_licensed = bool(
-        (profile and (profile.license_number or profile.arn_number))
-        or 'irdai' in badge_val
-        or 'licensed' in badge_val
-        or True
-    )
-    show_trusted = bool(
-        getattr(agent, 'is_trusted', False)
-        or 'trusted' in badge_val
-        or str(getattr(agent, 'plan_type', '') or '').lower() in ('professional', 'pro', 'exclusive')
-        or True
-    )
+    show_licensed = bool((profile and (profile.license_number or profile.arn_number)) or 'irdai' in badge_val or 'licensed' in badge_val or True)
+    show_trusted = bool(getattr(agent, 'is_trusted', False) or 'trusted' in badge_val or str(getattr(agent, 'plan_type', '') or '').lower() in ('professional', 'pro', 'exclusive') or True)
 
-    if show_licensed:
-        _rounded_rect(draw, (badge_x, by, badge_x + 125, by + 28), 14, fill=(239, 246, 255), outline=(191, 219, 254), width=1)
-        draw.text((badge_x + 12, by + 5), 'IRDAI Licensed', font=fonts['pill'], fill=(29, 78, 216))
-        badge_x += 135
-
-    if show_trusted:
-        _rounded_rect(draw, (badge_x, by, badge_x + 125, by + 28), 14, fill=(240, 253, 244), outline=(187, 247, 208), width=1)
-        draw.text((badge_x + 12, by + 5), 'Trusted Partner', font=fonts['pill'], fill=(21, 128, 61))
-
-    # Subtitle / Agency
-    sub_y = by + 38
     agency = (getattr(profile, 'agency_name', '') or '').strip()
-    if agency and agency.lower() != name.lower():
-        sub_text = f'Insurance & Financial Advisor · {agency}'
-    else:
-        sub_text = 'Insurance & Financial Advisor'
-    sw, _ = _text_size(draw, sub_text, fonts['agency'])
-    if sw > max_info_w:
-        sub_text = 'Insurance & Financial Advisor'
-    draw.text((ix, sub_y), sub_text, font=fonts['agency'], fill=(71, 85, 105))
+    subtitle = f'Insurance & Financial Advisor · {agency}' if agency and agency.lower() != name.lower() else 'Insurance & Financial Advisor'
 
-    # Ratings & Stars
-    star_y = sub_y + 32
     rating = float(getattr(agent, 'average_rating', 5.0) or 5.0)
-    if rating <= 0:
-        rating = 5.0
-    full_stars = max(1, min(5, int(round(rating))))
-    for i in range(5):
-        _draw_star(draw, ix + 10 + i * 24, star_y + 10, 9, fill=(245, 158, 11) if i < full_stars else (226, 232, 240))
-    rating_str = f'{rating:.1f}'
-    draw.text((ix + 130, star_y), rating_str, font=fonts['rating'], fill=(15, 23, 42))
-    rev_cnt = int(getattr(agent, 'review_count', 0) or 0)
-    rev_lbl = f'({rev_cnt} Reviews)' if rev_cnt else '(44 Reviews)'
-    draw.text((ix + 170, star_y + 2), rev_lbl, font=fonts['reviews'], fill=(100, 116, 139))
+    if rating <= 0: rating = 5.0
+    rating_int = max(1, min(5, int(round(rating))))
+    review_count = int(getattr(agent, 'review_count', 0) or 0)
 
-    # Experience highlight line
-    hi_y = star_y + 36
-    exp = 0
-    if profile and profile.experience_years:
-        exp = profile.experience_years
-    else:
-        exp = getattr(agent, 'experience_years', 0) or 0
-    hi_text = f'{exp}+ Years Experience  •  Top Rated' if exp else 'Verified Advisor  •  Top Rated'
-    draw.text((ix, hi_y), hi_text, font=fonts['pill'], fill=(37, 99, 235))
+    # Experience
+    exp_val = profile.experience_years if profile and profile.experience_years else (getattr(agent, 'experience_years', 0) or 0)
+    exp_text = f'{exp_val}+ Years Experience • Top Rated' if exp_val else 'Verified Advisor • Top Rated'
 
-    # 4 Key Metrics Cards
-    my = py + ph + 28
-    card_inner_w = card[2] - card[0] - 64
-    gap = 12
-    mw = (card_inner_w - gap * 3) // 4
-    mh = 100
+    # Dynamic Metrics (No fallback to fake data like 10+, 50+)
+    clients = getattr(agent, 'formatted_client_base', None)
+    if not clients: clients = str(getattr(agent, 'client_base', '') or '')
+    
+    claims = getattr(perf, 'formatted_claims_processed', '') if perf else ''
+    settled = getattr(perf, 'formatted_claims_amount', '') if perf else ''
 
-    clients = getattr(agent, 'formatted_client_base', None) or str(getattr(agent, 'client_base', '') or '0')
-    claims = perf.formatted_claims_processed if perf else '0'
-    settled = perf.formatted_claims_amount if perf else '0'
+    exp_years = f"{exp_val}+" if exp_val else "1+"
+    clients_val = str(clients) if clients and clients != '0' else ""
+    claims_val = str(claims) if claims and claims != '0' else ""
+    settled_val = f"₹{settled}" if settled and settled != '0' else ""
 
-    metrics = [
-        (f'{exp}+' if exp else '1+', 'YEARS EXP'),
-        (str(clients or '50+'), 'CLIENTS'),
-        (str(claims or '10+'), 'CLAIMS'),
-        (f'₹{settled}' if settled and settled != '0' else '₹10L+', 'SETTLED'),
-    ]
-
-    for idx, (val, lbl) in enumerate(metrics):
-        sx = card[0] + 32 + idx * (mw + gap)
-        _rounded_rect(draw, (sx, my, sx + mw, my + mh), 18, fill=(248, 250, 252), outline=(226, 232, 240), width=1)
-        vw, _ = _text_size(draw, val, fonts['val'])
-        draw.text((sx + (mw - vw) // 2, my + 18), val, font=fonts['val'], fill=(15, 23, 42))
-        lw, _ = _text_size(draw, lbl, fonts['label'])
-        draw.text((sx + (mw - lw) // 2, my + 60), lbl, font=fonts['label'], fill=(100, 116, 139))
-
-    # Insurance Segments Section
-    segs_y = my + mh + 26
-    draw.text((card[0] + 32, segs_y - 2), 'SPECIALIZATION:', font=fonts['label'], fill=(148, 163, 184))
-
-    tags_y = segs_y + 20
     raw_tags = list(getattr(agent, 'ordered_insurance_segments', None) or [])
-    if not raw_tags:
-        raw_tags = ['health', 'life', 'motor', 'sme']
-    tx = card[0] + 32
-    for raw in raw_tags[:4]:
-        tkey = str(raw or '').strip().lower()
-        if not tkey:
-            continue
-        tname = f"{'SME' if tkey == 'sme' else tkey.capitalize()} Insurance"
-        bg, fg, border = TAG_COLORS.get(tkey, TAG_DEFAULT)
-        tw_text, _ = _text_size(draw, tname, fonts['tag'])
-        tw = tw_text + 28
-        th = 38
-        if tx + tw > card[2] - 32:
-            break
-        _rounded_rect(draw, (tx, tags_y, tx + tw, tags_y + th), 19, fill=bg, outline=border, width=1)
-        draw.text((tx + 14, tags_y + 9), tname, font=fonts['tag'], fill=fg)
-        tx += tw + 12
+    if not raw_tags: raw_tags = ['health', 'life', 'motor', 'sme']
+    segments = [t.strip().lower() for t in raw_tags[:4] if t.strip()]
 
-    # Trust Strip Footer
-    fy = card[3] - 50
-    draw.line([(card[0] + 32, fy - 16), (card[2] - 32, fy - 16)], fill=(241, 245, 249), width=2)
-    cta_text = 'Instant Policy Assistance · Claim Support · Free Consultation'
-    draw.text((card[0] + 32, fy), cta_text, font=fonts['cta'], fill=(100, 116, 139))
-    dw, _ = _text_size(draw, 'padosiagent.com', fonts['cta'])
-    draw.text((card[2] - 32 - dw, fy), 'padosiagent.com', font=fonts['cta'], fill=(30, 58, 138))
+    # Inject exact frontend CSS for 100% pixel-perfect match
+    css_path = os.path.join(settings.BASE_DIR, 'static', 'css', 'agent-card-shared.css')
+    inline_css = ""
+    if os.path.exists(css_path):
+        with open(css_path, 'r', encoding='utf-8') as f:
+            inline_css = f.read()
 
-    buf = io.BytesIO()
-    canvas.save(buf, format='JPEG', quality=95)
-    return buf.getvalue()
+    context = {
+        'inline_css': inline_css,
+        'name': name,
+        'agent_initial': agent_initial,
+        'location': location,
+        'photo_base64': photo_base64,
+        'logo_base64': logo_base64,
+        'show_licensed': show_licensed,
+        'show_trusted': show_trusted,
+        'subtitle': subtitle,
+        'rating': rating,
+        'rating_int': rating_int,
+        'review_count': review_count or 44,  # keep a small placeholder if 0
+        'exp_text': exp_text,
+        'exp_years': exp_years,
+        'clients_val': clients_val,
+        'claims_val': claims_val,
+        'settled_val': settled_val,
+        'segments': segments,
+    }
+
+    html = render_to_string('agents/og_image.html', context)
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        # 1200x630 is the recommended aspect ratio for OG images
+        page = browser.new_page(viewport={"width": 1200, "height": 630})
+        page.set_content(html)
+        # Wait until network is mostly idle (allows external fonts/icons to load)
+        try:
+            page.wait_for_load_state("networkidle", timeout=3000)
+        except Exception:
+            pass # Timeout is fine, take screenshot anyway
+        
+        # Clip specifically to the card element bounds to avoid white borders
+        jpeg_bytes = page.locator('.rac-desktop-card').screenshot(type="jpeg", quality=95)
+        browser.close()
+
+    return jpeg_bytes
 
 
 def _load_fonts():

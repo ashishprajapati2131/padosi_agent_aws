@@ -1022,6 +1022,18 @@ def agent_registration(request):
 
             if not referring_agent:
                 try:
+                    from apps.distributors.models import SubDistributor
+                    sub_dist = SubDistributor.objects.filter(code=ref_val, status='active').first()
+                    if sub_dist:
+                        request.session['sub_distributor_id'] = sub_dist.id
+                        request.session['distributor_id'] = sub_dist.distributor_id
+                        request.session['distributor_led_registration'] = True
+                        request.session['ref_code'] = sub_dist.code
+                except Exception:
+                    pass
+
+            if not referring_agent and not request.session.get('sub_distributor_id'):
+                try:
                     from apps.admin_panel.models.referral_code import ReferralCode
                     ref_obj = ReferralCode.objects.filter(code=ref_val, is_active=True).select_related('agent').first()
                     if ref_obj:
@@ -1088,8 +1100,23 @@ def agent_registration_referral(request, ref_code):
             except Exception:
                 pass
 
-        # 2. Try legacy ReferralCode
+        # 2. Try SubDistributor code
         if not referring_agent:
+            try:
+                from apps.distributors.models import SubDistributor
+                sub_dist = SubDistributor.objects.filter(code=code_val, status='active').first()
+                if sub_dist:
+                    sub_dist.clicks = (sub_dist.clicks or 0) + 1
+                    sub_dist.save(update_fields=['clicks'])
+                    request.session['sub_distributor_id'] = sub_dist.id
+                    request.session['distributor_id'] = sub_dist.distributor_id
+                    request.session['distributor_led_registration'] = True
+                    request.session['ref_code'] = sub_dist.code
+            except Exception:
+                pass
+
+        # 3. Try legacy ReferralCode
+        if not referring_agent and not request.session.get('sub_distributor_id'):
             try:
                 from apps.admin_panel.models.referral_code import ReferralCode
                 ref_obj = ReferralCode.objects.filter(code=code_val, is_active=True).select_related('agent').first()
@@ -1097,6 +1124,9 @@ def agent_registration_referral(request, ref_code):
                     # Increment clicks for tracking
                     ref_obj.clicks = (ref_obj.clicks or 0) + 1
                     ref_obj.save(update_fields=['clicks'])
+                    if ref_obj.distributor_id:
+                        request.session['distributor_id'] = ref_obj.distributor_id
+                        request.session['distributor_led_registration'] = True
                     if ref_obj.agent:
                         referring_agent = ref_obj.agent
             except Exception:
@@ -1206,7 +1236,11 @@ def _assign_step1_draft_fields(draft, request, extra=None):
     if photo:
         draft.photo = photo
 
-    # Capture distributor/referral binding from session
+    # Capture sub-distributor / distributor binding from session
+    sub_dist_id_from_session = request.session.get('sub_distributor_id')
+    if sub_dist_id_from_session:
+        draft.sub_distributor_id = sub_dist_id_from_session
+
     dist_id_from_session = request.session.get('distributor_id')
     if dist_id_from_session:
         draft.distributor_id = dist_id_from_session
@@ -1217,7 +1251,13 @@ def _assign_step1_draft_fields(draft, request, extra=None):
     else:
         ref_code = request.session.get('ref_code') or request.session.get('championship_ref_id')
         if ref_code:
-            if str(ref_code).startswith('PA-'):
+            from apps.distributors.models import SubDistributor
+            sub_dist = SubDistributor.objects.filter(code=ref_code, status='active').first()
+            if sub_dist:
+                draft.sub_distributor_id = sub_dist.id
+                draft.distributor_id = sub_dist.distributor_id
+                draft.referred_by_code = sub_dist.code
+            elif str(ref_code).startswith('PA-'):
                 draft.referred_by_code = ref_code
             else:
                 from apps.admin_panel.models.referral_code import ReferralCode
@@ -2128,6 +2168,9 @@ def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment
             'plan_type': plan_type,
             'agent_pincode': draft.agent_pincode,
             'email_verified_at': now,
+            'distributor_id': getattr(draft, 'distributor_id', None),
+            'sub_distributor_id': getattr(draft, 'sub_distributor_id', None),
+            'referred_by_code': getattr(draft, 'referred_by_code', '') or '',
         }
     )
     
@@ -2141,6 +2184,12 @@ def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment
         agent.plan_type = plan_type
         agent.agent_pincode = draft.agent_pincode
         agent.email_verified_at = now
+        if getattr(draft, 'distributor_id', None):
+            agent.distributor_id = draft.distributor_id
+        if getattr(draft, 'sub_distributor_id', None):
+            agent.sub_distributor_id = draft.sub_distributor_id
+        if getattr(draft, 'referred_by_code', None):
+            agent.referred_by_code = draft.referred_by_code
         agent.save()
 
     # ── Event: PENDING_FOR_REGISTRATION ─────────────────────────────────────
@@ -2615,13 +2664,22 @@ def _agent_register_complete_impl(request):
             agent = create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment')
             
             # Capture distributor/referral binding
-            dist_id_from_session = request.session.get('distributor_id')
+            sub_dist_id = request.session.get('sub_distributor_id') or getattr(draft, 'sub_distributor_id', None)
+            if sub_dist_id:
+                agent.sub_distributor_id = sub_dist_id
+
+            dist_id_from_session = request.session.get('distributor_id') or getattr(draft, 'distributor_id', None)
             if dist_id_from_session:
                 agent.distributor_id = dist_id_from_session
                 from apps.admin_panel.models.referral_code import ReferralCode
                 ref_obj = ReferralCode.objects.filter(distributor_id=dist_id_from_session, is_active=True).first()
                 if ref_obj:
                     agent.referred_by_code = ref_obj.code
+                if sub_dist_id:
+                    from apps.distributors.models import SubDistributor
+                    sub_dist_obj = SubDistributor.objects.filter(id=sub_dist_id).first()
+                    if sub_dist_obj:
+                        agent.referred_by_code = sub_dist_obj.code
                 agent.save()
                 # ── Event: DISTRIBUTION ──────────────────────────────────
                 RegistrationActivityLog.log(
@@ -3227,6 +3285,19 @@ def referral_join(request, ref_code):
         from apps.referral_championship.models import ChampionshipParticipant
         if ChampionshipParticipant.objects.filter(referral_id=code_val).exists():
             return redirect('championship:public_landing', ref_id=code_val)
+
+    # If code is for a SubDistributor
+    from apps.distributors.models import SubDistributor
+    sub_dist = SubDistributor.objects.filter(code=code_val, status='active').first()
+    if sub_dist:
+        sub_dist.clicks = (sub_dist.clicks or 0) + 1
+        sub_dist.save(update_fields=['clicks'])
+        request.session['ref_code'] = sub_dist.code
+        request.session['sub_distributor_id'] = sub_dist.id
+        request.session['distributor_id'] = sub_dist.distributor_id
+        request.session['distributor_led_registration'] = True
+        url = reverse('agents:agent_registration') + f"?ref={code_val}&show_trial=1"
+        return redirect(url)
 
     from apps.admin_panel.models.referral_code import ReferralCode
     code = ReferralCode.objects.filter(code=code_val, is_active=True).first()
