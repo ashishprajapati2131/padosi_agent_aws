@@ -2283,12 +2283,16 @@ def agent_capture_lead(request):
         customer_mobile = lead_user.get('mobile') or request.POST.get('mobile')
         customer_pincode = lead_user.get('pincode') or request.POST.get('pincode')
 
-        if (not customer_name or not customer_email) and request.user.is_authenticated:
+        if (not customer_name or not customer_email or not customer_mobile) and request.user.is_authenticated:
             user = request.user
             customer_name = customer_name or getattr(user, 'fullname', '') or user.get_full_name() or user.username
             customer_email = customer_email or user.email
-            customer_mobile = customer_mobile or getattr(getattr(user, 'client', None), 'mobile', None)
-            customer_pincode = customer_pincode or getattr(getattr(user, 'client', None), 'pincode', None)
+            if not customer_mobile:
+                from apps.agents.models import Client
+                user_client = Client.objects.filter(user=user).first()
+                if user_client:
+                    customer_mobile = customer_mobile or user_client.mobile
+                    customer_pincode = customer_pincode or user_client.pincode
 
         enquiry_parts = [val for val in [service_type, insurance_type, insurance_company] if val]
         enquiry_requirements = ' | '.join(enquiry_parts) if enquiry_parts else None

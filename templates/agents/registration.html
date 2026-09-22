@@ -1745,6 +1745,7 @@
                 // Form fields
                 name: '{{ draft.fullname|default:""|escapejs }}',
                 slug: '',
+                slugManuallyEdited: false,
                 slugStatus: 'checking',
                 email: '{{ draft.email|default:""|escapejs }}',
                 emailStatus: '',
@@ -1989,31 +1990,24 @@
                 },
 
                 onNameInput() {
-                    this.name = this.name.replace(/[^a-zA-Z\s.-]/g, '');
-                    this.slug = this.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                    this.checkSlug();
-                    delete this.errors.fullname;
-                    if (this.name.trim().length >= 2 && !this.isValidPincode && !this.pincode) {
-                        clearTimeout(this._nameAdvanceTimer);
-                        this._nameAdvanceTimer = setTimeout(() => {
-                            if (this.name.trim().length >= 2 && document.activeElement === this.$refs.nameInput) {
-                                this.focusPincode();
-                            }
-                        }, 600);
+                    const cleanedName = this.name.replace(/[^a-zA-Z\s.-]/g, '');
+                    if (this.name !== cleanedName) {
+                        this.name = cleanedName;
                     }
+                    if (!this.slugManuallyEdited) {
+                        this.slug = this.name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                        this.checkSlug();
+                    }
+                    delete this.errors.fullname;
                 },
 
                 onSlugInput() {
-                    this.slug = this.slug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                    this.checkSlug();
-                    if (this.slug.length >= 3 && this.isPhoneValid) {
-                        clearTimeout(this._slugAdvanceTimer);
-                        this._slugAdvanceTimer = setTimeout(() => {
-                            if (this.slug.length >= 3 && document.activeElement === this.$refs.slugInput) {
-                                this.focusEmail();
-                            }
-                        }, 400);
+                    this.slugManuallyEdited = Boolean(this.slug && this.slug.trim().length > 0);
+                    const cleanedSlug = this.slug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                    if (this.slug !== cleanedSlug) {
+                        this.slug = cleanedSlug;
                     }
+                    this.checkSlug();
                 },
 
                 stateCodeMap: {
@@ -2327,9 +2321,12 @@
                 },
 
                 checkSlug() {
-                    this.slug = this.slug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                    if (!this.slug) {
-                        this.slug = this.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                    const cleaned = (this.slug || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                    if (this.slug !== cleaned) {
+                        this.slug = cleaned;
+                    }
+                    if (!this.slug && !this.slugManuallyEdited) {
+                        this.slug = (this.name || '').toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
                     }
 
                     if (this.slug.length < 3) {

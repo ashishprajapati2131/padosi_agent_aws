@@ -2111,13 +2111,19 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
 {% block extra_js %}
 <script>
+    window._padosiGuestAuthenticated = false;
+    window._padosiGuestData = null;
+
     function getCSRFToken() {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
             const cookies = document.cookie.split(';');
             for (let i = 0; i < cookies.length; i++) {
                 const cookie = cookies[i].trim();
-                if (cookie.substring(0, 10) === ('csrftoken=')) {
+                if (cookie.substring(0, 18) === ('padosi_csrf_token=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(18));
+                    break;
+                } else if (cookie.substring(0, 10) === ('csrftoken=')) {
                     cookieValue = decodeURIComponent(cookie.substring(10));
                     break;
                 }
@@ -3312,10 +3318,11 @@ no spam calls, only trusted licensed agents.{% endblock %}
             insurance_type: activePillText,
             source_page: window.location.pathname
         };
-        if (guestData) {
-            postData.fullname = guestData.fullname;
-            postData.email = guestData.email;
-            postData.mobile = guestData.mobile;
+        const effectiveGuestData = guestData || window._padosiGuestData;
+        if (effectiveGuestData) {
+            postData.fullname = effectiveGuestData.fullname;
+            postData.email = effectiveGuestData.email;
+            postData.mobile = effectiveGuestData.mobile;
         }
 
         $.ajax({
@@ -3344,7 +3351,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
         });
     };
 
-    if (!isAuth && !hasGuestSession) {
+    if (!isAuth && !hasGuestSession && !window._padosiGuestAuthenticated) {
         if (typeof window.showQuickRegisterPopup === 'function') {
             setTimeout(function () {
                 window.showQuickRegisterPopup('Connect with Agent', function (guestData) {
@@ -3988,6 +3995,11 @@ no spam calls, only trusted licensed agents.{% endblock %}
         });
     };
 
+    // Mutable auth flag and guest data — set to true after a successful quick-register AJAX call
+    // so that subsequent contact-click handlers skip the popup without a page reload.
+    window._padosiGuestAuthenticated = window._padosiGuestAuthenticated || false;
+    window._padosiGuestData = window._padosiGuestData || null;
+
     window.showQuickRegisterPopup = function (redirectUrl, onSuccessCallback) {
         if (Swal.isVisible()) return;
 
@@ -4123,8 +4135,11 @@ no spam calls, only trusted licensed agents.{% endblock %}
                             }),
                             success: function (response) {
                                 if (response.status === 'success' || response.success) {
+                                    // Mark guest as authenticated and save guest data so subsequent
+                                    // contact-click handlers skip the popup and carry contact info.
+                                    window._padosiGuestAuthenticated = true;
+                                    window._padosiGuestData = result.value;
                                     if (typeof onSuccessCallback === 'function') {
-                                        Swal.close();
                                         onSuccessCallback(result.value, response);
                                     } else {
                                         Swal.fire({
@@ -4157,7 +4172,10 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
     window.proceedToDestination = function (url, target) {
         if (target === '_blank' || (url && (url.indexOf('wa.me') !== -1 || url.indexOf('whatsapp') !== -1))) {
-            window.open(url, '_blank', 'noopener');
+            const win = window.open(url, '_blank', 'noopener');
+            if (!win || win.closed || typeof win.closed === 'undefined') {
+                window.location.href = url;
+            }
             return;
         }
         window.location.href = url;
@@ -4199,10 +4217,11 @@ no spam calls, only trusted licensed agents.{% endblock %}
             source_page: window.location.pathname
         };
 
-        if (guestData) {
-            postData.fullname = guestData.fullname;
-            postData.email = guestData.email;
-            postData.mobile = guestData.mobile;
+        const effectiveGuestData = guestData || window._padosiGuestData;
+        if (effectiveGuestData) {
+            postData.fullname = effectiveGuestData.fullname;
+            postData.email = effectiveGuestData.email;
+            postData.mobile = effectiveGuestData.mobile;
         }
 
         Swal.fire({
@@ -4237,7 +4256,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
         });
     };
 
-    if (!isAuth && !hasGuestSession) {
+    if (!isAuth && !hasGuestSession && !window._padosiGuestAuthenticated) {
         window.showQuickRegisterPopup(window.location.pathname + window.location.search, function (guestData) {
             captureLeadAndProceed(guestData);
         });
