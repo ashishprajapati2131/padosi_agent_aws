@@ -213,7 +213,7 @@
         window._padosiGuestData = window._padosiGuestData || null;
 
         window.toggleFavoriteAgent = function (btn, agentId) {
-            const isAuth = {{ request.user.is_authenticated|yesno:"true,false" }};
+            const isAuth = "{{ request.user.is_authenticated|yesno:'true,false' }}" === "true";
             if (!isAuth && !window._padosiGuestAuthenticated) {
                 if (typeof window.showQuickRegisterPopup === 'function') {
                     window.showQuickRegisterPopup(window.location.pathname + window.location.search);
@@ -329,7 +329,7 @@
         document.addEventListener('DOMContentLoaded', function () {
             if (!('geolocation' in navigator)) return;
 
-            const hasSessionLocation = {% if request.session.last_lat or request.session.last_pincode %}true{% else %}false{% endif %};
+            const hasSessionLocation = Boolean("{{ request.session.last_lat|default:'' }}" || "{{ request.session.last_pincode|default:'' }}");
             const permissionStatus = localStorage.getItem('padosi_location_status');
 
             if (!hasSessionLocation && permissionStatus !== 'denied' && permissionStatus !== 'prompted') {
