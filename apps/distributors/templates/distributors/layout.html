@@ -223,10 +223,13 @@
             </a>
             
             <div class="menu-category">AGENTS</div>
-            <a href="{% url 'distributors:agents_index'  %}" class="menu-item {% if 'agents' in request.resolver_match.url_name %}active{% endif %}">
+            <a href="{% url 'distributors:agents_index' %}" class="menu-item {% if 'agents' in request.resolver_match.url_name %}active{% endif %}">
                 <i class="fa-solid fa-users-gear"></i> My Agents
             </a>
-            <a href="{% url 'distributors:leads'  %}" class="menu-item {% if request.resolver_match.url_name == 'leads' %}active{% endif %}">
+            <a href="{% url 'distributors:sub_distributors_index' %}" class="menu-item {% if 'sub_distributor' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="fa-solid fa-sitemap"></i> Sub-Distributors
+            </a>
+            <a href="{% url 'distributors:leads' %}" class="menu-item {% if request.resolver_match.url_name == 'leads' %}active{% endif %}">
                 <i class="fa-solid fa-bolt"></i> Lead Tracking
             </a>
 

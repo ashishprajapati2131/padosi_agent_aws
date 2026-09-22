@@ -1,0 +1,194 @@
+{% extends 'distributors/layout.html' %}
+
+{% block page_title %}Sub-Distributors{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h5 class="fw-bold mb-1">Sub-Distributor Network</h5>
+        <p class="text-muted mb-0" style="font-size: 13px;">Manage your sub-distributors and their generated leads</p>
+    </div>
+    <button class="btn btn-primary shadow-sm" style="border-radius: 8px;" data-bs-toggle="modal" data-bs-target="#createSubDistModal">
+        <i class="fa-solid fa-plus me-2"></i> Add Sub-Distributor
+    </button>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card shadow-sm border-0">
+            <div class="stat-icon" style="background: #eff6ff; color: #3b82f6;"><i class="fa-solid fa-sitemap"></i></div>
+            <div class="stat-value">{{ total_sub_dists }}</div>
+            <div class="stat-label">TOTAL NETWORK</div>
+            <div class="text-muted mt-2" style="font-size: 11px;">Registered sub-distributors</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card shadow-sm border-0">
+            <div class="stat-icon" style="background: #ecfdf5; color: #10b981;"><i class="fa-solid fa-check-circle"></i></div>
+            <div class="stat-value text-success">{{ active_sub_dists }}</div>
+            <div class="stat-label">ACTIVE NETWORK</div>
+            <div class="text-muted mt-2" style="font-size: 11px;">Active sub-distributors</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card shadow-sm border-0">
+            <div class="stat-icon" style="background: #fdf4ff; color: #d946ef;"><i class="fa-solid fa-users"></i></div>
+            <div class="stat-value">{{ total_sub_agents }}</div>
+            <div class="stat-label">TOTAL AGENTS</div>
+            <div class="text-muted mt-2" style="font-size: 11px;">Agents from sub-distributors</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card shadow-sm border-0">
+            <div class="stat-icon" style="background: #ecfdf5; color: #10b981;"><i class="fa-solid fa-user-check"></i></div>
+            <div class="stat-value text-success">{{ active_sub_agents }}</div>
+            <div class="stat-label">ACTIVE AGENTS</div>
+            <div class="text-muted mt-2" style="font-size: 11px;">Active agents from network</div>
+        </div>
+    </div>
+</div>
+
+<!-- Invite Section -->
+<div class="card mb-4 border-0 shadow-sm overflow-hidden" style="border-radius: 12px;">
+    <div class="p-4" style="background: linear-gradient(to right, #0f172a, #1e293b); color: white;">
+        <h6 class="fw-bold mb-3"><i class="fa-solid fa-link text-warning me-2"></i> Your Sub-Distributor Invite Link</h6>
+        <div class="d-flex align-items-center gap-2">
+            <input type="text" class="form-control text-muted" id="subInviteLink" value="{{ sub_invite_url }}" readonly style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white !important;">
+            <button class="btn btn-warning shadow-sm" onclick="copySubInviteLink()"><i class="fa-regular fa-copy"></i></button>
+            <a href="https://wa.me/?text={{ whatsapp_invite_msg|urlencode }}" target="_blank" class="btn btn-success shadow-sm"><i class="fa-brands fa-whatsapp"></i></a>
+        </div>
+    </div>
+</div>
+
+<!-- Sub-Distributors Table -->
+<div class="card border-0 shadow-sm" style="border-radius: 12px;">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4 text-uppercase text-muted" style="font-size: 11px; font-weight: 700;">Sub-Distributor</th>
+                        <th class="text-uppercase text-muted" style="font-size: 11px; font-weight: 700;">Contact</th>
+                        <th class="text-uppercase text-muted" style="font-size: 11px; font-weight: 700;">Status</th>
+                        <th class="text-center text-uppercase text-muted" style="font-size: 11px; font-weight: 700;">Agents</th>
+                        <th class="pe-4 text-end text-uppercase text-muted" style="font-size: 11px; font-weight: 700;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sd in sub_distributors %}
+                    <tr>
+                        <td class="ps-4 py-3">
+                            <div class="fw-bold" style="color: #0f172a;">{{ sd.obj.fullname }}</div>
+                            <div class="text-muted" style="font-size: 12px;">Code: <span class="fw-bold text-dark">{{ sd.obj.code }}</span></div>
+                        </td>
+                        <td>
+                            <div style="font-size: 13px;"><i class="fa-regular fa-envelope text-muted me-1"></i> {{ sd.obj.email }}</div>
+                            <div style="font-size: 13px;"><i class="fa-solid fa-mobile-screen-button text-muted me-1"></i> {{ sd.obj.mobile }}</div>
+                        </td>
+                        <td>
+                            {% if sd.obj.status == 'active' %}
+                                <span class="badge bg-success-light text-success" style="padding: 6px 10px; border-radius: 6px;"><i class="fa-solid fa-circle-check me-1"></i> Active</span>
+                            {% else %}
+                                <span class="badge bg-danger-light text-danger" style="padding: 6px 10px; border-radius: 6px;"><i class="fa-solid fa-ban me-1"></i> Suspended</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'distributors:sub_distributor_agents' sd.obj.id %}" class="text-decoration-none">
+                                <div class="fw-bold fs-5 text-primary">{{ sd.total_agents }}</div>
+                                <div class="text-muted" style="font-size: 11px;">{{ sd.active_agents }} Active</div>
+                            </a>
+                        </td>
+                        <td class="pe-4 text-end">
+                            <button class="btn btn-sm btn-light border shadow-sm" onclick="copyAgentLink('{{ sd.agent_link }}')" title="Copy Agent Reg Link">
+                                <i class="fa-solid fa-link text-primary"></i>
+                            </button>
+                            <form action="{% url 'distributors:sub_distributor_toggle_status' sd.obj.id %}" method="POST" class="d-inline">
+                                {% csrf_token %}
+                                {% if sd.obj.status == 'active' %}
+                                    <button class="btn btn-sm btn-light border shadow-sm text-danger" title="Suspend" onclick="return confirm('Are you sure you want to suspend this sub-distributor?');">
+                                        <i class="fa-solid fa-ban"></i>
+                                    </button>
+                                {% else %}
+                                    <button class="btn btn-sm btn-light border shadow-sm text-success" title="Activate" onclick="return confirm('Are you sure you want to activate this sub-distributor?');">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div style="font-size: 40px; color: #cbd5e1;" class="mb-3"><i class="fa-solid fa-sitemap"></i></div>
+                            <h6 class="fw-bold" style="color: #475569;">No Sub-Distributors Yet</h6>
+                            <p class="text-muted" style="font-size: 14px;">Invite candidates using your sub-distributor link or add them manually.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Create Sub-Distributor -->
+<div class="modal fade" id="createSubDistModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="fw-bold mb-0">Add Sub-Distributor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{% url 'distributors:sub_distributor_create' %}" method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold" style="font-size: 12px;">Full Name *</label>
+                        <input type="text" name="fullname" class="form-control bg-light" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold" style="font-size: 12px;">Email Address *</label>
+                        <input type="email" name="email" class="form-control bg-light" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold" style="font-size: 12px;">Mobile Number *</label>
+                        <input type="text" name="mobile" class="form-control bg-light" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold" style="font-size: 12px;">Temporary Password *</label>
+                        <input type="password" name="password" class="form-control bg-light" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-muted fw-bold" style="font-size: 12px;">Internal Notes (Optional)</label>
+                        <textarea name="notes" class="form-control bg-light" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 fw-bold" style="padding: 12px; border-radius: 8px;">Create Sub-Distributor</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-success-light { background: #dcfce7 !important; }
+    .bg-danger-light { background: #fee2e2 !important; }
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copySubInviteLink() {
+        var copyText = document.getElementById("subInviteLink");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value);
+        alert("Invite Link copied!");
+    }
+    function copyAgentLink(link) {
+        navigator.clipboard.writeText(link);
+        alert("Agent Registration Link copied for this Sub-Distributor!");
+    }
+</script>
+{% endblock %}

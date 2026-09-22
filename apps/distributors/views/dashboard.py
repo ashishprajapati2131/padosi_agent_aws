@@ -123,6 +123,26 @@ def dashboard(request):
     
     distributor_first_name = (l_user.fullname if l_user else distributor.first_name).split(' ')[0]
 
+    # Sub-Distributor network stats
+    from apps.distributors.models import SubDistributor
+    from django.urls import reverse
+
+    total_sub_distributors = SubDistributor.objects.filter(distributor_id=distributor_id).count()
+    active_sub_distributors = SubDistributor.objects.filter(distributor_id=distributor_id, status='active').count()
+    sub_distributor_agents_count = Agent.objects.filter(distributor_id=distributor_id, sub_distributor_id__isnull=False).count()
+    direct_agents_count = Agent.objects.filter(distributor_id=distributor_id, sub_distributor_id__isnull=True).count()
+
+    sub_invite_url = request.build_absolute_uri(reverse('distributors:sub_distributor_join', args=[referral_code.code]))
+
+    top_sub_dists = []
+    for sd in SubDistributor.objects.filter(distributor_id=distributor_id)[:6]:
+        top_sub_dists.append({
+            'obj': sd,
+            'total_agents': Agent.objects.filter(sub_distributor_id=sd.id).count(),
+            'active_agents': Agent.objects.filter(sub_distributor_id=sd.id, status='active').count(),
+        })
+    top_sub_dists.sort(key=lambda x: x['total_agents'], reverse=True)
+
     context = {
         'distributor': distributor,
         'distributorFirstName': distributor_first_name,
@@ -138,6 +158,12 @@ def dashboard(request):
         'referralStats': referral_stats,
         'referralUrl': referral_url,
         'shareMessage': share_message,
+        'totalSubDistributors': total_sub_distributors,
+        'activeSubDistributors': active_sub_distributors,
+        'subDistributorAgentsCount': sub_distributor_agents_count,
+        'directAgentsCount': direct_agents_count,
+        'subInviteUrl': sub_invite_url,
+        'topSubDistributors': top_sub_dists,
     }
     return render(request, 'distributors/dashboard.html', context)
 

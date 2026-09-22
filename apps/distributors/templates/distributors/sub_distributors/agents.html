@@ -1,0 +1,82 @@
+{% extends 'distributors/layout.html' %}
+
+{% block page_title %}Agents of {{ sub_dist.fullname }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{% url 'distributors:sub_distributors_index' %}" class="text-decoration-none text-muted mb-2 d-inline-block"><i class="fa-solid fa-arrow-left me-1"></i> Back to Sub-Distributors</a>
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h4 class="fw-bold mb-1">{{ sub_dist.fullname }}'s Agents</h4>
+            <div class="text-muted" style="font-size: 13px;">Code: <strong>{{ sub_dist.code }}</strong> | <span class="text-success">{{ active_count }} Active</span> / {{ total_count }} Total</div>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary" onclick="navigator.clipboard.writeText('{{ agent_link }}'); alert('Link copied!');">
+                <i class="fa-solid fa-link me-2"></i> Copy Agent Reg Link
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius: 12px;">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4 text-uppercase text-muted" style="font-size: 11px; font-weight: 700;">Agent Details</th>
+                        <th class="text-uppercase text-muted" style="font-size: 11px; font-weight: 700;">Status</th>
+                        <th class="text-uppercase text-muted" style="font-size: 11px; font-weight: 700;">Subscription</th>
+                        <th class="text-center text-uppercase text-muted" style="font-size: 11px; font-weight: 700;">Leads</th>
+                        <th class="pe-4 text-end text-uppercase text-muted" style="font-size: 11px; font-weight: 700;">Joined</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agent in agents %}
+                    <tr>
+                        <td class="ps-4 py-3">
+                            <div class="fw-bold" style="color: #0f172a;">{{ agent.fullname }}</div>
+                            <div class="text-muted" style="font-size: 12px;">{{ agent.email }} | {{ agent.mobile }}</div>
+                        </td>
+                        <td>
+                            {% if agent.status == 'active' %}
+                                <span class="badge bg-success-light text-success" style="padding: 6px 10px; border-radius: 6px;">Active</span>
+                            {% elif agent.status == 'pending_approval' %}
+                                <span class="badge bg-warning-light text-warning" style="padding: 6px 10px; border-radius: 6px;">Pending</span>
+                            {% else %}
+                                <span class="badge bg-secondary text-white" style="padding: 6px 10px; border-radius: 6px;">{{ agent.status|title }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% with active_sub=agent.subscriptions.all|first %}
+                                {% if active_sub and active_sub.status == 'active' %}
+                                    <span class="badge bg-primary text-white">{{ active_sub.selected_plan|title }}</span>
+                                {% else %}
+                                    <span class="badge bg-light text-muted border">None</span>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="text-center fw-bold">{{ agent.leads_count }}</td>
+                        <td class="pe-4 text-end text-muted" style="font-size: 12px;">{{ agent.created_at|date:"M d, Y" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div style="font-size: 40px; color: #cbd5e1;" class="mb-3"><i class="fa-solid fa-users"></i></div>
+                            <h6 class="fw-bold" style="color: #475569;">No Agents Found</h6>
+                            <p class="text-muted" style="font-size: 14px;">This sub-distributor hasn't registered any agents yet.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-success-light { background: #dcfce7 !important; }
+    .bg-warning-light { background: #fef3c7 !important; }
+</style>
+
+{% endblock %}

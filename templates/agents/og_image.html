@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        {{ inline_css|safe }}
+        
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1200px;
+            height: 630px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+        }
+
+        .og-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .rac-card.rac-desktop-card {
+            display: flex;
+            width: 820px;
+            max-width: 820px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            border-radius: 24px;
+            transform: scale(1.25);
+            transform-origin: center;
+        }
+
+        .rac-d-photo {
+            width: 250px;
+        }
+
+        .rac-d-info {
+            padding: 35px 40px;
+            flex: 1;
+        }
+
+        .rac-d-name {
+            font-size: 28px;
+        }
+
+        /* Hide the action buttons in the right column since it's an image */
+        .rac-d-actions {
+            display: none !important;
+        }
+        
+        /* Make the logo float at the top */
+        .og-logo {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 36px;
+            font-weight: 900;
+            color: #1e3a8a;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .og-logo img {
+            height: 60px;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+    <div class="og-container">
+        <div class="rac-card rac-desktop-card">
+            <div class="rac-d-row">
+                <div class="rac-d-photo">
+                    {% if photo_base64 %}
+                    <img src="{{ photo_base64 }}" alt="Agent Photo" class="rac-d-photo-img">
+                    {% else %}
+                    <div style="width: 100%; height: 100%; background: #1e3a8a; display: flex; align-items: center; justify-content: center; font-size: 60px; color: white; font-weight: 800;">
+                        {{ agent_initial }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="rac-d-info">
+                    <div class="rac-d-name-row">
+                        <h3 class="rac-d-name">{{ name }}</h3>
+                        {% if show_licensed %}
+                        <span class="agent-recognition-badge badge-irdai-official">
+                            <i class="fas fa-medal"></i> Licensed
+                        </span>
+                        {% endif %}
+                        {% if show_trusted %}
+                        <span class="agent-recognition-badge badge-trusted-official">
+                            <i class="fas fa-award"></i> Trusted
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div style="font-size: 16px; color: #475569; font-weight: 500; margin-top: 4px; margin-bottom: 8px;">
+                        {{ subtitle }}
+                    </div>
+
+                    <div class="rac-d-rating" style="margin-bottom: 12px;">
+                        <div class="rac-stars rac-stars--lg">
+                            {% for i in "12345"|make_list %}
+                                {% if forloop.counter <= rating_int %}
+                                    <svg class="rac-star rac-star--lg rac-star--full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                    </svg>
+                                {% else %}
+                                    <svg class="rac-star rac-star--lg rac-star--empty" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                    </svg>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <span class="rac-d-rating-val">{{ rating|floatformat:1 }}</span>
+                        <span class="rac-d-rating-count">({{ review_count }} reviews)</span>
+                    </div>
+
+                    <div class="rac-d-location" style="margin-bottom: 16px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #6b7280;">
+                            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                            <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        <span style="color: #6b7280; font-size: 14px; font-weight: 500; margin-left: 4px;">{{ location }}</span>
+                    </div>
+
+                    <div class="rac-stats-grid">
+                        <div class="rac-stat-box">
+                            <div class="rac-stat-num">{{ exp_years }}</div>
+                            <div class="rac-stat-lbl">YEARS EXP</div>
+                        </div>
+                        {% if clients_val %}
+                        <div class="rac-stat-box">
+                            <div class="rac-stat-num">{{ clients_val }}</div>
+                            <div class="rac-stat-lbl">CLIENTS</div>
+                        </div>
+                        {% endif %}
+                        {% if claims_val %}
+                        <div class="rac-stat-box">
+                            <div class="rac-stat-num">{{ claims_val }}</div>
+                            <div class="rac-stat-lbl">CLAIMS</div>
+                        </div>
+                        <div class="rac-stat-box rac-stat-box--amount">
+                            <div class="rac-stat-num">{{ settled_val }}</div>
+                            <div class="rac-stat-lbl">SETTLED</div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if segments %}
+                    <div class="rac-d-tags" style="margin-top: 16px;">
+                        {% for seg in segments %}
+                            <span class="rac-d-tag {% if seg == 'health' %}rac-tag--health{% elif seg == 'life' %}rac-tag--life{% elif seg == 'motor' %}rac-tag--motor{% elif seg == 'sme' %}rac-tag--sme{% else %}rac-tag--default{% endif %}">
+                                {% if seg == 'sme' %}SME Insurance{% else %}{{ seg|title }} Insurance{% endif %}
+                            </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
