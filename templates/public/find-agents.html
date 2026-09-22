@@ -4193,6 +4193,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
     const serviceType = element.getAttribute('data-service-type') || urlParams.get('ServiceType') || urlParams.get('service_type') || (document.getElementById('ServiceType') ? document.getElementById('ServiceType').value : '') || '';
     const insuranceType = element.getAttribute('data-insurance-type') || urlParams.get('InsuranceType') || urlParams.get('insurance_type') || (document.getElementById('InsuranceType') ? document.getElementById('InsuranceType').value : '') || '';
     const insuranceCompany = element.getAttribute('data-insurance-company') || urlParams.get('InsuranceCompany') || urlParams.get('insurance_company') || (document.getElementById('InsuranceCompany') ? document.getElementById('InsuranceCompany').value : '') || '';
+    const pincode = element.getAttribute('data-pincode') || urlParams.get('Pincode') || urlParams.get('pincode') || (document.getElementById('Pincode') ? document.getElementById('Pincode').value : '') || '';
     const target = element.getAttribute('target');
 
     const captureLeadAndProceed = (guestData) => {
@@ -4214,6 +4215,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
             service_type: finalServiceType,
             insurance_type: activePillText,
             insurance_company: insuranceCompany,
+            pincode: pincode,
             source_page: window.location.pathname
         };
 

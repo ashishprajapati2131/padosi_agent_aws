@@ -2345,6 +2345,9 @@ def agent_capture_lead(request):
                 if i_comp:
                     req_desc += f" ({i_comp})"
 
+                if customer_pincode:
+                    req_desc += f" in {customer_pincode}"
+
                 cust_name = (customer_name or '').strip()
                 msg = f"Hello {agent_name},\nI found you on {domain_name}\n\nI am looking for {req_desc}."
                 if cust_name:
