@@ -319,7 +319,7 @@ class AgentSearchService:
                 match_color_class=agent.match_color_class,
                 insurance_segments=agent.ordered_insurance_segments,
                 agent_city_display=agent.agent_city_display,
-                agent_slug=agent.agent_slug,
+                agent_slug=getattr(agent, 'agent_slug', '') or str(agent.id),
                 mobile=agent.mobile or '',
                 whatsapp_raw=agent.whatsapp_raw or '',
                 whatsapp_digits=profile.whatsapp_digits if profile else '',

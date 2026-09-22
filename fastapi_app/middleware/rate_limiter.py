@@ -42,6 +42,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         bucket_key = (ip, bucket)
         limit = 15 if is_sensitive else self.requests_limit
         
+        current_time = time.time()
+        
         # Keep only requests within the sliding window for this specific bucket
         valid_timestamps = [
             t for t in self.client_records.get(bucket_key, []) 
