@@ -209,9 +209,12 @@
 
     <!-- Favorite agent toggle (port of app.blade.php toggleFavoriteAgent) -->
     <script>
+        window._padosiGuestAuthenticated = window._padosiGuestAuthenticated || false;
+        window._padosiGuestData = window._padosiGuestData || null;
+
         window.toggleFavoriteAgent = function (btn, agentId) {
             const isAuth = {{ request.user.is_authenticated|yesno:"true,false" }};
-            if (!isAuth) {
+            if (!isAuth && !window._padosiGuestAuthenticated) {
                 if (typeof window.showQuickRegisterPopup === 'function') {
                     window.showQuickRegisterPopup(window.location.pathname + window.location.search);
                 } else {

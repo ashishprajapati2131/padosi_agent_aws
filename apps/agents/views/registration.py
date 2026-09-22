@@ -3292,9 +3292,18 @@ def client_quick_register(request):
         }, status=422)
 
     from django.contrib.auth.models import User
-    from apps.agents.models import Client
+    from apps.agents.models import Client, Agent
+    from apps.agents.services.account_auth import DJANGO_AUTH_BACKEND
     
     existing_user = User.objects.filter(email=email).first()
+    if not existing_user and mobile:
+        existing_client = Client.objects.filter(mobile=mobile).select_related('user').first()
+        if existing_client and existing_client.user:
+            existing_user = existing_client.user
+        else:
+            existing_agent = Agent.objects.filter(mobile=mobile).select_related('user').first()
+            if existing_agent and existing_agent.user:
+                existing_user = existing_agent.user
     
     if existing_user:
         # Check if they are a client
@@ -3307,15 +3316,16 @@ def client_quick_register(request):
             )
             
         request.session['quick_lead_user'] = {
-            'fullname': fullname,
-            'email': email,
+            'fullname': fullname or getattr(existing_user, 'fullname', '') or existing_user.get_full_name() or existing_user.username,
+            'email': existing_user.email or email,
             'mobile': mobile,
             'pincode': pincode,
         }
         from django.contrib.auth import login
         from apps.distributors.views.dashboard import is_distributor
         if not (request.user.is_authenticated and is_distributor(request.user)):
-            login(request, existing_user)
+            login(request, existing_user, backend=DJANGO_AUTH_BACKEND)
+        request.session.modified = True
         
         return JsonResponse({
             'success': True,
@@ -3355,7 +3365,7 @@ def client_quick_register(request):
         from django.contrib.auth import login
         from apps.distributors.views.dashboard import is_distributor
         if not (request.user.is_authenticated and is_distributor(request.user)):
-            login(request, user)
+            login(request, user, backend=DJANGO_AUTH_BACKEND)
 
         request.session['quick_lead_user'] = {
             'fullname': fullname,
@@ -3363,6 +3373,7 @@ def client_quick_register(request):
             'mobile': mobile,
             'pincode': pincode,
         }
+        request.session.modified = True
 
         return JsonResponse({
             'success': True,
