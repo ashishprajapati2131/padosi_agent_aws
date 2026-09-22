@@ -143,7 +143,8 @@ def get_agent_championship_dashboard(
     pricing = campaign.pricing_config or {}
     dig_price = pricing.get('digital', {}).get('campaign_price', 999)
     prof_price = pricing.get('professional', {}).get('campaign_price', 4999)
-    profile_url = f"{app_url}/agent/{current_agent.agent_slug or current_agent.id}/"
+    profile_slug = getattr(current_agent, 'agent_slug', '') or str(current_agent.id)
+    profile_url = f"{app_url}/agent/{profile_slug}/"
 
     default_text = render_whatsapp_message(
         WHATSAPP_TEMPLATES['en']['templates'][0]['text'],
@@ -263,7 +264,8 @@ def generate_whatsapp_share_payload(
 
     app_url = settings.APP_URL.rstrip('/')
     referral_url = f"{app_url}/agent-registration/join/{participant.referral_id}/"
-    profile_url = f"{app_url}/agent/{current_agent.agent_slug or current_agent.id}/"
+    profile_slug = getattr(current_agent, 'agent_slug', '') or str(current_agent.id)
+    profile_url = f"{app_url}/agent/{profile_slug}/"
 
     pricing = campaign.pricing_config or {}
     dig_price = pricing.get('digital', {}).get('campaign_price', 999)
