@@ -45,7 +45,16 @@ def render_agent_og_jpeg(agent):
     photo_base64 = ""
     photo = _load_photo(agent, profile)
     if photo:
-        if photo.mode not in ('RGB', 'RGBA'):
+        if photo.mode in ('RGBA', 'LA', 'P'):
+            bg = Image.new('RGB', photo.size, (255, 255, 255))
+            if photo.mode == 'P':
+                photo = photo.convert('RGBA')
+            if photo.mode in ('RGBA', 'LA'):
+                bg.paste(photo, mask=photo.split()[-1])
+            else:
+                bg.paste(photo)
+            photo = bg
+        elif photo.mode != 'RGB':
             photo = photo.convert('RGB')
         # resize down to save base64 size
         photo.thumbnail((300, 300))
@@ -171,6 +180,17 @@ def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
     photo_x, photo_y = 70, 150
     photo = _load_photo(agent, profile)
     if photo:
+        if photo.mode in ('RGBA', 'LA', 'P'):
+            bg = Image.new('RGB', photo.size, (255, 255, 255))
+            if photo.mode == 'P':
+                photo = photo.convert('RGBA')
+            if photo.mode in ('RGBA', 'LA'):
+                bg.paste(photo, mask=photo.split()[-1])
+            else:
+                bg.paste(photo)
+            photo = bg
+        elif photo.mode != 'RGB':
+            photo = photo.convert('RGB')
         cropped = _cover_crop(photo, photo_size, photo_size)
         canvas.paste(cropped, (photo_x, photo_y))
         _rounded_rect(draw, [(photo_x, photo_y), (photo_x + photo_size, photo_y + photo_size)], radius=16, outline=(203, 213, 225), width=2)

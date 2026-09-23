@@ -609,6 +609,7 @@ def find_agents(request):
     location_param = request.GET.get('location', '').strip()
     lat_param = request.GET.get('lat', '').strip()
     lng_param = request.GET.get('lng', '').strip()
+    detected_area = request.session.get('detected_area', '')
 
     is_htmx = (
         request.headers.get('HX-Request') == 'true'
