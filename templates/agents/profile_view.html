@@ -93,16 +93,33 @@
 <!-- Social Share Modal -->
 <div class="modal fade" id="shareProfileModal" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 20px; border: none; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px);">
+        <div class="modal-content" style="border-radius: 20px; border: none; background: rgba(255,255,255,0.98); backdrop-filter: blur(10px);">
             <div class="modal-header border-0 pb-0">
                 <h5 class="modal-title font-weight-bold" style="font-size: 20px;">Share Profile</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="border: none; background: transparent; font-size: 24px;">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="border:none;background:transparent;font-size:24px;">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body py-4">
-                <div class="d-flex justify-content-around flex-wrap gap-3">
-                    <!-- WhatsApp -->
+            <div class="modal-body pt-2 pb-4">
+                <!-- WhatsApp image share banner -->
+                <div class="pa-wa-image-share-banner" id="pa-wa-image-banner">
+                    <div class="pa-wa-image-share-inner">
+                        <span class="pa-wa-img-icon"><i class="fab fa-whatsapp"></i></span>
+                        <div>
+                            <div style="font-weight:700;font-size:13.5px;color:#111;">Share as Visiting Card Image</div>
+                            <div style="font-size:11.5px;color:#555;">No link preview — just the card photo</div>
+                        </div>
+                        <button id="pa-wa-image-share-btn" onclick="shareCardAsImage()" class="pa-wa-img-btn">
+                            <span id="pa-wa-btn-text">Share</span>
+                            <span id="pa-wa-btn-spin" style="display:none;"><i class="fas fa-spinner fa-spin"></i></span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pa-share-divider">or share link</div>
+
+                <div class="d-flex justify-content-around flex-wrap" style="gap:16px;">
+                    <!-- WhatsApp link -->
                     <div class="d-flex flex-column align-items-center">
                         <a href="#" id="share-wa" target="_blank" class="share-platform-btn sp-whatsapp">
                             <i class="fab fa-whatsapp"></i>
@@ -157,37 +174,55 @@
 
 <style>
     .share-platform-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        color: white !important;
-        font-size: 22px;
-        transition: all 0.2s ease;
-        cursor: pointer;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        text-decoration: none !important;
+        display: flex; flex-direction: column; align-items: center;
+        justify-content: center; width: 60px; height: 60px;
+        border-radius: 50%; color: white !important; font-size: 22px;
+        transition: all 0.2s ease; cursor: pointer;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-decoration: none !important;
     }
-    .share-platform-btn:hover {
-        transform: scale(1.08);
-        box-shadow: 0 8px 12px rgba(0,0,0,0.1);
-    }
+    .share-platform-btn:hover { transform: scale(1.08); box-shadow: 0 8px 12px rgba(0,0,0,0.1); }
     .sp-whatsapp { background: #25d366; }
     .sp-telegram { background: #0088cc; }
     .sp-facebook { background: #1877f2; }
     .sp-linkedin { background: #0077b5; }
     .sp-twitter { background: #000000; }
-    .sp-copy { background: #64748b; }
-    .share-label-text {
-        font-size: 11px;
-        font-weight: 600;
-        color: #475569;
-        margin-top: 8px;
-        text-align: center;
+    .sp-copy    { background: #64748b; }
+    .share-label-text { font-size:11px; font-weight:600; color:#475569; margin-top:8px; text-align:center; }
+
+    /* WhatsApp image-share banner */
+    .pa-wa-image-share-banner {
+        background: linear-gradient(135deg, #e7fef0 0%, #d4f8e6 100%);
+        border: 1.5px solid #25d366;
+        border-radius: 14px;
+        padding: 12px 14px;
+        margin-bottom: 6px;
     }
+    .pa-wa-image-share-inner {
+        display: flex; align-items: center; gap: 10px;
+    }
+    .pa-wa-img-icon {
+        width: 40px; height: 40px; border-radius: 50%; background: #25d366;
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 20px; flex-shrink: 0;
+    }
+    .pa-wa-img-btn {
+        margin-left: auto; flex-shrink: 0;
+        background: #25d366; color: white; border: none;
+        border-radius: 20px; padding: 7px 18px;
+        font-weight: 700; font-size: 13px; cursor: pointer;
+        transition: background 0.2s;
+    }
+    .pa-wa-img-btn:hover { background: #1db954; }
+    .pa-share-divider {
+        text-align: center; font-size: 11px; color: #999;
+        margin: 14px 0 16px; position: relative;
+    }
+    .pa-share-divider::before, .pa-share-divider::after {
+        content: ''; position: absolute; top: 50%;
+        width: 38%; height: 1px; background: #e2e8f0;
+    }
+    .pa-share-divider::before { left: 0; }
+    .pa-share-divider::after  { right: 0; }
 </style>
 {% endblock %}
 
@@ -196,40 +231,87 @@
     <script src="{% static 'js/carousel.js' %}"></script>
     
     <script>
-        var shareUrl = '{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/';
+        var shareUrl   = '{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/';
         var shareTitle = '{{ agentDisplayName|default:agent.fullname|escapejs }} — Digital Visiting Card | PadosiAgent';
-        var shareText = 'Connect with {{ agentDisplayName|default:agent.fullname|escapejs }}, Licensed Insurance & Financial Advisor on PadosiAgent. View profile, services & contact directly.';
+        var ogImageUrl = '{{ request.scheme }}://{{ request.get_host }}{% url "agents:agent_og_image" agent.id %}';
+        var agentName  = '{{ agentDisplayName|default:agent.fullname|escapejs }}';
 
-        function shareProfile() {
-            if (navigator.share) {
+        /* ── Main share entry point ── */
+        async function shareProfile() {
+            // On mobile: try sharing the image file directly (no green link preview in WhatsApp)
+            if (navigator.canShare) {
+                var shared = await _tryShareAsImage();
+                if (shared) return;
+            }
+
+            // Native share (URL only) — desktop/unsupported browsers
+            if (navigator.share && !navigator.canShare) {
                 navigator.share({ title: shareTitle, url: shareUrl }).catch(function() {});
                 return;
             }
 
-            // Fallback: show modal with pre-filled share links
-            document.getElementById('share-wa').href = "https://api.whatsapp.com/send?text=" + encodeURIComponent(shareUrl);
-            document.getElementById('share-tg').href = "https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(shareTitle);
-            document.getElementById('share-tw').href = "https://twitter.com/intent/tweet?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(shareTitle);
-            document.getElementById('share-fb').href = "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(shareUrl);
-            document.getElementById('share-ln').href = "https://www.linkedin.com/sharing/share-offsite/?url=" + encodeURIComponent(shareUrl);
+            // Desktop fallback: show modal
+            _openShareModal();
+        }
 
+        /* ── Fetch OG image and share as file ── */
+        async function _tryShareAsImage() {
+            try {
+                var resp = await fetch(ogImageUrl);
+                if (!resp.ok) return false;
+                var blob = await resp.blob();
+                var fileName = agentName.replace(/[^a-z0-9]/gi, '_') + '_visiting_card.jpg';
+                var file = new File([blob], fileName, { type: 'image/jpeg' });
+                if (!navigator.canShare({ files: [file] })) return false;
+                await navigator.share({
+                    files: [file],
+                    title: agentName + ' — Digital Visiting Card',
+                    text: agentName + ' | Licensed Insurance & Financial Advisor\n' + shareUrl
+                });
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        /* ── Explicit WhatsApp image-share button in modal ── */
+        async function shareCardAsImage() {
+            var btn  = document.getElementById('pa-wa-image-share-btn');
+            var txt  = document.getElementById('pa-wa-btn-text');
+            var spin = document.getElementById('pa-wa-btn-spin');
+            txt.style.display = 'none';
+            spin.style.display = 'inline';
+            btn.disabled = true;
+
+            var shared = await _tryShareAsImage();
+
+            txt.style.display = 'inline';
+            spin.style.display = 'none';
+            btn.disabled = false;
+
+            if (!shared) {
+                // Fallback: open WhatsApp with URL only
+                window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(shareUrl), '_blank');
+            }
+            $('#shareProfileModal').modal('hide');
+        }
+
+        /* ── Open desktop modal ── */
+        function _openShareModal() {
+            document.getElementById('share-wa').href = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(shareUrl);
+            document.getElementById('share-tg').href = 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareTitle);
+            document.getElementById('share-tw').href = 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareTitle);
+            document.getElementById('share-fb').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl);
+            document.getElementById('share-ln').href = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(shareUrl);
             $('#shareProfileModal').modal('show');
         }
 
         function copyShareLink() {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(shareUrl).then(function() {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Link copied',
-                        text: 'Recommended profile link copied to clipboard.',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
+                    Swal.fire({ icon:'success', title:'Link copied', text:'Recommended profile link copied to clipboard.', timer:1500, showConfirmButton:false });
                     $('#shareProfileModal').modal('hide');
-                }).catch(function() {
-                    prompt('Copy this profile link:', shareUrl);
-                });
+                }).catch(function() { prompt('Copy this profile link:', shareUrl); });
             } else {
                 prompt('Copy this profile link:', shareUrl);
             }
