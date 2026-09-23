@@ -3376,16 +3376,26 @@ def client_quick_register(request):
             if existing_agent and existing_agent.user:
                 existing_user = existing_agent.user
     
+    # A logged-in agent (or distributor) must not be converted into a client or
+    # have their portal session hijacked when they use the client quick-register.
+    current_is_logged_in_agent = (
+        request.user.is_authenticated
+        and Agent.objects.filter(user=request.user).exists()
+    )
+
     if existing_user:
+        editing_own_account = (
+            current_is_logged_in_agent and existing_user.pk == request.user.pk
+        )
         # Check if they are a client
         is_client = Client.objects.filter(user=existing_user).exists()
-        if not is_client:
+        if not is_client and not editing_own_account:
             Client.objects.create(
                 user=existing_user,
                 mobile=mobile,
                 pincode=pincode
             )
-            
+
         request.session['quick_lead_user'] = {
             'fullname': fullname or getattr(existing_user, 'fullname', '') or existing_user.get_full_name() or existing_user.username,
             'email': existing_user.email or email,
@@ -3394,7 +3404,7 @@ def client_quick_register(request):
         }
         from django.contrib.auth import login
         from apps.distributors.views.dashboard import is_distributor
-        if not (request.user.is_authenticated and is_distributor(request.user)):
+        if not (request.user.is_authenticated and is_distributor(request.user)) and not current_is_logged_in_agent:
             login(request, existing_user, backend=DJANGO_AUTH_BACKEND)
         request.session.modified = True
         
@@ -3435,7 +3445,7 @@ def client_quick_register(request):
         # Log user in
         from django.contrib.auth import login
         from apps.distributors.views.dashboard import is_distributor
-        if not (request.user.is_authenticated and is_distributor(request.user)):
+        if not (request.user.is_authenticated and is_distributor(request.user)) and not current_is_logged_in_agent:
             login(request, user, backend=DJANGO_AUTH_BACKEND)
 
         request.session['quick_lead_user'] = {
