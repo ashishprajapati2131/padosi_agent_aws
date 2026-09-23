@@ -1,19 +1,19 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ agentDisplayName|default:agent.fullname }} | PadosiAgent{% endblock %}
-{% block og_title %}{{ agentDisplayName|default:agent.fullname }} | PadosiAgent{% endblock %}
-{% block og_description %}{{ profile.career_highlights|striptags|truncatechars:150|default:"View my professional insurance agent profile on PadosiAgent." }}{% endblock %}
+{% block title %}{{ agentDisplayName|default:agent.fullname }} | Insurance & Financial Advisor | PadosiAgent{% endblock %}
+{% block og_title %}{{ agentDisplayName|default:agent.fullname }} — Digital Visiting Card{% endblock %}
+{% block og_description %}Connect with {{ agentDisplayName|default:agent.fullname }}, a Licensed Insurance &amp; Financial Advisor on PadosiAgent. Tap to view profile, services, ratings &amp; direct contact options.{% endblock %}
 {% block og_url %}{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/{% endblock %}
 {% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}{% endblock %}
 {% block og_type %}website{% endblock %}
 {% block og_image_width %}1200{% endblock %}
 {% block og_image_height %}630{% endblock %}
 {% block twitter_card %}summary_large_image{% endblock %}
-{% block twitter_title %}{{ agentDisplayName|default:agent.fullname }} | PadosiAgent{% endblock %}
-{% block twitter_description %}{{ profile.career_highlights|striptags|truncatechars:150|default:"View my professional insurance agent profile on PadosiAgent." }}{% endblock %}
+{% block twitter_title %}{{ agentDisplayName|default:agent.fullname }} — Digital Visiting Card{% endblock %}
+{% block twitter_description %}Connect with {{ agentDisplayName|default:agent.fullname }}, Licensed Insurance &amp; Financial Advisor on PadosiAgent. Tap to view profile, services &amp; contact directly.{% endblock %}
 {% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}{% endblock %}
-{% block meta_description %}{{ profile.career_highlights|striptags|truncatechars:150|default:"View my professional insurance agent profile on PadosiAgent." }}{% endblock %}
+{% block meta_description %}Connect with {{ agentDisplayName|default:agent.fullname }}, a Licensed Insurance &amp; Financial Advisor on PadosiAgent. View profile, services, ratings &amp; direct contact options.{% endblock %}
 {% block canonical_url %}{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/{% endblock %}
 
 {% block extra_head %}
@@ -197,16 +197,17 @@
     
     <script>
         var shareUrl = '{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/';
-        var shareTitle = 'I recommend {{ agent.fullname|escapejs }} on PadosiAgent';
-        var shareText = '{{ agent.profile.career_highlights|striptags|truncatechars:150|escapejs|default:"View my professional insurance agent profile on PadosiAgent." }}';
+        var shareTitle = '{{ agentDisplayName|default:agent.fullname|escapejs }} — Digital Visiting Card | PadosiAgent';
+        var shareText = 'Connect with {{ agentDisplayName|default:agent.fullname|escapejs }}, Licensed Insurance & Financial Advisor on PadosiAgent. View profile, services & contact directly.';
 
         function shareProfile() {
             if (navigator.share) {
-                navigator.share({ title: shareTitle, text: shareText, url: shareUrl }).catch(function() {});
+                navigator.share({ title: shareTitle, url: shareUrl }).catch(function() {});
                 return;
             }
 
-            document.getElementById('share-wa').href = "https://api.whatsapp.com/send?text=" + encodeURIComponent(shareTitle + " - " + shareUrl);
+            // Fallback: show modal with pre-filled share links
+            document.getElementById('share-wa').href = "https://api.whatsapp.com/send?text=" + encodeURIComponent(shareUrl);
             document.getElementById('share-tg').href = "https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(shareTitle);
             document.getElementById('share-tw').href = "https://twitter.com/intent/tweet?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(shareTitle);
             document.getElementById('share-fb').href = "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(shareUrl);
