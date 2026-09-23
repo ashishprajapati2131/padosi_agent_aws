@@ -454,14 +454,14 @@ def agent_dashboard(request):
         unread_notifications_json = json_dumps(
             [{'title': n.title, 'body': n.body} for n in popup_notifications],
             ensure_ascii=False,
-        )
+        ).replace('</', r'<\/')
     except Exception:
         unread_notifications_json = '[]'
     try:
         feature_unlock_hints = build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
         from apps.agents.services.review_growth import build_review_growth_hints
         feature_unlock_hints.update(build_review_growth_hints(agent))
-        feature_unlock_hints_json = json_dumps(feature_unlock_hints)
+        feature_unlock_hints_json = json_dumps(feature_unlock_hints).replace('</', r'<\/')
     except Exception:
         feature_unlock_hints_json = '[]'
 

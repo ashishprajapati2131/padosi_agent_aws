@@ -32,8 +32,6 @@ class AgentProfile(Base):
     office_address = Column(Text, nullable=True)
     service_pincodes = Column(JSON, nullable=True)
     
-    latitude = Column(Numeric(10, 8), nullable=True, index=True)
-    longitude = Column(Numeric(11, 8), nullable=True)
     experience_years = Column(String(191), nullable=True)
     has_pos_license = Column(Boolean, default=False, nullable=False)
     

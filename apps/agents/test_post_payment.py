@@ -14,7 +14,7 @@ class PostPaymentQueueTests(SimpleTestCase):
 
     @patch('apps.agents.services.post_payment.transaction.get_connection')
     @patch('apps.agents.services.post_payment.threading.Thread')
-    def test_queue_starts_daemon_worker(self, thread_cls, get_connection):
+    def test_queue_starts_fulfillment_worker(self, thread_cls, get_connection):
         get_connection.return_value.in_atomic_block = False
         worker = MagicMock()
         thread_cls.return_value = worker
@@ -24,5 +24,6 @@ class PostPaymentQueueTests(SimpleTestCase):
         thread_cls.assert_called_once()
         kwargs = thread_cls.call_args.kwargs
         self.assertEqual(kwargs['args'], (12, 34))
-        self.assertTrue(kwargs['daemon'])
+        # Must be non-daemon so Passenger/WSGI process recycling does not abruptly kill the thread
+        self.assertFalse(kwargs['daemon'])
         worker.start.assert_called_once()
