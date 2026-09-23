@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Optional, Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import model_validator
@@ -108,43 +109,122 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
-def get_base_url(request: Optional[Any] = None) -> str:
+def is_debug_mode() -> bool:
+    """Detect whether running in debug/development mode across FastAPI and Django."""
+    env_debug = os.environ.get("DEBUG", "").strip().lower()
+    if env_debug in ("true", "1", "yes"):
+        return True
+    if env_debug in ("false", "0", "no"):
+        return False
+    if bool(getattr(settings, "DEBUG", False)):
+        return True
+    try:
+        from django.conf import settings as django_settings
+        return bool(getattr(django_settings, "DEBUG", False))
+    except Exception:
+        pass
+    return False
+
+
+def get_base_url(request: Optional[Any] = None, path: Optional[str] = None) -> str:
     """
     Get the absolute base URL for building links and asset paths.
     Prioritizes incoming request headers (x-forwarded-proto, host) so that
     production reverse proxies (Passenger WSGI, Nginx, ALB) correctly reflect the public domain.
-    Falls back to settings.APP_URL or https://padosiagent.com in production.
+    In production (DEBUG=False), ensures URLs never leak localhost/127.0.0.1 or insecure http.
+    Falls back to settings.APP_URL or https://padosiagent.com.
+
+    If 'path' is provided, cleanly joins it to the base URL without double slashes.
     """
-    if request is not None and hasattr(request, "headers"):
-        proto = request.headers.get("x-forwarded-proto")
+    if isinstance(request, str) and path is None:
+        path = request
+        request = None
+
+    is_debug = is_debug_mode()
+    base = ""
+
+    if request is not None:
+        headers = getattr(request, "headers", None)
+        proto = None
+        host = None
+
+        if headers and hasattr(headers, "get"):
+            proto = headers.get("x-forwarded-proto")
+            if not proto:
+                if headers.get("x-forwarded-ssl") == "on" or headers.get("front-end-https") == "on":
+                    proto = "https"
+            host = headers.get("x-forwarded-host") or headers.get("host")
+
         if not proto:
-            proto = getattr(getattr(request, "url", None), "scheme", "") or "https"
-        host = request.headers.get("x-forwarded-host") or request.headers.get("host")
-        if not host and hasattr(request, "url"):
-            host = getattr(request.url, "netloc", "")
+            if hasattr(request, "is_secure") and callable(request.is_secure):
+                proto = "https" if request.is_secure() else "http"
+            else:
+                proto = getattr(getattr(request, "url", None), "scheme", "") or "https"
+
+        if not host:
+            if hasattr(request, "get_host") and callable(request.get_host):
+                try:
+                    host = request.get_host()
+                except Exception:
+                    pass
+            if not host and hasattr(request, "url"):
+                host = getattr(request.url, "netloc", "")
+
+        if proto and "," in proto:
+            proto = proto.split(",")[0].strip()
+        if host and "," in host:
+            host = host.split(",")[0].strip()
 
         if host:
-            is_localhost = any(lh in host.lower() for lh in ("localhost", "127.0.0.1", "testserver"))
+            is_localhost = any(lh in host.lower() for lh in ("localhost", "127.0.0.1", "0.0.0.0", "testserver", "::1"))
             if not is_localhost:
-                return f"{proto}://{host}".rstrip('/')
+                final_proto = "https" if not is_debug else (proto or "http")
+                base = f"{final_proto}://{host}".rstrip('/')
+            else:
+                if is_debug:
+                    chosen_proto = proto or "http"
+                    base = f"{chosen_proto}://{host}".rstrip('/')
+                else:
+                    app_url = (settings.APP_URL or "").rstrip('/')
+                    is_app_localhost = any(lh in app_url.lower() for lh in ("localhost", "127.0.0.1", "0.0.0.0"))
+                    if app_url and not is_app_localhost:
+                        base = app_url
+                    else:
+                        base = "https://padosiagent.com"
 
-            # Host is localhost: check if settings.APP_URL has a production domain
-            if settings.APP_URL and not any(lh in settings.APP_URL.lower() for lh in ("localhost", "127.0.0.1")):
-                return settings.APP_URL.rstrip('/')
+    if not base:
+        if is_debug:
+            base = (settings.APP_URL or "").rstrip('/') or "http://localhost:8000"
+        else:
+            app_url = (settings.APP_URL or "").rstrip('/')
+            is_localhost = any(lh in app_url.lower() for lh in ("localhost", "127.0.0.1", "0.0.0.0"))
+            if is_localhost:
+                base = "https://padosiagent.com"
+            else:
+                base = app_url or "https://padosiagent.com"
 
-            # If both request and settings are localhost, check if in production
-            is_debug = bool(settings.DEBUG) or os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
-            if not is_debug:
-                return "https://padosiagent.com"
-            return f"{proto}://{host}".rstrip('/')
+    if not is_debug and any(lh in base.lower() for lh in ("localhost", "127.0.0.1", "0.0.0.0")):
+        base = "https://padosiagent.com"
 
-    # No request provided
-    app_url = (settings.APP_URL or "").rstrip('/')
-    is_localhost = any(lh in app_url.lower() for lh in ("localhost", "127.0.0.1"))
-    is_debug = bool(settings.DEBUG) or os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
-    if is_localhost and not is_debug:
-        return "https://padosiagent.com"
-    return app_url or "https://padosiagent.com"
+    base = base.rstrip('/')
+
+    if path:
+        if path.startswith("http://") or path.startswith("https://"):
+            if not is_debug and any(h in path.lower() for h in ("localhost", "127.0.0.1", "0.0.0.0")):
+                return re.sub(r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?", "https://padosiagent.com", path)
+            return path
+        clean_path = path if path.startswith("/") else f"/{path}"
+        return f"{base}{clean_path}"
+
+    return base
+
+
+def build_safe_url(path_or_url: str, request: Optional[Any] = None) -> str:
+    """
+    Build an absolute safe URL from a path or existing URL, ensuring that
+    in production no localhost/127.0.0.1 origins leak to clients.
+    """
+    return get_base_url(request=request, path=path_or_url)
 
 
 

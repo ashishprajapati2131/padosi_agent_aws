@@ -32,7 +32,7 @@ def queue_invoice_and_welcome(agent_id, subscription_id):
         thread = threading.Thread(
             target=_run_invoice_and_welcome,
             args=(agent_id, subscription_id),
-            daemon=True,
+            daemon=False,
             name=f'invoice-welcome-{agent_id}',
         )
         thread.start()

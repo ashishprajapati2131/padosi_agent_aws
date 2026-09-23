@@ -6,6 +6,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.utils import timezone
 from django.conf import settings
 from django.template.loader import render_to_string
+from django.core.cache import cache
 
 from apps.admin_panel.views.security import BlockedIp, SecurityThreatLog
 from apps.admin_panel.services.brevo import send_brevo_email
@@ -20,13 +21,22 @@ class ThreatMonitorMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
-    def __call__(self, request):
-        # 1. Get Client IP Address
+    @staticmethod
+    def get_client_ip(request):
+        remote_addr = request.META.get('REMOTE_ADDR', '')
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR')
+        # Only trust X-Forwarded-For if direct connection is a local trusted proxy
+        if remote_addr in ['127.0.0.1', '::1'] and x_forwarded_for:
+            return x_forwarded_for.split(',')[0].strip()
+        return remote_addr or '127.0.0.1'
 
-        # 2. Whitelist local/trusted IPs from ANY security checks (same as PHP)
-        if ip in ['127.0.0.1', '::1']:
+    def __call__(self, request):
+        # 1. Get Client IP Address safely
+        remote_addr = request.META.get('REMOTE_ADDR', '')
+        ip = self.get_client_ip(request)
+
+        # 2. Whitelist local/trusted IPs only if direct connection is genuinely local
+        if remote_addr in ['127.0.0.1', '::1'] and ip in ['127.0.0.1', '::1']:
             return self.get_response(request)
 
         # 3. Check if IP is already explicitly Blocked
@@ -197,30 +207,34 @@ class ThreatMonitorMiddleware:
                 user_agent=request.META.get('HTTP_USER_AGENT', '')
             )
 
-            # 9. Send Security Alert Email to Admin via Brevo service
-            try:
-                threat_context = {
-                    'ip_address': ip,
-                    'event_type': matched_type,
-                    'timestamp': timezone.now().strftime('%d %b %Y, %I:%M %p'),
-                    'url': url_to_check,
-                    'payload': input_str[:500],
-                    'user_agent': request.META.get('HTTP_USER_AGENT', ''),
-                    'hacker_name': hacker_name,
-                    'hacker_email': hacker_email,
-                    'location': location,
-                    'isp': isp,
-                    'is_blocked': is_auto_blocked
-                }
-                html_body = render_to_string('emails/security_threat.html', {'threat': threat_context})
-                send_brevo_email(
-                    to_email='ashisprajapati131@gmail.com',
-                    to_name='Admin',
-                    subject='⚠️ SECURITY ALERT: Malicious Activity Detected on PadosiAgent',
-                    html_content=html_body
-                )
-            except Exception as e:
-                logger.error(f"ThreatMonitorMiddleware: Failed to send security email alert: {e}")
+            # 9. Send Security Alert Email to Admin via Brevo service (throttled to avoid DoS)
+            email_cache_key = f"threat_email_alert_{ip}"
+            if is_auto_blocked and not cache.get(email_cache_key):
+                try:
+                    cache.set(email_cache_key, True, timeout=600)  # Throttled: max 1 email per 10 min per blocked IP
+                    threat_context = {
+                        'ip_address': ip,
+                        'event_type': matched_type,
+                        'timestamp': timezone.now().strftime('%d %b %Y, %I:%M %p'),
+                        'url': url_to_check,
+                        'payload': input_str[:500],
+                        'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+                        'hacker_name': hacker_name,
+                        'hacker_email': hacker_email,
+                        'location': location,
+                        'isp': isp,
+                        'is_blocked': is_auto_blocked
+                    }
+                    html_body = render_to_string('emails/security_threat.html', {'threat': threat_context})
+                    alert_email = getattr(settings, 'SECURITY_ALERT_EMAIL', '').strip() or 'ashisprajapati131@gmail.com'
+                    send_brevo_email(
+                        to_email=alert_email,
+                        to_name='Admin',
+                        subject='⚠️ SECURITY ALERT: Malicious Activity Detected on PadosiAgent',
+                        html_content=html_body
+                    )
+                except Exception as e:
+                    logger.error(f"ThreatMonitorMiddleware: Failed to send security email alert: {e}")
 
             # Return 403 response
             if request.headers.get('accept') == 'application/json' or request.path.startswith('/api/'):

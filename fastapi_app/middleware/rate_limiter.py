@@ -20,6 +20,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.requests_limit = requests_limit
         self.window_seconds = window_seconds
         self.client_records = defaultdict(list)
+
+    @staticmethod
+    def get_client_ip(request: Request) -> str:
+        client_host = request.client.host if request.client else "127.0.0.1"
+        forwarded = request.headers.get("x-forwarded-for")
+        if client_host in ["127.0.0.1", "::1", "testclient"] and forwarded:
+            return forwarded.split(",")[0].strip()
+        return client_host
         
     async def dispatch(self, request: Request, call_next):
         # Allow static files and health check routes without limits
@@ -27,14 +35,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if path.startswith("/static") or path == "/":
             return await call_next(request)
             
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            ip = forwarded.split(",")[0].strip()
-        else:
-            ip = request.client.host if request.client else "127.0.0.1"
+        client_host = request.client.host if request.client else "127.0.0.1"
+        ip = self.get_client_ip(request)
             
-        # Bypass localhost checks
-        if ip in ["127.0.0.1", "::1", "testclient"]:
+        # Bypass localhost checks only if direct connection is genuinely local
+        if client_host in ["127.0.0.1", "::1", "testclient", "localhost", "testserver"] and ip in ["127.0.0.1", "::1", "testclient", "localhost", "testserver"]:
             return await call_next(request)
             
         is_sensitive = any(marker in path for marker in SENSITIVE_PATH_MARKERS)

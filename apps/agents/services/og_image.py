@@ -23,8 +23,17 @@ TAG_DEFAULT = ((243, 244, 246), (55, 65, 81), (229, 231, 235))
 
 
 import base64
+import logging
 from django.template.loader import render_to_string
-from playwright.sync_api import sync_playwright
+
+logger = logging.getLogger(__name__)
+
+try:
+    from playwright.sync_api import sync_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except (ImportError, Exception):
+    sync_playwright = None
+    PLAYWRIGHT_AVAILABLE = False
 
 def render_agent_og_jpeg(agent):
     """Return JPEG bytes for an 800x800 agent digital visiting card OG image using Playwright."""
@@ -118,24 +127,94 @@ def render_agent_og_jpeg(agent):
         'segments': segments,
     }
 
-    html = render_to_string('agents/og_image.html', context)
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        # 1200x630 is the recommended aspect ratio for OG images
-        page = browser.new_page(viewport={"width": 1200, "height": 630})
-        page.set_content(html)
-        # Wait until network is mostly idle (allows external fonts/icons to load)
+    if PLAYWRIGHT_AVAILABLE and sync_playwright is not None:
         try:
-            page.wait_for_load_state("networkidle", timeout=3000)
-        except Exception:
-            pass # Timeout is fine, take screenshot anyway
-        
-        # Clip specifically to the card element bounds to avoid white borders
-        jpeg_bytes = page.locator('.rac-desktop-card').screenshot(type="jpeg", quality=95)
-        browser.close()
+            html = render_to_string('agents/og_image.html', context)
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page(viewport={"width": 1200, "height": 630})
+                page.set_content(html)
+                try:
+                    page.wait_for_load_state("networkidle", timeout=2500)
+                except Exception:
+                    pass
+                jpeg_bytes = page.locator('.rac-desktop-card').screenshot(type="jpeg", quality=95)
+                browser.close()
+            return jpeg_bytes
+        except Exception as e:
+            logger.warning(f"Playwright OG rendering failed, falling back to Pillow: {e}")
 
-    return jpeg_bytes
+    # Memory-safe, high-speed Pillow fallback
+    return _render_agent_og_jpeg_pillow(agent, profile=profile, perf=perf)
+
+
+def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
+    """Fast, lightweight in-memory Pillow fallback for 1200x630 OG visiting card."""
+    if profile is None:
+        profile = AgentProfile.objects.filter(agent=agent).first()
+    if perf is None:
+        perf = AgentPerformanceStat.objects.filter(agent=agent).first()
+
+    canvas = Image.new('RGB', (1200, 630), (248, 250, 252))
+    draw = ImageDraw.Draw(canvas)
+
+    # Card background (rounded rectangle)
+    _rounded_rect(draw, [(40, 40), (1160, 590)], radius=24, fill=(255, 255, 255), outline=(226, 232, 240), width=2)
+
+    # Header brand bar
+    _rounded_rect(draw, [(40, 40), (1160, 110)], radius=20, fill=(15, 23, 42))
+    fonts = _load_fonts()
+    draw.text((70, 60), "PadosiAgent · Digital Visiting Card", font=fonts.get('brand', ImageFont.load_default()), fill=(255, 255, 255))
+
+    # Photo or avatar placeholder
+    photo_size = 180
+    photo_x, photo_y = 70, 150
+    photo = _load_photo(agent, profile)
+    if photo:
+        cropped = _cover_crop(photo, photo_size, photo_size)
+        canvas.paste(cropped, (photo_x, photo_y))
+        _rounded_rect(draw, [(photo_x, photo_y), (photo_x + photo_size, photo_y + photo_size)], radius=16, outline=(203, 213, 225), width=2)
+    else:
+        _rounded_rect(draw, [(photo_x, photo_y), (photo_x + photo_size, photo_y + photo_size)], radius=16, fill=(30, 58, 138))
+        name = ((profile.display_name if profile else '') or agent.fullname or 'Agent').strip()
+        initial = (name[0] if name else 'A').upper()
+        draw.text((photo_x + 65, photo_y + 45), initial, font=fonts.get('name', ImageFont.load_default()), fill=(255, 255, 255))
+
+    # Name and details
+    name = ((profile.display_name if profile else '') or agent.fullname or 'Insurance Advisor').strip()
+    draw.text((280, 160), name, font=fonts.get('name', ImageFont.load_default()), fill=(15, 23, 42))
+
+    city = (getattr(agent, 'agent_city_display', '') or getattr(profile, 'city', '') or 'India').strip()
+    loc_text = f"Location: {city}" if city else "Verified Neighbourhood Advisor"
+    draw.text((280, 230), loc_text, font=fonts.get('loc', ImageFont.load_default()), fill=(71, 85, 105))
+
+    # Metrics section
+    stats_y = 360
+    draw.line([(70, 330), (1130, 330)], fill=(226, 232, 240), width=2)
+
+    exp_years = (profile.experience_years if profile and profile.experience_years else "1+")
+    draw.text((90, stats_y), "EXPERIENCE", font=fonts.get('label', ImageFont.load_default()), fill=(100, 116, 139))
+    draw.text((90, stats_y + 30), f"{exp_years} Years", font=fonts.get('val', ImageFont.load_default()), fill=(15, 23, 42))
+
+    rating = round(getattr(agent, 'average_rating', 0.0) or 5.0, 1)
+    draw.text((400, stats_y), "RATING", font=fonts.get('label', ImageFont.load_default()), fill=(100, 116, 139))
+    draw.text((400, stats_y + 30), f"Rating: {rating}/5.0", font=fonts.get('val', ImageFont.load_default()), fill=(217, 119, 6))
+
+    clients = getattr(agent, 'client_base', None) or "50+"
+    draw.text((720, stats_y), "HAPPY CLIENTS", font=fonts.get('label', ImageFont.load_default()), fill=(100, 116, 139))
+    draw.text((720, stats_y + 30), f"{clients}", font=fonts.get('val', ImageFont.load_default()), fill=(15, 23, 42))
+
+    claims = perf.claims_settled if (perf and perf.claims_settled is not None) else "20+"
+    draw.text((970, stats_y), "CLAIMS SETTLED", font=fonts.get('label', ImageFont.load_default()), fill=(100, 116, 139))
+    draw.text((970, stats_y + 30), f"{claims}", font=fonts.get('val', ImageFont.load_default()), fill=(15, 23, 42))
+
+    # Footer
+    draw.line([(70, 480), (1130, 480)], fill=(226, 232, 240), width=2)
+    draw.text((90, 515), "Connect directly on PadosiAgent · Zero Middlemen · Instant WhatsApp & Calls", font=fonts.get('cta', ImageFont.load_default()), fill=(37, 99, 235))
+
+    buf = io.BytesIO()
+    canvas.save(buf, format='JPEG', quality=90)
+    return buf.getvalue()
 
 
 def _load_fonts():
