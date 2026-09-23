@@ -49,14 +49,31 @@
     </div>
 </div>
 
-<!-- Invite Section -->
+<!-- Invite + Login Links -->
 <div class="card mb-4 border-0 shadow-sm overflow-hidden" style="border-radius: 12px;">
     <div class="p-4" style="background: linear-gradient(to right, #0f172a, #1e293b); color: white;">
-        <h6 class="fw-bold mb-3"><i class="fa-solid fa-link text-warning me-2"></i> Your Sub-Distributor Invite Link</h6>
-        <div class="d-flex align-items-center gap-2">
-            <input type="text" class="form-control text-muted" id="subInviteLink" value="{{ sub_invite_url }}" readonly style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white !important;">
-            <button class="btn btn-warning shadow-sm" onclick="copySubInviteLink()"><i class="fa-regular fa-copy"></i></button>
-            <a href="https://wa.me/?text={{ whatsapp_invite_msg|urlencode }}" target="_blank" class="btn btn-success shadow-sm"><i class="fa-brands fa-whatsapp"></i></a>
+        <div class="row g-4">
+            <!-- Invite link: register a NEW sub-distributor -->
+            <div class="col-lg-6">
+                <h6 class="fw-bold mb-1"><i class="fa-solid fa-user-plus text-warning me-2"></i> Invite Link — add a new sub-distributor</h6>
+                <p class="mb-2" style="font-size: 12px; opacity: 0.7;">Share with a candidate so they can register under your network.</p>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="text" class="form-control" id="subInviteLink" value="{{ sub_invite_url }}" readonly style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white !important;">
+                    <button class="btn btn-warning shadow-sm flex-shrink-0" onclick="copySubInviteLink()" title="Copy invite link"><i class="fa-regular fa-copy"></i></button>
+                    <a href="https://wa.me/?text={{ whatsapp_invite_msg|urlencode }}" target="_blank" class="btn btn-success shadow-sm flex-shrink-0" title="Share on WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+                </div>
+            </div>
+
+            <!-- Login link: for EXISTING sub-distributors to sign in -->
+            <div class="col-lg-6">
+                <h6 class="fw-bold mb-1"><i class="fa-solid fa-right-to-bracket text-info me-2"></i> Login Link — for existing sub-distributors</h6>
+                <p class="mb-2" style="font-size: 12px; opacity: 0.7;">Share so your sub-distributors can sign in with their email/mobile + password.</p>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="text" class="form-control" id="subLoginLink" value="{{ sub_login_url }}" readonly style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white !important;">
+                    <button class="btn btn-warning shadow-sm flex-shrink-0" onclick="copySubLoginLink()" title="Copy login link"><i class="fa-regular fa-copy"></i></button>
+                    <a href="https://wa.me/?text={{ whatsapp_login_msg|urlencode }}" target="_blank" class="btn btn-success shadow-sm flex-shrink-0" title="Share on WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -185,6 +202,13 @@
         copyText.setSelectionRange(0, 99999);
         navigator.clipboard.writeText(copyText.value);
         alert("Invite Link copied!");
+    }
+    function copySubLoginLink() {
+        var copyText = document.getElementById("subLoginLink");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value);
+        alert("Login Link copied!");
     }
     function copyAgentLink(link) {
         navigator.clipboard.writeText(link);

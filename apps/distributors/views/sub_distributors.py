@@ -101,10 +101,20 @@ def sub_distributors_index(request):
 
     whatsapp_invite_msg = f"Join my network as a Sub-Distributor on PadosiAgent! Register here: {sub_invite_url}"
 
+    # Portal login link that the distributor shares with EXISTING sub-distributors
+    # so they can sign in with their registered email/mobile + password.
+    sub_login_url = request.build_absolute_uri(reverse('distributors:sub_distributor_login'))
+    whatsapp_login_msg = (
+        f"Login to your PadosiAgent Sub-Distributor portal here: {sub_login_url}\n"
+        f"Use your registered email/mobile and password."
+    )
+
     context = {
         'sub_distributors': sub_distributors,
         'sub_invite_url': sub_invite_url,
         'whatsapp_invite_msg': whatsapp_invite_msg,
+        'sub_login_url': sub_login_url,
+        'whatsapp_login_msg': whatsapp_login_msg,
         'total_sub_dists': total_sub_dists,
         'active_sub_dists': active_sub_dists,
         'total_sub_agents': total_sub_agents,
