@@ -81,7 +81,13 @@ def participants_router(request):
 
 @require_GET
 def participants_index(request):
-    """GET /participants — plain JSON listing (no blade exists on the Laravel side)."""
+    """GET /participants — plain JSON listing (no blade exists on the Laravel side).
+
+    Admin-only: it returns every contestant's name, email and phone number.
+    """
+    from apps.admin_panel.views.dashboard import _get_admin_from_session
+    if not _get_admin_from_session(request):
+        return JsonResponse({'success': False, 'message': 'Unauthorized.'}, status=403)
     participants = Participant.objects.all().order_by('-id')
     return JsonResponse({
         'success': True,
@@ -218,15 +224,34 @@ def _get_participant_or_error(request):
     if not participant:
         return None, _validation_failure({'participant_id': ['The selected participant id is invalid.']})
 
-    # Authorization verification: ensure matching session or shareable token
-    session_pid = request.session.get('participant_id')
-    shareable_token = request.POST.get('shareable_id') or request.headers.get('X-Participant-Token')
-    if session_pid and session_pid != participant.id:
+    if not _owns_participant(request, participant):
         return None, JsonResponse({'success': False, 'message': 'Unauthorized participant access.'}, status=403)
-    if shareable_token and participant.shareable_id != shareable_token:
-        return None, JsonResponse({'success': False, 'message': 'Invalid participant token.'}, status=403)
 
     return participant, None
+
+
+def _owns_participant(request, participant):
+    """Require the registering session OR the participant's shareable token.
+
+    Previously both checks only rejected a *mismatch*, so a request carrying
+    neither was accepted for any id — letting anyone post to a participant's
+    Facebook feed with their stored access token.
+    """
+    import hmac
+    session_pid = request.session.get('participant_id')
+    if session_pid and str(session_pid) == str(participant.id):
+        return True
+    shareable_token = (
+        request.POST.get('shareable_id')
+        or request.GET.get('shareable_id')
+        or request.headers.get('X-Participant-Token')
+        or ''
+    )
+    return bool(
+        shareable_token
+        and participant.shareable_id
+        and hmac.compare_digest(str(participant.shareable_id), str(shareable_token))
+    )
 
 
 def _facebook_post(url, data):
@@ -412,7 +437,7 @@ def facebook_store_token(request):
 def facebook_connection_status(request, participant_id):
     """GET api/facebook/connection-status/{participantId} — FacebookPostController@getConnectionStatus."""
     participant = Participant.objects.filter(id=participant_id).first()
-    if not participant:
+    if not participant or not _owns_participant(request, participant):
         return JsonResponse({'success': False, 'message': 'Participant not found'}, status=404)
 
     is_connected = bool(participant.facebook_access_token and participant.facebook_user_id)

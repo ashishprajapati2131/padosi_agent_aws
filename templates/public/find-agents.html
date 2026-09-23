@@ -2862,8 +2862,19 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
     // Agent Comparison Logic
     const _compareUserId = '{{ request.user.id|default:"guest" }}';
-    const _compareStorageKey = 'selectedCompareAgents_' + _compareUserId;
+    // v2: entries are stored HTML-escaped (see _escCompare); drop older raw entries.
+    const _compareStorageKey = 'selectedCompareAgents_v2_' + _compareUserId;
     localStorage.removeItem('selectedCompareAgents');
+    localStorage.removeItem('selectedCompareAgents_' + _compareUserId);
+    // Agent-controlled text (names, cities...) is re-inserted as HTML by the
+    // compare bar/table, so escape it once when the entry is built.
+    function _escCompare(value) {
+        if (value === null || value === undefined) return value;
+        if (typeof value !== 'string') return value;
+        return value.replace(/[&<>"'`]/g, function (c) {
+            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'}[c];
+        });
+    }
     let selectedCompareAgents = JSON.parse(localStorage.getItem(_compareStorageKey)) || [];
 
     window.closeComparisonModal = function () {
@@ -3375,23 +3386,23 @@ no spam calls, only trusted licensed agents.{% endblock %}
         const agentId = btn.data('agent-id');
         const agentData = {
             id: agentId,
-            name: btn.data('agent-name'),
-            experience: btn.data('agent-experience'),
-            rating: btn.data('agent-rating'),
-            reviews: btn.data('agent-reviews'),
-            claims: btn.data('agent-claims'),
-            settled: btn.data('agent-settled'),
-            clients: btn.data('agent-clients'),
-            segments: btn.data('agent-segments') || 'N/A',
+            name: _escCompare(btn.data('agent-name')),
+            experience: _escCompare(btn.data('agent-experience')),
+            rating: _escCompare(btn.data('agent-rating')),
+            reviews: _escCompare(btn.data('agent-reviews')),
+            claims: _escCompare(btn.data('agent-claims')),
+            settled: _escCompare(btn.data('agent-settled')),
+            clients: _escCompare(btn.data('agent-clients')),
+            segments: _escCompare(btn.data('agent-segments') || 'N/A'),
             approved: String(btn.data('agent-approved')) === '1',
             verified: String(btn.data('agent-verified')) === '1',
             trusted: String(btn.data('agent-trusted')) === '1',
-            badge: btn.data('agent-badge') || 'none',
-            location: btn.data('agent-location'),
-            slug: btn.data('agent-slug'),
-            mobile: btn.data('agent-mobile'),
-            whatsapp: btn.data('agent-whatsapp'),
-            image: btn.data('agent-image')
+            badge: _escCompare(btn.data('agent-badge') || 'none'),
+            location: _escCompare(btn.data('agent-location')),
+            slug: _escCompare(btn.data('agent-slug')),
+            mobile: _escCompare(btn.data('agent-mobile')),
+            whatsapp: _escCompare(btn.data('agent-whatsapp')),
+            image: _escCompare(btn.data('agent-image'))
         };
 
         const index = selectedCompareAgents.findIndex(a => a.id === agentId);

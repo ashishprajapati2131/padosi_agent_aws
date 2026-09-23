@@ -30,16 +30,20 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         token_user_id = payload.get("user_id")
         if email is None or role != "agent":
             raise credentials_exception
-            
-        if jti:
-            from fastapi_app.models.user_token import UserToken
-            token_record = db.query(UserToken).filter(UserToken.jti == jti).first()
-            if not token_record or token_record.is_revoked:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token is invalid or has been revoked",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
+
+        # Every token we issue carries a registered jti (generate_and_register_token).
+        # A token without one was never issued by us, so it must not skip the
+        # revocation registry.
+        if not jti:
+            raise credentials_exception
+        from fastapi_app.models.user_token import UserToken
+        token_record = db.query(UserToken).filter(UserToken.jti == jti).first()
+        if not token_record or token_record.is_revoked:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token is invalid or has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     except ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

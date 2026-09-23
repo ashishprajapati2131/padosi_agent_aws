@@ -44,11 +44,10 @@ class AuthService:
 
     def login(self, request: LoginRequest, req: Request) -> JSONResponse:
         # Extract client IP
-        forwarded = req.headers.get("x-forwarded-for")
-        if forwarded:
-            ip = forwarded.split(",")[0].strip()
-        else:
-            ip = req.client.host if req.client else "127.0.0.1"
+        # Trusted-proxy rule: a raw X-Forwarded-For let clients reset the
+        # login throttle on every attempt.
+        from fastapi_app.utils.client_ip import get_client_ip
+        ip = get_client_ip(req)
 
         # Rate Limit check
         if not check_login_throttle(ip):

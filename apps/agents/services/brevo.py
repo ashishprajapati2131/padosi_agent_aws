@@ -399,7 +399,12 @@ def _build_otp_html(otp_code: str) -> str:
 
 def _build_welcome_html(name: str, email: str, password: str, plan_name: str) -> str:
     """Render the welcome / credentials email HTML."""
-    plan_line = f"<strong>{plan_name}</strong>" if plan_name else "your selected plan"
+    import html as _html
+    # Agent-controlled values go into HTML: escape them.
+    name = _html.escape(name or '')
+    email = _html.escape(email or '')
+    password = _html.escape(password or '')
+    plan_line = f"<strong>{_html.escape(plan_name)}</strong>" if plan_name else "your selected plan"
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>

@@ -64,7 +64,9 @@ class AgentSitemap(Sitemap):
     changefreq = 'daily'
 
     def items(self):
-        return Agent.objects.filter(is_approved=True, status='active').order_by('id')
+        # select_related: location() reads profile.slug/state for every agent
+        # (one extra query per agent without it).
+        return Agent.objects.filter(is_approved=True, status='active').select_related('profile').order_by('id')
 
     def lastmod(self, obj):
         return obj.updated_at

@@ -216,7 +216,6 @@ def request_status_change(request, agent_id):
 from django.views.decorators.csrf import csrf_exempt
 
 # Bulk Cart Methods
-@csrf_exempt
 @login_required
 def add_to_cart(request):
     user = request.user
@@ -258,7 +257,6 @@ def add_to_cart(request):
             'subtotal': sum(item['amount'] for item in cart)
         })
 
-@csrf_exempt
 @login_required
 def remove_from_cart(request):
     if request.method == 'POST':
@@ -274,13 +272,11 @@ def remove_from_cart(request):
             'subtotal': sum(item['amount'] for item in cart)
         })
 
-@csrf_exempt
 @login_required
 def clear_cart(request):
     request.session.pop('insurance_bulk_cart', None)
     return JsonResponse({'success': True, 'message': 'Cart cleared successfully!'})
 
-@csrf_exempt
 @login_required
 def checkout_cart(request):
     user = request.user
@@ -398,7 +394,6 @@ try:
 except ImportError:
     razorpay = None
 
-@csrf_exempt
 @login_required
 def checkout_online_start(request):
     user = request.user

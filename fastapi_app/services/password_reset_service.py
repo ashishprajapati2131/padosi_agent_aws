@@ -64,12 +64,12 @@ class PasswordResetService:
             # URL structure: {APP_URL}{mount}/reset-password/{raw_token}?email={email}&type={login_type}
             # The service is mounted under /api inside the Django ASGI app, so
             # the link has to carry that prefix or it resolves to Django and 404s.
-            base_url = settings.APP_URL
+            # Host comes from configuration, never from request headers: a
+            # client-controlled Host/X-Forwarded-Host would put the raw reset
+            # token into a link pointing at an attacker's domain.
+            base_url = (settings.APP_URL or "").rstrip("/")
             mount_prefix = ""
             if req:
-                proto = req.headers.get("x-forwarded-proto", req.url.scheme)
-                host = req.headers.get("x-forwarded-host", req.headers.get("host", req.url.netloc))
-                base_url = f"{proto}://{host}"
                 mount_prefix = req.scope.get("root_path", "") or ""
 
             reset_url = (
@@ -189,7 +189,16 @@ class PasswordResetService:
             # 5. Delete the reset token from database
             if not authenticated_user:
                 self.token_repo.delete_by_email(user.email)
-            
+
+            # 6. Account recovery (emailed token) must end every existing API
+            #    session; stolen tokens previously stayed valid until expiry.
+            #    An authenticated in-app password change keeps the current login.
+            if not authenticated_user:
+                from fastapi_app.models.user_token import UserToken
+                self.db.query(UserToken).filter(UserToken.user_id == user.id).update(
+                    {"is_revoked": True}, synchronize_session=False
+                )
+
             self.db.commit()
             return JSONResponse(
                 status_code=200,

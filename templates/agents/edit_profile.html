@@ -1,5 +1,5 @@
 {% extends base_template %}
-{% load static %}
+{% load static json_tags %}
 
 {% block title %}
 {% if admin_lock_preview %}
@@ -3572,7 +3572,7 @@ Overview
                 }
             });
         }
-    })("{{ portfolio.segment_type|escapejs }}", {{ portfolio.primary_companies|default:"{}"|safe }}, {{ portfolio.secondary_companies|default:"{}"|safe }});
+    })("{{ portfolio.segment_type|escapejs }}", {{ portfolio.primary_companies|safe_json:"{}" }}, {{ portfolio.secondary_companies|safe_json:"{}" }});
     {% endfor %}
     {% endif %}
 

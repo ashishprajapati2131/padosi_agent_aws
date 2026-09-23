@@ -230,6 +230,19 @@ DEFAULT_AUTO_FIELD = 'django.db.backends.BigAutoField'
 - **Dependency:** `fastapi_app/dependencies/auth.py` → `get_current_agent()`
 - **Password:** Same `password_hashing.py` bcrypt
 
+### Reality check (verified in 2026-09-23 security audit)
+- Web agent identity is actually `request.user` → `resolve_agent_for_user()` (matches/re-links an Agent by **email**). Nothing sets `session['agent_id']` in normal login and there is no `@agent_required` decorator. Consequence: **any code path that logs a session into an `auth_user` whose email equals an agent's email hands over that agent's dashboard.**
+- Sub-distributor portal auth: `_portal_sub_distributor_id()` — `session['sub_distributor_portal_id']` (set only by `_start_sub_distributor_session`), or a pre-upgrade login session holding matching `sub_distributor_id` + `sub_distributor_code`. `session['sub_distributor_id']` alone is referral attribution written by public `/join/<code>/` links — never use it for auth.
+
+### Security invariants (do not regress — see `apps/agents/test_audit_security.py`)
+1. Payment endpoints never trust a client-supplied `agent_id` / `plan_type` / `plan_name`. The agent comes from the paid order; login only when the session owns the checkout (`_session_owns_agent()`) or the request carries a valid Razorpay signature for that order (`_payer_signature_valid()`); the plan comes from `subscription.selected_plan` (`_order_plan_slug`).
+2. Passwordless flows (`client_quick_register`, `fb_ad_signup`) must never `login()` a portal user (`_is_portal_user`) or create an `auth_user` for an email owned by an agent/portal account (`_email_belongs_to_portal_account`).
+3. (Owner decision) New agents' temporary password is their email and the welcome email says so — intentionally unchanged.
+4. Client IP = `ThreatMonitorMiddleware.get_client_ip()` (Django) / `fastapi_app.utils.client_ip.get_client_ip()` — never `X-Forwarded-For.split(',')[0]`.
+5. Data embedded in `<script>`: use `{% load json_tags %}{{ value|safe_json }}`, never `json.dumps(...)|safe`. Server JSON that JS inserts via `innerHTML` must be HTML-escaped at the source.
+6. Changing an agent's email must be rejected if the address belongs to any other `auth_user`/`users` row.
+7. Private files: normalise the path before any ownership check (`serve_private_file`).
+
 ### NEVER mix auth systems
 - Do NOT use `request.user.is_authenticated` to check if an agent is logged in
 - Do NOT use Django sessions to pass data to FastAPI

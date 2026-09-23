@@ -37,6 +37,24 @@ jobs:
         run: |
           python manage.py check
 
+      # Tests run on in-memory SQLite (apps.home.test_runner), no MySQL needed.
+      # Non-blocking for now so a known failing test cannot stop a deploy;
+      # delete "continue-on-error" once the suite is fully green to make it a gate.
+      - name: Run test suite
+        continue-on-error: true
+        env:
+          DJANGO_SETTINGS_MODULE: padosi_agent.settings
+          SECRET_KEY: ci-check-only
+          DEBUG: "True"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          DB_NAME: ci
+          DB_USER: ci
+          DB_PASSWORD: ci
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+        run: |
+          python manage.py test apps fastapi_app --noinput
+
       - name: Deploy to GoDaddy via SSH
         env:
           GODADDY_HOST: ${{ secrets.GODADDY_HOST }}

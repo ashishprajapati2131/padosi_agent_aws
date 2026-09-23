@@ -23,11 +23,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     @staticmethod
     def get_client_ip(request: Request) -> str:
-        client_host = request.client.host if request.client else "127.0.0.1"
-        forwarded = request.headers.get("x-forwarded-for")
-        if client_host in ["127.0.0.1", "::1", "testclient"] and forwarded:
-            return forwarded.split(",")[0].strip()
-        return client_host
+        from fastapi_app.utils.client_ip import get_client_ip
+        return get_client_ip(request)
         
     async def dispatch(self, request: Request, call_next):
         # Allow static files and health check routes without limits

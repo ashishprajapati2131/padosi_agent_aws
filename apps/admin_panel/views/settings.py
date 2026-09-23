@@ -322,27 +322,57 @@ def general(request):
     return render(request, 'admin/settings/general.html', context)
 
 
+# Keys each settings form may write. update_settings used to save ANY posted
+# key, so an admin with "settings" access could overwrite unrelated values such
+# as pricing_config (plan prices) by adding a field to the form.
+SETTINGS_FORM_KEYS = {
+    'general': {
+        'site_name', 'contact_email', 'contact_phone', 'contact_address',
+        'social_links', 'distributor_invite_message',
+    },
+    'seo': {
+        'seo_meta_title', 'seo_meta_description', 'seo_keywords',
+        'seo_og_title', 'seo_og_description',
+    },
+    'security': {'rate_limit_clicks', 'rate_limit_timeframe'},
+}
+
+
 def update_settings(request):
     admin_id = _get_admin_from_session(request)
     if not admin_id: return redirect('admin_login')
 
     if request.method == 'POST':
         group = request.POST.get('group', 'general')
-        
+        if group not in SETTINGS_FORM_KEYS:
+            group = 'general'
+        allowed_keys = SETTINGS_FORM_KEYS[group]
+
         # Parse nested inputs like social_links[facebook]
         parsed_post = parse_nested_post(request.POST.dict())
-        
+
         # Save each standard parsed key
         for key, value in parsed_post.items():
             if key in ['group', 'site_logo', 'site_favicon']:
+                continue
+            if key not in allowed_keys:
                 continue
             SiteSetting.set_value(key, value, group=group)
             
         # Handle file uploads (site_logo, site_favicon)
         import uuid
         fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'site'), base_url='/media/site/')
+        # Only the logo/favicon inputs exist, and only raster images: any other
+        # key/extension (e.g. .html/.svg) was stored under /media/site/ and
+        # served same-origin — stored XSS for anyone with settings access.
+        allowed_file_keys = {'site_logo', 'site_favicon'} if group == 'general' else set()
+        allowed_image_exts = {'.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico'}
         for key, file_obj in request.FILES.items():
             orig_name, ext = os.path.splitext(file_obj.name)
+            if key not in allowed_file_keys or ext.lower() not in allowed_image_exts:
+                messages.error(request, f'Rejected upload "{file_obj.name}": only PNG/JPG/WEBP/GIF/ICO logo or favicon files are allowed.')
+                continue
+            orig_name = re.sub(r'[^A-Za-z0-9_-]', '_', orig_name)[:60] or 'file'
             random_suffix = uuid.uuid4().hex[:8]
             new_filename = f"{orig_name}_{random_suffix}{ext}"
             

@@ -11,6 +11,8 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
+MAX_CHAT_MESSAGE_CHARS = 2000
+
 @require_GET
 def get_history(request, session_id):
     if not session_id or not re.match(r'^[a-zA-Z0-9_\-]+$', session_id) or len(session_id) > 100:
@@ -59,13 +61,18 @@ def get_chips(request):
 @csrf_exempt
 @require_POST
 def send_message(request):
-    # Cross-origin protection
+    # Cross-origin protection: exact host match ("host in origin" accepted
+    # e.g. https://padosiagent.com.evil.example).
+    from urllib.parse import urlparse
     origin = request.headers.get('origin', '')
     host = request.get_host()
-    if origin and host not in origin:
+    if origin and urlparse(origin).netloc.lower() != host.lower():
         logger.warning(f"Blocked unauthorized cross-origin chatbot request from origin: {origin}")
         return JsonResponse({"success": False, "error": "Forbidden cross-origin request."}, status=403)
-    client_ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+    # Behind the local reverse proxy REMOTE_ADDR is 127.0.0.1 for everyone, which
+    # made this a single global bucket; use the trusted-proxy client IP.
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware
+    client_ip = ThreatMonitorMiddleware.get_client_ip(request)
     
     # Rate limit: 20 messages per minute per IP using a rolling window
     rl_key = f"ratelimit_chat_{client_ip}"
@@ -87,17 +94,24 @@ def send_message(request):
     
     try:
         data = json.loads(request.body)
-        user_message = data.get("message", "").strip()
-        session_id = data.get("session_id", "").strip()
-        
+        if not isinstance(data, dict):
+            return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+        user_message = str(data.get("message") or "").strip()
+        session_id = str(data.get("session_id") or "").strip()
+
+        if session_id and (len(session_id) > 100 or not re.match(r'^[a-zA-Z0-9_\-]+$', session_id)):
+            return JsonResponse({"success": False, "error": "Invalid session identifier."}, status=400)
         if not session_id:
-            # Fallback to django session
-            if not request.session.session_key:
-                request.session.create()
-            session_id = request.session.session_key
-            
+            # Random chat id. This used to fall back to the Django session key,
+            # which is returned to the page and works as a bearer id for chat
+            # history — exposing the HttpOnly session secret to JavaScript.
+            session_id = uuid.uuid4().hex
+
         if not user_message:
             return JsonResponse({"success": False, "error": "Message is required."}, status=400)
+        if len(user_message) > MAX_CHAT_MESSAGE_CHARS:
+            # Every character is billed LLM input; cap it.
+            return JsonResponse({"success": False, "error": "Message is too long."}, status=400)
 
         def event_stream():
             """SSE generator — wraps stream_plain_text_completion and handles the use_full_flow fallback."""

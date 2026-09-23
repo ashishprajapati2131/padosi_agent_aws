@@ -1038,18 +1038,26 @@ def store_review(request, slug, state_code=None):
         )
     else:
         mobile_digits = re.sub(r'[^0-9]', '', mobile)
-        review_obj, created = AgentReview.objects.update_or_create(
+        # The email is unverified, so an anonymous submission may create a review
+        # but never overwrite one: update_or_create let anyone who knew (or
+        # guessed) a reviewer's email rewrite that review's text and rating.
+        if AgentReview.objects.filter(agent=agent, reviewer_email=reviewer_email).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'A review from this email already exists for this agent.',
+                'errors': {'email': ['A review from this email already exists for this agent.']},
+            }, status=422)
+        review_obj = AgentReview.objects.create(
             agent=agent,
             reviewer_email=reviewer_email,
-            defaults={
-                'user': None,
-                'reviewer_name': fullname,
-                'reviewer_mobile': mobile_digits,
-                'rating': rating_val,
-                'review': review_val,
-                'is_approved': True
-            }
+            user=None,
+            reviewer_name=fullname,
+            reviewer_mobile=mobile_digits,
+            rating=rating_val,
+            review=review_val,
+            is_approved=True,
         )
+        created = True
     message = 'Review submitted successfully!' if created else 'Review updated successfully!'
 
     new_review_count = agent_review_count(agent)
@@ -1240,6 +1248,20 @@ def update_profile(request):
     return apply_profile_update(request, agent, is_admin_edit=False)
 
 
+def _email_taken_by_other_login(email, agent):
+    """True if another auth_user / users row already owns this email."""
+    from django.contrib.auth.models import User as DjangoUser
+    from apps.agents.services.account_auth import fetch_users_row
+
+    new = (email or '').strip().lower()
+    current = (agent.email or '').strip().lower()
+    if not new or new == current:
+        return False
+    if DjangoUser.objects.filter(email__iexact=new).exclude(pk=agent.user_id).exists():
+        return True
+    return fetch_users_row(email=new) is not None
+
+
 def apply_profile_update(request, agent, is_admin_edit=False):
     from django.http import JsonResponse
     from django.db import transaction
@@ -1282,6 +1304,10 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                     errors['full_name'] = ['The full name field is required.']
                 elif len(full_name) > 255:
                     errors['full_name'] = ['Full name cannot exceed 255 characters.']
+                elif re.search(r'[<>]', full_name):
+                    errors['full_name'] = ['Full name contains invalid characters.']
+                if display_name and re.search(r'[<>]', display_name):
+                    errors['display_name'] = ['Display name contains invalid characters.']
                     
                 if not email:
                     errors['email'] = ['The email field is required.']
@@ -1289,6 +1315,11 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                     try:
                         validate_email(email)
                         if Agent.objects.filter(email__iexact=email).exclude(id=agent.id).exists():
+                            errors['email'] = ['The email has already been taken.']
+                        elif _email_taken_by_other_login(email, agent):
+                            # Login resolves accounts by email across auth_user and
+                            # users; taking a staff/insurance/distributor address
+                            # let an agent log in as (and overwrite) that account.
                             errors['email'] = ['The email has already been taken.']
                     except ValidationError:
                         errors['email'] = ['Enter a valid email address.']
@@ -2229,16 +2260,15 @@ def agent_capture_lead(request):
         if interaction_type not in allowed_types:
             return JsonResponse({'success': False, 'message': 'Invalid interaction type.'}, status=400)
 
-        # Get client IP
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            client_ip = x_forwarded_for.split(',')[0].strip()
-        else:
-            client_ip = request.META.get('REMOTE_ADDR')
+        # Get client IP (trusted-proxy rule; a raw X-Forwarded-For let callers
+        # rotate IPs to bypass the per-IP lead limit below)
+        from apps.admin_panel.middleware import ThreatMonitorMiddleware
+        client_ip = ThreatMonitorMiddleware.get_client_ip(request)
 
         # 1. Explicit IP Block Check
         from apps.agents.models import BlockedIp
-        if BlockedIp.objects.filter(ip_address=client_ip).exists():
+        from apps.admin_panel.middleware import is_ip_blocked
+        if is_ip_blocked(client_ip):
             return JsonResponse({
                 'success': False,
                 'url': '#',
@@ -2497,7 +2527,14 @@ def agent_og_image(request, agent_id=None, slug=None):
         raise Http404("Agent not found")
 
     cache_key = og_image_cache_key(agent.id)
+    # Cache bypass forces a full PIL render; only the owning agent or an admin
+    # may use it, otherwise it is a free CPU-exhaustion lever on a public URL.
     nocache = request.GET.get("nocache") == "1"
+    if nocache:
+        from apps.admin_panel.views.dashboard import _get_admin_from_session
+        owns = request.user.is_authenticated and agent.user_id == request.user.pk
+        if not owns and not _get_admin_from_session(request):
+            nocache = False
 
     if not nocache:
         cached_image = cache.get(cache_key)
@@ -2596,7 +2633,22 @@ def serve_private_file(request, file_path):
     from django.conf import settings
     from apps.admin_panel.views.dashboard import _get_admin_from_session
 
-    # 1. Access checks
+    import posixpath
+
+    # 1. Normalise FIRST. Ownership used to be checked on the raw path, so
+    #    "agents/<my id>/../../invoices/<other>.pdf" passed as "owner" and then
+    #    resolved to another agent's invoice.
+    private_root = os.path.abspath(os.path.join(settings.MEDIA_ROOT, 'app', 'private'))
+    normalized_path = posixpath.normpath(str(file_path).replace('\\', '/')).lstrip('/')
+    normalized_full_path = os.path.abspath(os.path.join(private_root, normalized_path))
+    try:
+        inside_root = os.path.commonpath([normalized_full_path, private_root]) == private_root
+    except ValueError:
+        inside_root = False
+    if not inside_root or normalized_path.startswith('..'):
+        return HttpResponseForbidden("Access Denied: Invalid path traversal attempt.")
+
+    # 2. Access checks on the normalised path
     admin_id = _get_admin_from_session(request)
     is_admin = admin_id is not None
 
@@ -2605,7 +2657,6 @@ def serve_private_file(request, file_path):
         from apps.agents.models import Agent, Invoice
         agent = Agent.objects.filter(user=request.user).first()
         if agent:
-            normalized_path = file_path.replace('\\', '/').lstrip('/')
             invoice_exists = Invoice.objects.filter(agent=agent, pdf_path=normalized_path).exists()
             if invoice_exists:
                 is_owner = True
@@ -2614,14 +2665,6 @@ def serve_private_file(request, file_path):
 
     if not is_admin and not is_owner:
         return HttpResponseForbidden("Access Denied: You do not have permission to access this file.")
-
-    # 2. Path normalization to prevent path traversal
-    full_path = os.path.join(settings.MEDIA_ROOT, 'app', 'private', file_path)
-    normalized_full_path = os.path.abspath(full_path)
-    private_root = os.path.abspath(os.path.join(settings.MEDIA_ROOT, 'app', 'private'))
-    
-    if not normalized_full_path.startswith(private_root):
-        return HttpResponseForbidden("Access Denied: Invalid path traversal attempt.")
 
     if not os.path.exists(normalized_full_path):
         raise Http404("File not found")

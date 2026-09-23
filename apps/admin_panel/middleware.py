@@ -13,6 +13,64 @@ from apps.admin_panel.services.brevo import send_brevo_email
 
 logger = logging.getLogger(__name__)
 
+
+def client_ip_from_forwarded_for(x_forwarded_for):
+    """Real client IP from an X-Forwarded-For chain received via a trusted proxy.
+
+    Proxies APPEND the address they saw, so the left-most entries are whatever
+    the client sent. Walk from the right, skipping internal proxy hops
+    (private / loopback), and return the first public address. Taking entry
+    [0] let anyone spoof their IP — dodging rate limits and getting arbitrary
+    IPs (e.g. shared mobile CGNAT addresses) auto-blocked.
+    """
+    import ipaddress
+
+    hops = [h.strip() for h in (x_forwarded_for or '').split(',') if h.strip()]
+    valid = []
+    for hop in hops:
+        try:
+            valid.append((hop, ipaddress.ip_address(hop)))
+        except ValueError:
+            continue
+    for hop, addr in reversed(valid):
+        if not (addr.is_private or addr.is_loopback or addr.is_link_local):
+            return hop
+    if valid:
+        return valid[0][0]
+    return '127.0.0.1'
+
+
+AUTO_BLOCK_PREFIX = 'Auto-blocked'
+AUTO_BLOCK_TTL_HOURS = 24
+
+
+def is_ip_blocked(ip):
+    """True if the IP is blocked. Automatic blocks expire after 24 hours.
+
+    Auto-blocks used to be permanent, which could lock out a shared mobile
+    (CGNAT) IP used by many real users. Blocks added manually by an admin
+    (any reason not starting with "Auto-blocked") stay until lifted.
+    """
+    block = BlockedIp.objects.filter(ip_address=ip).first()
+    if not block:
+        return False
+    reason = block.reason or ''
+    created = getattr(block, 'created_at', None)
+    if reason.startswith(AUTO_BLOCK_PREFIX) and created:
+        from datetime import datetime, timedelta
+        try:
+            expired = created < datetime.now() - timedelta(hours=AUTO_BLOCK_TTL_HOURS)
+        except TypeError:  # aware vs naive datetime from legacy rows
+            expired = False
+        if expired:
+            try:
+                block.delete()
+            except Exception:
+                logger.warning('Could not lift expired auto-block for %s', ip)
+            return False
+    return True
+
+
 class ThreatMonitorMiddleware:
     """
     Web Application Firewall (WAF) and Threat Monitor Middleware.
@@ -27,7 +85,7 @@ class ThreatMonitorMiddleware:
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         # Only trust X-Forwarded-For if direct connection is a local trusted proxy
         if remote_addr in ['127.0.0.1', '::1'] and x_forwarded_for:
-            return x_forwarded_for.split(',')[0].strip()
+            return client_ip_from_forwarded_for(x_forwarded_for)
         return remote_addr or '127.0.0.1'
 
     def __call__(self, request):
@@ -40,7 +98,7 @@ class ThreatMonitorMiddleware:
             return self.get_response(request)
 
         # 3. Check if IP is already explicitly Blocked
-        if BlockedIp.objects.filter(ip_address=ip).exists():
+        if is_ip_blocked(ip):
             if request.headers.get('accept') == 'application/json' or request.path.startswith('/api/'):
                 return JsonResponse({'error': 'Forbidden', 'message': 'Your IP address has been blocked.'}, status=403)
             return HttpResponseForbidden('Your IP address has been blocked due to suspicious activity.')

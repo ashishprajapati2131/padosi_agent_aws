@@ -9,12 +9,11 @@ def verify_admin_ip(request: Request):
     if not settings.ADMIN_WHITELIST_IPS:
         return
         
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        client_ip = forwarded.split(",")[0].strip()
-    else:
-        client_ip = request.client.host if request.client else "127.0.0.1"
-        
+    # X-Forwarded-For is only trusted from the local proxy; before, sending
+    # "X-Forwarded-For: 127.0.0.1" bypassed the whitelist via the localhost rule.
+    from fastapi_app.utils.client_ip import get_client_ip
+    client_ip = get_client_ip(request)
+
     # Always allow localhost
     if client_ip in ["127.0.0.1", "::1"]:
         return

@@ -49,15 +49,35 @@ urlpatterns = [
     path('', include('apps.home.urls')),
 ]
 
+import posixpath
+
+from django.http import Http404
 from django.views.static import serve
 from django.urls import re_path
 
+
+def serve_public_media(request, path, document_root=None):
+    """static.serve for public media that never exposes app/private/.
+
+    serve() normalises the path itself, so "/media/app//private/x.pdf" missed
+    the authenticated private route above yet was served from app/private.
+    """
+    normalized = posixpath.normpath(path.replace('\\', '/')).lstrip('/')
+    if normalized == 'app/private' or normalized.startswith('app/private/'):
+        raise Http404("File not found")
+    response = serve(request, path, document_root=document_root)
+    # User uploads must never execute as same-origin documents (HTML/SVG
+    # uploaded as a "photo" was stored XSS). Embedding via <img> is unaffected;
+    # PDFs are exempt so license documents still open in the browser viewer.
+    response['X-Content-Type-Options'] = 'nosniff'
+    if not normalized.lower().endswith('.pdf'):
+        response['Content-Security-Policy'] = "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'"
+    return response
+
+
 # Serve media files in development & production fallback
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-else:
-    urlpatterns += [
-        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
-    ]
+urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', serve_public_media, {'document_root': settings.MEDIA_ROOT}),
+]
 
 

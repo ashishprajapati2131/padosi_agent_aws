@@ -64,8 +64,18 @@ if DEBUG and not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ['*']
 
 _csrf_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+_PRODUCTION_CSRF_ORIGINS = [
+    'https://aciaindia.org',
+    'https://www.aciaindia.org',
+    'https://padosiagent.com',
+    'https://www.padosiagent.com',
+]
 if _csrf_env:
     CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in _csrf_env.split(',') if origin.strip()]
+elif not DEBUG:
+    # Never trust dev origins in production — the dev list below includes
+    # "https://*.ngrok-free.dev", i.e. any attacker-registered ngrok subdomain.
+    CSRF_TRUSTED_ORIGINS = list(_PRODUCTION_CSRF_ORIGINS)
 else:
     CSRF_TRUSTED_ORIGINS = [
         'https://catfish-rebirth-uproar.ngrok-free.dev',
@@ -365,6 +375,9 @@ LOGGING = {
 }
 
 TEST_RUNNER = 'apps.home.test_runner.ManagedModelsTestRunner'
+
+# Password reset links: the reset email promises 60 minutes (Django default is 3 days).
+PASSWORD_RESET_TIMEOUT = 60 * 60
 
 # Ensure Django trusts the reverse proxy's HTTPS header (required for CSRF validation behind GoDaddy Apache proxy)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

@@ -110,17 +110,39 @@ class SubDistributorPortalAuthTest(TestCase):
         resp = self.client.get(self.dash_url)
         self.assertRedirects(resp, self.login_url, fetch_redirect_response=False)
 
+    def _portal_session(self):
+        from apps.distributors.views.sub_distributors import SUB_DIST_PORTAL_KEY
+        session = self.client.session
+        session[SUB_DIST_PORTAL_KEY] = self.sd.id
+        session['sub_distributor_id'] = self.sd.id
+        session.save()
+
     def test_dashboard_accessible_when_logged_in(self):
+        self._portal_session()
+        resp = self.client.get(self.dash_url)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_pre_upgrade_login_session_still_works(self):
+        """Sessions created by the old login (id + code, no portal key) stay logged in."""
         session = self.client.session
         session['sub_distributor_id'] = self.sd.id
+        session['sub_distributor_code'] = self.sd.code
         session.save()
         resp = self.client.get(self.dash_url)
         self.assertEqual(resp.status_code, 200)
 
+    def test_referral_link_does_not_grant_portal_access(self):
+        """Regression: /join/<code>/ stores sub_distributor_id for attribution;
+        that alone must never authenticate the sub-distributor portal."""
+        self.sd.code = 'SDTEST01'
+        self.sd.save(update_fields=['code'])
+        self.client.get(reverse('agents:referral_join', args=[self.sd.code]))
+        self.assertEqual(self.client.session.get('sub_distributor_id'), self.sd.id)
+        resp = self.client.get(self.dash_url)
+        self.assertRedirects(resp, self.login_url, fetch_redirect_response=False)
+
     def test_dashboard_guard_flushes_suspended_session(self):
-        session = self.client.session
-        session['sub_distributor_id'] = self.sd.id
-        session.save()
+        self._portal_session()
         # Suspend after login -> next request must kick them out
         self.sd.status = 'suspended'
         self.sd.save(update_fields=['status'])
@@ -129,9 +151,7 @@ class SubDistributorPortalAuthTest(TestCase):
         self.assertIsNone(self.client.session.get('sub_distributor_id'))
 
     def test_logout_clears_session(self):
-        session = self.client.session
-        session['sub_distributor_id'] = self.sd.id
-        session.save()
+        self._portal_session()
         resp = self.client.get(reverse('distributors:sub_distributor_logout'))
         self.assertRedirects(resp, self.login_url, fetch_redirect_response=False)
         self.assertIsNone(self.client.session.get('sub_distributor_id'))

@@ -152,6 +152,28 @@ def contact_submit(request):
         }, status=400)
 
 
+def _reviews_json_for_script(reviews):
+    """Serialise testimonials for `var reviewsData = {{ reviews_json|safe }}`.
+
+    The homepage JS concatenates these fields into innerHTML, and anonymous
+    reviews are auto-approved, so every string is HTML-escaped here (safe in
+    both text and quoted-attribute positions) — this was stored XSS on the
+    public homepage. `</` is also neutralised so a value can never close the
+    surrounding <script> element.
+    """
+    import html as _html
+
+    safe_reviews = []
+    for review in reviews or []:
+        if not isinstance(review, dict):
+            continue
+        safe_reviews.append({
+            key: _html.escape(value, quote=True) if isinstance(value, str) else value
+            for key, value in review.items()
+        })
+    return json.dumps(safe_reviews).replace('</', '<\\/')
+
+
 def home(request):
     cms = build_homepage_cms_context()
     settings = cms['settings']
@@ -203,7 +225,8 @@ def home(request):
                 except Exception:
                     pass
 
-            avatar_url = agent_photo if (agent_photo and 'avatar-icon.jpg' not in agent_photo) else f"https://ui-avatars.com/api/?name={rev.reviewer_name or 'User'}&background=0d9488&color=fff&bold=true"
+            from urllib.parse import quote as _urlquote
+            avatar_url = agent_photo if (agent_photo and 'avatar-icon.jpg' not in agent_photo) else f"https://ui-avatars.com/api/?name={_urlquote(rev.reviewer_name or 'User')}&background=0d9488&color=fff&bold=true"
 
             reviews.append({
                 'name': rev.reviewer_name or 'User',
@@ -247,7 +270,7 @@ def home(request):
     return render(request, 'public/home.html', {
         'settings': settings,
         'why_cards_zipped': cms['why_cards_zipped'],
-        'reviews_json': json.dumps(reviews),
+        'reviews_json': _reviews_json_for_script(reviews),
         'hide_header': True,
         'trust_badges': cms['trust_badges'],
         'stats_data': cms['stats_data'],
@@ -1473,6 +1496,18 @@ def serialize_agent_for_ai_picks(agent, user_lat, user_lng):
     }
 
 
+def _html_escape_payload(value):
+    """HTML-escape every string in a JSON-able structure bound for innerHTML."""
+    import html as _html
+    if isinstance(value, str):
+        return _html.escape(value, quote=True)
+    if isinstance(value, dict):
+        return {k: _html_escape_payload(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_html_escape_payload(v) for v in value]
+    return value
+
+
 def ai_picks_comparison(request):
     try:
         all_agents, user_lat, user_lng, sort_by, invalid_pincode, max_smart_rank = fetch_filtered_agents_list(request)
@@ -1501,9 +1536,11 @@ def ai_picks_comparison(request):
         # Dynamic AI Explanation for AI Suggested agent
         ai_explanation = AIPicksService.generate_ai_explanation(ai_picks_agent, ai_picks_agent.distance)
         
-        # Serialize agents
-        ai_serialized = serialize_agent_for_ai_picks(ai_picks_agent, user_lat, user_lng)
-        best_serialized = serialize_agent_for_ai_picks(best_match_agent, user_lat, user_lng)
+        # Serialize agents. find-agents.html interpolates these values into HTML
+        # template strings, and names/cities/languages are agent-editable, so
+        # escape every string here (stored XSS on the public search page).
+        ai_serialized = _html_escape_payload(serialize_agent_for_ai_picks(ai_picks_agent, user_lat, user_lng))
+        best_serialized = _html_escape_payload(serialize_agent_for_ai_picks(best_match_agent, user_lat, user_lng))
         
         return JsonResponse({
             'success': True,

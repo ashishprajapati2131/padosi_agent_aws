@@ -57,8 +57,16 @@ class SEOMiddleware(MiddlewareMixin):
         ]
         self.compiled_paths = [re.compile(path) for path in self.private_paths]
 
+    # Deliberately minimal CSP: blocks <base> hijacking and plugin content
+    # (<object>/<embed>, none used by the site) without restricting scripts,
+    # styles, fonts or CDNs, so no existing page can break.
+    BASE_CSP = "base-uri 'self'; object-src 'none'"
+
     def process_response(self, request, response):
         path = request.path
         if any(regex.match(path) for regex in self.compiled_paths):
             response['X-Robots-Tag'] = 'noindex, nofollow'
+        content_type = response.get('Content-Type', '') or ''
+        if 'text/html' in content_type and 'Content-Security-Policy' not in response:
+            response['Content-Security-Policy'] = self.BASE_CSP
         return response

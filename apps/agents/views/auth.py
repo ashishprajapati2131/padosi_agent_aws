@@ -39,13 +39,40 @@ logger = logging.getLogger(__name__)
 def get_client_ip(request):
     """
     Safely retrieve the client's real IP address from request headers.
+
+    X-Forwarded-For is only trusted from the local reverse proxy (same rule as
+    the admin WAF); from anywhere else it is attacker-controlled and made the
+    per-IP login throttle trivially bypassable.
     """
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0].strip()
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware
+    return ThreatMonitorMiddleware.get_client_ip(request)
+
+
+# Per-account throttle: independent of IP, so rotating/spoofed IPs cannot
+# brute-force one password. Generous enough that a real user is not locked out.
+EMAIL_LOGIN_MAX_FAILURES = 10
+EMAIL_LOGIN_WINDOW_SECONDS = 15 * 60
+
+
+def _email_throttle_key(email):
+    return f"login_throttle_email_{(email or '').strip().lower()}"
+
+
+def check_email_login_throttle(email):
+    if not email:
+        return True
+    return (cache.get(_email_throttle_key(email), 0) or 0) < EMAIL_LOGIN_MAX_FAILURES
+
+
+def record_email_login_failure(email):
+    if not email:
+        return
+    key = _email_throttle_key(email)
+    try:
+        if not cache.add(key, 1, timeout=EMAIL_LOGIN_WINDOW_SECONDS):
+            cache.incr(key)
+    except Exception:
+        pass
 
 def check_login_throttle(ip):
     """
@@ -89,6 +116,9 @@ def _clear_admin_session_on(response, request):
 
 def _finish_agent_session_login(request, django_user, ip, agent=None):
     clear_login_throttle(ip)
+    cache.delete(_email_throttle_key(getattr(django_user, 'email', '')))
+    if agent is not None and getattr(agent, 'email', None):
+        cache.delete(_email_throttle_key(agent.email))
     keys_to_clear = [
         'current_draft_id', 'email_verified', 'verified_email',
         'email_otp', 'otp_email', 'otp_expires_at',
@@ -184,6 +214,10 @@ def agent_login(request):
             portal_error(request, "Please enter both email and password.", PORTAL_AGENT)
             return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
+        if not check_email_login_throttle(email):
+            portal_error(request, "Too many failed attempts for this account. Please try again in 15 minutes or reset your password.", PORTAL_AGENT)
+            return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+
         try:
             agent = find_agent(email)
             password_ok, laravel_user, django_user = verify_agent_password(email, password, agent=agent)
@@ -194,6 +228,7 @@ def agent_login(request):
 
         if not password_ok:
             record_login_attempt(ip)
+            record_email_login_failure(email)
             logger.warning("Failed login attempt for email: %s from IP: %s", email, ip)
             portal_error(request, "Please Enter Valid Login Details", PORTAL_AGENT)
             return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
@@ -250,6 +285,7 @@ def agent_login(request):
 
             if agent and not agent_can_access_dashboard(agent):
                 clear_login_throttle(ip)
+                cache.delete(_email_throttle_key(email))
                 login(request, django_user, backend=DJANGO_AUTH_BACKEND)
                 portal_error(
                     request,
@@ -266,11 +302,25 @@ def agent_login(request):
 
     return render(request, 'agents/login.html', {'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
+def _is_cross_site_get(request):
+    """A GET started by another website (e.g. <img src=/logout/>).
+
+    Logout links on our own pages send Sec-Fetch-Site: same-origin (typed URLs:
+    none), so only forced logouts from other sites are ignored.
+    """
+    return (
+        request.method == 'GET'
+        and (request.headers.get('Sec-Fetch-Site') or '').lower() == 'cross-site'
+    )
+
+
 @csrf_exempt
 def agent_logout(request):
     """
     Log out the agent, invalidate session, and redirect to the login page.
     """
+    if _is_cross_site_get(request):
+        return redirect('home:home')
     logout(request)
     portal_success(request, "You have been logged out successfully.", PORTAL_AGENT)
     response = redirect('agents:agent_login')
@@ -307,6 +357,8 @@ def logout_view(request):
     General logout view mirroring Laravel's AuthController@logout.
     Handles logout for all user roles (agent, admin, client, distributor).
     """
+    if _is_cross_site_get(request):
+        return redirect('home:home')
     role = _resolve_logout_role(request)
 
     if role == 'admin':
@@ -370,14 +422,17 @@ def redirectToGoogle(request):
         logger.error("Google OAuth configuration is missing (GOOGLE_CLIENT_ID or GOOGLE_REDIRECT_URI).")
         return HttpResponse("Google OAuth client configuration is missing in settings/env.", status=500)
 
+    import secrets
+    # Random per-session state, checked in the callback (login-CSRF protection).
+    state = secrets.token_urlsafe(24)
+    request.session['google_oauth_state'] = state
     params = {
         'client_id': client_id,
         'redirect_uri': redirect_uri,
         'response_type': 'code',
         'scope': 'openid email profile',
-        'state': 'padosi_state',
-        'access_type': 'offline',
-        'prompt': 'consent'
+        'state': state,
+        'prompt': 'select_account',
     }
     auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
     return redirect(auth_url)
@@ -395,7 +450,14 @@ def handleGoogleCallback(request):
     if not code:
         logger.warning("Google callback invoked without authorization code.")
         return HttpResponse("Authorization code missing from callback.", status=400)
-        
+
+    import hmac
+    expected_state = request.session.pop('google_oauth_state', None)
+    received_state = request.GET.get('state') or ''
+    if not expected_state or not hmac.compare_digest(str(expected_state), str(received_state)):
+        logger.warning("Google callback rejected: OAuth state mismatch.")
+        return HttpResponse("Invalid or expired sign-in request. Please try again.", status=400)
+
     client_id = getattr(settings, 'GOOGLE_CLIENT_ID', '')
     client_secret = getattr(settings, 'GOOGLE_CLIENT_SECRET', '')
     redirect_uri = getattr(settings, 'GOOGLE_REDIRECT_URI', '')
@@ -410,7 +472,7 @@ def handleGoogleCallback(request):
             'redirect_uri': redirect_uri,
             'grant_type': 'authorization_code'
         }
-        token_response = requests.post(token_url, data=payload)
+        token_response = requests.post(token_url, data=payload, timeout=10)
         if not token_response.ok:
             logger.error(f"Google Token Exchange Failed: {token_response.text}")
             return HttpResponse("Failed to retrieve Google token.", status=400)
@@ -420,7 +482,7 @@ def handleGoogleCallback(request):
         
         # Request user profile details
         userinfo_url = "https://www.googleapis.com/oauth2/v3/userinfo"
-        userinfo_response = requests.get(userinfo_url, headers={'Authorization': f"Bearer {access_token}"})
+        userinfo_response = requests.get(userinfo_url, headers={'Authorization': f"Bearer {access_token}"}, timeout=10)
         if not userinfo_response.ok:
             logger.error(f"Google UserInfo Request Failed: {userinfo_response.text}")
             return HttpResponse("Failed to retrieve Google user information.", status=400)
@@ -528,8 +590,10 @@ def forgot_password(request):
             return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         if user.is_staff or user.is_superuser:
-            portal_error(request, "Admin accounts cannot use this reset flow.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+            # Same generic reply as unknown emails: don't reveal staff accounts.
+            logger.warning("Password reset requested for staff account %s via agent flow; ignored.", email)
+            portal_success(request, "If that email is registered, you will receive a reset link shortly.", PORTAL_AGENT)
+            return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         # Check if user role matches login_type
         is_agent = bool(agent) or Agent.objects.filter(user=user).exists()
@@ -613,7 +677,10 @@ def reset_password(request, uidb64=None, token=None):
         from apps.agents.services.account_auth import ensure_laravel_user, find_agent as _find_agent
         agent = _find_agent(user.email)
         fullname = (agent.fullname if agent else '') or user.get_full_name() or user.username
-        ensure_laravel_user(user.email, fullname, bcrypt_hash, role='agent', overwrite_password=True)
+        # role=None keeps an existing users.role (a distributor resetting via this
+        # flow was silently converted to 'agent' and locked out of their portal);
+        # a missing row is still created with the default 'agent' role.
+        ensure_laravel_user(user.email, fullname, bcrypt_hash, role=None, overwrite_password=True)
 
         portal_success(request, "Your password has been reset successfully! Please log in.", PORTAL_AGENT)
         return redirect('agents:agent_login')

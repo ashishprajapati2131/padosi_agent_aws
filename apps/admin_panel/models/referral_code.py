@@ -64,6 +64,10 @@ class ReferralCode(models.Model):
             if not cls.objects.filter(code=code).exists():
                 break
 
+        # Laravel-managed table: timestamps are not auto-filled by Django, and a
+        # NOT NULL created_at made this insert fail inside payment activation.
+        from datetime import datetime
+        now = datetime.now()
         ref_code = cls.objects.create(
             agent=agent,
             code=code,
@@ -72,6 +76,8 @@ class ReferralCode(models.Model):
             total_referrals=0,
             pending_referrals=0,
             reward_discount_percent=0,
-            reward_claimed=False
+            reward_claimed=False,
+            created_at=now,
+            updated_at=now,
         )
         return ref_code

@@ -1695,14 +1695,19 @@ class RegistrationActivityLog(models.Model):
             if extra_details and isinstance(extra_details, dict):
                 details.update(extra_details)
 
-            cls.objects.create(
-                agent=agent,
-                draft_id=draft_id,
-                subscription_id=subscription_id,
-                event_name=event_name,
-                details=details or None,
-                ip_address=ip,
-            )
+            # Own savepoint: a failed log insert inside a caller's atomic block
+            # must not mark the caller's transaction (e.g. payment activation)
+            # for rollback.
+            from django.db import transaction
+            with transaction.atomic():
+                cls.objects.create(
+                    agent=agent,
+                    draft_id=draft_id,
+                    subscription_id=subscription_id,
+                    event_name=event_name,
+                    details=details or None,
+                    ip_address=ip,
+                )
         except Exception:
             import logging
             logging.getLogger(__name__).exception(

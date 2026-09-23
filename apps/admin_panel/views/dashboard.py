@@ -36,6 +36,9 @@ from django.views.decorators.csrf import csrf_exempt
 logger = logging.getLogger(__name__)
 
 ADMIN_SESSION_COOKIE = "session_token"
+# Admin logins last 7 days (was 30): a stolen admin cookie stays useful for less
+# time. Sessions created before this change keep their original expiry.
+ADMIN_SESSION_DAYS = 7
 
 
 # ---------------------------------------------------------------------------
@@ -148,9 +151,11 @@ def _record_failed_admin_login(request, email):
     Log failed administrative logins to SecurityThreatLog.
     If an IP registers >= 5 failures in an hour, add to BlockedIp.
     """
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR', '')
-    
+    # Same trusted-proxy IP rule as the WAF: a raw X-Forwarded-For value let an
+    # attacker get any IP (e.g. the real admin's) auto-blocked site-wide.
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware
+    ip = ThreatMonitorMiddleware.get_client_ip(request)
+
     try:
         from apps.admin_panel.models.admin_auth import SecurityThreatLog
         from apps.agents.models import BlockedIp
@@ -273,7 +278,7 @@ def admin_login(request):
     token      = secrets.token_hex(32)                        # 64-char hex string
     now_utc    = datetime.utcnow()
 
-    expires_at = now_utc + timedelta(days=30)
+    expires_at = now_utc + timedelta(days=ADMIN_SESSION_DAYS)
     ip_address = (request.META.get("REMOTE_ADDR") or "")[:45]
     user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
 
@@ -334,7 +339,7 @@ def admin_login(request):
     response.set_cookie(
         ADMIN_SESSION_COOKIE,
         token,
-        max_age=30 * 24 * 60 * 60,   # 30 days in seconds
+        max_age=ADMIN_SESSION_DAYS * 24 * 60 * 60,
         httponly=True,
         samesite="Lax",
         secure=_admin_cookie_secure(),
