@@ -7,8 +7,8 @@
 {% block og_url %}{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/{% endblock %}
 {% block og_image %}{{ request.scheme }}://{{ request.get_host }}{% url 'agents:agent_og_image' agent.id %}{% endblock %}
 {% block og_type %}website{% endblock %}
-{% block og_image_width %}800{% endblock %}
-{% block og_image_height %}800{% endblock %}
+{% block og_image_width %}1200{% endblock %}
+{% block og_image_height %}630{% endblock %}
 {% block twitter_card %}summary_large_image{% endblock %}
 {% block twitter_title %}{{ agentDisplayName|default:agent.fullname }} | PadosiAgent{% endblock %}
 {% block twitter_description %}{{ profile.career_highlights|striptags|truncatechars:150|default:"View my professional insurance agent profile on PadosiAgent." }}{% endblock %}
