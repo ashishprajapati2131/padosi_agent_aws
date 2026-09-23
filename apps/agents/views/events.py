@@ -615,6 +615,10 @@ def show_payment(request):
     })
 
 
+class _EventAlreadyPaid(Exception):
+    """Raised inside the payment transaction when a parallel request finished first."""
+
+
 @require_POST
 @csrf_protect
 def payment_success(request):
@@ -650,6 +654,25 @@ def payment_success(request):
             'redirect_url': '/events/success/',
         })
 
+    # One captured payment must never complete more than one registration.
+    # An order that belongs to ANOTHER registration is rejected; a stale order of
+    # this same registration (plan re-selected in another tab) is still accepted
+    # because the payment id is unique and the amount is verified below.
+    if (event_registration.razorpay_order_id or '') != order_id:
+        if EventRegistration.objects.filter(razorpay_order_id=order_id).exclude(pk=event_registration.pk).exists():
+            logger.critical(
+                'EVENT REGISTRATION - order mismatch: reg=%s has order=%s, payment claims order=%s of another registration',
+                event_registration.pk, event_registration.razorpay_order_id, order_id,
+            )
+            return JsonResponse({'success': False, 'message': 'Payment verification failed. Please contact support.'}, status=422)
+        logger.warning(
+            'EVENT REGISTRATION - reg=%s paid stale order %s (current order %s); accepted after payment/amount checks.',
+            event_registration.pk, order_id, event_registration.razorpay_order_id,
+        )
+    if EventRegistration.objects.filter(razorpay_payment_id=payment_id).exclude(pk=event_registration.pk).exists():
+        logger.critical('EVENT REGISTRATION - payment %s already used by another registration', payment_id)
+        return JsonResponse({'success': False, 'message': 'Payment verification failed. Please contact support.'}, status=422)
+
     # Verify payment against Razorpay API (amount + status)
     import razorpay
     from django.conf import settings
@@ -682,7 +705,8 @@ def payment_success(request):
         with transaction.atomic():
             locked = EventRegistration.objects.select_for_update().get(pk=event_registration.pk)
             if locked.payment_status == 'success':
-                pass  # already completed concurrently
+                # Completed concurrently: don't regenerate password/invoice/email.
+                raise _EventAlreadyPaid()
 
             locked.status = 'completed'
             locked.payment_status = 'success'
@@ -738,10 +762,10 @@ def payment_success(request):
 
         if locked.promocode:
             try:
-                promo = PromoCode.objects.filter(code=locked.promocode).first()
-                if promo:
-                    promo.times_used += 1
-                    promo.save(update_fields=['times_used'])
+                from django.db.models import F
+                PromoCode.objects.filter(code=locked.promocode).update(
+                    times_used=F('times_used') + 1
+                )
             except Exception:
                 pass
 
@@ -777,6 +801,12 @@ def payment_success(request):
             'redirect_url': '/events/success/',
         })
 
+    except _EventAlreadyPaid:
+        return JsonResponse({
+            'success': True,
+            'message': 'Already registered successfully.',
+            'redirect_url': '/events/success/',
+        })
     except Exception as exc:
         logger.error(f"EVENT REGISTRATION PAYMENT SUCCESS - processing failed: {exc}")
         return JsonResponse({'success': False, 'message': 'Could not complete registration. Please contact support.'}, status=500)

@@ -53,6 +53,16 @@ def clean_investment_types(types):
                 normalized.append(str(t).strip())
     return normalized
 
+
+def _is_own_photo_url(url):
+    """True for our own upload targets: local /media/ paths or Cloudinary HTTPS URLs."""
+    from urllib.parse import urlparse
+    value = str(url or "").strip()
+    if value.startswith("/media/") and ".." not in value:
+        return True
+    parsed = urlparse(value)
+    return parsed.scheme == "https" and (parsed.hostname or "").lower() == "res.cloudinary.com"
+
 # Database models for updates
 from fastapi_app.models.agent import Agent
 from fastapi_app.models.agent_profile import AgentProfile
@@ -99,6 +109,17 @@ class ProfileService:
                 {"email": previous},
             ).fetchone()
             if clash and (not owner or clash[0] != owner[0]):
+                raise HTTPException(status_code=409, detail="The email has already been taken.")
+            # auth_user may hold staff/insurance/distributor accounts that have
+            # no `users` row; taking their address let an agent log in as them.
+            auth_clash = db.execute(
+                text(
+                    "SELECT id FROM auth_user WHERE LOWER(email) = LOWER(:email) "
+                    "AND LOWER(email) <> LOWER(:previous) LIMIT 1"
+                ),
+                {"email": new, "previous": previous},
+            ).fetchone()
+            if auth_clash:
                 raise HTTPException(status_code=409, detail="The email has already been taken.")
 
             db.execute(
@@ -332,6 +353,8 @@ class ProfileService:
         existing_email = db.query(Agent).filter(Agent.email == payload.agent.email, Agent.id != agent_id).first()
         if existing_email:
             raise HTTPException(status_code=409, detail="The email has already been taken.")
+        if any(c in (payload.agent.fullname or "") + (payload.profile.display_name or "") for c in "<>"):
+            raise HTTPException(status_code=422, detail="Name contains invalid characters.")
             
         # Pincode validation
         if not payload.profile.service_pincodes:
@@ -383,7 +406,8 @@ class ProfileService:
             # Login resolves credentials by email against `users` / `auth_user`,
             # so an email change here must carry over or the agent is locked out.
             self._sync_login_identity(db, previous_email, payload.agent.email, payload.agent.fullname)
-            agent.badge = payload.agent.badge
+            # badge is an admin-assigned trust marker (web: admin edit only);
+            # an agent must not be able to set it on themselves.
             agent.user_types = payload.agent.user_types
             
             if not agent.profile:
@@ -395,12 +419,15 @@ class ProfileService:
             agent.profile.languages = payload.profile.languages
             agent.profile.address = payload.profile.address
             
-            if payload.profile.profile_photo_url:
+            if payload.profile.profile_photo_url and _is_own_photo_url(payload.profile.profile_photo_url):
+                # Only our own upload targets: the OG-image renderer fetches this
+                # URL server-side, so an arbitrary URL was an SSRF vector.
                 agent.profile.profile_photo_path = payload.profile.profile_photo_url
-            
+
             # Step 2: Professional Details
             agent.profile.pan_number = payload.profile.pan_number
-            agent.profile.license_number = payload.profile.license_number
+            # license_number drives the public "IRDAI verified" flag and is
+            # set by admins only (web parity); keep the stored value.
             agent.profile.license_valid_till = payload.profile.license_valid_till
             agent.profile.arn_number = payload.profile.arn_number
             agent.profile.euin_number = payload.profile.euin_number
@@ -791,6 +818,9 @@ class ProfileService:
 
         if not fullname:
             raise HTTPException(status_code=422, detail="Full name is required.")
+        if any(c in fullname + (payload.profile.display_name or "") for c in "<>"):
+            # Names render on public pages / JS-built HTML (web parity).
+            raise HTTPException(status_code=422, detail="Name contains invalid characters.")
         if not email:
             raise HTTPException(status_code=422, detail="Email is required.")
         if not mobile:
@@ -848,7 +878,7 @@ class ProfileService:
         try:
             profile = self._ensure_profile(db, agent)
             profile.pan_number = payload.profile.pan_number
-            profile.license_number = payload.profile.license_number
+            # license_number (public "IRDAI verified" flag) is admin-set only.
             profile.license_valid_till = payload.profile.license_valid_till
             profile.arn_number = payload.profile.arn_number
             profile.euin_number = payload.profile.euin_number

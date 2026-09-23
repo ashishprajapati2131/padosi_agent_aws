@@ -192,11 +192,25 @@ def handle_payment_success(request, agent_id):
             razorpay_payment = client.payment.fetch(payment_ref)
             if int(razorpay_payment['amount']) != expected_amount_paise:
                 return JsonResponse({'success': False, 'message': 'Payment amount mismatch.'}, status=400)
-                
+            if razorpay_payment.get('status') not in ('captured', 'authorized'):
+                return JsonResponse({'success': False, 'message': 'Payment is not completed.'}, status=400)
+
+            # Bind the order to THIS agent (create_razorpay_order stores it in
+            # notes) and refuse reuse: one captured payment could otherwise
+            # activate several same-priced agents.
+            rzp_order = client.order.fetch(order_id)
+            if str((rzp_order.get('notes') or {}).get('agent_id')) != str(agent.id):
+                logger.critical('Insurance payment order %s is not for agent %s', order_id, agent.id)
+                return JsonResponse({'success': False, 'message': 'Payment does not belong to this agent.'}, status=400)
+            if AgentSubscription.objects.filter(razorpay_payment_id=payment_ref).exclude(agent=agent).exists():
+                logger.critical('Insurance payment %s already used for another agent', payment_ref)
+                return JsonResponse({'success': False, 'message': 'This payment has already been used.'}, status=400)
+
         except razorpay.errors.SignatureVerificationError:
             return JsonResponse({'success': False, 'message': 'Invalid payment signature.'}, status=400)
         except Exception as e:
-            return JsonResponse({'success': False, 'message': f'Failed to verify payment: {str(e)}'}, status=400)
+            logger.error('Insurance payment verification failed for agent %s: %s', agent.id, e)
+            return JsonResponse({'success': False, 'message': 'Failed to verify payment. Please contact support.'}, status=400)
     else:
         if not getattr(settings, 'DEBUG', False):
             return JsonResponse({'success': False, 'message': 'Mock payments are disabled in production.'}, status=403)

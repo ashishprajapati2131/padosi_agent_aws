@@ -40,8 +40,7 @@ class ReferralChampionshipTestCase(TestCase):
             fullname='Parth Patel',
             email='agent1@example.com',
             mobile='9876543210',
-            city='Ahmedabad',
-            state='Gujarat',
+            agent_pincode='380015',
             plan_type='professional',
             status='active'
         )
@@ -53,8 +52,7 @@ class ReferralChampionshipTestCase(TestCase):
             fullname='Rahul Sharma',
             email='agent2@example.com',
             mobile='9123456780',
-            city='Mumbai',
-            state='Maharashtra',
+            agent_pincode='400001',
             plan_type='basic',
             status='active'
         )

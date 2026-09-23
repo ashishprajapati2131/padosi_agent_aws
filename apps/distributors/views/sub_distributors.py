@@ -26,10 +26,47 @@ logger = logging.getLogger(__name__)
 # Decorators
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Portal authentication key. It is deliberately NOT 'sub_distributor_id':
+# that key is also written by the public referral link (/join/<code>/) for
+# agent attribution, so using it for auth let anyone who opened a
+# sub-distributor's shared link into that sub-distributor's portal.
+SUB_DIST_PORTAL_KEY = 'sub_distributor_portal_id'
+
+
+def _start_sub_distributor_session(request, sub_dist):
+    """Authenticate the portal session (after a password check / signup)."""
+    request.session.cycle_key()  # no session fixation
+    request.session[SUB_DIST_PORTAL_KEY] = sub_dist.id
+    request.session['sub_distributor_id'] = sub_dist.id
+    request.session['sub_distributor_name'] = sub_dist.fullname
+    request.session['sub_distributor_code'] = sub_dist.code
+    request.session['sub_distributor_dist_id'] = sub_dist.distributor_id
+
+
+def _portal_sub_distributor_id(request):
+    """Authenticated sub-distributor id for this session, or None.
+
+    Sessions logged in before the portal key existed are upgraded in place:
+    the old login also stored 'sub_distributor_code', which the public
+    referral link never writes, so existing logins keep working while a
+    referral-link visit alone still grants nothing.
+    """
+    sub_dist_id = request.session.get(SUB_DIST_PORTAL_KEY)
+    if sub_dist_id:
+        return sub_dist_id
+    legacy_id = request.session.get('sub_distributor_id')
+    legacy_code = request.session.get('sub_distributor_code')
+    if legacy_id and legacy_code:
+        if SubDistributor.objects.filter(id=legacy_id, code=legacy_code).exists():
+            request.session[SUB_DIST_PORTAL_KEY] = legacy_id
+            return legacy_id
+    return None
+
+
 def sub_distributor_required(view_func):
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
-        sub_dist_id = request.session.get('sub_distributor_id')
+        sub_dist_id = _portal_sub_distributor_id(request)
         if not sub_dist_id:
             return redirect('distributors:sub_distributor_login')
         
@@ -304,10 +341,7 @@ def sub_distributor_join(request, dist_code):
         )
 
         # Automatically log in the new sub-distributor
-        request.session['sub_distributor_id'] = sub_dist.id
-        request.session['sub_distributor_name'] = sub_dist.fullname
-        request.session['sub_distributor_code'] = sub_dist.code
-        request.session['sub_distributor_dist_id'] = sub_dist.distributor_id
+        _start_sub_distributor_session(request, sub_dist)
 
         messages.success(request, f"Welcome, {fullname}! Your Sub-Distributor account is ready.")
         return redirect('distributors:sub_distributor_dashboard')
@@ -326,37 +360,45 @@ def sub_distributor_login(request):
     """
     Sub-Distributor Portal Login page.
     """
-    if request.session.get('sub_distributor_id'):
+    if _portal_sub_distributor_id(request):
         return redirect('distributors:sub_distributor_dashboard')
 
     if request.method == 'POST':
+        from apps.agents.views.auth import (
+            check_email_login_throttle,
+            check_login_throttle,
+            get_client_ip,
+            record_email_login_failure,
+            record_login_attempt,
+        )
+
         identifier = request.POST.get('identifier', '').strip().lower()
         password = request.POST.get('password', '')
+        ip = get_client_ip(request)
+
+        if not check_login_throttle(ip) or not check_email_login_throttle(identifier):
+            messages.error(request, "Too many login attempts. Please try again later.")
+            return render(request, 'distributors/sub_distributors/portal_login.html')
 
         sub_dist = SubDistributor.objects.filter(
             Q(email=identifier) | Q(mobile=identifier)
         ).first()
 
-        if sub_dist:
-            if sub_dist.status != 'active':
-                messages.error(request, "Your account is inactive or suspended. Please contact your distributor.")
-                return render(request, 'distributors/sub_distributors/portal_login.html')
-
-            if check_password_hash(password, sub_dist.password):
-                request.session['sub_distributor_id'] = sub_dist.id
-                request.session['sub_distributor_name'] = sub_dist.fullname
-                request.session['sub_distributor_code'] = sub_dist.code
-                request.session['sub_distributor_dist_id'] = sub_dist.distributor_id
-
-                sub_dist.last_login_at = timezone.now()
-                sub_dist.save(update_fields=['last_login_at'])
-
-                messages.success(request, f"Welcome back, {sub_dist.fullname}!")
-                return redirect('distributors:sub_distributor_dashboard')
-            else:
-                messages.error(request, "Invalid credentials.")
+        # Check the password before revealing whether/what the account is.
+        if not sub_dist or not check_password_hash(password, sub_dist.password):
+            record_login_attempt(ip)
+            record_email_login_failure(identifier)
+            messages.error(request, "Invalid credentials.")
+        elif sub_dist.status != 'active':
+            messages.error(request, "Your account is inactive or suspended. Please contact your distributor.")
         else:
-            messages.error(request, "No account found with this email or mobile number.")
+            _start_sub_distributor_session(request, sub_dist)
+
+            sub_dist.last_login_at = timezone.now()
+            sub_dist.save(update_fields=['last_login_at'])
+
+            messages.success(request, f"Welcome back, {sub_dist.fullname}!")
+            return redirect('distributors:sub_distributor_dashboard')
 
     return render(request, 'distributors/sub_distributors/portal_login.html')
 
@@ -365,6 +407,7 @@ def sub_distributor_logout(request):
     """
     Logout from Sub-Distributor Portal.
     """
+    request.session.pop(SUB_DIST_PORTAL_KEY, None)
     request.session.pop('sub_distributor_id', None)
     request.session.pop('sub_distributor_name', None)
     request.session.pop('sub_distributor_code', None)

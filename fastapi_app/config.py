@@ -108,6 +108,27 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+# The JWT signing key must never fall back to the value committed in this file
+# (or to an empty string, which pydantic accepts from a blank .env entry):
+# either lets anyone mint valid API tokens. asgi.py serves Django-only if this
+# import fails, which is the safe outcome for a misconfigured production box.
+_COMMITTED_DEFAULT_SECRET = "v2f6yt8&oq&%^=mh^1=w5y8v0-q3ks^s__$!2+&@5kcyn)wsd5"
+
+
+def _assert_production_secret(cfg):
+    debug = bool(cfg.DEBUG) or os.environ.get("DEBUG", "False").strip().lower() in ("true", "1", "yes")
+    if debug:
+        return
+    key = (cfg.SECRET_KEY or "").strip()
+    if not key or key == _COMMITTED_DEFAULT_SECRET:
+        raise RuntimeError(
+            "FastAPI SECRET_KEY is missing or the committed default; "
+            "set a strong SECRET_KEY in the environment."
+        )
+
+
+_assert_production_secret(settings)
+
 
 def is_debug_mode() -> bool:
     """Detect whether running in debug/development mode across FastAPI and Django."""

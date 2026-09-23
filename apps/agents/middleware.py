@@ -1,5 +1,6 @@
 """Agent portal access control — payment required before dashboard routes."""
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 
@@ -19,6 +20,22 @@ _PAID_AGENT_PATH_PREFIXES = (
     '/agent/leads/update-status/',
     '/agent/update-visibility/',
     '/agent/push-token/',
+    # Paid dashboard features (generate-bio also spends LLM credits per call).
+    '/agent/generate-bio/',
+    '/agent/api/',
+    '/agent/gbp/',
+    '/agent/qr/',
+    '/agent/career-timeline/',
+    '/agent/review-card/',
+)
+
+# Gated paths called via fetch/AJAX that expect JSON.
+_JSON_API_PREFIXES = (
+    '/agent/generate-bio/',
+    '/agent/api/',
+    '/agent/career-timeline/',
+    '/agent/gbp/status/',
+    '/agent/gbp/save-url/',
 )
 
 
@@ -56,6 +73,16 @@ class AgentPaymentGateMiddleware:
             agent = None
 
         if not agent or not agent_can_access_dashboard(agent):
+            # AJAX/JSON feature endpoints get a JSON answer the page JS can
+            # show, instead of a redirect to an HTML page. (Older gated paths
+            # keep their original redirect behaviour.)
+            if path.startswith(_JSON_API_PREFIXES):
+                return JsonResponse({
+                    'status': 'error',
+                    'success': False,
+                    'message': 'Please complete your payment to use this feature.',
+                    'redirect': reverse('agents:chooseplan'),
+                }, status=403)
             messages.warning(
                 request,
                 'Please complete your payment to access the agent dashboard.',

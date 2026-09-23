@@ -197,7 +197,14 @@ def _popup_result_html(result_dict):
     Return a self-closing HTML page that sends a postMessage to the opener window
     and then closes itself.
     """
-    result_json = json.dumps(result_dict)
+    # Escape for a <script> context: values include the reflected ?error= query
+    # parameter, and json.dumps leaves "</script>" intact (reflected XSS).
+    _script_safe = {ord('<'): '\\u003C', ord('>'): '\\u003E', ord('&'): '\\u0026'}
+    result_json = json.dumps(result_dict).translate(_script_safe)
+    trusted_origins = [
+        o for o in getattr(settings, "CSRF_TRUSTED_ORIGINS", []) if o and "*" not in o
+    ]
+    origins_json = json.dumps(trusted_origins).translate(_script_safe)
     html = f"""<!DOCTYPE html>
 <html>
 <head><title>Connecting to Google Business...</title></head>
@@ -209,7 +216,12 @@ def _popup_result_html(result_dict):
     result.type = 'gbp_result';
     try {{
         if (window.opener) {{
-            window.opener.postMessage(result, '*');
+            // Trusted origins only: '*' handed the result to any site that opened
+            // this popup. Non-matching targets are silently dropped by the browser.
+            var origins = [window.location.origin].concat({origins_json});
+            origins.forEach(function (o) {{
+                try {{ window.opener.postMessage(result, o); }} catch (e) {{}}
+            }});
         }}
     }} catch(e) {{}}
     window.close();
@@ -240,16 +252,23 @@ def agent_gbp_auth(request):
             status=500,
         )
 
-    # Embed agent ID in state for the callback
+    # Bind the callback to THIS session with a random state. The old state was
+    # "gbp_<agent_id>", so anyone could finish OAuth with their own Google
+    # account and have it saved onto any agent's profile.
+    import secrets
     agent, _ = _get_agent_and_profile(request)
-    agent_id  = agent.id if agent else ""
+    state_token = secrets.token_urlsafe(24)
+    request.session["gbp_oauth_state"] = {
+        "token": state_token,
+        "agent_id": agent.id if agent else None,
+    }
 
     params = {
         "client_id":     client_id,
         "redirect_uri":  redirect_uri,
         "response_type": "code",
         "scope":         "openid email profile https://www.googleapis.com/auth/business.manage",
-        "state":         f"gbp_{agent_id}",
+        "state":         f"gbp_{state_token}",
         "access_type":   "offline",
         "prompt":        "consent",   # force refresh_token even if previously authorized
     }
@@ -285,12 +304,20 @@ def agent_gbp_callback(request):
             content_type="text/html",
         )
 
-    # Extract agent_id from state (format: "gbp_<agent_id>")
-    agent_id_str = state.replace("gbp_", "").strip()
+    # The agent comes from the session that started the flow, never from state.
+    import hmac
+    saved = request.session.pop("gbp_oauth_state", None) or {}
+    received = state[len("gbp_"):] if state.startswith("gbp_") else ""
+    if not saved.get("token") or not hmac.compare_digest(str(saved["token"]), received):
+        logger.warning("GBP OAuth callback rejected: state mismatch.")
+        return HttpResponse(
+            _popup_result_html({"status": "error", "message": "Invalid or expired request. Please try connecting again."}),
+            content_type="text/html",
+        )
     agent = None
     profile = None
-    if agent_id_str.isdigit():
-        agent = Agent.objects.filter(id=int(agent_id_str)).first()
+    if saved.get("agent_id"):
+        agent = Agent.objects.filter(id=saved["agent_id"]).first()
         if agent:
             profile, _ = AgentProfile.objects.get_or_create(agent=agent)
 

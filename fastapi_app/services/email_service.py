@@ -55,7 +55,8 @@ class EmailService:
         # Render JINJA welcome email template
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         template_dir = os.path.join(base_dir, "templates")
-        env = Environment(loader=FileSystemLoader(template_dir))
+        # autoescape: agent_name / email are user-controlled and go into HTML.
+        env = Environment(loader=FileSystemLoader(template_dir), autoescape=True)
         template = env.get_template("agent_credentials.html")
 
         html_content = template.render(
@@ -107,7 +108,7 @@ class EmailService:
         )
         
         try:
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=20) as response:
                 res_body = response.read().decode("utf-8")
                 print("Brevo Email Sent:", res_body)
                 return True
@@ -156,7 +157,7 @@ class EmailService:
         )
         
         try:
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=20) as response:
                 response.read()
                 return True
         except Exception as e:

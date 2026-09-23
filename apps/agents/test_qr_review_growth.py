@@ -53,7 +53,9 @@ class ReviewGrowthConfigTests(SimpleTestCase):
             self.assertFalse(review_threshold_just_crossed(2, 2))
             self.assertTrue(review_threshold_just_crossed(2, 3))
             self.assertFalse(review_threshold_just_crossed(3, 4))
-            self.assertFalse(review_threshold_just_crossed(1, 5))
+            # Jumping past the threshold in one step still "crosses" it
+            # (previous < min_reviews <= new), per the function's contract.
+            self.assertTrue(review_threshold_just_crossed(1, 5))
 
     def test_sanitize_upgrade_cta_toggle(self):
         cfg = sanitize_review_growth_config({'upgrade_cta_enabled': 'off'})
@@ -175,11 +177,23 @@ class ReviewGrowthUnlockTests(TestCase):
         self._add_reviews(2)
         plan = _resolve_agent_plan('starter', agent=self.agent)
         self.assertTrue(plan.show_recent_leads)
-        self.assertTrue(plan.show_sales_insights)
+        # Admin plan lock wins: sales_insights is not in the saved starter
+        # list, so the review unlock must not switch it on.
+        self.assertFalse(plan.show_sales_insights)
         extra = extra_unlock_attrs(self.agent)
         self.assertTrue(extra)
         wrapped = overlay_plan(plan, extra)
         self.assertFalse(wrapped.show_visibility_aio)
+
+    def test_resolve_plan_applies_unlock_when_admin_allows_feature(self):
+        SiteSetting.set_value('plan_features_config', {
+            'starter': ['dashboard_stats', 'edit_profile', 'lead_management', 'sales_insights'],
+        }, 'pricing')
+        cache.clear()
+        self._add_reviews(2)
+        plan = _resolve_agent_plan('starter', agent=self.agent)
+        self.assertTrue(plan.show_sales_insights)
+        self.assertFalse(plan.show_visibility_aio)
 
     def test_resolve_honors_saved_starter_and_keeps_independent_locks(self):
         plan = _resolve_agent_plan('starter', agent=self.agent)
@@ -211,6 +225,17 @@ class AgentQrAndCardTests(TestCase):
             is_profile_visible=True,
             is_card_visible=True,
         )
+        # /agent/qr/* sits behind the paid-agent gate like the dashboard.
+        from apps.agents.models import AgentSubscription
+        AgentSubscription.objects.create(
+            agent=self.agent,
+            selected_plan="Starter's Plan",
+            registration_amount=1999,
+            payment_status='completed',
+            status='active',
+            razorpay_order_id='order_QRTEST123',
+            razorpay_payment_id='pay_QRTEST123',
+        )
         SiteSetting.set_value('qr_service_config', {'enabled': True, 'allow_download': True}, 'pricing')
 
     def test_target_urls_encode_profile_card_and_reviews(self):
@@ -218,7 +243,9 @@ class AgentQrAndCardTests(TestCase):
         profile_url = build_qr_target_url(request, self.agent, 'profile')
         card_url = build_qr_target_url(request, self.agent, 'card')
         reviews_url = build_qr_target_url(request, self.agent, 'reviews')
-        self.assertIn('/profile/qr-agent/', profile_url)
+        # Profile QR targets the canonical state-prefixed URL (/<state>/<slug>/).
+        self.assertIn('/qr-agent/', profile_url)
+        self.assertNotIn('/card/', profile_url)
         self.assertIn('/card/qr-agent/', card_url)
         self.assertIn('/review/qr-agent/', reviews_url)
         self.assertNotIn('focus=reviews', reviews_url)
@@ -268,6 +295,11 @@ class AgentQrAndCardTests(TestCase):
         self.assertContains(response, 'QR Agent')
 
     def test_profile_focus_reviews_renders_scroll_hook(self):
+        # The reviews section only renders when the plan includes view_reviews.
+        SiteSetting.set_value('plan_features_config', {
+            'starter': ['dashboard_stats', 'edit_profile', 'lead_management', 'view_reviews'],
+        }, 'pricing')
+        cache.clear()
         response = self.client.get(
             reverse('agents:agent_public_profile', args=['qr-agent']) + '?focus=reviews'
         )
@@ -275,3 +307,12 @@ class AgentQrAndCardTests(TestCase):
         self.assertContains(response, 'id="reviews-section"')
         self.assertContains(response, 'data-scroll-delay')
         self.assertContains(response, 'focus')
+
+    def test_profile_hides_reviews_when_plan_locks_them(self):
+        SiteSetting.set_value('plan_features_config', {
+            'starter': ['dashboard_stats', 'edit_profile', 'lead_management'],
+        }, 'pricing')
+        cache.clear()
+        response = self.client.get(reverse('agents:agent_public_profile', args=['qr-agent']))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="reviews-section"')
