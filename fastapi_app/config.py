@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, Any
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import model_validator
 
@@ -52,6 +52,15 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
     APP_URL: str = "http://localhost:8000"
+    DEBUG: bool = False
+
+    @model_validator(mode="after")
+    def validate_production_app_url(self):
+        is_debug = bool(self.DEBUG) or os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
+        is_localhost = any(h in (self.APP_URL or "").lower() for h in ("localhost", "127.0.0.1", "0.0.0.0"))
+        if not is_debug and is_localhost:
+            self.APP_URL = "https://padosiagent.com"
+        return self
 
     # Razorpay Payments
     RAZORPAY_KEY: str = ""
@@ -97,5 +106,45 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
+
+
+def get_base_url(request: Optional[Any] = None) -> str:
+    """
+    Get the absolute base URL for building links and asset paths.
+    Prioritizes incoming request headers (x-forwarded-proto, host) so that
+    production reverse proxies (Passenger WSGI, Nginx, ALB) correctly reflect the public domain.
+    Falls back to settings.APP_URL or https://padosiagent.com in production.
+    """
+    if request is not None and hasattr(request, "headers"):
+        proto = request.headers.get("x-forwarded-proto")
+        if not proto:
+            proto = getattr(getattr(request, "url", None), "scheme", "") or "https"
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+        if not host and hasattr(request, "url"):
+            host = getattr(request.url, "netloc", "")
+
+        if host:
+            is_localhost = any(lh in host.lower() for lh in ("localhost", "127.0.0.1", "testserver"))
+            if not is_localhost:
+                return f"{proto}://{host}".rstrip('/')
+
+            # Host is localhost: check if settings.APP_URL has a production domain
+            if settings.APP_URL and not any(lh in settings.APP_URL.lower() for lh in ("localhost", "127.0.0.1")):
+                return settings.APP_URL.rstrip('/')
+
+            # If both request and settings are localhost, check if in production
+            is_debug = bool(settings.DEBUG) or os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
+            if not is_debug:
+                return "https://padosiagent.com"
+            return f"{proto}://{host}".rstrip('/')
+
+    # No request provided
+    app_url = (settings.APP_URL or "").rstrip('/')
+    is_localhost = any(lh in app_url.lower() for lh in ("localhost", "127.0.0.1"))
+    is_debug = bool(settings.DEBUG) or os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
+    if is_localhost and not is_debug:
+        return "https://padosiagent.com"
+    return app_url or "https://padosiagent.com"
+
 
 
