@@ -159,6 +159,28 @@ class TestOpenGraphPillowFallback(unittest.TestCase):
         # Verify JPEG magic bytes FF D8 FF
         self.assertEqual(jpeg_bytes[:3], b'\xff\xd8\xff')
 
+    def test_pillow_fallback_with_rgba_photo(self):
+        """Verify RGBA transparent images do not crash JPEG generation with 'cannot write mode RGBA as JPEG'."""
+        from PIL import Image
+        from apps.agents.services.og_image import _render_agent_og_jpeg_pillow
+
+        agent = MagicMock()
+        agent.full_name = "Ashish Prajapati"
+        agent.agency_name = "Prajapati Insurance Services"
+        agent.slug = "ashish-prajapati"
+        mock_perf = MagicMock(rating=4.9, total_reviews=42)
+        mock_profile = MagicMock(display_city="Ahmedabad", display_state="Gujarat")
+        agent.insuranceSegments = MagicMock(all=lambda: [])
+
+        # Create an in-memory transparent RGBA image as photo
+        rgba_img = Image.new('RGBA', (200, 200), (255, 0, 0, 128))
+
+        with patch('apps.agents.services.og_image._load_photo', return_value=rgba_img):
+            jpeg_bytes = _render_agent_og_jpeg_pillow(agent, profile=mock_profile, perf=mock_perf)
+
+        self.assertIsInstance(jpeg_bytes, bytes)
+        self.assertEqual(jpeg_bytes[:3], b'\xff\xd8\xff')
+
 
 class TestChatbotSecurity(unittest.TestCase):
     """Verify chatbot endpoint security checks."""
@@ -213,6 +235,21 @@ class TestFindAgentsNo302Redirect(unittest.TestCase):
         # Must NOT be 302 redirect
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(req.session.get('last_pincode'), '380015')
+
+    def test_find_agents_without_params_has_no_unbound_local_error(self):
+        """Verify accessing /find-agents/ with no query parameters does not trigger UnboundLocalError."""
+        from apps.home.views.pages import find_agents
+        from django.http import HttpResponse
+
+        req = self.factory.get('/find-agents/')
+        req.session = {}
+        req.user = AnonymousUser()
+
+        with patch('apps.home.views.pages.fetch_filtered_agents_list', return_value=([], None, None, 'smart', False, 0)), \
+             patch('apps.home.views.pages.render', return_value=HttpResponse('OK', status=200)):
+            resp = find_agents(req)
+
+        self.assertEqual(resp.status_code, 200)
 
 
 if __name__ == '__main__':
