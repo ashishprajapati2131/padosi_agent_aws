@@ -236,32 +236,47 @@
         var ogImageUrl = '{{ request.scheme }}://{{ request.get_host }}{% url "agents:agent_og_image" agent.id %}';
         var agentName  = '{{ agentDisplayName|default:agent.fullname|escapejs }}';
 
+        /* =====================================================
+         * HOW THIS WORKS:
+         * 1. Mobile (Web Share API with files) → shares actual
+         *    .jpg image file → WhatsApp shows pure PHOTO bubble
+         *    (zero green link-preview bar) ✔
+         * 2. Fallback: send the .jpg URL as WhatsApp text →
+         *    WhatsApp auto-renders .jpg URLs as inline images →
+         *    no link-card, no green bar ✔
+         * 3. Desktop modal keeps all social platforms.
+         * ===================================================== */
+
         /* ── Main share entry point ── */
         async function shareProfile() {
-            // On mobile: try sharing the image file directly (no green link preview in WhatsApp)
-            if (navigator.canShare) {
-                var shared = await _tryShareAsImage();
+            /* ─ Path 1: Mobile with files support (cleanest) ─ */
+            if (typeof navigator.canShare === 'function') {
+                var shared = await _shareAsImageFile();
                 if (shared) return;
             }
 
-            // Native share (URL only) — desktop/unsupported browsers
-            if (navigator.share && !navigator.canShare) {
-                navigator.share({ title: shareTitle, url: shareUrl }).catch(function() {});
+            /* ─ Path 2: Mobile navigator.share without files ─ */
+            if (navigator.share) {
+                navigator.share({ title: shareTitle, url: shareUrl }).catch(function(){});
                 return;
             }
 
-            // Desktop fallback: show modal
+            /* ─ Path 3: Desktop → open modal ─ */
             _openShareModal();
         }
 
-        /* ── Fetch OG image and share as file ── */
-        async function _tryShareAsImage() {
+        /* ── Path 1: Fetch image blob, share as file ──
+         * WhatsApp receives it as a photo → zero link-preview bar. */
+        async function _shareAsImageFile() {
             try {
-                var resp = await fetch(ogImageUrl);
+                var resp = await fetch(ogImageUrl, { mode: 'cors' });
                 if (!resp.ok) return false;
                 var blob = await resp.blob();
-                var fileName = agentName.replace(/[^a-z0-9]/gi, '_') + '_visiting_card.jpg';
-                var file = new File([blob], fileName, { type: 'image/jpeg' });
+                var file = new File(
+                    [blob],
+                    agentName.replace(/[^a-z0-9]/gi, '_') + '_visiting_card.jpg',
+                    { type: 'image/jpeg' }
+                );
                 if (!navigator.canShare({ files: [file] })) return false;
                 await navigator.share({
                     files: [file],
@@ -274,42 +289,64 @@
             }
         }
 
-        /* ── Explicit WhatsApp image-share button in modal ── */
+        /* ── "Share as Card" button inside the modal ── */
         async function shareCardAsImage() {
             var btn  = document.getElementById('pa-wa-image-share-btn');
             var txt  = document.getElementById('pa-wa-btn-text');
             var spin = document.getElementById('pa-wa-btn-spin');
-            txt.style.display = 'none';
-            spin.style.display = 'inline';
-            btn.disabled = true;
+            if (txt)  txt.style.display  = 'none';
+            if (spin) spin.style.display = 'inline';
+            if (btn)  btn.disabled       = true;
 
-            var shared = await _tryShareAsImage();
+            var shared = await _shareAsImageFile();
 
-            txt.style.display = 'inline';
-            spin.style.display = 'none';
-            btn.disabled = false;
+            if (txt)  txt.style.display  = 'inline';
+            if (spin) spin.style.display = 'none';
+            if (btn)  btn.disabled       = false;
 
             if (!shared) {
-                // Fallback: open WhatsApp with URL only
-                window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(shareUrl), '_blank');
+                /* Fallback: send .jpg URL via WhatsApp text
+                 * WhatsApp renders image-URLs as inline photos — no green bar */
+                var waText = agentName + ' \u2014 Digital Visiting Card\n' +
+                             shareUrl + '\n\n' + ogImageUrl;
+                window.open(
+                    'https://api.whatsapp.com/send?text=' + encodeURIComponent(waText),
+                    '_blank'
+                );
             }
             $('#shareProfileModal').modal('hide');
         }
 
+        /* ── Build WhatsApp URL using .jpg image URL (PHP trick) ──
+         * WhatsApp auto-previews .jpg links as large inline photos. */
+        function _waImageTextUrl() {
+            var txt = agentName + ' \u2014 Digital Visiting Card\n' +
+                      shareUrl + '\n\n' + ogImageUrl;
+            return 'https://api.whatsapp.com/send?text=' + encodeURIComponent(txt);
+        }
+
         /* ── Open desktop modal ── */
         function _openShareModal() {
-            document.getElementById('share-wa').href = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(shareUrl);
-            document.getElementById('share-tg').href = 'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareTitle);
-            document.getElementById('share-tw').href = 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(shareUrl) + '&text=' + encodeURIComponent(shareTitle);
-            document.getElementById('share-fb').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl);
-            document.getElementById('share-ln').href = 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(shareUrl);
+            document.getElementById('share-wa').href = _waImageTextUrl();
+            document.getElementById('share-tg').href =
+                'https://t.me/share/url?url=' + encodeURIComponent(shareUrl) +
+                '&text=' + encodeURIComponent(shareTitle);
+            document.getElementById('share-tw').href =
+                'https://twitter.com/intent/tweet?url=' + encodeURIComponent(shareUrl) +
+                '&text=' + encodeURIComponent(shareTitle);
+            document.getElementById('share-fb').href =
+                'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl);
+            document.getElementById('share-ln').href =
+                'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(shareUrl);
             $('#shareProfileModal').modal('show');
         }
 
         function copyShareLink() {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(shareUrl).then(function() {
-                    Swal.fire({ icon:'success', title:'Link copied', text:'Recommended profile link copied to clipboard.', timer:1500, showConfirmButton:false });
+                    Swal.fire({ icon:'success', title:'Link copied',
+                        text:'Recommended profile link copied to clipboard.',
+                        timer:1500, showConfirmButton:false });
                     $('#shareProfileModal').modal('hide');
                 }).catch(function() { prompt('Copy this profile link:', shareUrl); });
             } else {

@@ -2504,6 +2504,7 @@ def agent_og_image(request, agent_id=None, slug=None):
         if cached_image:
             response = HttpResponse(cached_image, content_type="image/jpeg")
             response["Cache-Control"] = "public, max-age=86400"
+            response["Access-Control-Allow-Origin"] = "*"
             return response
 
     try:
@@ -2511,6 +2512,7 @@ def agent_og_image(request, agent_id=None, slug=None):
         cache.set(cache_key, encoded_image, 86400 * 7)
         response = HttpResponse(encoded_image, content_type="image/jpeg")
         response["Cache-Control"] = "public, max-age=604800"
+        response["Access-Control-Allow-Origin"] = "*"
         return response
     except Exception as e:
         logger.exception(f"OG Image Generation error: {e}")
@@ -2519,6 +2521,7 @@ def agent_og_image(request, agent_id=None, slug=None):
         fallback_canvas.save(buf, format="JPEG", quality=50)
         response = HttpResponse(buf.getvalue(), content_type="image/jpeg")
         response["Cache-Control"] = "no-store"
+        response["Access-Control-Allow-Origin"] = "*"
         return response
 
 
