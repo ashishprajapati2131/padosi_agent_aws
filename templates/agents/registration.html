@@ -15,7 +15,7 @@
 
 {% block chatbot_widget %}{% endblock %}
 
-{% block extra_css %}
+{% block extra_head %}
     {% if referring_agent and referring_agent.is_championship %}
     <meta property="og:image:secure_url" content="{{ request.scheme }}://{{ request.get_host }}/static/img/championship_og.jpg">
     <meta property="og:image:type" content="image/jpeg">
@@ -37,6 +37,9 @@
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     {% endif %}
+{% endblock %}
+
+{% block extra_css %}
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -2514,7 +2514,7 @@ def agent_og_image(request, agent_id=None, slug=None):
         return response
     except Exception as e:
         logger.exception(f"OG Image Generation error: {e}")
-        fallback_canvas = Image.new("RGB", (800, 800), (15, 58, 102))
+        fallback_canvas = Image.new("RGB", (1200, 630), (15, 58, 102))
         buf = io.BytesIO()
         fallback_canvas.save(buf, format="JPEG", quality=50)
         response = HttpResponse(buf.getvalue(), content_type="image/jpeg")

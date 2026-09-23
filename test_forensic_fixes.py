@@ -180,6 +180,34 @@ class TestOpenGraphPillowFallback(unittest.TestCase):
 
         self.assertIsInstance(jpeg_bytes, bytes)
         self.assertEqual(jpeg_bytes[:3], b'\xff\xd8\xff')
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(jpeg_bytes))
+        self.assertEqual(img.size, (1200, 630), "Pillow fallback must produce exactly 1200x630 image")
+
+    def test_og_render_agent_og_jpeg(self):
+        """Verify render_agent_og_jpeg produces valid 1200x630 JPEG and sanitizes corrupted template tags."""
+        from apps.agents.services.og_image import render_agent_og_jpeg
+        from PIL import Image
+        import io
+
+        agent = MagicMock()
+        agent.fullname = "Rakesh Sharma"
+        agent.agency_name = "Sharma Agency"
+        agent.agent_slug = "rakesh-sharma"
+        agent.experience_years = 12
+        agent.average_rating = 4.8
+        agent.review_count = 124
+        agent.client_base = "500+"
+        agent.ordered_insurance_segments = ["health", "motor", "{% if seg == 'sme' %}sme{% endif %}"]
+        mock_perf = MagicMock(claims_settled="150+", total_claim_amount="2.5Cr")
+        mock_profile = MagicMock(display_city="Ahmedabad", display_state="Gujarat", experience_years=12, agency_name="Sharma Agency")
+
+        jpeg_bytes = render_agent_og_jpeg(agent)
+        self.assertIsInstance(jpeg_bytes, bytes)
+        self.assertEqual(jpeg_bytes[:3], b'\xff\xd8\xff')
+        img = Image.open(io.BytesIO(jpeg_bytes))
+        self.assertEqual(img.size, (1200, 630), "OG Card output must be exactly 1200x630")
 
 
 class TestChatbotSecurity(unittest.TestCase):
