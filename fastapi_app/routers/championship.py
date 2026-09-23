@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, Request
 from sqlalchemy.orm import Session
 from typing import Optional, List, Any
 from datetime import datetime
@@ -56,7 +56,7 @@ from fastapi_app.services.championship_service import (
     generate_qr_bytes,
     format_inr,
 )
-from fastapi_app.config import settings
+from fastapi_app.config import settings, get_base_url
 
 router = APIRouter(
     prefix="/v1/championship",
@@ -138,6 +138,7 @@ def calculate_days_left(end_date) -> int:
 
 @router.get("/dashboard", response_model=ChampionshipDashboardResponse)
 def get_agent_championship_dashboard(
+    request: Request,
     current_agent: Agent = Depends(get_current_agent),
     db: Session = Depends(get_db)
 ):
@@ -193,7 +194,7 @@ def get_agent_championship_dashboard(
     )
 
     # 3. Roadmap & Next Target
-    app_url = settings.APP_URL.rstrip('/')
+    app_url = get_base_url(request)
     roadmap_data = get_participant_roadmap(db, participant)
     roadmap_items = []
     for item in roadmap_data['roadmap']:
@@ -316,6 +317,7 @@ def get_whatsapp_templates(
 @router.post("/whatsapp-share", response_model=WhatsAppShareResponse)
 def generate_whatsapp_share_payload(
     payload: WhatsAppShareRequest,
+    request: Request,
     current_agent: Agent = Depends(get_current_agent),
     db: Session = Depends(get_db)
 ):
@@ -325,7 +327,7 @@ def generate_whatsapp_share_payload(
     campaign = get_current_campaign(db)
     participant = get_or_create_participant(db, current_agent.id, campaign)
 
-    app_url = settings.APP_URL.rstrip('/')
+    app_url = get_base_url(request)
     referral_url = f"{app_url}/agent-registration/join/{participant.referral_id}/"
     profile_slug = getattr(current_agent, 'agent_slug', '') or str(current_agent.id)
     profile_url = f"{app_url}/agent/{profile_slug}/"
@@ -368,6 +370,7 @@ def generate_whatsapp_share_payload(
 
 @router.get("/qr-code")
 def download_championship_qr(
+    request: Request,
     current_agent: Agent = Depends(get_current_agent),
     db: Session = Depends(get_db)
 ):
@@ -376,7 +379,7 @@ def download_championship_qr(
     """
     campaign = get_current_campaign(db)
     participant = get_or_create_participant(db, current_agent.id, campaign)
-    app_url = settings.APP_URL.rstrip('/')
+    app_url = get_base_url(request)
     referral_url = f"{app_url}/agent-registration/join/{participant.referral_id}/"
 
     qr_bytes = generate_qr_bytes(referral_url)
@@ -447,6 +450,7 @@ def claim_milestone_reward(
 @router.get("/public/landing/{ref_id}", response_model=PublicLandingResponse)
 def get_public_referral_landing_details(
     ref_id: str,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -486,7 +490,7 @@ def get_public_referral_landing_details(
         pass
 
     dig_price, prof_price = extract_campaign_pricing(campaign)
-    app_url = settings.APP_URL.rstrip('/')
+    app_url = get_base_url(request)
 
     return PublicLandingResponse(
         success=True,
