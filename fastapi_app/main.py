@@ -16,7 +16,8 @@ from fastapi_app.config import settings
 from fastapi_app.routers import (
     auth, dashboard, profile, public_profile,
     pincode, leads, notifications, analytics,
-    qr, visibility, referral, find_agents, championship
+    qr, visibility, referral, find_agents, championship,
+    plans
 )
 import fastapi_app.models
 
@@ -63,6 +64,7 @@ app.include_router(visibility.router)
 app.include_router(referral.router)
 app.include_router(find_agents.router)
 app.include_router(championship.router)
+app.include_router(plans.router)
 
 class RestrictedStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):

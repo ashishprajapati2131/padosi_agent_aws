@@ -45,3 +45,4 @@ from fastapi_app.models.championship import (
     ChampionshipAuditLog,
     ChampionshipLeaderboardCache,
 )
+from fastapi_app.models.subscription_plan import SubscriptionPlan
