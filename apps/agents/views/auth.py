@@ -134,27 +134,39 @@ def agent_login(request):
         if is_admin:
             return redirect('agents:agent_dashboard')
 
-        try:
-            agent = resolve_agent_for_user(request.user) or find_agent(request.user.email or '')
-        except Exception as e:
-            logger.error("Already-authenticated agent lookup failed: %s", e)
-            agent = None
+        # A distributor or insurance-company user may open the agent login page to
+        # sign in as an agent. Their Django session is shared across portals, so the
+        # "already authenticated" shortcut below would trap them on chooseplan and
+        # never let them reach the agent login form. Detect that case and fall
+        # through to render/process the agent login instead.
+        is_other_portal_user = (
+            request.user.groups.filter(name='distributor').exists()
+            or hasattr(request.user, 'insurance_profile')
+        )
 
-        if agent:
+        if not is_other_portal_user:
             try:
-                from apps.agents.views.registration import verify_and_activate_pending_payment
-                verify_and_activate_pending_payment(agent)
-                agent.refresh_from_db()
-            except Exception:
-                pass
+                agent = resolve_agent_for_user(request.user) or find_agent(request.user.email or '')
+            except Exception as e:
+                logger.error("Already-authenticated agent lookup failed: %s", e)
+                agent = None
 
-            if agent_can_access_dashboard(agent):
-                return redirect('agents:agent_dashboard')
-            else:
-                return redirect('agents:chooseplan')
+            if agent:
+                try:
+                    from apps.agents.views.registration import verify_and_activate_pending_payment
+                    verify_and_activate_pending_payment(agent)
+                    agent.refresh_from_db()
+                except Exception:
+                    pass
 
-        # If user is authenticated but not an admin or paid agent
-        return redirect('agents:chooseplan')
+                if agent_can_access_dashboard(agent):
+                    return redirect('agents:agent_dashboard')
+                else:
+                    return redirect('agents:chooseplan')
+
+            # If user is authenticated but not an admin or paid agent
+            return redirect('agents:chooseplan')
+        # Cross-portal user: fall through to the agent login form / POST handler.
 
     if request.method == 'POST':
         ip = get_client_ip(request)
