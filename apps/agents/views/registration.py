@@ -2796,9 +2796,11 @@ def _agent_register_complete_impl(request):
 
     if client_plan_name and plan_slug_from_name(client_plan_name) == plan_type:
         plan_name = client_plan_name
-    if plan_slug_from_name(plan_name or '') != plan_type:
-        # Admin-configured display names that don't parse would otherwise be
-        # resolved later by the webhook's "default professional" fallback.
+    parsed_plan = plan_slug_from_name(plan_name or '')
+    if parsed_plan and parsed_plan != plan_type:
+        # A name that resolves to a DIFFERENT plan would activate that plan later.
+        # Names that don't resolve at all (custom admin names) are kept as-is:
+        # _order_plan_slug() then falls back to agent.plan_type, set below.
         plan_name = _CANONICAL_PLAN_NAMES.get(plan_type, plan_name)
 
     total_amount = _to_money(total_amount)

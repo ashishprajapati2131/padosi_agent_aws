@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load html_tags %}
 
 {% block title %}{{ page.meta_title|default:page.title }} — PadosiAgent{% endblock %}
 
@@ -28,7 +29,7 @@
             <div class="col-lg-10 mx-auto">
                 <div class="bg-white rounded-3 shadow-sm p-4 p-md-5 border" style="border-radius: 16px !important;">
                     <article class="cms-page-content" style="color: #334155; line-height: 1.8; font-size: 1.05rem;">
-                        {{ page.content|safe }}
+                        {{ page.content|clean_html }}
                     </article>
                 </div>
             </div>

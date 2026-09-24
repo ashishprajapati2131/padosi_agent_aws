@@ -19,8 +19,40 @@ from django.http import JsonResponse
 from django.utils.text import slugify
 
 from apps.home.models.page import Page
+from apps.home.html_sanitizer import has_active_content
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
 from apps.admin_panel.views.dashboard import _get_admin_from_session
+
+
+RAW_SCRIPT_SUPER_ONLY_MSG = (
+    'This Raw HTML content contains scripts or event handlers. Only a Super Admin '
+    'can publish script-enabled pages, because they run on the main site with '
+    'visitors\' logged-in sessions. Remove the scripts or ask a Super Admin to save it.'
+)
+
+
+def _is_super_admin(admin_id):
+    from apps.admin_panel.models.admin_auth import Admin
+    admin = Admin.objects.filter(id=admin_id).only('role').first()
+    return bool(admin and admin.role == 'super')
+
+
+def raw_script_save_blocked(is_super, is_raw, content, page=None):
+    """Raw HTML pages are served as-is on the main origin, so any script in
+    them runs with visitors' (and admins') sessions. Only a Super Admin may
+    ADD or CHANGE script-enabled raw content. Existing pages keep working, and
+    staff can still edit their title/SEO/status as long as the content itself
+    is unchanged.
+    """
+    if is_super or not is_raw:
+        return False
+    def _norm(text):
+        return (text or '').replace('\r\n', '\n').strip()
+
+    unchanged = page is not None and page.is_raw_code and _norm(content) == _norm(page.content)
+    if unchanged:
+        return False
+    return has_active_content(content)
 
 
 def pages_index(request):
@@ -75,6 +107,10 @@ def pages_store(request):
 
         if Page.objects.filter(slug=slug).exists():
             messages.error(request, 'A page with this URL slug already exists.')
+            return render(request, 'admin/pages/edit.html', {'page': None})
+
+        if raw_script_save_blocked(_is_super_admin(admin_id), 'is_raw_code' in request.POST, content):
+            messages.error(request, RAW_SCRIPT_SUPER_ONLY_MSG)
             return render(request, 'admin/pages/edit.html', {'page': None})
 
         page = Page.objects.create(
@@ -138,6 +174,10 @@ def pages_update(request, page_id):
 
         if Page.objects.filter(slug=slug).exclude(id=page.id).exists():
             messages.error(request, 'A page with this URL slug already exists.')
+            return render(request, 'admin/pages/edit.html', {'page': page})
+
+        if raw_script_save_blocked(_is_super_admin(admin_id), 'is_raw_code' in request.POST, content, page):
+            messages.error(request, RAW_SCRIPT_SUPER_ONLY_MSG)
             return render(request, 'admin/pages/edit.html', {'page': page})
 
         page.title            = title

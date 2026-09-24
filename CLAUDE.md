@@ -239,7 +239,7 @@ DEFAULT_AUTO_FIELD = 'django.db.backends.BigAutoField'
 2. Passwordless flows (`client_quick_register`, `fb_ad_signup`) must never `login()` a portal user (`_is_portal_user`) or create an `auth_user` for an email owned by an agent/portal account (`_email_belongs_to_portal_account`).
 3. (Owner decision) New agents' temporary password is their email and the welcome email says so — intentionally unchanged.
 4. Client IP = `ThreatMonitorMiddleware.get_client_ip()` (Django) / `fastapi_app.utils.client_ip.get_client_ip()` — never `X-Forwarded-For.split(',')[0]`.
-5. Data embedded in `<script>`: use `{% load json_tags %}{{ value|safe_json }}`, never `json.dumps(...)|safe`. Server JSON that JS inserts via `innerHTML` must be HTML-escaped at the source.
+5. Data embedded in `<script>`: use `{% load json_tags %}{{ value|safe_json }}`, never `json.dumps(...)|safe`. Server JSON that JS inserts via `innerHTML` must be HTML-escaped at the source. Admin/CMS-authored HTML renders with `{% load html_tags %}{{ value|clean_html }}`, never `|safe` or `{% autoescape off %}`. Raw HTML CMS pages (`Page.is_raw_code`) are served as-is; only a Super Admin may save script-enabled raw content (`raw_script_save_blocked` in `admin_panel/views/pages.py`).
 6. Changing an agent's email must be rejected if the address belongs to any other `auth_user`/`users` row.
 7. Private files: normalise the path before any ownership check (`serve_private_file`).
 
@@ -454,7 +454,7 @@ python manage.py makemigrations --check --dry-run  # Verify no pending migration
 
 Test files:
 - `apps/home/tests/` — agent_filters, calculators, pincode, portal_messages
-- `apps/agents/test_*.py` — bio_generator, dashboard_json, feature_unlock, password_auth, payment_flow, post_payment, qr_review_growth
+- `apps/agents/test_*.py` — bio_generator, dashboard_json, feature_unlock, password_auth, payment_flow, post_payment, qr_review_growth, audit_security, registration_e2e (full signup → Razorpay → dashboard; run it after any registration/payment change)
 - `fastapi_app/test_*.py` — championship, hybrid_fixes
 
 Custom test runner: `apps.home.test_runner.ManagedModelsTestRunner` (handles unmanaged models in tests)

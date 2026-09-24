@@ -1,4 +1,4 @@
-{% load static %}
+{% load static html_tags %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -1247,7 +1247,7 @@
             {% if spots_left > 0 %}
             <div class="exc-urgency">
                 <div class="exc-urgency-top">{{ urgency_line_1 }}</div>
-                <div class="exc-urgency-count">{{ urgency_line_2|safe }}</div>
+                <div class="exc-urgency-count">{{ urgency_line_2|clean_html }}</div>
             </div>
             {% endif %}
 
@@ -1297,11 +1297,11 @@
                 <div class="feature-tile">
                     <div class="icon-wrapper"
                         style="color: {{ feature.color|default:'#000' }}; background: {{ feature.bg_color|default:'#eee' }}; position: relative;">
-                        {% if '<' in feature.icon %} {{ feature.icon|safe }} {% else %} <i
+                        {% if '<' in feature.icon %} {{ feature.icon|clean_html }} {% else %} <i
                             class="fa-solid {{ feature.icon }}"></i>
                             {% endif %}
                     </div>
-                    <div class="feature-text">{{ feature.name|default:''|safe }}</div>
+                    <div class="feature-text">{{ feature.name|default:''|clean_html }}</div>
                 </div>
                 {% endfor %}
             </div>

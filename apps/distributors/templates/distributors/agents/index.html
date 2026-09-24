@@ -103,8 +103,8 @@
                         {% endif %}
                     </td>
                     <td class="py-3">
-                        {% if agent.activeSubscription %}
-                            <div class="fw-bold" style="color: #334155; font-size: 13px;">{{ agent.activeSubscription.selected_plan }}</div>
+                        {% if agent.page_active_sub %}
+                            <div class="fw-bold" style="color: #334155; font-size: 13px;">{{ agent.page_active_sub.selected_plan }}</div>
                         {% else %}
                             <span class="text-muted" style="font-size: 12px;">No Plan</span>
                         {% endif %}
@@ -170,7 +170,7 @@
             <div>
                 <div class="agent-card-label">Plan</div>
                 <div class="fw-semibold" style="font-size: 13px; color: #334155;">
-                    {% if agent.activeSubscription %}{{ agent.activeSubscription.selected_plan }}{% else %}<span class="text-muted">No Plan</span>{% endif %}
+                    {% if agent.page_active_sub %}{{ agent.page_active_sub.selected_plan }}{% else %}<span class="text-muted">No Plan</span>{% endif %}
                 </div>
             </div>
             <div>

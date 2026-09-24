@@ -1,5 +1,5 @@
 {% extends base_template|default:'base.html' %}
-{% load static %}
+{% load static html_tags %}
 
 {% block title %}{% if admin_lock_preview %}{{ preview_plan_label }} — Manage Agent{% else %}Agent Dashboard — PadosiAgent{% endif %}{% endblock %}
 {% block breadcrumb_title %}Content › Plans › {{ preview_plan_label }}{% endblock %}
@@ -704,7 +704,7 @@
                     </div>
                 </div>
                 {% else %}
-                {% autoescape off %}{{ coming_soon_html }}{% endautoescape %}
+                {{ coming_soon_html|clean_html }}
                 {% endif %}
             </div>
         </div>
