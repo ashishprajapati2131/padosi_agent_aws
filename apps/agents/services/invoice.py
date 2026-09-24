@@ -146,32 +146,43 @@ class InvoiceService:
             # 3. Resolve discount folder name
             folder = Invoice.resolve_discount_folder(discount_percent, total_amount)
 
-            # 4. Generate unique invoice number: INV-YYYY-XXXXX
-            invoice_number = self.generate_invoice_number()
-
             profile = agent.get_primary_profile()
 
-            # 5. Create Invoice Database record
-            invoice = Invoice.objects.create(
-                invoice_number=invoice_number,
-                agent=agent,
-                agent_name=agent.fullname,
-                agent_email=agent.email,
-                agent_mobile=agent.mobile,
-                agent_address=profile.address if profile else '',
-                agent_state=profile.state if profile else '',
-                plan_name=subscription.selected_plan,
-                plan_type=agent.plan_type or 'professional',
-                base_amount=base_amount,
-                gst_amount=gst_amount,
-                total_amount=total_amount,
-                discount_percent=discount_percent,
-                discount_folder=folder,
-                promo_code=subscription.promo_code,
-                razorpay_payment_id=subscription.razorpay_payment_id,
-                razorpay_order_id=subscription.razorpay_order_id,
-                payment_status='paid',
-            )
+            # 5. Create Invoice Database record with retry on sequence collision
+            from django.db import IntegrityError
+            invoice = None
+            for attempt in range(5):
+                invoice_number = self.generate_invoice_number()
+                try:
+                    invoice = Invoice.objects.create(
+                        invoice_number=invoice_number,
+                        agent=agent,
+                        agent_name=agent.fullname,
+                        agent_email=agent.email,
+                        agent_mobile=agent.mobile,
+                        agent_address=profile.address if profile else '',
+                        agent_state=profile.state if profile else '',
+                        plan_name=subscription.selected_plan,
+                        plan_type=agent.plan_type or 'professional',
+                        base_amount=base_amount,
+                        gst_amount=gst_amount,
+                        total_amount=total_amount,
+                        discount_percent=discount_percent,
+                        discount_folder=folder,
+                        promo_code=subscription.promo_code,
+                        razorpay_payment_id=subscription.razorpay_payment_id,
+                        razorpay_order_id=subscription.razorpay_order_id,
+                        payment_status='paid',
+                    )
+                    break
+                except IntegrityError as ie:
+                    if 'invoice_number' in str(ie) and attempt < 4:
+                        logger.warning(
+                            f"[InvoiceService] Invoice number collision on {invoice_number}, "
+                            f"retrying attempt {attempt + 1}"
+                        )
+                        continue
+                    raise
 
             # 6. Render and generate PDF
             pdf_path = self.generate_pdf(invoice)
@@ -356,7 +367,20 @@ class InvoiceService:
         """
         try:
             sheet_url = SiteSetting.get_value('invoice_google_sheet_url')
-            if not sheet_url:
+            if not sheet_url or not isinstance(sheet_url, str):
+                return
+
+            sheet_url = sheet_url.strip()
+            # SSRF protection: require HTTPS and block private / metadata IPs
+            from urllib.parse import urlparse
+            parsed = urlparse(sheet_url)
+            if parsed.scheme != 'https' or not parsed.netloc:
+                logger.warning(f"[InvoiceService] Rejected insecure non-HTTPS sheet URL: {sheet_url}")
+                return
+
+            blocked_hosts = ('169.254.169.254', 'metadata.google.internal', 'localhost', '127.0.0.1', '0.0.0.0')
+            if any(bh in parsed.netloc.lower() for bh in blocked_hosts):
+                logger.warning(f"[InvoiceService] Blocked metadata/internal host in sheet sync: {parsed.netloc}")
                 return
 
             payload = {

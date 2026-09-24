@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sub-Distributor Dashboard | PadosiAgent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f1f5f9; font-family: 'Inter', sans-serif; }
+        .navbar-top { background: #0f172a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .stat-card { background: white; border-radius: 12px; padding: 20px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .stat-value { font-size: 24px; font-weight: 800; color: #1e293b; }
+        .stat-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .btn-logout { color: #f87171; text-decoration: none; font-weight: 600; font-size: 14px; }
+        .btn-logout:hover { color: #ef4444; }
+    </style>
+</head>
+<body>
+
+<div class="navbar-top shadow-sm">
+    <div class="d-flex align-items-center gap-3">
+        <h5 class="fw-bold m-0"><i class="fa-solid fa-sitemap text-primary me-2"></i> Sub-Distributor Portal</h5>
+    </div>
+    <div class="d-flex align-items-center gap-4">
+        <span class="text-white-50" style="font-size: 14px;">Welcome, <strong>{{ sub_dist.fullname }}</strong></span>
+        <form action="{% url 'distributors:sub_distributor_logout' %}" method="POST" class="m-0">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-link btn-logout p-0 border-0"><i class="fa-solid fa-right-from-bracket me-1"></i> Logout</button>
+        </form>
+    </div>
+</div>
+
+<div class="container my-5">
+    
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row g-4 mb-4">
+        <!-- Grow Network Card -->
+        <div class="col-lg-8">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 12px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white;">
+                <div class="card-body p-4 d-flex flex-column justify-content-center">
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-bullhorn text-warning me-2"></i> Grow Your Agent Network</h5>
+                    <p class="opacity-75 mb-4" style="font-size: 14px; max-width: 600px;">
+                        Share your unique registration link with potential agents. Anyone who signs up using this link will automatically be added to your network under your main distributor ({{ parent_dist.fullname }}).
+                    </p>
+                    
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <div class="input-group" style="max-width: 450px;">
+                            <input type="text" class="form-control" id="agentLink" value="{{ agent_link }}" readonly style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white;">
+                            <button class="btn btn-warning fw-bold" type="button" onclick="copyAgentLink()">
+                                <i class="fa-regular fa-copy me-1"></i> Copy Link
+                            </button>
+                        </div>
+                        <a href="https://wa.me/?text={{ whatsapp_msg|urlencode }}" target="_blank" class="btn fw-bold ms-2" style="background: #25D366; color: white;">
+                            <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Register -->
+        <div class="col-lg-4">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 12px;">
+                <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center text-center">
+                    <div style="font-size: 40px; color: #10b981;" class="mb-3"><i class="fa-solid fa-user-plus"></i></div>
+                    <h6 class="fw-bold mb-2">Register Agent Directly</h6>
+                    <p class="text-muted mb-4" style="font-size: 13px;">Fill out the registration form on behalf of your new agent.</p>
+                    <a href="{% url 'distributors:sub_distributor_register_agent' %}" class="btn btn-primary w-100 fw-bold rounded-3">
+                        Register New Agent
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-value">{{ total_agents }}</div>
+                <div class="stat-label mt-1">Total Agents & Drafts</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-value text-success">{{ active_agents }}</div>
+                <div class="stat-label mt-1">Active Agents</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-value text-warning">{{ pending_agents }}</div>
+                <div class="stat-label mt-1">Pending Approval</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent List -->
+    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+        <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+            <h6 class="fw-bold m-0"><i class="fa-solid fa-users text-primary me-2"></i> Your Recruited Agents</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead class="text-muted" style="font-size: 11px; text-transform: uppercase;">
+                        <tr>
+                            <th>Agent Name</th>
+                            <th>Contact</th>
+                            <th>Status</th>
+                            <th>Joined Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for agent in agents %}
+                        <tr>
+                            <td class="fw-bold py-3" style="color: #1e293b;">{{ agent.fullname }}</td>
+                            <td>
+                                <div style="font-size: 13px;">{{ agent.email }}</div>
+                                <div class="text-muted" style="font-size: 12px;">{{ agent.mobile }}</div>
+                            </td>
+                            <td>
+                                {% if agent.status == 'active' %}
+                                    <span class="badge bg-success bg-opacity-10 text-success px-2 py-1">Active</span>
+                                {% elif agent.status == 'pending_approval' %}
+                                    <span class="badge bg-warning bg-opacity-10 text-warning px-2 py-1">Pending</span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary px-2 py-1">{{ agent.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted" style="font-size: 13px;">{{ agent.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5 text-muted">
+                                You haven't registered any agents yet. Share your link to get started!
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function copyAgentLink() {
+        var copyText = document.getElementById("agentLink");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value);
+        alert("Registration Link copied! Send this to your agents.");
+    }
+</script>
+</body>
+</html>

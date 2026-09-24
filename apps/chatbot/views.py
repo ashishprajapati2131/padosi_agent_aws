@@ -4,6 +4,7 @@ from django.views.decorators.http import require_POST, require_GET
 from django.core.cache import cache
 import json
 import logging
+import re
 from .llm_client import generate_suggestion_chips, get_chat_completion, extract_agent_links, stream_plain_text_completion
 from .models import ChatMessage
 import uuid
@@ -12,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 @require_GET
 def get_history(request, session_id):
+    if not session_id or not re.match(r'^[a-zA-Z0-9_\-]+$', session_id) or len(session_id) > 100:
+        return JsonResponse({"success": False, "error": "Invalid session identifier.", "data": []}, status=400)
+
     messages = ChatMessage.objects.filter(
         session__session_id=session_id,
         role__in=['user', 'assistant']
@@ -55,6 +59,12 @@ def get_chips(request):
 @csrf_exempt
 @require_POST
 def send_message(request):
+    # Cross-origin protection
+    origin = request.headers.get('origin', '')
+    host = request.get_host()
+    if origin and host not in origin:
+        logger.warning(f"Blocked unauthorized cross-origin chatbot request from origin: {origin}")
+        return JsonResponse({"success": False, "error": "Forbidden cross-origin request."}, status=403)
     client_ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
     
     # Rate limit: 20 messages per minute per IP using a rolling window

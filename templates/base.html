@@ -16,8 +16,8 @@
     <meta property="og:url" content="{% block og_url %}{{ default_canonical_url }}{% endblock %}">
     <meta property="og:image" content="{% block og_image %}{{ default_og_image }}{% endblock %}">
     <meta property="og:image:type" content="{% block og_image_type %}image/jpeg{% endblock %}">
-    <meta property="og:image:width" content="{% block og_image_width %}800{% endblock %}">
-    <meta property="og:image:height" content="{% block og_image_height %}800{% endblock %}">
+    <meta property="og:image:width" content="{% block og_image_width %}1200{% endblock %}">
+    <meta property="og:image:height" content="{% block og_image_height %}630{% endblock %}">
     <meta property="og:type" content="{% block og_type %}website{% endblock %}">
     
     <!-- Twitter Card Tags -->
@@ -209,9 +209,12 @@
 
     <!-- Favorite agent toggle (port of app.blade.php toggleFavoriteAgent) -->
     <script>
+        window._padosiGuestAuthenticated = window._padosiGuestAuthenticated || false;
+        window._padosiGuestData = window._padosiGuestData || null;
+
         window.toggleFavoriteAgent = function (btn, agentId) {
-            const isAuth = {{ request.user.is_authenticated|yesno:"true,false" }};
-            if (!isAuth) {
+            const isAuth = "{{ request.user.is_authenticated|yesno:'true,false' }}" === "true";
+            if (!isAuth && !window._padosiGuestAuthenticated) {
                 if (typeof window.showQuickRegisterPopup === 'function') {
                     window.showQuickRegisterPopup(window.location.pathname + window.location.search);
                 } else {
@@ -278,7 +281,9 @@
     <script src="{% static 'js/preloader.js' %}" defer></script>
     {% block chatbot_widget %}
         {% if not hide_chatbot %}
-        {% include 'chatbot/widget.html' %}
+            {% if request.path == '/' or request.path == '/faq/' or request.path == '/about/' or request.path == '/contact/' %}
+                {% include 'chatbot/widget.html' %}
+            {% endif %}
         {% endif %}
     {% endblock %}
     {% block modals %}{% endblock %}
@@ -326,7 +331,7 @@
         document.addEventListener('DOMContentLoaded', function () {
             if (!('geolocation' in navigator)) return;
 
-            const hasSessionLocation = {% if request.session.last_lat or request.session.last_pincode %}true{% else %}false{% endif %};
+            const hasSessionLocation = Boolean("{{ request.session.last_lat|default:'' }}" || "{{ request.session.last_pincode|default:'' }}");
             const permissionStatus = localStorage.getItem('padosi_location_status');
 
             if (!hasSessionLocation && permissionStatus !== 'denied' && permissionStatus !== 'prompted') {

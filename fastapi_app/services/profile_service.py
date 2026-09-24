@@ -1018,6 +1018,9 @@ class ProfileService:
             if not profile:
                 raise HTTPException(status_code=404, detail="Agent profile not found.")
             profile.profile_photo_path = secure_url
+            agent = db.query(Agent).filter(Agent.id == agent_id).first()
+            if agent:
+                self._mark_pending_approval(agent)
             db.commit()
             response_url = f"/media/{secure_url}" if not secure_url.startswith("http") else secure_url
             return {"success": True, "profile_photo_url": response_url}

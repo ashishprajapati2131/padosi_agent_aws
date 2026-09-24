@@ -454,14 +454,14 @@ def agent_dashboard(request):
         unread_notifications_json = json_dumps(
             [{'title': n.title, 'body': n.body} for n in popup_notifications],
             ensure_ascii=False,
-        )
+        ).replace('</', r'<\/')
     except Exception:
         unread_notifications_json = '[]'
     try:
         feature_unlock_hints = build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
         from apps.agents.services.review_growth import build_review_growth_hints
         feature_unlock_hints.update(build_review_growth_hints(agent))
-        feature_unlock_hints_json = json_dumps(feature_unlock_hints)
+        feature_unlock_hints_json = json_dumps(feature_unlock_hints).replace('</', r'<\/')
     except Exception:
         feature_unlock_hints_json = '[]'
 
@@ -2283,12 +2283,16 @@ def agent_capture_lead(request):
         customer_mobile = lead_user.get('mobile') or request.POST.get('mobile')
         customer_pincode = lead_user.get('pincode') or request.POST.get('pincode')
 
-        if (not customer_name or not customer_email) and request.user.is_authenticated:
+        if (not customer_name or not customer_email or not customer_mobile) and request.user.is_authenticated:
             user = request.user
             customer_name = customer_name or getattr(user, 'fullname', '') or user.get_full_name() or user.username
             customer_email = customer_email or user.email
-            customer_mobile = customer_mobile or getattr(getattr(user, 'client', None), 'mobile', None)
-            customer_pincode = customer_pincode or getattr(getattr(user, 'client', None), 'pincode', None)
+            if not customer_mobile:
+                from apps.agents.models import Client
+                user_client = Client.objects.filter(user=user).first()
+                if user_client:
+                    customer_mobile = customer_mobile or user_client.mobile
+                    customer_pincode = customer_pincode or user_client.pincode
 
         enquiry_parts = [val for val in [service_type, insurance_type, insurance_company] if val]
         enquiry_requirements = ' | '.join(enquiry_parts) if enquiry_parts else None
@@ -2340,6 +2344,9 @@ def agent_capture_lead(request):
 
                 if i_comp:
                     req_desc += f" ({i_comp})"
+
+                if customer_pincode:
+                    req_desc += f" in {customer_pincode}"
 
                 cust_name = (customer_name or '').strip()
                 msg = f"Hello {agent_name},\nI found you on {domain_name}\n\nI am looking for {req_desc}."
@@ -2497,6 +2504,7 @@ def agent_og_image(request, agent_id=None, slug=None):
         if cached_image:
             response = HttpResponse(cached_image, content_type="image/jpeg")
             response["Cache-Control"] = "public, max-age=86400"
+            response["Access-Control-Allow-Origin"] = "*"
             return response
 
     try:
@@ -2504,14 +2512,16 @@ def agent_og_image(request, agent_id=None, slug=None):
         cache.set(cache_key, encoded_image, 86400 * 7)
         response = HttpResponse(encoded_image, content_type="image/jpeg")
         response["Cache-Control"] = "public, max-age=604800"
+        response["Access-Control-Allow-Origin"] = "*"
         return response
     except Exception as e:
         logger.exception(f"OG Image Generation error: {e}")
-        fallback_canvas = Image.new("RGB", (800, 800), (15, 58, 102))
+        fallback_canvas = Image.new("RGB", (1200, 630), (15, 58, 102))
         buf = io.BytesIO()
         fallback_canvas.save(buf, format="JPEG", quality=50)
         response = HttpResponse(buf.getvalue(), content_type="image/jpeg")
         response["Cache-Control"] = "no-store"
+        response["Access-Control-Allow-Origin"] = "*"
         return response
 
 

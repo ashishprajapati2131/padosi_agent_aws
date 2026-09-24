@@ -16,7 +16,7 @@ _PAID_AGENT_PATH_PREFIXES = (
     '/agent/referral/',
     '/agent/referral-info/',
     '/agent/upgrade-plan/',
-    '/agent/leads/',
+    '/agent/leads/update-status/',
     '/agent/update-visibility/',
     '/agent/push-token/',
 )
@@ -34,6 +34,9 @@ class AgentPaymentGateMiddleware:
 
     def __call__(self, request):
         path = (request.path or '').lower()
+        if path.startswith('/agent/leads/capture/'):
+            return self.get_response(request)
+
         if not any(path.startswith(prefix) for prefix in _PAID_AGENT_PATH_PREFIXES):
             return self.get_response(request)
 

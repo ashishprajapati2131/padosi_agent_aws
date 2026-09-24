@@ -20,7 +20,7 @@ class PageSitemap(Sitemap):
     changefreq = 'monthly'
 
     def items(self):
-        return Page.objects.filter(is_active=True)
+        return Page.objects.filter(is_active=True).order_by('id')
 
     def lastmod(self, obj):
         return obj.updated_at
@@ -33,7 +33,7 @@ class CalculatorSitemap(Sitemap):
     changefreq = 'weekly'
 
     def items(self):
-        return Calculator.objects.filter(is_active=True, engine_ready=True)
+        return Calculator.objects.filter(is_active=True, engine_ready=True).order_by('id')
 
     def lastmod(self, obj):
         return obj.updated_at
@@ -51,7 +51,7 @@ class CalculatorCategorySitemap(Sitemap):
             is_active=True,
             calculators__is_active=True,
             calculators__engine_ready=True,
-        ).distinct()
+        ).distinct().order_by('id')
 
     def lastmod(self, obj):
         return obj.updated_at
@@ -64,7 +64,7 @@ class AgentSitemap(Sitemap):
     changefreq = 'daily'
 
     def items(self):
-        return Agent.objects.filter(is_approved=True, status='active')
+        return Agent.objects.filter(is_approved=True, status='active').order_by('id')
 
     def lastmod(self, obj):
         return obj.updated_at

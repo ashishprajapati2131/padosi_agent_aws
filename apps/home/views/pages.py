@@ -366,11 +366,11 @@ def _find_closest_pincode(lat, lng, max_km=50.0):
 
 
 def fetch_filtered_agents_list(request):
-    pincode = request.session.get('last_pincode', '').strip()
-    location = request.session.get('last_location', '').strip()
-    lat = request.session.get('last_lat', '').strip()
-    lng = request.session.get('last_lng', '').strip()
-    detected_area = request.session.get('detected_area', '')
+    pincode = (request.GET.get('pincode') or request.session.get('last_pincode', '')).strip()
+    location = (request.GET.get('location') or request.session.get('last_location', '')).strip()
+    lat = (request.GET.get('lat') or request.session.get('last_lat', '')).strip()
+    lng = (request.GET.get('lng') or request.session.get('last_lng', '')).strip()
+    detected_area = request.GET.get('detected_area') or request.session.get('detected_area', '')
 
     service_type_input = request.GET.getlist('ServiceType')
 
@@ -609,6 +609,7 @@ def find_agents(request):
     location_param = request.GET.get('location', '').strip()
     lat_param = request.GET.get('lat', '').strip()
     lng_param = request.GET.get('lng', '').strip()
+    detected_area = request.session.get('detected_area', '')
 
     is_htmx = (
         request.headers.get('HX-Request') == 'true'
@@ -665,23 +666,12 @@ def find_agents(request):
             if k in request.session:
                 del request.session[k]
 
-    # Clean URL redirection (Session-only storage) for non-HTMX requests
-    if (pincode_param or location_param or lat_param) and not is_htmx:
-        params = request.GET.copy()
-        for k in ['pincode', 'location', 'lat', 'lng']:
-            if k in params:
-                del params[k]
-        url = request.path
-        if params:
-            url += '?' + params.urlencode()
-        return redirect(url)
-
-    # Merge session values for query lookup
-    pincode = request.session.get('last_pincode', '').strip()
-    location = request.session.get('last_location', '').strip()
-    lat = request.session.get('last_lat', '').strip()
-    lng = request.session.get('last_lng', '').strip()
-    detected_area = request.session.get('detected_area', '')
+    # Merge query parameters and session values for query lookup
+    pincode = (pincode_param or request.session.get('last_pincode', '')).strip()
+    location = (location_param or request.session.get('last_location', '')).strip()
+    lat = (lat_param or request.session.get('last_lat', '')).strip()
+    lng = (lng_param or request.session.get('last_lng', '')).strip()
+    detected_area = detected_area or request.session.get('detected_area', '')
 
     should_gate_guest = False
     service_type_input = request.GET.getlist('ServiceType')

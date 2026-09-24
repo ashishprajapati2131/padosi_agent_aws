@@ -1,5 +1,7 @@
 import json
 import logging
+import re
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
@@ -37,6 +39,24 @@ from apps.referral_championship.services.share_service import (
 logger = logging.getLogger(__name__)
 
 
+def build_safe_absolute_uri(request, path_or_url):
+    """
+    Build an absolute URI from the request, ensuring that in production (DEBUG=False)
+    no localhost/127.0.0.1 origins leak into client/mobile API payloads behind reverse proxies.
+    """
+    if not path_or_url:
+        return path_or_url
+    try:
+        uri = request.build_absolute_uri(path_or_url)
+    except Exception:
+        clean_path = path_or_url if path_or_url.startswith('/') else f'/{path_or_url}'
+        return f"https://padosiagent.com{clean_path}"
+
+    if not getattr(settings, 'DEBUG', False) and any(h in uri.lower() for h in ('localhost', '127.0.0.1')):
+        uri = re.sub(r'^https?://(localhost|127\.0\.0\.1)(:\d+)?', 'https://padosiagent.com', uri)
+    return uri
+
+
 def build_championship_dashboard_json_payload(request, agent):
     """
     Construct complete, structured JSON payload for Agent Championship Dashboard API.
@@ -72,9 +92,12 @@ def build_championship_dashboard_json_payload(request, agent):
 
     domain = request.get_host()
     scheme = 'https' if request.is_secure() else 'http'
+    if not getattr(settings, 'DEBUG', False) and any(h in domain.lower() for h in ('localhost', '127.0.0.1')):
+        domain = 'padosiagent.com'
+        scheme = 'https'
     referral_url = f"{scheme}://{domain}/agent-registration/join/{participant.referral_id}/"
     qr_base64 = generate_qr_base64(referral_url)
-    qr_download_url = request.build_absolute_uri(reverse('championship:agent_qr_download'))
+    qr_download_url = build_safe_absolute_uri(request, reverse('championship:agent_qr_download'))
 
     # ── Leaderboard Data ──
     top_10 = get_leaderboard_data(campaign, limit=10)
@@ -145,7 +168,7 @@ def build_championship_dashboard_json_payload(request, agent):
             'value_label': format_inr(s.value),
             'achieved_count': achieved_count,
             'seats_left': max(0, (s.winner_limit or 9999) - achieved_count) if s.winner_limit else None,
-            'image_url': request.build_absolute_uri(f"/static/{slab_img_path}")
+            'image_url': build_safe_absolute_uri(request, f"/static/{slab_img_path}")
         })
 
     # Claims & Draws
@@ -233,7 +256,7 @@ def build_championship_dashboard_json_payload(request, agent):
             'value_formatted': item['value_formatted'],
             'reward_type': item['reward_type'],
             'image_path': item['image_path'],
-            'image_url': request.build_absolute_uri(f"/static/{item['image_path']}"),
+            'image_url': build_safe_absolute_uri(request, f"/static/{item['image_path']}"),
             'is_reached': item['is_reached'],
             'is_unlocked': item['is_unlocked'],
             'is_current_target': item['is_current_target'],
@@ -241,7 +264,7 @@ def build_championship_dashboard_json_payload(request, agent):
             'referrals_needed': item['referrals_needed'],
             'status': item['status'],
             'can_claim': item['is_unlocked'] and item['reward_type'] in ('membership_fee_back', 'voucher', 'cashback'),
-            'claim_url': request.build_absolute_uri(reverse('championship:agent_claim_reward', kwargs={'slab_id': slab_obj.id})) if slab_obj else None,
+            'claim_url': build_safe_absolute_uri(request, reverse('championship:agent_claim_reward', kwargs={'slab_id': slab_obj.id})) if slab_obj else None,
             'claim_details': {
                 'claim_id': claim_obj.id if claim_obj else None,
                 'status': claim_obj.status if claim_obj else None,
@@ -278,7 +301,7 @@ def build_championship_dashboard_json_payload(request, agent):
         'start_date': campaign.start_date.isoformat() if hasattr(campaign, 'start_date') and campaign.start_date else None,
         'end_date': campaign.end_date.isoformat() if hasattr(campaign, 'end_date') and campaign.end_date else None,
         'days_left': getattr(campaign, 'days_left', 0),
-        'hero_image_url': request.build_absolute_uri('/static/championship/championship-hero.jpg'),
+        'hero_image_url': build_safe_absolute_uri(request, '/static/championship/championship-hero.jpg'),
         'user_rank': participant.current_rank,
         'verified_referrals': qualified_count,
         'total_contenders': agg_stats.get('total_participants', 0),
@@ -296,7 +319,7 @@ def build_championship_dashboard_json_payload(request, agent):
         'review_count': review_count,
         'min_reviews': min_reviews,
         'reviews_satisfied': review_count >= min_reviews,
-        'complete_profile_url': request.build_absolute_uri(reverse('agents:agent_edit_profile')),
+        'complete_profile_url': build_safe_absolute_uri(request, reverse('agents:agent_edit_profile')),
         'collect_reviews_profile_url': profile_url
     }
 

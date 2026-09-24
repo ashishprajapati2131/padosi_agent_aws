@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            width: 1200px;
+            height: 630px;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #eef4f9 0%, #e2ecf5 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, sans-serif;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .og-card {
+            width: 1120px;
+            height: 550px;
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 24px 50px -10px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.8);
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+        }
+
+        /* Left Column: Photo / Initial */
+        .og-photo-col {
+            width: 320px;
+            height: 100%;
+            position: relative;
+            background: #1e3a8a;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .og-photo-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .og-initial-fallback {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(150deg, #1e3a8a 0%, #172554 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 110px;
+            color: #ffffff;
+            font-weight: 800;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            letter-spacing: -2px;
+        }
+
+        /* Right Column: Info & Details */
+        .og-info-col {
+            flex: 1;
+            padding: 38px 48px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-width: 0;
+            background: #ffffff;
+        }
+
+        /* Name & Badges */
+        .og-name-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .og-name {
+            font-size: 36px;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.15;
+            letter-spacing: -0.6px;
+            margin: 0;
+        }
+        .agent-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .badge-licensed {
+            background: #eef2ff;
+            color: #4338ca;
+            border: 1px solid #c7d2fe;
+        }
+        .badge-trusted {
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+        }
+
+        /* Subtitle */
+        .og-subtitle {
+            font-size: 18px;
+            color: #64748b;
+            font-weight: 500;
+            margin-top: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Rating & Location */
+        .og-meta-row {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .og-rating {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .star-icon {
+            color: #f59e0b;
+            font-size: 18px;
+        }
+        .rating-score {
+            font-size: 17px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .rating-count {
+            font-size: 15px;
+            color: #64748b;
+        }
+        .og-location {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #64748b;
+            font-size: 15px;
+            font-weight: 500;
+        }
+        .location-icon {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        /* Stats Grid (4 Boxes) */
+        .og-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-top: 12px;
+        }
+        .og-stat-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 12px 8px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .og-stat-box.stat-box--amount {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        .og-stat-box.stat-box--amount .og-stat-num {
+            color: #15803d;
+        }
+        .og-stat-box.stat-box--amount .og-stat-lbl {
+            color: #166534;
+        }
+        .og-stat-num {
+            font-size: 22px;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.1;
+        }
+        .og-stat-lbl {
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-top: 4px;
+        }
+
+        /* Tags Row */
+        .og-tags-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .segment-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 13.5px;
+            font-weight: 700;
+            border: 1.5px solid;
+            white-space: nowrap;
+        }
+        .segment-pill--health {
+            background: #fff1f2;
+            color: #e11d48;
+            border-color: #fda4af;
+        }
+        .segment-pill--motor {
+            background: #eff6ff;
+            color: #2563eb;
+            border-color: #93c5fd;
+        }
+        .segment-pill--life {
+            background: #f5f3ff;
+            color: #7c3aed;
+            border-color: #c4b5fd;
+        }
+        .segment-pill--sme {
+            background: #fffbeb;
+            color: #d97706;
+            border-color: #fcd34d;
+        }
+        .segment-pill--default {
+            background: #f8fafc;
+            color: #334155;
+            border-color: #cbd5e1;
+        }
+
+        /* Bottom Footer / Brand Strip */
+        .og-footer-strip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 14px;
+            border-top: 1px solid #f1f5f9;
+            font-size: 13px;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        .og-footer-brand {
+            font-weight: 800;
+            color: #1e3a8a;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="og-card">
+        <!-- Left: Photo / Avatar -->
+        <div class="og-photo-col">
+            {% if photo_base64 %}
+            <img src="{{ photo_base64 }}" class="og-photo-img" onerror="this.style.display='none'; document.getElementById('initial-fallback').style.display='flex';">
+            <div id="initial-fallback" class="og-initial-fallback" style="display: none;">
+                {{ agent_initial }}
+            </div>
+            {% else %}
+            <div class="og-initial-fallback">
+                {{ agent_initial }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right: Info -->
+        <div class="og-info-col">
+            <!-- Header Group -->
+            <div>
+                <div class="og-name-row">
+                    <h1 class="og-name">{{ name }}</h1>
+                    {% if show_licensed %}
+                    <span class="agent-badge badge-licensed">
+                        <i class="fas fa-medal"></i> Licensed
+                    </span>
+                    {% endif %}
+                    {% if show_trusted %}
+                    <span class="agent-badge badge-trusted">
+                        <i class="fas fa-award"></i> Trusted
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="og-subtitle">
+                    {{ subtitle }}
+                </div>
+
+                <div class="og-meta-row">
+                    <div class="og-rating">
+                        <span class="star-icon">★</span>
+                        <span class="rating-score">{{ rating|floatformat:1 }}</span>
+                        <span class="rating-count">({{ review_count }} reviews)</span>
+                    </div>
+                    <div class="og-location">
+                        <i class="fas fa-map-marker-alt location-icon"></i>
+                        <span>{{ location }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4 Stat Boxes -->
+            <div class="og-stats-grid">
+                <div class="og-stat-box">
+                    <div class="og-stat-num">{{ exp_years }}</div>
+                    <div class="og-stat-lbl">YEARS EXP</div>
+                </div>
+                <div class="og-stat-box">
+                    <div class="og-stat-num">{{ clients_val }}</div>
+                    <div class="og-stat-lbl">CLIENTS</div>
+                </div>
+                <div class="og-stat-box">
+                    <div class="og-stat-num">{{ claims_val }}</div>
+                    <div class="og-stat-lbl">CLAIMS</div>
+                </div>
+                <div class="og-stat-box stat-box--amount">
+                    <div class="og-stat-num">{{ settled_val }}</div>
+                    <div class="og-stat-lbl">SETTLED</div>
+                </div>
+            </div>
+
+            <!-- Product Segment Tags -->
+            <div class="og-tags-row">
+                {% for seg in segments %}
+                <span class="segment-pill segment-pill--{{ seg.class }}">
+                    {{ seg.name }}
+                </span>
+                {% endfor %}
+            </div>
+
+            <!-- Footer Strip -->
+            <div class="og-footer-strip">
+                <span>Connect directly · Zero Middlemen · Instant WhatsApp & Calls</span>
+                <span class="og-footer-brand">
+                    <i class="fas fa-shield-alt"></i> PadosiAgent Verified
+                </span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
