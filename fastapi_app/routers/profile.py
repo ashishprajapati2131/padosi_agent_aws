@@ -31,11 +31,35 @@ from fastapi_app.models.agent_achievement_photo import AgentAchievementPhoto
 import logging
 import hashlib
 
+from starlette.concurrency import run_in_threadpool
 from fastapi_app.services.local_storage_service import LocalStorageService
 from fastapi_app.services.lock_unlock_service import LockUnlockService
 from fastapi_app.utils.companies import INSURANCE_COMPANIES
 
 logger = logging.getLogger(__name__)
+
+def _upload_image_with_fallback(file_bytes: bytes, folder: str, filename: str, fallback_relative_path: str) -> str:
+    """Synchronous worker that uploads to Cloudinary with local fallback, meant for threadpool execution."""
+    try:
+        secure_url = CloudinaryService.upload_image(
+            file_bytes,
+            folder=folder,
+            filename=filename
+        )
+        logger.info(f"Cloudinary success: URL={secure_url}")
+        return secure_url
+    except Exception as e:
+        logger.warning(f"Cloudinary upload failed ({type(e).__name__}): {str(e)}. Fallback to local storage initiated.")
+        try:
+            secure_url = LocalStorageService.save_django_path_file(file_bytes, fallback_relative_path)
+            logger.info(f"Local storage success: URL={secure_url}")
+            return secure_url
+        except Exception as local_err:
+            logger.error(f"Local storage failure: {str(local_err)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Both Cloudinary and local fallback storage failed."
+            )
 
 router = APIRouter(prefix="/v1/agents", tags=["Profile"])
 
@@ -147,30 +171,17 @@ async def upload_profile_image(
         
     old_path = profile.profile_photo_path
     
-    # 4. Upload with Fallback
-    logger.info(f"Upload started: Profile image for agent_id={current_agent.id}, filename={file.filename}")
-    try:
-        secure_url = CloudinaryService.upload_image(
-            file_bytes,
-            folder=f"agent_profiles/{current_agent.id}",
-            filename="profile"
-        )
-        logger.info(f"Cloudinary success: URL={secure_url}")
-    except Exception as e:
-        logger.warning(f"Cloudinary upload failed ({type(e).__name__}): {str(e)}. Fallback to local storage initiated.")
-        try:
-            import time, os
-            ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".jpg"
-            relative_path = f"app/public/profile/agent_{current_agent.id}_{int(time.time())}{ext}"
-            
-            secure_url = LocalStorageService.save_django_path_file(file_bytes, relative_path)
-            logger.info(f"Local storage success: URL={secure_url}")
-        except Exception as local_err:
-            logger.error(f"Local storage failure: {str(local_err)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Both Cloudinary and local fallback storage failed."
-            )
+    # 4. Upload with Fallback (run off the asyncio event loop)
+    import time, os
+    ext = os.path.splitext(file.filename)[1].lower() if file.filename else ".jpg"
+    relative_path = f"app/public/profile/agent_{current_agent.id}_{int(time.time())}{ext}"
+    secure_url = await run_in_threadpool(
+        _upload_image_with_fallback,
+        file_bytes,
+        f"agent_profiles/{current_agent.id}",
+        "profile",
+        relative_path
+    )
         
     # 5. Delete old image
     if old_path:
@@ -336,33 +347,17 @@ async def upload_achievement_image(
             })
             continue
 
-        # Upload with Fallback
-        logger.info(f"Upload started: Achievement photo for agent_id={current_agent.id}, filename={pf['filename']}")
-        try:
-            secure_url = CloudinaryService.upload_image(
-                pf["bytes"],
-                folder=f"agent_achievements/{current_agent.id}",
-                filename=pf["hash"]
-            )
-            logger.info(f"Cloudinary success: URL={secure_url}")
-        except Exception as e:
-            logger.warning(f"Cloudinary upload failed ({type(e).__name__}): {str(e)}. Fallback to local storage initiated.")
-            try:
-                import time, os, uuid
-                ext = os.path.splitext(pf["filename"])[1].lower() if pf["filename"] else ".jpg"
-                relative_path = f"app/public/achievement/achievement_{current_agent.id}_{int(time.time())}_{uuid.uuid4().hex[:6]}{ext}"
-                
-                secure_url = LocalStorageService.save_django_path_file(
-                    pf["bytes"],
-                    relative_path
-                )
-                logger.info(f"Local storage success: URL={secure_url}")
-            except Exception as local_err:
-                logger.error(f"Local storage failure: {str(local_err)}")
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Both Cloudinary and local fallback storage failed."
-                )
+        # Upload with Fallback (run off the asyncio event loop)
+        import time, os, uuid
+        ext = os.path.splitext(pf["filename"])[1].lower() if pf["filename"] else ".jpg"
+        relative_path = f"app/public/achievement/achievement_{current_agent.id}_{int(time.time())}_{uuid.uuid4().hex[:6]}{ext}"
+        secure_url = await run_in_threadpool(
+            _upload_image_with_fallback,
+            pf["bytes"],
+            f"agent_achievements/{current_agent.id}",
+            pf["hash"],
+            relative_path
+        )
 
         # Store the uploaded photo URL
         pf["photo_url"] = secure_url
@@ -488,7 +483,7 @@ async def upload_irdai_license(
     relative_path = f"app/public/insurance/irdai_{current_agent.id}_{int(time.time())}{ext}"
     
     try:
-        saved_path = LocalStorageService.save_django_path_file(file_bytes, relative_path)
+        saved_path = await run_in_threadpool(LocalStorageService.save_django_path_file, file_bytes, relative_path)
     except Exception as e:
         logger.error(f"Local storage failure for IRDAI: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to save IRDAI license document.")
@@ -543,7 +538,7 @@ async def upload_amfi_license(
     relative_path = f"app/public/investment/amfi_{current_agent.id}_{int(time.time())}{ext}"
     
     try:
-        saved_path = LocalStorageService.save_django_path_file(file_bytes, relative_path)
+        saved_path = await run_in_threadpool(LocalStorageService.save_django_path_file, file_bytes, relative_path)
     except Exception as e:
         logger.error(f"Local storage failure for AMFI: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to save AMFI license document.")

@@ -179,6 +179,7 @@ class AgentDraft(models.Model):
 
     # Referral / Distributor tracking
     distributor_id = models.IntegerField(null=True, blank=True)
+    sub_distributor_id = models.IntegerField(null=True, blank=True)
     referred_by_code = models.CharField(max_length=50, blank=True, default='')
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -293,6 +294,7 @@ class Agent(models.Model):
     event_id = models.IntegerField(null=True, blank=True)
     registration_draft = models.JSONField(null=True, blank=True)
     distributor_id = models.IntegerField(null=True, blank=True)
+    sub_distributor_id = models.IntegerField(null=True, blank=True)
     insurance_id = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -342,6 +344,13 @@ class Agent(models.Model):
             .order_by('-starts_at', '-created_at', '-id')
             .first()
         )
+
+    @property
+    def sub_distributor(self):
+        if not self.sub_distributor_id:
+            return None
+        from apps.distributors.models import SubDistributor
+        return SubDistributor.objects.filter(id=self.sub_distributor_id).first()
 
     @property
     def average_rating(self):
@@ -1380,6 +1389,8 @@ class Invoice(models.Model):
 
 
 class AgentBioGenerationLog(models.Model):
+    objects = models.Manager()
+
     agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='bio_generation_logs', db_constraint=False)
     generated_at = models.DateTimeField(auto_now_add=True)
     prompt_version = models.CharField(max_length=50, default='v1.0')

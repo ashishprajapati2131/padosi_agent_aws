@@ -1,3 +1,4 @@
+from typing import Any
 from django.db import connection
 from django.core.cache import cache
 
@@ -27,7 +28,7 @@ def admin_badge_counts(request):
     if not (request.path.startswith('/admin/') or request.path.startswith('/padosi-admin/')):
         return {}
 
-    counts = {
+    counts: dict[str, Any] = {
         'pending_agents_count':    0,
         'incomplete_agents_count': 0,
         'expiring_soon_count':     0,
@@ -47,6 +48,7 @@ def admin_badge_counts(request):
         #   admin_permissions  – set of canonical permission keys for Staff Admins
         'is_super_admin':          False,
         'admin_permissions':       set(),
+        'logged_in_admin':         None,
     }
 
     # 1. Check if aggregate badge counts are already cached

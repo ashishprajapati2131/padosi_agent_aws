@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, Request
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime
@@ -7,6 +7,7 @@ from fastapi_app.database import get_db
 from fastapi_app.dependencies.auth import get_current_agent
 from fastapi_app.models.agent import Agent
 from fastapi_app.models.agent_profile import AgentProfile
+from fastapi_app.models.agent_serviceable_city import AgentServiceableCity
 from fastapi_app.models.championship import (
     ChampionshipCampaign,
     ChampionshipParticipant,
@@ -52,12 +53,80 @@ from fastapi_app.services.championship_service import (
     generate_qr_bytes,
     format_inr,
 )
-from fastapi_app.config import settings
+from fastapi_app.config import settings, get_base_url
 
 router = APIRouter(
     prefix="/v1/championship",
     tags=["Agent Referral Championship"]
 )
+
+
+def extract_campaign_pricing(campaign: ChampionshipCampaign) -> tuple[int, int]:
+    """Safely extract digital and professional campaign prices, handling null/string/invalid JSON configs."""
+    pricing = campaign.pricing_config or {}
+    if isinstance(pricing, str):
+        try:
+            import json
+            pricing = json.loads(pricing)
+        except Exception:
+            pricing = {}
+    if not isinstance(pricing, dict):
+        pricing = {}
+
+    dig_raw = (pricing.get('digital') or {}).get('campaign_price', 999) if isinstance(pricing.get('digital'), dict) else 999
+    prof_raw = (pricing.get('professional') or {}).get('campaign_price', 4999) if isinstance(pricing.get('professional'), dict) else 4999
+    try:
+        dig_price = int(dig_raw or 999)
+    except (TypeError, ValueError):
+        dig_price = 999
+    try:
+        prof_price = int(prof_raw or 4999)
+    except (TypeError, ValueError):
+        prof_price = 4999
+    return dig_price, prof_price
+
+
+def extract_unlock_config(campaign: ChampionshipCampaign) -> tuple[int, int]:
+    """Safely extract min_profile_percent and min_reviews thresholds."""
+    unlock_cfg = campaign.unlock_config or {}
+    if isinstance(unlock_cfg, str):
+        try:
+            import json
+            unlock_cfg = json.loads(unlock_cfg)
+        except Exception:
+            unlock_cfg = {}
+    if not isinstance(unlock_cfg, dict):
+        unlock_cfg = {}
+
+    try:
+        min_profile = int(unlock_cfg.get('min_profile_percent') or 80)
+    except (TypeError, ValueError):
+        min_profile = 80
+    try:
+        min_reviews = int(unlock_cfg.get('min_reviews') or 10)
+    except (TypeError, ValueError):
+        min_reviews = 10
+    return min_profile, min_reviews
+
+
+def calculate_days_left(end_date) -> int:
+    """Safely calculate days remaining until campaign conclusion across timezone-aware/naive datetimes."""
+    if not end_date:
+        return 0
+    try:
+        end_dt = end_date
+        if isinstance(end_dt, str):
+            from dateutil.parser import parse
+            end_dt = parse(end_dt)
+        now = datetime.utcnow()
+        if hasattr(end_dt, 'tzinfo') and end_dt.tzinfo is not None:
+            from datetime import timezone
+            now = datetime.now(timezone.utc)
+        if now < end_dt:
+            return max(0, int((end_dt - now).total_seconds() // 86400))
+    except Exception:
+        pass
+    return 0
 
 
 # ---------------------------------------------------------
@@ -66,6 +135,7 @@ router = APIRouter(
 
 @router.get("/dashboard", response_model=ChampionshipDashboardResponse)
 def get_agent_championship_dashboard(
+    request: Request,
     current_agent: Agent = Depends(get_current_agent),
     db: Session = Depends(get_db)
 ):
@@ -81,9 +151,7 @@ def get_agent_championship_dashboard(
     completion = get_agent_profile_completion(db, current_agent.id)
     review_count = get_agent_review_count(db, current_agent.id)
 
-    unlock_cfg = campaign.unlock_config or {'min_profile_percent': 80, 'min_reviews': 10}
-    min_profile = int(unlock_cfg.get('min_profile_percent', 80))
-    min_reviews = int(unlock_cfg.get('min_reviews', 10))
+    min_profile, min_reviews = extract_unlock_config(campaign)
 
     is_unlocked = (completion >= min_profile and review_count >= min_reviews)
     if is_unlocked and not participant.is_unlocked:
@@ -119,11 +187,11 @@ def get_agent_championship_dashboard(
         invited_count=invited_count,
         form_filled_count=form_filled_count,
         paid_count=paid_count,
-        qualified_count=participant.qualifying_referrals_count
+        qualified_count=participant.qualifying_referrals_count or 0
     )
 
     # 3. Roadmap & Next Target
-    app_url = settings.APP_URL.rstrip('/')
+    app_url = get_base_url(request)
     roadmap_data = get_participant_roadmap(db, participant)
     roadmap_items = []
     for item in roadmap_data['roadmap']:
@@ -137,10 +205,9 @@ def get_agent_championship_dashboard(
     qr_download_url = f"{app_url}/api/v1/championship/qr-code"
 
     # 5. WhatsApp Message Defaults
-    pricing = campaign.pricing_config or {}
-    dig_price = pricing.get('digital', {}).get('campaign_price', 999)
-    prof_price = pricing.get('professional', {}).get('campaign_price', 4999)
-    profile_url = f"{app_url}/agent/{current_agent.agent_slug or current_agent.id}/"
+    dig_price, prof_price = extract_campaign_pricing(campaign)
+    profile_slug = getattr(current_agent, 'agent_slug', '') or str(current_agent.id)
+    profile_url = f"{app_url}/agent/{profile_slug}/"
 
     default_text = render_whatsapp_message(
         WHATSAPP_TEMPLATES['en']['templates'][0]['text'],
@@ -166,12 +233,10 @@ def get_agent_championship_dashboard(
             ChampionshipParticipant.current_rank == participant.current_rank - 1
         ).first()
         if prev_p:
-            diff = prev_p.qualifying_referrals_count - participant.qualifying_referrals_count
+            diff = (prev_p.qualifying_referrals_count or 0) - (participant.qualifying_referrals_count or 0)
             next_rank_needed = max(1, diff + 1)
 
-    days_left = 0
-    if datetime.utcnow() < campaign.end_date:
-        days_left = max(0, int((campaign.end_date - datetime.utcnow()).total_seconds() // 86400))
+    days_left = calculate_days_left(campaign.end_date)
 
     return ChampionshipDashboardResponse(
         success=True,
@@ -249,6 +314,7 @@ def get_whatsapp_templates(
 @router.post("/whatsapp-share", response_model=WhatsAppShareResponse)
 def generate_whatsapp_share_payload(
     payload: WhatsAppShareRequest,
+    request: Request,
     current_agent: Agent = Depends(get_current_agent),
     db: Session = Depends(get_db)
 ):
@@ -258,13 +324,12 @@ def generate_whatsapp_share_payload(
     campaign = get_current_campaign(db)
     participant = get_or_create_participant(db, current_agent.id, campaign)
 
-    app_url = settings.APP_URL.rstrip('/')
+    app_url = get_base_url(request)
     referral_url = f"{app_url}/agent-registration/join/{participant.referral_id}/"
-    profile_url = f"{app_url}/agent/{current_agent.agent_slug or current_agent.id}/"
+    profile_slug = getattr(current_agent, 'agent_slug', '') or str(current_agent.id)
+    profile_url = f"{app_url}/agent/{profile_slug}/"
 
-    pricing = campaign.pricing_config or {}
-    dig_price = pricing.get('digital', {}).get('campaign_price', 999)
-    prof_price = pricing.get('professional', {}).get('campaign_price', 4999)
+    dig_price, prof_price = extract_campaign_pricing(campaign)
 
     lang_code = payload.language.strip().lower()
     if lang_code not in WHATSAPP_TEMPLATES:
@@ -302,6 +367,7 @@ def generate_whatsapp_share_payload(
 
 @router.get("/qr-code")
 def download_championship_qr(
+    request: Request,
     current_agent: Agent = Depends(get_current_agent),
     db: Session = Depends(get_db)
 ):
@@ -310,7 +376,7 @@ def download_championship_qr(
     """
     campaign = get_current_campaign(db)
     participant = get_or_create_participant(db, current_agent.id, campaign)
-    app_url = settings.APP_URL.rstrip('/')
+    app_url = get_base_url(request)
     referral_url = f"{app_url}/agent-registration/join/{participant.referral_id}/"
 
     qr_bytes = generate_qr_bytes(referral_url)
@@ -381,6 +447,7 @@ def claim_milestone_reward(
 @router.get("/public/landing/{ref_id}", response_model=PublicLandingResponse)
 def get_public_referral_landing_details(
     ref_id: str,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """
@@ -411,12 +478,16 @@ def get_public_referral_landing_details(
             categories = [str(s).strip().title() for s in prof.desired_services if str(s).strip()][:4]
 
     review_count = get_agent_review_count(db, referring_agent.id)
-    city = prof.primary_city if prof and prof.primary_city else "India"
+    city = "India"
+    try:
+        asc = db.query(AgentServiceableCity).filter(AgentServiceableCity.agent_id == referring_agent.id).first()
+        if asc and asc.city and asc.city.name:
+            city = asc.city.name.title()
+    except Exception:
+        pass
 
-    pricing = campaign.pricing_config or {}
-    dig_price = pricing.get('digital', {}).get('campaign_price', 999)
-    prof_price = pricing.get('professional', {}).get('campaign_price', 4999)
-    app_url = settings.APP_URL.rstrip('/')
+    dig_price, prof_price = extract_campaign_pricing(campaign)
+    app_url = get_base_url(request)
 
     return PublicLandingResponse(
         success=True,

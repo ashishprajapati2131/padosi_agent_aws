@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
-from apps.agents.models import Agent, AgentProfile, AgentPerformanceStat, AgentReview, og_image_cache_key
+from apps.agents.models import Agent, AgentProfile, AgentPerformanceStat, AgentReview, og_image_cache_key, Client
 from django.core.cache import cache
 
 class AgentSharingTests(TestCase):
@@ -195,4 +195,135 @@ class AchievementPhotoUrlTests(SimpleTestCase):
         import tempfile
         self._tmp = tempfile.mkdtemp()
         return self._tmp
+
+
+class ClientQuickRegisterTests(TestCase):
+    def test_quick_register_new_client(self):
+        import json
+        payload = {
+            'fullname': 'Mehul Shah',
+            'mobile': '9876543210',
+            'email': '9876543210@padosiagent.com',
+            'pincode': '380015'
+        }
+        response = self.client.post(
+            reverse('agents:client_quick_register'),
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data.get('success'))
+
+        # Verify user created and logged in
+        user = User.objects.filter(email='9876543210@padosiagent.com').first()
+        self.assertIsNotNone(user)
+        self.assertEqual(user.first_name, 'Mehul')
+        self.assertEqual(user.last_name, 'Shah')
+
+        # Verify client record
+        client_rec = Client.objects.filter(user=user).first()
+        self.assertIsNotNone(client_rec)
+        self.assertEqual(client_rec.mobile, '9876543210')
+
+        # Verify session
+        session = self.client.session
+        self.assertIn('quick_lead_user', session)
+        self.assertEqual(session['quick_lead_user']['mobile'], '9876543210')
+
+    def test_quick_register_existing_client(self):
+        import json
+        user = User.objects.create_user(
+            username='existinguser',
+            email='existing@example.com',
+            first_name='Existing',
+            last_name='Client'
+        )
+        Client.objects.create(user=user, mobile='9876543211', pincode='380015')
+
+        payload = {
+            'fullname': 'Existing Client',
+            'mobile': '9876543211',
+            'email': '9876543211@padosiagent.com'
+        }
+        response = self.client.post(
+            reverse('agents:client_quick_register'),
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data.get('success'))
+        self.assertIn('Welcome back', data.get('message'))
+
+    def test_quick_register_validation_errors(self):
+        import json
+        payload = {
+            'fullname': '',
+            'mobile': '123'
+        }
+        response = self.client.post(
+            reverse('agents:client_quick_register'),
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 422)
+        data = response.json()
+        self.assertFalse(data.get('success'))
+        self.assertIn('fullname', data.get('errors', {}))
+        self.assertIn('mobile', data.get('errors', {}))
+
+    def test_quick_register_then_lead_capture(self):
+        import json
+        from apps.agents.models import Agent, AgentProfile, AgentLead
+        # Create an agent to contact
+        agent = Agent.objects.create(
+            fullname="Test Agent",
+            email="testagent@padosiagent.com",
+            mobile="9876543299",
+            status="active"
+        )
+        AgentProfile.objects.create(
+            agent=agent,
+            whatsapp="9876543299",
+            display_name="Test Agent"
+        )
+
+        # 1. Quick register as guest
+        reg_payload = {
+            'fullname': 'Happy Client',
+            'mobile': '9876543288',
+            'email': '9876543288@padosiagent.com',
+            'pincode': '380015'
+        }
+        reg_resp = self.client.post(
+            reverse('agents:client_quick_register'),
+            data=json.dumps(reg_payload),
+            content_type='application/json'
+        )
+        self.assertEqual(reg_resp.status_code, 200)
+
+        # 2. Subsequent contact click (e.g. WhatsApp) without re-prompting popup
+        lead_payload = {
+            'agent_id': agent.id,
+            'interaction_type': 'whatsapp',
+            'service_type': 'Buy New Insurance',
+            'insurance_type': 'Health',
+            'source_page': '/find-agents/'
+        }
+        lead_resp = self.client.post(
+            reverse('agents:agent_leads_capture'),
+            data=lead_payload
+        )
+        self.assertEqual(lead_resp.status_code, 200)
+        lead_data = lead_resp.json()
+        self.assertTrue('whatsapp' in lead_data.get('url', '') or 'wa.me' in lead_data.get('url', ''))
+
+        # Verify lead created with customer details from session/user
+        lead = AgentLead.objects.filter(agent=agent).first()
+        self.assertIsNotNone(lead)
+        self.assertEqual(lead.customer_mobile, '9876543288')
+        self.assertEqual(lead.customer_name, 'Happy Client')
+
+
 

@@ -35,6 +35,7 @@ def agents_index(request):
     search = request.GET.get('search', '').strip()
     status = request.GET.get('status', 'all')
     plan = request.GET.get('plan', 'all')
+    sub_dist_filter = request.GET.get('sub_distributor', 'all')
 
     query = Q(distributor_id=distributor_id)
     if search:
@@ -49,15 +50,27 @@ def agents_index(request):
         elif plan == 'professional':
             query &= Q(subscriptions__selected_plan__icontains='professional', subscriptions__status='active')
 
+    if sub_dist_filter and sub_dist_filter != 'all':
+        if sub_dist_filter == 'direct':
+            query &= Q(sub_distributor_id__isnull=True)
+        elif sub_dist_filter.isdigit():
+            query &= Q(sub_distributor_id=int(sub_dist_filter))
+
     # PHP parity: paginate(10)
     agents_list_qs = Agent.objects.filter(query).select_related('user').annotate(leads_count=Count('leads')).order_by('-created_at').distinct()
 
     # Fetch AgentDrafts
     from apps.agents.models import AgentDraft
+    from apps.distributors.models import SubDistributor
     
     drafts_query = Q(distributor_id=distributor_id, registration_step__gte=1)
     if search:
         drafts_query &= (Q(fullname__icontains=search) | Q(email__icontains=search) | Q(mobile__icontains=search))
+    if sub_dist_filter and sub_dist_filter != 'all':
+        if sub_dist_filter == 'direct':
+            drafts_query &= Q(sub_distributor_id__isnull=True)
+        elif sub_dist_filter.isdigit():
+            drafts_query &= Q(sub_distributor_id=int(sub_dist_filter))
         
     if status and status != 'all' and status not in ['draft', 'claim', 'incomplete', 'pending_payment']:
         drafts = []
@@ -79,6 +92,8 @@ def agents_index(request):
             self.leads_count = 0
             self.created_at = draft.created_at
             self.is_draft = True
+            self.sub_distributor_id = getattr(draft, 'sub_distributor_id', None)
+            self.sub_distributor = SubDistributor.objects.filter(id=draft.sub_distributor_id).first() if draft.sub_distributor_id else None
 
     combined_list = list(agents_list_qs)
     for d in drafts:
@@ -93,10 +108,13 @@ def agents_index(request):
 
     # Check for referral code
     referral_code = ReferralCode.objects.filter(distributor_id=distributor_id).first()
+    sub_distributors = SubDistributor.objects.filter(distributor_id=distributor_id).order_by('fullname')
 
     return render(request, 'distributors/agents/index.html', {
         'agents': agents,
-        'referralCode': referral_code
+        'referralCode': referral_code,
+        'subDistributors': sub_distributors,
+        'selectedSubDist': sub_dist_filter,
     })
 
 

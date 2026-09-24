@@ -15,6 +15,7 @@ from sqlalchemy import func, desc, asc
 from fastapi_app.models.agent import Agent
 from fastapi_app.models.agent_review import AgentReview
 from fastapi_app.models.agent_profile import AgentProfile
+from fastapi_app.models.agent_serviceable_city import AgentServiceableCity
 from fastapi_app.models.city import City
 from fastapi_app.models.championship import (
     ChampionshipCampaign,
@@ -414,24 +415,60 @@ def get_or_create_participant(db: Session, agent_id: int, campaign: Championship
     return participant
 
 
+def get_reward_image(reward_type: str, threshold: int) -> str:
+    """Return static asset path for milestone reward badge."""
+    mapping = {
+        5: 'championship/step-1-feeback.png',
+        10: 'championship/step-2-profree.png',
+        25: 'championship/step-3-silver.png',
+        50: 'championship/step-4-gold.png',
+        100: 'championship/step-5-domestictrip.png',
+        200: 'championship/step-6-intltrip.png',
+    }
+    if threshold >= 900:
+        return 'championship/step-7-topchampions.png'
+    return mapping.get(threshold, 'championship/step-1-feeback.png')
+
+
 def get_agent_profile_completion(db: Session, agent_id: int) -> int:
-    """Calculate agent profile completion percentage."""
+    """Calculate agent profile completion percentage using the platform standard 100-point rubric."""
+    try:
+        from fastapi_app.services.lock_unlock_service import LockUnlockService
+        agent = db.query(Agent).filter(Agent.id == agent_id).first()
+        if agent:
+            lock_service = LockUnlockService(db)
+            return lock_service.profile_completion_percent(agent)
+    except Exception as e:
+        logger.warning(f"Error calculating profile completion: {e}")
+
+    # Fallback heuristic if lock service fails
     prof = db.query(AgentProfile).filter(AgentProfile.agent_id == agent_id).first()
     if not prof:
         return 20
     score = 20
-    if prof.about_me: score += 15
-    if prof.profile_photo: score += 15
+    if prof.address and prof.languages: score += 15
+    if prof.profile_photo_path: score += 15
     if prof.license_number: score += 15
-    if prof.primary_city: score += 15
-    if prof.years_experience: score += 10
+    if prof.service_pincodes: score += 15
+    if prof.experience_years: score += 10
     if prof.desired_services: score += 10
     return min(100, score)
 
 
 def get_agent_review_count(db: Session, agent_id: int) -> int:
-    """Get count of verified/approved reviews for agent."""
-    return db.query(func.count(AgentReview.id)).filter(AgentReview.agent_id == agent_id).scalar() or 0
+    """Get count of verified/approved reviews for agent with fallback to agent record."""
+    try:
+        count = db.query(func.count(AgentReview.id)).filter(
+            AgentReview.agent_id == agent_id,
+            AgentReview.is_approved == True
+        ).scalar()
+        if count is not None and count > 0:
+            return count
+        agent = db.query(Agent).filter(Agent.id == agent_id).first()
+        return int(getattr(agent, 'review_count', 0) or 0)
+    except Exception as e:
+        logger.warning(f"Error getting agent review count: {e}")
+        return 0
 
 
 def format_inr(val) -> str:
@@ -485,13 +522,13 @@ def evaluate_participant_rewards(db: Session, participant: ChampionshipParticipa
 
 def get_participant_roadmap(db: Session, participant: ChampionshipParticipant) -> Dict[str, Any]:
     """Build dynamic 7-tier reward roadmap for agent dashboard."""
-    campaign = participant.campaign
+    campaign_id = participant.campaign_id
     slabs = db.query(ChampionshipRewardSlab).filter(
-        ChampionshipRewardSlab.campaign_id == campaign.id,
+        ChampionshipRewardSlab.campaign_id == campaign_id,
         ChampionshipRewardSlab.is_active == True
     ).order_by(ChampionshipRewardSlab.threshold, ChampionshipRewardSlab.order).all()
 
-    count = participant.qualifying_referrals_count
+    count = participant.qualifying_referrals_count or 0
     claims = db.query(ChampionshipRewardClaim).filter(
         ChampionshipRewardClaim.participant_id == participant.id
     ).all()
@@ -546,6 +583,7 @@ def get_participant_roadmap(db: Session, participant: ChampionshipParticipant) -
             "progress_percent": progress_percent,
             "referrals_needed": max(0, slab.threshold - count),
             "claim_status": status,
+            "image_path": get_reward_image(slab.reward_type, slab.threshold),
         })
 
     next_title = next_reward.title if next_reward else ("Grand Family Trip (Top 3)" if count >= 200 else "All Slabs Achieved!")
@@ -608,14 +646,22 @@ def get_leaderboard_data(db: Session, campaign: ChampionshipCampaign, limit: int
         if not agent:
             continue
 
-        name = agent.fullname or f"Agent #{agent.id}"
-        parts = name.split()
-        masked_name = f"{parts[0]} {parts[1][0]}." if len(parts) > 1 else name
+        raw_name = (agent.fullname or f"Agent #{agent.id}").strip()
+        parts = raw_name.split()
+        if len(parts) > 1 and parts[1]:
+            masked_name = f"{parts[0]} {parts[1][0]}."
+        elif len(parts) > 0:
+            masked_name = parts[0]
+        else:
+            masked_name = f"Agent #{agent.id}"
 
         city = "India"
-        prof = db.query(AgentProfile).filter(AgentProfile.agent_id == agent.id).first()
-        if prof and prof.primary_city:
-            city = prof.primary_city.title()
+        try:
+            asc = db.query(AgentServiceableCity).filter(AgentServiceableCity.agent_id == agent.id).first()
+            if asc and asc.city and asc.city.name:
+                city = asc.city.name.title()
+        except Exception:
+            pass
 
         results.append({
             "rank": entry.rank,

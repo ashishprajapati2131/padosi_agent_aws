@@ -12,10 +12,10 @@
 
 <div class="card p-3 border-0 shadow-sm mb-4" style="border-radius: 12px;">
     <form action="{% url 'distributors:agents_index'  %}" method="GET" class="m-0">
-        <div class="d-flex align-items-end justify-content-between flex-wrap gap-3">
-            
+        <div class="d-flex align-items-end flex-wrap gap-3">
+
             <!-- Search -->
-            <div style="flex: 1; min-width: 250px; max-width: 400px;">
+            <div style="flex: 2 1 220px; min-width: 180px;">
                 <label class="form-label text-muted small mb-1" style="font-size: 13px;">Search</label>
                 <div class="input-group">
                     <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-search"></i></span>
@@ -23,35 +23,32 @@
                 </div>
             </div>
 
-            <!-- Status & Plan -->
-            <div class="d-flex align-items-center gap-4 flex-wrap">
-                <!-- Status -->
-                <div class="d-flex align-items-center gap-2">
-                    <label class="form-label text-muted small mb-0" style="font-size: 13px;">Status</label>
-                    <select name="status" class="form-select form-select-sm" style="width: 150px; height: 38px;">
-                        <option value="all">All Statuses</option>
-                        <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
-                        <option value="pending_approval" {% if request.GET.status == 'pending_approval' %}selected{% endif %}>Pending</option>
-                        <option value="incomplete" {% if request.GET.status == 'incomplete' %}selected{% endif %}>Incomplete</option>
-                    </select>
-                </div>
+            <!-- Status -->
+            <div style="flex: 1 1 130px; min-width: 120px;">
+                <label class="form-label text-muted small mb-1" style="font-size: 13px;">Status</label>
+                <select name="status" class="form-select" style="height: 42px;">
+                    <option value="all">All Statuses</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="pending_approval" {% if request.GET.status == 'pending_approval' %}selected{% endif %}>Pending</option>
+                    <option value="incomplete" {% if request.GET.status == 'incomplete' %}selected{% endif %}>Incomplete</option>
+                </select>
+            </div>
 
-                <!-- Plan -->
-                <div class="d-flex align-items-center gap-2">
-                    <label class="form-label text-muted small mb-0" style="font-size: 13px;">Plan</label>
-                    <select name="plan" class="form-select form-select-sm" style="width: 150px; height: 38px;">
-                        <option value="all">All Plans</option>
-                        <option value="starter" {% if request.GET.plan == 'starter' %}selected{% endif %}>Starter</option>
-                        <option value="professional" {% if request.GET.plan == 'professional' %}selected{% endif %}>Professional</option>
-                    </select>
-                </div>
+            <!-- Plan -->
+            <div style="flex: 1 1 130px; min-width: 120px;">
+                <label class="form-label text-muted small mb-1" style="font-size: 13px;">Plan</label>
+                <select name="plan" class="form-select" style="height: 42px;">
+                    <option value="all">All Plans</option>
+                    <option value="starter" {% if request.GET.plan == 'starter' %}selected{% endif %}>Starter</option>
+                    <option value="professional" {% if request.GET.plan == 'professional' %}selected{% endif %}>Professional</option>
+                </select>
             </div>
 
             <!-- Filter Button -->
-            <div>
-                <button type="submit" class="btn border-0 shadow-sm d-flex flex-column align-items-center justify-content-center" style="background: #10b981; color: white; width: 60px; height: 55px; border-radius: 6px;">
-                    <i class="fa-solid fa-filter" style="font-size: 14px; margin-bottom: 2px;"></i>
-                    <span style="font-size: 11px; font-weight: 600;">Filter</span>
+            <div style="flex: 0 0 auto;">
+                <button type="submit" class="btn shadow-sm d-flex align-items-center justify-content-center gap-2 px-3" style="background: #10b981; color: white; border: none; height: 42px; border-radius: 8px; min-width: 100px;">
+                    <i class="fa-solid fa-filter"></i>
+                    <span style="font-weight: 600;">Filter</span>
                 </button>
             </div>
 
@@ -59,7 +56,7 @@
     </form>
 </div>
 
-<div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+<div class="card border-0 shadow-sm d-none d-lg-block" style="border-radius: 12px; overflow: hidden;">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0" style="font-size: 14px;">
             <thead class="bg-light">
@@ -143,10 +140,84 @@
     </div>
 </div>
 
+<!-- Mobile / tablet card view -->
+<div class="d-lg-none agent-card-list">
+    {% for agent in agents %}
+    <div class="agent-card">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+            <div class="fw-bold" style="color: #1e293b; font-size: 15px; line-height: 1.3;">
+                {% if agent.is_draft %}
+                    {{ agent.fullname }}
+                {% else %}
+                    <a href="{% url 'distributors:agents_show' agent.id %}" class="text-decoration-none text-dark">{{ agent.fullname }}</a>
+                {% endif %}
+            </div>
+            {% if agent.status == 'active' %}
+                <span class="badge flex-shrink-0" style="background: #dcfce7; color: #15803d; border-radius: 6px;">Active</span>
+            {% elif agent.status == 'pending_approval' %}
+                <span class="badge flex-shrink-0" style="background: #fef3c7; color: #b45309; border-radius: 6px;">Pending</span>
+            {% else %}
+                <span class="badge bg-secondary rounded-2 flex-shrink-0">{{ agent.status|title }}</span>
+            {% endif %}
+        </div>
+
+        <div class="agent-card-contact mt-2">
+            <div><i class="fa-regular fa-envelope me-2 text-muted"></i>{{ agent.email }}</div>
+            <div><i class="fa-solid fa-mobile-screen-button me-2 text-muted"></i>{{ agent.mobile|default:'—' }}</div>
+        </div>
+
+        <div class="agent-card-meta">
+            <div>
+                <div class="agent-card-label">Plan</div>
+                <div class="fw-semibold" style="font-size: 13px; color: #334155;">
+                    {% if agent.activeSubscription %}{{ agent.activeSubscription.selected_plan }}{% else %}<span class="text-muted">No Plan</span>{% endif %}
+                </div>
+            </div>
+            <div>
+                <div class="agent-card-label">Leads</div>
+                <div class="fw-bold" style="font-size: 13px; color: #3b82f6;">{{ agent.leads_count|default:0 }}</div>
+            </div>
+            <div>
+                <div class="agent-card-label">Registered</div>
+                <div style="font-size: 13px; color: #475569;">{{ agent.created_at|date:'M d, Y' }}</div>
+            </div>
+        </div>
+
+        {% if agent.status == 'pending_payment' or agent.status == 'incomplete' %}
+        <a href="{% url 'distributors:agents_resume_payment' agent.id %}" class="btn btn-sm btn-outline-primary w-100 mt-3">
+            <i class="fa-solid fa-credit-card me-1"></i> Resume Payment
+        </a>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div class="card border-0 shadow-sm text-center py-5" style="border-radius: 12px;">
+        <div class="mb-3" style="font-size: 44px; color: #cbd5e1;"><i class="fa-solid fa-user-plus"></i></div>
+        <div style="color: #64748b; font-size: 14px;">No agents found. Share your referral code <span class="fw-bold" style="color: #334155;">{{ referralCode.code|default:'N/A' }}</span> to get started!</div>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+    .agent-card-list { display: flex; flex-direction: column; gap: 12px; }
+    .agent-card {
+        background: #fff;
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .agent-card-contact { font-size: 13px; color: #475569; display: flex; flex-direction: column; gap: 4px; word-break: break-word; }
+    .agent-card-meta {
+        display: flex; flex-wrap: wrap; gap: 20px;
+        margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f5f9;
+    }
+    .agent-card-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 2px; }
+</style>
+
 {% if agents.has_other_pages %}
 <div class="mt-4">
     <!-- Basic Pagination -->
-    <ul class="pagination">
+    <ul class="pagination flex-wrap gap-1">
         {% if agents.has_previous %}
             <li class="page-item"><a class="page-link" href="?page={{ agents.previous_page_number }}">&laquo;</a></li>
         {% endif %}
