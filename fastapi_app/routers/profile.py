@@ -17,7 +17,6 @@ from fastapi_app.dependencies.auth import get_current_agent
 from fastapi_app.models.agent import Agent
 from fastapi_app.schemas.profile import (
     AgentProfileResponse,
-    AgentProfileUpdateRequest,
     BasicProfileUpdateRequest,
     ProfessionalProfileUpdateRequest,
     PortfolioProfileUpdateRequest,
@@ -53,21 +52,6 @@ def get_agent_profile(
     profile_service = ProfileService(agent_repo)
     
     return profile_service.get_profile(current_agent.id)
-
-@router.put("/profile", response_model=AgentProfileResponse)
-def update_agent_profile(
-    payload: AgentProfileUpdateRequest,
-    current_agent: Agent = Depends(get_current_agent),
-    db: Session = Depends(get_db)
-):
-    """
-    Update the complete agent profile for the authenticated agent.
-    Replaces all editable profile data in a single monolithic transaction.
-    """
-    agent_repo = AgentRepository(db)
-    profile_service = ProfileService(agent_repo)
-    
-    return profile_service.update_profile(current_agent.id, payload)
 
 
 @router.put("/profile/basic", response_model=AgentProfileResponse)

@@ -285,6 +285,7 @@ class ProfileService:
                 "whatsapp": profile.whatsapp if profile else "",
                 "languages": profile.languages if profile else "",
                 "address": profile.address if profile else "",
+                "date_of_birth": profile.date_of_birth if profile else None,
                 "pan_number": profile.pan_number if profile else "",
                 "license_number": profile.license_number if profile else "",
                 "license_valid_till": profile.license_valid_till if profile else None,
@@ -819,6 +820,7 @@ class ProfileService:
             profile.whatsapp = payload.profile.whatsapp
             profile.languages = languages
             profile.address = address
+            profile.date_of_birth = payload.profile.date_of_birth or None
 
             self._mark_pending_approval(agent)
             db.commit()

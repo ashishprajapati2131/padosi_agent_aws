@@ -16,7 +16,6 @@ from fastapi_app.models.championship import (
     ChampionshipSocialAction,
     ChampionshipScratchUnlock,
     ChampionshipGoogleReviewLog,
-    ChampionshipFraudFlag,
     ChampionshipAuditLog,
 )
 from fastapi_app.schemas.championship import (
@@ -36,8 +35,6 @@ from fastapi_app.schemas.championship import (
     SocialFollowRequest,
     ScratchRevealRequest,
     PublicLandingResponse,
-    AdminCampaignSettingsRequest,
-    AdminFinancialLiabilityResponse,
 )
 from fastapi_app.services.championship_service import (
     get_current_campaign,
@@ -513,145 +510,4 @@ def record_scratch_reveal(
         "discount_revealed": 25,
         "is_50_unlocked": is_50_unlocked,
         "message": "25% OFF Revealed! Complete social follow to unlock 50% Campaign Pricing!" if not is_50_unlocked else "50% OFF UNLOCKED 🎉"
-    }
-
-
-# ---------------------------------------------------------
-# Administrative Endpoints
-# ---------------------------------------------------------
-
-@router.get("/admin/financial-liability", response_model=AdminFinancialLiabilityResponse)
-def get_admin_financial_liability(
-    db: Session = Depends(get_db)
-):
-    """
-    Get financial & liability metrics for referral championship.
-    """
-    campaign = get_current_campaign(db)
-
-    paid_refs = db.query(ChampionshipReferral).filter(
-        ChampionshipReferral.campaign_id == campaign.id,
-        ChampionshipReferral.registration_state.in_(['paid', 'active'])
-    ).all()
-
-    pricing = campaign.pricing_config or {}
-    dig_price = float(pricing.get('digital', {}).get('campaign_price', 999))
-    prof_price = float(pricing.get('professional', {}).get('campaign_price', 4999))
-
-    gross_revenue = len(paid_refs) * dig_price
-    refunded_count = db.query(ChampionshipReferral).filter(
-        ChampionshipReferral.campaign_id == campaign.id,
-        ChampionshipReferral.registration_state == 'refunded'
-    ).count()
-
-    refund_amount = refunded_count * dig_price
-    net_revenue = gross_revenue - refund_amount
-
-    # Potential reward liability calculation
-    potential_liability = 0.0
-    slabs = db.query(ChampionshipRewardSlab).filter(
-        ChampionshipRewardSlab.campaign_id == campaign.id,
-        ChampionshipRewardSlab.is_active == True
-    ).all()
-
-    for slab in slabs:
-        qualified_agents = db.query(ChampionshipParticipant).filter(
-            ChampionshipParticipant.campaign_id == campaign.id,
-            ChampionshipParticipant.qualifying_referrals_count >= slab.threshold
-        ).count()
-        potential_liability += qualified_agents * float(slab.value or 0.0)
-
-    claims = db.query(ChampionshipRewardClaim).all()
-    current_liability = sum(float(c.reward_slab.value or 0.0) for c in claims if c.status in ['approved', 'processing'])
-    rewards_issued = sum(float(c.reward_slab.value or 0.0) for c in claims if c.status in ['dispatched', 'delivered', 'redeemed'])
-
-    health_status = "SAFE"
-    health_color = "success"
-    if net_revenue < potential_liability:
-        health_status = "LIMIT EXCEEDED"
-        health_color = "danger"
-    elif net_revenue <= (potential_liability * 1.5):
-        health_status = "WATCH"
-        health_color = "warning"
-
-    total_participants = db.query(ChampionshipParticipant).filter(
-        ChampionshipParticipant.campaign_id == campaign.id
-    ).count()
-
-    total_qualifying = db.query(ChampionshipReferral).filter(
-        ChampionshipReferral.campaign_id == campaign.id,
-        ChampionshipReferral.is_qualifying == True
-    ).count()
-
-    fraud_flags_count = db.query(ChampionshipFraudFlag).filter(
-        ChampionshipFraudFlag.status == 'flagged'
-    ).count()
-
-    return AdminFinancialLiabilityResponse(
-        success=True,
-        campaign_name=campaign.name,
-        gross_revenue=gross_revenue,
-        refund_amount=refund_amount,
-        net_revenue=net_revenue,
-        digital_paid_count=len(paid_refs),
-        prof_paid_count=0,
-        potential_liability=potential_liability,
-        current_liability=current_liability,
-        rewards_issued=rewards_issued,
-        health_status=health_status,
-        health_color=health_color,
-        total_participants=total_participants,
-        total_qualifying=total_qualifying,
-        fraud_flags_count=fraud_flags_count
-    )
-
-
-@router.post("/admin/settings")
-def update_admin_campaign_settings(
-    payload: AdminCampaignSettingsRequest,
-    db: Session = Depends(get_db)
-):
-    """
-    Update campaign status, dynamic pricing, and unlock thresholds.
-    """
-    campaign = get_current_campaign(db)
-
-    if payload.status:
-        campaign.status = payload.status
-
-    campaign.pricing_config = {
-        "digital": {
-            "regular_price": payload.digital_regular_price,
-            "campaign_price": payload.digital_campaign_price,
-            "renewal_price": payload.digital_renewal_price,
-            "name": "Digital Visibility"
-        },
-        "professional": {
-            "regular_price": payload.prof_regular_price,
-            "campaign_price": payload.prof_campaign_price,
-            "renewal_price": payload.prof_renewal_price,
-            "name": "Professional Visibility"
-        },
-        "discount_percent": 50
-    }
-
-    campaign.unlock_config = {
-        "min_profile_percent": payload.min_profile_percent,
-        "min_reviews": payload.min_reviews
-    }
-
-    if payload.google_review_url:
-        campaign.google_review_url = payload.google_review_url
-
-    if payload.instagram_url or payload.facebook_url:
-        campaign.social_channels = [
-            {"platform": "instagram", "name": "Instagram", "url": payload.instagram_url or "https://instagram.com/padosiagent", "icon": "fa-instagram"},
-            {"platform": "facebook", "name": "Facebook", "url": payload.facebook_url or "https://facebook.com/padosiagent", "icon": "fa-facebook-f"}
-        ]
-
-    db.commit()
-
-    return {
-        "success": True,
-        "message": "Referral championship settings updated successfully!"
     }
