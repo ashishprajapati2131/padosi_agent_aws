@@ -95,6 +95,7 @@ class ProfileSchema(BaseModel):
     whatsapp: Optional[str] = ""
     languages: Optional[str] = ""
     address: Optional[str] = ""
+    date_of_birth: Optional[date] = None
     pan_number: Optional[str] = ""
     license_number: Optional[str] = ""
     license_valid_till: Optional[date] = None
@@ -176,6 +177,7 @@ class BasicProfileUpdateSchema(BaseModel):
     whatsapp: Optional[str] = ""
     languages: str
     address: str
+    date_of_birth: Optional[date] = None
 
 
 class BasicProfileUpdateRequest(BaseModel):

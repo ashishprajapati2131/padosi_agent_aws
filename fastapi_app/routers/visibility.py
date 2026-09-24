@@ -13,9 +13,23 @@ router = APIRouter(
     tags=["Visibility & Profile Toggles"]
 )
 
+PROFILE_TOGGLE_FIELDS = [
+    'show_certificates', 'show_achievements', 'show_reviews',
+    'show_experience', 'show_claims_stats', 'show_client_base', 'show_ratings',
+    'show_languages', 'show_gallery', 'show_contact_info', 'show_social_links'
+]
+
+
 class VisibilityToggleRequest(BaseModel):
     field: str
     value: bool
+
+
+def _toggle_value(profile, field: str) -> bool:
+    if not profile:
+        return True
+    return bool(getattr(profile, field, True))
+
 
 @router.get("")
 def get_visibility_status(
@@ -39,17 +53,7 @@ def get_visibility_status(
             "visibility_priority_ranking": not access_map.get("visibility_priority_ranking", {}).get("is_locked", False),
         },
         "profile_toggles": {
-            "show_certificates": getattr(profile, 'show_certificates', True) if profile else True,
-            "show_achievements": getattr(profile, 'show_achievements', True) if profile else True,
-            "show_reviews": getattr(profile, 'show_reviews', True) if profile else True,
-            "show_experience": getattr(profile, 'show_experience', True) if profile else True,
-            "show_claims_stats": getattr(profile, 'show_claims_stats', True) if profile else True,
-            "show_client_base": getattr(profile, 'show_client_base', True) if profile else True,
-            "show_ratings": getattr(profile, 'show_ratings', True) if profile else True,
-            "show_languages": getattr(profile, 'show_languages', True) if profile else True,
-            "show_gallery": getattr(profile, 'show_gallery', True) if profile else True,
-            "show_contact_info": getattr(profile, 'show_contact_info', True) if profile else True,
-            "show_social_links": getattr(profile, 'show_social_links', True) if profile else True,
+            field: _toggle_value(profile, field) for field in PROFILE_TOGGLE_FIELDS
         }
     }
 
@@ -63,15 +67,10 @@ def toggle_visibility(
     Toggle visibility of a specific profile section.
     Guarded by respective feature lock permissions.
     """
-    valid_fields = [
-        'show_certificates', 'show_achievements', 'show_reviews',
-        'show_experience', 'show_claims_stats', 'show_client_base', 'show_ratings',
-        'show_languages', 'show_gallery', 'show_contact_info', 'show_social_links'
-    ]
-    if payload.field not in valid_fields:
+    if payload.field not in PROFILE_TOGGLE_FIELDS:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid field. Allowed fields are: {', '.join(valid_fields)}"
+            detail=f"Invalid field. Allowed fields are: {', '.join(PROFILE_TOGGLE_FIELDS)}"
         )
 
     lock_service = LockUnlockService(db)
@@ -90,12 +89,14 @@ def toggle_visibility(
         profile = AgentProfile(agent_id=current_agent.id)
         db.add(profile)
 
-    setattr(profile, payload.field, 1 if payload.value else 0)
+    setattr(profile, payload.field, bool(payload.value))
     db.commit()
+    db.refresh(profile)
 
+    saved_value = _toggle_value(profile, payload.field)
     return {
         "success": True,
         "field": payload.field,
-        "value": payload.value,
+        "value": saved_value,
         "message": f"Visibility for {payload.field} updated successfully."
     }

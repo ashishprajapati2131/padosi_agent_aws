@@ -15,6 +15,7 @@ class AgentProfile(Base):
     languages = Column(Text, nullable=True)
     address = Column(Text, nullable=True)
     state = Column(String(191), nullable=True)
+    date_of_birth = Column(Date, nullable=True)
     
     pan_number = Column(String(191), nullable=True)
     license_number = Column(String(191), nullable=True)
@@ -45,9 +46,18 @@ class AgentProfile(Base):
     amfi_license_doc = Column(String(255), nullable=True)
     
     is_profile_visible = Column(Boolean, default=True, nullable=False)
+    is_card_visible = Column(Boolean, default=True, nullable=False)
     show_certificates = Column(Boolean, default=True, nullable=False)
     show_achievements = Column(Boolean, default=True, nullable=False)
     show_reviews = Column(Boolean, default=True, nullable=False)
+    show_experience = Column(Boolean, default=True, nullable=False)
+    show_claims_stats = Column(Boolean, default=True, nullable=False)
+    show_client_base = Column(Boolean, default=True, nullable=False)
+    show_ratings = Column(Boolean, default=True, nullable=False)
+    show_languages = Column(Boolean, default=True, nullable=False)
+    show_gallery = Column(Boolean, default=True, nullable=False)
+    show_contact_info = Column(Boolean, default=True, nullable=False)
+    show_social_links = Column(Boolean, default=True, nullable=False)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
