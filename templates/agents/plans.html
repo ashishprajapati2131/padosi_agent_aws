@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static html_tags %}
 {% block pwa_manifest %}{% endblock %}
 {% block chatbot_widget %}{% endblock %}
 
@@ -1917,7 +1917,7 @@
                                 style="color: {{ feature.color }}; background: {{ feature.bg_color }};">
                                 <i class="fa-solid {{ feature.icon }}"></i>
                             </div>
-                            <div class="feature-text">{{ feature.name|safe }}</div>
+                            <div class="feature-text">{{ feature.name|clean_html }}</div>
                         </div>
                         {% endfor %}
                     </div>
@@ -1989,7 +1989,7 @@
                                 style="color: {{ feature.color }}; background: {{ feature.bg_color }};">
                                 <i class="fa-solid {{ feature.icon }}"></i>
                             </div>
-                            <div class="feature-text">{{ feature.name|safe }}</div>
+                            <div class="feature-text">{{ feature.name|clean_html }}</div>
                         </div>
                         {% endfor %}
                     </div>
@@ -2185,7 +2185,7 @@
                 <div class="icon-wrapper" style="color: {{ feature.color }}; background: {{ feature.bg_color }};">
                     <i class="fa-solid {{ feature.icon }}"></i>
                 </div>
-                <div class="feature-text">{{ feature.name|safe }}</div>
+                <div class="feature-text">{{ feature.name|clean_html }}</div>
             </div>
             {% endfor %}
         </div>

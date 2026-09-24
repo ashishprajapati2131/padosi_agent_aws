@@ -63,6 +63,26 @@ def _portal_sub_distributor_id(request):
     return None
 
 
+def sub_distributor_agent_counts(sub_dist_ids):
+    """{sub_distributor_id: {'total': n, 'active': n}} in ONE grouped query.
+
+    Replaces per-row .count() calls (2-3 queries per sub-distributor).
+    """
+    ids = [i for i in sub_dist_ids if i is not None]
+    if not ids:
+        return {}
+    rows = (
+        Agent.objects.filter(sub_distributor_id__in=ids)
+        .values('sub_distributor_id')
+        .annotate(total=Count('id'), active=Count('id', filter=Q(status='active')))
+        .order_by()
+    )
+    return {
+        r['sub_distributor_id']: {'total': r['total'], 'active': r['active']}
+        for r in rows
+    }
+
+
 def sub_distributor_required(view_func):
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):
@@ -116,14 +136,18 @@ def sub_distributors_index(request):
     total_sub_agents = Agent.objects.filter(distributor_id=distributor_id, sub_distributor_id__isnull=False).count()
     active_sub_agents = Agent.objects.filter(distributor_id=distributor_id, sub_distributor_id__isnull=False, status='active').count()
 
-    # Annotate counts for each sub-distributor
+    # Annotate counts for each sub-distributor (one grouped query for all rows)
+    sub_dists = list(sub_dists_qs)
+    counts = sub_distributor_agent_counts([sd.id for sd in sub_dists])
     sub_dist_list = []
-    for sd in sub_dists_qs:
+    for sd in sub_dists:
         agent_link = request.build_absolute_uri(reverse('agents:referral_join', args=[sd.code]))
-        total_ag = Agent.objects.filter(sub_distributor_id=sd.id).count()
-        active_ag = Agent.objects.filter(sub_distributor_id=sd.id, status='active').count()
-        pending_ag = Agent.objects.filter(sub_distributor_id=sd.id).exclude(status='active').count()
-        
+        c = counts.get(sd.id, {'total': 0, 'active': 0})
+        total_ag = c['total']
+        active_ag = c['active']
+        # exclude(status='active') == everything that is not active (NULL included)
+        pending_ag = total_ag - active_ag
+
         sub_dist_list.append({
             'obj': sd,
             'total_agents': total_ag,
@@ -249,7 +273,12 @@ def sub_distributor_agents(request, pk):
         elif plan == 'professional':
             query &= Q(subscriptions__selected_plan__icontains='professional', subscriptions__status='active')
 
-    agents_qs = Agent.objects.filter(query).select_related('user').annotate(leads_count=Count('leads')).order_by('-created_at').distinct()
+    # prefetch: the template reads agent.subscriptions.all|first per row.
+    agents_qs = (
+        Agent.objects.filter(query).select_related('user')
+        .prefetch_related('subscriptions')
+        .annotate(leads_count=Count('leads')).order_by('-created_at').distinct()
+    )
 
     paginator = Paginator(agents_qs, 15)
     page_number = request.GET.get('page')
@@ -257,12 +286,13 @@ def sub_distributor_agents(request, pk):
 
     agent_link = request.build_absolute_uri(reverse('agents:referral_join', args=[sub_dist.code]))
 
+    c = sub_distributor_agent_counts([sub_dist.id]).get(sub_dist.id, {'total': 0, 'active': 0})
     context = {
         'sub_dist': sub_dist,
         'agents': agents,
         'agent_link': agent_link,
-        'total_count': Agent.objects.filter(sub_distributor_id=sub_dist.id).count(),
-        'active_count': Agent.objects.filter(sub_distributor_id=sub_dist.id, status='active').count(),
+        'total_count': c['total'],
+        'active_count': c['active'],
     }
     return render(request, 'distributors/sub_distributors/agents.html', context)
 

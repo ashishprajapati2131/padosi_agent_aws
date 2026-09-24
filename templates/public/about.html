@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static html_tags %}
 
 {% block title %}{{ about.banner_title|default:"About Us" }} — PadosiAgent{% endblock %}
 
@@ -39,7 +39,7 @@
                 <div class="about_content" >
                     <h2>Who We Are</h2>
                     <div class="text text-size-16">
-                        {{ about.who_we_are|default:"<strong><span style='color: #18529d;'>Padosi</span><span style='color: #0f5634;'>Agent</span></strong> is a digital-first platform built to simplify how people connect with trusted insurance professionals in their locality."|safe }}
+                        {{ about.who_we_are|default:"<strong><span style='color: #18529d;'>Padosi</span><span style='color: #0f5634;'>Agent</span></strong> is a digital-first platform built to simplify how people connect with trusted insurance professionals in their locality."|clean_html }}
                     </div>
                 </div>
             </div>
@@ -54,7 +54,7 @@
             <div class="col-lg-12">
                 <div class="about_content text-center" >
                     <h2>Why We Exist</h2>
-                    <div class="text text-size-16">{{ about.why_we_exist|default:"The insurance ecosystem often faces three common challenges:"|safe }}</div>
+                    <div class="text text-size-16">{{ about.why_we_exist|default:"The insurance ecosystem often faces three common challenges:"|clean_html }}</div>
                 </div>
             </div>
         </div>
@@ -112,7 +112,7 @@
                             <span>Service expectations are clearly defined</span>
                         </li>
                     </ul>
-                    <div class="text text-size-16">{{ about.what_we_do|default:"We focus on empowering agents with digital presence."|safe }}</div>
+                    <div class="text text-size-16">{{ about.what_we_do|default:"We focus on empowering agents with digital presence."|clean_html }}</div>
                 </div>
             </div>
             <div class="col-lg-6 text-center">
@@ -129,14 +129,14 @@
             <div class="col-lg-10 mx-auto">
                 <div class="benefit_content mb-5" >
                     <h2 class="mb-3">Our Vision</h2>
-                    <div class="text text-size-18 px-lg-5">{{ about.vision|default:"To build India’s most trusted hyperlocal insurance discovery and service platform."|safe }}</div>
+                    <div class="text text-size-18 px-lg-5">{{ about.vision|default:"To build India’s most trusted hyperlocal insurance discovery and service platform."|clean_html }}</div>
                 </div>
                 <div class="benefit_content" >
                     <h2 class="mb-4">Our Mission</h2>
                     <ul class="list-unstyled d-inline-block text-left mx-auto">
                         <li class="mb-3 d-flex align-items-center">
                             <i class="fa-solid fa-circle-dot text-primary mr-3"></i>
-                            <span class="text-size-18">{{ about.mission|default:"Digitally empower insurance agents."|safe }}</span>
+                            <span class="text-size-18">{{ about.mission|default:"Digitally empower insurance agents."|clean_html }}</span>
                         </li>
                     </ul>
                 </div>
@@ -240,7 +240,7 @@
             <div class="col-lg-10 mx-auto text-center">
                 <div class="about_content" >
                     <h2>Our Commitment</h2>
-                    <div class="text text-size-18">{{ about.commitment|default:"PadosiAgent does not replace insurers, brokers, or regulatory authorities."|safe }}</div>
+                    <div class="text text-size-18">{{ about.commitment|default:"PadosiAgent does not replace insurers, brokers, or regulatory authorities."|clean_html }}</div>
                     <div class="mt-5 p-4 bg-white rounded shadow text-center border-top border-primary" style="border-top-width: 4px !important;">
                         <h4 class="text-dark mb-3">If you believe insurance is not just a product but a responsibility</h4>
                         <h3 class="mb-0">Welcome to <span style="color: #18529d;">Padosi</span><span style="color: #0f5634;">Agent</span>.</h3>

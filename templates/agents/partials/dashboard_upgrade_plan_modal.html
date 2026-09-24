@@ -1,3 +1,4 @@
+{% load html_tags %}
 <div class="modal fade" id="professionalUpgradeModal" tabindex="-1" aria-labelledby="professionalUpgradeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered pa-dash-upgrade-dialog">
         <div class="modal-content pa-dash-upgrade-modal">
@@ -35,7 +36,7 @@
                         <div class="pa-dash-feature-icon" style="color:{{ feature.color }};background:{{ feature.bg_color }};">
                             <i class="fa-solid {{ feature.icon }}"></i>
                         </div>
-                        <div class="pa-dash-feature-text">{{ feature.name|safe }}</div>
+                        <div class="pa-dash-feature-text">{{ feature.name|clean_html }}</div>
                     </div>
                     {% endfor %}
                 </div>

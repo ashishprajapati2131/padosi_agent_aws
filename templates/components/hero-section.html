@@ -1,4 +1,4 @@
-{% load static %}
+{% load static html_tags %}
 <section class="pa-hero" role="banner">
   <div class="pa-hero-bg"></div>
   <div class="pa-blob pa-blob-1"></div>
@@ -40,7 +40,7 @@
 
       {# 3. H1 Heading #}
       <h1 class="pa-heading">
-        {{ hero_heading_html|safe }}
+        {{ hero_heading_html|clean_html }}
       </h1>
 
       {# 4. Product tiles (4 columns) #}
@@ -110,7 +110,7 @@
           </div>
 
           <h1 class="pa-heading" id="pa-heading">
-            {{ hero_heading_html|safe }}
+            {{ hero_heading_html|clean_html }}
           </h1>
 
           <div class="pa-stats-row" id="pa-stats">

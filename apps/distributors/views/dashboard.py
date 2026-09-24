@@ -33,11 +33,17 @@ def dashboard(request):
     # In PHP: $referralCode = ReferralCode::generateForDistributor($distributor);
     # Let's see if we have generate_for_distributor method. 
     # For now, get or create it.
+    # referral_codes is a Laravel table: Django doesn't fill its timestamps, and
+    # a NULL created_at made a new distributor's first dashboard visit a 500.
+    from datetime import datetime
+    created_now = datetime.now()
     referral_code, created = ReferralCode.objects.get_or_create(
         distributor_id=distributor_id,
         defaults={
             'code': f'DIST{distributor_id}{distributor.first_name[:3].upper()}',
-            'is_active': True
+            'is_active': True,
+            'created_at': created_now,
+            'updated_at': created_now,
         }
     )
 
@@ -73,17 +79,18 @@ def dashboard(request):
         plan_type='professional'
     ).count()
 
-    trend_labels = []
-    trend_data = []
-    for i in range(5, -1, -1):
-        month_date = now - relativedelta(months=i)
-        trend_labels.append(month_date.strftime('%b'))
-        count = Agent.objects.filter(
-            distributor_id=distributor_id,
-            created_at__year=month_date.year,
-            created_at__month=month_date.month
-        ).count()
-        trend_data.append(count)
+    # 6-month signup trend from one query (was one COUNT per month).
+    months = [now - relativedelta(months=i) for i in range(5, -1, -1)]
+    trend_start = months[0].replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    per_month = {}
+    for created in Agent.objects.filter(
+        distributor_id=distributor_id, created_at__gte=trend_start,
+    ).values_list('created_at', flat=True):
+        if created:
+            key = (created.year, created.month)
+            per_month[key] = per_month.get(key, 0) + 1
+    trend_labels = [m.strftime('%b') for m in months]
+    trend_data = [per_month.get((m.year, m.month), 0) for m in months]
 
     recent_agents = Agent.objects.filter(
         distributor_id=distributor_id
@@ -134,12 +141,16 @@ def dashboard(request):
 
     sub_invite_url = request.build_absolute_uri(reverse('distributors:sub_distributor_join', args=[referral_code.code]))
 
+    from apps.distributors.views.sub_distributors import sub_distributor_agent_counts
+    top_candidates = list(SubDistributor.objects.filter(distributor_id=distributor_id)[:6])
+    sd_counts = sub_distributor_agent_counts([sd.id for sd in top_candidates])
     top_sub_dists = []
-    for sd in SubDistributor.objects.filter(distributor_id=distributor_id)[:6]:
+    for sd in top_candidates:
+        c = sd_counts.get(sd.id, {'total': 0, 'active': 0})
         top_sub_dists.append({
             'obj': sd,
-            'total_agents': Agent.objects.filter(sub_distributor_id=sd.id).count(),
-            'active_agents': Agent.objects.filter(sub_distributor_id=sd.id, status='active').count(),
+            'total_agents': c['total'],
+            'active_agents': c['active'],
         })
     top_sub_dists.sort(key=lambda x: x['total_agents'], reverse=True)
 

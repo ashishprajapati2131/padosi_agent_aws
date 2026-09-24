@@ -325,3 +325,50 @@ class SubDistributorManagementTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.context['total_count'], 1)
         self.assertEqual(resp.context['active_count'], 1)
+
+    def _agents_for(self, sd, statuses, prefix):
+        for i, status in enumerate(statuses):
+            Agent.objects.create(
+                fullname=f'{prefix}{i}', email=f'{prefix}{i}@example.com',
+                mobile=f'9{ord(prefix[0]) % 10}{i:08d}',
+                sub_distributor_id=sd.id, distributor_id=self.laravel_user.id, status=status,
+            )
+
+    def test_index_per_sub_distributor_counts_match_old_per_row_counts(self):
+        sd1 = make_sub_distributor(email='c1@example.com', distributor_id=self.laravel_user.id)
+        sd2 = make_sub_distributor(email='c2@example.com', mobile='9876543211', distributor_id=self.laravel_user.id)
+        sd3 = make_sub_distributor(email='c3@example.com', mobile='9876543212', distributor_id=self.laravel_user.id)
+        self._agents_for(sd1, ['active', 'active', 'pending_payment'], 'x')
+        self._agents_for(sd2, ['incomplete'], 'y')
+        resp = self.client.get(self.index_url)
+        self.assertEqual(resp.status_code, 200)
+        rows = {row['obj'].id: row for row in resp.context['sub_distributors']}
+        self.assertEqual((rows[sd1.id]['total_agents'], rows[sd1.id]['active_agents'], rows[sd1.id]['pending_agents']), (3, 2, 1))
+        self.assertEqual((rows[sd2.id]['total_agents'], rows[sd2.id]['active_agents'], rows[sd2.id]['pending_agents']), (1, 0, 1))
+        self.assertEqual((rows[sd3.id]['total_agents'], rows[sd3.id]['active_agents'], rows[sd3.id]['pending_agents']), (0, 0, 0))
+
+    def test_distributor_dashboard_trend_and_top_sub_distributors(self):
+        sd = make_sub_distributor(email='top@example.com', distributor_id=self.laravel_user.id)
+        self._agents_for(sd, ['active', 'pending_payment'], 'z')
+        resp = self.client.get(reverse('distributors:dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.context['trendData']), 6)
+        self.assertEqual(resp.context['trendData'][-1], 2)  # both created this month
+        top = {row['obj'].id: row for row in resp.context['topSubDistributors']}
+        self.assertEqual((top[sd.id]['total_agents'], top[sd.id]['active_agents']), (2, 1))
+
+    def test_agents_list_shows_active_plan(self):
+        from datetime import datetime, timedelta
+        from apps.agents.models import AgentSubscription
+        agent = Agent.objects.create(
+            fullname='Planned', email='planned@example.com', mobile='9333000222',
+            distributor_id=self.laravel_user.id, status='active',
+        )
+        AgentSubscription.objects.create(
+            agent=agent, selected_plan="Professional's Plan", registration_amount=4999,
+            payment_status='completed', status='active',
+            starts_at=datetime.now(), expires_at=datetime.now() + timedelta(days=365),
+        )
+        resp = self.client.get(reverse('distributors:agents_index'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Professional&#x27;s Plan")

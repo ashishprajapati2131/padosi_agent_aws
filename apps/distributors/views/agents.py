@@ -80,7 +80,14 @@ def agents_index(request):
         drafts = list(AgentDraft.objects.filter(drafts_query).order_by('-created_at'))
 
     agent_emails = set(agents_list_qs.values_list('email', flat=True))
-    
+
+    # One query for every sub-distributor a draft points at (was one per draft).
+    draft_sub_ids = {d.sub_distributor_id for d in drafts if getattr(d, 'sub_distributor_id', None)}
+    sub_dist_by_id = (
+        {sd.id: sd for sd in SubDistributor.objects.filter(id__in=draft_sub_ids)}
+        if draft_sub_ids else {}
+    )
+
     class MockDraftAgent:
         def __init__(self, draft):
             self.id = draft.id
@@ -89,11 +96,12 @@ def agents_index(request):
             self.mobile = draft.mobile
             self.status = 'claim' if draft.registration_step >= 2 else 'draft'
             self.activeSubscription = None
+            self.page_active_sub = None
             self.leads_count = 0
             self.created_at = draft.created_at
             self.is_draft = True
             self.sub_distributor_id = getattr(draft, 'sub_distributor_id', None)
-            self.sub_distributor = SubDistributor.objects.filter(id=draft.sub_distributor_id).first() if draft.sub_distributor_id else None
+            self.sub_distributor = sub_dist_by_id.get(self.sub_distributor_id) if self.sub_distributor_id else None
 
     combined_list = list(agents_list_qs)
     for d in drafts:
@@ -105,6 +113,20 @@ def agents_index(request):
     paginator = Paginator(combined_list, 10)
     page_number = request.GET.get('page')
     agents = paginator.get_page(page_number)
+
+    # Active subscription for the agents on this page in one query. Same rule
+    # and ordering as Agent.activeSubscription, which the template used to call
+    # 4x per row (desktop + mobile, check + value).
+    page_agent_ids = [a.id for a in agents if not getattr(a, 'is_draft', False)]
+    active_by_agent = {}
+    if page_agent_ids:
+        for sub in AgentSubscription.objects.filter(
+            agent_id__in=page_agent_ids, status='active', expires_at__gt=timezone.now(),
+        ).order_by('agent_id', '-starts_at', '-created_at', '-id'):
+            active_by_agent.setdefault(sub.agent_id, sub)
+    for a in agents:
+        if not getattr(a, 'is_draft', False):
+            a.page_active_sub = active_by_agent.get(a.id)
 
     # Check for referral code
     referral_code = ReferralCode.objects.filter(distributor_id=distributor_id).first()
