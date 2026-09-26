@@ -77,6 +77,16 @@ class RestrictedStaticFiles(StaticFiles):
 os.makedirs(settings.LOCAL_STORAGE_PATH, exist_ok=True)
 app.mount("/media", RestrictedStaticFiles(directory=settings.LOCAL_STORAGE_PATH), name="media")
 
+@app.get("/v1/health", response_class=JSONResponse, tags=["Monitoring"])
+@app.get("/health", response_class=JSONResponse, tags=["Monitoring"])
+def api_health():
+    return {
+        "status": "healthy",
+        "service": "fastapi_api",
+        "version": app.version
+    }
+
+
 @app.get("/v1/csrf-refresh/", response_class=JSONResponse)
 @app.get("/v1/csrf-refresh", response_class=JSONResponse)
 def csrf_refresh_api(request: Request):

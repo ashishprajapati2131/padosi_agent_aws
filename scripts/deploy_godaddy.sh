@@ -62,6 +62,9 @@ echo "==> Using Python binary: $PY_BIN"
 echo "==> Python version: $($PY_BIN --version 2>&1)"
 echo "==> Using Pip binary: $PIP_BIN"
 
+echo "==> Verifying Production Environment Configuration..."
+$PY_BIN manage.py verify_production_env || echo "WARNING: Production environment configuration has warnings."
+
 # Compare against the last deploy that finished successfully (not the
 # pre-pull HEAD), so a deploy that failed half-way is fully redone next time.
 STATE_FILE="tmp/.last_deployed_commit"
@@ -93,6 +96,8 @@ else
 fi
 
 if [ "$REQ_CHANGED" = "1" ] || changed '/migrations/[^/]+\.py$'; then
+    echo "==> Creating automated pre-migration database backup..."
+    $NICE "$PY_BIN" manage.py backup_database --tag pre_deploy --retention 7 || echo "WARNING: Backup failed, continuing carefully..."
     echo "==> Running database migrations..."
     $NICE "$PY_BIN" manage.py migrate --noinput
 else

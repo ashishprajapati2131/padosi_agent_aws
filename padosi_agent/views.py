@@ -69,3 +69,43 @@ def csrf_refresh_api(request):
     })
     response.set_cookie('padosi_csrf_token', fresh_token, path='/', samesite='Lax', secure=request.is_secure())
     return response
+
+
+def health_check_view(request):
+    """
+    Production health check endpoint for uptime monitors, reverse proxies, and load balancers.
+    Checks DB connectivity and cache health.
+    Returns HTTP 200 with status info, or HTTP 503 if database connection fails.
+    """
+    status_data = {
+        'status': 'healthy',
+        'database': 'ok',
+        'cache': 'ok',
+    }
+    status_code = 200
+
+    # 1. Database check
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1;")
+            row = cursor.fetchone()
+            if not row or row[0] != 1:
+                status_data['database'] = 'unexpected_response'
+                status_data['status'] = 'degraded'
+    except Exception as e:
+        status_data['database'] = f'error: {str(e)}'
+        status_data['status'] = 'unhealthy'
+        status_code = 503
+
+    # 2. Cache check
+    try:
+        from django.core.cache import cache
+        cache.set('__health_probe__', 'ok', timeout=10)
+        if cache.get('__health_probe__') != 'ok':
+            status_data['cache'] = 'degraded'
+    except Exception as e:
+        status_data['cache'] = f'error: {str(e)}'
+
+    return JsonResponse(status_data, status=status_code)
+

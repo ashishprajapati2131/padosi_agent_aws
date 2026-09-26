@@ -13,3 +13,11 @@ scratch/
 10_09 (2)/
 tmp/
 pyrefly.toml
+*.xlsx
+*.sql
+BlacklistedAgents.xlsx
+blacklisted_agents_insert.sql
+*.pdf
+*history*.txt
+git_log.txt
+backups/

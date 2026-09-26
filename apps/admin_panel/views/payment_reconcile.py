@@ -51,11 +51,14 @@ def _get_razorpay_clients():
         'RAZORPAY_KEY_SECRET': getattr(settings, 'RAZORPAY_KEY_SECRET', ''),
     })
 
-    # Known live keypair fallback in case local or server environment is in test mode
-    sources.append({
-        'RAZORPAY_KEY': 'rzp_live_SVPuvt3p9xKivN',
-        'RAZORPAY_SECRET': 'xmyQQyg6mYwM8ZJ2KNlCXrC3',
-    })
+    # Allow optional secondary/fallback live keys via environment variables (never hardcoded)
+    fallback_key = os.environ.get('RAZORPAY_LIVE_KEY') or os.environ.get('RAZORPAY_FALLBACK_KEY', '')
+    fallback_secret = os.environ.get('RAZORPAY_LIVE_SECRET') or os.environ.get('RAZORPAY_FALLBACK_SECRET', '')
+    if fallback_key and fallback_secret:
+        sources.append({
+            'RAZORPAY_KEY': fallback_key.strip(),
+            'RAZORPAY_SECRET': fallback_secret.strip(),
+        })
 
     for src in sources:
         k, s = credential_pair_from_mapping(src)

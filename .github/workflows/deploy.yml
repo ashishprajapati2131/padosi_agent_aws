@@ -43,10 +43,8 @@ jobs:
           python manage.py check
 
       # Tests run on in-memory SQLite (apps.home.test_runner), no MySQL needed.
-      # Non-blocking for now so a known failing test cannot stop a deploy;
-      # delete "continue-on-error" once the suite is fully green to make it a gate.
+      # Blocking release gate: if any test fails, deployment halts immediately.
       - name: Run test suite
-        continue-on-error: true
         env:
           DJANGO_SETTINGS_MODULE: padosi_agent.settings
           SECRET_KEY: ci-check-only

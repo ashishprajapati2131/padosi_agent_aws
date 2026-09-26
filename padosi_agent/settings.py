@@ -192,7 +192,8 @@ CACHES = {
         'LOCATION': CACHE_DIR,
         'TIMEOUT': 300,
         'OPTIONS': {
-            'MAX_ENTRIES': 2000,
+            'MAX_ENTRIES': 5000,
+            'CULL_FREQUENCY': 3,
         }
     }
 }
@@ -374,6 +375,28 @@ LOGGING = {
         },
     },
 }
+
+# ─── Sentry Error Monitoring & APM ──────────────────────────────────────────
+SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+
+        sentry_logging = LoggingIntegration(
+            level=logging.INFO,
+            event_level=logging.ERROR
+        )
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[DjangoIntegration(), sentry_logging],
+            traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+            send_default_pii=False,
+            environment=os.environ.get('APP_ENV', 'production' if not DEBUG else 'development'),
+        )
+    except Exception:
+        pass
 
 TEST_RUNNER = 'apps.home.test_runner.ManagedModelsTestRunner'
 

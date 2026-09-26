@@ -976,7 +976,7 @@ class AgentProfileView(models.Model):
 
 class AgentCardImpression(models.Model):
     """Tracks every time an agent's card appears in a find-agents search result page."""
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='card_impressions')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='card_impressions', db_constraint=False)
     impression_date = models.DateField()
     search_pincode = models.CharField(max_length=10, blank=True, null=True)
     impression_count = models.IntegerField(default=1)
