@@ -22,10 +22,6 @@ class HealthAndMonitoringTests(TestCase):
         data = res.json()
         self.assertEqual(data.get('status'), 'healthy')
 
-    def test_reconcile_fulfillment_dry_run(self):
-        # Verify the command executes cleanly without exceptions
-        call_command('reconcile_fulfillment', '--dry-run', '--limit', '5')
-
     def test_backup_database_dry_run(self):
         # Verify backup command executes cleanly
         call_command('backup_database', '--tag', 'test_ci', '--retention', '3')

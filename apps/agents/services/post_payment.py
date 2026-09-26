@@ -87,79 +87,24 @@ def fulfill_invoice_and_welcome(agent, subscription):
     return invoice
 
 
-def _run_invoice_and_welcome(agent_id, subscription_id, max_retries=2, retry_delay=2):
-    """
-    Monitored background fulfillment worker with retry logic and telemetry logging.
-    """
+def _run_invoice_and_welcome(agent_id, subscription_id):
     close_old_connections()
-    from apps.agents.models import Agent, AgentSubscription, RegistrationActivityLog
+    try:
+        from apps.agents.models import Agent, AgentSubscription
 
-    agent = Agent.objects.filter(pk=agent_id).first()
-    subscription = AgentSubscription.objects.filter(pk=subscription_id).first()
-
-    if not agent or not subscription:
-        logger.error(
-            'Invoice/welcome skipped: agent=%s subscription=%s missing',
-            agent_id,
-            subscription_id,
-        )
-        RegistrationActivityLog.log(
-            'FULFILLMENT_ABORTED',
-            agent=agent,
-            subscription_id=subscription_id,
-            extra_details={'reason': 'Agent or Subscription row not found'}
-        )
-        return
-
-    RegistrationActivityLog.log(
-        'FULFILLMENT_STARTED',
-        agent=agent,
-        subscription_id=subscription_id,
-        extra_details={'plan': subscription.selected_plan}
-    )
-
-    last_error = None
-    for attempt in range(1, max_retries + 2):
-        try:
-            invoice = fulfill_invoice_and_welcome(agent, subscription)
-            invoice_num = getattr(invoice, 'invoice_number', None) if invoice else None
-            sheet_synced = getattr(invoice, 'synced_to_sheet', False) if invoice else False
-            RegistrationActivityLog.log(
-                'FULFILLMENT_SUCCESS',
-                agent=agent,
-                subscription_id=subscription_id,
-                extra_details={
-                    'invoice_number': invoice_num,
-                    'sheet_synced': sheet_synced,
-                    'attempts': attempt
-                }
+        agent = Agent.objects.filter(pk=agent_id).first()
+        subscription = AgentSubscription.objects.filter(pk=subscription_id).first()
+        if not agent or not subscription:
+            logger.error(
+                'Invoice/welcome skipped: agent=%s subscription=%s missing',
+                agent_id,
+                subscription_id,
             )
-            logger.info(
-                'Background invoice/welcome succeeded for agent %s (sub=%s, inv=%s, attempt=%s)',
-                agent_id, subscription_id, invoice_num, attempt
-            )
-            return invoice
-        except Exception as err:
-            last_error = err
-            logger.warning(
-                'Background invoice/welcome attempt %s/%s failed for agent %s: %s',
-                attempt, max_retries + 1, agent_id, err
-            )
-            if attempt <= max_retries:
-                import time
-                time.sleep(retry_delay)
-                close_old_connections()
+            return
+        fulfill_invoice_and_welcome(agent, subscription)
+    except Exception:
+        logger.exception('Background invoice/welcome failed for agent %s', agent_id)
+    finally:
+        close_old_connections()
 
-    logger.critical(
-        'CRITICAL: Background invoice/welcome permanently failed for agent %s (sub=%s) after %s attempts: %s',
-        agent_id, subscription_id, max_retries + 1, last_error,
-        exc_info=True
-    )
-    RegistrationActivityLog.log(
-        'FULFILLMENT_FAILED',
-        agent=agent,
-        subscription_id=subscription_id,
-        extra_details={'error': str(last_error), 'attempts': max_retries + 1}
-    )
-    close_old_connections()
 
