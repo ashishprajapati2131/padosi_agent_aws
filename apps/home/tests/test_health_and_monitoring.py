@@ -36,3 +36,7 @@ class HealthAndMonitoringTests(TestCase):
             call_command('verify_production_env')
         except SystemExit:
             pass  # Expected in test environment where some prod env vars are missing
+
+    def test_restore_database_dry_run(self):
+        # Verify restore command dry run executes safely
+        call_command('restore_database', '--latest', '--dry-run')
