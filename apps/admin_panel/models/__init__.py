@@ -15,6 +15,7 @@ from .admin_auth import Admin, SecurityThreatLog
 from .qr_file import QrFile
 from .insurance_approval import AgentApprovalRequest
 from .user_session import UserSession, UserSessionData
+from .admin_broadcast import AdminBroadcast
 from .error_log import ErrorLog
 from .api_log import ApiLog
 
@@ -29,6 +30,7 @@ __all__ = [
     'ReferralCode',
     'ReferralUsage',
     'AdminActivityLog',
+    'AdminBroadcast',
     'ContactSubmission',
     'PincodeImportLog',
     'Admin',

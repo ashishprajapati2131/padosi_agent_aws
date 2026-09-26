@@ -5,18 +5,7 @@ from django.db.models import Q
 from django.contrib import messages
 from django.db import models
 from apps.admin_panel.views.dashboard import _get_admin_from_session
-from apps.admin_panel.models import Agent, AdminActivityLog
-
-class AdminBroadcast(models.Model):
-    subject = models.CharField(max_length=255)
-    message = models.TextField()
-    target = models.CharField(max_length=50)
-    channels = models.CharField(max_length=100)
-    sent_count = models.IntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        managed = False
-        db_table = 'admin_broadcasts'
+from apps.admin_panel.models import Agent, AdminActivityLog, AdminBroadcast
 
 from apps.agents.models import AgentDeviceToken
 
