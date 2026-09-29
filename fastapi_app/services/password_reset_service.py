@@ -21,13 +21,13 @@ class PasswordResetService:
         # 1. Fetch User by email
         user = self.user_repo.get_by_email(request.email)
         
-        # 2. If user does not exist, return error indicating email is not registered
+        # 2. If user does not exist, say so before any email is attempted.
         if not user:
             return JSONResponse(
                 status_code=400,
                 content={
                     "success": False,
-                    "message": f"{request.email} is not registered."
+                    "message": "Your account was not found. Please check the email address and try again."
                 }
             )
 
@@ -97,7 +97,7 @@ class PasswordResetService:
                 status_code=200,
                 content={
                     "success": True,
-                    "message": f"We have successfully sent the password reset link to {request.email}."
+                    "message": "Email sent successfully. Please check your inbox for the password reset link."
                 }
             )
         except Exception as e:

@@ -26,6 +26,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.sitemaps.views import sitemap
 from padosi_agent.sitemaps import sitemaps
 from padosi_agent.views import csrf_refresh_api, health_check_view
+from apps.event_referral.views.public_leaderboard import public_leaderboard as stall_public_leaderboard
 
 urlpatterns = [
     path('health/', health_check_view, name='health_check'),
@@ -43,6 +44,7 @@ urlpatterns = [
     path('agent/championship/', include('apps.referral_championship.urls')),
     path('admin/championship/', include('apps.referral_championship.urls_admin')),
     path('event-registration/', include('apps.event_referral.urls')),
+    path('stall-leaderboard/', stall_public_leaderboard, name='stall_leaderboard'),
     path('admin/event-referral/', include('apps.event_referral.urls_admin')),
     path('', include('apps.admin_panel.urls')),
     path('', include('apps.agents.urls')),

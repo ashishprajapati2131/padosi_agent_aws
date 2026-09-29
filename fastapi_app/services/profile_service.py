@@ -350,10 +350,6 @@ class ProfileService:
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
             
-        # Email uniqueness
-        existing_email = db.query(Agent).filter(Agent.email == payload.agent.email, Agent.id != agent_id).first()
-        if existing_email:
-            raise HTTPException(status_code=409, detail="The email has already been taken.")
         if any(c in (payload.agent.fullname or "") + (payload.profile.display_name or "") for c in "<>"):
             raise HTTPException(status_code=422, detail="Name contains invalid characters.")
             
@@ -399,14 +395,11 @@ class ProfileService:
 
         try:
             # Step 1: Basic Info
+            # Email is the login id. Agents cannot change it from the app.
             previous_email = agent.email
             agent.fullname = payload.agent.fullname
-            agent.email = payload.agent.email
             agent.mobile = payload.agent.mobile
-
-            # Login resolves credentials by email against `users` / `auth_user`,
-            # so an email change here must carry over or the agent is locked out.
-            self._sync_login_identity(db, previous_email, payload.agent.email, payload.agent.fullname)
+            self._sync_login_identity(db, previous_email, previous_email, payload.agent.fullname)
             # badge is an admin-assigned trust marker (web: admin edit only);
             # an agent must not be able to set it on themselves.
             agent.user_types = payload.agent.user_types
@@ -812,7 +805,6 @@ class ProfileService:
         agent = self._get_agent_or_404(agent_id)
 
         fullname = (payload.agent.fullname or "").strip()
-        email = (payload.agent.email or "").strip()
         mobile = (payload.agent.mobile or "").strip()
         languages = (payload.profile.languages or "").strip()
         address = (payload.profile.address or "").strip()
@@ -822,8 +814,6 @@ class ProfileService:
         if any(c in fullname + (payload.profile.display_name or "") for c in "<>"):
             # Names render on public pages / JS-built HTML (web parity).
             raise HTTPException(status_code=422, detail="Name contains invalid characters.")
-        if not email:
-            raise HTTPException(status_code=422, detail="Email is required.")
         if not mobile:
             raise HTTPException(status_code=422, detail="Mobile number is required.")
         if not languages:
@@ -831,19 +821,15 @@ class ProfileService:
         if not address:
             raise HTTPException(status_code=422, detail="Residence address is required.")
 
-        existing_email = db.query(Agent).filter(Agent.email == email, Agent.id != agent_id).first()
-        if existing_email:
-            raise HTTPException(status_code=409, detail="The email has already been taken.")
-
         lock_service = LockUnlockService(db)
         lock_service.require_feature_unlocked(agent, "edit_profile_basic")
 
         try:
+            # Email is the login id. Agents cannot change it from the app.
             previous_email = agent.email
             agent.fullname = fullname
-            agent.email = email
             agent.mobile = mobile
-            self._sync_login_identity(db, previous_email, email, fullname)
+            self._sync_login_identity(db, previous_email, previous_email, fullname)
 
             profile = self._ensure_profile(db, agent)
             profile.display_name = payload.profile.display_name

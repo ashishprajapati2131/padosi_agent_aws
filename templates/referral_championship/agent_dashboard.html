@@ -166,6 +166,32 @@
             </div>
         </div>
 
+        {% if event_referral_mode and event_referral_participant %}
+        <div class="rounded-2xl sm:rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/10 via-white to-teal-500/5 p-3.5 sm:p-5 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <span class="text-[10px] sm:text-xs font-black uppercase tracking-wider text-primary">Paldi 48-hour challenge</span>
+                    <h2 class="text-sm sm:text-lg font-black text-foreground mt-1">
+                        {{ event_referral_participant.paid_count }} / {{ event_referral_participant.required_paid_referrals }} paid referrals
+                        · code <span class="font-mono text-primary">{{ display_referral_id }}</span>
+                    </h2>
+                    <p class="text-[10.5px] sm:text-xs text-muted-foreground mt-1">
+                        {% if event_referral_participant.status == 'won' %}Basic plan unlocked — your full referral list is below.
+                        {% elif event_referral_participant.status == 'blocked' %}Challenge ended — see who registered and upgrade if needed.
+                        {% else %}Share your EV- link; paid signups appear in Recent Activity and the referral table.
+                        {% endif %}
+                    </p>
+                </div>
+                {% if event_referral_participant.status == 'active' %}
+                <div class="text-center px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
+                    <div class="text-[9px] font-bold uppercase text-muted-foreground">Deadline</div>
+                    <div id="event-championship-countdown" class="text-sm sm:text-base font-black text-primary tabular-nums" data-deadline="{{ event_referral_participant.deadline_at|date:'c' }}">--:--:--</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if not is_unlocked %}
         <!-- ══════════════════════════════════════════════════════════════ -->
         <!-- LOCKED GATE STATE (Profile < 80% or Reviews < 10)             -->
@@ -604,24 +630,26 @@
                             <div class="py-2 sm:py-2.5 flex items-center justify-between text-xs">
                                 <div class="flex items-center gap-2 sm:gap-2.5 min-w-0">
                                     <div class="flex h-6.5 w-6.5 sm:h-7 sm:w-7 flex-none items-center justify-center rounded-lg bg-muted text-foreground font-black text-[10px] sm:text-[11px]">
-                                        {{ ref.referred_agent.fullname|default:"AG"|slice:":2"|upper }}
+                                        {% if ref.event_referral %}{{ ref.snapshot_name|default:"AG"|slice:":2"|upper }}{% else %}{{ ref.referred_agent.fullname|default:"AG"|slice:":2"|upper }}{% endif %}
                                     </div>
                                     <div class="min-w-0">
                                         <p class="font-extrabold text-foreground truncate text-[11px] sm:text-xs">
-                                            {% if ref.referred_agent %}{{ ref.referred_agent.fullname }}{% else %}Agent Registration{% endif %}
+                                            {% if ref.event_referral %}{{ ref.snapshot_name|default:"Agent" }}{% elif ref.referred_agent %}{{ ref.referred_agent.fullname }}{% else %}Agent Registration{% endif %}
                                         </p>
-                                        <p class="text-[9.5px] sm:text-[10.5px] text-muted-foreground">{{ ref.created_at|date:"d M, h:i A" }}</p>
+                                        <p class="text-[9.5px] sm:text-[10.5px] text-muted-foreground truncate">
+                                            {% if ref.event_referral %}{{ ref.snapshot_mobile|default:ref.snapshot_email|default:"" }}{% else %}{{ ref.created_at|date:"d M, h:i A" }}{% endif %}
+                                        </p>
                                     </div>
                                 </div>
                                 <span class="rounded-full px-1.5 sm:px-2 py-0.2 sm:py-0.5 text-[8.5px] sm:text-[9.5px] font-black uppercase flex-none
                                     {% if ref.registration_state == 'active' or ref.registration_state == 'paid' %}
                                         bg-emerald-500/15 text-emerald-600 border border-emerald-500/20
-                                    {% elif ref.registration_state == 'fraud_blocked' %}
+                                    {% elif ref.registration_state == 'fraud_blocked' or ref.registration_state == 'rejected' %}
                                         bg-red-500/15 text-red-600
                                     {% else %}
                                         bg-muted text-muted-foreground
                                     {% endif %}">
-                                    {{ ref.registration_state }}
+                                    {% if ref.event_referral and ref.counts %}paid ✓{% else %}{{ ref.registration_state }}{% endif %}
                                 </span>
                             </div>
                             {% empty %}
@@ -638,6 +666,10 @@
                         </button>
                     </div>
                 </div>
+
+                {% if event_referral_mode %}
+                {% include "referral_championship/partials/event_referral_list.html" %}
+                {% endif %}
             </div>
 
             <!-- ══════════════════════════════════════════════════════════ -->
@@ -661,9 +693,9 @@
                             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5">
                                 <div class="flex-1 flex items-center justify-between rounded-xl sm:rounded-2xl bg-gradient-to-r from-primary/10 to-teal-500/5 border border-primary/30 px-3 sm:px-4 py-2 sm:py-2.5">
                                     <span class="text-base sm:text-xl font-black text-primary font-mono tracking-wider">
-                                        {{ participant.referral_id }}
+                                        {{ display_referral_id|default:participant.referral_id }}
                                     </span>
-                                    <button type="button" onclick="copyText('{{ participant.referral_id }}', 'Referral ID')" class="inline-flex h-7 sm:h-8 items-center gap-1 rounded-lg bg-primary px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold text-white hover:bg-primary-dark transition-all">
+                                    <button type="button" onclick="copyText('{{ display_referral_id|default:participant.referral_id }}', 'Referral ID')" class="inline-flex h-7 sm:h-8 items-center gap-1 rounded-lg bg-primary px-2.5 sm:px-3 text-[11px] sm:text-xs font-bold text-white hover:bg-primary-dark transition-all">
                                         <i data-lucide="copy" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i> Copy ID
                                     </button>
                                 </div>
@@ -1059,7 +1091,7 @@
                     text = `https://www.padosiagent.com/review/${agentSlug}/`;
                 }
             } else if (label.toLowerCase().includes('referral') || label.toLowerCase().includes('invite') || label.toLowerCase().includes('sms')) {
-                const refCode = "{{ participant.referral_id|escapejs }}";
+                const refCode = "{{ display_referral_id|default:participant.referral_id|escapejs }}";
                 if (refCode) {
                     text = `${window.location.origin}/ref/${refCode}/`;
                 }
@@ -1171,6 +1203,27 @@
                 currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
             }
         }, 350);
+
+        var evtCd = document.getElementById('event-championship-countdown');
+        if (evtCd) {
+            var dl = evtCd.getAttribute('data-deadline');
+            if (dl) {
+                var end = new Date(dl).getTime();
+                function tick() {
+                    var diff = end - Date.now();
+                    if (diff <= 0) {
+                        evtCd.textContent = 'Ended';
+                        return;
+                    }
+                    var h = Math.floor(diff / 3600000);
+                    var m = Math.floor((diff % 3600000) / 60000);
+                    var s = Math.floor((diff % 60000) / 1000);
+                    evtCd.textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+                }
+                tick();
+                setInterval(tick, 1000);
+            }
+        }
     });
 </script>
 {% endblock %}

@@ -334,6 +334,15 @@ Overview
 
 <div class="edit-profile-wrapper">
     <div class="container py-4">
+        {% if event_referral_expired_locked %}
+        <div class="alert alert-warning border-0 shadow-sm mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-radius:12px;">
+            <div>
+                <strong>Your 48-hour challenge has ended.</strong>
+                Profile editing is locked until you choose and pay for a plan.
+            </div>
+            <a href="{% url 'agents:chooseplan' %}" class="btn btn-primary font-weight-bold px-4 shadow-sm">Upgrade plan</a>
+        </div>
+        {% endif %}
         <!-- Progress Steps Header -->
         <div class="steps-header mb-4">
             <div class="step-item active" data-step="1">
@@ -453,10 +462,17 @@ Overview
                             <div class="col-md-12 mb-4">
                                 <label class="form-label">Email ID <span class="text-danger">*</span> <i
                                         class="fas fa-info-circle text-muted" data-toggle="tooltip"
-                                        title="Your official email for account notifications and inquiries"
+                                        title="{% if isAdminView %}Login email for this agent{% else %}Your login email. It cannot be changed from this page.{% endif %}"
                                         style="font-size: 12px; cursor: help;"></i></label>
+                                {% if isAdminView %}
                                 <input type="email" class="form-control" name="email" value="{{ agent.email }}"
                                     placeholder="demo.agent@padosiagent.com">
+                                {% else %}
+                                <input type="email" class="form-control" name="email" value="{{ agent.email }}"
+                                    readonly tabindex="-1" aria-readonly="true" autocomplete="email"
+                                    style="background-color: #f1f5f9; cursor: not-allowed;">
+                                <small class="text-muted d-block mt-1">This email is your login ID and cannot be changed.</small>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -4638,7 +4654,9 @@ Overview
             fillField('address', data.address);
             fillField('office_address', data.address);
             fillField('mobile', data.mobile);
-            fillField('email', data.email);
+            if (typeof IS_ADMIN_VIEW !== 'undefined' && IS_ADMIN_VIEW) {
+                fillField('email', data.email);
+            }
             fillField('agency_name', data.agency_name);
             fillField('service_pincode', data.pincode);
 
@@ -4867,6 +4885,22 @@ Overview
     }
 
     function showLockedFeaturePopup(name, hintKey) {
+      if (forceEventReferralLock && eventReferralExpired) {
+        Swal.fire({
+          iconHtml: '<i class="fas fa-lock" style="font-size:2rem;color:#d97706;"></i>',
+          title: 'Challenge ended — upgrade to unlock',
+          html: '<p style="color:#334155;font-size:15px;line-height:1.55;margin:0;">Your 48-hour window is over. Choose a plan and complete payment to edit your profile.</p>',
+          confirmButtonColor: '#2563eb',
+          confirmButtonText: 'Upgrade plan',
+          showCancelButton: true,
+          cancelButtonText: 'Later'
+        }).then(function(result) {
+          if (result.isConfirmed) {
+            window.location.href = eventReferralChoosePlanUrl;
+          }
+        });
+        return;
+      }
       let html = '';
       let title = (name || 'This section') + ' is locked';
       let confirmText = 'OK';
@@ -4975,6 +5009,10 @@ Overview
       attachLockOverlay($target, sectionName, hintKey);
     }
 
+    const forceEventReferralLock = {% if force_lock_all_features %}true{% else %}false{% endif %};
+    const eventReferralExpired = {% if event_referral_expired_locked %}true{% else %}false{% endif %};
+    const eventReferralChoosePlanUrl = "{% url 'agents:chooseplan' %}";
+
     // Handle SubscriptionPlan Feature Locks Dynamically
     const planPermissions = {
       profile: {% if not agent_plan or agent_plan.show_profile_section %}true{% else %}false{% endif %},
@@ -4996,6 +5034,10 @@ Overview
       leadClaims: {% if not agent_plan or agent_plan.show_lead_claims_support %}true{% else %}false{% endif %},
       leadPreferences: {% if not agent_plan or agent_plan.show_lead_preferences %}true{% else %}false{% endif %}
     };
+
+    if (forceEventReferralLock) {
+      Object.keys(planPermissions).forEach(function(k) { planPermissions[k] = false; });
+    }
 
     if (!planPermissions.editProfileFull) {
         $('.nav-link').addClass('disabled').css('pointer-events', 'none');

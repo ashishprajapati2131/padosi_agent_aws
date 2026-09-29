@@ -266,8 +266,22 @@ def agent_login(request):
                     pass
 
                 if agent.status in ['suspended', 'blacklisted', 'rejected']:
-                    portal_error(request, f"Your account is currently {agent.status}.", PORTAL_AGENT)
-                    return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+                    from apps.event_referral.services.participant_service import (
+                        event_referral_grants_dashboard,
+                        get_participant_for_agent,
+                    )
+                    ev_part = get_participant_for_agent(agent)
+                    if (
+                        agent.status == 'suspended'
+                        and ev_part
+                        and ev_part.status == 'blocked'
+                        and event_referral_grants_dashboard(agent)
+                    ):
+                        agent.status = 'pending_payment'
+                        agent.save(update_fields=['status', 'updated_at'])
+                    else:
+                        portal_error(request, f"Your account is currently {agent.status}.", PORTAL_AGENT)
+                        return render(request, 'agents/login.html', {'email': email, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
                 if agent.status in INCOMPLETE_STATUSES:
                     try:
@@ -635,28 +649,36 @@ def forgot_password(request):
         agent = find_agent(email)
         laravel_user = find_laravel_user(email)
         user = User.objects.filter(email__iexact=email).first()
+        account_missing = "Your account was not found. Please check the email address and try again."
+        laravel_role = (laravel_user.role or '').lower() if laravel_user else ''
+
+        if login_type == 'agent' and not agent:
+            if laravel_role and laravel_role != 'agent':
+                portal_error(request, "This email belongs to a Distributor account. Please use the Distributor login page.", PORTAL_AGENT)
+            else:
+                portal_error(request, account_missing, PORTAL_AGENT)
+            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         if login_type == 'agent' and agent and not user:
-            user = create_or_link_django_user(agent)
-
-        # Generic response to prevent email enumeration (matching PHP logic)
-        if not user and not agent:
-            portal_success(request, "If that email is registered, you will receive a reset link shortly.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+            try:
+                user = create_or_link_django_user(agent)
+            except Exception as e:
+                logger.error("Could not prepare login account for password reset %s: %s", email, e)
+                portal_error(request, "Unable to send reset email. Please try again later.", PORTAL_AGENT)
+                return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         if not user:
-            portal_success(request, "If that email is registered, you will receive a reset link shortly.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+            portal_error(request, account_missing, PORTAL_AGENT)
+            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         if user.is_staff or user.is_superuser:
-            # Same generic reply as unknown emails: don't reveal staff accounts.
+            # Don't mail a reset link for a staff login through the agent form.
             logger.warning("Password reset requested for staff account %s via agent flow; ignored.", email)
-            portal_success(request, "If that email is registered, you will receive a reset link shortly.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+            portal_error(request, account_missing, PORTAL_AGENT)
+            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         # Check if user role matches login_type
         is_agent = bool(agent) or Agent.objects.filter(user=user).exists()
-        laravel_role = (laravel_user.role or '').lower() if laravel_user else ''
         if login_type == 'agent' and not is_agent:
             portal_error(request, "This email belongs to a Distributor account. Please use the Distributor login page.", PORTAL_AGENT)
             return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
@@ -677,9 +699,11 @@ def forgot_password(request):
 
             success = email_service.send_password_reset(user.email, user_name, reset_url, "60", role_name)
             if not success:
-                logger.error(f"Failed to send password reset email to {user.email}")
+                logger.error("Failed to send password reset email to %s", user.email)
+                portal_error(request, "Unable to send reset email. Please try again later.", PORTAL_AGENT)
+                return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
-            portal_success(request, "Password reset link has been sent to your email address!", PORTAL_AGENT)
+            portal_success(request, "Email sent successfully. Please check your inbox for the password reset link.", PORTAL_AGENT)
             return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
         except Exception as e:
             logger.error(f"Error sending password reset email: {e}")

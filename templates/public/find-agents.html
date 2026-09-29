@@ -2122,6 +2122,158 @@ no spam calls, only trusted licensed agents.{% endblock %}
     window._padosiGuestAuthenticated = false;
     window._padosiGuestData = null;
 
+    function findAgentsStateKey() {
+        const params = new URLSearchParams(window.location.search);
+        params.delete('page');
+        params.delete('shown');
+        const entries = Array.from(params.entries()).sort(function (a, b) {
+            if (a[0] === b[0]) return String(a[1]).localeCompare(String(b[1]));
+            return String(a[0]).localeCompare(String(b[0]));
+        });
+        return window.location.pathname + '?' + new URLSearchParams(entries).toString();
+    }
+
+    function readFindAgentsState() {
+        try {
+            const raw = sessionStorage.getItem('findAgentsListState');
+            if (!raw) return null;
+            const data = JSON.parse(raw);
+            if (!data || data.key !== findAgentsStateKey()) return null;
+            const shown = parseInt(data.shown, 10) || 1;
+            if (shown < 2) return null;
+            return data;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function findAgentsRestoreTarget() {
+        const urlShown = parseInt(new URLSearchParams(window.location.search).get('shown') || '1', 10) || 1;
+        const saved = readFindAgentsState();
+        const savedShown = saved ? (parseInt(saved.shown, 10) || 1) : 1;
+        return Math.min(20, Math.max(urlShown, savedShown, 1));
+    }
+
+    function currentShownPages() {
+        const btn = document.getElementById('load-more-button');
+        if (btn && btn.dataset.nextPage) {
+            const next = parseInt(btn.dataset.nextPage, 10);
+            if (next > 1) return next - 1;
+        }
+        const cards = document.querySelectorAll('.find-agents-list-item').length;
+        if (!cards) return 1;
+        // No Load More button means every matching agent is already on the page.
+        if (!btn) return 20;
+        return Math.max(1, Math.ceil(cards / 5));
+    }
+
+    function rememberLoadedAgents(pagesLoaded, scrollY) {
+        pagesLoaded = parseInt(pagesLoaded, 10) || 1;
+        if (pagesLoaded < 1) pagesLoaded = 1;
+        if (pagesLoaded > 20) pagesLoaded = 20;
+        const params = new URLSearchParams(window.location.search);
+        params.delete('page');
+        if (pagesLoaded > 1) params.set('shown', String(pagesLoaded));
+        else params.delete('shown');
+        const qs = params.toString();
+        const url = window.location.pathname + (qs ? '?' + qs : '');
+        if ((window.location.pathname + window.location.search) !== url) {
+            history.replaceState(history.state, '', url);
+        }
+        try {
+            sessionStorage.setItem('findAgentsListState', JSON.stringify({
+                key: findAgentsStateKey(),
+                shown: pagesLoaded,
+                scrollY: typeof scrollY === 'number' ? scrollY : (window.scrollY || 0)
+            }));
+        } catch (e) {}
+    }
+
+    function clearFindAgentsListState() {
+        try { sessionStorage.removeItem('findAgentsListState'); } catch (e) {}
+    }
+
+    function persistFindAgentsScroll() {
+        const saved = readFindAgentsState();
+        if (!saved) return;
+        rememberLoadedAgents(parseInt(saved.shown, 10) || currentShownPages(), window.scrollY || 0);
+    }
+
+    function agentPageUrl(page) {
+        const params = new URLSearchParams(window.location.search);
+        params.delete('shown');
+        params.set('page', String(page));
+        return window.location.pathname + '?' + params.toString();
+    }
+
+    function fetchAndAppendAgentPage(url) {
+        return $.ajax({
+            url: url,
+            type: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'HX-Request': 'true'
+            }
+        }).then(function (response) {
+            const $response = $('<div>').append($.parseHTML(response));
+            const $agentCards = $response.find('.find-agents-list-item').filter(function () {
+                const id = this.getAttribute('data-agent-id');
+                return id && !document.querySelector('.find-agents-list-item[data-agent-id="' + id + '"]');
+            });
+            const $newLoadMore = $response.find('#load-more-wrapper');
+            const hasMoreButton = $newLoadMore.find('#load-more-button').length > 0;
+            if ($agentCards.length > 0) {
+                $('#load-more-wrapper').before($agentCards);
+            }
+            if (hasMoreButton) {
+                $('#load-more-wrapper').replaceWith($newLoadMore);
+            } else if ($agentCards.length > 0) {
+                $('#load-more-wrapper').html(
+                    '<div class="text-center" style="margin-top: 30px; margin-bottom: 40px; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">' +
+                    '<i class="fas fa-check-circle" style="font-size: 32px; color: #10b981; margin-bottom: 10px;"></i>' +
+                    '<p style="font-size: 15px; color: #475569; font-weight: 600; margin: 0;">You\'ve viewed all available agents</p>' +
+                    '</div>'
+                );
+            }
+            if (typeof updateCompareBar === 'function') updateCompareBar();
+            return $agentCards.length;
+        });
+    }
+
+    function restoreLoadedAgents() {
+        const target = findAgentsRestoreTarget();
+        if (target <= 1) return;
+        const saved = readFindAgentsState();
+        const scrollY = saved && saved.scrollY ? saved.scrollY : 0;
+        const epoch = window._findAgentsListEpoch || 0;
+
+        function finish() {
+            if ((window._findAgentsListEpoch || 0) !== epoch) return;
+            rememberLoadedAgents(currentShownPages(), scrollY);
+            if (scrollY > 0) window.scrollTo(0, scrollY);
+        }
+
+        if (currentShownPages() >= target) {
+            finish();
+            return;
+        }
+
+        let chain = Promise.resolve();
+        for (let page = currentShownPages() + 1; page <= target; page++) {
+            chain = chain.then(function () {
+                if ((window._findAgentsListEpoch || 0) !== epoch) return 0;
+                return fetchAndAppendAgentPage(agentPageUrl(page));
+            }).then(function (added) {
+                if (!added) throw new Error('stop');
+            });
+        }
+        chain.then(finish).catch(function (err) {
+            if (err && err.message === 'stop') finish();
+        });
+    }
+
+    window._findAgentsListEpoch = 0;
+
     function getCSRFToken() {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -2616,6 +2768,8 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
         // Helper to submit the form using native HTMX event dispatching
         function submitFilterForm() {
+            window._findAgentsListEpoch = (window._findAgentsListEpoch || 0) + 1;
+            clearFindAgentsListState();
             const form = $('#filter-form')[0];
             if (form) {
                 const event = new Event('submit', { bubbles: true, cancelable: true });
@@ -2772,7 +2926,9 @@ no spam calls, only trusted licensed agents.{% endblock %}
             const isHomepageReferral = hasPreFilters && document.referrer.includes(window.location.host)
                 && !document.referrer.includes('find-agents');
 
-            if (isHomepageReferral || (hasPreFilters && services.length > 0 && insuranceTypes.length > 0)) {
+            // A return from an agent profile reloads this URL. Skip the extra
+            // filter refresh when that visit should keep every page already loaded.
+            if (findAgentsRestoreTarget() <= 1 && (isHomepageReferral || (hasPreFilters && services.length > 0 && insuranceTypes.length > 0))) {
                 setTimeout(() => {
                     submitFilterForm();
                 }, 300);
@@ -2824,6 +2980,12 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
         // Run restoration on load
         restoreFiltersFromUrl();
+        restoreLoadedAgents();
+
+        $(document).on('click', 'a.rac-btn--profile, a.rac-d-btn--profile', function () {
+            persistFindAgentsScroll();
+        });
+        window.addEventListener('pagehide', persistFindAgentsScroll);
 
         // Auto-open filter if requested via URL parameter
         if (new URLSearchParams(window.location.search).get('openFilter') === '1') {
@@ -3731,6 +3893,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
                         scrollTop: $agentCards.first().offset().top - 100
                     }, 500);
                 }
+                rememberLoadedAgents(currentShownPages());
             },
             error: function (xhr, status, error) {
                 console.error('Load more failed:', error);

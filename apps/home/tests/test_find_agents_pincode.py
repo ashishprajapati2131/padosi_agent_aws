@@ -11,6 +11,7 @@ from apps.home.services.distance import (
     DistanceService,
     agent_serves_pincode,
     apply_search_proximity,
+    directory_result_window,
     iter_agent_service_pincodes,
     rank_directory_agents,
 )
@@ -147,6 +148,18 @@ class DirectoryRankingTests(SimpleTestCase):
         self.assertEqual(len(page.object_list), 5)
         self.assertTrue(page.has_next())
         self.assertEqual(page.next_page_number(), 2)
+
+    def test_load_more_stays_one_page(self):
+        start, end, next_page = directory_result_window(12, page=2, shown=3, is_partial=True)
+        self.assertEqual((start, end, next_page), (5, 10, 3))
+
+    def test_return_visit_includes_every_loaded_page(self):
+        start, end, next_page = directory_result_window(12, page=1, shown=2, is_partial=False)
+        self.assertEqual((start, end, next_page), (0, 10, 3))
+
+    def test_return_visit_stops_at_the_last_agent(self):
+        start, end, next_page = directory_result_window(8, shown=4, is_partial=False)
+        self.assertEqual((start, end, next_page), (0, 8, None))
 
 
 class PincodeCoordinateLookupTests(SimpleTestCase):

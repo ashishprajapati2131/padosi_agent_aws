@@ -26,25 +26,90 @@ def get_participant_for_agent(agent):
 
 
 def event_referral_grants_dashboard(agent):
-    """Allow dashboard without Razorpay for active challengers and winners."""
+    """Allow dashboard without Razorpay for active/won challengers and expired (locked) challengers."""
     participant = get_participant_for_agent(agent)
     if not participant:
-        return False
-    if participant.status == EventReferralParticipant.STATUS_BLOCKED:
         return False
     if participant.status in (
         EventReferralParticipant.STATUS_ACTIVE,
         EventReferralParticipant.STATUS_WON,
+        EventReferralParticipant.STATUS_BLOCKED,
     ):
         return True
     return False
 
 
-def force_lock_all_dashboard_features(participant):
-    return (
-        participant is not None
-        and participant.status == EventReferralParticipant.STATUS_ACTIVE
+def prepare_event_referral_portal_state(agent):
+    """
+    Run expiry checks on portal page loads.
+    Returns (participant, force_lock_all_features, event_referral_expired_locked).
+    """
+    participant = get_participant_for_agent(agent)
+    if not participant:
+        return None, False, False
+    if participant.status == EventReferralParticipant.STATUS_ACTIVE:
+        evaluate_agent(agent, block_on_expire=True)
+        participant = get_participant_for_agent(agent)
+    force_lock = force_lock_all_dashboard_features(participant)
+    expired_locked = bool(
+        participant
+        and participant.status == EventReferralParticipant.STATUS_BLOCKED
+        and force_lock
     )
+    return participant, force_lock, expired_locked
+
+
+def event_referral_expired_needs_plan_payment(agent):
+    """
+    True when the 48h challenge ended without a win and the agent still needs a paid plan.
+    Used to allow /chooseplan/ instead of bouncing back to the locked dashboard.
+    """
+    participant = get_participant_for_agent(agent)
+    if not participant or participant.status != EventReferralParticipant.STATUS_BLOCKED:
+        return False
+    from apps.agents.services.account_auth import agent_has_completed_payment
+
+    return not agent_has_completed_payment(agent)
+
+
+def event_referral_bypasses_championship_unlock(agent):
+    """
+    Paldi / event-registration (EV-) agents skip PA- championship profile % and review gates.
+    Does not apply to normal championship-only participants.
+    """
+    return event_referral_grants_dashboard(agent)
+
+
+def force_lock_all_dashboard_features(participant):
+    """Lock dashboard after 48h expiry until the agent pays for a plan."""
+    if participant is None or participant.status != EventReferralParticipant.STATUS_BLOCKED:
+        return False
+    from apps.agents.services.account_auth import agent_has_completed_payment
+
+    agent = participant.agent
+    if agent and agent_has_completed_payment(agent):
+        return False
+    return True
+
+
+def event_referral_effective_plan_type(agent, participant=None):
+    """
+    Plan slug used for feature gates during the Paldi / event referral challenge.
+    - Active (within 48h): Professional trial — same as paid Professional.
+    - Won: reward plan (usually basic/starter).
+    - Blocked: None (dashboard access is revoked separately).
+    """
+    participant = participant or get_participant_for_agent(agent)
+    if not participant:
+        return None
+    if participant.status == EventReferralParticipant.STATUS_ACTIVE:
+        return 'professional'
+    if participant.status == EventReferralParticipant.STATUS_WON:
+        slug = (participant.reward_plan_slug or 'basic').strip().lower() or 'basic'
+        if slug in ('basic', 'starter', 'standard'):
+            return 'starter'
+        return slug
+    return None
 
 
 def _recount_paid(participant):
@@ -84,8 +149,9 @@ def _block_participant(participant, reason=''):
         update_fields=['status', 'blocked_at', 'blocked_reason', 'updated_at'],
     )
     agent = participant.agent
-    agent.status = 'suspended'
-    agent.save(update_fields=['status', 'updated_at'])
+    if agent.status not in ('active', 'pending_approval'):
+        agent.status = 'pending_payment'
+        agent.save(update_fields=['status', 'updated_at'])
     logger.info(
         'Event referral blocked: agent #%s participant %s',
         agent.id,
@@ -162,7 +228,7 @@ def admin_restore_participant(participant, *, extend_hours=0):
         participant.blocked_at = None
         participant.blocked_reason = ''
         participant.save()
-        if agent.status == 'suspended' and agent.plan_type in ('', 'basic', 'starter'):
+        if agent.status in ('suspended', 'pending_payment', 'event_challenge'):
             agent.status = 'event_challenge' if not agent.plan_type else 'pending_approval'
             agent.save(update_fields=['status', 'updated_at'])
     participant.refresh_from_db()

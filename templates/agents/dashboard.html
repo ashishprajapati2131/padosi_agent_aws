@@ -225,6 +225,15 @@
             <strong>{{ event_referral_participant.required_paid_referrals }}</strong> agents complete payment before the timer ends, your Basic plan unlocks.
         </div>
         {% endif %}
+        {% if event_referral_expired_locked and not admin_lock_preview %}
+        <div class="alert alert-warning border-0 shadow-sm mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3" style="border-radius:12px;">
+            <div>
+                <strong>Your 48-hour challenge has ended.</strong>
+                Dashboard sections are locked until you choose and pay for a plan.
+            </div>
+            <a href="{% url 'agents:chooseplan' %}" class="btn btn-primary font-weight-bold px-4 shadow-sm">Upgrade plan</a>
+        </div>
+        {% endif %}
         {% if event_referral_participant and not admin_lock_preview %}
         <div class="card border-0 shadow-sm mb-4" id="event-referral-challenge-panel" style="border-radius:16px; overflow:hidden;">
             <div class="card-body p-4 event-referral-panel">
@@ -236,6 +245,12 @@
                         </div>
                         {% if event_referral_participant.status == 'won' %}
                         <p class="mb-0 event-referral-panel-text">Congratulations! Your Basic plan is unlocked.</p>
+                        {% elif event_referral_participant.status == 'blocked' %}
+                        <p class="mb-0 event-referral-panel-text">
+                            Time is up. You reached <strong class="text-white">{{ event_referral_participant.paid_count }}</strong> of
+                            <strong class="text-white">{{ event_referral_participant.required_paid_referrals }}</strong> paid referrals.
+                            Upgrade to a plan to unlock your dashboard.
+                        </p>
                         {% else %}
                         <p class="mb-0 event-referral-panel-text">
                             Refer <strong class="text-white">{{ event_referral_participant.required_paid_referrals }}</strong> insurance agents who
@@ -250,7 +265,11 @@
                     </div>
                     {% endif %}
                 </div>
-                {% if event_referral_share_url %}
+                {% if event_referral_expired_locked %}
+                <div class="mt-3">
+                    <a href="{% url 'agents:chooseplan' %}" class="btn btn-light btn-sm font-weight-bold"><i class="fas fa-arrow-up mr-1"></i>Upgrade plan</a>
+                </div>
+                {% elif event_referral_share_url %}
                 <div class="mt-3 event-referral-actions">
                     {% if event_referral_whatsapp_url %}
                     <a class="btn btn-success btn-sm font-weight-bold" target="_blank" rel="noopener" href="{{ event_referral_whatsapp_url }}"><i class="fab fa-whatsapp mr-1"></i>Share on WhatsApp</a>
@@ -259,38 +278,15 @@
                     <input type="text" class="form-control form-control-sm event-referral-link-input" id="event-referral-link" readonly value="{{ event_referral_share_url }}">
                 </div>
                 {% endif %}
-            </div>
-            {% if event_referral_referrals %}
-            <div class="table-responsive d-none d-md-block">
-                <table class="table table-sm mb-0">
-                    <thead class="thead-light"><tr><th>Name</th><th>Contact</th><th>Plan</th><th>Payment</th><th>Counted</th></tr></thead>
-                    <tbody>
-                    {% for ref in event_referral_referrals %}
-                    <tr>
-                        <td>{{ ref.snapshot_name|default:"—" }}</td>
-                        <td>{{ ref.snapshot_mobile|default:ref.snapshot_email }}</td>
-                        <td>{{ ref.snapshot_plan|default:"—" }}</td>
-                        <td>{{ ref.snapshot_payment_status|default:ref.state }}</td>
-                        <td>{% if ref.counts %}<span class="text-success">Yes</span>{% else %}<span class="text-muted">No</span>{% endif %}</td>
-                    </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <div class="p-3 bg-white" id="event-referral-mobile-refs">
-                <div class="small font-weight-bold text-muted mb-2 text-uppercase">Your referrals</div>
-                {% for ref in event_referral_referrals %}
-                <div class="event-referral-ref-card">
-                    <div class="font-weight-bold text-dark">{{ ref.snapshot_name|default:"Agent" }}</div>
-                    <div class="text-muted small">{{ ref.snapshot_mobile|default:ref.snapshot_email }}</div>
-                    <div class="d-flex justify-content-between align-items-center mt-2 small">
-                        <span>{{ ref.snapshot_payment_status|default:ref.state }}</span>
-                        {% if ref.counts %}<span class="text-success font-weight-bold">Counted</span>{% else %}<span class="text-muted">Pending</span>{% endif %}
-                    </div>
+                <div class="mt-3 pt-2 border-top border-white-50 d-flex flex-wrap gap-2">
+                    <a href="{% url 'championship:agent_dashboard' %}" class="btn btn-outline-light btn-sm font-weight-bold">
+                        <i class="fas fa-trophy mr-1"></i>Referral list (Championship)
+                    </a>
+                    <a href="{% url 'event_referral:public_leaderboard' %}" class="btn btn-outline-light btn-sm font-weight-bold" target="_blank" rel="noopener">
+                        <i class="fas fa-chart-bar mr-1"></i>Public leaderboard
+                    </a>
                 </div>
-                {% endfor %}
             </div>
-            {% endif %}
         </div>
         {% endif %}
         <!-- Dashboard Header -->
@@ -315,6 +311,11 @@
                 </div>
             </div>
             <div class="dashboard-top-actions mt-3 mt-md-0 d-flex flex-wrap gap-2 align-items-center">
+                {% if event_referral_expired_locked and not admin_lock_preview %}
+                <a href="{% url 'agents:chooseplan' %}" class="btn btn-primary font-weight-bold shadow-sm px-4 mb-2 mb-sm-0" style="height: 42px; display: inline-flex; align-items: center;">
+                    <i class="fas fa-arrow-up mr-2"></i>Upgrade plan
+                </a>
+                {% endif %}
                 <button type="button" class="btn text-white shadow-sm px-4 d-flex align-items-center mb-2 mb-sm-0" data-feature="rank_boost_tips" data-toggle="modal" data-target="#rankingGuideModal" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; font-weight: 700; border-radius: 8px; margin-right: 12px; height: 42px; position: relative;">
                     <i class="fas fa-rocket mr-2"></i> Rank Boost Tips
                 </button>
@@ -1973,7 +1974,9 @@
     // Handle SubscriptionPlan Feature Locks Dynamically for Dashboard
     {% if not admin_lock_preview %}
     const forceEventReferralLock = {% if force_lock_all_features %}true{% else %}false{% endif %};
+    const eventReferralExpired = {% if event_referral_expired_locked %}true{% else %}false{% endif %};
     const eventReferralTarget = {% if event_referral_participant %}{{ event_referral_participant.required_paid_referrals }}{% else %}5{% endif %};
+    const eventReferralChoosePlanUrl = "{% url 'agents:chooseplan' %}";
     const featureUnlockHints = {{ feature_unlock_hints_json|default:"{}"|safe }};
     const planPermissions = {
       recentLeads: {% if not agent_plan or agent_plan.show_recent_leads %}true{% else %}false{% endif %},
@@ -2022,13 +2025,29 @@
 
     function showLockedFeaturePopup(name, hintKey) {
       if (forceEventReferralLock) {
-        Swal.fire({
-          iconHtml: '<i class="fas fa-users" style="font-size:2rem;color:#0d9488;"></i>',
-          title: 'Complete your referral challenge',
-          html: '<p style="color:#334155;font-size:15px;line-height:1.55;margin:0;">Refer <strong>' + eventReferralTarget + '</strong> agents who complete payment before the timer ends to unlock your Basic plan and dashboard features.</p>',
-          confirmButtonColor: '#0d9488',
-          confirmButtonText: 'Got it'
-        });
+        if (eventReferralExpired) {
+          Swal.fire({
+            iconHtml: '<i class="fas fa-lock" style="font-size:2rem;color:#d97706;"></i>',
+            title: 'Challenge ended — upgrade to unlock',
+            html: '<p style="color:#334155;font-size:15px;line-height:1.55;margin:0;">Your 48-hour window is over. Choose a plan and complete payment to unlock dashboard features.</p>',
+            confirmButtonColor: '#2563eb',
+            confirmButtonText: 'Upgrade plan',
+            showCancelButton: true,
+            cancelButtonText: 'Later'
+          }).then(function(result) {
+            if (result.isConfirmed) {
+              window.location.href = eventReferralChoosePlanUrl;
+            }
+          });
+        } else {
+          Swal.fire({
+            iconHtml: '<i class="fas fa-users" style="font-size:2rem;color:#0d9488;"></i>',
+            title: 'Complete your referral challenge',
+            html: '<p style="color:#334155;font-size:15px;line-height:1.55;margin:0;">Refer <strong>' + eventReferralTarget + '</strong> agents who complete payment before the timer ends to unlock your Basic plan and dashboard features.</p>',
+            confirmButtonColor: '#0d9488',
+            confirmButtonText: 'Got it'
+          });
+        }
         return;
       }
       let html = '';

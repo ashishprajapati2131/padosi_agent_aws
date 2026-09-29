@@ -1,0 +1,29 @@
+{% if row %}
+<div class="podium-slot-inner rank-{{ slot_rank }}">
+    <div class="slot-trophy">
+        {% if slot_rank == 1 %}
+        <i data-lucide="crown" class="crown-icon"></i>
+        {% endif %}
+        <i data-lucide="trophy" class="trophy-icon"></i>
+        <span class="rank-badge">{{ slot_rank }}</span>
+    </div>
+    <div class="slot-avatar">
+        {% if row.photo_url %}
+        <img src="{{ row.photo_url }}" alt="" loading="lazy" class="slot-avatar-img" onerror="this.classList.add('is-broken')">
+        <span class="slot-avatar-fallback">{{ row.initials }}</span>
+        {% else %}{{ row.initials }}{% endif %}
+    </div>
+    <h3 class="slot-name" title="{{ row.name }}">{{ row.name }}</h3>
+    <p class="slot-score">{{ row.paid_count }}</p>
+    <p class="slot-score-label">referrals</p>
+    <p class="slot-city">{{ row.city }}</p>
+    <div class="pedestal-bar"></div>
+</div>
+{% else %}
+<div class="podium-slot-inner empty">
+    <div class="slot-trophy muted"><i data-lucide="trophy" class="trophy-icon"></i></div>
+    <p class="slot-placeholder">#{{ slot_rank }}</p>
+    <p class="slot-score-label">Open slot</p>
+    <div class="pedestal-bar muted-bar"></div>
+</div>
+{% endif %}

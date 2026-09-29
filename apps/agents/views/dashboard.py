@@ -258,34 +258,17 @@ def agent_dashboard(request):
         return redirect('agents:agent_registration')
 
     event_referral_participant = None
-    event_referral_referrals = []
     force_lock_all_features = False
+    event_referral_expired_locked = False
     event_referral_share_url = ''
     if agent:
         try:
-            from django.contrib.auth import logout
-            from apps.agents.views.auth import PORTAL_AGENT, portal_error
-            from apps.event_referral.models import EventReferral, EventReferralParticipant
-            from apps.event_referral.services.participant_service import (
-                BLOCK_MESSAGE,
-                evaluate_agent,
-                force_lock_all_dashboard_features,
-                get_participant_for_agent,
+            from apps.event_referral.services.participant_service import prepare_event_referral_portal_state
+            event_referral_participant, force_lock_all_features, event_referral_expired_locked = (
+                prepare_event_referral_portal_state(agent)
             )
-            event_referral_participant = get_participant_for_agent(agent)
             if event_referral_participant:
-                if event_referral_participant.status == EventReferralParticipant.STATUS_ACTIVE:
-                    evaluate_agent(agent, block_on_expire=True)
-                    agent.refresh_from_db()
-                    event_referral_participant.refresh_from_db()
-                if event_referral_participant.status == EventReferralParticipant.STATUS_BLOCKED:
-                    logout(request)
-                    portal_error(request, BLOCK_MESSAGE, PORTAL_AGENT)
-                    return redirect('agents:agent_login')
-                event_referral_referrals = list(
-                    EventReferral.objects.filter(participant=event_referral_participant).order_by('-registered_at')[:50]
-                )
-                force_lock_all_features = force_lock_all_dashboard_features(event_referral_participant)
+                agent.refresh_from_db()
                 event_referral_share_url = request.build_absolute_uri(
                     reverse('agents:agent_registration_referral', kwargs={'ref_code': event_referral_participant.referral_code})
                 )
@@ -497,8 +480,16 @@ def agent_dashboard(request):
     from django.conf import settings
     plan_name = _display_plan_name(agent, pricing_config)
 
+    dashboard_plan_type = agent.plan_type
+    if event_referral_participant:
+        from apps.event_referral.services.participant_service import event_referral_effective_plan_type
+
+        override_plan = event_referral_effective_plan_type(agent, event_referral_participant)
+        if override_plan:
+            dashboard_plan_type = override_plan
+
     # Resolve SubscriptionPlan using robust multi-tier helper
-    agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
+    agent_plan = _resolve_agent_plan(dashboard_plan_type, agent=agent)
 
     favorite_ids = set(
         FavoriteAgent.objects.filter(user=request.user).values_list('agent_id', flat=True)
@@ -608,7 +599,15 @@ def agent_dashboard(request):
             champ_unlock_cfg = champ_campaign.unlock_config or {'min_profile_percent': 80, 'min_reviews': 10}
             champ_min_profile = int(champ_unlock_cfg.get('min_profile_percent', 80))
             champ_min_reviews = int(champ_unlock_cfg.get('min_reviews', 10))
-            champ_is_unlocked = (champ_completion >= champ_min_profile and champ_reviews >= champ_min_reviews)
+            from apps.event_referral.services.participant_service import (
+                event_referral_bypasses_championship_unlock,
+            )
+            if event_referral_bypasses_championship_unlock(agent):
+                champ_is_unlocked = True
+            else:
+                champ_is_unlocked = (
+                    champ_completion >= champ_min_profile and champ_reviews >= champ_min_reviews
+                )
     except Exception as e:
         logger.warning("Referral championship context error: %s", e)
 
@@ -696,11 +695,11 @@ def agent_dashboard(request):
         'upcoming_features': upcoming_features,
         'has_upcoming_features': bool(upcoming_features),
         'event_referral_participant': event_referral_participant,
-        'event_referral_referrals': event_referral_referrals,
         'force_lock_all_features': force_lock_all_features,
         'event_referral_share_url': event_referral_share_url,
         'event_referral_whatsapp_url': event_referral_whatsapp_url,
         'event_referral_welcome': event_referral_welcome,
+        'event_referral_expired_locked': event_referral_expired_locked,
         'paldi_event_name': 'Paldi',
         'app_upgrade_plan': app_upgrade_plan,
     }
@@ -1243,10 +1242,31 @@ def render_edit_profile(request, agent, is_admin_view=False):
                 raw_perms = logged_in_admin.permissions
                 admin_permissions = raw_perms if isinstance(raw_perms, list) else []
 
-    # Resolve SubscriptionPlan using robust multi-tier helper
-    agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
+    force_lock_all_features = False
+    event_referral_expired_locked = False
+    edit_plan_type = agent.plan_type
+    if not is_admin_view:
+        try:
+            from apps.event_referral.services.participant_service import (
+                event_referral_effective_plan_type,
+                prepare_event_referral_portal_state,
+            )
 
-    feature_unlock_hints = build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
+            _evt_participant, force_lock_all_features, event_referral_expired_locked = (
+                prepare_event_referral_portal_state(agent)
+            )
+            agent.refresh_from_db()
+            if _evt_participant and not force_lock_all_features:
+                _evt_plan = event_referral_effective_plan_type(agent, _evt_participant)
+                if _evt_plan:
+                    edit_plan_type = _evt_plan
+        except Exception:
+            pass
+
+    # Resolve SubscriptionPlan using robust multi-tier helper
+    agent_plan = _resolve_agent_plan(edit_plan_type, agent=agent)
+
+    feature_unlock_hints = build_unlock_hints(agent, normalize_plan_slug(edit_plan_type or agent.plan_type))
     review_growth_status_json = '{}'
     show_starter_upgrade_cta = False
     show_starter_upgrade_progress = False
@@ -1307,6 +1327,8 @@ def render_edit_profile(request, agent, is_admin_view=False):
         'prof_base': prof_base if not is_admin_view else 0,
         'prof_full': int(prof_full) if not is_admin_view else 0,
         'agent_id': agent.id,
+        'force_lock_all_features': force_lock_all_features,
+        'event_referral_expired_locked': event_referral_expired_locked,
     }
     return render(request, 'agents/edit_profile.html', context)
 
@@ -1322,6 +1344,19 @@ def update_profile(request):
     agent = Agent.objects.filter(user=request.user).first()
     if not agent:
         return JsonResponse({'status': 'error', 'message': 'Agent not found'}, status=404)
+
+    from apps.event_referral.services.participant_service import prepare_event_referral_portal_state
+
+    _, force_lock, _ = prepare_event_referral_portal_state(agent)
+    if force_lock:
+        return JsonResponse(
+            {
+                'status': 'error',
+                'message': 'Your 48-hour challenge has ended. Upgrade your plan to edit your profile.',
+                'redirect': reverse('agents:chooseplan'),
+            },
+            status=403,
+        )
 
     return apply_profile_update(request, agent, is_admin_edit=False)
 
@@ -1387,20 +1422,25 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                 if display_name and re.search(r'[<>]', display_name):
                     errors['display_name'] = ['Display name contains invalid characters.']
                     
-                if not email:
-                    errors['email'] = ['The email field is required.']
+                if is_admin_edit:
+                    if not email:
+                        errors['email'] = ['The email field is required.']
+                    else:
+                        try:
+                            validate_email(email)
+                            if Agent.objects.filter(email__iexact=email).exclude(id=agent.id).exists():
+                                errors['email'] = ['The email has already been taken.']
+                            elif _email_taken_by_other_login(email, agent):
+                                # Login resolves accounts by email across auth_user and
+                                # users; taking a staff/insurance/distributor address
+                                # let an agent log in as (and overwrite) that account.
+                                errors['email'] = ['The email has already been taken.']
+                        except ValidationError:
+                            errors['email'] = ['Enter a valid email address.']
                 else:
-                    try:
-                        validate_email(email)
-                        if Agent.objects.filter(email__iexact=email).exclude(id=agent.id).exists():
-                            errors['email'] = ['The email has already been taken.']
-                        elif _email_taken_by_other_login(email, agent):
-                            # Login resolves accounts by email across auth_user and
-                            # users; taking a staff/insurance/distributor address
-                            # let an agent log in as (and overwrite) that account.
-                            errors['email'] = ['The email has already been taken.']
-                    except ValidationError:
-                        errors['email'] = ['Enter a valid email address.']
+                    # The login email is fixed. A posted value is ignored so the
+                    # rest of the profile can still be saved.
+                    email = (agent.email or '').strip()
                         
                 if not mobile:
                     errors['mobile'] = ['The mobile field is required.']
@@ -1426,9 +1466,10 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                 if errors:
                     return JsonResponse({'status': 'error', 'message': 'Validation failed', 'errors': errors}, status=422)
                     
-                previous_email = agent.email
                 agent.fullname = full_name
-                agent.email = email
+                if is_admin_edit:
+                    previous_email = agent.email
+                    agent.email = email
                 agent.mobile = mobile
                 
                 # User types (Optional)
@@ -1445,10 +1486,11 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                         
                 agent.save()
 
-                # Login reads `users`/`auth_user` by email, so an address change
-                # here has to follow through or the agent cannot sign in again.
-                from apps.agents.services.account_auth import sync_agent_email_change
-                sync_agent_email_change(previous_email, email, full_name)
+                # Login reads `users`/`auth_user` by email. Only an admin edit may
+                # move that address; an agent save leaves it unchanged.
+                if is_admin_edit:
+                    from apps.agents.services.account_auth import sync_agent_email_change
+                    sync_agent_email_change(previous_email, email, full_name)
 
                 profile.display_name = display_name
                 profile.whatsapp = whatsapp

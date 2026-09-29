@@ -39,6 +39,30 @@ from apps.referral_championship.services.share_service import (
 logger = logging.getLogger(__name__)
 
 
+def _resolve_championship_unlock_gate(agent, campaign, participant, completion, review_count):
+    """Profile/review thresholds; event-registration challengers are always unlocked."""
+    from apps.event_referral.services.participant_service import (
+        event_referral_bypasses_championship_unlock,
+    )
+
+    unlock_cfg = campaign.unlock_config if isinstance(campaign.unlock_config, dict) else {}
+    min_profile = int(unlock_cfg.get('min_profile_percent') or 80)
+    min_reviews = int(unlock_cfg.get('min_reviews') or 10)
+
+    if event_referral_bypasses_championship_unlock(agent):
+        is_unlocked = True
+    else:
+        is_unlocked = completion >= min_profile and review_count >= min_reviews
+
+    if is_unlocked and not participant.is_unlocked:
+        participant.is_unlocked = True
+        participant.profile_completed_at = timezone.now()
+        participant.reviews_completed_at = timezone.now()
+        participant.save(update_fields=['is_unlocked', 'profile_completed_at', 'reviews_completed_at'])
+
+    return is_unlocked, min_profile, min_reviews
+
+
 def build_safe_absolute_uri(request, path_or_url):
     """
     Build an absolute URI from the request, ensuring that in production (DEBUG=False)
@@ -57,6 +81,64 @@ def build_safe_absolute_uri(request, path_or_url):
     return uri
 
 
+def _referral_funnel_for_dashboard(request, agent, participant):
+    """Championship PA- funnel, or EV- Paldi funnel when the agent is an event challenger."""
+    from apps.event_referral.services.championship_dashboard import (
+        build_event_referral_championship_context,
+    )
+
+    evt_ctx = build_event_referral_championship_context(
+        request,
+        agent,
+        lambda path: build_safe_absolute_uri(request, path),
+    )
+    if evt_ctx:
+        return evt_ctx
+
+    referrals_qs = ChampionshipReferral.objects.filter(referrer=participant)
+    invited_count = referrals_qs.count()
+    form_filled_count = referrals_qs.exclude(registration_state='started').count()
+    paid_count = referrals_qs.filter(registration_state__in=['paid', 'active']).count()
+    qualified_count = participant.qualifying_referrals_count
+
+    domain = request.get_host()
+    scheme = 'https' if request.is_secure() else 'http'
+    if not getattr(settings, 'DEBUG', False) and any(h in domain.lower() for h in ('localhost', '127.0.0.1')):
+        domain = 'padosiagent.com'
+        scheme = 'https'
+    referral_url = f"{scheme}://{domain}/agent-registration/join/{participant.referral_id}/"
+
+    recent_referrals = list(referrals_qs.order_by('-created_at')[:20])
+    recent_referrals_api = []
+    for ref in recent_referrals:
+        agent_name = ref.referred_agent.fullname if ref.referred_agent and ref.referred_agent.fullname else 'Agent Registration'
+        initials = (agent_name[:2] if agent_name else 'AG').upper()
+        recent_referrals_api.append({
+            'id': ref.id,
+            'event_referral': False,
+            'referred_agent_name': agent_name,
+            'initials': initials,
+            'created_at': ref.created_at.isoformat() if ref.created_at else None,
+            'created_at_formatted': ref.created_at.strftime("%d %b, %I:%M %p") if ref.created_at else "",
+            'registration_state': ref.registration_state,
+        })
+
+    return {
+        'event_referral_mode': False,
+        'event_referral_participant': None,
+        'event_referral_all': [],
+        'display_referral_id': participant.referral_id,
+        'referral_url': referral_url,
+        'invited_count': invited_count,
+        'form_filled_count': form_filled_count,
+        'paid_count': paid_count,
+        'qualified_count': qualified_count,
+        'referrals_target': None,
+        'recent_referrals': recent_referrals,
+        'recent_referrals_api': recent_referrals_api,
+    }
+
+
 def build_championship_dashboard_json_payload(request, agent):
     """
     Construct complete, structured JSON payload for Agent Championship Dashboard API.
@@ -69,33 +151,23 @@ def build_championship_dashboard_json_payload(request, agent):
     completion = profile_completion_percent(agent)
     review_count = agent_review_count(agent)
 
-    unlock_cfg = campaign.unlock_config if isinstance(campaign.unlock_config, dict) else {}
-    min_profile = int(unlock_cfg.get('min_profile_percent') or 80)
-    min_reviews = int(unlock_cfg.get('min_reviews') or 10)
+    is_unlocked, min_profile, min_reviews = _resolve_championship_unlock_gate(
+        agent, campaign, participant, completion, review_count,
+    )
+    profile_satisfied = is_unlocked or completion >= min_profile
+    reviews_satisfied = is_unlocked or review_count >= min_reviews
 
-    is_unlocked = (completion >= min_profile and review_count >= min_reviews)
-    if is_unlocked and not participant.is_unlocked:
-        participant.is_unlocked = True
-        participant.profile_completed_at = timezone.now()
-        participant.reviews_completed_at = timezone.now()
-        participant.save(update_fields=['is_unlocked', 'profile_completed_at', 'reviews_completed_at'])
-
-    # ── Funnel Metrics ──
-    referrals_qs = ChampionshipReferral.objects.filter(referrer=participant)
-    invited_count = referrals_qs.count()
-    form_filled_count = referrals_qs.exclude(registration_state='started').count()
-    paid_count = referrals_qs.filter(registration_state__in=['paid', 'active']).count()
-    qualified_count = participant.qualifying_referrals_count
+    funnel = _referral_funnel_for_dashboard(request, agent, participant)
+    invited_count = funnel['invited_count']
+    form_filled_count = funnel['form_filled_count']
+    paid_count = funnel['paid_count']
+    qualified_count = funnel['qualified_count']
+    referral_url = funnel['referral_url']
+    recent_referrals_api = funnel['recent_referrals_api']
 
     # ── Roadmap & Next Reward ──
     roadmap_data = get_participant_roadmap(participant)
 
-    domain = request.get_host()
-    scheme = 'https' if request.is_secure() else 'http'
-    if not getattr(settings, 'DEBUG', False) and any(h in domain.lower() for h in ('localhost', '127.0.0.1')):
-        domain = 'padosiagent.com'
-        scheme = 'https'
-    referral_url = f"{scheme}://{domain}/agent-registration/join/{participant.referral_id}/"
     qr_base64 = generate_qr_base64(referral_url)
     qr_download_url = build_safe_absolute_uri(request, reverse('championship:agent_qr_download'))
 
@@ -221,21 +293,6 @@ def build_championship_dashboard_json_payload(request, agent):
         },
     ]
 
-    # Recent Referrals Activity
-    recent_referrals = referrals_qs.order_by('-created_at')[:20]
-    recent_referrals_api = []
-    for ref in recent_referrals:
-        agent_name = ref.referred_agent.fullname if ref.referred_agent and ref.referred_agent.fullname else 'Agent Registration'
-        initials = (agent_name[:2] if agent_name else 'AG').upper()
-        recent_referrals_api.append({
-            'id': ref.id,
-            'referred_agent_name': agent_name,
-            'initials': initials,
-            'created_at': ref.created_at.isoformat() if ref.created_at else None,
-            'created_at_formatted': ref.created_at.strftime("%d %b, %I:%M %p") if ref.created_at else "",
-            'registration_state': ref.registration_state
-        })
-
     # Next Rank Needed
     next_rank_needed = 1
     if participant.current_rank and participant.current_rank > 1:
@@ -311,20 +368,21 @@ def build_championship_dashboard_json_payload(request, agent):
         'user_rank': participant.current_rank,
         'verified_referrals': qualified_count,
         'total_contenders': agg_stats.get('total_participants', 0),
-        'referral_id': participant.referral_id,
+        'referral_id': funnel['display_referral_id'],
         'referral_url': referral_url,
         'default_whatsapp_text': default_wa_text,
-        'default_whatsapp_url': default_wa_url
+        'default_whatsapp_url': default_wa_url,
+        'event_referral_mode': funnel.get('event_referral_mode', False),
     }
 
     access_gate = {
         'is_unlocked': is_unlocked,
         'profile_completion_percent': completion,
         'min_profile_percent': min_profile,
-        'profile_satisfied': completion >= min_profile,
+        'profile_satisfied': profile_satisfied,
         'review_count': review_count,
         'min_reviews': min_reviews,
-        'reviews_satisfied': review_count >= min_reviews,
+        'reviews_satisfied': reviews_satisfied,
         'complete_profile_url': build_safe_absolute_uri(request, reverse('agents:agent_edit_profile')),
         'collect_reviews_profile_url': review_url,
         'collect_reviews_url': review_url,
@@ -336,7 +394,7 @@ def build_championship_dashboard_json_payload(request, agent):
         'form_filled_count': form_filled_count,
         'paid_count': paid_count,
         'qualified_count': qualified_count,
-        'target_qualified': 5
+        'target_qualified': funnel.get('referrals_target') or 5,
     }
 
     championship_road = {
@@ -365,7 +423,7 @@ def build_championship_dashboard_json_payload(request, agent):
     }
 
     invite_studio = {
-        'referral_id': participant.referral_id,
+        'referral_id': funnel['display_referral_id'],
         'referral_url': referral_url,
         'qr_base64': qr_base64,
         'qr_download_url': qr_download_url,
@@ -476,31 +534,21 @@ def agent_championship_dashboard(request):
         completion = profile_completion_percent(agent)
         review_count = agent_review_count(agent)
 
-        unlock_cfg = campaign.unlock_config if isinstance(campaign.unlock_config, dict) else {}
-        min_profile = int(unlock_cfg.get('min_profile_percent') or 80)
-        min_reviews = int(unlock_cfg.get('min_reviews') or 10)
+        is_unlocked, min_profile, min_reviews = _resolve_championship_unlock_gate(
+            agent, campaign, participant, completion, review_count,
+        )
 
-        is_unlocked = (completion >= min_profile and review_count >= min_reviews)
-        if is_unlocked and not participant.is_unlocked:
-            participant.is_unlocked = True
-            participant.profile_completed_at = timezone.now()
-            participant.reviews_completed_at = timezone.now()
-            participant.save(update_fields=['is_unlocked', 'profile_completed_at', 'reviews_completed_at'])
-
-        # ── Funnel Metrics ──
-        referrals_qs = ChampionshipReferral.objects.filter(referrer=participant)
-        invited_count = referrals_qs.count()
-        form_filled_count = referrals_qs.exclude(registration_state='started').count()
-        paid_count = referrals_qs.filter(registration_state__in=['paid', 'active']).count()
-        qualified_count = participant.qualifying_referrals_count
+        funnel = _referral_funnel_for_dashboard(request, agent, participant)
+        invited_count = funnel['invited_count']
+        form_filled_count = funnel['form_filled_count']
+        paid_count = funnel['paid_count']
+        qualified_count = funnel['qualified_count']
+        referral_url = funnel['referral_url']
+        recent_referrals = funnel['recent_referrals']
 
         # ── Roadmap & Next Reward ──
         roadmap_data = get_participant_roadmap(participant)
 
-        # ── Referral Link & QR Code ──
-        domain = request.get_host()
-        scheme = 'https' if request.is_secure() else 'http'
-        referral_url = f"{scheme}://{domain}/agent-registration/join/{participant.referral_id}/"
         qr_base64 = generate_qr_base64(referral_url)
 
         # ── Leaderboard Data ──
@@ -566,8 +614,6 @@ def agent_championship_dashboard(request):
             {'tier': 2, 'prize_name': 'Domestic Trip Upgrade', 'eligibility': '100+ referrals', 'winner_count': 3, 'draw_date': '2026-11-05'},
             {'tier': 3, 'prize_name': 'Mega International Luxury Draw', 'eligibility': '200+ referrals', 'winner_count': 1, 'draw_date': '2026-11-05'},
         ]
-        recent_referrals = referrals_qs.order_by('-created_at')[:20]
-
         # ── Calculate referrals to beat next rank ──
         next_rank_needed = 1
         if participant.current_rank and participant.current_rank > 1:
@@ -617,6 +663,11 @@ def agent_championship_dashboard(request):
             'prof_price': prof_price,
             'hide_footer': True,
             'hide_chatbot': True,
+            'event_referral_mode': funnel.get('event_referral_mode', False),
+            'event_referral_participant': funnel.get('event_referral_participant'),
+            'event_referral_all': funnel.get('event_referral_all', []),
+            'display_referral_id': funnel.get('display_referral_id', participant.referral_id),
+            'referrals_target': funnel.get('referrals_target'),
         }
         return render(request, 'referral_championship/agent_dashboard.html', context)
     except Exception as e:
@@ -681,12 +732,23 @@ def download_qr_code(request):
     if not agent:
         return HttpResponse('Agent not found', status=404)
 
+    from apps.event_referral.services.championship_dashboard import event_referral_qr_join_url
+    from apps.event_referral.services.participant_service import get_participant_for_agent
+
     participant = get_or_create_participant(agent)
-    domain = request.get_host()
-    scheme = 'https' if request.is_secure() else 'http'
-    referral_url = f"{scheme}://{domain}/agent-registration/join/{participant.referral_id}/"
+    evt_p = get_participant_for_agent(agent)
+    referral_url = event_referral_qr_join_url(
+        request, agent, lambda path: build_safe_absolute_uri(request, path),
+    )
+    if not referral_url:
+        domain = request.get_host()
+        scheme = 'https' if request.is_secure() else 'http'
+        referral_url = f"{scheme}://{domain}/agent-registration/join/{participant.referral_id}/"
+        code_label = participant.referral_id
+    else:
+        code_label = evt_p.referral_code if evt_p else participant.referral_id
 
     qr_bytes = generate_qr_bytes(referral_url)
     response = HttpResponse(qr_bytes, content_type='image/png')
-    response['Content-Disposition'] = f'attachment; filename="PadosiAgent_QR_{participant.referral_id}.png"'
+    response['Content-Disposition'] = f'attachment; filename="PadosiAgent_QR_{code_label}.png"'
     return response

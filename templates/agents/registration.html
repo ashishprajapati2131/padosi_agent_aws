@@ -438,53 +438,6 @@
                         text-align: center;
                         color: hsl(var(--muted-foreground));
                     }
-                    .reg-preview-overlay--paldi {
-                        height: 100dvh;
-                        max-height: 100dvh;
-                        overflow: hidden;
-                    }
-                    .reg-preview-overlay--paldi .reg-preview-scroll-zone {
-                        flex: 1;
-                        min-height: 0;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        overflow: hidden;
-                        padding: 0.75rem 0.75rem 5.75rem;
-                    }
-                    .reg-preview-overlay--paldi .reg-preview-stage {
-                        max-height: calc(100dvh - 6.5rem);
-                        align-content: center;
-                    }
-                    .reg-preview-overlay--paldi .reg-preview-slide--card {
-                        min-height: 0;
-                    }
-                    .reg-preview-overlay--paldi .reg-preview-slide--portfolio .reg-preview-portfolio-layout {
-                        max-height: calc(100dvh - 7rem);
-                        overflow: hidden;
-                    }
-                    .reg-preview-overlay--paldi .reg-preview-slide--portfolio .profile-view-wrapper {
-                        max-height: calc(100dvh - 10.5rem);
-                        overflow: hidden;
-                        transform: scale(0.68);
-                        transform-origin: top center;
-                        width: 100%;
-                    }
-                    @media (min-width: 640px) {
-                        .reg-preview-overlay--paldi .reg-preview-slide--portfolio .profile-view-wrapper {
-                            transform: scale(0.78);
-                            max-height: calc(100dvh - 9.5rem);
-                        }
-                    }
-                    @media (min-width: 1024px) {
-                        .reg-preview-overlay--paldi .reg-preview-slide--portfolio .profile-view-wrapper {
-                            transform: scale(0.88);
-                        }
-                    }
-                    .reg-preview-overlay--paldi .reg-preview-bottom-bar {
-                        bottom: max(0.85rem, env(safe-area-inset-bottom));
-                    }
                 </style>
     <!-- Registration spark celebration -->
     <link rel="stylesheet" href="{% static 'css/registration-celebration.css' %}">
@@ -1178,15 +1131,13 @@
         <template x-teleport="body">
         <div x-show="showPreviewModal" style="display: none;"
             class="reg-preview-overlay fixed inset-0 z-50 flex flex-col"
-            :class="eventReferralMode ? 'reg-preview-overlay--paldi' : ''"
             @keydown.escape.window="showPreviewModal = false"
             @touchstart.passive="onPreviewTouchStart($event)"
             @touchend="onPreviewTouchEnd($event)">
 
             <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-md" @click="showPreviewModal = false"></div>
 
-            <div class="relative z-10 flex-1 px-3 sm:px-6 pt-4 sm:pt-5 pb-28 overflow-y-auto"
-                 :class="eventReferralMode ? 'reg-preview-scroll-zone !overflow-hidden !pb-0' : ''">
+            <div class="relative z-10 flex-1 px-3 sm:px-6 pt-4 sm:pt-5 pb-28 overflow-y-auto reg-preview-scroll-zone">
                 <div class="w-full mx-auto max-w-5xl reg-preview-stage">
 
                     <!-- Slide 0: Directory card only -->
@@ -2011,6 +1962,71 @@
                     { id: 'elss', label: 'Tax Saving (ELSS)' }
                 ],
 
+                getCsrfTokenFromCookie() {
+                    const names = ['padosi_csrf_token', 'csrftoken'];
+                    if (typeof document === 'undefined' || !document.cookie) return '';
+                    for (const name of names) {
+                        const parts = document.cookie.split(';');
+                        for (let i = 0; i < parts.length; i++) {
+                            const part = parts[i].trim();
+                            if (part.indexOf(name + '=') === 0) {
+                                return decodeURIComponent(part.substring(name.length + 1));
+                            }
+                        }
+                    }
+                    return '';
+                },
+
+                /** Keep hidden form token in sync with CSRF cookie before AJAX FormData POSTs. */
+                syncStep1CsrfToken(forcedToken) {
+                    const token = (forcedToken || this.getCsrfTokenFromCookie() || '').trim();
+                    const form = document.getElementById('step1Form');
+                    if (!form || !token) return token;
+                    let input = form.querySelector('input[name="csrfmiddlewaretoken"]');
+                    if (!input) {
+                        input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'csrfmiddlewaretoken';
+                        form.appendChild(input);
+                    }
+                    input.value = token;
+                    return token;
+                },
+
+                buildStep1FormData() {
+                    this.syncStep1CsrfToken();
+                    const formData = new FormData(document.getElementById('step1Form'));
+                    if (this.photoFile) {
+                        formData.set('photo', this.photoFile);
+                    }
+                    return formData;
+                },
+
+                async postStep1WithCsrfRetry() {
+                    const url = "{{ register_step1_url }}";
+                    const send = () => {
+                        const token = this.syncStep1CsrfToken();
+                        return fetch(url, {
+                            method: 'POST',
+                            body: this.buildStep1FormData(),
+                            credentials: 'same-origin',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                                'X-CSRFToken': token,
+                            },
+                        });
+                    };
+                    let response = await send();
+                    let data = await response.json().catch(() => null);
+                    if (response.status === 403 && data && data.csrf_error && data.csrf_token) {
+                        this.syncStep1CsrfToken(data.csrf_token);
+                        response = await send();
+                        data = await response.json().catch(() => null);
+                    }
+                    return { response, data };
+                },
+
                 init() {
                     // Initial updates
                     this.checkSlug();
@@ -2083,12 +2099,16 @@
 
                     // Silent draft save: register in DB before preview opens
                     try {
-                        const _draftForm = new FormData(document.getElementById('step1Form'));
-                        if (this.photoFile) { _draftForm.append('photo', this.photoFile); }
+                        const draftToken = this.syncStep1CsrfToken();
                         await fetch("{{ register_step1_url }}", {
                             method: 'POST',
-                            body: _draftForm,
-                            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                            body: this.buildStep1FormData(),
+                            credentials: 'same-origin',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                                'X-CSRFToken': draftToken,
+                            },
                         });
                     } catch (_e) { /* silent - preview still opens */ }
 
@@ -2131,7 +2151,7 @@
 
                 schedulePreviewAutoAdvance() {
                     this.clearPreviewAutoTimer();
-                    if (this.previewAutoDone || this.eventReferralMode) return;
+                    if (this.previewAutoDone) return;
                     const delay = Number(this.previewAutoAdvanceMs);
                     this.previewAutoTimer = setTimeout(() => {
                         if (this.showPreviewModal && this.previewSlide === 0 && !this.previewAutoDone) {
@@ -2682,9 +2702,10 @@
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token }}',
+                                'X-CSRFToken': this.syncStep1CsrfToken() || '{{ csrf_token }}',
                                 'Accept': 'application/json'
                             },
+                            credentials: 'same-origin',
                             body: JSON.stringify({ promo_code: this.promoCode })
                         });
                         const data = await res.json();
@@ -2733,72 +2754,48 @@
 
                         this.isSubmitting = true;
 
-                        // Submit via AJAX
-                        const formData = new FormData(document.getElementById('step1Form'));
-                        if (this.photoFile) {
-                            formData.append('photo', this.photoFile);
+                        const { response, data } = await this.postStep1WithCsrfRetry();
+                        if (!response.ok) {
+                            throw data || { message: 'Server error occurred' };
                         }
-
-                        fetch("{{ register_step1_url }}", {
-                            method: 'POST',
-                            body: formData,
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json'
+                        if (data && data.success) {
+                            this.showPreviewModal = false;
+                            this.isSubmitting = false;
+                            const target = data.redirect || this.postSubmitRedirect;
+                            if (this.eventReferralMode && typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Welcome to Paldi',
+                                    text: data.message || 'Opening your dashboard…',
+                                    timer: 1800,
+                                    showConfirmButton: false
+                                }).then(function() {
+                                    window.location.href = target;
+                                });
+                                setTimeout(function() { window.location.href = target; }, 1900);
+                            } else {
+                                window.location.href = target;
                             }
-                        })
-                            .then(async response => {
-                                const data = await response.json().catch(() => null);
-                                if (!response.ok) {
-                                    throw data || { message: 'Server error occurred' };
-                                }
-                                return data;
-                            })
-                            .then(data => {
-                                if (data && data.success) {
-                                    this.showPreviewModal = false;
-                                    this.isSubmitting = false;
-                                    const target = data.redirect || this.postSubmitRedirect;
-                                    if (this.eventReferralMode && typeof Swal !== 'undefined') {
-                                        Swal.fire({
-                                            icon: 'success',
-                                            title: 'Welcome to Paldi',
-                                            text: data.message || 'Opening your dashboard…',
-                                            timer: 1800,
-                                            showConfirmButton: false
-                                        }).then(function() {
-                                            window.location.href = target;
-                                        });
-                                        setTimeout(function() { window.location.href = target; }, 1900);
-                                    } else {
-                                        window.location.href = target;
-                                    }
-                                } else {
-                                    this.isSubmitting = false;
-                                    Swal.fire({ icon: 'error', title: 'Oops...', text: (data && data.message) ? data.message : 'Something went wrong!' });
-                                }
-                            })
-                            .catch(error => {
-                                this.isSubmitting = false;
-                                console.error('Error:', error);
-                                let errMsg = 'Network error. Please try again.';
-                                if (error && error.errors) {
-                                    this.errors = error.errors;
-                                    let errorHtml = '<ul style="text-align: left; margin-bottom: 0;">';
-                                    for (let field in error.errors) {
-                                        errorHtml += `<li>${error.errors[field][0]}</li>`;
-                                    }
-                                    errorHtml += '</ul>';
-                                    errMsg = errorHtml;
-                                } else if (error && error.message) {
-                                    errMsg = error.message;
-                                }
-                                Swal.fire({ icon: 'error', title: 'Validation Error', html: errMsg });
-                            });
+                        } else {
+                            this.isSubmitting = false;
+                            Swal.fire({ icon: 'error', title: 'Oops...', text: (data && data.message) ? data.message : 'Something went wrong!' });
+                        }
                     } catch (err) {
                         this.isSubmitting = false;
-                        console.error("JS Error in submitStep1:", err);
-                        Swal.fire('Error', 'An unexpected error occurred. ' + err.message, 'error');
+                        console.error('Error in submitStep1:', err);
+                        let errMsg = 'Network error. Please try again.';
+                        if (err && err.errors) {
+                            this.errors = err.errors;
+                            let errorHtml = '<ul style="text-align: left; margin-bottom: 0;">';
+                            for (let field in err.errors) {
+                                errorHtml += `<li>${err.errors[field][0]}</li>`;
+                            }
+                            errorHtml += '</ul>';
+                            errMsg = errorHtml;
+                        } else if (err && err.message) {
+                            errMsg = err.message;
+                        }
+                        Swal.fire({ icon: 'error', title: 'Validation Error', html: errMsg });
                     }
                 },
 

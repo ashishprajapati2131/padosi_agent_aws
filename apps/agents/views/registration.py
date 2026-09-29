@@ -1910,7 +1910,11 @@ def chooseplan(request):
         except Exception:
             logged_in_agent = None
         if logged_in_agent and agent_can_access_dashboard(logged_in_agent):
-            return redirect('agents:agent_dashboard')
+            from apps.event_referral.services.participant_service import (
+                event_referral_expired_needs_plan_payment,
+            )
+            if not event_referral_expired_needs_plan_payment(logged_in_agent):
+                return redirect('agents:agent_dashboard')
         elif request.user.is_staff or request.user.is_superuser:
             return redirect('agents:agent_dashboard')
 

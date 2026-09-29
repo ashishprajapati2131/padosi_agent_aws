@@ -1,0 +1,60 @@
+{% if event_referral_all %}
+<div class="rounded-2xl sm:rounded-3xl border border-border bg-card shadow-sm overflow-hidden">
+    <div class="border-b border-border px-3.5 sm:px-6 py-3 sm:py-4">
+        <h3 class="text-xs sm:text-base font-black text-foreground">Paldi challenge — your referrals</h3>
+        <p class="text-[10.5px] sm:text-xs text-muted-foreground mt-0.5">
+            {% if referrals_target %}
+            <strong class="text-primary">{{ qualified_count }} / {{ referrals_target }}</strong> counted paid referrals
+            {% else %}
+            Real-time list of agents who registered with your EV- link
+            {% endif %}
+        </p>
+    </div>
+    <div class="hidden md:block overflow-x-auto">
+        <table class="w-full text-left text-xs sm:text-sm">
+            <thead class="bg-muted/50 text-muted-foreground uppercase text-[10px] font-bold tracking-wide">
+                <tr>
+                    <th class="px-4 py-3">Name</th>
+                    <th class="px-4 py-3">Contact</th>
+                    <th class="px-4 py-3">Plan</th>
+                    <th class="px-4 py-3">Payment</th>
+                    <th class="px-4 py-3 text-center">Counted</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-border/60">
+                {% for ref in event_referral_all %}
+                <tr class="hover:bg-muted/30">
+                    <td class="px-4 py-3 font-semibold text-foreground">{{ ref.snapshot_name|default:"—" }}</td>
+                    <td class="px-4 py-3 text-muted-foreground">{{ ref.snapshot_mobile|default:ref.snapshot_email|default:"—" }}</td>
+                    <td class="px-4 py-3">{{ ref.snapshot_plan|default:"—" }}</td>
+                    <td class="px-4 py-3">{{ ref.snapshot_payment_status|default:ref.state }}</td>
+                    <td class="px-4 py-3 text-center">
+                        {% if ref.counts %}
+                        <span class="inline-flex rounded-full bg-emerald-500/15 text-emerald-700 px-2 py-0.5 text-[10px] font-black">Yes</span>
+                        {% else %}
+                        <span class="text-muted-foreground text-[10px] font-bold">No</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-4 py-8 text-center text-muted-foreground">No referrals yet — share your link from Invite Studio.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="md:hidden divide-y divide-border/60">
+        {% for ref in event_referral_all %}
+        <div class="p-3.5">
+            <div class="font-bold text-foreground">{{ ref.snapshot_name|default:"Agent" }}</div>
+            <div class="text-[11px] text-muted-foreground mt-0.5">{{ ref.snapshot_mobile|default:ref.snapshot_email }}</div>
+            <div class="flex justify-between items-center mt-2 text-[11px]">
+                <span>{{ ref.snapshot_payment_status|default:ref.state }}</span>
+                {% if ref.counts %}<span class="text-emerald-600 font-black">Counted</span>{% else %}<span class="text-muted-foreground">Pending</span>{% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <p class="p-6 text-center text-xs text-muted-foreground">No referrals yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

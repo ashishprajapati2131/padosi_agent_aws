@@ -83,6 +83,14 @@ def finalize_event_referral_registration(request, draft):
             if not EventReferralParticipant.objects.filter(agent=agent).exists():
                 EventReferralParticipant.create_for_agent(agent, campaign=campaign)
 
+            from apps.agents.models import AgentProfile
+
+            profile = AgentProfile.objects.filter(agent=agent).first()
+            if profile:
+                profile.is_profile_visible = True
+                profile.is_card_visible = True
+                profile.save(update_fields=['is_profile_visible', 'is_card_visible', 'updated_at'])
+
             from apps.event_referral.services.paldi_event import assign_paldi_event_to_agent
             assign_paldi_event_to_agent(agent)
 

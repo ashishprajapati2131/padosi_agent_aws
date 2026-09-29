@@ -313,6 +313,50 @@ def agent_serves_pincode(agent, pincode):
 
 
 FIND_AGENTS_PAGE_SIZE = 5
+FIND_AGENTS_MAX_SHOWN_PAGES = 20
+
+
+def directory_result_window(total, page=1, shown=1, is_partial=False, page_size=FIND_AGENTS_PAGE_SIZE):
+    """Slice the directory for the public find-agents page.
+
+    Load More asks for one page at a time. A full page load can ask for every
+    page the visitor already opened (`shown`), so coming back from a profile
+    still lists those agents instead of only the first page.
+    Returns (start, end, next_page_number or None).
+    """
+    try:
+        page = int(page)
+    except (TypeError, ValueError):
+        page = 1
+    if page < 1:
+        page = 1
+
+    try:
+        shown = int(shown)
+    except (TypeError, ValueError):
+        shown = 1
+    if shown < 1:
+        shown = 1
+    shown = min(shown, FIND_AGENTS_MAX_SHOWN_PAGES)
+
+    total = max(0, int(total or 0))
+    if total <= 0:
+        return 0, 0, None
+
+    if not is_partial and shown > 1:
+        end = min(total, shown * page_size)
+        next_page = shown + 1 if end < total else None
+        return 0, end, next_page
+
+    max_page = max(1, (total + page_size - 1) // page_size)
+    if page > max_page:
+        page = max_page
+    start = (page - 1) * page_size
+    end = min(total, start + page_size)
+    next_page = page + 1 if end < total else None
+    return start, end, next_page
+
+
 NEARBY_RADIUS_KM = 50
 
 

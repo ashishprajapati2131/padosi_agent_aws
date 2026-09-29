@@ -124,7 +124,7 @@ class AgentProfileResponse(BaseModel):
 
 class AgentUpdateSchema(BaseModel):
     fullname: str
-    email: str
+    email: Optional[str] = ""
     mobile: str
     badge: Optional[str] = ""
     experience_range: Optional[str] = ""
@@ -168,7 +168,7 @@ class AgentProfileUpdateRequest(BaseModel):
 
 class BasicAgentUpdateSchema(BaseModel):
     fullname: str
-    email: str
+    email: Optional[str] = ""
     mobile: str
 
 

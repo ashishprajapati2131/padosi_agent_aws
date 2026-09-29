@@ -2,8 +2,9 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from apps.agents.services.account_auth import verify_agent_password
@@ -147,3 +148,46 @@ class AgentLoginViewTests(SimpleTestCase):
         })
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Please Enter Valid Login Details')
+
+
+class ForgotPasswordMessageTests(TestCase):
+    def test_unknown_email_says_account_was_not_found(self):
+        response = self.client.post(reverse('agents:forgot_password'), {
+            'email': 'nobody-reset@example.com',
+            'login_type': 'agent',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Your account was not found.')
+        self.assertNotContains(response, 'Email sent successfully.')
+
+    @patch('apps.agents.views.auth.email_service.send_password_reset', return_value=True)
+    def test_existing_agent_sends_mail_and_shows_success(self, send_reset):
+        user = User.objects.create_user('reset.agent@example.com', 'reset.agent@example.com', None)
+        from apps.agents.models import Agent
+        Agent.objects.create(
+            user=user, fullname='Reset Agent', email='reset.agent@example.com',
+            mobile='9876500199', status='active',
+        )
+        response = self.client.post(reverse('agents:forgot_password'), {
+            'email': 'reset.agent@example.com',
+            'login_type': 'agent',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Email sent successfully.')
+        send_reset.assert_called_once()
+
+    @patch('apps.agents.views.auth.email_service.send_password_reset', return_value=False)
+    def test_failed_send_does_not_claim_success(self, send_reset):
+        user = User.objects.create_user('fail.agent@example.com', 'fail.agent@example.com', None)
+        from apps.agents.models import Agent
+        Agent.objects.create(
+            user=user, fullname='Fail Agent', email='fail.agent@example.com',
+            mobile='9876500198', status='active',
+        )
+        response = self.client.post(reverse('agents:forgot_password'), {
+            'email': 'fail.agent@example.com',
+            'login_type': 'agent',
+        })
+        self.assertContains(response, 'Unable to send reset email.')
+        self.assertNotContains(response, 'Email sent successfully.')
+        send_reset.assert_called_once()

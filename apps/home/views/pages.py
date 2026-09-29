@@ -28,6 +28,7 @@ from apps.home.services.agent_filters import (
 )
 from apps.home.services.distance import (
     FIND_AGENTS_PAGE_SIZE,
+    directory_result_window,
     DistanceService,
     rank_directory_agents,
 )
@@ -35,7 +36,7 @@ from apps.home.services.geocoding import GeocodingService
 from apps.home.services.ai_picks import AIPicksService
 from django.db.models import Avg, Q
 from django.db.models.expressions import RawSQL
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.core.paginator import Paginator
 from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
@@ -866,19 +867,22 @@ def find_agents(request):
     detected_area = request.session.get('detected_area', '')
 
     # First page shows 5 agents; Load More fetches the next page.
-    page = request.GET.get('page', 1)
-    paginator = Paginator(all_agents, FIND_AGENTS_PAGE_SIZE)
-    try:
-        agents_page = paginator.page(page)
-    except PageNotAnInteger:
-        agents_page = paginator.page(1)
-    except EmptyPage:
-        agents_page = paginator.page(paginator.num_pages)
+    # A full page load with ?shown=N returns pages 1..N so a profile Back
+    # button (which reloads this URL) still lists every agent already opened.
+    start, end, next_page_number = directory_result_window(
+        len(all_agents),
+        page=request.GET.get('page', 1),
+        shown=request.GET.get('shown', 1),
+        is_partial=is_htmx,
+    )
+    agents_page = all_agents[start:end]
+    has_more = next_page_number is not None
 
     next_page_url = None
-    if agents_page.has_next():
+    if has_more:
         params = request.GET.copy()
-        params['page'] = agents_page.next_page_number()
+        params.pop('shown', None)
+        params['page'] = next_page_number
         next_page_url = f"?{params.urlencode()}"
 
     if request.user.is_authenticated:
@@ -892,7 +896,7 @@ def find_agents(request):
     # All tracking is wrapped in try/except so a DB hiccup never breaks the
     # search page for visitors. Tracking only fires on real search renders
     # (not resets, not filter-gate screens).
-    if not invalid_pincode and agents_page.object_list:
+    if not invalid_pincode and agents_page:
         try:
             from apps.agents.models import AgentCardImpression, AgentSearchEvent
             from django.db.models import F
@@ -911,7 +915,7 @@ def find_agents(request):
                     AgentSearchEvent.objects.filter(pk=_se.pk).update(event_count=F('event_count') + 1)
 
             # Hook B — record a card impression for each agent on this page
-            for _agent in agents_page.object_list:
+            for _agent in agents_page:
                 _ci, _ci_created = AgentCardImpression.objects.get_or_create(
                     agent_id=_agent.id,
                     impression_date=_today,
@@ -940,7 +944,8 @@ def find_agents(request):
         'maxSmartRank': max_smart_rank,
         'invalidPincode': invalid_pincode,
         'next_page_url': next_page_url,
-        'has_next': agents_page.has_next(),
+        'next_page_number': next_page_number or '',
+        'has_next': has_more,
         'selected_service_type': request.GET.getlist('ServiceType'),
         'selected_insurance_types': request.GET.getlist('InsuranceType'),
         'selected_insurance_companies': request.GET.getlist('InsuranceCompany'),
@@ -950,7 +955,7 @@ def find_agents(request):
     }
 
     if is_htmx:
-        if agents_page.number > 1:
+        if start > 0:
             return render(request, 'partials/find-agents-load-more.html', context)
         return render(request, 'partials/find-agents-list.html', context)
 
