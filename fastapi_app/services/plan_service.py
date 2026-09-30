@@ -65,6 +65,10 @@ def normalize_plan_slug(plan_type: Optional[str]) -> str:
     return SLUG_NORMALISE.get(pt, pt)
 
 
+# Mobile plan list. Exclusive stays in admin and is not offered in the app.
+MOBILE_PLAN_SLUGS = ("starter", "professional")
+
+
 class PlanService:
     def __init__(self, db: Session):
         self.db = db
@@ -102,6 +106,8 @@ class PlanService:
         plan_items: List[PlanItemSchema] = []
         for plan in plans_to_display:
             plan_slug = normalize_plan_slug(getattr(plan, 'slug', '') or getattr(plan, 'name', ''))
+            if plan_slug not in MOBILE_PLAN_SLUGS:
+                continue
             is_current = bool(agent and agent_current_slug and plan_slug == agent_current_slug)
 
             # Pricing Calculations with 18% GST
@@ -299,33 +305,6 @@ class PlanService:
                 sort_order=2,
                 actual_price=8258.00,
                 discounted_price=4999.00,
-                show_profile_section=True,
-                is_listed_in_directory=True,
-                show_performance_stats=True,
-                show_sales_insights=True,
-                show_new_business_leads=True,
-                show_recent_leads=True,
-                show_agent_certificate=True,
-                show_career_timeline=True,
-                show_professional_bio=True,
-                show_portfolio=True,
-                show_claim_support=True,
-                show_companies=True,
-                show_achievement=True,
-                show_review_management=True,
-                show_rank_boost_tips=True,
-                premium_priority_support=True,
-            ),
-            MockPlan(
-                id=3,
-                name="Exclusive Partner Plan",
-                slug="exclusive",
-                description="Maximum city-wide visibility, exclusive client leads, and direct priority manager.",
-                color_theme="exclusive-theme",
-                badge_text="VIP Partner",
-                sort_order=3,
-                actual_price=14999.00,
-                discounted_price=9999.00,
                 show_profile_section=True,
                 is_listed_in_directory=True,
                 show_performance_stats=True,

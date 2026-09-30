@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>Opening payment — PadosiAgent</title>
+</head>
+<body>
+    <p>Opening your payment…</p>
+    <form id="upgrade-handoff" method="post" action="{% url 'agents:app_upgrade_handoff' %}">
+        {% csrf_token %}
+        <input type="hidden" name="token" value="{{ token }}">
+        <noscript><button type="submit">Continue to payment</button></noscript>
+    </form>
+    <script>
+        document.getElementById('upgrade-handoff').submit();
+    </script>
+</body>
+</html>

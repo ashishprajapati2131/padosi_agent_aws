@@ -26,7 +26,7 @@ def get_plans_list(
     db: Session = Depends(get_db)
 ):
     """
-    List all active subscription plans (Starter, Professional, Exclusive).
+    List the app plans: Starter (Basic) and Professional.
 
     - Returns all live plans from the database.
     - Provides price breakdown: Actual Price vs Discounted Price + 18% GST (base, gst_amount, final).

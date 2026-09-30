@@ -42,6 +42,12 @@ def _store_token(agent, plan_slug='professional', expires_at=None):
 
 
 class UpgradeTargetTests(SimpleTestCase):
+    def test_mobile_plan_list_is_basic_and_professional(self):
+        from fastapi_app.services.plan_service import MOBILE_PLAN_SLUGS, PlanService
+        slugs = [plan.slug for plan in PlanService(None)._get_fallback_plans()]
+        self.assertEqual(slugs, list(MOBILE_PLAN_SLUGS))
+        self.assertNotIn('exclusive', slugs)
+
     def test_only_a_higher_paid_plan_is_allowed(self):
         self.assertTrue(upgrade_target_allowed('starter', 'professional'))
         self.assertTrue(upgrade_target_allowed('free_trial', 'starter'))
@@ -53,10 +59,27 @@ class UpgradeTargetTests(SimpleTestCase):
 
 
 class AppUpgradeHandoffTests(TestCase):
+    def _open(self, raw, client=None):
+        client = client or self.client
+        return client.post(reverse('agents:app_upgrade_handoff'), {'token': raw})
+
+    def test_page_view_does_not_log_in_or_burn_the_token(self):
+        agent = _paid_agent()
+        raw = _store_token(agent)
+        first = self.client.get(reverse('agents:app_upgrade_handoff'), {'token': raw})
+        second = self.client.get(reverse('agents:app_upgrade_handoff'), {'token': raw})
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertContains(first, 'upgrade-handoff')
+        self.assertContains(first, raw)
+        self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertIsNone(PlanUpgradeHandoff.objects.get(agent=agent).used_at)
+
     def test_valid_token_logs_in_and_opens_upgrade(self):
         agent = _paid_agent()
         raw = _store_token(agent)
-        resp = self.client.get(reverse('agents:app_upgrade_handoff'), {'token': raw})
+        self.client.get(reverse('agents:app_upgrade_handoff'), {'token': raw})
+        resp = self._open(raw)
         self.assertEqual(resp.status_code, 302)
         self.assertIn('/agent/dashboard/', resp['Location'])
         self.assertIn('upgrade=professional', resp['Location'])
@@ -66,11 +89,11 @@ class AppUpgradeHandoffTests(TestCase):
     def test_token_cannot_be_reused(self):
         agent = _paid_agent()
         raw = _store_token(agent)
-        first = self.client.get(reverse('agents:app_upgrade_handoff'), {'token': raw})
+        first = self._open(raw)
         self.assertEqual(first.status_code, 302)
 
         other = Client()
-        second = other.get(reverse('agents:app_upgrade_handoff'), {'token': raw})
+        second = self._open(raw, client=other)
         self.assertEqual(second.status_code, 302)
         self.assertIn('/agent-login/', second['Location'])
         self.assertNotIn('_auth_user_id', other.session)
@@ -78,7 +101,7 @@ class AppUpgradeHandoffTests(TestCase):
     def test_expired_or_missing_token_does_not_log_in(self):
         agent = _paid_agent()
         raw = _store_token(agent, expires_at=datetime.now() - timedelta(seconds=1))
-        resp = self.client.get(reverse('agents:app_upgrade_handoff'), {'token': raw})
+        resp = self._open(raw)
         self.assertIn('/agent-login/', resp['Location'])
         self.assertNotIn('_auth_user_id', self.client.session)
 
@@ -97,7 +120,7 @@ class AppUpgradeHandoffTests(TestCase):
         other = _paid_agent(email='other@example.com', mobile='9876500101')
         self.client.force_login(other.user)
         raw = _store_token(target)
-        resp = self.client.get(reverse('agents:app_upgrade_handoff'), {'token': raw})
+        resp = self._open(raw)
         self.assertIn('upgrade=professional', resp['Location'])
         self.assertEqual(self.client.session['_auth_user_id'], str(target.user_id))
 
@@ -106,9 +129,10 @@ class AppUpgradeHandoffTests(TestCase):
         agent.status = 'suspended'
         agent.save(update_fields=['status'])
         raw = _store_token(agent)
-        resp = self.client.get(reverse('agents:app_upgrade_handoff'), {'token': raw})
+        resp = self._open(raw)
         self.assertIn('/agent-login/', resp['Location'])
         self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertIsNotNone(PlanUpgradeHandoff.objects.get(agent=agent).used_at)
 
     def test_unpaid_agent_is_sent_to_chooseplan(self):
         user = User.objects.create_user('new@example.com', 'new@example.com', None)
@@ -117,7 +141,7 @@ class AppUpgradeHandoffTests(TestCase):
             status='pending_payment', plan_type='',
         )
         raw = _store_token(agent, plan_slug='starter')
-        resp = self.client.get(reverse('agents:app_upgrade_handoff'), {'token': raw})
+        resp = self._open(raw)
         self.assertIn('/chooseplan/', resp['Location'])
         self.assertEqual(self.client.session['_auth_user_id'], str(user.id))
 

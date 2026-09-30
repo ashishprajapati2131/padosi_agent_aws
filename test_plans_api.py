@@ -175,7 +175,8 @@ def test_plans_endpoint():
     assert resp.status_code == 200, f"Failed: {resp.text}"
     body = resp.json()
     assert body["success"] is True
-    assert len(body["plans"]) == 3
+    assert len(body["plans"]) == 2
+    assert {p["slug"] for p in body["plans"]} == {"starter", "professional"}
     assert body["agent_current_plan"] is None
     assert body["upgrade_discount"] is None
 

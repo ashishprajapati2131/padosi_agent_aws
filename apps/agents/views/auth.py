@@ -10,7 +10,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_http_methods
 from apps.home.services.portal_messages import (
     PORTAL_AGENT,
     PORTAL_DISTRIBUTOR,
@@ -319,34 +319,53 @@ def agent_login(request):
     return render(request, 'agents/login.html', {'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
 
-@require_GET
+def _upgrade_link_expired(request):
+    portal_error(
+        request,
+        "This upgrade link has expired. Open the app and try again.",
+        PORTAL_AGENT,
+    )
+    return redirect('agents:agent_login')
+
+
+@csrf_protect
 @never_cache
+@require_http_methods(["GET", "POST"])
 def app_upgrade_handoff(request):
     """
     Open the website upgrade checkout from a one-time app link.
 
-    The token identifies the agent. The password is never sent. A valid token
-    starts a Django session and sends a paid agent to the dashboard with the
-    upgrade payment open.
+    GET only renders an auto-submitting form so a browser prefetch cannot
+    burn the token. POST logs the agent in, then marks the token used, and
+    opens that agent's payment card. The password is never sent.
     """
     from apps.agents.services.account_auth import (
         BLOCKED_DASHBOARD_STATUSES,
         create_or_link_django_user,
         find_django_user,
     )
-    from apps.agents.services.plan_upgrade_handoff import consume_plan_upgrade_handoff
+    from apps.agents.services.plan_upgrade_handoff import (
+        mark_plan_upgrade_handoff_used,
+        peek_plan_upgrade_handoff,
+    )
+    from plan_upgrade_handoff import ALLOWED_UPGRADE_SLUGS
 
-    row = consume_plan_upgrade_handoff(request.GET.get('token'))
-    if row is None or row.agent is None:
-        portal_error(
-            request,
-            "This upgrade link has expired. Open the app and try again.",
-            PORTAL_AGENT,
-        )
-        return redirect('agents:agent_login')
+    raw = request.POST.get('token') if request.method == 'POST' else request.GET.get('token')
+    row = peek_plan_upgrade_handoff(raw)
+    if row is None or row.agent is None or row.plan_slug not in ALLOWED_UPGRADE_SLUGS:
+        return _upgrade_link_expired(request)
+
+    if request.method == 'GET':
+        return render(request, 'agents/app_upgrade_handoff.html', {
+            'token': (raw or '').strip(),
+            'hide_site_nav': True,
+            'hide_footer': True,
+            'hide_chatbot': True,
+        })
 
     agent = row.agent
     if agent.status in BLOCKED_DASHBOARD_STATUSES:
+        mark_plan_upgrade_handoff_used(row)
         portal_error(request, f"Your account is currently {agent.status}.", PORTAL_AGENT)
         return redirect('agents:agent_login')
 
@@ -363,9 +382,20 @@ def app_upgrade_handoff(request):
             )
             return redirect('agents:agent_login')
 
-    if request.user.is_authenticated:
-        logout(request)
-    login(request, django_user, backend=DJANGO_AUTH_BACKEND)
+    try:
+        if request.user.is_authenticated:
+            logout(request)
+        login(request, django_user, backend=DJANGO_AUTH_BACKEND)
+    except Exception:
+        logger.exception("App upgrade handoff login failed for agent #%s", agent.pk)
+        portal_error(
+            request,
+            "We could not open your upgrade checkout. Please log in and try again.",
+            PORTAL_AGENT,
+        )
+        return redirect('agents:agent_login')
+
+    mark_plan_upgrade_handoff_used(row)
     logger.info("App upgrade handoff logged in agent #%s for plan %s.", agent.pk, row.plan_slug)
 
     if agent_can_access_dashboard(agent):
