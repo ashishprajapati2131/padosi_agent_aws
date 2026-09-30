@@ -6,9 +6,11 @@ Every other account type (agent, distributor, insurance, client, FastAPI)
 must hash and verify the same way so a password stored in `users` or
 `auth_user` can be checked from either Django or FastAPI.
 """
+import os
 import bcrypt
 
 _BCRYPT_PREFIXES = ('$2a$', '$2b$', '$2x$', '$2y$')
+DEFAULT_BCRYPT_ROUNDS = int(os.environ.get('BCRYPT_ROUNDS', '10'))
 
 
 def is_bcrypt_hash(stored_hash):
@@ -20,13 +22,14 @@ def is_bcrypt_hash(stored_hash):
     return value.startswith(_BCRYPT_PREFIXES)
 
 
-def hash_password(plain_password):
-    """Create a bcrypt hash. Same call as admin create/update."""
+def hash_password(plain_password, rounds=None):
+    """Create a bcrypt hash. Default cost is 10 (saves ~150ms CPU per hash vs cost 12)."""
     if plain_password is None:
         raise ValueError('Password is required')
     if not isinstance(plain_password, str):
         plain_password = str(plain_password)
-    return bcrypt.hashpw(plain_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    cost = rounds if rounds is not None else DEFAULT_BCRYPT_ROUNDS
+    return bcrypt.hashpw(plain_password.encode('utf-8'), bcrypt.gensalt(rounds=cost)).decode('utf-8')
 
 
 def _bcrypt_variants(stored_hash):

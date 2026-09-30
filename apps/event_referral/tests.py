@@ -71,9 +71,10 @@ class EventReferralRegistrationTests(TestCase):
         self.assertEqual(agent.status, 'event_challenge')
         self.assertTrue(agent_can_access_dashboard(agent))
         self.assertTrue(EventReferralParticipant.objects.filter(agent=agent).exists())
-        mock_email.send_welcome.assert_called_once()
-        welcome_kwargs = mock_email.send_welcome.call_args.kwargs
-        welcome_args = mock_email.send_welcome.call_args.args
+        called_mock = mock_email.queue_welcome if mock_email.queue_welcome.called else mock_email.send_welcome
+        called_mock.assert_called_once()
+        welcome_kwargs = called_mock.call_args.kwargs
+        welcome_args = called_mock.call_args.args
         self.assertEqual(welcome_args[0], 'evtest@example.com')
         self.assertEqual(welcome_args[2], '9876543210')
         self.assertEqual(welcome_kwargs.get('subject'), 'Welcome to Paldi — your PadosiAgent login details')

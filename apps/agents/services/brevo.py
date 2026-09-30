@@ -254,6 +254,54 @@ class BrevoEmailService:
             subject = "Welcome to PadosiAgent — Your Account is Ready!"
         return self.send_generic(to_email, to_name, subject, html, attachment_path)
 
+    def queue_welcome(
+        self,
+        to_email: str,
+        to_name: str,
+        temp_password: str,
+        plan_name: str = "",
+        attachment_path: str = None,
+        subject: str = "",
+    ):
+        """
+        Asynchronously send welcome email after DB transaction commits.
+        Guarantees that external network I/O to Brevo/SMTP never blocks the HTTP response.
+        """
+        import threading
+        from django.db import close_old_connections, transaction
+
+        def _run_email():
+            close_old_connections()
+            try:
+                self.send_welcome(
+                    to_email=to_email,
+                    to_name=to_name,
+                    temp_password=temp_password,
+                    plan_name=plan_name,
+                    attachment_path=attachment_path,
+                    subject=subject,
+                )
+            except Exception as e:
+                logger.warning(f"[EmailQueue] Background welcome email to {to_email!r} failed: {e}")
+            finally:
+                close_old_connections()
+
+        def _dispatch():
+            thread = threading.Thread(
+                target=_run_email,
+                daemon=False,
+                name=f'welcome-email-{to_email[:20]}',
+            )
+            thread.start()
+
+        try:
+            if transaction.get_connection().in_atomic_block:
+                transaction.on_commit(_dispatch)
+                return
+        except Exception:
+            pass
+        _dispatch()
+
     def send_password_reset(self, to_email: str, to_name: str, reset_url: str, expiry_minutes: str = "60", role_name: str = "Agent") -> bool:
         """
         Send a branded password reset email with reset link and expiry time.
@@ -324,6 +372,18 @@ def send_otp_email(to_email: str, to_name: str, otp_code: str) -> bool:
 def send_brevo_email(to_email: str, to_name: str, subject: str, html_content: str) -> bool:
     """Backwards-compatible wrapper. Use email_service.send_generic() for new code."""
     return email_service.send_generic(to_email, to_name, subject, html_content)
+
+
+def queue_welcome_email(to_email: str, to_name: str, temp_password: str, plan_name: str = "", attachment_path: str = None, subject: str = ""):
+    """Convenience helper to queue a welcome email asynchronously."""
+    return email_service.queue_welcome(
+        to_email=to_email,
+        to_name=to_name,
+        temp_password=temp_password,
+        plan_name=plan_name,
+        attachment_path=attachment_path,
+        subject=subject,
+    )
 
 
 # ─── HTML Email Builders ─────────────────────────────────────────────────────

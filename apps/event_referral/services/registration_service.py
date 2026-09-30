@@ -68,6 +68,7 @@ def finalize_event_referral_registration(request, draft):
             status=400,
         )
 
+    participant = None
     try:
         with transaction.atomic():
             agent = create_agent_from_draft(
@@ -76,12 +77,20 @@ def finalize_event_referral_registration(request, draft):
                 plan_name='Event Referral Challenge',
                 status='event_challenge',
             )
+            from apps.event_referral.services.paldi_event import get_or_create_paldi_event
+            paldi_event = get_or_create_paldi_event()
+            agent_updates = []
             if draft.state:
                 agent.registration_draft = {'state': draft.state}
-                agent.save(update_fields=['registration_draft', 'updated_at'])
+                agent_updates.append('registration_draft')
+            if agent.event_id != paldi_event.id:
+                agent.event_id = paldi_event.id
+                agent_updates.append('event_id')
+            if agent_updates:
+                agent_updates.append('updated_at')
+                agent.save(update_fields=agent_updates)
 
-            if not EventReferralParticipant.objects.filter(agent=agent).exists():
-                EventReferralParticipant.create_for_agent(agent, campaign=campaign)
+            participant = EventReferralParticipant.create_for_agent(agent, campaign=campaign)
 
             from apps.agents.models import AgentProfile
 
@@ -90,9 +99,6 @@ def finalize_event_referral_registration(request, draft):
                 profile.is_profile_visible = True
                 profile.is_card_visible = True
                 profile.save(update_fields=['is_profile_visible', 'is_card_visible', 'updated_at'])
-
-            from apps.event_referral.services.paldi_event import assign_paldi_event_to_agent
-            assign_paldi_event_to_agent(agent)
 
             user = create_or_link_django_user(agent, plain_password=mobile)
     except Exception as exc:
@@ -104,13 +110,6 @@ def finalize_event_referral_registration(request, draft):
 
     try:
         from apps.agents.models import RegistrationActivityLog
-        RegistrationActivityLog.log(
-            RegistrationActivityLog.EVENT_FORM_SUBMIT,
-            request=request,
-            agent=agent,
-            draft_id=draft.pk,
-            extra_details={'event': 'Paldi', 'source': 'paldi_event_registration'},
-        )
         RegistrationActivityLog.log(
             RegistrationActivityLog.EVENT_PENDING_REGISTRATION,
             request=request,
@@ -124,7 +123,8 @@ def finalize_event_referral_registration(request, draft):
     try:
         from apps.agents.services.brevo import email_service
         from apps.event_referral.constants import PALDI_REGISTRATION_TITLE
-        email_service.send_welcome(
+        send_fn = getattr(email_service, 'queue_welcome', email_service.send_welcome)
+        send_fn(
             email,
             draft.fullname or email,
             mobile,
@@ -143,7 +143,6 @@ def finalize_event_referral_registration(request, draft):
     request.session['event_referral_welcome_dashboard'] = True
     request.session.modified = True
 
-    participant = EventReferralParticipant.objects.filter(agent=agent).first()
     target = participant.required_paid_referrals if participant else campaign.required_paid_referrals
 
     return JsonResponse(

@@ -107,6 +107,16 @@ def build_leaderboard_rows(participants, *, photo_url_builder=None):
 
 
 def get_public_leaderboard_payload(*, limit=50, photo_url_builder=None):
+    from django.core.cache import cache
+    cache_key = f'public_leaderboard_payload_{limit}'
+    if not photo_url_builder:
+        try:
+            cached_data = cache.get(cache_key)
+            if cached_data is not None:
+                return cached_data
+        except Exception:
+            pass
+
     campaign = EventReferralCampaign.get_current()
     if not campaign:
         return {
@@ -122,8 +132,11 @@ def get_public_leaderboard_payload(*, limit=50, photo_url_builder=None):
     )
     base_qs = (
         EventReferralParticipant.objects.filter(campaign=campaign)
-        .select_related('agent')
-        .prefetch_related(Prefetch('referrals', queryset=ref_qs))
+        .select_related('agent', 'agent__profile')
+        .prefetch_related(
+            Prefetch('referrals', queryset=ref_qs),
+            'agent__serviceableCities',
+        )
         .order_by('-paid_count', '-updated_at', '-registered_at')
     )
     stats = base_qs.aggregate(total_paid=Sum('paid_count'))
@@ -133,7 +146,7 @@ def get_public_leaderboard_payload(*, limit=50, photo_url_builder=None):
     top_paid = int(top_row.paid_count) if top_row else 0
 
     rows = build_leaderboard_rows(base_qs[:limit], photo_url_builder=photo_url_builder)
-    return {
+    result = {
         'campaign': campaign,
         'leaderboard': rows,
         'top_three': rows[:3],
@@ -144,3 +157,9 @@ def get_public_leaderboard_payload(*, limit=50, photo_url_builder=None):
             'top_paid': top_paid,
         },
     }
+    if not photo_url_builder:
+        try:
+            cache.set(cache_key, result, timeout=5)
+        except Exception:
+            pass
+    return result

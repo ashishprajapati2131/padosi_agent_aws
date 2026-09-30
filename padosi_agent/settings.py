@@ -185,25 +185,39 @@ DATABASES = {
 
 
 
-# Cache
-# https://docs.djangoproject.com/en/6.0/ref/settings/#cache
-CACHE_DIR = BASE_DIR / 'cache'
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
-        'LOCATION': CACHE_DIR,
-        'TIMEOUT': 300,
-        'OPTIONS': {
-            'MAX_ENTRIES': 5000,
-            'CULL_FREQUENCY': 3,
+# Cache configuration (Redis when REDIS_URL is configured, graceful FileBasedCache fallback for cPanel shared hosting)
+# https://docs.djangoproject.com/en/5.2/ref/settings/#cache
+REDIS_URL = os.environ.get('REDIS_URL', '').strip()
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+            'TIMEOUT': 300,
+            'OPTIONS': {
+                'IGNORE_EXCEPTIONS': True,  # Graceful degradation if Redis is temporarily unreachable
+            }
         }
     }
-}
-
-# Session Optimization: Use cached_db so sessions read from cache first instead of querying MySQL on every request
-SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+    # Session storage: Redis cache backend for high-concurrency (zero MySQL lock contention)
+    SESSION_ENGINE = os.environ.get('SESSION_ENGINE', 'django.contrib.sessions.backends.cache')
+    SESSION_CACHE_ALIAS = 'default'
+else:
+    CACHE_DIR = BASE_DIR / 'cache'
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+            'LOCATION': CACHE_DIR,
+            'TIMEOUT': 300,
+            'OPTIONS': {
+                'MAX_ENTRIES': 5000,
+                'CULL_FREQUENCY': 3,
+            }
+        }
+    }
+    # Session Optimization: Use cached_db so sessions read from cache first instead of querying MySQL on every request
+    SESSION_ENGINE = os.environ.get('SESSION_ENGINE', 'django.contrib.sessions.backends.cached_db')
 
 
 # Password validation

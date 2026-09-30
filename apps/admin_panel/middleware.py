@@ -45,14 +45,23 @@ AUTO_BLOCK_TTL_HOURS = 24
 
 
 def is_ip_blocked(ip):
-    """True if the IP is blocked. Automatic blocks expire after 24 hours.
+    """True if the IP is blocked. Automatic blocks expire after 24 hours. (Cached 60s)"""
+    if not ip or ip in ('127.0.0.1', '::1'):
+        return False
+    cache_key = f'waf_ip_blocked_{ip}'
+    try:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+    except Exception:
+        pass
 
-    Auto-blocks used to be permanent, which could lock out a shared mobile
-    (CGNAT) IP used by many real users. Blocks added manually by an admin
-    (any reason not starting with "Auto-blocked") stay until lifted.
-    """
     block = BlockedIp.objects.filter(ip_address=ip).first()
     if not block:
+        try:
+            cache.set(cache_key, False, timeout=60)
+        except Exception:
+            pass
         return False
     reason = block.reason or ''
     created = getattr(block, 'created_at', None)
@@ -67,7 +76,15 @@ def is_ip_blocked(ip):
                 block.delete()
             except Exception:
                 logger.warning('Could not lift expired auto-block for %s', ip)
+            try:
+                cache.set(cache_key, False, timeout=60)
+            except Exception:
+                pass
             return False
+    try:
+        cache.set(cache_key, True, timeout=60)
+    except Exception:
+        pass
     return True
 
 

@@ -484,16 +484,35 @@ def _exclusive_base_price(exclusive_config, follow_count=0, discount_unlocked=Fa
 
 
 def _resolve_registration_pincode(pincode):
-    """Return a Pincode row from the local table, or fetch/create it from the postal API."""
+    """Return a Pincode row from cache, local table, or fallback postal API (cached 24h)."""
     pin = str(pincode or '').strip()
     if not re.match(r'^[1-9]\d{5}$', pin):
         return None
+    cache_key = f'pincode_row_{pin}'
+    from django.core.cache import cache
+    try:
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
+    except Exception:
+        pass
+
     row = Pincode.objects.filter(pincode=pin).first()
     if row:
+        try:
+            cache.set(cache_key, row, timeout=86400)
+        except Exception:
+            pass
         return row
     try:
         from apps.home.views.pages import _get_or_create_pincode
-        return _get_or_create_pincode(pin)
+        row = _get_or_create_pincode(pin)
+        if row:
+            try:
+                cache.set(cache_key, row, timeout=86400)
+            except Exception:
+                pass
+        return row
     except Exception:
         logger.exception('Pincode lookup failed for %s', pin)
         return None
@@ -1477,6 +1496,22 @@ def check_email_availability(request):
 @csrf_protect
 def register_step1(request):
     """Save Step 1 (basic info) → create/update AgentDraft."""
+    # Rate Limiting (Abuse & Bot Protection: max 20 submissions per minute per IP)
+    client_ip = _get_client_ip(request)
+    ip_rate_key = f"reg_ip_rate_{client_ip}"
+    from django.core.cache import cache
+    try:
+        req_count = cache.get(ip_rate_key, 0)
+        if req_count and req_count >= 20:
+            logger.warning(f"Registration rate limit exceeded for IP: {client_ip}")
+            return JsonResponse({
+                'success': False,
+                'message': 'Too many registration requests from your network. Please wait a minute and try again.',
+            }, status=429)
+        cache.set(ip_rate_key, (req_count or 0) + 1, timeout=60)
+    except Exception:
+        pass
+
     # Extract form data
     fullname = request.POST.get('fullname', '').strip()
     email = request.POST.get('email', '').strip().lower()
@@ -2376,10 +2411,13 @@ def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment
             },
         )
 
-    # Create insurance segments (delete + insert like PHP)
+    # Create insurance segments (delete + bulk insert)
     AgentInsuranceSegment.objects.filter(agent=agent).delete()
-    for seg in (draft.segments or []):
-        AgentInsuranceSegment.objects.create(agent=agent, segment_type=seg)
+    if draft.segments:
+        AgentInsuranceSegment.objects.bulk_create([
+            AgentInsuranceSegment(agent=agent, segment_type=seg)
+            for seg in draft.segments
+        ])
     
     # Write registration_draft JSON (matching PHP Step 2)
     agent.registration_draft = {
