@@ -38,7 +38,7 @@ class EventDayJourneyTests(_SignupBase):
 
     def _stall_signup(self, client, email, mobile):
         """Paldi stall: open the event page, submit step 1."""
-        page = client.get('/event-registration/')
+        page = client.get('/48HR/')
         self.assertEqual(page.status_code, 200)
         self.assertTrue(page.context['event_referral_mode'])
         with patch(EMAIL) as mail:
@@ -111,7 +111,7 @@ class EventDayJourneyTests(_SignupBase):
 
         # Challenger is logged in and sees the dashboard; public leaderboard works.
         self.assertEqual(self._dashboard(stall).status_code, 200)
-        self.assertEqual(Client().get('/event-registration/leaderboard/').status_code, 200)
+        self.assertEqual(Client().get('/48HR/leaderboard/').status_code, 200)
 
         # Two friends pay through the challenger's link: one in the browser,
         # one where only the webhook arrives.
@@ -223,7 +223,7 @@ class EventDayJourneyTests(_SignupBase):
         self.campaign.is_enabled = False
         self.campaign.save()
         client = Client()
-        page = client.get('/event-registration/')
+        page = client.get('/48HR/')
         self.assertTrue(page.context['registration_closed'])
         r = client.post('/agent-register-step1/', self._form('closed@example.com', '9811111116'))
         self.assertFalse(EventReferralParticipant.objects.filter(agent__email='closed@example.com').exists())

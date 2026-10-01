@@ -15,7 +15,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -43,7 +44,12 @@ urlpatterns = [
     path('django-admin/', admin.site.urls),
     path('agent/championship/', include('apps.referral_championship.urls')),
     path('admin/championship/', include('apps.referral_championship.urls_admin')),
-    path('event-registration/', include('apps.event_referral.urls')),
+    # Paldi 48-hour challenge. The old address and lowercase /48hr/ redirect
+    # here (with any sub-path and query string), so printed QR codes and
+    # shared links keep working.
+    path('48HR/', include('apps.event_referral.urls')),
+    re_path(r'^(?:event-registration|48hr)/(?P<rest>.*)$',
+            RedirectView.as_view(url='/48HR/%(rest)s', query_string=True, permanent=False)),
     path('stall-leaderboard/', stall_public_leaderboard, name='stall_leaderboard'),
     path('admin/event-referral/', include('apps.event_referral.urls_admin')),
     path('', include('apps.admin_panel.urls')),

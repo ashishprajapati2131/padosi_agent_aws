@@ -3,7 +3,7 @@
 PALDI_EVENT_NAME = 'Paldi'
 PALDI_REGISTRATION_TITLE = 'Paldi Registration'
 PALDI_DASHBOARD_TITLE = 'Paldi Referral Challenge'
-# Cropped top art — WhatsApp / Facebook OG preview for /event-registration/ and EV- join links
+# Cropped top art — WhatsApp / Facebook OG preview for /48HR/ and EV- join links
 PALDI_OG_STATIC_PATH = '/static/img/paldi_48hr_championship_og.jpg'
 # Full artwork scaled to width 1200 — no crop (matches file on disk)
 PALDI_OG_WIDTH = 1200

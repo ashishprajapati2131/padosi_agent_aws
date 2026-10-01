@@ -26,7 +26,7 @@ class PaldiExistingAccountRequiresLoginTests(TestCase):
                 'segments[]': ['life'], 'client_base': '100', 'agree_terms': 'on'}
 
     def _paldi_post(self, client, data):
-        client.get('/event-registration/')
+        client.get('/48HR/')
         with patch(EMAIL):
             return client.post('/agent-register-step1/', data)
 

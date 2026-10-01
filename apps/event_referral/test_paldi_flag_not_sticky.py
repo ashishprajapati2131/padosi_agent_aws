@@ -15,7 +15,7 @@ class PaldiFlagNotStickyTests(TestCase):
     def setUp(self):
         EventReferralCampaign.objects.all().delete()
         EventReferralCampaign.objects.create(is_enabled=True, required_paid_referrals=2, window_hours=48)
-        self.client.get('/event-registration/')
+        self.client.get('/48HR/')
         self.assertTrue(self.client.session.get(FLAG))   # the Paldi page still sets it
 
     def test_referral_page_clears_the_flag(self):

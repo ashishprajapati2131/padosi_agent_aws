@@ -54,7 +54,7 @@ class RegistrationBotCheckTests(_SignupBase):
         results = []
         for i in range(3):
             client = Client()
-            client.get('/event-registration/')
+            client.get('/48HR/')
             with patch('apps.agents.services.brevo.email_service'):
                 r = client.post('/agent-register-step1/', self._form(f'stall{i}@example.com', f'900000110{i}'))
             results.append(r.status_code)

@@ -27,7 +27,7 @@ class OneMobileOneAccountTests(_SignupBase):
         EventReferralCampaign.objects.all().delete()
         EventReferralCampaign.objects.create(is_enabled=True, required_paid_referrals=2, window_hours=48)
         client = Client()
-        client.get('/event-registration/')
+        client.get('/48HR/')
         with patch('apps.agents.services.brevo.email_service'):
             r = client.post('/agent-register-step1/', {
                 'fullname': 'Second', 'email': 'paldi.second@example.com', 'mobile': '9000000901',

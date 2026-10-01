@@ -340,7 +340,7 @@
                         -ms-overflow-style: none;
                         scrollbar-width: none;
                     }
-                    /* Paldi /event-registration/ — compact viewport layout */
+                    /* Paldi /48HR/ — compact viewport layout */
                     .event-paldi-reg.glass-bg {
                         min-height: 100dvh;
                         height: 100dvh;
@@ -1865,7 +1865,7 @@
         // 2. Intercept HTMX history restore - force full reload for this page
         document.addEventListener('htmx:historyRestore', function (event) {
             // If HTMX is restoring this page from history cache, force a full reload
-            if (window.location.pathname.includes('agent-registration') || window.location.pathname.includes('event-registration')) {
+            if (window.location.pathname.includes('agent-registration') || window.location.pathname.includes('event-registration') || window.location.pathname.startsWith('/48HR')) {
                 event.preventDefault();
                 window.location.reload();
             }
@@ -1875,7 +1875,7 @@
         (function () {
             var origOnPopState = window.onpopstate;
             window.addEventListener('popstate', function (e) {
-                if (window.location.pathname.includes('agent-registration') || window.location.pathname.includes('event-registration')) {
+                if (window.location.pathname.includes('agent-registration') || window.location.pathname.includes('event-registration') || window.location.pathname.startsWith('/48HR')) {
                     e.stopImmediatePropagation();
                     window.location.reload();
                 }

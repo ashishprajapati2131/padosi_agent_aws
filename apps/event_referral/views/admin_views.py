@@ -3,6 +3,7 @@ import logging
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from apps.admin_panel.views.dashboard import _get_admin_from_session
@@ -69,7 +70,7 @@ def admin_dashboard(request):
             'participants': participants,
             'stats': stats,
             'show_test_tools': _test_tools_allowed(),
-            'event_registration_public_url': f'{public_base}/event-registration/',
+            'event_registration_public_url': f"{public_base}{reverse('event_referral:register')}",
         },
     )
 

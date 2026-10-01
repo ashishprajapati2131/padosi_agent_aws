@@ -127,7 +127,7 @@ class EventReferralRegistrationTests(TestCase):
 
     def test_public_leaderboard_page_is_public(self):
         client = Client()
-        resp = client.get('/event-registration/leaderboard/')
+        resp = client.get('/48HR/leaderboard/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'brand-logo')
         self.assertContains(resp, 'Padosi')
