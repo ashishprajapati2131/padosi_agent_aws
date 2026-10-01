@@ -19,6 +19,20 @@ def _normalize_mobile(raw):
     return digits if len(digits) == 10 else ''
 
 
+PALDI_SIGNUPS_PER_IP_PER_HOUR = 150
+
+
+def _paldi_hourly_ip_limit():
+    """New Paldi challengers allowed per network per hour (0 = no limit).
+    Admin can change it with the 'paldi_signups_per_ip_per_hour' setting."""
+    from apps.home.models import SiteSetting
+    try:
+        value = int(SiteSetting.get_value('paldi_signups_per_ip_per_hour', PALDI_SIGNUPS_PER_IP_PER_HOUR))
+    except (TypeError, ValueError):
+        value = PALDI_SIGNUPS_PER_IP_PER_HOUR
+    return value if value > 0 else float('inf')
+
+
 def finalize_event_referral_registration(request, draft):
     """
     Create event_challenge agent from draft, participant row, login, redirect dashboard.
@@ -76,6 +90,18 @@ def finalize_event_referral_registration(request, draft):
                 status=422,
             )
 
+    from django.core.cache import cache
+    from apps.agents.views.registration import _get_client_ip
+    ip_key = f'paldi_new_signups_ip_{_get_client_ip(request)}'
+    signups_this_hour = 0 if existing else (cache.get(ip_key) or 0)
+    if signups_this_hour and signups_this_hour >= _paldi_hourly_ip_limit():
+        logger.warning('Paldi signup limit reached for %s', ip_key)
+        return JsonResponse(
+            {'success': False,
+             'message': 'Too many registrations from this network right now. Please try again in a while.'},
+            status=429,
+        )
+
     mobile = _normalize_mobile(draft.mobile)
     if not mobile:
         return JsonResponse(
@@ -116,6 +142,12 @@ def finalize_event_referral_registration(request, draft):
                 profile.save(update_fields=['is_profile_visible', 'is_card_visible', 'updated_at'])
 
             user = create_or_link_django_user(agent, plain_password=mobile)
+        if not existing:
+            try:
+                cache.add(ip_key, 0, timeout=60 * 60)
+                cache.incr(ip_key)
+            except Exception:
+                pass
     except Exception as exc:
         logger.exception('Event referral finalize failed for %s: %s', email, exc)
         return JsonResponse(

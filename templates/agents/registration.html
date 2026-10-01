@@ -1052,6 +1052,9 @@
                                 <form id="step1Form" action="{{ register_step1_url }}" method="POST"
                                     onsubmit="event.preventDefault(); return false;" @submit.prevent="validateAndOpenPreview()">
                                     {% csrf_token %}
+                                    <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+                                        <label>Website <input type="text" name="website" value="" tabindex="-1" autocomplete="off"></label>
+                                    </div>
                                     <input type="hidden" name="user_types[]" value="insurance_agent">
                                     <input type="hidden" name="fullname" :value="name">
                                     <input type="hidden" name="email" :value="email">

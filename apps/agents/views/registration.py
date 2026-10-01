@@ -882,9 +882,20 @@ def _get_client_ip(request):
 # ─── Helper ─────────────────────────────────────────────────────────────────────
 
 
+REG_FORM_SHOWN_AT_KEY = 'reg_form_shown_at'
+
+
+def _registration_min_fill_seconds():
+    # Bots post the form instantly after loading it; people need longer.
+    if getattr(settings, 'TESTING', False):
+        return 0
+    return getattr(settings, 'REGISTRATION_MIN_FILL_SECONDS', 3)
+
+
 def _get_registration_context(request):
     """Build the template context based on current session state."""
     session = request.session
+    session[REG_FORM_SHOWN_AT_KEY] = int(time.time())
     reg_step = session.get('reg_step', 0)
     email_verified = session.get('email_verified', False)
     verified_email = session.get('verified_email', '')
@@ -1535,6 +1546,21 @@ def register_step1(request):
         cache.set(ip_rate_key, (req_count or 0) + 1, timeout=60)
     except Exception:
         pass
+
+    # Bot checks (security audit 2026-10-02 M2): the hidden "website" field
+    # is invisible to people, and a form posted within a few seconds of
+    # being shown was not filled in by hand.
+    if (request.POST.get('website') or '').strip():
+        logger.warning('Registration honeypot filled from IP %s', client_ip)
+        return JsonResponse({'success': False, 'message': 'Please try again.'}, status=400)
+    shown_at = request.session.get(REG_FORM_SHOWN_AT_KEY)
+    min_secs = _registration_min_fill_seconds()
+    if min_secs and shown_at and time.time() - float(shown_at) < min_secs:
+        logger.warning('Registration posted too fast from IP %s', client_ip)
+        return JsonResponse({
+            'success': False,
+            'message': 'Please take a moment to check your details and try again.',
+        }, status=429)
 
     # Extract form data
     fullname = request.POST.get('fullname', '').strip()
