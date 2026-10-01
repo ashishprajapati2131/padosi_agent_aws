@@ -3080,6 +3080,15 @@ def _agent_register_complete_impl(request):
             prof_full, data.get('displayed_total'), follow_count, total_amount,
         )
 
+    if client_plan_name and plan_slug_from_name(client_plan_name) == plan_type:
+        plan_name = client_plan_name
+    parsed_plan = plan_slug_from_name(plan_name or '')
+    if parsed_plan and parsed_plan != plan_type:
+        # A name that resolves to a DIFFERENT plan would activate that plan later.
+        # Names that don't resolve at all (custom admin names) are kept as-is:
+        # _order_plan_slug() then falls back to agent.plan_type, set below.
+        plan_name = _CANONICAL_PLAN_NAMES.get(plan_type, plan_name)
+
     if plan_type in _PAID_PLAN_NAMES:
         plan_name = _PAID_PLAN_NAMES[plan_type]
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Union
 from datetime import date
 
@@ -124,7 +124,10 @@ class AgentProfileResponse(BaseModel):
 
 class AgentUpdateSchema(BaseModel):
     fullname: str
-    email: Optional[str] = ""
+    email: Optional[str] = Field(
+        default="",
+        description="Read-only login email. A different address is rejected.",
+    )
     mobile: str
     badge: Optional[str] = ""
     experience_range: Optional[str] = ""
@@ -168,7 +171,10 @@ class AgentProfileUpdateRequest(BaseModel):
 
 class BasicAgentUpdateSchema(BaseModel):
     fullname: str
-    email: Optional[str] = ""
+    email: Optional[str] = Field(
+        default="",
+        description="Read-only login email. A different address is rejected.",
+    )
     mobile: str
 
 

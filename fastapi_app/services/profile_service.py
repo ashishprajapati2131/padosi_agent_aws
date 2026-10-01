@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 import json
 import logging
+from typing import Optional
 from fastapi_app.repositories.agent_repository import AgentRepository
 from fastapi_app.schemas.profile import (
     AgentProfileResponse,
@@ -81,6 +82,15 @@ from fastapi_app.models.agent_lead_preference import AgentLeadPreference
 class ProfileService:
     def __init__(self, agent_repo: AgentRepository):
         self.agent_repo = agent_repo
+
+    @staticmethod
+    def _reject_email_change(current_email: str, submitted_email: Optional[str]) -> None:
+        """Login email is fixed. The same address may be sent back; a new one is refused."""
+        submitted = (submitted_email or "").strip()
+        if not submitted:
+            return
+        if submitted.lower() != (current_email or "").strip().lower():
+            raise HTTPException(status_code=422, detail="Email cannot be changed.")
 
     @staticmethod
     def _sync_login_identity(db, previous_email: str, new_email: str, fullname: str) -> None:
@@ -375,6 +385,7 @@ class ProfileService:
             
         lock_service = LockUnlockService(db)
         lock_service.require_feature_unlocked(agent, "edit_profile")
+        self._reject_email_change(agent.email, payload.agent.email)
 
         # Check sub-feature locks when modifying locked sections
         existing_bio = getattr(agent.profile, 'professional_bio', '') if agent.profile else ''
@@ -823,6 +834,7 @@ class ProfileService:
 
         lock_service = LockUnlockService(db)
         lock_service.require_feature_unlocked(agent, "edit_profile_basic")
+        self._reject_email_change(agent.email, payload.agent.email)
 
         try:
             # Email is the login id. Agents cannot change it from the app.

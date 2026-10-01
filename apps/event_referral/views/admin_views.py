@@ -29,17 +29,32 @@ def admin_dashboard(request):
     if not _require_admin(request):
         return redirect('/admin/login/')
 
-    campaign = EventReferralCampaign.get_current()
-    participants = (
-        EventReferralParticipant.objects.select_related('agent')
-        .order_by('-registered_at')[:200]
-    )
-    stats = {
-        'total': EventReferralParticipant.objects.count(),
-        'active': EventReferralParticipant.objects.filter(status='active').count(),
-        'won': EventReferralParticipant.objects.filter(status='won').count(),
-        'blocked': EventReferralParticipant.objects.filter(status='blocked').count(),
-    }
+    from apps.event_referral.services.db_utils import run_with_db_retry
+    from apps.event_referral.services.schema_compat import ensure_event_referral_metrics_schema
+
+    if not ensure_event_referral_metrics_schema():
+        messages.error(
+            request,
+            'Event referral database schema is still updating. Please refresh in a few seconds.',
+        )
+
+    def _load_dashboard_context():
+        campaign = EventReferralCampaign.get_current()
+        participants = (
+            EventReferralParticipant.objects.select_related('agent')
+            .order_by('-registered_at')[:200]
+        )
+        stats = {
+            'total': EventReferralParticipant.objects.count(),
+            'active': EventReferralParticipant.objects.filter(status='active').count(),
+            'won': EventReferralParticipant.objects.filter(status='won').count(),
+            'blocked': EventReferralParticipant.objects.filter(status='blocked').count(),
+        }
+        campaign.refresh_from_db(fields=['registration_link_open_count'])
+        return campaign, participants, stats
+
+    campaign, participants, stats = run_with_db_retry(_load_dashboard_context)
+
     from django.conf import settings
 
     public_base = (getattr(settings, 'APP_URL', '') or '').rstrip('/')
@@ -145,8 +160,8 @@ def admin_block_participant(request, participant_id):
         return redirect('/admin/login/')
     participant = get_object_or_404(EventReferralParticipant, pk=participant_id)
     reason = (request.POST.get('reason') or 'Blocked by admin.').strip()
-    _block_participant(participant, reason=reason)
-    messages.success(request, 'Participant blocked.')
+    _block_participant(participant, reason=reason, by_admin=True)
+    messages.success(request, 'Participant blocked. Their login is disabled.')
     return redirect('admin_event_referral_dashboard')
 
 

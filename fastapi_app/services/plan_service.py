@@ -8,6 +8,15 @@ from fastapi_app.models.subscription_plan import SubscriptionPlan
 from fastapi_app.models.agent_subscription import AgentSubscription
 from fastapi_app.models.site_setting import SiteSetting
 from fastapi_app.models.referral_code import ReferralCode
+from fastapi_app.services.plan_pricing import (
+    MOBILE_PLAN_SLUGS,
+    allowed_platforms,
+    get_or_create_offer,
+    load_offer,
+    load_pricing_config,
+    offer_state,
+    quote_plan,
+)
 from fastapi_app.schemas.plans import (
     PlanFeatureItem,
     PlanPricingDetails,
@@ -65,8 +74,6 @@ def normalize_plan_slug(plan_type: Optional[str]) -> str:
     return SLUG_NORMALISE.get(pt, pt)
 
 
-# Mobile plan list. Exclusive stays in admin and is not offered in the app.
-MOBILE_PLAN_SLUGS = ("starter", "professional")
 
 
 def _website_total(full_price: float, discount_pct: int) -> float:
@@ -82,110 +89,128 @@ class PlanService:
 
     def get_plans_list(self, agent: Optional[Agent] = None) -> PlansListResponse:
         """
-        Fetch all active subscription plans with full GST breakdown,
-        feature entitlements, current agent subscription status,
-        and applicable special upgrade discount.
+        Two app plans, priced from the admin choose-plan settings.
+
+        List price is the admin full price (1999 / 9999) until this agent
+        scratches. After a scratch, the admin scratch price applies, and any
+        recorded social follows move the price to the admin follow tier.
         """
-        # 1. Fetch active plans from database
         db_plans = self.db.query(SubscriptionPlan).filter(
             SubscriptionPlan.is_active == True
-        ).order_by(SubscriptionPlan.sort_order, SubscriptionPlan.actual_price).all()
+        ).all()
+        by_slug = {}
+        for plan in db_plans:
+            slug = normalize_plan_slug(getattr(plan, 'slug', '') or getattr(plan, 'name', ''))
+            if slug in MOBILE_PLAN_SLUGS and slug not in by_slug:
+                by_slug[slug] = plan
+        fallback = {plan.slug: plan for plan in self._get_fallback_plans()}
 
-        # Fallback default plans if database table is not yet seeded
-        if not db_plans:
-            plans_to_display = self._get_fallback_plans()
-        else:
-            plans_to_display = db_plans
-
-        # 2. Compute Agent Subscription Info & Discount
         agent_current_plan = None
         upgrade_discount = None
-        applicable_discount_pct = 0
         agent_current_slug = ""
         is_pro_1rs = False
-
         if agent:
             agent_current_slug = normalize_plan_slug(agent.plan_type)
             agent_current_plan = self._resolve_current_agent_plan(agent)
-            upgrade_discount, applicable_discount_pct, is_pro_1rs = self._resolve_upgrade_discount(
-                agent, is_on_trial=agent_current_plan.is_on_trial,
+            upgrade_discount, _, is_pro_1rs = self._resolve_upgrade_discount(
+                agent,
+                is_on_trial=bool(agent_current_plan and agent_current_plan.is_on_trial),
             )
 
-        # The app opens the website checkout, so it must show what the website
-        # charges: pricing_config full prices when configured (else the plan row).
-        pricing_config = self._pricing_config()
+        config = load_pricing_config(self.db)
+        offer = load_offer(self.db, agent)
+        scratched, followed = offer_state(offer)
+        follow_count = len(followed)
 
-        # 3. Construct Plan Items with Pricing & Feature List
         plan_items: List[PlanItemSchema] = []
-        for plan in plans_to_display:
-            plan_slug = normalize_plan_slug(getattr(plan, 'slug', '') or getattr(plan, 'name', ''))
-            if plan_slug not in MOBILE_PLAN_SLUGS:
-                continue
-            is_current = bool(agent and agent_current_slug and plan_slug == agent_current_slug)
-
-            # Pricing Calculations with 18% GST
-            actual_price = float(getattr(plan, 'actual_price', 0.0) or 0.0)
-            base_discounted = float(getattr(plan, 'discounted_price', 0.0) or actual_price)
-
-            configured = (pricing_config.get(plan_slug) or {}).get('full_price')
-            if configured:
-                try:
-                    base_discounted = float(configured)
-                except (TypeError, ValueError):
-                    pass
-
-            # Same rules and rounding as the website upgrade checkout
-            # (apps/agents/views/dashboard.py agent_upgrade_plan).
-            plan_discount_pct = 0
-            if agent and not is_current and is_pro_1rs and plan_slug == "professional":
-                final_incl_gst = 1.0
-                plan_discount_pct = 99
-            elif agent and not is_current and applicable_discount_pct > 0:
-                final_incl_gst = _website_total(base_discounted, applicable_discount_pct)
-                plan_discount_pct = applicable_discount_pct
-            else:
-                final_incl_gst = _website_total(base_discounted, 0)
-
-            # GST 18% decomposition (inclusive pricing standard)
-            base_excl_gst = round(final_incl_gst / 1.18, 2)
-            gst_amount = round(final_incl_gst - base_excl_gst, 2)
-            formatted_price = f"₹{int(final_incl_gst):,}"
-
-            pricing_details = PlanPricingDetails(
-                actual_price=actual_price,
-                discounted_price=base_discounted,
-                agent_discount_pct=plan_discount_pct,
-                base_price_exclusive_gst=base_excl_gst,
-                gst_rate_percent=18.0,
-                gst_amount=gst_amount,
-                final_price_inclusive_gst=final_incl_gst,
-                formatted_final_price=formatted_price,
+        for index, slug in enumerate(MOBILE_PLAN_SLUGS, start=1):
+            quote = quote_plan(
+                config,
+                slug,
+                scratched=slug in scratched,
+                follow_count=follow_count,
+                force_rupee=bool(is_pro_1rs and slug == "professional"),
             )
-
-            # Feature items list
-            features = self._extract_plan_features(plan)
-
+            source = by_slug.get(slug) or fallback[slug]
+            pricing_details = PlanPricingDetails(
+                actual_price=quote["full_price"],
+                discounted_price=quote["display_price"],
+                agent_discount_pct=quote["discount_pct"],
+                base_price_exclusive_gst=quote["payable_base"],
+                gst_rate_percent=18.0,
+                gst_amount=quote["gst_amount"],
+                final_price_inclusive_gst=quote["payable_total"],
+                formatted_final_price=f"₹{int(quote['display_price']):,}",
+                display_price=quote["display_price"],
+                price_after_scratch=quote["price_after_scratch"],
+                scratch_enabled=quote["scratch_enabled"],
+                scratch_revealed=quote["scratch_revealed"],
+                scratch_price=quote["scratch_price"],
+                follow_count=quote["follow_count"],
+                follow_discount=quote["follow_discount"],
+            )
             plan_items.append(
                 PlanItemSchema(
-                    id=getattr(plan, 'id', 0),
-                    name=getattr(plan, 'name', 'Plan'),
-                    slug=plan_slug,
-                    description=getattr(plan, 'description', '') or "",
-                    color_theme=getattr(plan, 'color_theme', 'starter-theme') or "starter-theme",
-                    badge_text=getattr(plan, 'badge_text', None),
-                    sort_order=getattr(plan, 'sort_order', 0) or 0,
-                    is_current_plan=is_current,
+                    id=getattr(source, 'id', index) or index,
+                    name=quote["name"],
+                    slug=slug,
+                    description=quote["description"] or (getattr(source, 'description', '') or ""),
+                    color_theme=getattr(source, 'color_theme', None) or "starter-theme",
+                    badge_text=quote["badge"] or getattr(source, 'badge_text', None),
+                    sort_order=index,
+                    is_current_plan=bool(agent and agent_current_slug and slug == agent_current_slug),
                     pricing=pricing_details,
-                    features=features,
+                    features=self._extract_plan_features(source),
                 )
             )
+
+        links = []
+        for link in config.get("social_links") or []:
+            if isinstance(link, dict) and link.get("platform"):
+                links.append({
+                    "platform": str(link.get("platform")),
+                    "url": str(link.get("url") or ""),
+                })
 
         return PlansListResponse(
             success=True,
             agent_current_plan=agent_current_plan,
             upgrade_discount=upgrade_discount,
+            social_discount_active=bool(config.get("social_discount_active", True)),
+            followed_platforms=followed,
+            social_links=links,
             plans=plan_items,
         )
+
+    def record_scratch(self, agent: Agent, plan_slug: str) -> PlansListResponse:
+        slug = normalize_plan_slug(plan_slug)
+        if slug not in MOBILE_PLAN_SLUGS:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="Choose Starter or Professional to scratch.")
+        offer = get_or_create_offer(self.db, agent)
+        if slug == "starter":
+            offer.scratched_starter = True
+        else:
+            offer.scratched_professional = True
+        self.db.add(offer)
+        self.db.commit()
+        return self.get_plans_list(agent)
+
+    def record_follow(self, agent: Agent, platform: str) -> PlansListResponse:
+        config = load_pricing_config(self.db)
+        name = str(platform or "").strip().lower()
+        if name not in allowed_platforms(config):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="Unknown platform.")
+        offer = get_or_create_offer(self.db, agent)
+        followed = list(offer.followed_platforms or [])
+        normalized = [str(item).strip().lower() for item in followed]
+        if name not in normalized:
+            normalized.append(name)
+            offer.followed_platforms = normalized
+            self.db.add(offer)
+            self.db.commit()
+        return self.get_plans_list(agent)
 
     def _resolve_current_agent_plan(self, agent: Agent) -> AgentCurrentPlanInfo:
         """Resolve agent's current active plan status, trial state, and expiry."""

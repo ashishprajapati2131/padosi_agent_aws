@@ -185,8 +185,16 @@ def test_plans_endpoint():
     p_info = starter_plan["pricing"]
     print(f"Starter Pricing: Actual={p_info['actual_price']}, Disc={p_info['discounted_price']}, BaseExclGST={p_info['base_price_exclusive_gst']}, GST={p_info['gst_amount']}, Final={p_info['final_price_inclusive_gst']}")
     assert starter_plan["is_current_plan"] is False
-    assert round(p_info["base_price_exclusive_gst"] + p_info["gst_amount"], 2) == round(p_info["final_price_inclusive_gst"], 2)
-    assert p_info["final_price_inclusive_gst"] == 799.0
+    assert p_info["actual_price"] == 1999.0
+    assert p_info["display_price"] == 1999.0
+    assert p_info["formatted_final_price"] == "₹1,999"
+    assert p_info["scratch_revealed"] is False
+    assert p_info["gst_amount"] == 359.82
+    assert p_info["final_price_inclusive_gst"] == 2359.0
+    pro_guest = next(p for p in body["plans"] if p["slug"] == "professional")
+    assert pro_guest["pricing"]["actual_price"] == 9999.0
+    assert pro_guest["pricing"]["display_price"] == 9999.0
+    assert pro_guest["pricing"]["formatted_final_price"] == "₹9,999"
     print("[PASS] Test 1 passed!")
 
     print("\n================== TEST 2: Authenticated Trial Agent ==================")
@@ -216,14 +224,78 @@ def test_plans_endpoint():
     assert body["upgrade_discount"]["applicable_discount_pct"] == 30
     assert "30%" in body["upgrade_discount"]["offer_message"]
 
-    # Verify that plan prices reflect the 30% upgrade discount
-    # Professional was 1499.0 discounted price. With 30% off: round(1499 * 0.70) = 1049.0
+    # The 30% trial offer stays in upgrade_discount. The card price is the admin list price.
     pro_plan = next(p for p in body["plans"] if p["slug"] == "professional")
-    print(f"Professional's Plan for Trial Agent: Final Incl GST = Rs. {pro_plan['pricing']['final_price_inclusive_gst']}, Agent Disc Pct = {pro_plan['pricing']['agent_discount_pct']}%")
-    assert pro_plan["pricing"]["agent_discount_pct"] == 30
-    assert pro_plan["pricing"]["final_price_inclusive_gst"] == 1049.0
-    assert round(pro_plan["pricing"]["base_price_exclusive_gst"] + pro_plan["pricing"]["gst_amount"], 2) == 1049.0
+    print(f"Professional's Plan for Trial Agent: Display = Rs. {pro_plan['pricing']['display_price']}")
+    assert pro_plan["pricing"]["display_price"] == 9999.0
+    assert pro_plan["pricing"]["agent_discount_pct"] == 0
+    assert pro_plan["pricing"]["final_price_inclusive_gst"] == 11799.0
     print("[PASS] Test 2 passed!")
+
+    print("\n================== TEST 2b: Scratch and follow ==================")
+    missing = client.post("/v1/agents/plans/scratch", json={"plan_slug": "starter"})
+    assert missing.status_code in (401, 403)
+    no_auth = client.post(
+        "/v1/agents/plans/scratch",
+        json={"plan_slug": "starter"},
+        headers={"Authorization": "Bearer not-a-token"},
+    )
+    assert no_auth.status_code == 401
+
+    bad = client.post("/v1/agents/plans/scratch", json={"plan_slug": "exclusive"}, headers=headers)
+    assert bad.status_code == 400
+    unknown = client.post("/v1/agents/plans/follow", json={"platform": "myspace"}, headers=headers)
+    assert unknown.status_code == 400
+
+    followed = client.post("/v1/agents/plans/follow", json={"platform": "Instagram"}, headers=headers)
+    assert followed.status_code == 200, followed.text
+    starter_after_follow = next(p for p in followed.json()["plans"] if p["slug"] == "starter")
+    assert starter_after_follow["pricing"]["display_price"] == 1999.0
+    assert starter_after_follow["pricing"]["price_after_scratch"] == 1399.0
+    assert starter_after_follow["pricing"]["follow_count"] == 1
+    assert followed.json()["followed_platforms"] == ["instagram"]
+
+    again = client.post("/v1/agents/plans/follow", json={"platform": "instagram"}, headers=headers)
+    assert again.json()["followed_platforms"] == ["instagram"]
+
+    scratched = client.post("/v1/agents/plans/scratch", json={"plan_slug": "basic"}, headers=headers)
+    assert scratched.status_code == 200, scratched.text
+    starter_scratched = next(p for p in scratched.json()["plans"] if p["slug"] == "starter")
+    assert starter_scratched["pricing"]["scratch_revealed"] is True
+    assert starter_scratched["pricing"]["display_price"] == 1399.0
+    assert starter_scratched["pricing"]["final_price_inclusive_gst"] == 1651.0
+    pro_unscratched = next(p for p in scratched.json()["plans"] if p["slug"] == "professional")
+    assert pro_unscratched["pricing"]["display_price"] == 9999.0
+    assert pro_unscratched["pricing"]["price_after_scratch"] == 7899.0
+
+    for platform in ("facebook", "youtube", "linkedin"):
+        step = client.post("/v1/agents/plans/follow", json={"platform": platform}, headers=headers)
+        assert step.status_code == 200, step.text
+    four = step.json()
+    starter_four = next(p for p in four["plans"] if p["slug"] == "starter")
+    assert starter_four["pricing"]["follow_count"] == 4
+    assert starter_four["pricing"]["display_price"] == 999.0
+    assert starter_four["pricing"]["final_price_inclusive_gst"] == 1179.0
+
+    import json as _json
+    db.add(SiteSetting(
+        key="pricing_config",
+        value=_json.dumps({
+            "starter": {"full_price": 1888, "scratch_price": 1000, "scratch_enabled": True},
+            "professional": {"full_price": 8888, "scratch_price": 7000, "scratch_enabled": True},
+            "social_discount_active": False,
+        }),
+        group="pricing",
+    ))
+    db.commit()
+    custom = client.get("/v1/agents/plans", headers=headers)
+    custom_starter = next(p for p in custom.json()["plans"] if p["slug"] == "starter")
+    custom_pro = next(p for p in custom.json()["plans"] if p["slug"] == "professional")
+    assert custom_starter["pricing"]["display_price"] == 1000.0
+    assert custom_pro["pricing"]["display_price"] == 8888.0
+    db.query(SiteSetting).filter(SiteSetting.key == "pricing_config").delete()
+    db.commit()
+    print("[PASS] Test 2b passed!")
 
     print("\n================== TEST 3: Authenticated Pro Plan Agent ==================")
     jti_pro = "pro-agent-jti-67890"

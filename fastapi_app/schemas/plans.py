@@ -9,6 +9,11 @@ class PlanFeatureItem(BaseModel):
     is_enabled: bool
 
 
+class SocialLink(BaseModel):
+    platform: str
+    url: str = ""
+
+
 class PlanPricingDetails(BaseModel):
     actual_price: float
     discounted_price: float
@@ -18,6 +23,13 @@ class PlanPricingDetails(BaseModel):
     gst_amount: float
     final_price_inclusive_gst: float
     formatted_final_price: str
+    display_price: float = 0
+    price_after_scratch: float = 0
+    scratch_enabled: bool = False
+    scratch_revealed: bool = False
+    scratch_price: float = 0
+    follow_count: int = 0
+    follow_discount: float = 0
 
 
 class PlanItemSchema(BaseModel):
@@ -53,6 +65,14 @@ class UpgradeDiscountInfo(BaseModel):
     offer_message: Optional[str] = None
 
 
+class PlanScratchRequest(BaseModel):
+    plan_slug: str
+
+
+class PlanFollowRequest(BaseModel):
+    platform: str
+
+
 class PlanUpgradeHandoffRequest(BaseModel):
     plan_slug: str
 
@@ -68,4 +88,7 @@ class PlansListResponse(BaseModel):
     success: bool = True
     agent_current_plan: Optional[AgentCurrentPlanInfo] = None
     upgrade_discount: Optional[UpgradeDiscountInfo] = None
+    social_discount_active: bool = True
+    followed_platforms: List[str] = []
+    social_links: List[SocialLink] = []
     plans: List[PlanItemSchema] = []

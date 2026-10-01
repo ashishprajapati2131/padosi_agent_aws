@@ -2,6 +2,7 @@
 import os
 
 from django.conf import settings
+from django.core.exceptions import DisallowedHost
 from django.urls import reverse
 
 
@@ -17,12 +18,21 @@ def _normalize_padosi_origin(url: str) -> str:
     return url.rstrip('/')
 
 
+def _request_hostname(request) -> str:
+    """Hostname only. A preview URL must not crash when the host is not in ALLOWED_HOSTS."""
+    try:
+        raw = request.get_host()
+    except DisallowedHost:
+        raw = request.META.get('HTTP_HOST', '')
+    return (raw or '').lower().split(':')[0]
+
+
 def get_public_site_base(request) -> str:
     """
     Canonical site origin for social crawlers (always https, non-www on padosiagent.com).
     """
     env_base = (os.environ.get('APP_URL') or getattr(settings, 'APP_URL', '') or '').strip().rstrip('/')
-    host = (request.get_host() or '').lower().split(':')[0]
+    host = _request_hostname(request)
 
     if host.endswith('padosiagent.com') or (env_base and 'padosiagent.com' in env_base.lower()):
         base = env_base if env_base and 'padosiagent.com' in env_base.lower() else CANONICAL_PADOSI_ORIGIN
