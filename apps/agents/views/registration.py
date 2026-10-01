@@ -3968,10 +3968,8 @@ def client_quick_register(request):
             'mobile': mobile,
             'pincode': pincode,
         }
-        from django.contrib.auth import login
-        from apps.distributors.views.dashboard import is_distributor
-        if not (request.user.is_authenticated and is_distributor(request.user)) and not current_is_logged_in_agent:
-            login(request, existing_user, backend=DJANGO_AUTH_BACKEND)
+        # Typing an email proves nothing, so an existing account is never
+        # signed in here; the lead details above are enough to contact agents.
         request.session.modified = True
 
         return JsonResponse({
@@ -4597,6 +4595,7 @@ def fb_ad_signup(request):
                         pincode=pincode
                     )
                 user_to_login = existing_user
+                created_now = False
                 message = 'Welcome back! Redirecting...'
             else:
                 username = email.split('@')[0]
@@ -4622,6 +4621,7 @@ def fb_ad_signup(request):
                     mobile=mobile,
                     pincode=pincode
                 )
+                created_now = True
                 message = 'Registration successful! Redirecting...'
 
     except Exception as e:
@@ -4640,7 +4640,10 @@ def fb_ad_signup(request):
         'pincode': pincode,
     }
     
-    login(request, user_to_login)
+    # Typing an email proves nothing, so an existing account is never signed
+    # in here; the lead details above are enough to contact agents.
+    if created_now:
+        login(request, user_to_login)
     
     return JsonResponse({
         'success': True,
