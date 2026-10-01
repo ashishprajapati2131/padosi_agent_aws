@@ -129,8 +129,14 @@ def _grant_win(participant):
     participant.save(
         update_fields=['status', 'won_at', 'paid_count', 'updated_at'],
     )
-    agent.status = 'pending_approval'
-    agent.plan_type = plan
+    # Never take anything away: an already-approved agent stays active, and an
+    # agent who meanwhile paid for an equal or higher plan keeps it (the win
+    # used to push them back to pending approval on the basic plan).
+    from plan_upgrade_handoff import plan_rank
+    if agent.status != 'active':
+        agent.status = 'pending_approval'
+    if plan_rank(plan) >= plan_rank(agent.plan_type or ''):
+        agent.plan_type = plan
     agent.registration_step = max(agent.registration_step or 1, 2)
     agent.save(update_fields=['status', 'plan_type', 'registration_step', 'updated_at'])
     logger.info(
