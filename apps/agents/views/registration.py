@@ -1135,6 +1135,13 @@ def agent_registration(request):
         return render(request, 'agents/registration.html', context)
 
 
+def _bump_clicks(obj):
+    """Atomic clicks + 1 in the database (concurrent visits lost updates)."""
+    from django.db.models import F, Value
+    from django.db.models.functions import Coalesce
+    type(obj).objects.filter(pk=obj.pk).update(clicks=Coalesce(F('clicks'), Value(0)) + 1)
+
+
 @require_http_methods(["GET"])
 def agent_registration_referral(request, ref_code):
     """
@@ -1195,8 +1202,7 @@ def agent_registration_referral(request, ref_code):
                 from apps.distributors.models import SubDistributor
                 sub_dist = SubDistributor.objects.filter(code=code_val, status='active').first()
                 if sub_dist:
-                    sub_dist.clicks = (sub_dist.clicks or 0) + 1
-                    sub_dist.save(update_fields=['clicks'])
+                    _bump_clicks(sub_dist)
                     request.session['sub_distributor_id'] = sub_dist.id
                     request.session['distributor_id'] = sub_dist.distributor_id
                     request.session['distributor_led_registration'] = True
@@ -1211,8 +1217,7 @@ def agent_registration_referral(request, ref_code):
                 ref_obj = ReferralCode.objects.filter(code=code_val, is_active=True).select_related('agent').first()
                 if ref_obj:
                     # Increment clicks for tracking
-                    ref_obj.clicks = (ref_obj.clicks or 0) + 1
-                    ref_obj.save(update_fields=['clicks'])
+                    _bump_clicks(ref_obj)
                     if ref_obj.distributor_id:
                         request.session['distributor_id'] = ref_obj.distributor_id
                         request.session['distributor_led_registration'] = True
@@ -3737,8 +3742,7 @@ def referral_join(request, ref_code):
     from apps.distributors.models import SubDistributor
     sub_dist = SubDistributor.objects.filter(code=code_val, status='active').first()
     if sub_dist:
-        sub_dist.clicks = (sub_dist.clicks or 0) + 1
-        sub_dist.save(update_fields=['clicks'])
+        _bump_clicks(sub_dist)
         request.session['ref_code'] = sub_dist.code
         request.session['sub_distributor_id'] = sub_dist.id
         request.session['distributor_id'] = sub_dist.distributor_id
@@ -3749,8 +3753,7 @@ def referral_join(request, ref_code):
     from apps.admin_panel.models.referral_code import ReferralCode
     code = ReferralCode.objects.filter(code=code_val, is_active=True).first()
     if code:
-        code.clicks = (code.clicks or 0) + 1
-        code.save()
+        _bump_clicks(code)  # a full save() rewrote total_referrals etc. from a stale read
         request.session['ref_code'] = code.code
         if code.distributor_id:
             request.session['distributor_id'] = code.distributor_id

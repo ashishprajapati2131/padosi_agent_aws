@@ -63,6 +63,9 @@ def process_championship_qualification(new_agent, subscription):
         return False
 
     with transaction.atomic():
+        # Serialise concurrent qualifications of the same referrer: two
+        # referrals paying at once both wrote N+1 instead of N+2.
+        referrer_participant = ChampionshipParticipant.objects.select_for_update().get(pk=referrer_participant.pk)
         if not referral_rec:
             referral_rec = ChampionshipReferral.objects.create(
                 campaign=campaign,
@@ -81,11 +84,12 @@ def process_championship_qualification(new_agent, subscription):
                 referral_rec.save()
 
         # Recount exact qualifying referrals for referrer (only verified + paid)
-        actual_count = ChampionshipReferral.objects.filter(
+        # Locking read: sees other referrals committed while we waited.
+        actual_count = len(ChampionshipReferral.objects.select_for_update().filter(
             referrer=referrer_participant,
             is_qualifying=True,
             registration_state__in=['paid', 'active']
-        ).count()
+        ).values_list('id', flat=True))
 
         referrer_participant.qualifying_referrals_count = actual_count
         referrer_participant.last_qualification_time = timezone.now()
