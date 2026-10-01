@@ -21,8 +21,10 @@ from apps.referral_championship.models import (
 )
 from apps.referral_championship.services.attribution_service import get_or_create_participant
 from apps.referral_championship.services.reward_engine import (
+    CLAIM_CONTACT_MESSAGE,
     CLAIM_EDITABLE_STATUSES,
-    CLAIMABLE_REWARD_TYPES,
+    VOUCHER_REWARD_TYPES,
+    slab_is_claimable,
     format_inr,
     get_participant_roadmap,
 )
@@ -335,7 +337,9 @@ def build_championship_dashboard_json_payload(request, agent):
             'progress_percent': item['progress_percent'],
             'referrals_needed': item['referrals_needed'],
             'status': item['status'],
-            'can_claim': item['is_unlocked'] and item['reward_type'] in ('membership_fee_back', 'voucher', 'cashback'),
+            'can_claim': item['can_request'],
+            'is_voucher': item['is_voucher'],
+            'status_label': item['status_label'],
             'claim_url': build_safe_absolute_uri(request, reverse('championship:agent_claim_reward', kwargs={'slab_id': slab_obj.id})) if slab_obj else None,
             'claim_details': {
                 'claim_id': claim_obj.id if claim_obj else None,
@@ -702,7 +706,7 @@ def claim_reward_ajax(request, slab_id):
 
     if participant.is_fraud_blocked:
         return JsonResponse({'success': False, 'message': 'Your championship account is under review. Please contact support.'}, status=403)
-    if not slab.is_active or slab.threshold >= 900 or slab.reward_type not in CLAIMABLE_REWARD_TYPES:
+    if not slab_is_claimable(slab):
         return JsonResponse({'success': False, 'message': 'This reward cannot be claimed here.'}, status=400)
     if participant.qualifying_referrals_count < slab.threshold:
         return JsonResponse({'success': False, 'message': 'Referral threshold not yet reached.'}, status=400)
@@ -712,8 +716,11 @@ def claim_reward_ajax(request, slab_id):
     except Exception:
         data = request.POST
 
-    voucher_pref = data.get('voucher_provider', 'amazon') # 'amazon' or 'flipkart'
-    address = data.get('shipping_address', '')
+    voucher_pref = str(data.get('voucher_provider') or 'amazon').strip().lower()[:20]
+    if voucher_pref not in ('amazon', 'flipkart'):
+        voucher_pref = 'amazon'
+    address = str(data.get('shipping_address') or '').strip()[:500]
+    note = str(data.get('note') or '').strip()[:500]
 
     from django.db import transaction
     with transaction.atomic():
@@ -732,16 +739,24 @@ def claim_reward_ajax(request, slab_id):
             }, status=409)
 
         claim.status = 'processing'
-        claim.claim_data = {
-            'voucher_provider': voucher_pref,
+        claim_data = dict(claim.claim_data) if isinstance(claim.claim_data, dict) else {}
+        claim_data.update({
             'shipping_address': address,
-            'claimed_at': timezone.now().isoformat()
-        }
+            'note': note,
+            'claimed_at': timezone.now().isoformat(),
+            'referrals_at_claim': participant.qualifying_referrals_count,
+            'agent_name': agent.fullname or '',
+            'agent_mobile': agent.mobile or '',
+            'agent_email': agent.email or '',
+        })
+        if slab.reward_type in VOUCHER_REWARD_TYPES:
+            claim_data['voucher_provider'] = voucher_pref
+        claim.claim_data = claim_data
         claim.save()
 
     return JsonResponse({
         'success': True,
-        'message': f'Reward claim for "{slab.title}" submitted successfully! Our team is processing your voucher/reward.',
+        'message': f'Your request for "{slab.title}" has been received. {CLAIM_CONTACT_MESSAGE}',
         'status': 'processing'
     })
 

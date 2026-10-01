@@ -67,10 +67,19 @@ class ChampionshipClaimGuardTests(TestCase):
         self.assertEqual(self._claim().status_code, 403)
         self.assertFalse(ChampionshipRewardClaim.objects.filter(participant=self.participant).exists())
 
-    def test_non_claimable_reward_type_rejected(self):
+    def test_top_three_prize_cannot_be_claimed(self):
+        # Every count-based reward is claimable (owner request 2026-10-02);
+        # the Top 3 prize (900+) is decided by the final leaderboard.
+        self.slab.threshold, self.slab.reward_type = 999, 'family_trip'
+        self.slab.save()
+        self.participant.qualifying_referrals_count = 1000
+        self.participant.save()
+        self.assertEqual(self._claim().status_code, 400)
+
+    def test_physical_reward_can_now_be_claimed(self):
         self.slab.reward_type = 'gold'
         self.slab.save()
-        self.assertEqual(self._claim().status_code, 400)
+        self.assertEqual(self._claim().status_code, 200)
 
     def _api_claim(self, participant, slab, claim):
         from fastapi import HTTPException

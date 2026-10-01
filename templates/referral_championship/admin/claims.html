@@ -1,0 +1,101 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Championship Reward Claims | PadosiAgent{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="/admin/championship/" class="text-muted text-decoration-none fw-bold" style="font-size:13px;">
+        <i class="fa-solid fa-arrow-left me-1"></i> Back to Championship Dashboard
+    </a>
+    <h4 class="fw-bold mt-1 mb-1"><i class="fa-solid fa-gift text-warning me-2"></i> Reward Claims</h4>
+    <p class="text-muted mb-0" style="font-size:13.5px;">
+        Requests agents sent from the Championship Road. Contact the agent within 24 hours, then move the request along.
+        {% if new_count %}<span class="badge bg-danger ms-1">{{ new_count }} new</span>{% endif %}
+    </p>
+</div>
+
+<form method="get" class="d-flex flex-wrap gap-2 mb-3">
+    <select name="status" class="form-select form-select-sm" style="max-width:200px;">
+        <option value="open" {% if status_filter == 'open' %}selected{% endif %}>Open (requested / review / approved)</option>
+        <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
+        {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <input type="text" name="q" value="{{ search }}" class="form-control form-control-sm" style="max-width:260px;" placeholder="Name, email, mobile or PA- id">
+    <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+</form>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:13px;">
+                <thead class="table-light">
+                    <tr>
+                        <th>Requested</th>
+                        <th>Agent</th>
+                        <th>Reward</th>
+                        <th>Details</th>
+                        <th>Status</th>
+                        <th style="min-width:320px;">Update</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    {% with c=row.claim d=row.data %}
+                    <tr>
+                        <td class="text-muted" style="font-size:12px;">
+                            {{ c.updated_at|date:"d M Y H:i" }}
+                            <div>#{{ c.id }}</div>
+                        </td>
+                        <td>
+                            <strong>{{ c.participant.agent.fullname }}</strong>
+                            <div class="text-muted" style="font-size:12px;">{{ c.participant.agent.email }}</div>
+                            <div class="text-muted" style="font-size:12px;">{{ c.participant.agent.mobile }}</div>
+                            <code style="font-size:11px;">{{ c.participant.referral_id }}</code>
+                        </td>
+                        <td>
+                            <strong>{{ c.reward_slab.title }}</strong>
+                            <div class="text-muted" style="font-size:12px;">{{ c.reward_slab.threshold }} referrals &middot; {{ c.reward_slab.reward_type }}</div>
+                            <div class="text-muted" style="font-size:12px;">Referrals now: {{ c.participant.qualifying_referrals_count }}{% if d.referrals_at_claim %} (at request: {{ d.referrals_at_claim }}){% endif %}</div>
+                        </td>
+                        <td style="font-size:12px; max-width:240px;">
+                            {% if d.voucher_provider %}<div>Voucher: <strong>{{ d.voucher_provider }}</strong></div>{% endif %}
+                            {% if d.shipping_address %}<div>Address: {{ d.shipping_address }}</div>{% endif %}
+                            {% if d.note %}<div>Note: {{ d.note }}</div>{% endif %}
+                            {% if c.voucher_code %}<div>Voucher code: <code>{{ c.voucher_code }}</code></div>{% endif %}
+                            {% if c.courier_name or c.tracking_number %}<div>Courier: {{ c.courier_name }} {{ c.tracking_number }}</div>{% endif %}
+                            {% if c.admin_notes %}<div class="text-muted">Admin: {{ c.admin_notes }}</div>{% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if c.status == 'processing' %}danger{% elif c.status == 'delivered' or c.status == 'redeemed' %}success{% elif c.status == 'cancelled' or c.status == 'expired' %}secondary{% else %}warning text-dark{% endif %}">
+                                {{ row.label }}
+                            </span>
+                        </td>
+                        <td>
+                            <form method="post" action="{% url 'admin_championship_claim_update' c.id %}" class="d-flex flex-wrap gap-1">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <select name="status" class="form-select form-select-sm" style="max-width:140px;">
+                                    {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if c.status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input type="text" name="voucher_code" class="form-control form-control-sm" style="max-width:140px;" placeholder="Voucher code">
+                                <input type="text" name="courier_name" class="form-control form-control-sm" style="max-width:110px;" placeholder="Courier">
+                                <input type="text" name="tracking_number" class="form-control form-control-sm" style="max-width:120px;" placeholder="Tracking no.">
+                                <input type="text" name="admin_notes" class="form-control form-control-sm" style="max-width:200px;" placeholder="Note (agent does not see)">
+                                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No reward requests here.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

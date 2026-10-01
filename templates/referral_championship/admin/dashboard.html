@@ -16,6 +16,10 @@
         <a href="/admin/championship/referral-tree/" class="btn btn-outline-secondary fw-bold" style="border-radius:10px;">
             <i class="fa-solid fa-network-wired me-1"></i> Referral Tree
         </a>
+        <a href="{% url 'admin_championship_claims' %}" class="btn btn-outline-warning fw-bold" style="border-radius:10px;">
+            <i class="fa-solid fa-gift me-1"></i> Reward Claims
+            {% if new_claims_count > 0 %}<span class="badge bg-danger ms-1">{{ new_claims_count }}</span>{% endif %}
+        </a>
         <a href="/admin/championship/fraud/" class="btn btn-outline-danger fw-bold" style="border-radius:10px;">
             <i class="fa-solid fa-shield-halved me-1"></i> Fraud Control
             {% if fraud_flags_count > 0 %}<span class="badge bg-danger ms-1">{{ fraud_flags_count }}</span>{% endif %}

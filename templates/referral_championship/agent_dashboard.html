@@ -937,7 +937,7 @@
         <div class="flex items-center justify-between border-b border-border pb-3">
             <div>
                 <span class="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-amber-600">
-                    Instant Voucher Claim
+                    Reward Claim
                 </span>
                 <h3 class="text-base font-black text-foreground mt-1" id="claimModalTitle">Claim Milestone Reward</h3>
             </div>
@@ -946,6 +946,7 @@
             </button>
         </div>
 
+        <div id="claimVoucherSection">
         <p class="text-xs text-muted-foreground">Choose which gift card provider you want your milestone voucher issued through:</p>
         
         <div class="space-y-2.5">
@@ -971,11 +972,30 @@
                 <span class="text-xs font-extrabold text-sky-600">Flipkart</span>
             </label>
         </div>
+        </div>
+
+        <div>
+            <label for="claimNote" class="text-xs font-bold text-foreground">Delivery address / message for our team (optional)</label>
+            <textarea id="claimNote" rows="2" maxlength="500" class="mt-1 w-full rounded-xl border border-border bg-background p-2 text-xs" placeholder="e.g. full address for a coin, or the best time to call you"></textarea>
+        </div>
+        <p class="text-[11px] text-muted-foreground">Our team will contact you within 24 hours on your registered mobile / email.</p>
 
         <div class="mt-4 flex gap-2.5 pt-2">
             <button type="button" onclick="closeClaimModal()" class="flex-1 h-10 rounded-xl border border-border text-xs font-bold text-foreground hover:bg-muted transition-all">Cancel</button>
-            <button type="button" onclick="submitClaim()" class="flex-1 h-10 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-black shadow transition-all active:scale-98">Confirm & Issue Voucher</button>
+            <button type="button" id="claimSubmitBtn" onclick="submitClaim()" class="flex-1 h-10 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-black shadow transition-all active:scale-98">Send Request</button>
         </div>
+    </div>
+</div>
+
+<!-- Claim request received -->
+<div id="claimDoneModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 hidden">
+    <div class="w-full max-w-sm rounded-3xl bg-card p-6 shadow-2xl border border-border text-center space-y-3">
+        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+            <i data-lucide="check" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-base font-black text-foreground">Request received</h3>
+        <p class="text-xs text-muted-foreground" id="claimDoneText">Our team will contact you within 24 hours.</p>
+        <button type="button" onclick="location.reload()" class="w-full h-10 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-black">OK</button>
     </div>
 </div>
 
@@ -1151,9 +1171,13 @@
 
     // ── Claim Reward Modal ──
     let activeClaimSlabId = null;
-    function claimRewardModal(slabId, title) {
+    let activeClaimIsVoucher = false;
+    function claimRewardModal(slabId, title, isVoucher) {
         activeClaimSlabId = slabId;
+        activeClaimIsVoucher = !!isVoucher;
         document.getElementById('claimModalTitle').innerText = `Claim: ${title}`;
+        document.getElementById('claimVoucherSection').classList.toggle('hidden', !activeClaimIsVoucher);
+        document.getElementById('claimNote').value = '';
         document.getElementById('claimModal').classList.remove('hidden');
     }
 
@@ -1161,25 +1185,36 @@
         document.getElementById('claimModal').classList.add('hidden');
     }
 
+    const CLAIM_URL_TEMPLATE = "{% url 'championship:agent_claim_reward' 0 %}";
     function submitClaim() {
         if (!activeClaimSlabId) return;
-        const pref = document.querySelector('input[name="voucherPref"]:checked').value;
-        fetch(`/championship/agent/claim/${activeClaimSlabId}/`, {
+        const btn = document.getElementById('claimSubmitBtn');
+        const prefEl = document.querySelector('input[name="voucherPref"]:checked');
+        const body = { note: document.getElementById('claimNote').value || '' };
+        if (activeClaimIsVoucher && prefEl) body.voucher_provider = prefEl.value;
+        btn.disabled = true;
+        fetch(CLAIM_URL_TEMPLATE.replace('/0/', `/${activeClaimSlabId}/`), {
             method: 'POST',
             headers: {
                 'X-CSRFToken': '{{ csrf_token }}',
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ voucher_provider: pref })
+            body: JSON.stringify(body)
         })
-        .then(res => res.json())
+        .then(res => res.json().catch(() => ({ success: false })))
         .then(data => {
+            btn.disabled = false;
+            if (!data || !data.success) {
+                showToast((data && data.message) || "Could not send the request. Please try again.", 'error');
+                return;
+            }
             closeClaimModal();
-            showToast(data.message || "Reward claim submitted successfully!", 'success');
-            setTimeout(() => location.reload(), 1400);
+            document.getElementById('claimDoneText').innerText = data.message || 'Our team will contact you within 24 hours.';
+            document.getElementById('claimDoneModal').classList.remove('hidden');
         })
-        .catch(err => {
-            showToast("Failed to submit claim. Please try again.", 'error');
+        .catch(() => {
+            btn.disabled = false;
+            showToast("Could not send the request. Please try again.", 'error');
         });
     }
 

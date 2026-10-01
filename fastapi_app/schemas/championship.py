@@ -109,8 +109,9 @@ class WhatsAppShareResponse(BaseModel):
 
 class RewardClaimRequest(BaseModel):
     slab_id: int
-    voucher_provider: str = Field("amazon", description="amazon or flipkart")
+    voucher_provider: str = Field("amazon", description="amazon or flipkart (voucher rewards only)")
     shipping_address: Optional[str] = ""
+    note: Optional[str] = ""
 
 
 class RewardClaimResponse(BaseModel):

@@ -166,10 +166,14 @@
                             <!-- Status Action / Progress -->
                             {% if item.is_unlocked %}
                             <div class="mt-1.5">
-                                {% if item.slab.reward_type == 'membership_fee_back' or item.slab.reward_type == 'voucher' or item.slab.reward_type == 'cashback' %}
-                                    <button type="button" onclick="claimRewardModal('{{ item.slab.id }}', '{{ item.slab.title }}')" class="inline-flex items-center gap-0.5 rounded-lg bg-[#7c3aed] hover:bg-purple-700 text-white px-2.5 py-1 text-[9px] sm:text-[10px] font-bold shadow-xs active:scale-95 transition-all">
+                                {% if item.can_request %}
+                                    <button type="button" onclick="claimRewardModal('{{ item.slab.id }}', '{{ item.slab.title|escapejs }}', {% if item.is_voucher %}true{% else %}false{% endif %})" class="inline-flex items-center gap-0.5 rounded-lg bg-[#7c3aed] hover:bg-purple-700 text-white px-2.5 py-1 text-[9px] sm:text-[10px] font-bold shadow-xs active:scale-95 transition-all">
                                         Claim <i data-lucide="arrow-right" class="w-2.5 h-2.5"></i>
                                     </button>
+                                {% elif item.status_label %}
+                                    <span class="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-bold {% if item.status == 'cancelled' or item.status == 'expired' %}text-slate-500 bg-slate-100{% elif item.status == 'delivered' or item.status == 'redeemed' %}text-emerald-600 bg-emerald-100/80{% else %}text-amber-700 bg-amber-100{% endif %} px-2 py-0.5 rounded-full">
+                                        <i data-lucide="clock" class="w-2.5 h-2.5"></i> {{ item.status_label }}
+                                    </span>
                                 {% else %}
                                     <span class="inline-flex items-center gap-0.5 text-[9px] sm:text-[10px] font-bold text-emerald-600 bg-emerald-100/80 px-2 py-0.5 rounded-full">
                                         <i data-lucide="check-circle-2" class="w-2.5 h-2.5"></i> Won

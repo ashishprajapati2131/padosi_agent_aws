@@ -390,8 +390,9 @@ def download_championship_qr(
 
 
 # Mirrors apps/referral_championship/services/reward_engine.py.
-_CLAIMABLE_REWARD_TYPES = ('membership_fee_back', 'voucher', 'cashback')
+_VOUCHER_REWARD_TYPES = ('membership_fee_back', 'voucher', 'cashback')
 _CLAIM_EDITABLE_STATUSES = ('locked', 'unlocked', 'processing')
+_TOP_RANK_THRESHOLD = 900
 
 
 @router.post("/claim-reward", response_model=RewardClaimResponse)
@@ -416,7 +417,7 @@ def claim_milestone_reward(
 
     if participant.is_fraud_blocked:
         raise HTTPException(status_code=403, detail="Your championship account is under review. Please contact support.")
-    if not slab.is_active or slab.threshold >= 900 or slab.reward_type not in _CLAIMABLE_REWARD_TYPES:
+    if not slab.is_active or slab.threshold >= _TOP_RANK_THRESHOLD:
         raise HTTPException(status_code=400, detail="This reward cannot be claimed here.")
     if participant.qualifying_referrals_count < slab.threshold:
         raise HTTPException(status_code=400, detail=f"Referral threshold of {slab.threshold} not yet reached.")
@@ -440,16 +441,25 @@ def claim_milestone_reward(
         db.add(claim)
     
     claim.status = "processing"
-    claim.claim_data = {
-        "voucher_provider": payload.voucher_provider,
-        "shipping_address": payload.shipping_address or "",
-        "claimed_at": datetime.utcnow().isoformat()
-    }
+    claim_data = dict(claim.claim_data) if isinstance(claim.claim_data, dict) else {}
+    claim_data.update({
+        "shipping_address": (payload.shipping_address or "")[:500],
+        "note": (getattr(payload, "note", "") or "")[:500],
+        "claimed_at": datetime.now().isoformat(),
+        "referrals_at_claim": participant.qualifying_referrals_count,
+        "agent_name": current_agent.fullname or "",
+        "agent_mobile": current_agent.mobile or "",
+        "agent_email": current_agent.email or "",
+    })
+    if slab.reward_type in _VOUCHER_REWARD_TYPES:
+        provider = (payload.voucher_provider or "amazon").strip().lower()
+        claim_data["voucher_provider"] = provider if provider in ("amazon", "flipkart") else "amazon"
+    claim.claim_data = claim_data
     db.commit()
 
     return RewardClaimResponse(
         success=True,
-        message=f'Reward claim for "{slab.title}" submitted successfully! Our team will dispatch your voucher/reward.',
+        message=f'Your request for "{slab.title}" has been received. Our team will contact you within 24 hours.',
         status="processing"
     )
 

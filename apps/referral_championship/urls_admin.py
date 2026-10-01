@@ -9,5 +9,7 @@ urlpatterns = [
     path('leaderboard/freeze/', admin_views.admin_freeze_leaderboard, name='admin_championship_freeze_leaderboard'),
     path('referral-tree/', admin_views.admin_referral_tree_view, name='admin_championship_referral_tree'),
     path('fraud/', admin_views.admin_fraud_control_view, name='admin_championship_fraud'),
+    path('claims/', admin_views.admin_reward_claims, name='admin_championship_claims'),
+    path('claims/<int:claim_id>/update/', admin_views.admin_update_reward_claim, name='admin_championship_claim_update'),
     path('fraud/<int:flag_id>/resolve/', admin_views.admin_resolve_fraud_flag, name='admin_championship_resolve_fraud'),
 ]

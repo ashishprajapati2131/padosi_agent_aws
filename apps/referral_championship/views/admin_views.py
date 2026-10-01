@@ -106,6 +106,7 @@ def admin_championship_dashboard(request):
         'total_participants': total_participants,
         'total_qualifying': total_qualifying,
         'fraud_flags_count': fraud_flags_count,
+        'new_claims_count': ChampionshipRewardClaim.objects.filter(status='processing').count(),
         'slabs': campaign.reward_slabs.all().order_by('threshold'),
         'recent_claims': claims.select_related('participant', 'participant__agent', 'reward_slab')[:15],
     }
@@ -358,3 +359,91 @@ def admin_resolve_fraud_flag(request, flag_id):
     flag.save()
     refresh_leaderboard_cache(flag.participant.campaign)
     return redirect('/admin/championship/fraud/')
+
+
+def admin_reward_claims(request):
+    """Reward requests from agents (every unlocked milestone), newest first."""
+    if not _is_authorized_admin(request):
+        return redirect('/admin/login/')
+    from apps.referral_championship.services.reward_engine import CLAIM_STATUS_LABELS
+
+    status_filter = (request.GET.get('status') or 'open').strip()
+    search = (request.GET.get('q') or '').strip()
+    claims = (ChampionshipRewardClaim.objects
+              .exclude(status__in=['locked', 'unlocked'])
+              .select_related('participant', 'participant__agent', 'reward_slab')
+              .order_by('-updated_at'))
+    if status_filter == 'open':
+        claims = claims.filter(status__in=['processing', 'verification', 'approved'])
+    elif status_filter in CLAIM_STATUS_LABELS:
+        claims = claims.filter(status=status_filter)
+    if search:
+        claims = claims.filter(
+            Q(participant__agent__fullname__icontains=search)
+            | Q(participant__agent__email__icontains=search)
+            | Q(participant__agent__mobile__icontains=search)
+            | Q(participant__referral_id__icontains=search)
+        )
+    rows = []
+    for claim in claims[:300]:
+        data = claim.claim_data if isinstance(claim.claim_data, dict) else {}
+        rows.append({'claim': claim, 'data': data, 'label': CLAIM_STATUS_LABELS.get(claim.status, claim.status)})
+    new_count = ChampionshipRewardClaim.objects.filter(status='processing').count()
+    return render(request, 'referral_championship/admin/claims.html', {
+        'rows': rows,
+        'status_filter': status_filter,
+        'search': search,
+        'status_choices': list(CLAIM_STATUS_LABELS.items()),
+        'new_count': new_count,
+    })
+
+
+@require_POST
+def admin_update_reward_claim(request, claim_id):
+    """Move a reward request along (review, approve, dispatch, deliver, cancel)."""
+    if not _is_authorized_admin(request):
+        return redirect('/admin/login/')
+    from apps.referral_championship.services.reward_engine import CLAIM_STATUS_LABELS
+
+    claim = get_object_or_404(ChampionshipRewardClaim.objects.select_related('participant__agent', 'reward_slab'),
+                              id=claim_id)
+    new_status = (request.POST.get('status') or '').strip()
+    if new_status not in CLAIM_STATUS_LABELS:
+        messages.error(request, 'Please choose a valid status.')
+        return redirect('admin_championship_claims')
+
+    old_status = claim.status
+    claim.status = new_status
+    claim.courier_name = (request.POST.get('courier_name') or '').strip()[:100] or claim.courier_name
+    claim.tracking_number = (request.POST.get('tracking_number') or '').strip()[:100] or claim.tracking_number
+    notes = (request.POST.get('admin_notes') or '').strip()
+    if notes:
+        claim.admin_notes = notes[:2000]
+    data = dict(claim.claim_data) if isinstance(claim.claim_data, dict) else {}
+    voucher = (request.POST.get('voucher_code') or '').strip()[:100]
+    if voucher:
+        data['voucher_code'] = voucher
+    data.setdefault('history', [])
+    data['history'].append({'from': old_status, 'to': new_status, 'at': timezone.now().isoformat()})
+    claim.claim_data = data
+    today = timezone.now().date()
+    if new_status == 'dispatched' and not claim.dispatch_date:
+        claim.dispatch_date = today
+    if new_status in ('delivered', 'redeemed') and not claim.delivered_date:
+        claim.delivered_date = today
+    claim.save()
+
+    try:
+        from apps.admin_panel.models.admin_activity_log import AdminActivityLog
+        AdminActivityLog.log(
+            'championship_claim_update', model_type='ChampionshipRewardClaim', model_id=claim.id,
+            details=f'{claim.reward_slab.title} for {claim.participant.agent.email}: {old_status} -> {new_status}',
+            request=request,
+        )
+    except Exception:
+        logger.exception('Could not log claim update %s', claim.id)
+    messages.success(request, f'Claim #{claim.id} is now "{CLAIM_STATUS_LABELS[new_status]}".')
+    back = request.POST.get('next') or ''
+    if not back.startswith('/admin/championship/claims/'):
+        back = '/admin/championship/claims/'
+    return redirect(back)

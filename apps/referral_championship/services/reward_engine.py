@@ -9,10 +9,31 @@ from apps.referral_championship.models import (
 
 logger = logging.getLogger(__name__)
 
-# Reward types the agent claims from the dashboard (same rule as the Claim button).
-CLAIMABLE_REWARD_TYPES = ('membership_fee_back', 'voucher', 'cashback')
+# Every count-based reward is requested from the dashboard and handled by
+# the team (owner request 2026-10-02). The Top 3 prize (threshold 900+) is
+# decided by the final leaderboard, not by a claim.
+TOP_RANK_THRESHOLD = 900
+# Rewards issued as a gift voucher: the agent picks Amazon or Flipkart.
+VOUCHER_REWARD_TYPES = ('membership_fee_back', 'voucher', 'cashback')
 # Claim statuses an agent may still (re)submit; later ones are handled by the team.
 CLAIM_EDITABLE_STATUSES = ('locked', 'unlocked', 'processing')
+# Statuses an admin can set on a request, with the label the agent sees.
+CLAIM_STATUS_LABELS = {
+    'processing': 'Requested',
+    'verification': 'Under review',
+    'approved': 'Approved',
+    'dispatched': 'Dispatched',
+    'delivered': 'Delivered',
+    'redeemed': 'Redeemed',
+    'cancelled': 'Cancelled',
+    'expired': 'Expired',
+}
+CLAIM_CONTACT_MESSAGE = 'Our team will contact you within 24 hours.'
+
+
+def slab_is_claimable(slab):
+    """An active, count-based reward slab (not the Top 3 prize)."""
+    return bool(slab and slab.is_active and slab.threshold < TOP_RANK_THRESHOLD)
 
 
 def evaluate_participant_rewards(participant):
@@ -158,6 +179,10 @@ def get_participant_roadmap(participant):
             'value': float(slab.value) if slab.value is not None else None,
             'value_formatted': format_inr(slab.value),
             'reward_type': slab.reward_type,
+            # Reached and not yet requested: show the Claim button.
+            'can_request': bool(is_reached and slab_is_claimable(slab) and status in ('locked', 'unlocked')),
+            'is_voucher': slab.reward_type in VOUCHER_REWARD_TYPES,
+            'status_label': CLAIM_STATUS_LABELS.get(status, ''),
             'image_path': get_reward_image(slab.reward_type, slab.threshold),
             'badge_icon': slab.badge_icon,
             'dispatch_date': str(slab.dispatch_date_default) if slab.dispatch_date_default else None,
