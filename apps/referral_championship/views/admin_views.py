@@ -41,7 +41,7 @@ def admin_championship_dashboard(request):
 
     # Financial & Liability Calculations
     paid_referrals = ChampionshipReferral.objects.filter(campaign=campaign, registration_state__in=['paid', 'active'])
-    digital_paid_count = paid_referrals.filter(referred_agent__plan_type='basic').count()
+    digital_paid_count = paid_referrals.filter(referred_agent__plan_type__in=['basic', 'starter']).count()
     prof_paid_count = paid_referrals.filter(referred_agent__plan_type='professional').count()
     other_paid_count = paid_referrals.count() - (digital_paid_count + prof_paid_count)
 
