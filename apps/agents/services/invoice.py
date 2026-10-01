@@ -485,6 +485,12 @@ class InvoiceService:
 
             tax_info = calculate_tax_breakdown(gst_amount, agent_state)
 
+            # Agent-supplied text must not run as a formula in the Sheet.
+            from apps.admin_panel.services.spreadsheet_safety import safe_cell
+            agent_name, agent_email, plan_name, promo_code = (
+                safe_cell(v) for v in (agent_name, agent_email, plan_name, promo_code)
+            )
+
             pdf_url = f"{settings.MEDIA_URL}app/private/{pdf_path}" if pdf_path else ''
 
             payload = {

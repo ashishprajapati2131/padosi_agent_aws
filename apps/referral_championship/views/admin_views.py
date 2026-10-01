@@ -1,4 +1,5 @@
 import csv
+from apps.admin_panel.services.spreadsheet_safety import safe_csv_writer
 import json
 import logging
 from decimal import Decimal
@@ -259,7 +260,7 @@ def admin_leaderboard_view(request):
     if request.GET.get('export') == 'csv':
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="championship_leaderboard_{timezone.now().strftime("%Y%m%d")}.csv"'
-        writer = csv.writer(response)
+        writer = safe_csv_writer(response)
         writer.writerow(['Rank', 'Referral ID', 'Agent Name', 'Email', 'Mobile', 'Qualifying Referrals', 'Unlocked'])
         for p in participants:
             writer.writerow([

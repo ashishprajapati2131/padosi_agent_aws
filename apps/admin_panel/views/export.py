@@ -13,6 +13,7 @@ Adaptations from source:
 """
 
 import csv
+from apps.admin_panel.services.spreadsheet_safety import safe_csv_writer
 
 from django.db import connection
 from django.http import HttpResponse
@@ -39,7 +40,7 @@ def _csv_response(filename: str, header: list, rows: list) -> HttpResponse:
     response['Expires'] = '0'
     # Write UTF-8 BOM so Excel opens without encoding issues
     response.write(b'\xef\xbb\xbf')
-    writer = csv.writer(response)
+    writer = safe_csv_writer(response)
     writer.writerow(header)   # header row
     writer.writerows(rows)    # all data rows
     return response
