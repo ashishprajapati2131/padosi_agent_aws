@@ -247,7 +247,7 @@
 10. Activate only **captured** Razorpay payments (`ensure_payment_captured`); `authorized` is a hold, not money. The callback, webhook, recovery and admin reconcile must run the same steps (dates, plan, superseded rows, championship and Paldi hooks); recovery and reconcile share `_activate_paid_subscription`.
 11. `agents.user_id` is the Django `auth_user` id, never a Laravel `users.id`: find the `users` row by email. A password change writes both `users` and `auth_user`.
 12. Subscription expiry is enforced only while Admin → Settings → Security → *Enforce subscription expiry* is ON (`apps/agents/services/subscription_expiry.py`); keep new access checks behind `expiry_enforced()`.
-13. Scheduled jobs are listed in `docs/CRON_JOBS.md`; fulfilment and Paldi expiry rely on them.
+13. No cron on this host: scheduled jobs start from web traffic (`BackgroundJobsMiddleware` → `apps/agents/services/background_jobs.py`), are claimed once per interval in the shared cache, and must be safe to re-run. See `docs/CRON_JOBS.md`.
 
 ### NEVER mix auth systems
 - Do NOT use `request.user.is_authenticated` to check if an agent is logged in

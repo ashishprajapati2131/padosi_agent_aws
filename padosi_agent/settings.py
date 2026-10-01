@@ -141,7 +141,13 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'apps.admin_panel.middleware.ExceptionLoggerMiddleware',
     'padosi_agent.middleware.SEOMiddleware',
+    'apps.agents.middleware.BackgroundJobsMiddleware',
 ]
+
+# Scheduled jobs run from web traffic instead of cron (apps/agents/services/background_jobs.py).
+# On by default in production; set BACKGROUND_JOBS_ENABLED=False in .env to turn off.
+BACKGROUND_JOBS_ENABLED = os.environ.get(
+    'BACKGROUND_JOBS_ENABLED', 'False' if DEBUG else 'True').lower() in ('true', '1', 'yes')
 
 CSRF_FAILURE_VIEW = 'padosi_agent.views.csrf_failure_view'
 
