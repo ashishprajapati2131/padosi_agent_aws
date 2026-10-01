@@ -161,10 +161,14 @@ class EventDayJourneyTests(_SignupBase):
     def test_challenger_using_own_mobile_does_not_count(self):
         self._stall_signup(Client(), 'cheat@example.com', '9811111113')
         participant = EventReferralParticipant.objects.get(agent__email='cheat@example.com')
-        self._paid_signup(Client(), 'cheat.alt@example.com', '9811111113', entry=f'/join/{participant.referral_code}/')
+        # One mobile, one account (audit L3): the second signup is refused at step 1.
+        client = Client()
+        client.get(f'/join/{participant.referral_code}/', follow=True)
+        r = client.post('/agent-register-step1/', self._form('cheat.alt@example.com', '9811111113'))
+        self.assertEqual(r.status_code, 422, r.content)
+        self.assertFalse(Agent.objects.filter(email='cheat.alt@example.com').exists())
         participant.refresh_from_db()
         self.assertEqual(participant.paid_count, 0)
-        self.assertEqual(EventReferral.objects.get(participant=participant).state, EventReferral.STATE_REJECTED)
 
     def test_48_hours_pass_then_challenger_buys_a_plan(self):
         stall = Client()

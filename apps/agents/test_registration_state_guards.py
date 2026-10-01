@@ -31,9 +31,9 @@ class RegistrationStateGuardTests(_SignupBase):
             self._assert_untouched(agent, status)
 
     def test_registration_in_progress_can_still_be_resumed(self):
-        for status in ('incomplete', 'pending_payment', 'rejected'):
+        for i, status in enumerate(('incomplete', 'pending_payment', 'rejected')):
             agent = self._existing(status, email=f'resume.{status}@example.com')
-            r = self._step1(agent.email)
+            r = self._step1(agent.email, mobile=f'987654321{i}')   # one mobile per account (audit L3)
             self.assertEqual(r.status_code, 200, (status, r.content))
             self.assertTrue(r.json()['success'])
 

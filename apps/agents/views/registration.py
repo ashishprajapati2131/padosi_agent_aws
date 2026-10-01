@@ -1621,6 +1621,19 @@ def register_step1(request):
             'redirect': '/agent-login/'
         }, status=422)
 
+    # One mobile number, one account: a number already used by an agent with
+    # a different email cannot start another registration (several accounts
+    # or Paldi challenges per person). The other email is not revealed.
+    # Security audit 2026-10-02 L3.
+    if Agent.objects.filter(mobile=mobile).exclude(email__iexact=email).exclude(status='deleted').exists():
+        msg = ('This mobile number is already registered with another account. '
+               'Please login with that account, or use a different mobile number.')
+        return JsonResponse({
+            'success': False,
+            'message': msg,
+            'errors': {'mobile': [msg]},
+        }, status=422)
+
     # An agent is resolved by email, so registering a staff / insurance /
     # distributor email would hand that account's session to the payer.
     from apps.agents.services.account_auth import email_owned_by_non_agent_account

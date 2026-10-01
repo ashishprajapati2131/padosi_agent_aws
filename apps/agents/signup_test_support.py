@@ -46,9 +46,9 @@ class _SignupBase(TestCase):
         }, 'pricing')
         SiteSetting.set_value('trial_plan_config', {'price': 99, 'duration_days': 30}, 'pricing')
 
-    def _step1(self, email):
+    def _step1(self, email, mobile='9876543210'):
         return self.client.post('/agent-register-step1/', {
-            'fullname': 'Test Agent', 'email': email, 'mobile': '9876543210',
+            'fullname': 'Test Agent', 'email': email, 'mobile': mobile,
             'agent_pincode': '380001', 'state': 'Gujarat', 'experience_range': '5',
             'segments[]': ['life'],
         })
