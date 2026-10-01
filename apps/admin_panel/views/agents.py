@@ -76,6 +76,54 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
     return query, params
 
 
+class _RawAgentPage:
+    """Lazy rows for Paginator: COUNT(*) for the total and LIMIT/OFFSET for
+    one page, instead of loading every agent (with three correlated
+    subqueries each) to show 25 (audit 2026-10-01 F-37)."""
+
+    def __init__(self, query, params):
+        self.query = query
+        self.params = list(params)
+        self._count = None
+
+    def count(self):
+        if self._count is None:
+            body = self.query[self.query.index('FROM agents AS a'):]
+            order_at = body.rfind(' ORDER BY ')
+            if order_at != -1:
+                body = body[:order_at]
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute('SELECT COUNT(*) ' + body, self.params)
+                    self._count = int(cursor.fetchone()[0] or 0)
+            except Exception as e:
+                logger.error(f"Error counting agents list: {e}")
+                self._count = 0
+        return self._count
+
+    def __len__(self):
+        return self.count()
+
+    def __getitem__(self, key):
+        if not isinstance(key, slice):
+            rows = self[key:key + 1]
+            if not rows:
+                raise IndexError(key)
+            return rows[0]
+        start = max(key.start or 0, 0)
+        stop = self.count() if key.stop is None else key.stop
+        if stop <= start:
+            return []
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(self.query + ' LIMIT %s OFFSET %s', self.params + [stop - start, start])
+                columns = [col[0] for col in cursor.description]
+                return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error fetching agents list: {e}")
+            return []
+
+
 def agent_list(request):
     """
     Phase 3B: Active Agents Listing View
@@ -91,22 +139,13 @@ def agent_list(request):
     promo_code_filter = request.GET.get('promo_code', '')
 
     query, params = _build_agent_list_query(search, plan_filter, status_filter, city_filter, promo_code_filter)
-    
-    agents = []
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(query, params)
-            columns = [col[0] for col in cursor.description]
-            agents = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    except Exception as e:
-        logger.error(f"Error fetching agents list: {e}")
 
-    paginator = Paginator(agents, 25)
+    paginator = Paginator(_RawAgentPage(query, params), 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'agents': agents,
+        'agents': page_obj.object_list,
         'search': search,
         'plan_filter': plan_filter,
         'status_filter': status_filter,
