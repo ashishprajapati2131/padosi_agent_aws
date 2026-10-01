@@ -53,6 +53,7 @@ def admin_dashboard(request):
             'campaign': campaign,
             'participants': participants,
             'stats': stats,
+            'show_test_tools': _test_tools_allowed(),
             'event_registration_public_url': f'{public_base}/event-registration/',
         },
     )
@@ -169,4 +170,95 @@ def admin_restore_participant(request, participant_id):
     from datetime import datetime
     if participant.status == EventReferralParticipant.STATUS_ACTIVE and participant.deadline_at <= datetime.now():
         messages.warning(request, 'Their deadline has already passed; use Extend to give them more time.')
+    return redirect('admin_event_referral_dashboard')
+
+
+# -- Local testing only (DEBUG) ------------------------------------------------
+# Adds fake *paid* referrals through the real counting path, so the 48-hour
+# challenge can be tested without real payments. Never available on the live
+# site: a staff member could otherwise hand out free plans.
+TEST_REFERRAL_EMAIL_DOMAIN = 'paldi-test.invalid'
+
+
+def _test_tools_allowed():
+    from django.conf import settings
+    return bool(settings.DEBUG)
+
+
+@require_POST
+def admin_test_add_referrals(request, participant_id):
+    from django.http import Http404
+    if not _test_tools_allowed():
+        raise Http404()
+    if not _require_admin(request):
+        return redirect('/admin/login/')
+    import random
+    import uuid
+    from apps.agents.models import Agent, AgentSubscription
+    from apps.event_referral.services.qualification_service import qualify_event_referral, register_referred_agent
+
+    participant = get_object_or_404(EventReferralParticipant.objects.select_related('agent'), pk=participant_id)
+    try:
+        count = max(1, min(10, int(request.POST.get('count', 1))))
+    except (TypeError, ValueError):
+        count = 1
+    referrer_mobile = ''.join(c for c in str(participant.agent.mobile or '') if c.isdigit())[-10:]
+    added = 0
+    for _ in range(count):
+        token = uuid.uuid4().hex[:10]
+        mobile = ''
+        for _attempt in range(20):
+            candidate = '7' + ''.join(random.choice('0123456789') for _d in range(9))
+            if candidate != referrer_mobile and not Agent.objects.filter(mobile=candidate).exists():
+                mobile = candidate
+                break
+        if not mobile:
+            continue
+        friend = Agent.objects.create(
+            fullname=f'TEST Referral {token[:4].upper()}',
+            email=f'test.{participant.referral_code.lower()}.{token}@{TEST_REFERRAL_EMAIL_DOMAIN}',
+            mobile=mobile, status='active', plan_type='starter',
+            referred_by_code=participant.referral_code,
+        )
+        register_referred_agent(friend)
+        subscription = AgentSubscription.objects.create(
+            agent=friend, selected_plan="Starter's Plan", registration_amount='0.00',
+            payment_status='completed', status='active',
+            razorpay_order_id=f'order_TESTREF{token}', razorpay_payment_id=f'pay_TESTREF{token}',
+        )
+        qualify_event_referral(friend, subscription)
+        added += 1
+    participant.refresh_from_db()
+    messages.success(request, f'TEST: added {added} paid referral(s). Progress {participant.paid_count} / '
+                              f'{participant.required_paid_referrals}, status {participant.status}.')
+    return redirect('admin_event_referral_dashboard')
+
+
+@require_POST
+def admin_test_remove_referrals(request, participant_id):
+    from django.http import Http404
+    if not _test_tools_allowed():
+        raise Http404()
+    if not _require_admin(request):
+        return redirect('/admin/login/')
+    from apps.agents.models import Agent
+    from apps.event_referral.services.participant_service import _recount_paid
+
+    participant = get_object_or_404(EventReferralParticipant, pk=participant_id)
+    fakes = list(Agent.objects.filter(referred_by_code=participant.referral_code,
+                                      email__iendswith='@' + TEST_REFERRAL_EMAIL_DOMAIN))
+    EventReferral.objects.filter(participant=participant, referred_agent__in=fakes).delete()
+    from django.db import transaction
+    for agent in fakes:
+        try:
+            with transaction.atomic():
+                agent.delete()
+        except Exception:
+            # A legacy table can block the cascade; detach the fake instead.
+            Agent.objects.filter(pk=agent.pk).update(status='deleted', referred_by_code='')
+            agent.subscriptions.filter(razorpay_order_id__startswith='order_TESTREF').delete()
+    participant.paid_count = _recount_paid(participant)
+    participant.save(update_fields=['paid_count', 'updated_at'])
+    messages.success(request, f'TEST: removed {len(fakes)} test referral(s). Progress {participant.paid_count} / '
+                              f'{participant.required_paid_referrals}. A test win stays until you press Restore.')
     return redirect('admin_event_referral_dashboard')

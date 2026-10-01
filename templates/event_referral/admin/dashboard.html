@@ -100,6 +100,17 @@
                         <form method="post" action="{% url 'admin_event_referral_grant' p.id %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-success" type="submit">Grant plan</button></form>
                         <form method="post" action="{% url 'admin_event_referral_restore' p.id %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-primary" type="submit">Restore</button></form>
                         <form method="post" action="{% url 'admin_event_referral_block' p.id %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">Block</button></form>
+                        {% if show_test_tools %}
+                        <div class="mt-1">
+                            <form method="post" action="{% url 'admin_event_referral_test_add' p.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="number" name="count" value="1" min="1" max="10" class="form-control form-control-sm d-inline-block" style="width: 60px;">
+                                <button class="btn btn-sm btn-warning" type="submit" title="Local testing only: adds fake paid referrals">+ Test referral</button>
+                            </form>
+                            <form method="post" action="{% url 'admin_event_referral_test_remove' p.id %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-warning" type="submit" title="Local testing only">Remove test</button></form>
+                            <small class="text-muted">(local only)</small>
+                        </div>
+                        {% endif %}
                     </td>
                 </tr>
                 {% empty %}
