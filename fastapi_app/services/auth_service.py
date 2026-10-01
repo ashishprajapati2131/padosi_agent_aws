@@ -164,7 +164,7 @@ class AuthService:
                                 password=get_password_hash(request.password),
                                 role='agent',
                                 status='active',
-                                email_verified_at=datetime.utcnow(),
+                                email_verified_at=datetime.now(),
                             )
                             self.db.add(user)
                             # agents.user_id is the Django auth_user id; storing this
@@ -237,7 +237,7 @@ class AuthService:
         clear_login_throttle(ip)
 
         # Update last login time
-        user.last_login_at = datetime.utcnow()
+        user.last_login_at = datetime.now()  # same naive IST clock as Django
 
         # 6. Generate and register unique JWT token in DB transactionally
         try:

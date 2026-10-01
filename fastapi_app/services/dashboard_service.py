@@ -57,7 +57,7 @@ class DashboardService:
         active_subscription: Optional[AgentSubscription] = self.db.query(AgentSubscription).filter(
             AgentSubscription.agent_id == agent.id,
             AgentSubscription.status == "active",
-            AgentSubscription.expires_at > datetime.utcnow()
+            AgentSubscription.expires_at > datetime.now()  # DB datetimes are naive IST
         ).first()
 
         insurance_segments = self.db.query(AgentInsuranceSegment).filter(
@@ -219,17 +219,17 @@ class DashboardService:
         is_on_trial = (
             agent.plan_type == "free_trial"
             and agent.trial_ends_at is not None
-            and agent.trial_ends_at > datetime.utcnow()
+            and agent.trial_ends_at > datetime.now()
         )
         trial_expired = (
             agent.plan_type == "free_trial"
             and agent.trial_ends_at is not None
-            and agent.trial_ends_at <= datetime.utcnow()
+            and agent.trial_ends_at <= datetime.now()
         )
 
         days_left = None
         if is_on_trial and agent.trial_ends_at:
-            delta = agent.trial_ends_at - datetime.utcnow()
+            delta = agent.trial_ends_at - datetime.now()
             days_left = max(0, delta.days)
 
         discount_pct = 0
