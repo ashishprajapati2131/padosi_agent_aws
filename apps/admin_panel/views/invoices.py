@@ -257,6 +257,11 @@ def save_sheet_url(request):
     if not admin:
         return redirect("admin_login_page")
         
+    from apps.admin_panel.views.pages import _is_super_admin
+    if not _is_super_admin(admin):
+        messages.error(request, 'Only a Super Admin can change where invoices are synced.')
+        return redirect('admin_invoices')
+
     sheet_url = request.POST.get('sheet_url', '').strip()
     sheet_view_url = request.POST.get('sheet_view_url', '').strip()
 
@@ -268,7 +273,16 @@ def save_sheet_url(request):
     elif 'script.google.com' in sheet_view_url and not sheet_url:
         sheet_url = sheet_view_url
         sheet_view_url = ''
-    
+
+    from urllib.parse import urlparse
+    if sheet_url and not InvoiceService.is_apps_script_url(sheet_url):
+        messages.error(request, 'The sync URL must be a Google Apps Script web app (https://script.google.com/...).')
+        return redirect('admin_invoices')
+    if sheet_view_url and (urlparse(sheet_view_url).scheme != 'https'
+                           or (urlparse(sheet_view_url).hostname or '').lower() != 'docs.google.com'):
+        messages.error(request, 'The sheet link must be a Google Sheets link (https://docs.google.com/...).')
+        return redirect('admin_invoices')
+
     with connection.cursor() as cursor:
         if sheet_url:
             cursor.execute("""
@@ -284,6 +298,10 @@ def save_sheet_url(request):
                 ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `updated_at` = NOW()
             """, [sheet_view_url])
         
+    from apps.admin_panel.models import AdminActivityLog
+    AdminActivityLog.log('Changed invoice Google Sheet settings', 'SiteSetting', None,
+                         details=f'sync={sheet_url or "(unchanged)"} view={sheet_view_url or "(unchanged)"}',
+                         request=request)
     messages.success(request, 'Google Sheet settings saved successfully!')
     return redirect('admin_invoices')
 
@@ -495,6 +513,10 @@ def create_manual_invoice(request):
         razorpay_payment_id=payment_id or None,
         payment_status='paid'
     )
+    from apps.admin_panel.models import AdminActivityLog
+    AdminActivityLog.log('Created manual paid invoice', 'Invoice', invoice.pk,
+                         details=f'{invoice_number} {email} Rs {total_amount} payment={payment_id or "-"}',
+                         request=request)
 
     # Generate PDF
     pdf_path = InvoiceService().generate_pdf(invoice)

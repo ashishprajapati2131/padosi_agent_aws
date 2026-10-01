@@ -413,6 +413,16 @@ class InvoiceService:
             logger.error(f"[InvoiceService] generate_pdf exception: {e}", exc_info=True)
             return None
 
+    @staticmethod
+    def is_apps_script_url(url) -> bool:
+        """Only a Google Apps Script web app may receive invoice data (PII + PDFs)."""
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(str(url or '').strip())
+        except ValueError:
+            return False
+        return parsed.scheme == 'https' and (parsed.hostname or '').lower() == 'script.google.com'
+
     def sync_to_google_sheet(self, invoice: Invoice) -> bool:
         """
         Synchronize invoice details to Google Sheet using Web App Script URL.
@@ -427,16 +437,10 @@ class InvoiceService:
                 return False
 
             sheet_url = sheet_url.strip()
-            # SSRF protection: require HTTPS and block private / metadata IPs
-            from urllib.parse import urlparse
-            parsed = urlparse(sheet_url)
-            if parsed.scheme != 'https' or not parsed.netloc:
-                logger.warning(f"[InvoiceService] Rejected insecure non-HTTPS sheet URL: {sheet_url}")
-                return False
-
-            blocked_hosts = ('169.254.169.254', 'metadata.google.internal', 'localhost', '127.0.0.1', '0.0.0.0')
-            if any(bh in parsed.netloc.lower() for bh in blocked_hosts):
-                logger.warning(f"[InvoiceService] Blocked metadata/internal host in sheet sync: {parsed.netloc}")
+            # Every invoice's PII and PDF is posted here: allow only an Apps
+            # Script web app (a host blocklist let any other site receive it).
+            if not self.is_apps_script_url(sheet_url):
+                logger.warning("[InvoiceService] Refused sheet sync to a non Apps Script URL")
                 return False
 
             # Extract base64 PDF content if file exists on disk
