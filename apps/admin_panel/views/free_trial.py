@@ -17,6 +17,7 @@ Routes implemented:
   GET  /padosi-admin/free-trial/analytics-data/    → ft_analytics_data  (AJAX JSON)
 """
 
+from django.conf import settings
 from django.db import transaction
 import json
 import random
@@ -317,6 +318,8 @@ def free_trial_index(request):
         'promo_usage_summary': promo_usage_summary,
         'history':            history_page,
         'history_empty':      history_empty,
+        # The fake-conversion test tool exists for local testing only.
+        'show_test_tools':    settings.DEBUG,
     }
     return render(request, 'admin/free_trial/index.html', context)
 
@@ -429,6 +432,11 @@ def ft_force_test_credit(request):
     admin = _get_admin_from_session(request)
     if not admin:
         return redirect('admin_login_page')
+
+    # Inserts a fake active agent and applies referral rewards: local only.
+    if not settings.DEBUG:
+        messages.error(request, 'The fake-conversion test tool is disabled on the live site.')
+        return redirect('admin_free_trial')
 
     agent_id_raw = request.POST.get('agent_id', '').strip()
     if not agent_id_raw:
