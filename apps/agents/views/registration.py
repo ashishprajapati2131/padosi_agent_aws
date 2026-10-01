@@ -2647,6 +2647,82 @@ def _order_plan_slug(subscription, agent):
     return current if current in PLAN_SLUGS else 'starter'
 
 
+def _activate_paid_subscription(agent, subscription, payment, log_label='[activation]', queue_fulfilment=True):
+    """Activate one paid order's subscription (locked, idempotent).
+
+    Shared by verify_and_activate_pending_payment and admin reconcile, so both
+    set dates, status, plan, superseded rows and referral credit the same way.
+    `payment` is the Razorpay payment dict. Returns (subscription, activated);
+    activated is False when the row was already completed. With
+    queue_fulfilment=False the caller sends the invoice and welcome email.
+    """
+    from django.utils import timezone
+    from django.db import transaction
+    from apps.agents.models import AgentSubscription
+    from apps.home.models import SiteSetting
+
+    with transaction.atomic():
+        subscription = AgentSubscription.objects.select_for_update().get(pk=subscription.pk)
+        if subscription.payment_status == 'completed':
+            return subscription, False
+
+        plan_type = _order_plan_slug(subscription, agent)
+        is_trial = plan_type == 'free_trial'
+        is_upgrade = _is_plan_upgrade_payment(agent, subscription.razorpay_order_id)
+
+        trial_config = SiteSetting.get_value('trial_plan_config', {'duration_days': 30})
+        trial_days = int(trial_config.get('duration_days', 30))
+        sub_expiry = timezone.now() + timezone.timedelta(days=365)
+
+        if is_trial:
+            agent.plan_type = 'free_trial'
+            agent.trial_ends_at = timezone.now() + timezone.timedelta(days=trial_days)
+            upgrade_discount = SiteSetting.get_value('trial_upgrade_discount', 20)
+            agent.upgrade_discount_percent = int(upgrade_discount)
+            sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
+
+        if is_upgrade and agent.status == 'active':
+            agent.plan_type = plan_type
+        else:
+            agent.status = 'pending_approval'
+            agent.plan_type = plan_type
+
+        agent.registration_step = 2
+        agent.save()
+
+        subscription.payment_status = 'completed'
+        subscription.status = 'active'
+        subscription.razorpay_payment_id = payment.get('id')
+        subscription.razorpay_signature = payment.get('signature') or 'direct_verification'
+        subscription.starts_at = timezone.now()
+        subscription.expires_at = sub_expiry
+        subscription.save()
+        _deactivate_superseded_subscriptions(agent, subscription.pk)
+
+        # Best-effort side effects, each in its own savepoint.
+        _isolated(log_label + ' Promo usage increment',
+                  lambda: _increment_promo_usage(subscription.promo_code))
+        _isolated(log_label + ' Referral credit conversion',
+                  lambda: _credit_referral_conversion(agent))
+        _isolated(log_label + ' Championship qualification hook',
+                  lambda: _championship_qualification(agent, subscription))
+        _isolated(log_label + ' Event referral qualification hook',
+                  lambda: _event_referral_qualification(agent, subscription))
+        _isolated(log_label + ' Referral code generation',
+                  lambda: _ensure_referral_code(agent))
+
+        # Link user (isolated so DB sync hiccups do not roll back payment)
+        _isolated(log_label + ' Link django user',
+                  lambda: create_or_link_django_user(agent))
+
+        if queue_fulfilment:
+            _isolated(log_label + ' Queue invoice and welcome',
+                      lambda: queue_invoice_and_welcome(agent.id, subscription.id))
+
+        logger.info('%s Activated agent %s, subscription #%s.', log_label, agent.email, subscription.pk)
+        return subscription, True
+
+
 def verify_and_activate_pending_payment(agent, include_paid_agents=False):
     """
     Directly query Razorpay to verify if the pending order has a captured/authorized payment,
@@ -2728,66 +2804,9 @@ def verify_and_activate_pending_payment(agent, include_paid_agents=False):
         return False
 
     try:
-        with transaction.atomic():
-            # Locked subscription retrieve
-            subscription = AgentSubscription.objects.select_for_update().get(pk=subscription.pk)
-            if subscription.payment_status == 'completed':
-                return True
-
-            plan_type = _order_plan_slug(subscription, agent)
-            is_trial = plan_type == 'free_trial'
-            is_upgrade = _is_plan_upgrade_payment(agent, subscription.razorpay_order_id)
-
-            trial_config = SiteSetting.get_value('trial_plan_config', {'duration_days': 30})
-            trial_days = int(trial_config.get('duration_days', 30))
-            sub_expiry = timezone.now() + timezone.timedelta(days=365)
-
-            if is_trial:
-                agent.plan_type = 'free_trial'
-                agent.trial_ends_at = timezone.now() + timezone.timedelta(days=trial_days)
-                upgrade_discount = SiteSetting.get_value('trial_upgrade_discount', 20)
-                agent.upgrade_discount_percent = int(upgrade_discount)
-                sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
-
-            if is_upgrade and agent.status == 'active':
-                agent.plan_type = plan_type
-            else:
-                agent.status = 'pending_approval'
-                agent.plan_type = plan_type
-
-            agent.registration_step = 2
-            agent.save()
-
-            subscription.payment_status = 'completed'
-            subscription.status = 'active'
-            subscription.razorpay_payment_id = successful_payment.get('id')
-            subscription.razorpay_signature = successful_payment.get('signature') or 'direct_verification'
-            subscription.starts_at = timezone.now()
-            subscription.expires_at = sub_expiry
-            subscription.save()
-            _deactivate_superseded_subscriptions(agent, subscription.pk)
-
-            # Best-effort side effects, each in its own savepoint.
-            _isolated('[verify_and_activate_pending_payment] Promo usage increment',
-                      lambda: _increment_promo_usage(subscription.promo_code))
-            _isolated('[verify_and_activate_pending_payment] Referral credit conversion',
-                      lambda: _credit_referral_conversion(agent))
-            _isolated('[verify_and_activate_pending_payment] Championship qualification hook',
-                      lambda: _championship_qualification(agent, subscription))
-            _isolated('[verify_and_activate_pending_payment] Event referral qualification hook',
-                      lambda: _event_referral_qualification(agent, subscription))
-            _isolated('[verify_and_activate_pending_payment] Referral code generation',
-                      lambda: _ensure_referral_code(agent))
-
-            # Link user (isolated so DB sync hiccups do not roll back payment)
-            _isolated('[verify_and_activate_pending_payment] Link django user',
-                      lambda: create_or_link_django_user(agent))
-
-            _isolated('[verify_and_activate_pending_payment] Queue invoice and welcome',
-                      lambda: queue_invoice_and_welcome(agent.id, subscription.id))
-
-            logger.info(f"[verify_and_activate_pending_payment] Successfully activated agent {agent.email} via direct Razorpay query.")
-            return True
+        _activate_paid_subscription(agent, subscription, successful_payment,
+                                    log_label='[verify_and_activate_pending_payment]')
+        return True
     except Exception as db_err:
         logger.error(f"[verify_and_activate_pending_payment] Database activation transaction failed: {db_err}")
         return False
