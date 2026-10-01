@@ -274,3 +274,106 @@ def admin_restore_participant(participant, *, extend_hours=0):
             agent.save(update_fields=['status', 'updated_at'])
     participant.refresh_from_db()
     return participant
+
+
+def _has_real_payment_records(agent):
+    """Completed/refunded real payments or invoices (kept for GST / the CA)."""
+    from apps.agents.models import AgentSubscription, Invoice
+    from apps.agents.services.test_markers import TEST_ORDER_PREFIX, TEST_PAYMENT_PREFIX
+    real_subs = (AgentSubscription.objects.filter(agent=agent, payment_status__in=['completed', 'refunded'])
+                 .exclude(razorpay_payment_id__startswith=TEST_PAYMENT_PREFIX)
+                 .exclude(razorpay_order_id__startswith=TEST_ORDER_PREFIX))
+    return real_subs.exists() or Invoice.objects.filter(agent_id=agent.pk).exists()
+
+
+def remove_test_referrals(participant):
+    """Delete the testing-mode fake referrals of a participant and take them
+    out of the Paldi and championship counts. Returns how many were removed."""
+    from apps.agents.services.test_markers import TEST_EMAIL_DOMAIN
+    from apps.referral_championship.services.qualification_service import revert_championship_qualification
+
+    fakes = list(Agent.objects.filter(referred_by_code=participant.referral_code,
+                                      email__iendswith='@' + TEST_EMAIL_DOMAIN))
+    EventReferral.objects.filter(participant=participant, referred_agent__in=fakes).delete()
+    for fake in fakes:
+        try:
+            revert_championship_qualification(fake, reason='test removed')
+        except Exception:
+            logger.exception('Championship revert failed for test referral %s', fake.pk)
+        try:
+            with transaction.atomic():
+                fake.delete()
+        except Exception:
+            # A legacy table can block the cascade; detach the fake instead.
+            Agent.objects.filter(pk=fake.pk).update(status='deleted', referred_by_code='')
+            fake.subscriptions.filter(razorpay_order_id__startswith='order_TESTREF').delete()
+    participant.paid_count = _recount_paid(participant)
+    participant.save(update_fields=['paid_count', 'updated_at'])
+    try:
+        from apps.referral_championship.models import ChampionshipParticipant, ChampionshipRewardClaim
+        for cp in ChampionshipParticipant.objects.filter(agent_id=participant.agent_id):
+            ChampionshipRewardClaim.objects.filter(
+                participant=cp, status__in=['locked', 'unlocked'],
+                reward_slab__threshold__gt=cp.qualifying_referrals_count,
+            ).delete()
+    except Exception:
+        logger.exception('Could not withdraw test-unlocked claims for participant %s', participant.pk)
+    return len(fakes)
+
+
+def admin_delete_participant(participant):
+    """Remove a Paldi challenger (e.g. a test signup) and its event data.
+
+    The agent account itself is deleted only when it has no real payment or
+    invoice; otherwise it is kept for GST records and only the event data
+    goes. Staff / insurance / distributor logins are never deleted.
+    Returns 'agent_deleted' or 'event_data_removed'.
+    """
+    from django.contrib.auth.models import User
+    from django.db import connection
+    from apps.agents.models import AgentDraft
+    from apps.agents.services.account_auth import is_non_agent_portal_user
+
+    agent = participant.agent
+    remove_test_referrals(participant)
+    keep_agent = _has_real_payment_records(agent)
+
+    with transaction.atomic():
+        EventReferral.objects.filter(participant=participant).delete()
+        participant.delete()
+        try:
+            from apps.referral_championship.models import ChampionshipParticipant
+            ChampionshipParticipant.objects.filter(agent=agent).delete()
+        except Exception:
+            logger.exception('Championship participant cleanup failed for agent %s', agent.pk)
+
+    if keep_agent:
+        logger.warning('Paldi participant removed; agent #%s kept (payment records)', agent.pk)
+        return 'event_data_removed'
+
+    email = (agent.email or '').strip()
+    user = agent.user if agent.user_id else None
+    agent_pk = agent.pk
+    try:
+        with transaction.atomic():
+            agent.delete()
+    except Exception:
+        # A legacy table can block the cascade: hide the account instead.
+        logger.exception('Hard delete of agent #%s failed; marking it deleted', agent_pk)
+        Agent.objects.filter(pk=agent_pk).update(status='deleted', referred_by_code='')
+    with transaction.atomic():
+        if email:
+            AgentDraft.objects.filter(email__iexact=email).delete()
+        if user and not is_non_agent_portal_user(user):
+            if Agent.objects.filter(pk=agent_pk).exists():
+                User.objects.filter(pk=user.pk).update(is_active=False)
+            else:
+                User.objects.filter(pk=user.pk).delete()
+        if email:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM users WHERE LOWER(email) = LOWER(%s) AND LOWER(COALESCE(role, '')) IN ('agent', 'client', 'user', '')",
+                    [email],
+                )
+    logger.warning('Paldi participant and agent #%s deleted by admin', agent_pk)
+    return 'agent_deleted'

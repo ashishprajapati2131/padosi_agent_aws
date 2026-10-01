@@ -309,39 +309,31 @@ def admin_test_remove_referrals(request, participant_id):
         raise Http404()
     if not _require_admin(request):
         return redirect('/admin/login/')
-    from apps.agents.models import Agent
-    from apps.event_referral.services.participant_service import _recount_paid
+    from apps.event_referral.services.participant_service import remove_test_referrals
 
     participant = get_object_or_404(EventReferralParticipant, pk=participant_id)
-    fakes = list(Agent.objects.filter(referred_by_code=participant.referral_code,
-                                      email__iendswith='@' + TEST_REFERRAL_EMAIL_DOMAIN))
-    EventReferral.objects.filter(participant=participant, referred_agent__in=fakes).delete()
-    from apps.referral_championship.services.qualification_service import revert_championship_qualification
-    for agent in fakes:
-        try:
-            revert_championship_qualification(agent, reason='test removed')
-        except Exception:
-            logger.exception('Championship revert failed for test referral %s', agent.pk)
-    from django.db import transaction
-    for agent in fakes:
-        try:
-            with transaction.atomic():
-                agent.delete()
-        except Exception:
-            # A legacy table can block the cascade; detach the fake instead.
-            Agent.objects.filter(pk=agent.pk).update(status='deleted', referred_by_code='')
-            agent.subscriptions.filter(razorpay_order_id__startswith='order_TESTREF').delete()
-    participant.paid_count = _recount_paid(participant)
-    participant.save(update_fields=['paid_count', 'updated_at'])
-    try:
-        from apps.referral_championship.models import ChampionshipParticipant, ChampionshipRewardClaim
-        for cp in ChampionshipParticipant.objects.filter(agent_id=participant.agent_id):
-            ChampionshipRewardClaim.objects.filter(
-                participant=cp, status__in=['locked', 'unlocked'],
-                reward_slab__threshold__gt=cp.qualifying_referrals_count,
-            ).delete()
-    except Exception:
-        logger.exception('Could not withdraw test-unlocked claims for participant %s', participant.pk)
-    messages.success(request, f'TEST: removed {len(fakes)} test referral(s). Progress {participant.paid_count} / '
+    removed = remove_test_referrals(participant)
+    participant.refresh_from_db()
+    messages.success(request, f'TEST: removed {removed} test referral(s). Progress {participant.paid_count} / '
                               f'{participant.required_paid_referrals}. A test win stays until you press Restore.')
+    return redirect('admin_event_referral_dashboard')
+
+
+@require_POST
+def admin_delete_participant(request, participant_id):
+    """Super Admin: delete a challenger (e.g. a test signup) and its event data."""
+    from django.http import Http404
+    from apps.event_referral.services.participant_service import admin_delete_participant as delete_service
+    if not _require_admin(request):
+        return redirect('/admin/login/')
+    if not (settings.DEBUG or _is_super_admin(request)):
+        raise Http404()
+    participant = get_object_or_404(EventReferralParticipant.objects.select_related('agent'), pk=participant_id)
+    label = f'{participant.agent.fullname} ({participant.agent.email})'
+    outcome = delete_service(participant)
+    if outcome == 'agent_deleted':
+        messages.success(request, f'Deleted {label} and all its event data.')
+    else:
+        messages.warning(request, f'Removed {label} from the event. The agent has real payment or invoice '
+                                  f'records, so the account was kept (manage it under Agents).')
     return redirect('admin_event_referral_dashboard')
