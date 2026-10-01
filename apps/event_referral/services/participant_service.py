@@ -224,6 +224,12 @@ def admin_restore_participant(participant, *, extend_hours=0):
         if extend_hours:
             from datetime import timedelta
             participant.deadline_at = participant.deadline_at + timedelta(hours=int(extend_hours))
+        if participant.status == EventReferralParticipant.STATUS_WON:
+            # Re-activating a winner made the next evaluation grant the win
+            # again and push an approved agent back to pending_approval.
+            participant.save(update_fields=['deadline_at', 'updated_at'])
+            participant.refresh_from_db()
+            return participant
         participant.status = EventReferralParticipant.STATUS_ACTIVE
         participant.blocked_at = None
         participant.blocked_reason = ''
