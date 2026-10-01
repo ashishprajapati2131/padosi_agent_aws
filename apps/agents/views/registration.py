@@ -1166,6 +1166,9 @@ def agent_registration_referral(request, ref_code):
 
         # ── Store ref code in session for the existing flow to pick up ──
         request.session['ref_code'] = code_val
+        # A referral page is the normal paid signup: drop a Paldi flag left on
+        # a shared stall device (audit 2026-10-01 F-17d).
+        request.session.pop('event_referral_registration', None)
 
         # ── Look up the referring agent ──
         referring_agent = None
