@@ -287,6 +287,13 @@ class ChampionshipRewardClaim(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def voucher_code(self):
+        """Voucher code sent to the agent, kept in claim_data (no column).
+        The dashboard read a missing attribute and crashed once a claim existed."""
+        data = self.claim_data if isinstance(self.claim_data, dict) else {}
+        return str(data.get('voucher_code') or '')
+
     class Meta:
         db_table = 'championship_reward_claims'
         unique_together = ('participant', 'reward_slab')
