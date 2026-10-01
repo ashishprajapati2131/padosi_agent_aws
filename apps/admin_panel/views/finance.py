@@ -331,6 +331,7 @@ def index(request):
 
 # ─── Mark Payment ─────────────────────────────────────────────────────────────
 
+@require_POST
 def mark_payment(request):
     """Update a subscription's payment_status. Accepts AJAX or form POST."""
     
@@ -350,10 +351,32 @@ def mark_payment(request):
     except AgentSubscription.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Subscription not found.'}, status=404)
 
+    # Marking a subscription completed unlocks the dashboard without any
+    # gateway check, so only a Super Admin may do it (or undo a completed one).
+    if (status == 'completed' or sub.payment_status == 'completed') and status != sub.payment_status:
+        from apps.admin_panel.views.pages import _is_super_admin
+        if not _is_super_admin(admin_id):
+            return JsonResponse({
+                'success': False,
+                'message': 'Only a Super Admin can mark a payment as completed or change a completed payment.',
+            }, status=403)
+
     old_status = sub.payment_status
     sub.payment_status = status
     sub.updated_at     = now()
-    sub.save(update_fields=['payment_status', 'updated_at'])
+    fields = ['payment_status', 'updated_at']
+    if status == 'completed':
+        # A completed payment is an active subscription with dates, like
+        # every gateway activation path.
+        sub.status = 'active'
+        fields.append('status')
+        if not sub.starts_at:
+            sub.starts_at = now()
+            fields.append('starts_at')
+        if not sub.expires_at:
+            sub.expires_at = sub.starts_at + timedelta(days=365)
+            fields.append('expires_at')
+    sub.save(update_fields=fields)
 
     AdminActivityLog.log(
         f'Mark payment {old_status} → {status}',
