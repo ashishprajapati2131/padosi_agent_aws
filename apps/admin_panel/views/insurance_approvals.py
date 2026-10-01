@@ -41,8 +41,9 @@ def insurance_approvals_index(request):
     for agent in pending_onboardings:
         # Load user
         try:
-            agent.associated_user = User.objects.get(id=agent.user_id)
-        except User.DoesNotExist:
+            # By email: agents.user_id is the Django auth_user id, not users.id.
+            agent.associated_user = User.objects.filter(email__iexact=agent.email).first()
+        except Exception:
             agent.associated_user = None
 
         # Load insurance company user
@@ -129,12 +130,11 @@ def insurance_approvals_approve_onboarding(request, id):
                 agent.save()
 
                 # 2. Activate User account
-                try:
-                    user = User.objects.get(id=agent.user_id)
+                # By email: agent.user_id is the Django auth_user id, not users.id.
+                user = User.objects.filter(email__iexact=agent.email).first()
+                if user:
                     user.status = 'active'
                     user.save()
-                except User.DoesNotExist:
-                    user = None
 
                 # 3. Activate associated subscription
                 from apps.admin_panel.models.agent_subscription import AgentSubscription
@@ -200,12 +200,11 @@ def insurance_approvals_reject_onboarding(request, id):
                 agent.save()
 
                 # Deactivate user account
-                try:
-                    user = User.objects.get(id=agent.user_id)
+                # By email: agent.user_id is the Django auth_user id, not users.id.
+                user = User.objects.filter(email__iexact=agent.email).first()
+                if user:
                     user.status = 'inactive'
                     user.save()
-                except User.DoesNotExist:
-                    pass
 
                 # Mark subscription failed
                 from apps.admin_panel.models.agent_subscription import AgentSubscription

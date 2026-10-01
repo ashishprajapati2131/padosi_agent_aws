@@ -114,10 +114,10 @@ class PasswordResetService:
         authenticated_user = None
 
         if current_agent:
-            if hasattr(current_agent, "user") and current_agent.user:
-                authenticated_user = current_agent.user
-            else:
-                authenticated_user = self.user_repo.get_by_email(current_agent.email)
+            # Always by email: agents.user_id holds the Django auth_user id, so
+            # the SQLAlchemy `current_agent.user` relation (users.id) pointed at
+            # a different person's `users` row and changed their password.
+            authenticated_user = self.user_repo.get_by_email(current_agent.email)
 
         jwt_token = None
         if not authenticated_user and req:

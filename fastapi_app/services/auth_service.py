@@ -133,9 +133,9 @@ class AuthService:
                                 email_verified_at=datetime.utcnow(),
                             )
                             self.db.add(user)
-                            self.db.flush()
-                            if not agent.user_id:
-                                agent.user_id = user.id
+                            # agents.user_id is the Django auth_user id; storing this
+                            # users.id there linked the agent to whichever auth_user
+                            # happened to share that number.
                             self.db.commit()
                         except Exception:
                             self.db.rollback()
