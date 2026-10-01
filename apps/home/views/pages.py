@@ -1017,7 +1017,7 @@ def _get_or_create_pincode(pincode):
             f'https://api.postalpincode.in/pincode/{pincode}',
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
             verify=False,
-            timeout=10
+            timeout=(2.0, 3.0)
         )
         resp.raise_for_status()
         body = resp.json()

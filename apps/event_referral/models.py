@@ -35,11 +35,32 @@ class EventReferralCampaign(models.Model):
     def __str__(self):
         return f'Event Referral Campaign (enabled={self.is_enabled})'
 
+    def save(self, *args, **kwargs):
+        from django.core.cache import cache
+        try:
+            cache.delete('current_event_referral_campaign')
+        except Exception:
+            pass
+        super().save(*args, **kwargs)
+
     @classmethod
     def get_current(cls):
+        from django.core.cache import cache
+        try:
+            cached = cache.get('current_event_referral_campaign')
+            if cached is not None:
+                return cached
+        except Exception:
+            pass
+
         campaign = cls.objects.order_by('-id').first()
         if not campaign:
             campaign = cls.objects.create()
+
+        try:
+            cache.set('current_event_referral_campaign', campaign, timeout=60)
+        except Exception:
+            pass
         return campaign
 
 
@@ -95,21 +116,32 @@ class EventReferralParticipant(models.Model):
 
     @classmethod
     def create_for_agent(cls, agent, campaign=None):
+        existing = cls.objects.filter(agent=agent).first()
+        if existing:
+            return existing
         if campaign is None:
             campaign = EventReferralCampaign.get_current()
         now = _now()
-        return cls.objects.create(
-            campaign=campaign,
-            agent=agent,
-            referral_code=cls.generate_referral_code(),
-            registered_at=now,
-            deadline_at=now + timedelta(hours=int(campaign.window_hours)),
-            window_hours=campaign.window_hours,
-            required_paid_referrals=campaign.required_paid_referrals,
-            reward_plan_slug=campaign.reward_plan_slug or 'basic',
-            paid_count=0,
-            status=cls.STATUS_ACTIVE,
-        )
+        for _ in range(5):
+            code = cls.generate_referral_code()
+            try:
+                return cls.objects.create(
+                    campaign=campaign,
+                    agent=agent,
+                    referral_code=code,
+                    registered_at=now,
+                    deadline_at=now + timedelta(hours=int(campaign.window_hours)),
+                    window_hours=campaign.window_hours,
+                    required_paid_referrals=campaign.required_paid_referrals,
+                    reward_plan_slug=campaign.reward_plan_slug or 'basic',
+                    paid_count=0,
+                    status=cls.STATUS_ACTIVE,
+                )
+            except Exception:
+                existing = cls.objects.filter(agent=agent).first()
+                if existing:
+                    return existing
+        return cls.objects.filter(agent=agent).first()
 
 
 class EventReferral(models.Model):
@@ -152,6 +184,10 @@ class EventReferral(models.Model):
     class Meta:
         db_table = 'event_referral_referrals'
         ordering = ['-registered_at']
+        indexes = [
+            models.Index(fields=['participant', 'state'], name='ev_ref_part_state_idx'),
+            models.Index(fields=['participant', 'counts'], name='ev_ref_part_counts_idx'),
+        ]
 
     def __str__(self):
         return f'{self.snapshot_name or self.referred_agent_id} → {self.participant.referral_code}'

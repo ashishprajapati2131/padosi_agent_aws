@@ -11,6 +11,8 @@ class ManagedModelsTestRunner(DiscoverRunner):
     def __init__(self, *args, **kwargs):
         # Swap database to SQLite in-memory for tests
         settings.TESTING = True
+        settings.SECURE_SSL_REDIRECT = False
+        settings.ALLOWED_HOSTS = ['*']
         db_config = dict(settings.DATABASES['default'])
         db_config['ENGINE'] = 'django.db.backends.sqlite3'
         db_config['NAME'] = ':memory:'
