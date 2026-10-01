@@ -1684,8 +1684,8 @@ class RegistrationActivityLog(models.Model):
         try:
             ip = None
             if request:
-                x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
-                ip = x_forwarded.split(',')[0].strip() if x_forwarded else request.META.get('REMOTE_ADDR')
+                from apps.admin_panel.middleware import ThreatMonitorMiddleware
+                ip = ThreatMonitorMiddleware.get_client_ip(request)
 
             details = {}
             if agent:

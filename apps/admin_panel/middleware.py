@@ -329,9 +329,10 @@ class AdminIpWhitelistMiddleware:
     def __call__(self, request):
         path = request.path.rstrip('/')
         if path.startswith('/admin') or path.startswith('/padosi-admin') or path.startswith('/django-admin'):
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR')
-            
+            # Trusted client IP: a raw X-Forwarded-For would let anyone claim a
+            # whitelisted address.
+            ip = ThreatMonitorMiddleware.get_client_ip(request)
+
             # Fetch whitelist from settings or fallback
             whitelist = getattr(settings, 'ADMIN_WHITELIST_IPS', [])
             if not whitelist:
@@ -826,9 +827,8 @@ class ExceptionLoggerMiddleware:
                 pass
 
                 
-            # Get IP address
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR')
+            # Get IP address (trusted-proxy rule, not the spoofable first hop)
+            ip = ThreatMonitorMiddleware.get_client_ip(request)
 
             # Log to Database
             ErrorLog.objects.create(

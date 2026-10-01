@@ -873,10 +873,11 @@ def _expected_amount_paise(registration_amount):
 
 
 def _get_client_ip(request):
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        return x_forwarded_for.split(',')[0].strip()
-    return request.META.get('REMOTE_ADDR', '')
+    # Trusted-proxy rule (CLAUDE.md invariant #4): the first X-Forwarded-For
+    # hop is client-controlled, so the step-1 rate limit could be bypassed or
+    # aimed at someone else's IP.
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware
+    return ThreatMonitorMiddleware.get_client_ip(request) or request.META.get('REMOTE_ADDR', '')
 
 # ─── Helper ─────────────────────────────────────────────────────────────────────
 
