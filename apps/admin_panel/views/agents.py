@@ -230,6 +230,33 @@ def manage_agent(request, id):
     return render(request, 'admin/agents/manage.html', context)
 
 
+# Every status an agent row can legitimately hold. Anything else is a typo or
+# tampering and would silently hide the agent from every admin queue.
+AGENT_STATUSES = (
+    'incomplete', 'pending_payment', 'pending_approval', 'pending_admin_approval',
+    'pending_accounts_payment', 'event_challenge', 'active', 'inactive', 'suspended',
+    'blacklisted', 'rejected', 'deleted', 'expired',
+)
+# What a staff admin with only the Approvals permission may do from the queue.
+QUEUE_DECISIONS = ('active', 'suspended', 'rejected')
+
+
+def _admin_can_manage_all_agents(request):
+    admin = getattr(request, 'admin_user', None)  # set by AdminPermissionMiddleware
+    if admin is None or getattr(admin, 'role', '') == 'super':
+        return True
+    perms = admin.permissions if isinstance(admin.permissions, list) else []
+    return 'agents' in perms
+
+
+def _payment_note(agent_id):
+    from apps.agents.models import AgentSubscription
+    sub = AgentSubscription.objects.filter(agent_id=agent_id, payment_status='completed').order_by('-created_at').first()
+    if not sub:
+        return 'no completed payment'
+    return f'paid subscription #{sub.pk} ({sub.selected_plan}, order {sub.razorpay_order_id or "-"})'
+
+
 def toggle_status(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Invalid request method'})
@@ -247,6 +274,8 @@ def toggle_status(request):
 
     if not agent_id or not new_status:
         return JsonResponse({'success': False, 'message': 'Missing data'})
+    if new_status not in AGENT_STATUSES:
+        return JsonResponse({'success': False, 'message': 'Unknown status.'}, status=400)
 
     # Fetch agent to get old_status
     try:
@@ -256,7 +285,17 @@ def toggle_status(request):
             if not row:
                 return JsonResponse({'success': False, 'message': 'Agent not found'})
             old_status = row[0]
-            
+
+            # Approvals-only staff decide queue entries; they cannot change
+            # other agents (the route also admits the Approvals permission).
+            if not _admin_can_manage_all_agents(request) and not (
+                old_status == 'pending_approval' and new_status in QUEUE_DECISIONS
+            ):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'You can only approve or reject agents awaiting approval.',
+                }, status=403)
+
             # Update status
             cursor.execute("UPDATE agents SET status = %s WHERE id = %s", [new_status, agent_id])
     except Exception as e:
@@ -287,9 +326,15 @@ def toggle_status(request):
                 updated_at=timezone.now(),
             )
         except Exception as e:
+            # The status is already saved; failing here returned an error for
+            # a change that had happened.
             logger.error("AUDIT LOG ERROR: %r", e)
-            raise
 
+    from apps.admin_panel.models import AdminActivityLog
+    AdminActivityLog.log(
+        f'Agent status {old_status} -> {new_status}', 'Agent', int(agent_id),
+        details=_payment_note(agent_id), request=request,
+    )
     return JsonResponse({'success': True})
 
 
@@ -318,8 +363,22 @@ def bulk_action_agents(request):
                 rows = cursor.fetchall()
                 old_statuses = {row[0]: row[1] for row in rows}
 
+                # Bulk approve is for the approval queue only: an arbitrary id
+                # list could activate unpaid or suspended agents.
+                agent_ids = [str(aid) for aid, st in old_statuses.items() if st == 'pending_approval']
+                skipped = len(old_statuses) - len(agent_ids)
+                if not agent_ids:
+                    messages.error(request, 'None of the selected agents are awaiting approval.')
+                    return redirect('admin_agents_approvals')
+                format_strings = ','.join(['%s'] * len(agent_ids))
+
                 # Update statuses
                 cursor.execute(f"UPDATE agents SET status = 'active' WHERE id IN ({format_strings})", agent_ids)
+
+                from apps.admin_panel.models import AdminActivityLog
+                for aid in agent_ids:
+                    AdminActivityLog.log('Agent status pending_approval -> active (bulk)', 'Agent', int(aid),
+                                         details=_payment_note(aid), request=request)
 
                 for aid in agent_ids:
                     aid_int = int(aid)
@@ -337,7 +396,8 @@ def bulk_action_agents(request):
                         created_at=timezone.now(),
                         updated_at=timezone.now(),
                     )
-            messages.success(request, 'Selected agents have been approved.')
+            messages.success(request, 'Selected agents have been approved.'
+                             + (f' {skipped} not awaiting approval were skipped.' if skipped else ''))
         except Exception as e:
             logger.error(f"Bulk approve error: {e}")
             messages.error(request, 'Failed to bulk approve agents.')
