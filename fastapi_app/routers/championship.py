@@ -389,6 +389,11 @@ def download_championship_qr(
     )
 
 
+# Mirrors apps/referral_championship/services/reward_engine.py.
+_CLAIMABLE_REWARD_TYPES = ('membership_fee_back', 'voucher', 'cashback')
+_CLAIM_EDITABLE_STATUSES = ('locked', 'unlocked', 'processing')
+
+
 @router.post("/claim-reward", response_model=RewardClaimResponse)
 def claim_milestone_reward(
     payload: RewardClaimRequest,
@@ -409,13 +414,22 @@ def claim_milestone_reward(
     if not slab:
         raise HTTPException(status_code=404, detail="Reward slab not found.")
 
+    if participant.is_fraud_blocked:
+        raise HTTPException(status_code=403, detail="Your championship account is under review. Please contact support.")
+    if not slab.is_active or slab.threshold >= 900 or slab.reward_type not in _CLAIMABLE_REWARD_TYPES:
+        raise HTTPException(status_code=400, detail="This reward cannot be claimed here.")
     if participant.qualifying_referrals_count < slab.threshold:
         raise HTTPException(status_code=400, detail=f"Referral threshold of {slab.threshold} not yet reached.")
 
     claim = db.query(ChampionshipRewardClaim).filter(
         ChampionshipRewardClaim.participant_id == participant.id,
         ChampionshipRewardClaim.reward_slab_id == slab.id
-    ).first()
+    ).with_for_update().first()
+
+    # Same rule as the website: details can change only until the team acts.
+    if claim and claim.status not in _CLAIM_EDITABLE_STATUSES:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=f"This reward is already {claim.status}. Please contact support for changes.")
 
     if not claim:
         claim = ChampionshipRewardClaim(

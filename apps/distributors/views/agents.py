@@ -152,6 +152,7 @@ def agents_create(request):
     request.session.pop('email_verified', None)
     request.session.pop('verified_email', None)
     request.session.pop('reg_step', None)
+    request.session.pop('event_referral_registration', None)
     
     # Indicate that a distributor is initiating the registration
     request.session['distributor_led_registration'] = True

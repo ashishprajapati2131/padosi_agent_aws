@@ -1,5 +1,6 @@
 import os
 import csv
+from apps.admin_panel.services.spreadsheet_safety import safe_csv_writer
 import json
 import time
 import re
@@ -454,7 +455,7 @@ def export_data(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="pincodes_export.csv"'
     
-    writer = csv.writer(response)
+    writer = safe_csv_writer(response)
     writer.writerow(['pincode', 'office_name', 'district', 'state', 'taluk', 'latitude', 'longitude'])
     for r in rows:
         writer.writerow([

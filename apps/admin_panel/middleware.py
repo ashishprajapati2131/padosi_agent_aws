@@ -329,9 +329,10 @@ class AdminIpWhitelistMiddleware:
     def __call__(self, request):
         path = request.path.rstrip('/')
         if path.startswith('/admin') or path.startswith('/padosi-admin') or path.startswith('/django-admin'):
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR')
-            
+            # Trusted client IP: a raw X-Forwarded-For would let anyone claim a
+            # whitelisted address.
+            ip = ThreatMonitorMiddleware.get_client_ip(request)
+
             # Fetch whitelist from settings or fallback
             whitelist = getattr(settings, 'ADMIN_WHITELIST_IPS', [])
             if not whitelist:
@@ -487,9 +488,15 @@ class AdminPermissionMiddleware:
 
         permissions_list = admin.permissions if isinstance(admin.permissions, list) else []
         
-        has_permission = required_permission in permissions_list
-        if required_permission == 'approvals':
-            has_permission = 'approvals_awaiting_verification' in permissions_list or 'approvals_missing_licenses' in permissions_list
+        def _has(perm):
+            if perm == 'approvals':
+                return 'approvals_awaiting_verification' in permissions_list or 'approvals_missing_licenses' in permissions_list
+            return perm in permissions_list
+
+        # A route may accept several permissions (tuple): any one is enough.
+        required_any = required_permission if isinstance(required_permission, tuple) else (required_permission,)
+        has_permission = any(_has(perm) for perm in required_any)
+        required_permission = required_any[0]
 
         if not has_permission:
             if request.headers.get('accept') == 'application/json' or request.path.startswith('/api/'):
@@ -525,11 +532,13 @@ class AdminPermissionMiddleware:
             'admin_agents':                             'agents',
             'admin_agents_manage':                      'agents',
             'admin_agents_manage_alt':                  'agents',
-            'admin_agents_toggle_status':               'agents',
+            # Approvals staff approve/reject from the queue; the view limits them
+            # to agents awaiting approval.
+            'admin_agents_toggle_status':               ('agents', 'approvals'),
             'admin_agents_update_badge':                'agents',
             'admin_agents_update_irdai_license':        'agents',
             'admin_agents_save_notes':                  'agents',
-            'admin_agents_bulk_action':                 'agents',
+            'admin_agents_bulk_action':                 ('agents', 'approvals'),
             'admin_agents_delete':                      'agents',
             'admin_agents_irdai_verify':                'agents',
             'admin_agents_amfi_verify':                 'agents',
@@ -818,9 +827,8 @@ class ExceptionLoggerMiddleware:
                 pass
 
                 
-            # Get IP address
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR')
+            # Get IP address (trusted-proxy rule, not the spoofable first hop)
+            ip = ThreatMonitorMiddleware.get_client_ip(request)
 
             # Log to Database
             ErrorLog.objects.create(

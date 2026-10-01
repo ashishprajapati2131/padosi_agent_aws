@@ -40,7 +40,8 @@ def revenue_dashboard(request):
         cursor.execute(f"SELECT COUNT(*) FROM agents WHERE plan_type = 'professional' AND status NOT IN ({placeholders})", excluded_statuses)
         prof_count = cursor.fetchone()[0]
 
-        cursor.execute(f"SELECT COUNT(*) FROM agents WHERE plan_type = 'basic' AND status NOT IN ({placeholders})", excluded_statuses)
+        # Paid signups are stored as 'starter'; Paldi-challenge winners as 'basic'.
+        cursor.execute(f"SELECT COUNT(*) FROM agents WHERE plan_type IN ('basic', 'starter') AND status NOT IN ({placeholders})", excluded_statuses)
         starter_count = cursor.fetchone()[0]
 
         cursor.execute(f"SELECT COUNT(*) FROM agents WHERE plan_type = 'free_trial' AND status NOT IN ({placeholders})", excluded_statuses)
@@ -65,14 +66,14 @@ def revenue_dashboard(request):
             SELECT SUM(s.registration_amount / GREATEST(1, TIMESTAMPDIFF(MONTH, s.starts_at, COALESCE(s.expires_at, DATE_ADD(s.starts_at, INTERVAL 12 MONTH))))) as monthly
             FROM agent_subscriptions s
             JOIN agents a ON s.agent_id = a.id
-            WHERE a.plan_type = %s
+            WHERE a.plan_type IN ({plans})
             AND s.payment_status = 'completed'
             AND (s.expires_at IS NULL OR s.expires_at > UTC_TIMESTAMP())
         """
-        cursor.execute(mrr_query, ['professional'])
+        cursor.execute(mrr_query.format(plans='%s'), ['professional'])
         pro_mrr_raw = cursor.fetchone()[0] or 0
 
-        cursor.execute(mrr_query, ['basic'])
+        cursor.execute(mrr_query.format(plans='%s, %s'), ['basic', 'starter'])
         starter_mrr_raw = cursor.fetchone()[0] or 0
 
         mrr = int(round(float(pro_mrr_raw) + float(starter_mrr_raw)))

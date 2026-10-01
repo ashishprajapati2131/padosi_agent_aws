@@ -129,8 +129,14 @@ def _grant_win(participant):
     participant.save(
         update_fields=['status', 'won_at', 'paid_count', 'updated_at'],
     )
-    agent.status = 'pending_approval'
-    agent.plan_type = plan
+    # Never take anything away: an already-approved agent stays active, and an
+    # agent who meanwhile paid for an equal or higher plan keeps it (the win
+    # used to push them back to pending approval on the basic plan).
+    from plan_upgrade_handoff import plan_rank
+    if agent.status != 'active':
+        agent.status = 'pending_approval'
+    if plan_rank(plan) >= plan_rank(agent.plan_type or ''):
+        agent.plan_type = plan
     agent.registration_step = max(agent.registration_step or 1, 2)
     agent.save(update_fields=['status', 'plan_type', 'registration_step', 'updated_at'])
     logger.info(
@@ -224,6 +230,12 @@ def admin_restore_participant(participant, *, extend_hours=0):
         if extend_hours:
             from datetime import timedelta
             participant.deadline_at = participant.deadline_at + timedelta(hours=int(extend_hours))
+        if participant.status == EventReferralParticipant.STATUS_WON:
+            # Re-activating a winner made the next evaluation grant the win
+            # again and push an approved agent back to pending_approval.
+            participant.save(update_fields=['deadline_at', 'updated_at'])
+            participant.refresh_from_db()
+            return participant
         participant.status = EventReferralParticipant.STATUS_ACTIVE
         participant.blocked_at = None
         participant.blocked_reason = ''

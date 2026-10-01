@@ -662,11 +662,13 @@ def _fetch_mom_data(period_months):
             """
             SELECT DATE_FORMAT(created_at, '%%b %%y') AS label, COUNT(*) AS total
             FROM agents
-            WHERE created_at >= DATE_SUB(LAST_DAY(UTC_TIMESTAMP()), INTERVAL %s MONTH)
+            WHERE created_at >= DATE_SUB(LAST_DAY(%s), INTERVAL %s MONTH)
             GROUP BY label, YEAR(created_at), MONTH(created_at)
             ORDER BY YEAR(created_at) ASC, MONTH(created_at) ASC
             """,
-            [period_months],
+            # created_at is naive IST (USE_TZ=False): compare with local now,
+            # not UTC_TIMESTAMP() (5h30m behind).
+            [datetime.now(), period_months],
         )
         rows = cursor.fetchall()
 
@@ -717,22 +719,21 @@ def _fetch_renewal_stats():
 
     Returns dict with keys: expired, next_30, next_60, next_90.
     """
+    # expires_at is naive IST (USE_TZ=False): compare with local now, not
+    # UTC_TIMESTAMP() (5h30m behind). Python datetimes keep it DB-agnostic.
+    now = datetime.now()
+    day = timedelta(days=1)
     with connection.cursor() as cursor:
         cursor.execute(
             """
             SELECT
-                SUM(CASE WHEN expires_at < UTC_TIMESTAMP() THEN 1 ELSE 0 END) AS expired,
-                SUM(CASE WHEN expires_at BETWEEN UTC_TIMESTAMP()
-                                              AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY)
-                         THEN 1 ELSE 0 END) AS next_30,
-                SUM(CASE WHEN expires_at BETWEEN DATE_ADD(UTC_TIMESTAMP(), INTERVAL 31 DAY)
-                                              AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 60 DAY)
-                         THEN 1 ELSE 0 END) AS next_60,
-                SUM(CASE WHEN expires_at BETWEEN DATE_ADD(UTC_TIMESTAMP(), INTERVAL 61 DAY)
-                                              AND DATE_ADD(UTC_TIMESTAMP(), INTERVAL 90 DAY)
-                         THEN 1 ELSE 0 END) AS next_90
+                SUM(CASE WHEN expires_at < %s THEN 1 ELSE 0 END) AS expired,
+                SUM(CASE WHEN expires_at BETWEEN %s AND %s THEN 1 ELSE 0 END) AS next_30,
+                SUM(CASE WHEN expires_at BETWEEN %s AND %s THEN 1 ELSE 0 END) AS next_60,
+                SUM(CASE WHEN expires_at BETWEEN %s AND %s THEN 1 ELSE 0 END) AS next_90
             FROM agent_subscriptions
-            """
+            """,
+            [now, now, now + 30 * day, now + 31 * day, now + 60 * day, now + 61 * day, now + 90 * day],
         )
         row = cursor.fetchone()
 

@@ -90,3 +90,22 @@ class AgentPaymentGateMiddleware:
             return redirect(reverse('agents:chooseplan'))
 
         return self.get_response(request)
+
+
+class BackgroundJobsMiddleware:
+    """After each response, start any scheduled job that is due (invoice
+    retry, Paldi expirations). Replaces cron on this host; see
+    apps/agents/services/background_jobs.py."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        try:
+            from apps.agents.services.background_jobs import maybe_run_due_jobs
+            maybe_run_due_jobs()
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception('Background job trigger failed')
+        return response

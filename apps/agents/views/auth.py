@@ -336,7 +336,7 @@ def app_upgrade_handoff(request):
     Open the website upgrade checkout from a one-time app link.
 
     GET only renders an auto-submitting form so a browser prefetch cannot
-    burn the token. POST logs the agent in, then marks the token used, and
+    burn the token. POST marks the token used, then logs the agent in, and
     opens that agent's payment card. The password is never sent.
     """
     from apps.agents.services.account_auth import (
@@ -382,6 +382,33 @@ def app_upgrade_handoff(request):
             )
             return redirect('agents:agent_login')
 
+    from apps.agents.services.account_auth import is_non_agent_portal_user
+    if is_non_agent_portal_user(django_user):
+        logger.warning("App upgrade handoff refused for portal user #%s (agent #%s)", django_user.pk, agent.pk)
+        portal_error(request, "Please log in to continue with your upgrade.", PORTAL_AGENT)
+        return redirect('agents:agent_login')
+
+    # Someone else is signed in on this browser: ask before replacing their
+    # session (a link sent by another person used to swap it silently).
+    if (
+        request.user.is_authenticated
+        and request.user.pk != django_user.pk
+        and request.POST.get('confirm_switch') != '1'
+    ):
+        return render(request, 'agents/app_upgrade_handoff.html', {
+            'token': (raw or '').strip(),
+            'switch_from': request.user.email or request.user.get_username(),
+            'switch_to': agent.fullname or agent.email,
+            'hide_site_nav': True,
+            'hide_footer': True,
+            'hide_chatbot': True,
+        })
+
+    # Burn the one-time token before opening a session, so two concurrent
+    # POSTs of the same link cannot both log in.
+    if not mark_plan_upgrade_handoff_used(row):
+        return _upgrade_link_expired(request)
+
     try:
         if request.user.is_authenticated:
             logout(request)
@@ -395,7 +422,6 @@ def app_upgrade_handoff(request):
         )
         return redirect('agents:agent_login')
 
-    mark_plan_upgrade_handoff_used(row)
     logger.info("App upgrade handoff logged in agent #%s for plan %s.", agent.pk, row.plan_slug)
 
     if agent_can_access_dashboard(agent):

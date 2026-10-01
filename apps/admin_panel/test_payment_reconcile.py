@@ -153,11 +153,14 @@ class TestPaymentReconcileViews(unittest.TestCase):
                                 self.assertIsNone(data['db_match']['agent'])
 
     def test_execute_reconcile_existing_agent(self):
+        # Reconcile now resolves the agent from the paid order's own
+        # subscription (see test_payment_reconcile_safety.py for the DB-backed
+        # cases); this checks the view wiring and response shape.
         req = self.rf.post(
             '/admin/payments/reconcile/execute/',
             data=json.dumps({
-                'payment_id': 'pay_TEST999',
-                'order_id': 'order_TEST999',
+                'payment_id': 'pay_TEST99900001',
+                'order_id': 'order_TEST99900001',
                 'email': 'existing@example.com',
                 'plan_type': 'starter',
                 'plan_name': "Starter's Plan",
@@ -166,8 +169,8 @@ class TestPaymentReconcileViews(unittest.TestCase):
         )
 
         fake_payment = {
-            'id': 'pay_TEST999',
-            'order_id': 'order_TEST999',
+            'id': 'pay_TEST99900001',
+            'order_id': 'order_TEST99900001',
             'amount': 235900,
             'status': 'captured',
             'email': 'existing@example.com',
@@ -182,27 +185,29 @@ class TestPaymentReconcileViews(unittest.TestCase):
         mock_agent.email = 'existing@example.com'
 
         mock_sub = MagicMock()
-        mock_sub.id = 88
+        mock_sub.pk = 88
         mock_sub.agent = mock_agent
+        mock_sub.payment_status = 'pending'
+        mock_sub.registration_amount = '2359.00'
 
         mock_invoice = MagicMock()
         mock_invoice.invoice_number = 'PA/26-27/00077'
         mock_invoice.synced_to_sheet = True
 
-        with patch('apps.admin_panel.views.payment_reconcile._get_admin_from_session', return_value={'id': 1}):
-            with patch('apps.admin_panel.views.payment_reconcile.razorpay_client', return_value=mock_client):
-                with patch('apps.agents.models.Agent.objects.filter') as mock_agent_filter:
-                    mock_agent_filter.return_value.first.return_value = mock_agent
-                    with patch('apps.agents.models.AgentSubscription.objects.filter') as mock_sub_filter:
-                        mock_sub_filter.return_value.order_by.return_value.first.return_value = mock_sub
-                        with patch('apps.admin_panel.views.payment_reconcile.create_or_link_django_user'):
-                            with patch('apps.admin_panel.views.payment_reconcile.fulfill_invoice_and_welcome', return_value=mock_invoice):
-                                resp = reconcile_execute_payment(req)
-                                self.assertEqual(resp.status_code, 200)
-                                data = json.loads(resp.content)
-                                self.assertTrue(data['success'])
-                                self.assertEqual(data['invoice_number'], 'PA/26-27/00077')
-                                self.assertEqual(data['agent_name'], 'Existing Agent')
+        view = 'apps.admin_panel.views.payment_reconcile'
+        with patch(f'{view}._get_admin_from_session', return_value={'id': 1}), \
+             patch(f'{view}._get_razorpay_clients', return_value=[('live', mock_client)]), \
+             patch(f'{view}._reconcile_subscription', return_value=(mock_agent, mock_sub, None)), \
+             patch('apps.agents.models.AgentSubscription.objects.filter') as used_filter, \
+             patch('apps.agents.views.registration._activate_paid_subscription', return_value=(mock_sub, True)), \
+             patch(f'{view}.fulfill_invoice_and_welcome', return_value=mock_invoice):
+            used_filter.return_value.first.return_value = None
+            resp = reconcile_execute_payment(req)
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.content)
+        self.assertTrue(data['success'], data)
+        self.assertEqual(data['invoice_number'], 'PA/26-27/00077')
+        self.assertEqual(data['agent_name'], 'Existing Agent')
 
     def test_inspect_order_id_with_messy_input(self):
         req = self.rf.post(

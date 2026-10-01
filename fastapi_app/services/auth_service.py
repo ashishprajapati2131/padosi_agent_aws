@@ -13,7 +13,7 @@ import time
 login_attempts_store = {}
 
 # Mirrors apps/agents/views/auth.py: the only agent statuses that deny a session.
-BLOCKED_AGENT_STATUSES = ('suspended', 'blacklisted', 'rejected')
+BLOCKED_AGENT_STATUSES = ('suspended', 'blacklisted', 'rejected', 'deleted')
 
 def check_login_throttle(ip: str) -> bool:
     record = login_attempts_store.get(ip)
@@ -35,6 +35,34 @@ def record_login_attempt(ip: str):
 
 def clear_login_throttle(ip: str):
     login_attempts_store.pop(ip, None)
+
+
+# Per-account limit shared with the website login (Django cache, 10 failures
+# per 15 minutes per email). The per-IP limit above is in-process only and is
+# defeated by changing IP; guessing one account's password is not.
+def account_login_allowed(email: str) -> bool:
+    try:
+        from apps.agents.views.auth import check_email_login_throttle
+        return check_email_login_throttle(email)
+    except Exception:
+        return True
+
+
+def record_account_login_failure(email: str):
+    try:
+        from apps.agents.views.auth import record_email_login_failure
+        record_email_login_failure(email)
+    except Exception:
+        pass
+
+
+def clear_account_login_failures(email: str):
+    try:
+        from django.core.cache import cache
+        from apps.agents.views.auth import _email_throttle_key
+        cache.delete(_email_throttle_key(email))
+    except Exception:
+        pass
 
 class AuthService:
     def __init__(self, user_repo: UserRepository, agent_repo: AgentRepository, db: Session):
@@ -62,6 +90,12 @@ class AuthService:
             return JSONResponse(
                 status_code=400,
                 content={"success": False, "message": "Please enter both email and password."}
+            )
+
+        if not account_login_allowed(request.email):
+            return JSONResponse(
+                status_code=429,
+                content={"success": False, "message": "Too many failed attempts for this account. Please wait 15 minutes or reset your password."}
             )
 
         # 1. Fetch User by email from primary `users` table
@@ -130,12 +164,12 @@ class AuthService:
                                 password=get_password_hash(request.password),
                                 role='agent',
                                 status='active',
-                                email_verified_at=datetime.utcnow(),
+                                email_verified_at=datetime.now(),
                             )
                             self.db.add(user)
-                            self.db.flush()
-                            if not agent.user_id:
-                                agent.user_id = user.id
+                            # agents.user_id is the Django auth_user id; storing this
+                            # users.id there linked the agent to whichever auth_user
+                            # happened to share that number.
                             self.db.commit()
                         except Exception:
                             self.db.rollback()
@@ -143,6 +177,7 @@ class AuthService:
 
         if not user or not password_valid:
             record_login_attempt(ip)
+            record_account_login_failure(request.email)
             return JSONResponse(
                 status_code=401,
                 content={"success": False, "message": "Please Enter Valid Login Details"}
@@ -202,7 +237,7 @@ class AuthService:
         clear_login_throttle(ip)
 
         # Update last login time
-        user.last_login_at = datetime.utcnow()
+        user.last_login_at = datetime.now()  # same naive IST clock as Django
 
         # 6. Generate and register unique JWT token in DB transactionally
         try:
@@ -219,6 +254,7 @@ class AuthService:
                 status_code=500,
                 content={"success": False, "message": "Authentication failed due to database transaction error."}
             )
+        clear_account_login_failures(request.email)
 
         return JSONResponse(
             status_code=200,

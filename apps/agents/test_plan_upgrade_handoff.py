@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 from django.contrib.auth.models import User
@@ -115,14 +116,32 @@ class AppUpgradeHandoffTests(TestCase):
         self.assertIn('/agent-login/', resp['Location'])
         self.assertNotIn('_auth_user_id', self.client.session)
 
-    def test_handoff_switches_away_from_another_logged_in_agent(self):
+    def test_handoff_asks_before_switching_away_from_another_logged_in_agent(self):
         target = _paid_agent()
         other = _paid_agent(email='other@example.com', mobile='9876500101')
         self.client.force_login(other.user)
         raw = _store_token(target)
-        resp = self._open(raw)
+
+        # A link sent by someone else must not silently replace this session.
+        ask = self._open(raw)
+        self.assertEqual(ask.status_code, 200)
+        self.assertContains(ask, 'confirm_switch')
+        self.assertContains(ask, 'other@example.com')
+        self.assertEqual(self.client.session['_auth_user_id'], str(other.user_id))
+        self.assertIsNone(PlanUpgradeHandoff.objects.get(agent=target).used_at)
+
+        resp = self.client.post(reverse('agents:app_upgrade_handoff'), {'token': raw, 'confirm_switch': '1'})
         self.assertIn('upgrade=professional', resp['Location'])
         self.assertEqual(self.client.session['_auth_user_id'], str(target.user_id))
+
+    def test_token_is_burned_before_the_session_is_opened(self):
+        agent = _paid_agent()
+        raw = _store_token(agent)
+        from apps.agents.services import plan_upgrade_handoff as svc
+        with patch.object(svc, 'mark_plan_upgrade_handoff_used', return_value=False):
+            resp = self._open(raw)  # another request already used it
+        self.assertIn('/agent-login/', resp['Location'])
+        self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_blocked_agent_is_not_logged_in(self):
         agent = _paid_agent()

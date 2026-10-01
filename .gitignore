@@ -21,3 +21,12 @@ blacklisted_agents_insert.sql
 *history*.txt
 git_log.txt
 backups/
+
+# Secrets and database dumps anywhere in the tree (backups normally go to backups/)
+.env.*
+!.env.example
+*.sql.gz
+*.sqlite3
+*.sqlite3.gz
+*.gz
+*.zip

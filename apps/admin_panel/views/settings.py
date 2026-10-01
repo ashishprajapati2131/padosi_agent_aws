@@ -334,7 +334,7 @@ SETTINGS_FORM_KEYS = {
         'seo_meta_title', 'seo_meta_description', 'seo_keywords',
         'seo_og_title', 'seo_og_description',
     },
-    'security': {'rate_limit_clicks', 'rate_limit_timeframe'},
+    'security': {'rate_limit_clicks', 'rate_limit_timeframe', 'subscription_expiry_enforced'},
 }
 
 
@@ -413,6 +413,7 @@ def security(request):
     context = {
         'rate_limit_clicks': SiteSetting.get_value('rate_limit_clicks', '10'),
         'rate_limit_timeframe': SiteSetting.get_value('rate_limit_timeframe', '2'),
+        'subscription_expiry_enforced': str(SiteSetting.get_value('subscription_expiry_enforced', '0')),
     }
     return render(request, 'admin/settings/security.html', context)
 

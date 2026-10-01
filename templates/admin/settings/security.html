@@ -40,6 +40,25 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Subscription expiry switch (audit 2026-10-01 F-09) -->
+            <div class="card mb-4">
+                <div class="card-header bg-white py-3">
+                    <h6 class="m-0 font-weight-bold"><i class="fa-solid fa-hourglass-end me-2"></i> Subscription Expiry</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        When ON, an agent whose paid plan has passed its expiry date loses dashboard access,
+                        leaves the agent directory and is sent to the plans page to renew. Subscriptions
+                        without an expiry date are never affected. Keep OFF until agents have been told.
+                    </p>
+                    <label class="form-label" style="font-weight: 600;">Enforce subscription expiry</label>
+                    <select class="form-select" name="subscription_expiry_enforced" style="max-width: 220px;">
+                        <option value="0" {% if subscription_expiry_enforced != '1' %}selected{% endif %}>OFF (no expiry)</option>
+                        <option value="1" {% if subscription_expiry_enforced == '1' %}selected{% endif %}>ON (enforce expiry)</option>
+                    </select>
+                </div>
+            </div>
         </form>
     </div>
     

@@ -76,6 +76,54 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
     return query, params
 
 
+class _RawAgentPage:
+    """Lazy rows for Paginator: COUNT(*) for the total and LIMIT/OFFSET for
+    one page, instead of loading every agent (with three correlated
+    subqueries each) to show 25 (audit 2026-10-01 F-37)."""
+
+    def __init__(self, query, params):
+        self.query = query
+        self.params = list(params)
+        self._count = None
+
+    def count(self):
+        if self._count is None:
+            body = self.query[self.query.index('FROM agents AS a'):]
+            order_at = body.rfind(' ORDER BY ')
+            if order_at != -1:
+                body = body[:order_at]
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute('SELECT COUNT(*) ' + body, self.params)
+                    self._count = int(cursor.fetchone()[0] or 0)
+            except Exception as e:
+                logger.error(f"Error counting agents list: {e}")
+                self._count = 0
+        return self._count
+
+    def __len__(self):
+        return self.count()
+
+    def __getitem__(self, key):
+        if not isinstance(key, slice):
+            rows = self[key:key + 1]
+            if not rows:
+                raise IndexError(key)
+            return rows[0]
+        start = max(key.start or 0, 0)
+        stop = self.count() if key.stop is None else key.stop
+        if stop <= start:
+            return []
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(self.query + ' LIMIT %s OFFSET %s', self.params + [stop - start, start])
+                columns = [col[0] for col in cursor.description]
+                return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error fetching agents list: {e}")
+            return []
+
+
 def agent_list(request):
     """
     Phase 3B: Active Agents Listing View
@@ -91,22 +139,13 @@ def agent_list(request):
     promo_code_filter = request.GET.get('promo_code', '')
 
     query, params = _build_agent_list_query(search, plan_filter, status_filter, city_filter, promo_code_filter)
-    
-    agents = []
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(query, params)
-            columns = [col[0] for col in cursor.description]
-            agents = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    except Exception as e:
-        logger.error(f"Error fetching agents list: {e}")
 
-    paginator = Paginator(agents, 25)
+    paginator = Paginator(_RawAgentPage(query, params), 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'agents': agents,
+        'agents': page_obj.object_list,
         'search': search,
         'plan_filter': plan_filter,
         'status_filter': status_filter,
@@ -230,6 +269,33 @@ def manage_agent(request, id):
     return render(request, 'admin/agents/manage.html', context)
 
 
+# Every status an agent row can legitimately hold. Anything else is a typo or
+# tampering and would silently hide the agent from every admin queue.
+AGENT_STATUSES = (
+    'incomplete', 'pending_payment', 'pending_approval', 'pending_admin_approval',
+    'pending_accounts_payment', 'event_challenge', 'active', 'inactive', 'suspended',
+    'blacklisted', 'rejected', 'deleted', 'expired',
+)
+# What a staff admin with only the Approvals permission may do from the queue.
+QUEUE_DECISIONS = ('active', 'suspended', 'rejected')
+
+
+def _admin_can_manage_all_agents(request):
+    admin = getattr(request, 'admin_user', None)  # set by AdminPermissionMiddleware
+    if admin is None or getattr(admin, 'role', '') == 'super':
+        return True
+    perms = admin.permissions if isinstance(admin.permissions, list) else []
+    return 'agents' in perms
+
+
+def _payment_note(agent_id):
+    from apps.agents.models import AgentSubscription
+    sub = AgentSubscription.objects.filter(agent_id=agent_id, payment_status='completed').order_by('-created_at').first()
+    if not sub:
+        return 'no completed payment'
+    return f'paid subscription #{sub.pk} ({sub.selected_plan}, order {sub.razorpay_order_id or "-"})'
+
+
 def toggle_status(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Invalid request method'})
@@ -247,6 +313,8 @@ def toggle_status(request):
 
     if not agent_id or not new_status:
         return JsonResponse({'success': False, 'message': 'Missing data'})
+    if new_status not in AGENT_STATUSES:
+        return JsonResponse({'success': False, 'message': 'Unknown status.'}, status=400)
 
     # Fetch agent to get old_status
     try:
@@ -256,7 +324,17 @@ def toggle_status(request):
             if not row:
                 return JsonResponse({'success': False, 'message': 'Agent not found'})
             old_status = row[0]
-            
+
+            # Approvals-only staff decide queue entries; they cannot change
+            # other agents (the route also admits the Approvals permission).
+            if not _admin_can_manage_all_agents(request) and not (
+                old_status == 'pending_approval' and new_status in QUEUE_DECISIONS
+            ):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'You can only approve or reject agents awaiting approval.',
+                }, status=403)
+
             # Update status
             cursor.execute("UPDATE agents SET status = %s WHERE id = %s", [new_status, agent_id])
     except Exception as e:
@@ -287,9 +365,15 @@ def toggle_status(request):
                 updated_at=timezone.now(),
             )
         except Exception as e:
+            # The status is already saved; failing here returned an error for
+            # a change that had happened.
             logger.error("AUDIT LOG ERROR: %r", e)
-            raise
 
+    from apps.admin_panel.models import AdminActivityLog
+    AdminActivityLog.log(
+        f'Agent status {old_status} -> {new_status}', 'Agent', int(agent_id),
+        details=_payment_note(agent_id), request=request,
+    )
     return JsonResponse({'success': True})
 
 
@@ -318,8 +402,22 @@ def bulk_action_agents(request):
                 rows = cursor.fetchall()
                 old_statuses = {row[0]: row[1] for row in rows}
 
+                # Bulk approve is for the approval queue only: an arbitrary id
+                # list could activate unpaid or suspended agents.
+                agent_ids = [str(aid) for aid, st in old_statuses.items() if st == 'pending_approval']
+                skipped = len(old_statuses) - len(agent_ids)
+                if not agent_ids:
+                    messages.error(request, 'None of the selected agents are awaiting approval.')
+                    return redirect('admin_agents_approvals')
+                format_strings = ','.join(['%s'] * len(agent_ids))
+
                 # Update statuses
                 cursor.execute(f"UPDATE agents SET status = 'active' WHERE id IN ({format_strings})", agent_ids)
+
+                from apps.admin_panel.models import AdminActivityLog
+                for aid in agent_ids:
+                    AdminActivityLog.log('Agent status pending_approval -> active (bulk)', 'Agent', int(aid),
+                                         details=_payment_note(aid), request=request)
 
                 for aid in agent_ids:
                     aid_int = int(aid)
@@ -337,7 +435,8 @@ def bulk_action_agents(request):
                         created_at=timezone.now(),
                         updated_at=timezone.now(),
                     )
-            messages.success(request, 'Selected agents have been approved.')
+            messages.success(request, 'Selected agents have been approved.'
+                             + (f' {skipped} not awaiting approval were skipped.' if skipped else ''))
         except Exception as e:
             logger.error(f"Bulk approve error: {e}")
             messages.error(request, 'Failed to bulk approve agents.')
@@ -586,76 +685,51 @@ def update_plan(request):
         
     agent_id = int(agent_id)
 
+    from datetime import timedelta
+    from django.db import transaction
+    from apps.agents.models import Agent, AgentSubscription
+    from apps.admin_panel.models import AdminActivityLog
+
+    # Map the chosen plan to agents.plan_type (what feature unlocks read).
+    plan_slug = plan_slug_from_name(new_plan or '')
+    if not new_plan:
+        plan_type = ''              # "No Plan" (was 'standard', i.e. Starter features)
+    elif plan_slug == 'starter':
+        plan_type = 'basic'
+    elif plan_slug in ('professional', 'exclusive'):
+        plan_type = plan_slug       # exclusive used to fall through to 'standard'
+    elif 'trial' in new_plan.lower():
+        plan_type = 'free_trial'
+    else:
+        plan_type = 'standard'
+
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("SHOW COLUMNS FROM agent_subscriptions")
-            columns = [row[0] for row in cursor.fetchall()]
-            
-            exists_query = "SELECT id FROM agent_subscriptions WHERE agent_id = %s"
-            cursor.execute(exists_query, [agent_id])
-            exists = bool(cursor.fetchone())
-
-            if exists:
-                update_cols = ["selected_plan = %s"]
-                update_params = [new_plan]
-                
-                if 'updated_at' in columns:
-                    update_cols.append("updated_at = %s")
-                    update_params.append(timezone.now())
-                    
-                update_params.append(agent_id)
-                update_sql = f"UPDATE agent_subscriptions SET {', '.join(update_cols)} WHERE agent_id = %s"
-                cursor.execute(update_sql, update_params)
-            else:
-                payload = {
-                    'agent_id': agent_id,
-                    'selected_plan': new_plan,
-                    'registration_amount': 0,
-                    'status': 'active',
-                    'payment_status': 'completed',
-                    'created_at': timezone.now(),
-                    'updated_at': timezone.now(),
-                }
-                
-                if 'transaction_id' in columns:
-                    payload['transaction_id'] = 'ADMIN_MANUAL'
-                if 'is_active' in columns:
-                    payload['is_active'] = 1
-                if 'amount' in columns:
-                    payload['amount'] = 0
-                if 'price' in columns:
-                    payload['price'] = 0
-                if 'fee' in columns:
-                    payload['fee'] = 0
-                if 'plan_amount' in columns:
-                    payload['plan_amount'] = 0
-                    
-                final_payload = {k: v for k, v in payload.items() if k in columns}
-                
-                keys = list(final_payload.keys())
-                values = list(final_payload.values())
-                placeholders = ', '.join(['%s'] * len(keys))
-                keys_str = ', '.join(keys)
-                
-                insert_sql = f"INSERT INTO agent_subscriptions ({keys_str}) VALUES ({placeholders})"
-                cursor.execute(insert_sql, values)
-
-            # Map selected plan name to plan_type for agents table
-            plan_slug = plan_slug_from_name(new_plan or '')
-            if plan_slug == 'starter':
-                plan_type = 'basic'
-            elif plan_slug == 'professional':
-                plan_type = 'professional'
-            elif 'trial' in (new_plan or '').lower():
-                plan_type = 'free_trial'
-            else:
-                plan_type = 'standard'
-
-            cursor.execute(
-                "UPDATE agents SET plan_type = %s, updated_at = %s WHERE id = %s",
-                [plan_type, timezone.now(), agent_id]
+        with transaction.atomic():
+            # Change the agent's current subscription only. Updating every row
+            # rewrote the plan of all past payments (and their invoices).
+            current = (
+                AgentSubscription.objects.filter(agent_id=agent_id, status='active').order_by('-created_at').first()
+                or AgentSubscription.objects.filter(agent_id=agent_id).order_by('-created_at').first()
             )
+            old_plan = current.selected_plan if current else None
+            if current:
+                current.selected_plan = new_plan
+                current.save(update_fields=['selected_plan', 'updated_at'])
+            elif new_plan:
+                now = timezone.now()
+                AgentSubscription.objects.create(
+                    agent_id=agent_id, selected_plan=new_plan, registration_amount=0,
+                    payment_status='completed', status='active',
+                    starts_at=now, expires_at=now + timedelta(days=365),
+                )
 
+            Agent.objects.filter(pk=agent_id).update(plan_type=plan_type, updated_at=timezone.now())
+
+        AdminActivityLog.log(
+            'Admin changed agent plan', 'Agent', agent_id,
+            details=f'{old_plan or "(none)"} -> {new_plan or "(no plan)"}; plan_type={plan_type or "(none)"}',
+            request=request,
+        )
     except Exception as e:
         logger.error(f"Error updating agent plan: {e}")
         messages.error(request, 'Database error updating plan.')
@@ -886,7 +960,10 @@ def _build_queue_query(status_filter, search, plan_filter, city_filter, event_fi
         FROM agents as a
         LEFT JOIN agent_profiles as ap ON a.id = ap.agent_id
         LEFT JOIN agent_subscriptions as s ON a.id = s.agent_id
-            AND s.id = (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
+            AND s.id = COALESCE(
+                (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id AND payment_status = 'completed'),
+                (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
+            )
         WHERE 1=1
     '''
     params = []
@@ -1283,22 +1360,24 @@ def admin_verify_pending_payment(request):
     if not agent:
         return JsonResponse({'success': False, 'message': 'Agent not found.'}, status=404)
 
-    # Check if agent already has a completed subscription
     from apps.agents.models import Invoice
-    if Invoice.objects.filter(agent_email=agent.email, payment_status='paid').exists():
+
+    # Check for pending/failed subscription with razorpay_order_id
+    subscription = AgentSubscription.objects.filter(
+        agent=agent,
+        payment_status__in=['pending', 'failed'],
+    ).exclude(razorpay_order_id__isnull=True).exclude(razorpay_order_id='').order_by('-created_at').first()
+
+    # A paid invoice no longer short-circuits: an already-active agent can have
+    # a paid upgrade / renewal order whose callback and webhook were both lost.
+    if not subscription and Invoice.objects.filter(agent_email=agent.email, payment_status='paid').exists():
         return JsonResponse({
             'success': True,
             'already_active': True,
             'message': f'Agent {agent.fullname} is already activated with a paid invoice.'
         })
 
-    # Check for pending/failed subscription with razorpay_order_id
-    subscription = AgentSubscription.objects.filter(
-        agent=agent,
-        payment_status__in=['pending', 'failed'],
-    ).order_by('-created_at').first()
-
-    if not subscription or not subscription.razorpay_order_id:
+    if not subscription:
         return JsonResponse({
             'success': False,
             'message': f'No pending payment found for {agent.fullname}. No Razorpay order was initiated.'
@@ -1308,7 +1387,7 @@ def admin_verify_pending_payment(request):
     from apps.agents.views.registration import verify_and_activate_pending_payment
     
     try:
-        result = verify_and_activate_pending_payment(agent)
+        result = verify_and_activate_pending_payment(agent, include_paid_agents=True)
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Error during manual payment verification for {agent.email}: {e}")
@@ -1320,13 +1399,25 @@ def admin_verify_pending_payment(request):
     if result:
         agent.refresh_from_db()
         logger.info(f"[admin_verify_pending_payment] Admin #{admin_id} successfully verified payment for agent {agent.email} (ID: {agent.id})")
+        from apps.admin_panel.models import AdminActivityLog
+        AdminActivityLog.log('Verified pending payment', 'Agent', agent.pk,
+                             details=f'order={subscription.razorpay_order_id} status={agent.status}', request=request)
         return JsonResponse({
             'success': True,
-            'message': f'Payment verified successfully for {agent.fullname}! Agent moved to Pending Approval queue.',
+            'message': (f'Payment verified successfully for {agent.fullname}! Agent moved to Pending Approval queue.'
+                        if agent.status == 'pending_approval' else
+                        f'Payment verified successfully for {agent.fullname}! Plan updated (status: {agent.status}).'),
             'agent_status': agent.status,
         })
     else:
         logger.info(f"[admin_verify_pending_payment] Admin #{admin_id} attempted verification for agent {agent.email} (ID: {agent.id}) — payment NOT found on Razorpay")
+        from apps.agents.services.account_auth import agent_has_completed_payment
+        if agent_has_completed_payment(agent):
+            return JsonResponse({
+                'success': True,
+                'already_active': True,
+                'message': f'Agent {agent.fullname} is already activated. The newer order {subscription.razorpay_order_id} has no payment on Razorpay.'
+            })
         return JsonResponse({
             'success': False,
             'message': f'Payment NOT received from Razorpay for order {subscription.razorpay_order_id}. The user may not have completed the payment on the Razorpay checkout page.'

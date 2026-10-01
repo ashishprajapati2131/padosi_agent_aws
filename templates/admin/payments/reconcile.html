@@ -243,7 +243,7 @@
                                     </td>
                                     <td class="pe-4 text-end">
                                         <button type="button" class="btn btn-outline-primary btn-sm fw-semibold"
-                                                onclick="loadAndInspect('{{ a.email }}')" style="font-size:11px; padding:4px 10px; border-radius:6px;">
+                                                data-email="{{ a.email }}" onclick="loadAndInspect(this.dataset.email)" style="font-size:11px; padding:4px 10px; border-radius:6px;">
                                             <i class="fa-solid fa-bolt me-1"></i> Check & Reconcile
                                         </button>
                                     </td>
@@ -297,7 +297,7 @@
                                     </td>
                                     <td class="pe-4 text-end">
                                         <button type="button" class="btn btn-outline-primary btn-sm fw-semibold"
-                                                onclick="loadAndInspect('{{ d.email }}')" style="font-size:11px; padding:4px 10px; border-radius:6px;">
+                                                data-email="{{ d.email }}" onclick="loadAndInspect(this.dataset.email)" style="font-size:11px; padding:4px 10px; border-radius:6px;">
                                             <i class="fa-solid fa-magnifying-glass me-1"></i> Check Payment
                                         </button>
                                     </td>
@@ -420,6 +420,14 @@ function handleInspectSubmit(e) {
     });
 }
 
+// Every server / Razorpay value is untrusted (agent names, payer email,
+// receipt...): escape it before it goes into innerHTML.
+function esc(value) {
+    return String(value === undefined || value === null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function renderInspectResult(data) {
     var card = document.getElementById('inspectResultCard');
     var body = document.getElementById('inspectCardBody');
@@ -433,7 +441,7 @@ function renderInspectResult(data) {
     if (data.has_razorpay && rz) {
         var statusBadge = rz.is_captured 
             ? '<span class="badge-pill-success"><i class="fa-solid fa-check me-1"></i>CAPTURED (PAID)</span>'
-            : '<span class="badge-pill-danger"><i class="fa-solid fa-xmark me-1"></i>' + (rz.status || 'UNKNOWN').toUpperCase() + '</span>';
+            : '<span class="badge-pill-danger"><i class="fa-solid fa-xmark me-1"></i>' + esc((rz.status || 'UNKNOWN').toUpperCase()) + '</span>';
 
         html += '<div class="row g-4">';
         
@@ -446,19 +454,19 @@ function renderInspectResult(data) {
         html += '</div>';
 
         html += '<table class="table table-sm table-borderless mb-0" style="font-size:12px;">';
-        html += '<tr><td class="text-muted" style="width:130px;">Payment ID:</td><td><code>' + (rz.payment_id || 'N/A') + '</code></td></tr>';
+        html += '<tr><td class="text-muted" style="width:130px;">Payment ID:</td><td><code>' + esc(rz.payment_id || 'N/A') + '</code></td></tr>';
         if (rz.order_id) {
-            html += '<tr><td class="text-muted">Order ID:</td><td><code>' + rz.order_id + '</code></td></tr>';
+            html += '<tr><td class="text-muted">Order ID:</td><td><code>' + esc(rz.order_id) + '</code></td></tr>';
         }
         if (rz.receipt) {
-            html += '<tr><td class="text-muted">Order Receipt:</td><td><code>' + rz.receipt + '</code></td></tr>';
+            html += '<tr><td class="text-muted">Order Receipt:</td><td><code>' + esc(rz.receipt) + '</code></td></tr>';
         }
         var amt = typeof rz.amount_rupees === 'number' ? rz.amount_rupees.toLocaleString('en-IN') : (rz.amount_rupees || '0');
-        html += '<tr><td class="text-muted">Amount Paid:</td><td><strong class="text-success fs-6">₹' + amt + '</strong></td></tr>';
-        html += '<tr><td class="text-muted">Customer Email:</td><td><strong>' + (rz.email || 'N/A') + '</strong></td></tr>';
-        html += '<tr><td class="text-muted">Customer Mobile:</td><td>' + (rz.contact || 'N/A') + '</td></tr>';
-        html += '<tr><td class="text-muted">Payment Method:</td><td>' + (rz.method || 'N/A').toUpperCase() + '</td></tr>';
-        html += '<tr><td class="text-muted">Inferred Plan:</td><td><span class="badge bg-primary">' + (rz.inferred_plan_name || "Starter's Plan") + '</span></td></tr>';
+        html += '<tr><td class="text-muted">Amount Paid:</td><td><strong class="text-success fs-6">₹' + esc(amt) + '</strong></td></tr>';
+        html += '<tr><td class="text-muted">Customer Email:</td><td><strong>' + esc(rz.email || 'N/A') + '</strong></td></tr>';
+        html += '<tr><td class="text-muted">Customer Mobile:</td><td>' + esc(rz.contact || 'N/A') + '</td></tr>';
+        html += '<tr><td class="text-muted">Payment Method:</td><td>' + esc((rz.method || 'N/A').toUpperCase()) + '</td></tr>';
+        html += '<tr><td class="text-muted">Inferred Plan:</td><td><span class="badge bg-primary">' + esc(rz.inferred_plan_name || "Starter's Plan") + '</span></td></tr>';
         html += '</table>';
         html += '</div></div>';
 
@@ -470,31 +478,31 @@ function renderInspectResult(data) {
 
         if (db && db.agent) {
             html += '<div class="alert alert-success py-2 px-3 mb-3" style="font-size:12px;">';
-            html += '<strong>Agent Record Found:</strong> ' + db.agent.name + ' (ID: #' + db.agent.id + ')<br>';
-            html += 'Current Status: <span class="badge bg-secondary">' + db.agent.status + '</span>';
+            html += '<strong>Agent Record Found:</strong> ' + esc(db.agent.name) + ' (ID: #' + esc(db.agent.id) + ')<br>';
+            html += 'Current Status: <span class="badge bg-secondary">' + esc(db.agent.status) + '</span>';
             html += '</div>';
         } else if (db && db.draft) {
             html += '<div class="alert alert-warning py-2 px-3 mb-3" style="font-size:12px;">';
-            html += '<strong>Agent Draft Found:</strong> ' + db.draft.name + ' (Draft ID: #' + db.draft.id + ')<br>';
-            html += 'Draft reached step ' + (db.draft.step || 1) + '. Will be upgraded to full Agent.';
+            html += '<strong>Agent Draft Found:</strong> ' + esc(db.draft.name) + ' (Draft ID: #' + esc(db.draft.id) + ')<br>';
+            html += 'Draft reached step ' + esc(db.draft.step || 1) + '. Will be upgraded to full Agent.';
             html += '</div>';
         } else {
             html += '<div class="alert alert-info py-2 px-3 mb-3" style="font-size:12px;">';
-            html += '<strong>Orphan Payment (No local Agent/Draft):</strong><br>';
-            html += 'The system will automatically create the Agent record and link this payment.';
+            html += '<strong>No local Agent/Draft matched this payment.</strong><br>';
+            html += 'Reconcile links a payment only to its own registration or to a registered email. Search by the email the agent registered with.';
             html += '</div>';
         }
 
         if (db && db.invoice) {
             html += '<div class="p-2 mb-3 rounded" style="background:#f0fdf4; border:1px solid #bbf7d0; font-size:12px;">';
-            html += '📄 <strong>Invoice already exists:</strong> ' + db.invoice.invoice_number + ' (₹' + db.invoice.amount + ')';
+            html += '📄 <strong>Invoice already exists:</strong> ' + esc(db.invoice.invoice_number) + ' (₹' + esc(db.invoice.amount) + ')';
             html += db.invoice.synced_to_sheet ? ' <span class="badge bg-success ms-1">Synced to Sheets</span>' : ' <span class="badge bg-warning ms-1">Unsynced</span>';
             html += '</div>';
         }
 
         // Plan Override Selector
         html += '<div class="mb-3">';
-        html += '<label class="form-label mb-1" style="font-size:11px; font-weight:700; color:#475569;">Target Plan to Activate:</label>';
+        html += '<label class="form-label mb-1" style="font-size:11px; font-weight:700; color:#475569;">Plan (used only when the order has no registration of its own):</label>';
         html += '<select id="reconcilePlanType" class="form-select form-select-sm">';
         html += '<option value="starter" ' + (rz.inferred_plan_type === 'starter' ? 'selected' : '') + '>Starter\'s Plan</option>';
         html += '<option value="professional" ' + (rz.inferred_plan_type === 'professional' ? 'selected' : '') + '>Professional\'s Plan</option>';
@@ -509,7 +517,7 @@ function renderInspectResult(data) {
         var safeOrderId = rz.order_id || '';
         var safeEmail = rz.email || '';
         html += '<button type="button" id="btnExecuteReconcile" class="btn btn-success w-100 fw-bold py-2" ';
-        html += 'onclick="executeReconciliation(\'' + safePayId + '\', \'' + safeOrderId + '\', \'' + safeEmail + '\')">';
+        html += 'data-payment-id="' + esc(safePayId) + '" data-order-id="' + esc(safeOrderId) + '" data-email="' + esc(safeEmail) + '">';
         html += '<i class="fa-solid fa-bolt me-1"></i> Fulfill Registration, Invoice & Sheets Sync';
         html += '</button>';
 
@@ -519,11 +527,17 @@ function renderInspectResult(data) {
     } else {
         html += '<div class="alert alert-warning mb-0" style="font-size:13px;">';
         html += '<h5><i class="fa-solid fa-circle-exclamation me-1"></i> No direct Razorpay payment found</h5>';
-        html += '<p class="mb-0">' + (data.message || '') + '</p>';
+        html += '<p class="mb-0">' + esc(data.message || '') + '</p>';
         html += '</div>';
     }
 
     body.innerHTML = html;
+    var execBtn = document.getElementById('btnExecuteReconcile');
+    if (execBtn) {
+        execBtn.addEventListener('click', function () {
+            executeReconciliation(execBtn.dataset.paymentId, execBtn.dataset.orderId, execBtn.dataset.email);
+        });
+    }
 }
 
 function executeReconciliation(paymentId, orderId, email) {
@@ -579,7 +593,7 @@ function executeReconciliation(paymentId, orderId, email) {
             body.innerHTML = '<div class="p-4 text-center">' +
                 '<i class="fa-solid fa-circle-check fa-3x text-success mb-3"></i>' +
                 '<h4 class="fw-bold text-dark">Payment Reconciled Successfully!</h4>' +
-                '<p class="text-muted" style="font-size:13px;">' + data.message + '</p>' +
+                '<p class="text-muted" style="font-size:13px;">' + esc(data.message) + '</p>' +
                 '<div class="d-flex justify-content-center gap-2 mt-3">' +
                 '<a href="/admin/invoices/" class="btn btn-outline-primary btn-sm fw-semibold">View Invoices</a>' +
                 '<a href="/admin/approvals/" class="btn btn-primary btn-sm fw-semibold">Go to Approvals Queue</a>' +

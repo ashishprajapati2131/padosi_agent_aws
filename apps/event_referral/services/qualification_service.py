@@ -151,6 +151,10 @@ def qualify_event_referral(referred_agent, subscription):
 
         if ref_row.state == EventReferral.STATE_PAID and ref_row.counts:
             return
+        if ref_row.state == EventReferral.STATE_REJECTED:
+            # Self / same-email / same-mobile referrals stay rejected; paying
+            # used to flip them to PAID + counts and toward a free plan.
+            return
 
         plan_slug = referred_agent.plan_type or ''
         ref_row.snapshot_plan = plan_slug

@@ -9,6 +9,11 @@ from apps.referral_championship.models import (
 
 logger = logging.getLogger(__name__)
 
+# Reward types the agent claims from the dashboard (same rule as the Claim button).
+CLAIMABLE_REWARD_TYPES = ('membership_fee_back', 'voucher', 'cashback')
+# Claim statuses an agent may still (re)submit; later ones are handled by the team.
+CLAIM_EDITABLE_STATUSES = ('locked', 'unlocked', 'processing')
+
 
 def evaluate_participant_rewards(participant):
     """

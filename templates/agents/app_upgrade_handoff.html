@@ -7,6 +7,17 @@
     <title>Opening payment — PadosiAgent</title>
 </head>
 <body>
+    {% if switch_from %}
+    <p>You are signed in as <strong>{{ switch_from }}</strong> on this browser.</p>
+    <p>Continue to the upgrade payment as <strong>{{ switch_to }}</strong>? You will be signed out of {{ switch_from }}.</p>
+    <form method="post" action="{% url 'agents:app_upgrade_handoff' %}">
+        {% csrf_token %}
+        <input type="hidden" name="token" value="{{ token }}">
+        <input type="hidden" name="confirm_switch" value="1">
+        <button type="submit">Continue as {{ switch_to }}</button>
+        <a href="/">Cancel</a>
+    </form>
+    {% else %}
     <p>Opening your payment…</p>
     <form id="upgrade-handoff" method="post" action="{% url 'agents:app_upgrade_handoff' %}">
         {% csrf_token %}
@@ -16,5 +27,6 @@
     <script>
         document.getElementById('upgrade-handoff').submit();
     </script>
+    {% endif %}
 </body>
 </html>

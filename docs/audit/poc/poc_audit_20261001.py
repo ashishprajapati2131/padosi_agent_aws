@@ -60,60 +60,11 @@ class RegistrationPaymentPoC(TestCase):
                                       content_type='application/json')
             self.assertEqual(rr.status_code, 200, rr.content)
 
-    # ── F-01 (CRITICAL) ────────────────────────────────────────────────────
-    @patch('apps.agents.views.registration.queue_invoice_and_welcome')
-    def test_F01_signup_with_staff_email_must_not_log_in_as_staff(self, _q):
-        staff = User.objects.create_user('boss', 'boss@padosi-test.com', 'S3cret!!pw', is_staff=True, is_superuser=True)
-        self._signup_until_order('boss@padosi-test.com', [ORDER_A])
-        sub = AgentSubscription.objects.get(razorpay_order_id=ORDER_A)
-        paise = int(round(float(sub.registration_amount) * 100))
-        with patch('apps.agents.views.registration.razorpay_client', return_value=_rzp(paise)):
-            self.client.post('/agent-register/verify-payment/', data={
-                'razorpay_order_id': ORDER_A, 'razorpay_payment_id': PAY_A,
-                'razorpay_signature': 'sig'}, content_type='application/json')
-        session_uid = self.client.session.get('_auth_user_id')
-        self.assertNotEqual(str(session_uid), str(staff.pk),
-                            'Payer was logged in as the pre-existing SUPERUSER that owns this email')
+    # F-01 and F-02 are fixed; their tests live in
+    # apps/agents/test_signup_takeover_orphan_orders.py.
 
-    # ── F-02 (CRITICAL) ────────────────────────────────────────────────────
-    @patch('apps.agents.views.registration.queue_invoice_and_welcome')
-    def test_F02_paid_first_order_after_retry_must_activate(self, _q):
-        """User opens checkout (order A), closes modal, clicks Pay again (order B),
-        then approves A in the UPI app. Razorpay captures A and sends the webhook."""
-        self._signup_until_order('retry.payer@padosi-test.com', [ORDER_A, ORDER_B])
-        agent = Agent.objects.get(email='retry.payer@padosi-test.com')
-        sub = AgentSubscription.objects.filter(agent=agent).order_by('-created_at').first()
-        paise = int(round(float(sub.registration_amount) * 100))
-        body = json.dumps({'event': 'payment.captured', 'payload': {'payment': {'entity': {
-            'id': PAY_A, 'order_id': ORDER_A, 'amount': paise, 'status': 'captured'}}}})
-        with patch('apps.agents.views.registration.razorpay_client', return_value=_rzp(paise)), \
-             patch('apps.agents.views.registration.razorpay_webhook_secret', return_value='whsec_test'):
-            r = self.client.post('/razorpay-webhook/', data=body, content_type='application/json',
-                                 HTTP_X_RAZORPAY_SIGNATURE='sig')
-        agent.refresh_from_db()
-        paid = AgentSubscription.objects.filter(agent=agent, payment_status='completed').exists()
-        self.assertTrue(paid, f'Captured order A was never activated (webhook HTTP {r.status_code}, '
-                              f'agent status={agent.status}); money taken, agent missing from Approvals')
-
-    # ── F-05 (HIGH) ────────────────────────────────────────────────────────
-    @patch('apps.agents.views.registration.queue_invoice_and_welcome')
-    def test_F05_webhook_activation_must_run_championship_and_event_hooks(self, _q):
-        self._signup_until_order('webhook.first@padosi-test.com', [ORDER_A])
-        sub = AgentSubscription.objects.get(razorpay_order_id=ORDER_A)
-        paise = int(round(float(sub.registration_amount) * 100))
-        body = json.dumps({'event': 'payment.captured', 'payload': {'payment': {'entity': {
-            'id': PAY_A, 'order_id': ORDER_A, 'amount': paise, 'status': 'captured'}}}})
-        with patch('apps.agents.views.registration.razorpay_client', return_value=_rzp(paise)), \
-             patch('apps.agents.views.registration.razorpay_webhook_secret', return_value='whsec_test'), \
-             patch('apps.agents.views.registration._championship_qualification') as champ, \
-             patch('apps.agents.views.registration._event_referral_qualification') as evt:
-            r = self.client.post('/razorpay-webhook/', data=body, content_type='application/json',
-                                 HTTP_X_RAZORPAY_SIGNATURE='sig')
-        self.assertEqual(r.status_code, 200, r.content)
-        sub.refresh_from_db()
-        self.assertEqual(sub.payment_status, 'completed')
-        self.assertTrue(champ.called and evt.called,
-                        f'webhook path skipped referral hooks: championship={champ.called} event={evt.called}')
+    # F-05 is fixed; see apps/referral_championship/test_referral_fixes_20261001.py.
+    pass
 
 
 @override_settings(ALLOWED_HOSTS=['testserver', 'localhost'])

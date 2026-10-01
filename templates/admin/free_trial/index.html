@@ -526,7 +526,8 @@
               </form>
             </div>
           </div>
-          <!-- TEST TOOL -->
+          <!-- TEST TOOL (local / DEBUG only) -->
+          {% if show_test_tools %}
           <div class="card border-0 shadow-sm mb-4 border border-danger">
             <div class="card-header font-weight-bold bg-danger text-white">
               <i class="fas fa-flask mr-2"></i>[TESTING] Add Fake Conversion
@@ -543,6 +544,7 @@
               </form>
             </div>
           </div>
+          {% endif %}
 
           <div class="card border-0 shadow-sm mb-4">
             <div class="card-header font-weight-bold" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;">

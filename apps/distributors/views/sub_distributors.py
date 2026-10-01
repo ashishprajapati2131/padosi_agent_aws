@@ -508,6 +508,7 @@ def sub_distributor_register_agent(request):
     request.session.pop('email_verified', None)
     request.session.pop('verified_email', None)
     request.session.pop('reg_step', None)
+    request.session.pop('event_referral_registration', None)
 
     # Tag registration with both parent distributor and sub-distributor
     request.session['distributor_id'] = sub_dist.distributor_id

@@ -10,7 +10,9 @@ from apps.event_referral.models import EventReferral, EventReferralCampaign, Eve
 from apps.event_referral.services.participant_service import (
     _block_participant,
     admin_grant_win,
-    admin_restore_participant,
+    # Aliased: the view below has the same name and used to shadow it, so
+    # Extend / Restore always failed with a TypeError.
+    admin_restore_participant as restore_participant_service,
 )
 
 logger = logging.getLogger(__name__)
@@ -105,7 +107,7 @@ def admin_extend_deadline(request, participant_id):
     except (TypeError, ValueError):
         hours = 0
     if hours > 0:
-        admin_restore_participant(participant, extend_hours=hours)
+        restore_participant_service(participant, extend_hours=hours)
         messages.success(request, f'Extended deadline by {hours} hours.')
     return redirect('admin_event_referral_dashboard')
 
@@ -156,6 +158,6 @@ def admin_restore_participant(request, participant_id):
         hours = int(request.POST.get('extend_hours', 0))
     except (TypeError, ValueError):
         hours = 0
-    admin_restore_participant(participant, extend_hours=hours)
+    restore_participant_service(participant, extend_hours=hours)
     messages.success(request, 'Participant restored.')
     return redirect('admin_event_referral_dashboard')

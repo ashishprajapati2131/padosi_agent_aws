@@ -426,21 +426,135 @@ def reconcile_inspect_payment(request):
         })
 
 
+_PAY_ID_RE = re.compile(r'^pay_[A-Za-z0-9]{8,30}$')
+_ORDER_ID_RE = re.compile(r'^order_[A-Za-z0-9]{8,30}$')
+_KNOWN_PLANS = ('free_trial', 'starter', 'professional', 'exclusive')
+_RECONCILE_PLAN_NAMES = {
+    'free_trial': 'Trial Plan',
+    'starter': "Starter's Plan",
+    'professional': "Professional's Plan",
+    'exclusive': 'Exclusive Plan',
+}
+
+
+def _reconcile_clients():
+    """Razorpay clients allowed to prove a payment.
+
+    Outside DEBUG only live keys count: production can still hold test keys in
+    .env, and a test-mode "captured" payment involves no real money.
+    """
+    from apps.agents.services.razorpay_checkout import razorpay_key_mode
+    clients = _get_razorpay_clients()
+    if settings.DEBUG:
+        return clients
+    primary_live = razorpay_key_mode() == 'live'
+    return [(mode, cl) for mode, cl in clients if mode == 'live' or (mode == 'primary' and primary_live)]
+
+
+def _fetch_captured_payment(clients, payment_id, order_id):
+    """Return (payment, order_id, receipt, error). Only a captured payment counts."""
+    payment = None
+    receipt = ''
+    if payment_id:
+        for _mode, cl in clients:
+            try:
+                payment = cl.payment.fetch(payment_id)
+                order_id = payment.get('order_id') or order_id
+                break
+            except Exception:
+                continue
+    if order_id:
+        for _mode, cl in clients:
+            try:
+                receipt = (cl.order.fetch(order_id) or {}).get('receipt', '') or ''
+                if not payment:
+                    items = (cl.order.payments(order_id) or {}).get('items', [])
+                    captured = [p for p in items if p.get('status') == 'captured']
+                    payment = captured[0] if captured else (items[0] if items else None)
+                break
+            except Exception:
+                continue
+    if not payment:
+        return None, order_id, receipt, 'No payment was found on Razorpay for this Payment ID / Order ID.'
+    if payment.get('status') != 'captured':
+        return None, order_id, receipt, (
+            f"Razorpay shows this payment as '{payment.get('status')}', not captured. "
+            "Only captured payments can be reconciled (capture it in the Razorpay dashboard first)."
+        )
+    if order_id and payment.get('order_id') and payment.get('order_id') != order_id:
+        return None, order_id, receipt, 'This payment belongs to a different Razorpay order.'
+    return payment, payment.get('order_id') or order_id, receipt, None
+
+
+def _reconcile_subscription(order_id, receipt, email, payment, plan_type):
+    """Find the subscription this paid order belongs to (or create its row).
+
+    The order's own subscription always wins. A paid order with no row (lost
+    by an old checkout bug) is rebuilt from its notes. Only then is a draft /
+    agent matched by email, and a new row is created for this order, never by
+    re-pointing another subscription. No agent is invented from payer data.
+    Returns (agent, subscription, error).
+    """
+    from apps.agents.views.registration import adopt_orphan_registration_order
+
+    sub = AgentSubscription.objects.filter(razorpay_order_id=order_id).first() if order_id else None
+    if not sub and order_id:
+        sub = adopt_orphan_registration_order(order_id)
+    if sub:
+        return sub.agent, sub, None
+
+    draft = None
+    m = re.search(r'draft_(\d+)', receipt or '')
+    if m:
+        draft = AgentDraft.objects.filter(pk=int(m.group(1))).first()
+    agent = Agent.objects.filter(email__iexact=draft.email).first() if draft else None
+    if not agent and email:
+        agent = Agent.objects.filter(email__iexact=email).first()
+    if not agent and not draft and email:
+        draft = AgentDraft.objects.filter(email__iexact=email).first()
+    if not agent and not draft:
+        return None, None, (
+            'No registered agent or registration draft matches this payment. '
+            'Search by the email the agent registered with.'
+        )
+
+    notes = payment.get('notes') if isinstance(payment.get('notes'), dict) else {}
+    paid_rupees = Decimal(int(payment.get('amount') or 0)) / 100
+    slug = str(notes.get('plan_type') or '').strip().lower()
+    if slug not in _KNOWN_PLANS:
+        slug = plan_type if plan_type in _KNOWN_PLANS else _plan_details_from_amount(float(paid_rupees))[0]
+    plan_name = _RECONCILE_PLAN_NAMES[slug]
+    if not agent:
+        agent = create_agent_from_draft(draft, plan_type=slug, plan_name=plan_name, status='pending_payment')
+    sub = AgentSubscription.objects.create(
+        agent=agent, selected_plan=plan_name, registration_amount=paid_rupees,
+        payment_status='pending', status='inactive', razorpay_order_id=order_id or None,
+    )
+    return agent, sub, None
+
+
+def _already_done(agent, subscription):
+    return JsonResponse({
+        'success': True,
+        'message': f'Already reconciled: {agent.fullname} has this payment on subscription #{subscription.pk}.',
+        'agent_id': agent.id, 'agent_name': agent.fullname,
+        'invoice_number': '', 'synced_to_sheet': False,
+    })
+
+
 @require_http_methods(["POST"])
 def reconcile_execute_payment(request):
     """
-    Executes the full recovery pipeline for a verified payment:
-    1. Activates or creates Agent
-    2. Completes subscription
-    3. Generates Invoice record and PDF
-    4. Synchronizes to Google Sheets & Drive
-    5. Sends welcome email
+    Activate the agent for a captured Razorpay payment that the normal flow missed.
+
+    Same activation as checkout recovery (_activate_paid_subscription: locked,
+    idempotent, plan from the order, referral credit, superseded rows); the
+    invoice + welcome email are then sent once, outside the transaction.
     """
     try:
         admin = _is_admin_authenticated(request)
         if not admin:
             return JsonResponse({'success': False, 'message': 'Unauthorized admin session'}, status=403)
-
         admin_id_val = admin.get('id', 1) if isinstance(admin, dict) else admin
 
         try:
@@ -449,175 +563,97 @@ def reconcile_execute_payment(request):
             order_id = str(body.get('order_id', '')).strip()
             email = str(body.get('email', '')).strip().lower()
             plan_type = str(body.get('plan_type', '')).strip().lower()
-            plan_name = str(body.get('plan_name', '')).strip()
-            custom_amount = body.get('amount')
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': f'Invalid request data: {str(e)}'})
+        except Exception:
+            return JsonResponse({'success': False, 'message': 'Invalid request data.'})
 
-        if not payment_id and not order_id and not email:
-            return JsonResponse({'success': False, 'message': 'Payment ID, Order ID, or Email required.'})
+        if payment_id.startswith('pay_for_'):
+            payment_id = ''  # placeholder Inspect shows for an order without payments
+        if payment_id and not _PAY_ID_RE.match(payment_id):
+            return JsonResponse({'success': False, 'message': 'Invalid Payment ID format.'})
+        if order_id and not _ORDER_ID_RE.match(order_id):
+            return JsonResponse({'success': False, 'message': 'Invalid Order ID format.'})
+        if not payment_id and not order_id:
+            return JsonResponse({'success': False, 'message': 'A Razorpay Payment ID or Order ID is required.'})
 
-        clients = _get_razorpay_clients()
+        clients = _reconcile_clients()
         if not clients:
-            return JsonResponse({'success': False, 'message': 'Razorpay client is not configured.'})
+            return JsonResponse({'success': False, 'message': 'Live Razorpay keys are not configured.'})
 
-        # 1. Fetch live payment or order from Razorpay for verification
-        payment_record = None
-        receipt = ''
+        payment, order_id, receipt, error = _fetch_captured_payment(clients, payment_id, order_id)
+        if error:
+            return JsonResponse({'success': False, 'message': error})
+        payment_id = payment.get('id') or payment_id
+        payer_email = str(payment.get('email') or '').strip().lower()
 
-        if payment_id and not payment_id.startswith('pay_for_'):
-            for mode, cl in clients:
-                try:
-                    payment_record = cl.payment.fetch(payment_id)
-                    order_id = payment_record.get('order_id') or order_id
-                    break
-                except Exception:
-                    pass
+        used = AgentSubscription.objects.filter(razorpay_payment_id=payment_id, payment_status='completed').first()
+        if used and (used.razorpay_order_id or '') != (order_id or ''):
+            return JsonResponse({
+                'success': False,
+                'message': f'Payment {payment_id} is already attached to another subscription '
+                           f'(#{used.pk}, agent #{used.agent_id}).',
+            })
 
-        if not payment_record and order_id:
-            for mode, cl in clients:
-                try:
-                    ord_info = cl.order.fetch(order_id)
-                    receipt = ord_info.get('receipt', '')
-                    pmts = cl.order.payments(order_id)
-                    items = pmts.get('items', []) if pmts else []
-                    successful = [p for p in items if p.get('status') in ('captured', 'authorized')]
-                    if successful:
-                        payment_record = successful[0]
-                        payment_id = payment_record.get('id') or payment_id
-                    elif ord_info and ord_info.get('status') == 'paid':
-                        payment_record = {
-                            'id': payment_id or f'pay_{order_id[6:]}',
-                            'order_id': order_id,
-                            'amount': ord_info.get('amount', 0),
-                            'status': 'captured',
-                            'email': email,
-                            'contact': '',
-                        }
-                    break
-                except Exception:
-                    pass
+        from apps.agents.views.registration import (
+            _activate_paid_subscription,
+            _expected_amount_paise,
+            _paise_amounts_match,
+        )
+        agent, subscription, error = _reconcile_subscription(order_id, receipt, email or payer_email, payment, plan_type)
+        if error:
+            return JsonResponse({'success': False, 'message': error})
 
-        if not payment_record or payment_record.get('status') not in ('captured', 'authorized'):
-            return JsonResponse({'success': False, 'message': 'Payment is not in captured or authorized status on Razorpay.'})
+        if subscription.payment_status == 'completed':
+            if (subscription.razorpay_payment_id or '') == payment_id:
+                return _already_done(agent, subscription)
+            return JsonResponse({'success': False, 'message': 'This order is already completed with a different payment.'})
 
-        paid_rupees = round(payment_record.get('amount', 0) / 100.0, 2)
-        cust_email = (payment_record.get('email') or email).strip().lower()
-        cust_contact = payment_record.get('contact') or ''
-        order_id = payment_record.get('order_id') or order_id
+        paid_paise = int(payment.get('amount') or 0)
+        if not _paise_amounts_match(paid_paise, _expected_amount_paise(subscription.registration_amount)):
+            return JsonResponse({
+                'success': False,
+                'message': (f'Amount mismatch: Razorpay received Rs {paid_paise / 100:.2f}, '
+                            f'the order expects Rs {subscription.registration_amount}. Not activated.'),
+            })
 
-        if not plan_type:
-            plan_type, plan_name = _plan_details_from_amount(paid_rupees, payment_record.get('notes'))
-
-        logger.info(f"[Reconciliation] Admin #{admin_id_val} executing reconciliation for email={cust_email}, payment={payment_id}, amount=₹{paid_rupees}")
+        subscription, activated = _activate_paid_subscription(
+            agent, subscription, payment, log_label='[Reconciliation]', queue_fulfilment=False,
+        )
+        agent.refresh_from_db()
+        if not activated:
+            return _already_done(agent, subscription)
 
         try:
             with transaction.atomic():
-                # 2. Check if Agent already exists
-                agent = Agent.objects.filter(email__iexact=cust_email).first() if cust_email else None
+                from apps.admin_panel.models import AdminActivityLog
+                AdminActivityLog.log(
+                    'Reconciled Razorpay payment', 'AgentSubscription', subscription.pk,
+                    details=f'payment={payment_id} order={order_id} agent={agent.pk}', request=request,
+                )
+        except Exception as log_err:
+            logger.warning('[Reconciliation] Activity log failed: %s', log_err)
+        logger.info('[Reconciliation] Admin #%s activated agent #%s with %s / %s',
+                    admin_id_val, agent.pk, payment_id, order_id)
 
-                # 3. If no Agent, check if AgentDraft exists
-                if not agent:
-                    draft = None
-                    if cust_email:
-                        draft = AgentDraft.objects.filter(email__iexact=cust_email).first()
-                    if not draft and receipt and 'draft_' in receipt:
-                        m = re.search(r'draft_(\d+)', receipt)
-                        if m:
-                            draft = AgentDraft.objects.filter(pk=int(m.group(1))).first()
+        # Invoice, Drive/Sheets sync and welcome email: once, after commit.
+        invoice = None
+        try:
+            invoice = fulfill_invoice_and_welcome(agent, subscription)
+        except Exception as ful_err:
+            logger.exception('[Reconciliation] Fulfilment failed for agent #%s: %s', agent.pk, ful_err)
 
-                    if draft:
-                        agent = create_agent_from_draft(draft, plan_type=plan_type, plan_name=plan_name, status='pending_approval')
-                    else:
-                        # Create basic draft from customer info
-                        draft = AgentDraft.objects.create(
-                            fullname=cust_email.split('@')[0].replace('.', ' ').title() if cust_email else 'Agent',
-                            email=cust_email or f'agent_{order_id}@padosiagent.com',
-                            mobile=cust_contact or '0000000000',
-                            registration_step=2,
-                            state='Gujarat',
-                        )
-                        agent = create_agent_from_draft(draft, plan_type=plan_type, plan_name=plan_name, status='pending_approval')
-
-                # Ensure Agent fields
-                agent.status = 'pending_approval'
-                agent.plan_type = plan_type
-                agent.save(update_fields=['status', 'plan_type', 'updated_at'])
-
-                # 4. Find or create Subscription
-                subscription = AgentSubscription.objects.filter(agent=agent).order_by('-created_at').first()
-                if not subscription and order_id:
-                    subscription = AgentSubscription.objects.filter(razorpay_order_id=order_id).first()
-                if not subscription and payment_id:
-                    subscription = AgentSubscription.objects.filter(razorpay_payment_id=payment_id).first()
-
-                if not subscription:
-                    subscription = AgentSubscription.objects.create(
-                        agent=agent,
-                        selected_plan=plan_name or plan_type.title(),
-                        registration_amount=paid_rupees,
-                        payment_status='completed',
-                        status='active',
-                        razorpay_order_id=order_id,
-                        razorpay_payment_id=payment_id,
-                        starts_at=timezone.now(),
-                        expires_at=timezone.now() + timezone.timedelta(days=365)
-                    )
-                else:
-                    subscription.agent = agent
-                    subscription.selected_plan = plan_name or subscription.selected_plan
-                    subscription.registration_amount = paid_rupees
-                    subscription.payment_status = 'completed'
-                    subscription.status = 'active'
-                    subscription.razorpay_order_id = order_id or subscription.razorpay_order_id
-                    subscription.razorpay_payment_id = payment_id
-                    if not subscription.starts_at:
-                        subscription.starts_at = timezone.now()
-                    if not subscription.expires_at:
-                        subscription.expires_at = timezone.now() + timezone.timedelta(days=365)
-                    subscription.save()
-
-                # Reclaim orphaned invoice if any exists for this order/payment
-                try:
-                    if order_id or payment_id:
-                        inv_match = None
-                        if payment_id:
-                            inv_match = Invoice.objects.filter(razorpay_payment_id=payment_id).first()
-                        if not inv_match and order_id:
-                            inv_match = Invoice.objects.filter(razorpay_order_id=order_id).first()
-                        if inv_match and getattr(inv_match, 'agent_id', None) != agent.id:
-                            inv_match.agent = agent
-                            inv_match.agent_email = agent.email
-                            inv_match.agent_name = agent.fullname
-                            if payment_id and not inv_match.razorpay_payment_id:
-                                inv_match.razorpay_payment_id = payment_id
-                            inv_match.save()
-                except Exception as inv_e:
-                    logger.warning(f"Could not reclaim invoice: {inv_e}")
-
-                # 5. Link Django User account
-                create_or_link_django_user(agent)
-
-                # 6. Execute Fulfill: Invoice generation, PDF, Drive/Sheets sync, Welcome email
-                invoice = fulfill_invoice_and_welcome(agent, subscription)
-
-                invoice_number = invoice.invoice_number if invoice else 'Generated'
-                sheet_synced = getattr(invoice, 'synced_to_sheet', False)
-
-                return JsonResponse({
-                    'success': True,
-                    'message': f"Payment reconciled successfully! Agent {agent.fullname} is activated, Invoice #{invoice_number} generated, and Google Sheet & Drive synced.",
-                    'agent_id': agent.id,
-                    'agent_name': agent.fullname,
-                    'invoice_number': invoice_number,
-                    'synced_to_sheet': sheet_synced,
-                })
-
-        except Exception as e:
-            logger.exception(f"[Reconciliation Error] Admin #{admin_id_val} failed to reconcile {cust_email}: {e}")
-            return JsonResponse({'success': False, 'message': f'Reconciliation transaction failed: {str(e)}'})
+        if invoice:
+            tail = f", Invoice #{invoice.invoice_number} generated."
+        else:
+            tail = ". The invoice could not be generated; create it from Invoices."
+        return JsonResponse({
+            'success': True,
+            'message': f"Payment reconciled! {agent.fullname} is activated (status: {agent.status})" + tail,
+            'agent_id': agent.id,
+            'agent_name': agent.fullname,
+            'invoice_number': getattr(invoice, 'invoice_number', '') if invoice else '',
+            'synced_to_sheet': bool(getattr(invoice, 'synced_to_sheet', False)) if invoice else False,
+        })
 
     except Exception as e:
         logger.exception(f"[Reconciliation Global Error]: {e}")
-        return JsonResponse({'success': False, 'message': f'Reconciliation failed: {str(e)}'})
-
+        return JsonResponse({'success': False, 'message': 'Reconciliation failed. See the server log for details.'})

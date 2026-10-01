@@ -42,6 +42,18 @@ def agent_has_completed_payment(agent):
         agent=agent,
         payment_status='completed',
     )
+    from apps.agents.services.subscription_expiry import expiry_enforced, still_valid_q
+    enforce_expiry = expiry_enforced()
+    if enforce_expiry and completed.exists():
+        # Expiry switch ON: only a paid period that has not ended counts, and
+        # the paid-invoice fallback below (for legacy agents without
+        # subscription rows) must not revive an expired subscription.
+        for sub in completed.filter(still_valid_q()):
+            if is_real_razorpay_id(sub.razorpay_payment_id, 'pay_'):
+                return True
+            if is_real_razorpay_id(sub.razorpay_order_id, 'order_'):
+                return True
+        return False
     for sub in completed:
         if is_real_razorpay_id(sub.razorpay_payment_id, 'pay_'):
             return True
@@ -160,6 +172,42 @@ def find_laravel_user(email):
     except Exception as exc:
         logger.warning("Laravel users lookup failed for agent login: %s", exc)
         return None
+
+
+# `users.role` values of portal (non-agent) accounts. Any other role, including
+# unexpected legacy values, keeps the previous agent behaviour.
+PORTAL_LARAVEL_ROLES = ('distributor', 'insurance', 'admin')
+
+
+def is_non_agent_portal_user(user):
+    """Staff, superuser, insurance-portal or distributor login.
+
+    Agent identity is resolved by email, so an agent registered with one of
+    these accounts' emails would inherit that account's session. Signup and
+    payment flows must never sign a payer into such a user.
+    """
+    if not user:
+        return False
+    if user.is_staff or user.is_superuser:
+        return True
+    if hasattr(user, 'insurance_profile'):
+        return True
+    return user.groups.filter(name='distributor').exists()
+
+
+def _non_agent_laravel_role(laravel_user):
+    role = (getattr(laravel_user, 'role', '') or '').strip().lower() if laravel_user else ''
+    return role in PORTAL_LARAVEL_ROLES
+
+
+def email_owned_by_non_agent_account(email):
+    """True when a staff / insurance / distributor account already uses this email."""
+    if not email:
+        return False
+    if any(is_non_agent_portal_user(u) for u in DjangoUser.objects.filter(email__iexact=email)):
+        return True
+    # One read of `users` (find_laravel_user would re-query it via the ORM when absent).
+    return _non_agent_laravel_role(fetch_users_row(email=email))
 
 
 def find_agent(email):
@@ -496,6 +544,8 @@ def create_or_link_django_user(agent, plain_password=None):
             overwrite = not stored
 
     django_user = ensure_django_user(email, fullname, bcrypt_hash, overwrite_password=overwrite)
-    ensure_laravel_user(email, fullname, bcrypt_hash, role='agent', overwrite_password=overwrite)
+    # Never turn an existing distributor / insurance `users` row into an agent.
+    role = None if _non_agent_laravel_role(laravel_user) else 'agent'
+    ensure_laravel_user(email, fullname, bcrypt_hash, role=role, overwrite_password=overwrite)
     link_agent_to_django_user(agent, django_user)
     return django_user

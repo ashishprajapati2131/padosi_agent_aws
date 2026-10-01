@@ -57,7 +57,7 @@ class DashboardService:
         active_subscription: Optional[AgentSubscription] = self.db.query(AgentSubscription).filter(
             AgentSubscription.agent_id == agent.id,
             AgentSubscription.status == "active",
-            AgentSubscription.expires_at > datetime.utcnow()
+            AgentSubscription.expires_at > datetime.now()  # DB datetimes are naive IST
         ).first()
 
         insurance_segments = self.db.query(AgentInsuranceSegment).filter(
@@ -219,22 +219,28 @@ class DashboardService:
         is_on_trial = (
             agent.plan_type == "free_trial"
             and agent.trial_ends_at is not None
-            and agent.trial_ends_at > datetime.utcnow()
+            and agent.trial_ends_at > datetime.now()
         )
         trial_expired = (
             agent.plan_type == "free_trial"
             and agent.trial_ends_at is not None
-            and agent.trial_ends_at <= datetime.utcnow()
+            and agent.trial_ends_at <= datetime.now()
         )
 
         days_left = None
         if is_on_trial and agent.trial_ends_at:
-            delta = agent.trial_ends_at - datetime.utcnow()
+            delta = agent.trial_ends_at - datetime.now()
             days_left = max(0, delta.days)
 
         discount_pct = 0
         starter_full = 2359
         prof_full = 8258
+        # Configured prices apply to every agent, not only trial agents (the
+        # website shows and charges them to everyone).
+        pricing_config = self.setting_repo.get_json_value("pricing_config", {})
+        if pricing_config:
+            starter_full = pricing_config.get("starter", {}).get("full_price", 2359)
+            prof_full = pricing_config.get("professional", {}).get("full_price", 8258)
 
         if is_on_trial:
             admin_default = int(
@@ -250,11 +256,6 @@ class DashboardService:
                     referral_discount = tier.get("discount", 0)
 
             discount_pct = max(admin_default, agent_specific, referral_discount)
-
-            pricing_config = self.setting_repo.get_json_value("pricing_config", {})
-            if pricing_config:
-                starter_full = pricing_config.get("starter", {}).get("full_price", 2359)
-                prof_full = pricing_config.get("professional", {}).get("full_price", 8258)
 
             if getattr(agent, "referral_reward_type", None) == "pro_plan_1rs":
                 prof_full_discounted = 1

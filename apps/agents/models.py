@@ -659,8 +659,9 @@ class AgentSubscription(models.Model):
     selected_plan = models.CharField(max_length=255)
     promo_code = models.CharField(max_length=255, null=True, blank=True)
     registration_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    razorpay_order_id = models.CharField(max_length=255, null=True, blank=True)
-    razorpay_payment_id = models.CharField(max_length=255, null=True, blank=True)
+    # Indexed: every checkout callback, webhook and recovery looks rows up by these.
+    razorpay_order_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    razorpay_payment_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
     razorpay_signature = models.CharField(max_length=255, null=True, blank=True)
     payment_status = models.CharField(max_length=50, default='pending')  # pending, completed, failed
     starts_at = models.DateTimeField(null=True, blank=True)
@@ -1337,7 +1338,7 @@ class Invoice(models.Model):
     invoice_number = models.CharField(max_length=255, unique=True)
     agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='invoices')
     agent_name = models.CharField(max_length=255)
-    agent_email = models.EmailField()
+    agent_email = models.EmailField(db_index=True)
     agent_mobile = models.CharField(max_length=20, null=True, blank=True)
     agent_address = models.CharField(max_length=255, null=True, blank=True)
     agent_state = models.CharField(max_length=100, null=True, blank=True)
@@ -1349,8 +1350,8 @@ class Invoice(models.Model):
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
     discount_folder = models.CharField(max_length=255)
     promo_code = models.CharField(max_length=255, null=True, blank=True)
-    razorpay_payment_id = models.CharField(max_length=255, null=True, blank=True)
-    razorpay_order_id = models.CharField(max_length=255, null=True, blank=True)
+    razorpay_payment_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    razorpay_order_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
     payment_status = models.CharField(max_length=50, default='paid')
     pdf_path = models.CharField(max_length=255, null=True, blank=True)
     synced_to_sheet = models.BooleanField(default=False)
@@ -1684,8 +1685,8 @@ class RegistrationActivityLog(models.Model):
         try:
             ip = None
             if request:
-                x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
-                ip = x_forwarded.split(',')[0].strip() if x_forwarded else request.META.get('REMOTE_ADDR')
+                from apps.admin_panel.middleware import ThreatMonitorMiddleware
+                ip = ThreatMonitorMiddleware.get_client_ip(request)
 
             details = {}
             if agent:
