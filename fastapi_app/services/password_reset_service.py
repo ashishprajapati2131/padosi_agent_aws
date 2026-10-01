@@ -185,6 +185,15 @@ class PasswordResetService:
             # 4. Update password and generate a remember token
             user.password = get_password_hash(request.password)
             user.remember_token = secrets.token_hex(30) # 60 characters
+            # Same hash in Django's auth_user, like the website reset. Otherwise
+            # the old password kept working (web login accepts either store and
+            # API login copied it back), and changing it also ends the user's
+            # existing web sessions (Django's session auth hash).
+            from sqlalchemy import text
+            self.db.execute(
+                text("UPDATE auth_user SET password = :password WHERE LOWER(email) = LOWER(:email)"),
+                {"password": user.password, "email": user.email},
+            )
             
             # 5. Delete the reset token from database
             if not authenticated_user:
