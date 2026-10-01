@@ -242,6 +242,8 @@ def admin_test_add_referrals(request, participant_id):
             razorpay_order_id=f'order_TESTREF{token}', razorpay_payment_id=f'pay_TESTREF{token}',
         )
         qualify_event_referral(friend, subscription)
+        from apps.referral_championship.services.qualification_service import process_championship_qualification
+        process_championship_qualification(friend, subscription)
         added += 1
     participant.refresh_from_db()
     messages.success(request, f'TEST: added {added} paid referral(s). Progress {participant.paid_count} / '
@@ -263,6 +265,12 @@ def admin_test_remove_referrals(request, participant_id):
     fakes = list(Agent.objects.filter(referred_by_code=participant.referral_code,
                                       email__iendswith='@' + TEST_REFERRAL_EMAIL_DOMAIN))
     EventReferral.objects.filter(participant=participant, referred_agent__in=fakes).delete()
+    from apps.referral_championship.services.qualification_service import revert_championship_qualification
+    for agent in fakes:
+        try:
+            revert_championship_qualification(agent, reason='test removed')
+        except Exception:
+            logger.exception('Championship revert failed for test referral %s', agent.pk)
     from django.db import transaction
     for agent in fakes:
         try:

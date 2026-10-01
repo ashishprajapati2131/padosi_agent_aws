@@ -12,6 +12,23 @@ from apps.referral_championship.services.attribution_service import validate_ref
 logger = logging.getLogger(__name__)
 
 
+def _championship_participant_for_event_code(code, campaign):
+    """Championship participant of the Paldi (EV-) challenger owning `code`.
+
+    Owner decision 2026-10-02: a Paldi challenger's paid referrals also
+    count in the championship (road, slabs, claims, leaderboard), during
+    and after the 48-hour challenge.
+    """
+    from apps.event_referral.models import EventReferralParticipant
+    from apps.referral_championship.services.attribution_service import get_or_create_participant
+
+    event_participant = (EventReferralParticipant.objects.select_related('agent')
+                         .filter(referral_code=code).first())
+    if not event_participant or not event_participant.agent_id:
+        return None
+    return get_or_create_participant(event_participant.agent, campaign)
+
+
 def process_championship_qualification(new_agent, subscription):
     """
     Process server-side qualification when an agent successfully pays for a plan.
@@ -48,6 +65,8 @@ def process_championship_qualification(new_agent, subscription):
                 referral_id=code_cand,
                 campaign=campaign
             ).first()
+        elif code_cand.startswith('EV-'):
+            referrer_participant = _championship_participant_for_event_code(code_cand, campaign)
 
     if not referrer_participant:
         return False

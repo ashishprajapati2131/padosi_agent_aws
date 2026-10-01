@@ -98,6 +98,10 @@ def _referral_funnel_for_dashboard(request, agent, participant):
         lambda path: build_safe_absolute_uri(request, path),
     )
     if evt_ctx:
+        # Paldi referrals also count in the championship (owner decision
+        # 2026-10-02), so show the same total the road and slabs use.
+        evt_ctx['qualified_count'] = max(evt_ctx['qualified_count'] or 0,
+                                         participant.qualifying_referrals_count or 0)
         return evt_ctx
 
     referrals_qs = ChampionshipReferral.objects.filter(referrer=participant)

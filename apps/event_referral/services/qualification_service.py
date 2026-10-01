@@ -129,8 +129,8 @@ def qualify_event_referral(referred_agent, subscription):
         )
         if not participant or participant.status == EventReferralParticipant.STATUS_BLOCKED:
             return
-        if participant.status == EventReferralParticipant.STATUS_WON:
-            return
+        # A winner's later referrals are still recorded as paid (they also
+        # count in the championship); the win itself is not granted again.
 
         ref_row = (
             EventReferral.objects.select_for_update()
