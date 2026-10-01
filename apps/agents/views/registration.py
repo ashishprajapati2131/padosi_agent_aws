@@ -1597,6 +1597,19 @@ def register_step1(request):
             'redirect': '/agent-login/'
         }, status=422)
 
+    # An agent is resolved by email, so registering a staff / insurance /
+    # distributor email would hand that account's session to the payer.
+    from apps.agents.services.account_auth import email_owned_by_non_agent_account
+    if email_owned_by_non_agent_account(email):
+        logger.warning('Agent registration refused for portal-account email %s', email)
+        return JsonResponse({
+            'success': False,
+            'message': 'This email is already used by a PadosiAgent partner or staff account. '
+                       'Please register with a different email.',
+            'errors': {'email': ['This email is already used by a PadosiAgent partner or staff account. '
+                                 'Please register with a different email.']},
+        }, status=422)
+
     # Check if an Agent record already exists for the email but has NO paid invoice
     existing_agent = Agent.objects.filter(email=email).first()
     if existing_agent:

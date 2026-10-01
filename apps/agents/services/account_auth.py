@@ -162,6 +162,41 @@ def find_laravel_user(email):
         return None
 
 
+# `users.role` values of portal (non-agent) accounts. Any other role, including
+# unexpected legacy values, keeps the previous agent behaviour.
+PORTAL_LARAVEL_ROLES = ('distributor', 'insurance', 'admin')
+
+
+def is_non_agent_portal_user(user):
+    """Staff, superuser, insurance-portal or distributor login.
+
+    Agent identity is resolved by email, so an agent registered with one of
+    these accounts' emails would inherit that account's session. Signup and
+    payment flows must never sign a payer into such a user.
+    """
+    if not user:
+        return False
+    if user.is_staff or user.is_superuser:
+        return True
+    if hasattr(user, 'insurance_profile'):
+        return True
+    return user.groups.filter(name='distributor').exists()
+
+
+def _non_agent_laravel_role(laravel_user):
+    role = (getattr(laravel_user, 'role', '') or '').strip().lower() if laravel_user else ''
+    return role in PORTAL_LARAVEL_ROLES
+
+
+def email_owned_by_non_agent_account(email):
+    """True when a staff / insurance / distributor account already uses this email."""
+    if not email:
+        return False
+    if any(is_non_agent_portal_user(u) for u in DjangoUser.objects.filter(email__iexact=email)):
+        return True
+    return _non_agent_laravel_role(find_laravel_user(email))
+
+
 def find_agent(email):
     if not email:
         return None
@@ -496,6 +531,8 @@ def create_or_link_django_user(agent, plain_password=None):
             overwrite = not stored
 
     django_user = ensure_django_user(email, fullname, bcrypt_hash, overwrite_password=overwrite)
-    ensure_laravel_user(email, fullname, bcrypt_hash, role='agent', overwrite_password=overwrite)
+    # Never turn an existing distributor / insurance `users` row into an agent.
+    role = None if _non_agent_laravel_role(laravel_user) else 'agent'
+    ensure_laravel_user(email, fullname, bcrypt_hash, role=role, overwrite_password=overwrite)
     link_agent_to_django_user(agent, django_user)
     return django_user

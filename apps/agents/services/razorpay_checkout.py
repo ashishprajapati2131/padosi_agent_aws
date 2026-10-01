@@ -262,9 +262,14 @@ def login_agent_user(request, user):
     if not user:
         return
     from django.contrib.auth import login
-    from apps.agents.services.account_auth import DJANGO_AUTH_BACKEND
+    from apps.agents.services.account_auth import DJANGO_AUTH_BACKEND, is_non_agent_portal_user
     from apps.distributors.views.dashboard import is_distributor
 
     if request.user.is_authenticated and is_distributor(request.user):
+        return
+    if is_non_agent_portal_user(user):
+        # A payment must never open a staff / insurance / distributor session.
+        # Such accounts sign in through their own login page.
+        logger.warning('Refused payment auto-login into portal user #%s', user.pk)
         return
     login(request, user, backend=DJANGO_AUTH_BACKEND)

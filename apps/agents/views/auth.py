@@ -382,6 +382,12 @@ def app_upgrade_handoff(request):
             )
             return redirect('agents:agent_login')
 
+    from apps.agents.services.account_auth import is_non_agent_portal_user
+    if is_non_agent_portal_user(django_user):
+        logger.warning("App upgrade handoff refused for portal user #%s (agent #%s)", django_user.pk, agent.pk)
+        portal_error(request, "Please log in to continue with your upgrade.", PORTAL_AGENT)
+        return redirect('agents:agent_login')
+
     try:
         if request.user.is_authenticated:
             logout(request)

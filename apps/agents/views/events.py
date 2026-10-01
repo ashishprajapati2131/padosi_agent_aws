@@ -788,7 +788,8 @@ def payment_success(request):
 
         if not request.user.is_authenticated:
             try:
-                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                from apps.agents.services.razorpay_checkout import login_agent_user
+                login_agent_user(request, user)  # refuses staff/insurance/distributor users
                 request.session.save()
             except Exception as login_err:
                 logger.warning(f"EVENT REGISTRATION - auto-login failed: {login_err}")
