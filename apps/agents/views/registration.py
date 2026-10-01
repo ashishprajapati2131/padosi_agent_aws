@@ -4385,6 +4385,7 @@ def _handle_refund_webhook(data):
         match |= Q(razorpay_order_id=order_id)
 
     agents = {}
+    lost_access = {}
     try:
         with transaction.atomic():
             subs = list(AgentSubscription.objects.select_for_update().filter(match))
@@ -4402,16 +4403,36 @@ def _handle_refund_webhook(data):
 
             Invoice.objects.filter(match, payment_status='paid').update(payment_status='refunded')
 
-            for agent in agents.values():
+            lost_access = {}
+            for agent_id, agent in agents.items():
                 # Only drop access if no OTHER real payment remains (e.g. upgrades).
-                if not agent_has_completed_payment(agent) and agent.status in ('active', 'pending_approval'):
-                    agent.status = 'pending_payment'
-                    agent.save(update_fields=['status'])
+                if not agent_has_completed_payment(agent):
+                    lost_access[agent_id] = agent
+                    if agent.status in ('active', 'pending_approval'):
+                        agent.status = 'pending_payment'
+                        agent.save(update_fields=['status'])
+                    continue
+                # A refunded upgrade: go back to the newest payment that still
+                # stands. Its row had been deactivated as superseded, so the
+                # agent used to keep the refunded plan.
+                remaining = (AgentSubscription.objects.select_for_update()
+                             .filter(agent=agent, payment_status='completed')
+                             .order_by('-starts_at', '-created_at').first())
+                if remaining:
+                    if remaining.status != 'active':
+                        remaining.status = 'active'
+                        remaining.save(update_fields=['status', 'updated_at'])
+                    previous_plan = plan_slug_from_name(remaining.selected_plan or '')
+                    if previous_plan and previous_plan != agent.plan_type:
+                        agent.plan_type = previous_plan
+                        agent.save(update_fields=['plan_type'])
     except Exception as err:
         logger.error('[Webhook] Refund processing failed for payment %s: %s', payment_id, err)
         return HttpResponse('Refund processing failed', status=500)
 
-    for agent in agents.values():
+    # Referral credit is withdrawn only when the agent's paid access ended; a
+    # refunded upgrade leaves the original (credited) payment standing.
+    for agent in lost_access.values():
         try:
             from apps.referral_championship.services.qualification_service import revert_championship_qualification
             revert_championship_qualification(agent, reason='refund')
