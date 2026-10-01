@@ -53,6 +53,10 @@ def fulfill_invoice_and_welcome(agent, subscription):
     """Synchronous fulfillment used by the background worker (and tests)."""
     from apps.agents.services.brevo import email_service
     from apps.agents.services.invoice import invoice_service
+    from apps.agents.services.test_markers import is_test_subscription
+
+    if is_test_subscription(subscription):
+        return None
 
     invoice = invoice_service.generate_from_subscription(
         agent,

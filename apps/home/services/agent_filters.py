@@ -78,6 +78,7 @@ def listed_agents_queryset():
     return exclude_expired_agents(
         Agent.objects.filter(status='active')
         .exclude(profile__is_card_visible=False)
+        .exclude(email__iendswith='@paldi-test.invalid')   # admin testing-mode agents
         .select_related('profile', 'performanceStats')
         .prefetch_related(
             'insuranceSegments',

@@ -40,6 +40,7 @@ def retry_missing_invoices(days=7, min_age_minutes=15, apply=False, max_attempts
     from apps.agents.models import AgentSubscription, Invoice
     from apps.agents.services.account_auth import is_real_razorpay_id
     from apps.agents.services.post_payment import fulfill_invoice_and_welcome
+    from apps.agents.services.test_markers import TEST_EMAIL_DOMAIN, TEST_PAYMENT_PREFIX
 
     write = write or (lambda line: None)
     now = datetime.now()
@@ -48,6 +49,8 @@ def retry_missing_invoices(days=7, min_age_minutes=15, apply=False, max_attempts
                     starts_at__gte=now - timedelta(days=days),
                     starts_at__lte=now - timedelta(minutes=min_age_minutes))
             .exclude(razorpay_payment_id__isnull=True).exclude(razorpay_payment_id='')
+            .exclude(razorpay_payment_id__startswith=TEST_PAYMENT_PREFIX)
+            .exclude(agent__email__iendswith='@' + TEST_EMAIL_DOMAIN)
             .select_related('agent').order_by('starts_at'))
 
     missing = 0

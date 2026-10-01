@@ -11,7 +11,8 @@ urlpatterns = [
     path('participants/<int:participant_id>/grant/', admin_views.admin_grant_plan, name='admin_event_referral_grant'),
     path('participants/<int:participant_id>/block/', admin_views.admin_block_participant, name='admin_event_referral_block'),
     path('participants/<int:participant_id>/restore/', admin_views.admin_restore_participant, name='admin_event_referral_restore'),
-    # Local testing only (DEBUG): fake paid referrals.
+    # Testing mode (DEBUG, or a Super Admin switch on the live site): fake paid referrals.
+    path('test-mode/', admin_views.admin_toggle_test_mode, name='admin_event_referral_test_mode'),
     path('participants/<int:participant_id>/test-add-referrals/', admin_views.admin_test_add_referrals, name='admin_event_referral_test_add'),
     path('participants/<int:participant_id>/test-remove-referrals/', admin_views.admin_test_remove_referrals, name='admin_event_referral_test_remove'),
 ]

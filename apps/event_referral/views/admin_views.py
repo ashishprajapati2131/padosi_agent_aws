@@ -1,6 +1,7 @@
 import json
 import logging
 
+from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -69,7 +70,10 @@ def admin_dashboard(request):
             'campaign': campaign,
             'participants': participants,
             'stats': stats,
-            'show_test_tools': _test_tools_allowed(),
+            'show_test_tools': _test_tools_allowed(request),
+            'is_super_admin': _is_super_admin(request),
+            'test_mode_until': _test_mode_until(),
+            'debug_mode': settings.DEBUG,
             'event_registration_public_url': f"{public_base}{reverse('event_referral:register')}",
         },
     )
@@ -189,22 +193,68 @@ def admin_restore_participant(request, participant_id):
     return redirect('admin_event_referral_dashboard')
 
 
-# -- Local testing only (DEBUG) ------------------------------------------------
+# -- Testing mode ---------------------------------------------------------------
 # Adds fake *paid* referrals through the real counting path, so the 48-hour
-# challenge can be tested without real payments. Never available on the live
-# site: a staff member could otherwise hand out free plans.
-TEST_REFERRAL_EMAIL_DOMAIN = 'paldi-test.invalid'
+# challenge and championship can be tested without real payments. Razorpay is
+# never called and test subscriptions never get an invoice (no invoice number
+# is used; see apps/agents/services/test_markers.py). Always on locally
+# (DEBUG); on the live site only a Super Admin can switch it on, and it turns
+# itself off after TEST_MODE_HOURS.
+from apps.agents.services.test_markers import (  # noqa: E402
+    TEST_EMAIL_DOMAIN as TEST_REFERRAL_EMAIL_DOMAIN,
+    TEST_ORDER_PREFIX,
+    TEST_PAYMENT_PREFIX,
+)
+
+TEST_MODE_SETTING = 'event_test_tools_until'
+TEST_MODE_HOURS = 2
 
 
-def _test_tools_allowed():
+def _is_super_admin(request):
+    return getattr(getattr(request, 'admin_user', None), 'role', '') == 'super'
+
+
+def _test_mode_until():
+    import time
+    from apps.home.models import SiteSetting
+    try:
+        until = float(SiteSetting.get_value(TEST_MODE_SETTING, 0) or 0)
+    except (TypeError, ValueError):
+        until = 0
+    return until if until > time.time() else 0
+
+
+def _test_tools_allowed(request=None):
     from django.conf import settings
-    return bool(settings.DEBUG)
+    if settings.DEBUG:
+        return True
+    return bool(request is not None and _is_super_admin(request) and _test_mode_until())
+
+
+@require_POST
+def admin_toggle_test_mode(request):
+    import time
+    from django.http import Http404
+    from apps.home.models import SiteSetting
+    if not _require_admin(request):
+        return redirect('/admin/login/')
+    if not _is_super_admin(request):
+        raise Http404()
+    if request.POST.get('enable') == '1':
+        SiteSetting.set_value(TEST_MODE_SETTING, str(int(time.time() + TEST_MODE_HOURS * 3600)), 'event')
+        logger.warning('Event referral testing mode switched ON for %s hours', TEST_MODE_HOURS)
+        messages.warning(request, f'Testing mode is ON for {TEST_MODE_HOURS} hours. Remove test referrals when done.')
+    else:
+        SiteSetting.set_value(TEST_MODE_SETTING, '0', 'event')
+        logger.warning('Event referral testing mode switched OFF')
+        messages.success(request, 'Testing mode is OFF.')
+    return redirect('admin_event_referral_dashboard')
 
 
 @require_POST
 def admin_test_add_referrals(request, participant_id):
     from django.http import Http404
-    if not _test_tools_allowed():
+    if not _test_tools_allowed(request):
         raise Http404()
     if not _require_admin(request):
         return redirect('/admin/login/')
@@ -233,14 +283,14 @@ def admin_test_add_referrals(request, participant_id):
         friend = Agent.objects.create(
             fullname=f'TEST Referral {token[:4].upper()}',
             email=f'test.{participant.referral_code.lower()}.{token}@{TEST_REFERRAL_EMAIL_DOMAIN}',
-            mobile=mobile, status='active', plan_type='starter',
+            mobile=mobile, status='incomplete', plan_type='starter',
             referred_by_code=participant.referral_code,
         )
         register_referred_agent(friend)
         subscription = AgentSubscription.objects.create(
             agent=friend, selected_plan="Starter's Plan", registration_amount='0.00',
             payment_status='completed', status='active',
-            razorpay_order_id=f'order_TESTREF{token}', razorpay_payment_id=f'pay_TESTREF{token}',
+            razorpay_order_id=f'{TEST_ORDER_PREFIX}{token}', razorpay_payment_id=f'{TEST_PAYMENT_PREFIX}{token}',
         )
         qualify_event_referral(friend, subscription)
         from apps.referral_championship.services.qualification_service import process_championship_qualification
@@ -255,7 +305,7 @@ def admin_test_add_referrals(request, participant_id):
 @require_POST
 def admin_test_remove_referrals(request, participant_id):
     from django.http import Http404
-    if not _test_tools_allowed():
+    if not _test_tools_allowed(request):
         raise Http404()
     if not _require_admin(request):
         return redirect('/admin/login/')
@@ -283,6 +333,15 @@ def admin_test_remove_referrals(request, participant_id):
             agent.subscriptions.filter(razorpay_order_id__startswith='order_TESTREF').delete()
     participant.paid_count = _recount_paid(participant)
     participant.save(update_fields=['paid_count', 'updated_at'])
+    try:
+        from apps.referral_championship.models import ChampionshipParticipant, ChampionshipRewardClaim
+        for cp in ChampionshipParticipant.objects.filter(agent_id=participant.agent_id):
+            ChampionshipRewardClaim.objects.filter(
+                participant=cp, status__in=['locked', 'unlocked'],
+                reward_slab__threshold__gt=cp.qualifying_referrals_count,
+            ).delete()
+    except Exception:
+        logger.exception('Could not withdraw test-unlocked claims for participant %s', participant.pk)
     messages.success(request, f'TEST: removed {len(fakes)} test referral(s). Progress {participant.paid_count} / '
                               f'{participant.required_paid_referrals}. A test win stays until you press Restore.')
     return redirect('admin_event_referral_dashboard')

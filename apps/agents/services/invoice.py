@@ -167,6 +167,11 @@ class InvoiceService:
         Pass sync_sheet=False when the caller will sync (or skip) later so PDF
         generation is not blocked on the Google Sheet webhook.
         """
+        from apps.agents.services.test_markers import is_test_subscription
+        if is_test_subscription(subscription):
+            # Admin testing-mode data: never consume an invoice number.
+            logger.info('[InvoiceService] Skipped test subscription #%s', getattr(subscription, 'pk', None))
+            return None
         try:
             # 1. Avoid duplicates
             if subscription.razorpay_payment_id:
