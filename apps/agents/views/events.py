@@ -199,6 +199,22 @@ def register(request):
         messages.error(request, 'This email is already associated with an active Agent account. Please login to access your dashboard.')
         return redirect('events:register.form')
 
+    # Same guards as the main signup (this form needs no login): never take
+    # over a staff / insurance / distributor email, and never rewrite an
+    # agent past registration (suspended, rejected, awaiting approval...).
+    from apps.agents.services.account_auth import email_owned_by_non_agent_account
+    from apps.agents.views.registration import STEP1_REUSABLE_STATUSES
+    if email_owned_by_non_agent_account(email):
+        messages.error(request, 'This email is already used by a PadosiAgent partner or staff account. Please use a different email.')
+        return redirect('events:register.form')
+    existing_status = Agent.objects.filter(email=email).values_list('status', flat=True).first()
+    if existing_status and existing_status not in STEP1_REUSABLE_STATUSES:
+        messages.error(request, 'This email is already registered. Please login or contact support.')
+        return redirect('events:register.form')
+    if _re.search(r'[<>]', fullname) or len(fullname) > 255:
+        messages.error(request, 'Full name contains invalid characters.')
+        return redirect('events:register.form')
+
     existing_agent = Agent.objects.filter(email=email).first()
     email_verified_at = existing_agent.email_verified_at if (existing_agent and existing_agent.email_verified_at) else timezone.now()
 
