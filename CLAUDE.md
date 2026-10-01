@@ -244,6 +244,10 @@
 7. Private files: normalise the path before any ownership check (`serve_private_file`).
 8. Agent signup and payment auto-login must never open a staff / superuser / insurance / distributor session. Step 1 rejects such emails (`email_owned_by_non_agent_account`). `login_agent_user()` refuses `is_non_agent_portal_user()` users, so every payment login goes through it. See `apps/agents/test_signup_takeover_orphan_orders.py`.
 9. One `AgentSubscription` row per Razorpay order: never overwrite a non-empty `razorpay_order_id`. A paid earlier order must stay findable. Recovery checks every open order. `recover_orphaned_payments` backfills old orphans.
+10. Activate only **captured** Razorpay payments (`ensure_payment_captured`); `authorized` is a hold, not money. The callback, webhook, recovery and admin reconcile must run the same steps (dates, plan, superseded rows, championship and Paldi hooks); recovery and reconcile share `_activate_paid_subscription`.
+11. `agents.user_id` is the Django `auth_user` id, never a Laravel `users.id`: find the `users` row by email. A password change writes both `users` and `auth_user`.
+12. Subscription expiry is enforced only while Admin → Settings → Security → *Enforce subscription expiry* is ON (`apps/agents/services/subscription_expiry.py`); keep new access checks behind `expiry_enforced()`.
+13. Scheduled jobs are listed in `docs/CRON_JOBS.md`; fulfilment and Paldi expiry rely on them.
 
 ### NEVER mix auth systems
 - Do NOT use `request.user.is_authenticated` to check if an agent is logged in
