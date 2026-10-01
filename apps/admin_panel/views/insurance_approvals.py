@@ -11,8 +11,19 @@ from apps.admin_panel.models.insurance_approval import AgentApprovalRequest
 from apps.admin_panel.models.agent import Agent
 from apps.admin_panel.models.users import User
 from apps.admin_panel.models.referral_code import ReferralCode
+from apps.admin_panel.models import AdminActivityLog
 
 logger = logging.getLogger(__name__)
+
+def _log_admin_action(request, action, agent, details):
+    """Audit-log an approval in its own savepoint: a logging failure must never
+    roll back the approval itself."""
+    try:
+        with transaction.atomic():
+            AdminActivityLog.log(action, 'Agent', agent.pk, details=details, request=request)
+    except Exception as exc:
+        logger.warning('Admin activity log failed for %s on agent #%s: %s', action, agent.pk, exc)
+
 
 def insurance_approvals_index(request):
     admin_id = _get_admin_from_session(request)
@@ -125,6 +136,14 @@ def insurance_approvals_approve_onboarding(request, id):
     if request.method == 'POST':
         try:
             with transaction.atomic():
+                # Only a pending onboarding can be approved, once: a repeat POST
+                # (double click, back button) re-sent the invoice and welcome
+                # email, and any agent id (unpaid, suspended) could be activated.
+                agent = Agent.objects.select_for_update().get(pk=agent.pk)
+                if agent.status != 'pending_admin_approval':
+                    messages.info(request, f"Agent {agent.fullname} is not awaiting onboarding approval (status: {agent.status}).")
+                    return redirect('admin_insurance_approvals_index')
+
                 # 1. Activate Agent status
                 agent.status = 'active'
                 agent.save()
@@ -138,10 +157,15 @@ def insurance_approvals_approve_onboarding(request, id):
 
                 # 3. Activate associated subscription
                 from apps.admin_panel.models.agent_subscription import AgentSubscription
-                subscription = AgentSubscription.objects.filter(agent=agent, payment_status='completed').first()
+                subscription = AgentSubscription.objects.filter(
+                    agent=agent, payment_status='completed',
+                ).order_by('-created_at').first()
                 if subscription:
                     subscription.status = 'active'
                     subscription.save()
+
+                _log_admin_action(request, 'Approved insurance onboarding', agent,
+                                  f'subscription={getattr(subscription, "pk", None)}')
 
                 # 4. Generate referral code
                 try:
@@ -195,6 +219,11 @@ def insurance_approvals_reject_onboarding(request, id):
 
         try:
             with transaction.atomic():
+                agent = Agent.objects.select_for_update().get(pk=agent.pk)
+                if agent.status != 'pending_admin_approval':
+                    messages.info(request, f"Agent {agent.fullname} is not awaiting onboarding approval (status: {agent.status}).")
+                    return redirect('admin_insurance_approvals_index')
+
                 agent.status = 'rejected'
                 agent.admin_notes = f"Rejected Onboarding: {admin_note}"
                 agent.save()
@@ -206,15 +235,18 @@ def insurance_approvals_reject_onboarding(request, id):
                     user.status = 'inactive'
                     user.save()
 
-                # Mark subscription failed
+                # Deactivate the subscription. The payment itself was received, so
+                # it stays 'completed' (marking it 'failed' hid real money from
+                # Finance); a refund, if due, is processed separately. A rejected
+                # agent cannot open the dashboard (BLOCKED_DASHBOARD_STATUSES).
                 from apps.admin_panel.models.agent_subscription import AgentSubscription
-                subscription = AgentSubscription.objects.filter(agent=agent, payment_status='completed').first()
-                if subscription:
-                    subscription.payment_status = 'failed'
-                    subscription.status = 'inactive'
-                    subscription.save()
+                AgentSubscription.objects.filter(
+                    agent=agent, payment_status='completed', status='active',
+                ).update(status='inactive')
 
-            messages.success(request, f"Agent {agent.fullname} onboarding has been rejected.")
+                _log_admin_action(request, 'Rejected insurance onboarding', agent, admin_note[:500])
+
+            messages.success(request, f"Agent {agent.fullname} onboarding has been rejected. Process any refund separately.")
         except Exception as err:
             logger.error(f"Admin onboarding rejection failed: {err}")
             messages.error(request, 'Failed to reject onboarding. Please try again.')
