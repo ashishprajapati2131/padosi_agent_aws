@@ -1734,3 +1734,24 @@ class PlanUpgradeHandoff(models.Model):
 
     def __str__(self):
         return f"PlanUpgradeHandoff(agent={self.agent_id}, plan={self.plan_slug})"
+
+
+class AgentPlanOffer(models.Model):
+    """Scratch and social-follow progress used by the mobile plans API."""
+
+    agent = models.OneToOneField(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name='plan_offer',
+    )
+    scratched_starter = models.BooleanField(default=False)
+    scratched_professional = models.BooleanField(default=False)
+    followed_platforms = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'agent_plan_offers'
+
+    def __str__(self):
+        return f"AgentPlanOffer(agent={self.agent_id})"

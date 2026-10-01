@@ -1,0 +1,1028 @@
+PADOSIAGENT — AGENT EDIT PROFILE FLOW
+Flutter APK implementation prompt
+Source of truth: FastAPI mobile API (mounted at /api) plus the website edit-profile screens.
+Do not call the website form POST /agent/update-profile/ from the APK. That route is a Django session form. The APK must use the JWT APIs below.
+
+================================================================================
+0. HOW TO USE THIS PROMPT
+================================================================================
+Build the logged-in agent Edit Profile flow in the Flutter app so it matches the website and the live mobile API.
+
+Rules for the Flutter agent:
+- Auth on every /api/v1/agents/* call: header Authorization: Bearer <access_token>
+- JSON bodies: Content-Type: application/json
+- File uploads: multipart/form-data
+- Base URL example: https://padosiagent.com
+- FastAPI is mounted at /api. Router prefix is /v1/agents or /v1/pincode.
+- Load the screen from GET /api/v1/agents/profile. That response is the single source of truth.
+- Save one step at a time. Do not send the whole profile in one request.
+- Each successful step save already sets agent status to pending_approval (unless status is suspended, blacklisted, or rejected). There is no separate "final submit" API on mobile.
+- Several saves REPLACE child lists. If you omit a list, the server deletes those rows. Always send the current full list for that step.
+- If features_access.<slug>.is_locked is true, show the section locked and do not call the write API for that section.
+- Echo read-only values back unchanged. Sending an empty license_number clears the admin-verified IRDAI license.
+
+================================================================================
+1. SCREEN FLOW (STEP BY STEP)
+================================================================================
+Entry: agent dashboard -> Edit Profile.
+First call: GET /api/v1/agents/profile
+Then render 4 steps. The user can jump between steps. Previous does not save. Next validates, then saves, then moves forward.
+
+STEP A — Basic Details                         (website visual step 1)
+  Save: PUT /api/v1/agents/profile/basic
+  Photo is NOT in that JSON. Photo is POST /api/v1/agents/profile/image
+  On success -> go to Step B
+
+STEP B — Professional                          (website visual step 2)
+  Helper calls before save:
+    GET  /api/v1/pincode/{pincode}                         when user enters a 6-digit pincode
+    GET  /api/v1/agents/profile/serviceable-cities         city dropdown
+    POST /api/v1/agents/profile/serviceable-cities         if user types a city that is not in the list
+  Optional file calls (only if that feature is unlocked):
+    POST   /api/v1/agents/profile/licenses/irdai
+    DELETE /api/v1/agents/profile/licenses/irdai
+    POST   /api/v1/agents/profile/licenses/amfi
+    DELETE /api/v1/agents/profile/licenses/amfi
+  Save text fields: PUT /api/v1/agents/profile/professional
+  Lead Preferences live on this step (Configure button opens a sheet).
+  If lead preferences are unlocked, include leadPreferences in the same professional PUT.
+  If they are locked, omit leadPreferences (send null / leave the key out).
+  On success -> go to Step C
+
+STEP C — Product Portfolio                     (website visual step 3)
+  Helper: GET /api/v1/agents/profile/companies
+  Save: PUT /api/v1/agents/profile/portfolio
+  On success -> go to Step D
+
+STEP D — Additional                            (website visual step 4)
+  These are their own APIs, not part of the additional JSON:
+    POST   /api/v1/agents/profile/achievement
+    DELETE /api/v1/agents/profile/achievement/{photo_id}
+    GET    /api/v1/agents/profile/career-timeline
+    POST   /api/v1/agents/profile/career-timeline
+    PUT    /api/v1/agents/profile/career-timeline/{timeline_id}
+    DELETE /api/v1/agents/profile/career-timeline/{timeline_id}
+    GET    /api/v1/agents/profile/generate-bio          fills the bio box only; does not save
+  Save website + social links + bio text:
+    PUT /api/v1/agents/profile/additional
+  On success -> open Declarations sheet (local only, no API field)
+
+DECLARATIONS SHEET (local UI only)
+  One required checkbox: "I have read, understood, and agree..."
+  Bullet text to show:
+    - All information provided is self-declared and accurate to the best of my knowledge
+    - Leads are not guaranteed and depend on customer preferences and search criteria
+    - PadosiAgent is a facilitation platform only and does not guarantee any business
+    - PadosiAgent does not charge any commission on policies sold or claims processed
+    - Any disputes shall be subject to the jurisdiction of courts in Ahmedabad, Gujarat
+  Note under the checkbox: "Your profile will be reviewed by our team within 24-48 hours."
+  Submit button only checks the checkbox. Do not invent a submit endpoint.
+  After the user agrees, pop back to the dashboard. Status is already pending_approval from the step saves.
+
+Website backend step numbers (for reference only, do not send current_step from Flutter):
+  visual 1 Basic            -> Django step 1
+  visual 2 Professional     -> Django step 2
+  Lead Preferences modal    -> Django step 6
+  visual 3 Product Portfolio-> Django step 4
+  visual 4 Additional       -> Django step 5
+  Declarations submit       -> Django step 7 (status only)
+Flutter ignores those numbers and uses the four PUT endpoints above.
+
+================================================================================
+2. LOAD PROFILE — GET /api/v1/agents/profile
+================================================================================
+Auth: Bearer JWT. Role in the token must be "agent".
+Success 200 body shape:
+
+{
+  "success": true,
+  "agent": { ... },
+  "profile": { ... },
+  "features_access": { "<feature_slug>": { ... } }
+}
+
+agent fields you must bind:
+  id, status, badge, fullname, email, mobile,
+  experience_range, client_base, user_types,
+  activeSubscription.selected_plan,
+  insuranceSegments[].segment_type,
+  productExpertise[]: { segment_type, product_name, expertise_level, is_custom },
+  serviceableCities: ["Ahmedabad", ...],
+  familyLicenses[]: { full_name, member_name, relationship, license_number, license_type },
+  performanceStats: { claims_processed, claims_settled, claims_amount, success_rate, response_time },
+  portfolios[]: { segment_type, primary_companies, secondary_companies },
+  careerTimelines[]: { month, year, type, event_text, title },
+  achievementPhotos[]: { id, photo_url },
+  leadPreferences: {
+    leads_new_business, leads_portfolio_analysis, portfolio_charging, portfolio_fee,
+    leads_claims_support, claims_charging, claims_fee_amount, claims_percent
+  } or null
+
+profile fields you must bind:
+  profile_photo_url, display_name, whatsapp, languages, address, date_of_birth,
+  pan_number, license_number, license_valid_till, irdai_license_doc,
+  arn_number, euin_number, investment_valid_till, amfi_license_doc,
+  investment_types: ["SIP/STP/SWP", ...],
+  agency_name, office_address,
+  service_pincodes[]: { pincode, city_name, selected_areas: [], postal_data: [] },
+  has_pos_license, career_highlights, website,
+  social_links: { google_business, linkedin_url, instagram_url, facebook_url, youtube_url }
+
+languages is one comma-separated string, lowercase, no spaces: "english,hindi,gujarati"
+date fields are "YYYY-MM-DD" or null.
+Photo and document URLs may be absolute (Cloudinary) or start with /media/. Prefix the app base URL when the value starts with /.
+
+IMPORTANT: careerTimelines inside this GET often have no id.
+For edit and delete, also call GET /api/v1/agents/profile/career-timeline which returns id.
+
+features_access item shape:
+{
+  "feature_slug": "edit_profile_basic",
+  "label": "Edit Profile: Basic Details",
+  "is_locked": false,
+  "unlocked_by": "plan",
+  "unlock_hint": null,
+  "upgrade_required": false
+}
+If is_locked is true, show unlock_hint and do not call the write API.
+
+Feature slugs that gate this screen:
+  edit_profile_basic            whole Step A
+  edit_profile_professional     whole Step B text save
+  edit_profile_certifications   IRDAI and AMFI file upload only
+  edit_profile_claim_support    only if you send performanceStats
+  lead_preferences              only if you send leadPreferences
+  receive_leads                 New Business toggle (plan)
+  lead_portfolio_analysis       Portfolio Analysis toggle (plan)
+  lead_claims_support           Claims Support toggle (plan)
+  edit_profile_portfolio        whole Step C
+  manage_portfolio              required when portfolios array is not empty
+  edit_profile_companies        required when a portfolio object contains companies
+  edit_profile_additional       whole Step D text save
+  upload_achievements           achievement photo upload and delete
+  edit_profile_social_media     required when website or any social link changed
+  edit_profile_professional_bio required when career_highlights text changed
+  edit_profile_career_timeline  career timeline create, update, delete
+
+Locked API response is HTTP 403:
+{
+  "detail": {
+    "success": false,
+    "error_code": "FEATURE_LOCKED",
+    "feature": "edit_profile_basic",
+    "message": "Edit Profile: Basic Details is locked on your current plan.",
+    "unlock_hint": "Upgrade to Starter or Professional Plan to unlock",
+    "upgrade_required": true
+  }
+}
+Show message + unlock_hint. Do not retry.
+
+================================================================================
+3. STEP A — BASIC DETAILS
+================================================================================
+Field count on screen: 9 inputs + 2 UI-only checkboxes.
+JSON fields sent to the API: 8.
+Separate upload: 1 file.
+
+SCREEN FIELDS
+#  UI label                         JSON path                    Required   Notes
+1  Profile photo                    (not in JSON)                no         POST /profile/image, field name "file"
+2  Your Full Name                   agent.fullname               YES        letters and spaces only
+3  Display Name (Public Profile)    profile.display_name         no
+4  Same as full name                UI only                      no         copies fullname into display_name
+5  Mobile Number (Calling)          agent.mobile                 YES        digits only
+6  WhatsApp Number                  profile.whatsapp             no         digits only
+7  Same as mobile number            UI only                      no         copies mobile into whatsapp and locks the box
+8  Email ID                         agent.email                  YES        also the login email
+9  Languages You Speak              profile.languages            YES        multi-select, stored as one string
+10 Residence Address                profile.address              YES        textarea
+11 Date of Birth                    profile.date_of_birth        no         date picker, send null if empty
+
+Language options (store the value, show the label):
+  english, hindi, gujarati, marathi, tamil, telugu, kannada, bengali, punjabi
+Join selected values with a comma and no spaces: "hindi,gujarati"
+At least one language is required.
+
+CLIENT VALIDATION (match the website, then the API)
+  fullname
+    - required, trim
+    - allow only A-Z, a-z, and spaces
+    - website max length 70; server max 255. Use 70 in the UI.
+    - error: "Full Name is required"
+  display_name
+    - optional
+    - letters and spaces only
+    - website max length 35; server max 255. Use 35 in the UI.
+  mobile
+    - required
+    - digits only, exactly 10 digits in the UI
+    - server accepts 10 to 15 digits
+    - error: "Mobile Number is required"
+  whatsapp
+    - optional
+    - if filled: digits only, 10 digits in the UI
+    - server: if filled, 10 to 20 digits, else "Enter a valid WhatsApp number."
+  email
+    - required
+    - valid email
+    - server also rejects a duplicate (another agent already has it)
+  languages
+    - required, at least one
+    - error: "At least one language is required"
+    - server max 255 characters on the joined string
+  address
+    - required, trim
+    - server max 255
+    - error: "Residence Address is required"
+    - placeholder: "Society/Building Name, Area, City, Pincode"
+  date_of_birth
+    - optional
+    - send "YYYY-MM-DD" or null
+    - do not send ""
+
+API
+PUT /api/v1/agents/profile/basic
+Feature lock checked first: edit_profile_basic
+Does not touch professional, portfolio, additional, photo, licenses, cities, or leads.
+
+Request:
+{
+  "agent": {
+    "fullname": "Ashish Prajapati",
+    "email": "ashish@example.com",
+    "mobile": "9876543210"
+  },
+  "profile": {
+    "display_name": "Ashish",
+    "whatsapp": "9876543210",
+    "languages": "hindi,gujarati",
+    "address": "12 Shanti Society, Navrangpura, Ahmedabad, 380009",
+    "date_of_birth": "1990-05-21"
+  }
+}
+
+Server checks (in order):
+  1. fullname non-empty after trim -> 422 "Full name is required."
+  2. email non-empty -> 422 "Email is required."
+  3. mobile non-empty -> 422 "Mobile number is required."
+  4. languages non-empty -> 422 "Languages are required."
+  5. address non-empty -> 422 "Residence address is required."
+  6. email unique among other agents -> 409 "The email has already been taken."
+  7. feature edit_profile_basic unlocked -> else 403 FEATURE_LOCKED
+  8. writes agents.fullname, agents.email, agents.mobile
+  9. if email changed, also updates the login user row so the agent can still sign in
+  10. writes profile display_name, whatsapp, languages, address, date_of_birth
+  11. sets status pending_approval (unless suspended / blacklisted / rejected)
+  12. returns the full GET profile body (AgentProfileResponse)
+
+Pydantic will 422 before the service if fullname, email, mobile, languages, or address keys are missing.
+Empty string "" passes Pydantic and fails the service checks above.
+
+PHOTO API (call when the user picks a photo, not inside the basic JSON)
+POST /api/v1/agents/profile/image
+multipart field name: file
+Allowed by API: .jpg .jpeg .png .webp
+MIME: image/jpeg, image/jpg, image/png, image/pjpeg, image/webp
+Max size: 20 MB
+Magic bytes must be real JPEG, PNG, or WEBP. GIF is rejected.
+Server re-encodes the image.
+Response: { "success": true, "profile_photo_url": "<url>" }
+Also sets status pending_approval.
+Website UI copy says 5 MB. Follow the API limit of 20 MB, and prefer telling the user "JPG, PNG, or WEBP".
+
+================================================================================
+4. STEP B — PROFESSIONAL
+================================================================================
+Fixed inputs: 16, plus repeatable family rows (3 fields each), plus claim stats (4, one of them read-only), plus the lead-preference sheet (8).
+License files are separate APIs.
+
+SCREEN FIELDS
+#  UI label                              JSON path                              Required
+1  PAN Number                            profile.pan_number                     YES in the app (see note)
+2  IRDAI License Number                  profile.license_number                 read-only for the agent
+3  IRDAI License Valid Till              profile.license_valid_till             no
+4  IRDAI certificate file                separate API                           no
+5  AMFI / ARN certificate file           separate API                           no
+6  AMFI ARN Number                       profile.arn_number                     no
+7  EUIN Number                           profile.euin_number                    no
+8  ARN Valid Till Date                   profile.investment_valid_till          no
+9  Agency Name (If Any)                  profile.agency_name                    no
+10 Office Address (If Available)         profile.office_address                 no
+11 Service Pincode(s)                    profile.service_pincodes[].pincode     YES, at least one
+12 Areas for that pincode                profile.service_pincodes[].selected_areas  YES, at least one area each
+13 Serviceable Cities                    agent.serviceableCities                YES, at least one
+14 Years of Experience                   agent.experience_range                 YES in the app
+15 Approx Active Client Base             agent.client_base                      YES in the app
+16 POS license with any broker           profile.has_pos_license                YES, default false (radio Yes/No)
+17 Family / Additional Licenses          agent.familyLicenses                   no, repeatable
+18 Claims Processed                      agent.performanceStats.claims_processed    no
+19 Claims Settled                        agent.performanceStats.claims_settled      no
+20 Total Claims Amount Settled           agent.performanceStats.claims_amount       no
+21 Claim Success Rate                    do not send; server calculates            read-only
+
+PAN note:
+  The website requires PAN and checks format ^[A-Z]{5}[0-9]{4}[A-Z]$ (example ABCDE1234F).
+  The mobile professional API does not re-check PAN format. Still enforce the website rule in Flutter so bad PANs are not saved.
+  Uppercase, strip non-alphanumeric, max 10.
+
+IRDAI license number:
+  The agent cannot type this on the website. Admin sets it after PAN verification.
+  Show it read-only. If empty, placeholder "Will be Updated by Admin".
+  ALWAYS send the existing license_number back. An empty string overwrites and clears it.
+
+CLIENT VALIDATION
+  pan
+    - required
+    - uppercase, exactly [A-Z]{5}[0-9]{4}[A-Z]
+    - error: "PAN Number is required for IRDAI verification"
+    - format error: "Please enter a valid PAN Number format (e.g., ABCDE1234F)"
+  license_valid_till, investment_valid_till
+    - optional dates YYYY-MM-DD or null
+  arn_number, euin_number, agency_name, office_address
+    - optional
+    - agency_name and office_address max 255 if you mirror the website
+  service pincode
+    - required
+    - exactly 6 digits
+    - first digit 1-9 (website regex ^[1-9][0-9]{5}$)
+    - no duplicate pincodes
+    - after 6 valid digits, call the pincode API
+  selected areas
+    - required, at least one area per pincode
+    - server error: "Please select at least one area for pincode {pincode}."
+    - server error if none: "At least one service pincode is required."
+    - server error if duplicate: "Duplicate pincode detected: {pincode}"
+  serviceable cities
+    - required, at least one name
+    - user may search the list or add a new city name
+  experience_range
+    - required in the app
+    - digits only, 0 to 60, max 2 digits
+    - store as a string, e.g. "15" (the column is text, not an int)
+    - error: "Years of Experience is required"
+  client_base
+    - required in the app
+    - digits only, min 0, max 5 digits
+    - store as a string, e.g. "500"
+    - error: "Client Base is required"
+  has_pos_license
+    - boolean. Yes = true, No = false. Default false.
+    - if the user never touches it, still send false. Do not omit it in a way that flips a saved true to false by accident: bind the radio from the GET value.
+  family row (only saved when name is non-empty)
+    - full_name: text, "Name as per license"
+    - relationship: one of father, mother, spouse, son, daughter, brother, sister, other
+    - license_number: PAN or IRDAI license text, optional
+    - sending [] deletes every family license. Send the full current list.
+  claims (only include performanceStats if edit_profile_claim_support is unlocked)
+    - claims_processed: integer >= 0
+    - claims_settled: integer >= 0
+    - claims_settled must be <= claims_processed
+      error: "Settled claims cannot exceed processed claims"
+    - if settled > 0 and processed is 0:
+      error: "Processed claims are required if claims were settled"
+    - claims_amount: digits only, max 10 digits, >= 0
+    - success_rate is read-only: round((settled / processed) * 100, 2) when processed > 0, else 0
+    - response_time is not on the website form. If you send performanceStats, pass the existing response_time from GET, or "2". The server stores the first integer it finds in that value. Default 2.
+    - if the claims block is locked, OMIT performanceStats (null). Sending it returns 403 and the whole step fails.
+
+PINCODE LOOKUP (no JWT required)
+GET /api/v1/pincode/{pincode}
+422 if not exactly 6 digits: "Pincode must be exactly 6 digits."
+404 if India Post has no match: "Pincode not found."
+503 if the postal service is down.
+200:
+{
+  "pincode": "380001",
+  "city_name": "Ahmedabad",
+  "postal_data": [ { "Name": "Ellisbridge", "District": "Ahmedabad", "State": "Gujarat", ... }, ... ]
+}
+Show postal_data[].Name as the area checklist.
+On save, send:
+{
+  "pincode": "380001",
+  "city_name": "Ahmedabad",
+  "selected_areas": ["Ellisbridge", "Navrangpura"],
+  "postal_data": [ ...the postal_data array you got, or at least the selected offices... ]
+}
+The first pincode in the list becomes the agent's primary pincode (agents.agent_pincode).
+city_name is also added into serviceable cities on the server, in addition to agent.serviceableCities.
+
+CITY LIST
+GET /api/v1/agents/profile/serviceable-cities
+Auth required.
+{ "status": "success", "cities": [ { "id": 1, "name": "Ahmedabad" } ] }
+
+POST /api/v1/agents/profile/serviceable-cities
+{ "name": "Kalol" }
+400 if blank: "City name is required."
+If the name already exists (case-insensitive), returns the existing city.
+This only inserts a global city. It does NOT attach the city to the agent.
+Attach it by including the name in agent.serviceableCities on the professional PUT.
+
+LICENSE FILE APIS (feature edit_profile_certifications)
+POST /api/v1/agents/profile/licenses/irdai
+POST /api/v1/agents/profile/licenses/amfi
+multipart field name: file
+Allowed: .pdf .jpg .jpeg .png
+MIME: application/pdf, image/jpeg, image/jpg, image/png
+Max 5 MB
+PDF must start with %PDF-
+Images go through the image checker (no WEBP on documents).
+Response: { "status": "success", "message": "...", "path": "/media/..." }
+DELETE /api/v1/agents/profile/licenses/irdai
+DELETE /api/v1/agents/profile/licenses/amfi
+Response: { "success": true, "message": "..." }
+These deletes do not check the feature lock. Still hide the buttons when the feature is locked.
+Uploading a new file replaces the old one.
+
+PROFESSIONAL SAVE
+PUT /api/v1/agents/profile/professional
+Locks:
+  always: edit_profile_professional
+  if performanceStats is not null: edit_profile_claim_support
+  if leadPreferences is not null: lead_preferences
+
+This call REPLACES:
+  all service pincodes
+  all serviceable cities
+  all family licenses
+And OVERWRITES scalar professional fields, including license_number.
+It does not touch basic info, photo, segments, portfolios, bio, or social links.
+License document files are not part of this JSON.
+
+Request:
+{
+  "agent": {
+    "experience_range": "15",
+    "client_base": "500",
+    "serviceableCities": ["Ahmedabad", "Gandhinagar"],
+    "familyLicenses": [
+      {
+        "full_name": "Ramesh Prajapati",
+        "member_name": "Ramesh Prajapati",
+        "relationship": "father",
+        "license_number": "ABCDE1234F",
+        "license_type": "ABCDE1234F"
+      }
+    ],
+    "performanceStats": {
+      "claims_processed": 150,
+      "claims_settled": 145,
+      "claims_amount": 2500000,
+      "success_rate": 0,
+      "response_time": "2"
+    },
+    "leadPreferences": null
+  },
+  "profile": {
+    "pan_number": "ABCDE1234F",
+    "license_number": "IRDAI-EXISTING-OR-EMPTY-IF-NEVER-SET",
+    "license_valid_till": "2027-03-31",
+    "arn_number": "ARN-123456",
+    "euin_number": "E123456",
+    "investment_valid_till": "2027-03-31",
+    "agency_name": "Prajapati Insurance",
+    "office_address": "Shop 4, CG Road, Ahmedabad",
+    "has_pos_license": false,
+    "service_pincodes": [
+      {
+        "pincode": "380001",
+        "city_name": "Ahmedabad",
+        "selected_areas": ["Ellisbridge"],
+        "postal_data": []
+      }
+    ]
+  }
+}
+
+If claims are locked, set performanceStats to null.
+If leads are locked, set leadPreferences to null.
+success_rate in the request is ignored. Server recomputes it.
+Family name mapping: server uses full_name, else member_name.
+Family license mapping: server uses license_number, else license_type.
+Send both pairs with the same value so older readers stay in sync.
+
+Server writes strings for claims_processed, claims_settled, claims_amount, success_rate.
+response_time is stored as an integer (default 2).
+
+Returns the full profile.
+
+LEAD PREFERENCES (same professional PUT, sheet on Step B)
+Include this object only when lead_preferences is unlocked.
+Website requires at least one enabled lead type to be checked.
+If every toggle is disabled by the plan, skip validation and omit the object.
+
+{
+  "leads_new_business": true,
+  "leads_portfolio_analysis": false,
+  "portfolio_charging": "free",
+  "portfolio_fee": 0,
+  "leads_claims_support": false,
+  "claims_charging": "free",
+  "claims_fee_amount": 0,
+  "claims_percent": 0
+}
+
+Toggles:
+  1. New Business
+     JSON: leads_new_business
+     Plan feature: receive_leads
+     Experience: all agents
+     No fee fields
+  2. Portfolio Analysis
+     JSON: leads_portfolio_analysis
+     Plan feature: lead_portfolio_analysis
+     Experience gate: agent.experience_range must parse to >= 5 years
+     If under 5 years, show locked: "Requires N more year(s) of experience"
+     Charging (only when the toggle is on):
+       portfolio_charging = "free" | "conditional" | "paid"
+       free: portfolio_fee = 0, hide amount
+       conditional: show "Consultation Fee" and send that number as portfolio_fee (>= 0)
+       paid: show "Consultation Fee" and send that number as portfolio_fee (>= 0)
+  3. Claims Support
+     JSON: leads_claims_support
+     Plan feature: lead_claims_support
+     Experience gate: >= 10 years
+     Charging:
+       claims_charging = "free" | "fee" | "percentage"
+       free: claims_fee_amount = 0, claims_percent = 0
+       fee: send claims_fee_amount >= 0, claims_percent = 0
+       percentage: send claims_percent from 0 to 10, claims_fee_amount = 0
+       UI: if percent < 0 clamp to 0; if percent > 10 clamp to 10
+
+SERVER EXPERIENCE GATE (applied even if the app sends true):
+  Parse the first integer in experience_range.
+  If years < 5:
+    force leads_portfolio_analysis = false
+    force portfolio_charging = "free", portfolio_fee = 0
+    force leads_claims_support = false
+    force claims_charging = "free", claims_fee_amount = 0, claims_percent = 0
+  If years >= 5 and years < 10:
+    force leads_claims_support = false and zero the claims fee fields
+  New business is not experience-gated.
+
+Also hide a card when its plan feature is locked (data-plan-locked on the website).
+Do not send a lead type the plan has locked as true.
+
+================================================================================
+5. STEP C — PRODUCT PORTFOLIO
+================================================================================
+Field groups: 2 selectors, then a repeating company card per selected segment.
+Known segment count: 4. Investment types: dynamic. Company rows: 2 fixed + N extra per segment.
+
+SCREEN FIELDS
+1. Insurance segments (checkboxes). At least the UI should allow zero, but each checked segment needs a primary company before Next.
+   Values (send these exact strings):
+     health, life, motor, sme
+   Labels: Health, Life, Motor, SME
+2. Investment types (checkboxes). Optional. Names come from admin.
+   There is no mobile "list investment types" API.
+   Hardcode the canonical names the server normalizes, and also show any extra names already in profile.investment_types:
+     SIP/STP/SWP, Lumpsum, ELSS, PMS, NPS, AIF
+   Server normalization on save:
+     sip, stp, swp, sip/stp/swp -> one entry "SIP/STP/SWP"
+     lumpsum -> "Lumpsum"
+     elss -> "ELSS"
+     pms -> "PMS"
+     nps -> "NPS"
+     aif -> "AIF"
+     bonds -> dropped
+     anything else -> kept as trimmed text
+3. For each selected segment, a card:
+   - Primary Company Name *     (dropdown)
+   - Approx % of Business       (0 to 100, optional)
+   - Secondary Company Name     (optional)
+   - Approx % of Business       (0 to 100, optional)
+   - Add Company (repeatable): Additional Company Name + percent 0 to 100 + delete
+
+COMPANY DROPDOWN
+GET /api/v1/agents/profile/companies
+Auth required.
+Response is an object, not a list:
+{
+  "health": ["Acko General Insurance Limited", "..."],
+  "life": ["Life Insurance Corporation of India", "..."],
+  "motor": ["..."],
+  "sme": ["..."]
+}
+Use the array for that segment. If a saved company is missing from the list, still show it as a selected option.
+
+CLIENT VALIDATION
+  For every checked segment, primary company is required.
+  Error banner: "Please select a primary company for each segment"
+  Percents: number, min 0, max 100. Optional.
+  Investment types: optional.
+  Unchecking every segment is allowed. Send insuranceSegments: [] and portfolios: [].
+  That deletes old segment rows and old portfolio rows. That is intended.
+
+REPLACE WARNING
+PUT /profile/portfolio deletes then reinserts:
+  insurance segments
+  product expertise
+  portfolios
+If the app does not edit product expertise (the current website does not show an expertise-rating form), you MUST echo agent.productExpertise from GET or the save wipes it.
+
+Expertise item:
+{
+  "segment_type": "health",
+  "product_name": "Family Floater",
+  "expertise_level": 3,
+  "is_custom": false
+}
+expertise_level is an int, default 1. Only levels > 0 are stored on the website. Send the GET list back unchanged.
+If segment_type is blank, the server guesses: term/life -> life, health/medical -> health, car/motor/bike -> motor, sme/commercial/business -> sme, else life.
+
+PORTFOLIO JSON (this is the shape stored in the database)
+Build one object per segment that has a primary company:
+
+{
+  "segment_type": "health",
+  "primary_companies": {
+    "name": "Star Health & Allied Insurance Co. Ltd.",
+    "percentage": "60"
+  },
+  "secondary_companies": {
+    "name": "Niva Bupa Health Insurance Company Limited",
+    "percentage": "25",
+    "others": "",
+    "companies": [
+      { "name": "Star Health & Allied Insurance Co. Ltd.", "percent": "60" },
+      { "name": "Niva Bupa Health Insurance Company Limited", "percent": "25" },
+      { "name": "Care Health Insurance Ltd.", "percent": "15" }
+    ]
+  }
+}
+
+primary_companies = the primary name + percentage.
+secondary_companies.name / percentage = the secondary company (empty string if none).
+secondary_companies.companies = primary, then secondary if present, then each extra row that has a name.
+Store percents as strings to match the website.
+When you read GET portfolios, primary_companies and secondary_companies are already objects (sometimes they were stored as JSON strings; the API parses them).
+
+API
+PUT /api/v1/agents/profile/portfolio
+Locks:
+  always: edit_profile_portfolio
+  if portfolios is not empty: manage_portfolio
+  if any portfolio has a non-empty primary_companies or secondary_companies object: edit_profile_companies
+
+Request:
+{
+  "agent": {
+    "insuranceSegments": [
+      { "segment_type": "health" },
+      { "segment_type": "life" }
+    ],
+    "productExpertise": [],
+    "portfolios": [ { "...as above..." } ]
+  },
+  "profile": {
+    "investment_types": ["SIP/STP/SWP", "Lumpsum"]
+  }
+}
+
+profile may be omitted. If you omit it, investment types are left unchanged.
+If you send profile.investment_types, that list replaces the saved list.
+Empty portfolios deletes all company tie-ups.
+Returns the full profile.
+Sets status pending_approval.
+
+================================================================================
+6. STEP D — ADDITIONAL
+================================================================================
+Fixed text fields: 7 (website + 5 socials + bio).
+Plus achievement photos (separate API) and career timeline rows (separate API).
+The additional PUT saves only website, social_links, and career_highlights.
+
+SCREEN FIELDS
+#  UI label                     JSON path                         Required   Feature
+1  Achievement photos           separate API                      no         upload_achievements
+2  Website                      profile.website                   no         edit_profile_social_media if changed
+3  Google Business Profile      profile.social_links.google_business   no    same
+4  LinkedIn                     profile.social_links.linkedin_url      no    same
+5  Instagram                    profile.social_links.instagram_url     no    same
+6  Facebook                     profile.social_links.facebook_url      no    same
+7  YouTube                      profile.social_links.youtube_url       no    same
+8  Career timeline rows         separate API                      no         edit_profile_career_timeline
+9  Professional Bio             profile.career_highlights         no         edit_profile_professional_bio if text changed
+10 Generate AI bio button       GET generate-bio                  no         edit_profile_professional_bio
+
+The parent save still requires edit_profile_additional even if bio and socials did not change.
+
+CLIENT VALIDATION
+  All social fields and website are optional.
+  If filled, must be a valid absolute URL (http or https) and max 255 characters.
+  Website placeholder on the site is "www.yourwebsite.com", but the server URL check needs a scheme.
+  In Flutter, if the user types www.example.com, prefix https:// before save.
+  Error pattern from the website: "Enter a valid URL for {field}."
+  career_highlights: optional, max 500 characters. Counter "0/500 characters".
+  Website server message if over 500: "Professional Bio cannot exceed 500 characters."
+  The mobile additional API does not re-check URL format or the 500 limit. Enforce both in Flutter.
+
+SOCIAL KEYS
+Send the *_url keys. The GET response already uses those keys.
+Old rows may have stored "linkedin" instead of "linkedin_url". The GET normalizes them. Always save with:
+  google_business, linkedin_url, instagram_url, facebook_url, youtube_url
+
+API
+PUT /api/v1/agents/profile/additional
+{
+  "profile": {
+    "website": "https://example.com",
+    "career_highlights": "MDRT qualifier with 15 years in life and health.",
+    "social_links": {
+      "google_business": "https://maps.google.com/?cid=123",
+      "linkedin_url": "https://www.linkedin.com/in/example",
+      "instagram_url": "",
+      "facebook_url": "",
+      "youtube_url": ""
+    }
+  }
+}
+If career_highlights text differs from the saved value, server also requires edit_profile_professional_bio.
+If website or any social value differs from the saved value, server also requires edit_profile_social_media.
+A 403 on those child locks fails the whole additional save. If a child is locked, keep that field equal to the GET value so the comparison does not trip the lock. Easiest rule: if the child feature is locked, show the block read-only and send the original strings back.
+Returns the full profile.
+Sets status pending_approval.
+
+AI BIO
+GET /api/v1/agents/profile/generate-bio
+No query params. The server reads the agent from the token.
+Lock: edit_profile_professional_bio
+Response: { "status": "success", "bio": "<generated text>" }
+Put that text into the bio field. The user can edit it.
+It is NOT saved until PUT /profile/additional.
+500: "Failed to generate professional bio. Please try again later."
+Trim the result to 500 characters before showing it, because the save limit is 500.
+
+ACHIEVEMENT PHOTOS
+POST /api/v1/agents/profile/achievement
+Lock: upload_achievements
+multipart: field "file" for one, and/or field "files" for many.
+Also accepts a data-URI / base64 string, but Flutter should send real files.
+Max 10 files in one request. Error: "Cannot upload more than 10 files in a single request."
+Empty: 400 "No files uploaded."
+Per file: same image rules as the profile photo (jpg/jpeg/png/webp, 20 MB, real magic bytes).
+Duplicate file hash in the same batch is skipped.
+Duplicate hash already stored for this agent is reused, not uploaded again.
+Plan cap:
+  if active subscription plan name contains "professional" -> max 10 photos total
+  otherwise -> max 5
+Error 422: "Achievement photo limit exceeded. Your current plan allows up to {max} photos."
+Response:
+{
+  "success": true,
+  "photos": [ { "id": 12, "photo_url": "https://..." } ]
+}
+
+DELETE /api/v1/agents/profile/achievement/{photo_id}
+Lock: upload_achievements
+404 if the photo is not this agent's.
+{ "success": true, "message": "Achievement photo deleted successfully." }
+
+GET profile achievementPhotos already includes id and photo_url. Use that id for delete.
+
+CAREER TIMELINE
+Load with ids:
+GET /api/v1/agents/profile/career-timeline
+{ "success": true, "data": [ { "id": 1, "year": "2018", "month": "January", "type": "Career Event", "event_text": "Started Insurance Career", "title": "Started Insurance Career" } ] }
+
+Add:
+POST /api/v1/agents/profile/career-timeline
+Lock: edit_profile_career_timeline
+{
+  "year": "2018",
+  "month": "January",
+  "type": "Career Event",
+  "title": "Started Insurance Career",
+  "event_text": "Started Insurance Career"
+}
+year is required by the Pydantic model CareerTimelineCreateRequest when you use that model, but the live route accepts a raw dict.
+Still require year and event text in the app. The website only saves a row when both event_text and year are non-empty.
+month may be "".
+type must be one of:
+  Career Event, Achievement, Certification, Milestone
+Months (full English names):
+  January, February, March, April, May, June, July, August, September, October, November, December
+Years: current year down to 1980.
+
+Update:
+PUT /api/v1/agents/profile/career-timeline/{timeline_id}
+Same JSON keys. Only keys you send are changed.
+404: "Career timeline event not found."
+
+Delete:
+DELETE /api/v1/agents/profile/career-timeline/{timeline_id}
+{ "success": true, "message": "Career timeline event deleted successfully." }
+
+Preset pills to ship in the app (website quick-add, no API):
+  Career Event:
+    Started Insurance Career
+    Joined as Corporate Agent
+    Started Own Agency
+    Promoted to Senior Agent
+    Joined Broker Channel
+  Achievement:
+    500+ Client Base
+    1000+ Client Base
+    100+ Claims Settled
+    500+ Claims Settled
+    MDRT Qualifier
+    MDRT 2024
+    COT (Court of the Table)
+    TOT (Top of the Table)
+    Top Performer Award
+    Star Club Member
+    Chairman Club Member
+  Certification:
+    Obtained Insurance License
+    III Licentiate (LIII)
+    III Associateship (AIII)
+    III Fellowship (FIII)
+    CFP Certification
+    POS License Obtained
+  Milestone:
+    First 100 Clients
+    First 100 Claims Settled
+    ₹1 Crore Claims Settled
+    ₹5 Crore Claims Settled
+    ₹10 Crore Premium Collection
+    10 Years in Insurance
+    25 Years in Insurance
+Tapping a pill fills type + event text. The user still picks month and year, then you POST.
+
+Do not call GET /agent/career-timeline/suggestions/. That is a Django session page, not a JWT API.
+
+Google "Create / Link GBP" on the website is an OAuth browser flow. For v1 of the APK, a URL text field for Google Business is enough. Do not block Step D on GBP OAuth.
+
+================================================================================
+7. WHICH API DEPENDS ON WHICH FIELDS
+================================================================================
+Call                                          Depends on these fields                                      Also depends on
+GET    /api/v1/agents/profile                 JWT only                                                     none
+PUT    /api/v1/agents/profile/basic           fullname, email, mobile, languages, address                  display_name, whatsapp, date_of_birth optional. Lock: edit_profile_basic. Email must be unique.
+POST   /api/v1/agents/profile/image           multipart file                                               jpg/jpeg/png/webp, <= 20 MB
+GET    /api/v1/pincode/{pincode}              path pincode, 6 digits                                       no auth. Used to fill city_name, postal_data, area list
+GET    /api/v1/agents/profile/serviceable-cities   JWT                                                 fills the city dropdown
+POST   /api/v1/agents/profile/serviceable-cities   body.name                                           creates a global city. Does not attach it. Attach via serviceableCities on the professional PUT.
+PUT    /api/v1/agents/profile/professional    service_pincodes (pincode, city_name, selected_areas)       experience_range, client_base, serviceableCities, familyLicenses, pan, license_number (echo), dates, arn, euin, agency, office, has_pos_license. performanceStats only if claims unlocked. leadPreferences only if leads unlocked.
+POST   /api/v1/agents/profile/licenses/irdai  multipart file                                               Lock: edit_profile_certifications. pdf/jpg/jpeg/png <= 5 MB
+POST   /api/v1/agents/profile/licenses/amfi   multipart file                                               same
+DELETE /api/v1/agents/profile/licenses/irdai  JWT                                                          clears irdai_license_doc
+DELETE /api/v1/agents/profile/licenses/amfi   JWT                                                          clears amfi_license_doc
+GET    /api/v1/agents/profile/companies       JWT                                                          fills company dropdowns per segment. No profile fields required.
+PUT    /api/v1/agents/profile/portfolio       insuranceSegments, portfolios, investment_types              Echo productExpertise. Locks: edit_profile_portfolio, and manage_portfolio / edit_profile_companies when companies are sent.
+PUT    /api/v1/agents/profile/additional      website, social_links, career_highlights                     Locks: edit_profile_additional, plus social or bio lock if those values changed.
+GET    /api/v1/agents/profile/generate-bio    JWT, saved profile already in DB                             Does not take the unsaved form. Save earlier steps first if the bio should mention them. Lock: edit_profile_professional_bio
+POST   /api/v1/agents/profile/achievement     multipart file or files                                      Lock: upload_achievements. Plan cap 5 or 10.
+DELETE /api/v1/agents/profile/achievement/{id} photo id from GET                                          Lock: upload_achievements
+GET    /api/v1/agents/profile/career-timeline JWT                                                          use this for ids
+POST   /api/v1/agents/profile/career-timeline year, title or event_text, month, type                       Lock: edit_profile_career_timeline
+PUT    /api/v1/agents/profile/career-timeline/{id} same keys                                             Lock: edit_profile_career_timeline
+DELETE /api/v1/agents/profile/career-timeline/{id} id                                                    Lock: edit_profile_career_timeline
+
+Field dependency inside Step B (order the UI should enforce):
+  pincode  -> GET pincode API -> city_name + area checklist -> selected_areas
+  selected_areas required before professional PUT will succeed
+  city_name from that lookup should also be offered in serviceable cities
+  experience_range  -> unlocks Portfolio Analysis lead card at >= 5 and Claims Support lead card at >= 10
+  claims_processed + claims_settled -> success_rate (display only)
+  portfolio_charging conditional|paid -> portfolio_fee visible and sent
+  claims_charging fee -> claims_fee_amount
+  claims_charging percentage -> claims_percent (0-10)
+
+Field dependency inside Step C:
+  segment checkbox -> shows that segment's company card -> company names come from GET /profile/companies for that segment key
+  primary company required per checked segment
+  portfolios non-empty -> manage_portfolio must be unlocked
+  company objects non-empty -> edit_profile_companies must be unlocked
+
+Field dependency inside Step D:
+  generate-bio reads saved DB data, not the text currently typed
+  bio text change -> edit_profile_professional_bio
+  website or social change -> edit_profile_social_media
+  achievement count + plan name -> upload allowed or 422
+  timeline row needs year + event text before POST
+
+================================================================================
+8. ERRORS THE APP MUST HANDLE
+================================================================================
+401  Token missing, expired, revoked, or role is not agent.
+       Body detail: "Could not validate credentials" or "Token is invalid or has been revoked"
+       Action: send the user to login.
+403  FEATURE_LOCKED object (see section 2). Show the lock message. Do not wipe the form.
+404  Agent, photo, or timeline row not found.
+409  "The email has already been taken." Highlight the email field.
+422  Either a string detail ("Full name is required.", "At least one service pincode is required.", "Please select at least one area for pincode 380001.", "Duplicate pincode detected: 380001.", "Pincode must be exactly 6 digits.", "Achievement photo limit exceeded...")
+       or a Pydantic list:
+       { "detail": [ { "loc": ["body","profile","languages"], "msg": "Field required", "type": "missing" } ] }
+       Map loc to the field and show msg.
+500  "An error occurred while updating the profile." or upload storage failure. Ask the user to retry.
+503  Pincode lookup upstream down.
+
+Website validation error shape (Django only, not used by Flutter):
+{ "status": "error", "message": "Validation failed", "errors": { "full_name": ["The full name field is required."] } }
+
+================================================================================
+9. REPLACE-LIST SAFETY CHECKLIST
+================================================================================
+Do this or the APK will delete data the user already saved.
+
+basic PUT
+  Safe. Only the 6 profile/agent scalars. Photo stays on the image API.
+
+professional PUT
+  Sends the FULL familyLicenses array or you delete family members.
+  Sends the FULL service_pincodes array or you delete pincodes.
+  Sends the FULL serviceableCities array or you delete cities.
+  Echo license_number.
+  performanceStats null means "do not touch claims". An object overwrites all claim numbers.
+  leadPreferences null means "do not touch leads". An object overwrites all lead flags, then the server may force some off because of experience.
+
+portfolio PUT
+  Sends the FULL insuranceSegments array.
+  Sends the FULL portfolios array.
+  Echo productExpertise from GET if the screen does not edit expertise.
+  investment_types inside profile replaces the list. Omit profile to leave investment types as they are.
+
+additional PUT
+  Overwrites website, all 5 social keys, and career_highlights.
+  Send the full social_links object every time. A missing key becomes empty and can trip the social lock or clear a link.
+  Does not touch achievement photos or timeline rows. Those are the other APIs.
+
+image / achievement / license / timeline
+  Each is its own call. Do not also stuff those files into the JSON puts.
+
+================================================================================
+10. SUGGESTED FLUTTER STRUCTURE
+================================================================================
+Screens
+  EditProfilePage (loads GET profile once, holds EditProfileController)
+  StepBasicPage
+  StepProfessionalPage
+  LeadPreferencesSheet
+  StepPortfolioPage
+  StepAdditionalPage
+  DeclarationsSheet
+
+Models
+  Mirror AgentProfileResponse: agent, profile, featuresAccess.
+  Keep a dirty copy per step so a failed save does not lose typed text.
+
+Repository methods (one per endpoint in section 7)
+  All write methods return the refreshed AgentProfileResponse except:
+    image upload -> { success, profile_photo_url }
+    achievement upload -> { success, photos }
+    license upload -> { status, message, path }
+    deletes and timeline item responses as documented
+    generate-bio -> { status, bio }
+    pincode -> { pincode, city_name, postal_data }
+    companies -> map of 4 lists
+    cities -> { status, cities }
+
+Navigation
+  Next: validate locally -> call that step's API -> on 200 replace controller state with the response -> next step
+  Previous: no API
+  Stepper tap: allowed, same as the website (no forced completeness)
+  If the step feature is locked: show the blurred/locked card with unlock_hint and disable Next's save for that step (skip ahead)
+
+After declarations checkbox is checked, leave the flow.
+Show a snackbar: profile saved, review in 24-48 hours.
+Do not set status yourself. The server does that on every successful step save.
+
+================================================================================
+11. FIELD COUNTS (QUICK)
+================================================================================
+Step A Basic
+  9 real inputs (photo, full name, display name, mobile, whatsapp, email, languages, address, dob)
+  2 checkboxes that are not sent (same as full name, same as mobile)
+  5 required on the API: fullname, email, mobile, languages, address
+  1 API: PUT /profile/basic
+  1 API: POST /profile/image
+
+Step B Professional
+  16 fixed inputs including POS radio and the pincode/area/city group
+  family rows: 3 inputs each, zero or more
+  claim stats: 3 inputs + 1 computed
+  lead sheet: 3 toggles + charging radios + up to 3 fee inputs
+  required before save: pan (app), at least one pincode, at least one area per pincode, at least one city, experience, client base
+  1 API: PUT /profile/professional
+  helpers: GET pincode, GET cities, POST city
+  files: POST/DELETE irdai, POST/DELETE amfi
+
+Step C Portfolio
+  4 segment checkboxes
+  N investment-type checkboxes (canonical set of 6, plus any extras from GET)
+  per selected segment: primary company (required), primary percent, secondary company, secondary percent, plus extra company rows (name + percent)
+  1 helper: GET /profile/companies
+  1 API: PUT /profile/portfolio
+  also echo productExpertise
+
+Step D Additional
+  7 text fields (website, google, linkedin, instagram, facebook, youtube, bio)
+  photos: unbounded in the UI up to plan cap 5 or 10
+  timeline: 4 inputs per row (month, year, type, event text)
+  APIs: PUT /profile/additional, GET generate-bio, POST/DELETE achievement, GET/POST/PUT/DELETE career-timeline
+
+Declarations
+  1 checkbox, no API

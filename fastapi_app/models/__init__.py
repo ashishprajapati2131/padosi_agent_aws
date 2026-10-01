@@ -47,3 +47,4 @@ from fastapi_app.models.championship import (
 )
 from fastapi_app.models.subscription_plan import SubscriptionPlan
 from fastapi_app.models.plan_upgrade_handoff import PlanUpgradeHandoff
+from fastapi_app.models.agent_plan_offer import AgentPlanOffer

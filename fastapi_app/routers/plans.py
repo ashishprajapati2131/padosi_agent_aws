@@ -6,6 +6,8 @@ from fastapi_app.database import get_db
 from fastapi_app.dependencies.auth import get_current_agent, get_optional_agent
 from fastapi_app.models.agent import Agent
 from fastapi_app.schemas.plans import (
+    PlanFollowRequest,
+    PlanScratchRequest,
     PlanUpgradeHandoffRequest,
     PlanUpgradeHandoffResponse,
     PlansListResponse,
@@ -28,14 +30,32 @@ def get_plans_list(
     """
     List the app plans: Starter (Basic) and Professional.
 
-    - Returns all live plans from the database.
-    - Provides price breakdown: Actual Price vs Discounted Price + 18% GST (base, gst_amount, final).
-    - Features / Unlocked benefits list per plan.
-    - Highlights current logged-in agent plan (is_current_plan: true/false).
-    - Shows applicable special upgrade discount (Trial discount / Referral discount / Agent reward).
+    Prices come from the admin choose-plan settings. The card shows the list
+    price (1999 / 9999) until this agent scratches. Scratch and follow are
+    recorded with POST /plans/scratch and POST /plans/follow.
     """
     service = PlanService(db)
     return service.get_plans_list(agent=current_agent)
+
+
+@router.post("/plans/scratch", response_model=PlansListResponse)
+def scratch_plan(
+    payload: PlanScratchRequest,
+    agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+):
+    """Reveal the admin scratch price for one plan. Idempotent."""
+    return PlanService(db).record_scratch(agent, payload.plan_slug)
+
+
+@router.post("/plans/follow", response_model=PlansListResponse)
+def follow_platform(
+    payload: PlanFollowRequest,
+    agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+):
+    """Record one social follow. The admin follow tier applies after scratch."""
+    return PlanService(db).record_follow(agent, payload.platform)
 
 
 @router.post("/plan-upgrade/handoff", response_model=PlanUpgradeHandoffResponse)
