@@ -2610,6 +2610,20 @@ def _isolated(label, fn):
         return None
 
 
+def _trial_days_for(subscription, default_days):
+    """Trial length for an order: a free-trial promo's own duration wins.
+
+    The plans page already shows promo.trial_duration_days, but activation
+    always used the site-wide trial length.
+    """
+    code = (getattr(subscription, 'promo_code', None) or '').strip()
+    if code:
+        promo = PromoCode.objects.filter(code=code).first()
+        if promo and promo.is_free_trial_code() and promo.trial_duration_days:
+            return int(promo.trial_duration_days)
+    return default_days
+
+
 def _increment_promo_usage(promo_code):
     if not promo_code:
         return
@@ -2712,6 +2726,7 @@ def _activate_paid_subscription(agent, subscription, payment, log_label='[activa
 
         trial_config = SiteSetting.get_value('trial_plan_config', {'duration_days': 30})
         trial_days = int(trial_config.get('duration_days', 30))
+        trial_days = _trial_days_for(subscription, trial_days)
         sub_expiry = timezone.now() + timezone.timedelta(days=365)
 
         if is_trial:
@@ -2964,7 +2979,9 @@ def _agent_register_complete_impl(request):
             if float(promo_obj.discount_value) > 0:
                 trial_base_price = max(0.0, trial_base_price - promo_obj.calculate_discount(trial_base_price))
         total_amount = trial_base_price + (trial_base_price * 0.18)
-        plan_name = plan_name or f"Trial Plan ({trial_config.get('duration_days', 30)} Days)"
+        promo_trial_days = (promo_obj.trial_duration_days
+                            if has_free_trial_promo and promo_obj and promo_obj.trial_duration_days else None)
+        plan_name = plan_name or f"Trial Plan ({promo_trial_days or trial_config.get('duration_days', 30)} Days)"
     elif plan_type == 'exclusive':
         exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
         
@@ -3026,6 +3043,17 @@ def _agent_register_complete_impl(request):
 
     if plan_type in _PAID_PLAN_NAMES:
         plan_name = _PAID_PLAN_NAMES[plan_type]
+
+    # Store / count a promo only when it actually changed this plan's price:
+    # an invalid or other-plan code used to be saved and later counted.
+    if plan_type == 'free_trial':
+        promo_applied = has_free_trial_promo
+    elif plan_type in ('starter', 'professional') and promo_obj and not has_free_trial_promo:
+        promo_applied = (not promo_obj.is_free_trial_code()
+                         and promo_obj.is_valid('basic' if plan_type == 'starter' else 'professional'))
+    else:
+        promo_applied = False
+    stored_promo_code = applied_promo_code if promo_applied else None
 
     total_amount = _to_money(total_amount)
     amount_paise = _to_paise(total_amount)
@@ -3117,6 +3145,8 @@ def _agent_register_complete_impl(request):
             
             # Calculate subscription duration
             trial_days = int(trial_config.get('duration_days', 30))
+            if has_free_trial_promo and promo_obj and promo_obj.trial_duration_days:
+                trial_days = int(promo_obj.trial_duration_days)  # promo's own trial length
             sub_expiry = timezone.now() + timezone.timedelta(days=365)
             if plan_type == 'free_trial':
                 sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
@@ -3134,7 +3164,7 @@ def _agent_register_complete_impl(request):
             ).order_by('-created_at').first()
             if subscription:
                 subscription.selected_plan = plan_name or plan_type
-                subscription.promo_code = applied_promo_code or None
+                subscription.promo_code = stored_promo_code
                 subscription.registration_amount = total_amount
                 subscription.razorpay_order_id = razorpay_order_id
                 subscription.payment_status = 'pending'
@@ -3144,7 +3174,7 @@ def _agent_register_complete_impl(request):
                 subscription = AgentSubscription.objects.create(
                     agent=agent,
                     selected_plan=plan_name or plan_type,
-                    promo_code=applied_promo_code or None,
+                    promo_code=stored_promo_code,
                     registration_amount=total_amount,
                     payment_status='pending',
                     status='inactive',
@@ -3184,6 +3214,8 @@ def _agent_register_complete_impl(request):
                 agent.save()
 
                 # Best-effort side effects, each in its own savepoint.
+                _isolated('Promo usage during free checkout',
+                          lambda: _increment_promo_usage(subscription.promo_code))
                 _isolated('Referral credit during free checkout', lambda: _credit_referral_conversion(agent))
                 _isolated('Referral code generation', lambda: _ensure_referral_code(agent))
                 _isolated('Queue invoice and welcome during free checkout',
@@ -3450,6 +3482,7 @@ def _finalize_razorpay_payment(request, data):
 
             trial_config = SiteSetting.get_value('trial_plan_config', {'duration_days': 30})
             trial_days = int(trial_config.get('duration_days', 30))
+            trial_days = _trial_days_for(subscription, trial_days)
 
             sub_expiry = timezone.now() + timezone.timedelta(days=365)
             if plan_type == 'free_trial':
@@ -4256,6 +4289,7 @@ def razorpay_webhook(request):
 
                 trial_config = SiteSetting.get_value('trial_plan_config', {'duration_days': 30})
                 trial_days = int(trial_config.get('duration_days', 30))
+                trial_days = _trial_days_for(subscription, trial_days)
                 sub_expiry = timezone.now() + timezone.timedelta(days=365)
                 if is_trial:
                     sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
