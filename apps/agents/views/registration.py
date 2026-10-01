@@ -1975,6 +1975,22 @@ def _resolve_chooseplan_draft_id(request):
         return None
     from apps.agents.models import AgentDraft
     draft = AgentDraft.objects.filter(email__iexact=logged_in.email).order_by('-updated_at').first()
+    if not draft:
+        from apps.agents.services.subscription_expiry import expiry_enforced
+        if expiry_enforced() and logged_in.status not in STEP1_REUSABLE_STATUSES:
+            # Renewal after expiry for an agent who never had a draft.
+            if not request.session.session_key:
+                request.session.create()
+            draft = AgentDraft.objects.create(
+                session_key=request.session.session_key,
+                email=logged_in.email,
+                email_verified=True,
+                fullname=(logged_in.fullname or '')[:70],
+                mobile=(logged_in.mobile or '')[:15],
+                agent_pincode=(logged_in.agent_pincode or '')[:6],
+                experience_range=logged_in.experience_range or '',
+                registration_step=2,
+            )
     if draft:
         request.session['current_draft_id'] = draft.pk
         return draft.pk

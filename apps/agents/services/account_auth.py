@@ -42,6 +42,18 @@ def agent_has_completed_payment(agent):
         agent=agent,
         payment_status='completed',
     )
+    from apps.agents.services.subscription_expiry import expiry_enforced, still_valid_q
+    enforce_expiry = expiry_enforced()
+    if enforce_expiry and completed.exists():
+        # Expiry switch ON: only a paid period that has not ended counts, and
+        # the paid-invoice fallback below (for legacy agents without
+        # subscription rows) must not revive an expired subscription.
+        for sub in completed.filter(still_valid_q()):
+            if is_real_razorpay_id(sub.razorpay_payment_id, 'pay_'):
+                return True
+            if is_real_razorpay_id(sub.razorpay_order_id, 'order_'):
+                return True
+        return False
     for sub in completed:
         if is_real_razorpay_id(sub.razorpay_payment_id, 'pay_'):
             return True
