@@ -18,7 +18,9 @@ class Migration(migrations.Migration):
                 ('followed_platforms', models.JSONField(blank=True, default=list)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('agent', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='plan_offer', to='agents.agent')),
+                # db_constraint=False: production's legacy agents.id type cannot
+                # take a Django FK (MariaDB errno 150), like the other Agent FKs.
+                ('agent', models.OneToOneField(db_constraint=False, on_delete=django.db.models.deletion.CASCADE, related_name='plan_offer', to='agents.agent')),
             ],
             options={
                 'db_table': 'agent_plan_offers',

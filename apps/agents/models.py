@@ -1744,6 +1744,9 @@ class AgentPlanOffer(models.Model):
         Agent,
         on_delete=models.CASCADE,
         related_name='plan_offer',
+        # Production's legacy agents.id type does not match a Django FK
+        # (MariaDB errno 150), like the other Agent FKs here.
+        db_constraint=False,
     )
     scratched_starter = models.BooleanField(default=False)
     scratched_professional = models.BooleanField(default=False)
