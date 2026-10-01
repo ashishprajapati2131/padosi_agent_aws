@@ -27,6 +27,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         from apps.agents.models import Agent, AgentSubscription
         from apps.agents.services.account_auth import agent_has_completed_payment
+        from apps.agents.services.feature_unlock import PLAN_SLUGS, normalize_plan_slug, plan_slug_from_name
         from apps.agents.services.razorpay_checkout import razorpay_client
         from apps.agents.views.registration import (
             adopt_orphan_registration_order,
@@ -54,28 +55,37 @@ class Command(BaseCommand):
                     continue
 
                 agent = sub.agent if sub else None
+                order_plan = plan_slug_from_name(sub.selected_plan or '') if sub else ''
                 if not sub:
                     order = client.order.fetch(order_id)
                     if not str(order.get('receipt') or '').startswith('agent_draft_'):
                         continue  # insurance / events / other checkout
                     notes = order.get('notes') if isinstance(order.get('notes'), dict) else {}
                     agent = Agent.objects.filter(email__iexact=str(notes.get('email') or '')).first()
+                    order_plan = str(notes.get('plan_type') or '')
 
                 found += 1
                 kind = 'PAID_NOT_ACTIVATED' if sub else 'ORPHANED_ORDER'
                 amount = (payment.get('amount') or 0) / 100
                 who = f'agent #{agent.pk} {agent.email} status={agent.status}' if agent else 'agent NOT FOUND'
                 note = ''
+                upgrade = False
                 if agent and agent_has_completed_payment(agent):
-                    note = '  <- agent already has another completed payment: possible DOUBLE CHARGE, refund manually'
+                    rank = {slug: i for i, slug in enumerate(PLAN_SLUGS)}
+                    current = normalize_plan_slug(agent.plan_type or '')
+                    if rank.get(order_plan, -1) > rank.get(current, -1):
+                        upgrade = True
+                        note = f'  <- unactivated UPGRADE {current or "?"} -> {order_plan}'
+                    else:
+                        note = '  <- agent already has another completed payment: possible DOUBLE CHARGE, refund manually'
                 self.stdout.write(f'{kind}  {payment["id"]}  {order_id}  Rs {amount:.2f}  {who}{note}')
 
-                if not apply or not agent or note:
+                if not apply or not agent or (note and not upgrade):
                     continue
                 if not sub and not adopt_orphan_registration_order(order_id):
                     self.stdout.write('    could not rebuild the subscription row; check this order manually')
                     continue
-                ok = verify_and_activate_pending_payment(agent)
+                ok = verify_and_activate_pending_payment(agent, include_paid_agents=upgrade)
                 agent.refresh_from_db()
                 self.stdout.write(f'    activated={ok}  agent status now {agent.status}')
 

@@ -2647,10 +2647,16 @@ def _order_plan_slug(subscription, agent):
     return current if current in PLAN_SLUGS else 'starter'
 
 
-def verify_and_activate_pending_payment(agent):
+def verify_and_activate_pending_payment(agent, include_paid_agents=False):
     """
     Directly query Razorpay to verify if the pending order has a captured/authorized payment,
     and activate the subscription/registration atomically and idempotently.
+
+    By default an agent who already has a completed payment returns True
+    without any Razorpay call (cheap for login/dashboard). include_paid_agents
+    also checks such an agent's open orders, so a paid upgrade or renewal whose
+    callback and webhook were both lost can still be activated (admin Verify,
+    recover_orphaned_payments); it then returns True only if one was activated.
     """
     from django.utils import timezone
     from django.db import transaction
@@ -2659,7 +2665,7 @@ def verify_and_activate_pending_payment(agent):
 
     from apps.agents.services.account_auth import agent_has_completed_payment, is_real_razorpay_id
 
-    if agent_has_completed_payment(agent):
+    if not include_paid_agents and agent_has_completed_payment(agent):
         logger.info(
             '[verify_and_activate_pending_payment] Verified payment already exists for agent #%s.',
             agent.id,

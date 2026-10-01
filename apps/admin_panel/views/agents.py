@@ -1286,22 +1286,24 @@ def admin_verify_pending_payment(request):
     if not agent:
         return JsonResponse({'success': False, 'message': 'Agent not found.'}, status=404)
 
-    # Check if agent already has a completed subscription
     from apps.agents.models import Invoice
-    if Invoice.objects.filter(agent_email=agent.email, payment_status='paid').exists():
+
+    # Check for pending/failed subscription with razorpay_order_id
+    subscription = AgentSubscription.objects.filter(
+        agent=agent,
+        payment_status__in=['pending', 'failed'],
+    ).exclude(razorpay_order_id__isnull=True).exclude(razorpay_order_id='').order_by('-created_at').first()
+
+    # A paid invoice no longer short-circuits: an already-active agent can have
+    # a paid upgrade / renewal order whose callback and webhook were both lost.
+    if not subscription and Invoice.objects.filter(agent_email=agent.email, payment_status='paid').exists():
         return JsonResponse({
             'success': True,
             'already_active': True,
             'message': f'Agent {agent.fullname} is already activated with a paid invoice.'
         })
 
-    # Check for pending/failed subscription with razorpay_order_id
-    subscription = AgentSubscription.objects.filter(
-        agent=agent,
-        payment_status__in=['pending', 'failed'],
-    ).order_by('-created_at').first()
-
-    if not subscription or not subscription.razorpay_order_id:
+    if not subscription:
         return JsonResponse({
             'success': False,
             'message': f'No pending payment found for {agent.fullname}. No Razorpay order was initiated.'
@@ -1311,7 +1313,7 @@ def admin_verify_pending_payment(request):
     from apps.agents.views.registration import verify_and_activate_pending_payment
     
     try:
-        result = verify_and_activate_pending_payment(agent)
+        result = verify_and_activate_pending_payment(agent, include_paid_agents=True)
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Error during manual payment verification for {agent.email}: {e}")
@@ -1325,11 +1327,20 @@ def admin_verify_pending_payment(request):
         logger.info(f"[admin_verify_pending_payment] Admin #{admin_id} successfully verified payment for agent {agent.email} (ID: {agent.id})")
         return JsonResponse({
             'success': True,
-            'message': f'Payment verified successfully for {agent.fullname}! Agent moved to Pending Approval queue.',
+            'message': (f'Payment verified successfully for {agent.fullname}! Agent moved to Pending Approval queue.'
+                        if agent.status == 'pending_approval' else
+                        f'Payment verified successfully for {agent.fullname}! Plan updated (status: {agent.status}).'),
             'agent_status': agent.status,
         })
     else:
         logger.info(f"[admin_verify_pending_payment] Admin #{admin_id} attempted verification for agent {agent.email} (ID: {agent.id}) — payment NOT found on Razorpay")
+        from apps.agents.services.account_auth import agent_has_completed_payment
+        if agent_has_completed_payment(agent):
+            return JsonResponse({
+                'success': True,
+                'already_active': True,
+                'message': f'Agent {agent.fullname} is already activated. The newer order {subscription.razorpay_order_id} has no payment on Razorpay.'
+            })
         return JsonResponse({
             'success': False,
             'message': f'Payment NOT received from Razorpay for order {subscription.razorpay_order_id}. The user may not have completed the payment on the Razorpay checkout page.'
