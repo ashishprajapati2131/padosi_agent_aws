@@ -242,6 +242,8 @@
 5. Data embedded in `<script>`: use `{% load json_tags %}{{ value|safe_json }}`, never `json.dumps(...)|safe`. Server JSON that JS inserts via `innerHTML` must be HTML-escaped at the source. Admin/CMS-authored HTML renders with `{% load html_tags %}{{ value|clean_html }}`, never `|safe` or `{% autoescape off %}`. Raw HTML CMS pages (`Page.is_raw_code`) are served as-is; only a Super Admin may save script-enabled raw content (`raw_script_save_blocked` in `admin_panel/views/pages.py`).
 6. Changing an agent's email must be rejected if the address belongs to any other `auth_user`/`users` row.
 7. Private files: normalise the path before any ownership check (`serve_private_file`).
+8. Agent signup and payment auto-login must never open a staff / superuser / insurance / distributor session. Step 1 rejects such emails (`email_owned_by_non_agent_account`). `login_agent_user()` refuses `is_non_agent_portal_user()` users, so every payment login goes through it. See `apps/agents/test_signup_takeover_orphan_orders.py`.
+9. One `AgentSubscription` row per Razorpay order: never overwrite a non-empty `razorpay_order_id`. A paid earlier order must stay findable. Recovery checks every open order. `recover_orphaned_payments` backfills old orphans.
 
 ### NEVER mix auth systems
 - Do NOT use `request.user.is_authenticated` to check if an agent is logged in
