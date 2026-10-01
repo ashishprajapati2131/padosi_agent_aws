@@ -1325,6 +1325,9 @@ def admin_verify_pending_payment(request):
     if result:
         agent.refresh_from_db()
         logger.info(f"[admin_verify_pending_payment] Admin #{admin_id} successfully verified payment for agent {agent.email} (ID: {agent.id})")
+        from apps.admin_panel.models import AdminActivityLog
+        AdminActivityLog.log('Verified pending payment', 'Agent', agent.pk,
+                             details=f'order={subscription.razorpay_order_id} status={agent.status}', request=request)
         return JsonResponse({
             'success': True,
             'message': (f'Payment verified successfully for {agent.fullname}! Agent moved to Pending Approval queue.'
