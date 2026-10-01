@@ -194,7 +194,8 @@ def email_owned_by_non_agent_account(email):
         return False
     if any(is_non_agent_portal_user(u) for u in DjangoUser.objects.filter(email__iexact=email)):
         return True
-    return _non_agent_laravel_role(find_laravel_user(email))
+    # One read of `users` (find_laravel_user would re-query it via the ORM when absent).
+    return _non_agent_laravel_role(fetch_users_row(email=email))
 
 
 def find_agent(email):
