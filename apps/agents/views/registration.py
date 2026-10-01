@@ -1485,12 +1485,27 @@ def check_email_availability(request):
         Invoice.objects.filter(agent_email__iexact=email, payment_status='paid').exists()
         or Agent.objects.filter(email__iexact=email, status__in=['active', 'pending_approval']).exists()
     )
+    message = f'You are already registered with {email}. Please login to access your dashboard.'
+    if not registered:
+        # Same rule as register_step1: step 1 only reuses a registration still
+        # in progress, so say so before the preview opens instead of failing
+        # on "Claim" (e.g. a Paldi challenger signing up again from another
+        # device; they must log in).
+        existing = Agent.objects.filter(email__iexact=email).only('status', 'user_id').first()
+        if existing and existing.status not in STEP1_REUSABLE_STATUSES:
+            owns = bool(request.user.is_authenticated and existing.user_id
+                        and existing.user_id == request.user.pk)
+            if not (owns and existing.status == 'event_challenge'):
+                registered = True
+                from apps.agents.services.account_auth import BLOCKED_DASHBOARD_STATUSES
+                if existing.status in BLOCKED_DASHBOARD_STATUSES:
+                    message = 'This email cannot be used to register. Please contact support.'
     if registered:
         return JsonResponse({
             'success': True,
             'registered': True,
             'valid': True,
-            'message': f'You are already registered with {email}. Please login to access your dashboard.',
+            'message': message,
             'login_url': reverse('agents:agent_login'),
         })
     return JsonResponse({

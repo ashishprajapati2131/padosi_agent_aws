@@ -154,6 +154,10 @@
                     .reg-preview-overlay {
                         z-index: 200000 !important;
                     }
+                    /* Alerts raised from the preview (Claim errors) must show above it. */
+                    .swal2-container {
+                        z-index: 200010 !important;
+                    }
                     .reg-preview-directory-card .react-agent-card {
                         width: 100%;
                         max-width: 980px;
@@ -2784,11 +2788,29 @@
                             }
                         } else {
                             this.isSubmitting = false;
+                            // The preview overlay sits above SweetAlert; close it so the message is visible.
+                            this.showPreviewModal = false;
                             Swal.fire({ icon: 'error', title: 'Oops...', text: (data && data.message) ? data.message : 'Something went wrong!' });
                         }
                     } catch (err) {
                         this.isSubmitting = false;
+                        this.showPreviewModal = false;
                         console.error('Error in submitStep1:', err);
+                        if (err && err.redirect) {
+                            // e.g. already registered: offer the login page instead of a dead end.
+                            const loginUrl = err.redirect;
+                            Swal.fire({
+                                icon: 'info',
+                                title: 'Already Registered',
+                                text: err.message || 'This email is already registered. Please login.',
+                                confirmButtonText: 'Login',
+                                showCancelButton: true,
+                                cancelButtonText: 'Close'
+                            }).then(function(result) {
+                                if (result.isConfirmed) window.location.href = loginUrl;
+                            });
+                            return;
+                        }
                         let errMsg = 'Network error. Please try again.';
                         if (err && err.errors) {
                             this.errors = err.errors;
