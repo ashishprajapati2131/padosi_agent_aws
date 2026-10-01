@@ -50,6 +50,21 @@ def finalize_event_referral_registration(request, draft):
         )
 
     existing = Agent.objects.filter(email__iexact=email).first()
+    signed_in_as_existing = bool(
+        existing and request.user.is_authenticated
+        and existing.user_id and existing.user_id == request.user.pk
+    )
+    if existing and not signed_in_as_existing:
+        # This step signs the person in: only the account's own signed-in
+        # owner may continue an existing account here.
+        return JsonResponse(
+            {
+                'success': False,
+                'message': f'You are already registered with {email}. Please login to access your dashboard.',
+                'redirect': reverse('agents:agent_login'),
+            },
+            status=422,
+        )
     if existing and existing.status not in ('event_challenge', 'incomplete', 'pending_payment'):
         if existing.status in ('active', 'pending_approval', 'pending_accounts_payment'):
             return JsonResponse(

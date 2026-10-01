@@ -1662,6 +1662,14 @@ def register_step1(request):
             'message': f'You are already registered with {email}. Please login to access your dashboard.',
             'redirect': '/agent-login/',
         }, status=422)
+    if existing_agent and request.session.get('event_referral_registration') and not owns_existing:
+        # The Paldi signup signs the person in, so it must never continue an
+        # existing account for someone who is not signed in as it.
+        return JsonResponse({
+            'success': False,
+            'message': f'You are already registered with {email}. Please login to access your dashboard.',
+            'redirect': '/agent-login/',
+        }, status=422)
     if existing_agent:
         # Case 4 (network lost): try to verify Razorpay payment directly first!
         if verify_and_activate_pending_payment(existing_agent):
