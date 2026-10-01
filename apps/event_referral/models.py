@@ -26,6 +26,15 @@ class EventReferralCampaign(models.Model):
             'then share your link. Refer 5 agents who complete payment within 48 hours to unlock your Basic plan.'
         ),
     )
+    # Columns added by migrations 0003 and 0005 (fields were missing here).
+    closed_message = models.TextField(
+        blank=True,
+        default=(
+            'This registration link is deactivated for now. '
+            'Please wait until it opens again.'
+        ),
+    )
+    registration_link_open_count = models.PositiveBigIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -96,6 +105,9 @@ class EventReferralParticipant(models.Model):
     won_at = models.DateTimeField(null=True, blank=True)
     blocked_at = models.DateTimeField(null=True, blank=True)
     blocked_reason = models.CharField(max_length=255, blank=True, default='')
+    # Columns added by migration 0005 (fields were missing here).
+    page_active_seconds = models.PositiveIntegerField(default=0)
+    blocked_by_admin = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
