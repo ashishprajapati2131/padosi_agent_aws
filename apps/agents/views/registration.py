@@ -2666,39 +2666,50 @@ def verify_and_activate_pending_payment(agent):
         )
         return True
 
-    subscription = AgentSubscription.objects.filter(
-        agent=agent,
-        payment_status__in=['pending', 'failed'],
-    ).order_by('-created_at').first()
-    if not subscription or not subscription.razorpay_order_id:
-        logger.info(f"[verify_and_activate_pending_payment] No pending/failed subscription or Razorpay Order ID for {agent.email}")
-        return False
-    if not is_real_razorpay_id(subscription.razorpay_order_id, 'order_'):
-        logger.info(
-            '[verify_and_activate_pending_payment] Skipping mock order %s',
-            subscription.razorpay_order_id,
-        )
+    # Every open order is checked, not only the newest: a customer may pay an
+    # earlier checkout after opening a new one.
+    open_orders = [
+        sub for sub in AgentSubscription.objects.filter(
+            agent=agent,
+            payment_status__in=['pending', 'failed'],
+        ).exclude(razorpay_order_id__isnull=True).exclude(razorpay_order_id='')
+        .order_by('-created_at')[:5]
+        if is_real_razorpay_id(sub.razorpay_order_id, 'order_')
+    ]
+    if not open_orders:
+        logger.info(f"[verify_and_activate_pending_payment] No pending/failed Razorpay order for {agent.email}")
         return False
 
     try:
         client = razorpay_client()
-        if client is None:
-            logger.error("[verify_and_activate_pending_payment] Razorpay keys not configured.")
-            return False
-        payments = client.order.payments(subscription.razorpay_order_id)
     except Exception as err:
-        logger.error(f"[verify_and_activate_pending_payment] Razorpay API call failed: {err}")
+        logger.error(f"[verify_and_activate_pending_payment] Razorpay client unavailable: {err}")
+        return False
+    if client is None:
+        logger.error("[verify_and_activate_pending_payment] Razorpay keys not configured.")
         return False
 
+    subscription = None
     successful_payment = None
-    if payments and 'items' in payments:
-        for item in payments['items']:
-            if item.get('status') in ('captured', 'authorized'):
-                successful_payment = item
-                break
+    for candidate in open_orders:
+        try:
+            payments = client.order.payments(candidate.razorpay_order_id)
+        except Exception as err:
+            logger.error(f"[verify_and_activate_pending_payment] Razorpay API call failed: {err}")
+            continue
+        if payments and 'items' in payments:
+            for item in payments['items']:
+                if item.get('status') in ('captured', 'authorized'):
+                    subscription, successful_payment = candidate, item
+                    break
+        if successful_payment:
+            break
 
     if not successful_payment:
-        logger.info(f"[verify_and_activate_pending_payment] No captured/authorized payments found for Order {subscription.razorpay_order_id}")
+        logger.info(
+            "[verify_and_activate_pending_payment] No captured/authorized payment for orders %s",
+            [sub.razorpay_order_id for sub in open_orders],
+        )
         return False
 
     paid_amount_paise = successful_payment.get('amount')
@@ -3024,8 +3035,14 @@ def _agent_register_complete_impl(request):
             if plan_type == 'free_trial':
                 sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
 
-            # Find or create a pending/failed subscription to prevent MultipleObjectsReturned
+            # One subscription row per Razorpay order. Re-pointing an existing
+            # row at the new order orphaned the earlier one: when the customer
+            # then paid it (late UPI approval, reopened checkout) no callback,
+            # webhook or recovery could find it, so the money was taken but the
+            # agent never activated. Only a row with no order yet is reused.
+            from django.db.models import Q
             subscription = AgentSubscription.objects.filter(
+                Q(razorpay_order_id__isnull=True) | Q(razorpay_order_id=''),
                 agent=agent,
                 payment_status__in=['pending', 'failed'],
             ).order_by('-created_at').first()
@@ -3280,6 +3297,8 @@ def _finalize_razorpay_payment(request, data):
             return {'success': False, 'message': 'Payment is not completed.'}
 
         subscription = AgentSubscription.objects.filter(razorpay_order_id=razorpay_order_id).first()
+        if not subscription:
+            subscription = adopt_orphan_registration_order(razorpay_order_id)
         if not subscription:
             logger.error(f"No subscription found matching Razorpay Order {razorpay_order_id}")
             return {'success': False, 'message': 'Invalid transaction ID.'}
@@ -3951,6 +3970,68 @@ def payment_failure(request):
 
 from django.views.decorators.csrf import csrf_exempt
 
+_ORPHAN_PLAN_NAMES = {
+    'free_trial': 'Trial Plan',
+    'starter': PLAN_LABELS['starter'],
+    'professional': PLAN_LABELS['professional'],
+    'exclusive': PLAN_LABELS['exclusive'],
+}
+
+
+def adopt_orphan_registration_order(order_id):
+    """Recreate the pending subscription of a registration order that lost it.
+
+    Before one-row-per-order, opening a new checkout re-pointed the agent's
+    pending row at the new order, so a payment for the earlier order matched
+    nothing. That order's own notes (written by our server when it was
+    created) name the registrant and the plan, and its amount is what was
+    priced for that plan. Returns the subscription for the order, or None.
+    """
+    from apps.agents.models import AgentSubscription
+
+    existing = AgentSubscription.objects.filter(razorpay_order_id=order_id).first()
+    if existing:
+        return existing
+    try:
+        client = razorpay_client()
+        order = client.order.fetch(order_id) if client else None
+    except Exception as err:
+        logger.warning('[Orphan order] Could not fetch %s: %s', order_id, err)
+        return None
+    if not order or not str(order.get('receipt') or '').startswith('agent_draft_'):
+        return None
+
+    notes = order.get('notes') if isinstance(order.get('notes'), dict) else {}
+    email = str(notes.get('email') or '').strip().lower()
+    plan_type = str(notes.get('plan_type') or '').strip()
+    amount_paise = int(order.get('amount') or 0)
+    if not email or plan_type not in _ORPHAN_PLAN_NAMES or amount_paise <= 0:
+        return None
+    agent = Agent.objects.filter(email__iexact=email).first()
+    if not agent:
+        return None
+    draft_id = str(notes.get('draft_id') or '')
+    if draft_id.isdigit():
+        draft = AgentDraft.objects.filter(pk=int(draft_id)).first()
+        if draft and (draft.email or '').strip().lower() != email:
+            logger.error('[Orphan order] %s notes email does not match draft #%s', order_id, draft_id)
+            return None
+
+    subscription = AgentSubscription.objects.create(
+        agent=agent,
+        selected_plan=_ORPHAN_PLAN_NAMES[plan_type],
+        registration_amount=Decimal(amount_paise) / 100,
+        payment_status='pending',
+        status='inactive',
+        razorpay_order_id=order_id,
+    )
+    logger.warning(
+        '[Orphan order] Restored subscription #%s for agent #%s from order %s (%s, %s paise)',
+        subscription.pk, agent.pk, order_id, plan_type, amount_paise,
+    )
+    return subscription
+
+
 @csrf_exempt
 @require_POST
 def razorpay_webhook(request):
@@ -4018,6 +4099,10 @@ def razorpay_webhook(request):
         if (subscription and subscription.payment_status == 'completed') or existing_invoice:
             return HttpResponse('Webhook processed successfully (already completed)', status=200)
 
+        if not subscription:
+            # A paid registration order whose row was re-pointed at a newer
+            # checkout (pre one-row-per-order data): rebuild it from the order.
+            subscription = adopt_orphan_registration_order(order_id)
         if not subscription:
             # Order may not have been committed yet by frontend request; tell Razorpay to retry
             logger.warning(f"[Razorpay Webhook] Subscription not found yet for order {order_id}. Returning 503 for retry.")

@@ -886,7 +886,10 @@ def _build_queue_query(status_filter, search, plan_filter, city_filter, event_fi
         FROM agents as a
         LEFT JOIN agent_profiles as ap ON a.id = ap.agent_id
         LEFT JOIN agent_subscriptions as s ON a.id = s.agent_id
-            AND s.id = (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
+            AND s.id = COALESCE(
+                (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id AND payment_status = 'completed'),
+                (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
+            )
         WHERE 1=1
     '''
     params = []
