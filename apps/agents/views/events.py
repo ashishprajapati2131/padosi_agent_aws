@@ -683,7 +683,9 @@ def payment_success(request):
     try:
         client = razorpay.Client(auth=(key, secret))
         rzp_payment = client.payment.fetch(payment_id)
-        if rzp_payment.get('status') not in ('authorized', 'captured'):
+        from apps.agents.services.razorpay_checkout import ensure_payment_captured
+        rzp_payment = ensure_payment_captured(client, rzp_payment)
+        if not rzp_payment:
             return JsonResponse({'success': False, 'message': 'Payment is not completed.'}, status=400)
 
         pricing = get_pricing(event_registration.promocode)

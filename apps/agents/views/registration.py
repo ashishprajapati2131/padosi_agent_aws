@@ -2820,10 +2820,13 @@ def verify_and_activate_pending_payment(agent, include_paid_agents=False):
             logger.error(f"[verify_and_activate_pending_payment] Razorpay API call failed: {err}")
             continue
         if payments and 'items' in payments:
+            from apps.agents.services.razorpay_checkout import ensure_payment_captured
             for item in payments['items']:
                 if item.get('status') in ('captured', 'authorized'):
-                    subscription, successful_payment = candidate, item
-                    break
+                    captured = ensure_payment_captured(client, item)
+                    if captured:
+                        subscription, successful_payment = candidate, captured
+                        break
         if successful_payment:
             break
 
@@ -3369,15 +3372,19 @@ def _finalize_razorpay_payment(request, data):
 
         payment_info = client.payment.fetch(razorpay_payment_id)
         payment_status = payment_info.get('status')
-        paid_amount_paise = payment_info.get('amount')
 
-        if payment_status not in ('captured', 'authorized'):
+        from apps.agents.services.razorpay_checkout import ensure_payment_captured
+        captured = ensure_payment_captured(client, payment_info)
+        if not captured:
             logger.error(
                 "Razorpay Payment %s status is %s — rejecting activation.",
                 razorpay_payment_id,
                 payment_status,
             )
+            if payment_status == 'authorized':
+                return {'success': False, 'message': 'Your payment is still being confirmed by the bank. Your account will activate automatically in a few minutes.'}
             return {'success': False, 'message': 'Payment is not completed.'}
+        paid_amount_paise = captured.get('amount')
 
         subscription = AgentSubscription.objects.filter(razorpay_order_id=razorpay_order_id).first()
         if not subscription:
@@ -4158,7 +4165,12 @@ def razorpay_webhook(request):
     if not event:
         return HttpResponse('Invalid event', status=400)
 
-    if event in ('payment.captured', 'order.paid', 'payment.authorized'):
+    if event == 'payment.authorized':
+        # Only a hold; payment.captured (or order.paid) follows once Razorpay
+        # captures it, and an uncaptured payment is released, not paid.
+        return HttpResponse('Webhook received (waiting for capture)', status=200)
+
+    if event in ('payment.captured', 'order.paid'):
         payload_data = data.get('payload') or {}
         payment_entity = (payload_data.get('payment') or {}).get('entity') or {}
         order_entity = (payload_data.get('order') or {}).get('entity') or {}

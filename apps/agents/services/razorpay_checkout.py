@@ -258,6 +258,32 @@ def checkout_payload(order_id, amount_paise, agent, is_mock=False, extra=None, r
     return payload
 
 
+def ensure_payment_captured(client, payment):
+    """Return the payment if it is captured, capturing an 'authorized' one first.
+
+    An authorized payment is only a hold: if it is never captured Razorpay
+    releases it, so activating on 'authorized' could give access without
+    money. Returns the (re-fetched) captured payment, or None.
+    """
+    if not payment:
+        return None
+    status = payment.get('status')
+    if status == 'captured':
+        return payment
+    if status != 'authorized' or not payment.get('id'):
+        return None
+    try:
+        client.payment.capture(payment['id'], payment.get('amount'), {'currency': payment.get('currency') or 'INR'})
+    except Exception as err:  # e.g. already auto-captured meanwhile
+        logger.info('Razorpay capture of %s: %s', payment.get('id'), err)
+    try:
+        refreshed = client.payment.fetch(payment['id'])
+    except Exception as err:
+        logger.warning('Razorpay re-fetch of %s failed: %s', payment.get('id'), err)
+        return None
+    return refreshed if refreshed and refreshed.get('status') == 'captured' else None
+
+
 def login_agent_user(request, user):
     if not user:
         return

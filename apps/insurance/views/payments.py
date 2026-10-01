@@ -199,7 +199,9 @@ def handle_payment_success(request, agent_id):
             razorpay_payment = client.payment.fetch(payment_ref)
             if int(razorpay_payment['amount']) != expected_amount_paise:
                 return JsonResponse({'success': False, 'message': 'Payment amount mismatch.'}, status=400)
-            if razorpay_payment.get('status') not in ('captured', 'authorized'):
+            from apps.agents.services.razorpay_checkout import ensure_payment_captured
+            razorpay_payment = ensure_payment_captured(client, razorpay_payment)
+            if not razorpay_payment:
                 return JsonResponse({'success': False, 'message': 'Payment is not completed.'}, status=400)
 
             # Bind the order to THIS agent (create_razorpay_order stores it in
