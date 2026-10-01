@@ -1612,6 +1612,32 @@ def register_step1(request):
 
     # Check if an Agent record already exists for the email but has NO paid invoice
     existing_agent = Agent.objects.filter(email=email).first()
+    owns_existing = bool(
+        existing_agent and request.user.is_authenticated
+        and existing_agent.user_id and existing_agent.user_id == request.user.pk
+    )
+    if (
+        existing_agent
+        and existing_agent.status not in STEP1_REUSABLE_STATUSES
+        # A Paldi challenger re-submitting from their own session (double
+        # click right after the challenge signed them in) is still allowed.
+        and not (owns_existing and existing_agent.status == 'event_challenge')
+    ):
+        # Step 1 needs no login, so it may only reuse a registration that is
+        # still in progress. Re-submitting it for a suspended / blacklisted
+        # agent (or one awaiting approval) let anyone overwrite their name
+        # and mobile and, on "Pay", reset their status.
+        from apps.agents.services.account_auth import BLOCKED_DASHBOARD_STATUSES
+        if existing_agent.status in BLOCKED_DASHBOARD_STATUSES:
+            return JsonResponse({
+                'success': False,
+                'message': 'This email cannot be used to register. Please contact support.',
+            }, status=422)
+        return JsonResponse({
+            'success': False,
+            'message': f'You are already registered with {email}. Please login to access your dashboard.',
+            'redirect': '/agent-login/',
+        }, status=422)
     if existing_agent:
         # Case 4 (network lost): try to verify Razorpay payment directly first!
         if verify_and_activate_pending_payment(existing_agent):
@@ -2351,6 +2377,14 @@ def chooseplan(request):
 
 
 
+# Agent statuses a registration may still (re)start from. Any later status
+# (awaiting approval, active, suspended...) is never reset by a checkout.
+REGISTRATION_STAGE_STATUSES = ('incomplete', 'pending_payment', 'rejected', 'event_challenge')
+# Step 1 needs no login, so it reuses only these. A Paldi challenger
+# (event_challenge) continues from their own logged-in session instead.
+STEP1_REUSABLE_STATUSES = ('incomplete', 'pending_payment', 'rejected')
+
+
 def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment'):
     import re
     import time
@@ -2392,6 +2426,11 @@ def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment
         }
     )
     
+    if not created and agent.status not in REGISTRATION_STAGE_STATUSES:
+        # Paid / awaiting approval / blocked: a checkout must not rewrite the
+        # agent (it used to reset a paid agent back to pending_payment).
+        return agent
+
     if not created:
         agent.fullname = draft.fullname
         agent.mobile = draft.mobile
@@ -2862,6 +2901,24 @@ def _agent_register_complete_impl(request):
         draft = AgentDraft.objects.get(pk=draft_id)
     except AgentDraft.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Registration record not found.'}, status=404)
+
+    # The webhook may already have activated this registration while the plans
+    # tab stayed open; a new checkout then charged twice and reset the status.
+    from apps.agents.models import Agent as _Agent
+    from apps.agents.services.account_auth import BLOCKED_DASHBOARD_STATUSES, agent_has_completed_payment
+    paid_agent = _Agent.objects.filter(email__iexact=draft.email).first() if draft.email else None
+    if paid_agent and paid_agent.status in BLOCKED_DASHBOARD_STATUSES:
+        return JsonResponse({
+            'success': False,
+            'message': 'This account cannot be registered again. Please contact support.',
+        }, status=403)
+    if paid_agent and agent_has_completed_payment(paid_agent):
+        return JsonResponse({
+            'success': True,
+            'already_completed': True,
+            'message': 'Your payment is already completed.',
+            'redirect_url': reverse('agents:agent_dashboard'),
+        })
 
     # Calculate pricing from DB only — no static fallback
     pricing_config = SiteSetting.get_value('pricing_config')
