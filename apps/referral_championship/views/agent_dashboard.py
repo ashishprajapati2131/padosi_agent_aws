@@ -20,7 +20,12 @@ from apps.referral_championship.models import (
     ChampionshipRewardClaim,
 )
 from apps.referral_championship.services.attribution_service import get_or_create_participant
-from apps.referral_championship.services.reward_engine import get_participant_roadmap, format_inr
+from apps.referral_championship.services.reward_engine import (
+    CLAIM_EDITABLE_STATUSES,
+    CLAIMABLE_REWARD_TYPES,
+    format_inr,
+    get_participant_roadmap,
+)
 from apps.referral_championship.services.leaderboard_service import (
     get_leaderboard_data,
     get_campaign_aggregate_stats,
@@ -691,6 +696,10 @@ def claim_reward_ajax(request, slab_id):
     participant = get_object_or_404(ChampionshipParticipant, agent=agent, campaign=campaign)
     slab = get_object_or_404(ChampionshipRewardSlab, id=slab_id, campaign=campaign)
 
+    if participant.is_fraud_blocked:
+        return JsonResponse({'success': False, 'message': 'Your championship account is under review. Please contact support.'}, status=403)
+    if not slab.is_active or slab.threshold >= 900 or slab.reward_type not in CLAIMABLE_REWARD_TYPES:
+        return JsonResponse({'success': False, 'message': 'This reward cannot be claimed here.'}, status=400)
     if participant.qualifying_referrals_count < slab.threshold:
         return JsonResponse({'success': False, 'message': 'Referral threshold not yet reached.'}, status=400)
 
@@ -702,19 +711,29 @@ def claim_reward_ajax(request, slab_id):
     voucher_pref = data.get('voucher_provider', 'amazon') # 'amazon' or 'flipkart'
     address = data.get('shipping_address', '')
 
-    claim, _ = ChampionshipRewardClaim.objects.get_or_create(
-        participant=participant,
-        reward_slab=slab,
-        defaults={'status': 'processing'}
-    )
+    from django.db import transaction
+    with transaction.atomic():
+        claim, _ = ChampionshipRewardClaim.objects.select_for_update().get_or_create(
+            participant=participant,
+            reward_slab=slab,
+            defaults={'status': 'processing'}
+        )
+        # A claim can be submitted, or its details updated, only until the team
+        # acts on it; re-submitting after approval/dispatch duplicated rewards.
+        if claim.status not in CLAIM_EDITABLE_STATUSES:
+            return JsonResponse({
+                'success': False,
+                'message': f'This reward is already {claim.get_status_display().lower()}. Please contact support for changes.',
+                'status': claim.status,
+            }, status=409)
 
-    claim.status = 'processing'
-    claim.claim_data = {
-        'voucher_provider': voucher_pref,
-        'shipping_address': address,
-        'claimed_at': timezone.now().isoformat()
-    }
-    claim.save()
+        claim.status = 'processing'
+        claim.claim_data = {
+            'voucher_provider': voucher_pref,
+            'shipping_address': address,
+            'claimed_at': timezone.now().isoformat()
+        }
+        claim.save()
 
     return JsonResponse({
         'success': True,
