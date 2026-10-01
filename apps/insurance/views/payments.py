@@ -56,6 +56,10 @@ def record_payment(request, agent_id):
         errors.append('Payment method is required.')
     if not payment_reference:
         errors.append('Transaction reference / UTR is required.')
+    elif payment_reference.lower().startswith(('order_', 'pay_')):
+        # The reference is stored with the subscription, and a Razorpay-looking
+        # id there unlocked the agent dashboard as if paid online.
+        errors.append('Enter the bank / UPI / cheque reference here, not a Razorpay id.')
     if not payment_recorded_at:
         errors.append('Payment date is required.')
 
@@ -64,6 +68,9 @@ def record_payment(request, agent_id):
         recorded_dt = parse_date(payment_recorded_at)
         if not recorded_dt:
             errors.append('Payment date is invalid.')
+        elif recorded_dt > datetime.date.today():
+            # The date starts the 365-day subscription.
+            errors.append('Payment date cannot be in the future.')
 
     if errors:
         msg = ' '.join(errors)
