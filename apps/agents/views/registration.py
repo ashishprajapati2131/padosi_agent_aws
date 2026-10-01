@@ -3717,6 +3717,37 @@ def payment_complete(request):
     })
 
 
+# Wrong promo codes allowed per client IP and per browser session before the
+# check is paused (stops guessing codes). Security audit 2026-10-02 M3.
+PROMO_FAIL_LIMIT = 10
+PROMO_FAIL_WINDOW_SECONDS = 15 * 60
+
+
+def _promo_fail_keys(request):
+    keys = [f'promo_fail_ip_{_get_client_ip(request)}']
+    if request.session.session_key:
+        keys.append(f'promo_fail_sess_{request.session.session_key}')
+    return keys
+
+
+def _promo_checks_paused(request):
+    from django.core.cache import cache
+    try:
+        return any((cache.get(k) or 0) >= PROMO_FAIL_LIMIT for k in _promo_fail_keys(request))
+    except Exception:
+        return False
+
+
+def _record_promo_failure(request):
+    from django.core.cache import cache
+    for key in _promo_fail_keys(request):
+        try:
+            cache.add(key, 0, timeout=PROMO_FAIL_WINDOW_SECONDS)
+            cache.incr(key)
+        except Exception:
+            pass
+
+
 @require_POST
 @csrf_protect
 def agent_verify_promo(request):
@@ -3733,6 +3764,12 @@ def agent_verify_promo(request):
     if not promo_code:
         return JsonResponse({'success': False, 'message': 'Promo code is required.'})
 
+    if _promo_checks_paused(request):
+        return JsonResponse({
+            'success': False,
+            'message': 'Too many attempts. Please try again after 15 minutes.',
+        }, status=429)
+
     try:
         promo = PromoCode.objects.filter(code__iexact=promo_code).first()
         if promo and promo.is_valid():
@@ -3743,6 +3780,7 @@ def agent_verify_promo(request):
                 'message': f'Promo code "{promo.code}" is valid and will be applied at checkout!',
             })
         elif promo:
+            _record_promo_failure(request)
             return JsonResponse({
                 'success': False,
                 'message': 'Promo code has expired or is no longer valid.',
@@ -3750,6 +3788,7 @@ def agent_verify_promo(request):
     except Exception as e:
         logger.error(f"Promo verification error: {e}")
 
+    _record_promo_failure(request)
     return JsonResponse({
         'success': False,
         'message': 'Invalid or expired promo code.',
