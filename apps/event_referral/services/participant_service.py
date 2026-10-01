@@ -231,10 +231,31 @@ def admin_restore_participant(participant, *, extend_hours=0):
             from datetime import timedelta
             participant.deadline_at = participant.deadline_at + timedelta(hours=int(extend_hours))
         if participant.status == EventReferralParticipant.STATUS_WON:
-            # Re-activating a winner made the next evaluation grant the win
-            # again and push an approved agent back to pending_approval.
-            participant.save(update_fields=['deadline_at', 'updated_at'])
+            if _recount_paid(participant) >= participant.required_paid_referrals:
+                # Earned with real paid referrals: Restore never takes it away
+                # (re-activating made the next evaluation grant it again).
+                participant.save(update_fields=['deadline_at', 'updated_at'])
+                participant.refresh_from_db()
+                participant.restore_outcome = 'kept_earned_win'
+                return participant
+            # An admin "Grant plan": Restore undoes it, so the agent leaves
+            # the Approvals queue and is back in the challenge. An agent who
+            # paid for a plan themselves keeps their plan and status.
+            participant.status = EventReferralParticipant.STATUS_ACTIVE
+            participant.won_at = None
+            participant.blocked_at = None
+            participant.blocked_reason = ''
+            participant.save()
+            from apps.agents.services.account_auth import agent_has_completed_payment
+            if not agent_has_completed_payment(agent):
+                fields = ['status', 'updated_at']
+                agent.status = 'event_challenge'
+                if agent.plan_type == (participant.reward_plan_slug or 'basic'):
+                    agent.plan_type = ''
+                    fields.append('plan_type')
+                agent.save(update_fields=fields)
             participant.refresh_from_db()
+            participant.restore_outcome = 'undid_grant'
             return participant
         participant.status = EventReferralParticipant.STATUS_ACTIVE
         participant.blocked_at = None

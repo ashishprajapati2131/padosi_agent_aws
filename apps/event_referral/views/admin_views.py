@@ -158,6 +158,15 @@ def admin_restore_participant(request, participant_id):
         hours = int(request.POST.get('extend_hours', 0))
     except (TypeError, ValueError):
         hours = 0
-    restore_participant_service(participant, extend_hours=hours)
-    messages.success(request, 'Participant restored.')
+    participant = restore_participant_service(participant, extend_hours=hours)
+    outcome = getattr(participant, 'restore_outcome', '')
+    if outcome == 'kept_earned_win':
+        messages.warning(request, 'This participant earned the win with paid referrals, so it was kept.')
+    elif outcome == 'undid_grant':
+        messages.success(request, 'Granted plan removed; the participant is back in the challenge.')
+    else:
+        messages.success(request, 'Participant restored.')
+    from datetime import datetime
+    if participant.status == EventReferralParticipant.STATUS_ACTIVE and participant.deadline_at <= datetime.now():
+        messages.warning(request, 'Their deadline has already passed; use Extend to give them more time.')
     return redirect('admin_event_referral_dashboard')

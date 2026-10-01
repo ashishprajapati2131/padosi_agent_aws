@@ -74,14 +74,51 @@ class EventReferralFixTests(TestCase):
         self.participant.refresh_from_db()
         self.assertEqual(self.participant.status, EventReferralParticipant.STATUS_ACTIVE)
 
-    def test_admin_restore_keeps_winner_and_approved_agent(self):
+    def _messages(self, resp_request):
+        return [str(m) for m in resp_request._messages]
+
+    def test_admin_restore_undoes_a_granted_plan(self):
+        """Grant plan then Restore: the agent leaves Approvals and is back in the challenge."""
+        from apps.event_referral.views.admin_views import admin_grant_plan, admin_restore_participant
+        self._admin_post(admin_grant_plan)
+        self.referrer.refresh_from_db()
+        self.assertEqual((self.referrer.status, self.referrer.plan_type), ('pending_approval', 'basic'))
+        self._admin_post(admin_restore_participant, extend_hours='0')
+        self.participant.refresh_from_db()
+        self.referrer.refresh_from_db()
+        self.assertEqual(self.participant.status, EventReferralParticipant.STATUS_ACTIVE)
+        self.assertIsNone(self.participant.won_at)
+        self.assertEqual((self.referrer.status, self.referrer.plan_type), ('event_challenge', ''))
+        from apps.event_referral.services.participant_service import evaluate_participant
+        evaluate_participant(self.participant)            # not re-granted: no paid referrals
+        self.referrer.refresh_from_db()
+        self.assertEqual(self.referrer.status, 'event_challenge')
+
+    def test_admin_restore_keeps_an_earned_win(self):
         from apps.event_referral.views.admin_views import admin_restore_participant
-        self.participant.status = EventReferralParticipant.STATUS_WON
-        self.participant.save()
-        self.referrer.status, self.referrer.plan_type = 'active', 'basic'
+        for i in range(2):
+            friend = Agent.objects.create(fullname='F', email=f'earn{i}@example.com', mobile=f'900000020{i}',
+                                          status='pending_approval', plan_type='starter',
+                                          referred_by_code=self.participant.referral_code)
+            register_referred_agent(friend)
+            qualify_event_referral(friend, _paid_sub(friend, order=f'order_EARN0000000{i}', pay=f'pay_EARN00000000{i}'))
+        self.participant.refresh_from_db()
+        self.assertEqual(self.participant.status, EventReferralParticipant.STATUS_WON)
+        self.referrer.refresh_from_db()
+        self.referrer.status = 'active'
         self.referrer.save()
         self._admin_post(admin_restore_participant, extend_hours='0')
         self.participant.refresh_from_db()
         self.referrer.refresh_from_db()
         self.assertEqual(self.participant.status, EventReferralParticipant.STATUS_WON)
-        self.assertEqual(self.referrer.status, 'active')
+        self.assertEqual((self.referrer.status, self.referrer.plan_type), ('active', 'basic'))
+
+    def test_admin_restore_never_takes_a_paid_plan(self):
+        from apps.event_referral.views.admin_views import admin_grant_plan, admin_restore_participant
+        _paid_sub(self.referrer, order='order_OWNPAID000001', pay='pay_OWNPAID0000001')
+        self.referrer.status, self.referrer.plan_type = 'pending_approval', 'professional'
+        self.referrer.save()
+        self._admin_post(admin_grant_plan)
+        self._admin_post(admin_restore_participant, extend_hours='0')
+        self.referrer.refresh_from_db()
+        self.assertEqual((self.referrer.status, self.referrer.plan_type), ('pending_approval', 'professional'))
