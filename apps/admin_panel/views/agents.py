@@ -646,76 +646,51 @@ def update_plan(request):
         
     agent_id = int(agent_id)
 
+    from datetime import timedelta
+    from django.db import transaction
+    from apps.agents.models import Agent, AgentSubscription
+    from apps.admin_panel.models import AdminActivityLog
+
+    # Map the chosen plan to agents.plan_type (what feature unlocks read).
+    plan_slug = plan_slug_from_name(new_plan or '')
+    if not new_plan:
+        plan_type = ''              # "No Plan" (was 'standard', i.e. Starter features)
+    elif plan_slug == 'starter':
+        plan_type = 'basic'
+    elif plan_slug in ('professional', 'exclusive'):
+        plan_type = plan_slug       # exclusive used to fall through to 'standard'
+    elif 'trial' in new_plan.lower():
+        plan_type = 'free_trial'
+    else:
+        plan_type = 'standard'
+
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("SHOW COLUMNS FROM agent_subscriptions")
-            columns = [row[0] for row in cursor.fetchall()]
-            
-            exists_query = "SELECT id FROM agent_subscriptions WHERE agent_id = %s"
-            cursor.execute(exists_query, [agent_id])
-            exists = bool(cursor.fetchone())
-
-            if exists:
-                update_cols = ["selected_plan = %s"]
-                update_params = [new_plan]
-                
-                if 'updated_at' in columns:
-                    update_cols.append("updated_at = %s")
-                    update_params.append(timezone.now())
-                    
-                update_params.append(agent_id)
-                update_sql = f"UPDATE agent_subscriptions SET {', '.join(update_cols)} WHERE agent_id = %s"
-                cursor.execute(update_sql, update_params)
-            else:
-                payload = {
-                    'agent_id': agent_id,
-                    'selected_plan': new_plan,
-                    'registration_amount': 0,
-                    'status': 'active',
-                    'payment_status': 'completed',
-                    'created_at': timezone.now(),
-                    'updated_at': timezone.now(),
-                }
-                
-                if 'transaction_id' in columns:
-                    payload['transaction_id'] = 'ADMIN_MANUAL'
-                if 'is_active' in columns:
-                    payload['is_active'] = 1
-                if 'amount' in columns:
-                    payload['amount'] = 0
-                if 'price' in columns:
-                    payload['price'] = 0
-                if 'fee' in columns:
-                    payload['fee'] = 0
-                if 'plan_amount' in columns:
-                    payload['plan_amount'] = 0
-                    
-                final_payload = {k: v for k, v in payload.items() if k in columns}
-                
-                keys = list(final_payload.keys())
-                values = list(final_payload.values())
-                placeholders = ', '.join(['%s'] * len(keys))
-                keys_str = ', '.join(keys)
-                
-                insert_sql = f"INSERT INTO agent_subscriptions ({keys_str}) VALUES ({placeholders})"
-                cursor.execute(insert_sql, values)
-
-            # Map selected plan name to plan_type for agents table
-            plan_slug = plan_slug_from_name(new_plan or '')
-            if plan_slug == 'starter':
-                plan_type = 'basic'
-            elif plan_slug == 'professional':
-                plan_type = 'professional'
-            elif 'trial' in (new_plan or '').lower():
-                plan_type = 'free_trial'
-            else:
-                plan_type = 'standard'
-
-            cursor.execute(
-                "UPDATE agents SET plan_type = %s, updated_at = %s WHERE id = %s",
-                [plan_type, timezone.now(), agent_id]
+        with transaction.atomic():
+            # Change the agent's current subscription only. Updating every row
+            # rewrote the plan of all past payments (and their invoices).
+            current = (
+                AgentSubscription.objects.filter(agent_id=agent_id, status='active').order_by('-created_at').first()
+                or AgentSubscription.objects.filter(agent_id=agent_id).order_by('-created_at').first()
             )
+            old_plan = current.selected_plan if current else None
+            if current:
+                current.selected_plan = new_plan
+                current.save(update_fields=['selected_plan', 'updated_at'])
+            elif new_plan:
+                now = timezone.now()
+                AgentSubscription.objects.create(
+                    agent_id=agent_id, selected_plan=new_plan, registration_amount=0,
+                    payment_status='completed', status='active',
+                    starts_at=now, expires_at=now + timedelta(days=365),
+                )
 
+            Agent.objects.filter(pk=agent_id).update(plan_type=plan_type, updated_at=timezone.now())
+
+        AdminActivityLog.log(
+            'Admin changed agent plan', 'Agent', agent_id,
+            details=f'{old_plan or "(none)"} -> {new_plan or "(no plan)"}; plan_type={plan_type or "(none)"}',
+            request=request,
+        )
     except Exception as e:
         logger.error(f"Error updating agent plan: {e}")
         messages.error(request, 'Database error updating plan.')
