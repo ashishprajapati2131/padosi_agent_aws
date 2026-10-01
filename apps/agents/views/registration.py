@@ -4060,6 +4060,26 @@ def payment_failure(request):
 
 from django.views.decorators.csrf import csrf_exempt
 
+# Receipts of checkouts that verify their own payments (insurance portal,
+# events funnel) and never have an agent subscription for the webhook.
+_FOREIGN_CHECKOUT_RECEIPTS = ('agent_ins_', 'cart_ins_', 'evt_')
+
+
+def _is_foreign_checkout_order(order_id):
+    """True only for orders of the insurance / event checkouts.
+
+    Anything else (agent orders, unknown receipts, Razorpay unreachable) keeps
+    the 503 so Razorpay retries rather than a real payment being dropped.
+    """
+    try:
+        client = razorpay_client()
+        order = client.order.fetch(order_id) if client else None
+        receipt = order.get('receipt') if isinstance(order, dict) else None
+    except Exception:
+        return False
+    return isinstance(receipt, str) and receipt.startswith(_FOREIGN_CHECKOUT_RECEIPTS)
+
+
 _ORPHAN_PLAN_NAMES = {
     'free_trial': 'Trial Plan',
     'starter': PLAN_LABELS['starter'],
@@ -4198,6 +4218,11 @@ def razorpay_webhook(request):
             # A paid registration order whose row was re-pointed at a newer
             # checkout (pre one-row-per-order data): rebuild it from the order.
             subscription = adopt_orphan_registration_order(order_id)
+        if not subscription and _is_foreign_checkout_order(order_id):
+            # Insurance / event checkouts are verified by their own flows; a
+            # 503 here made Razorpay retry them forever (and risk disabling
+            # the webhook endpoint).
+            return HttpResponse('Webhook ignored: insurance / event checkout order', status=200)
         if not subscription:
             # Order may not have been committed yet by frontend request; tell Razorpay to retry
             logger.warning(f"[Razorpay Webhook] Subscription not found yet for order {order_id}. Returning 503 for retry.")
