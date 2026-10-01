@@ -69,6 +69,13 @@ def normalize_plan_slug(plan_type: Optional[str]) -> str:
 MOBILE_PLAN_SLUGS = ("starter", "professional")
 
 
+def _website_total(full_price: float, discount_pct: int) -> float:
+    """GST-inclusive total exactly as the website upgrade computes it."""
+    final = round(float(full_price) * (100 - discount_pct) / 100)
+    base = round(final / 1.18, 0)
+    return float(base + round(base * 0.18, 0))
+
+
 class PlanService:
     def __init__(self, db: Session):
         self.db = db
@@ -100,7 +107,13 @@ class PlanService:
         if agent:
             agent_current_slug = normalize_plan_slug(agent.plan_type)
             agent_current_plan = self._resolve_current_agent_plan(agent)
-            upgrade_discount, applicable_discount_pct, is_pro_1rs = self._resolve_upgrade_discount(agent)
+            upgrade_discount, applicable_discount_pct, is_pro_1rs = self._resolve_upgrade_discount(
+                agent, is_on_trial=agent_current_plan.is_on_trial,
+            )
+
+        # The app opens the website checkout, so it must show what the website
+        # charges: pricing_config full prices when configured (else the plan row).
+        pricing_config = self._pricing_config()
 
         # 3. Construct Plan Items with Pricing & Feature List
         plan_items: List[PlanItemSchema] = []
@@ -114,17 +127,24 @@ class PlanService:
             actual_price = float(getattr(plan, 'actual_price', 0.0) or 0.0)
             base_discounted = float(getattr(plan, 'discounted_price', 0.0) or actual_price)
 
-            # Check if special agent upgrade discount applies
+            configured = (pricing_config.get(plan_slug) or {}).get('full_price')
+            if configured:
+                try:
+                    base_discounted = float(configured)
+                except (TypeError, ValueError):
+                    pass
+
+            # Same rules and rounding as the website upgrade checkout
+            # (apps/agents/views/dashboard.py agent_upgrade_plan).
             plan_discount_pct = 0
-            if agent and not is_current and applicable_discount_pct > 0:
-                if is_pro_1rs and plan_slug == "professional":
-                    final_incl_gst = 1.0
-                    plan_discount_pct = 99
-                else:
-                    final_incl_gst = round(base_discounted * (100 - applicable_discount_pct) / 100)
-                    plan_discount_pct = applicable_discount_pct
+            if agent and not is_current and is_pro_1rs and plan_slug == "professional":
+                final_incl_gst = 1.0
+                plan_discount_pct = 99
+            elif agent and not is_current and applicable_discount_pct > 0:
+                final_incl_gst = _website_total(base_discounted, applicable_discount_pct)
+                plan_discount_pct = applicable_discount_pct
             else:
-                final_incl_gst = base_discounted
+                final_incl_gst = _website_total(base_discounted, 0)
 
             # GST 18% decomposition (inclusive pricing standard)
             base_excl_gst = round(final_incl_gst / 1.18, 2)
@@ -178,7 +198,7 @@ class PlanService:
         status = getattr(sub, 'status', None) or agent.status or "active"
         expires_at = getattr(sub, 'expires_at', None)
 
-        now = datetime.utcnow()
+        now = datetime.now()  # DB datetimes are naive IST (USE_TZ=False)
         is_on_trial = bool(
             agent.plan_type == "free_trial"
             and agent.trial_ends_at is not None
@@ -200,8 +220,23 @@ class PlanService:
             expires_at=expires_at,
         )
 
-    def _resolve_upgrade_discount(self, agent: Agent) -> tuple[UpgradeDiscountInfo, int, bool]:
-        """Compute special upgrade discount available for the agent."""
+    def _pricing_config(self) -> Dict[str, Any]:
+        setting = self.db.query(SiteSetting).filter(SiteSetting.key == "pricing_config").first()
+        if not setting or not setting.value:
+            return {}
+        try:
+            import json
+            value = json.loads(setting.value)
+        except Exception:
+            return {}
+        return value if isinstance(value, dict) else {}
+
+    def _resolve_upgrade_discount(self, agent: Agent, is_on_trial: bool = False) -> tuple[UpgradeDiscountInfo, int, bool]:
+        """Compute special upgrade discount available for the agent.
+
+        Like the website, the percentage discount applies only during a free
+        trial; the Professional @ Rs 1 referral reward applies regardless.
+        """
         # 1. Admin default trial upgrade discount
         admin_setting = self.db.query(SiteSetting).filter(SiteSetting.key == "trial_upgrade_discount").first()
         admin_default = 20
@@ -225,8 +260,8 @@ class PlanService:
             except Exception:
                 pass
 
-        # Maximum available discount
-        applicable_discount = max(admin_default, agent_specific, referral_discount)
+        # Maximum available discount (free-trial agents only, as on the website)
+        applicable_discount = max(admin_default, agent_specific, referral_discount) if is_on_trial else 0
 
         is_pro_1rs = getattr(agent, "referral_reward_type", None) == "pro_plan_1rs"
         offer_msg = None

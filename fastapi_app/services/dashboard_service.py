@@ -235,6 +235,12 @@ class DashboardService:
         discount_pct = 0
         starter_full = 2359
         prof_full = 8258
+        # Configured prices apply to every agent, not only trial agents (the
+        # website shows and charges them to everyone).
+        pricing_config = self.setting_repo.get_json_value("pricing_config", {})
+        if pricing_config:
+            starter_full = pricing_config.get("starter", {}).get("full_price", 2359)
+            prof_full = pricing_config.get("professional", {}).get("full_price", 8258)
 
         if is_on_trial:
             admin_default = int(
@@ -250,11 +256,6 @@ class DashboardService:
                     referral_discount = tier.get("discount", 0)
 
             discount_pct = max(admin_default, agent_specific, referral_discount)
-
-            pricing_config = self.setting_repo.get_json_value("pricing_config", {})
-            if pricing_config:
-                starter_full = pricing_config.get("starter", {}).get("full_price", 2359)
-                prof_full = pricing_config.get("professional", {}).get("full_price", 8258)
 
             if getattr(agent, "referral_reward_type", None) == "pro_plan_1rs":
                 prof_full_discounted = 1
