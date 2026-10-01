@@ -30,6 +30,9 @@ def event_referral_grants_dashboard(agent):
     participant = get_participant_for_agent(agent)
     if not participant:
         return False
+    if participant.status == EventReferralParticipant.STATUS_BLOCKED and participant.blocked_by_admin:
+        # Blocked by an admin: no Paldi dashboard (and login stays suspended).
+        return False
     if participant.status in (
         EventReferralParticipant.STATUS_ACTIVE,
         EventReferralParticipant.STATUS_WON,
@@ -147,16 +150,20 @@ def _grant_win(participant):
     )
 
 
-def _block_participant(participant, reason=''):
+def _block_participant(participant, reason='', by_admin=False):
+    """Block a challenger. Deadline blocks keep a locked dashboard and let
+    them buy a plan; an admin block (by_admin) also suspends the login of an
+    agent who has not paid or been approved."""
     participant.status = EventReferralParticipant.STATUS_BLOCKED
     participant.blocked_at = datetime.now()
     participant.blocked_reason = reason or 'Deadline passed without enough paid referrals.'
+    participant.blocked_by_admin = bool(by_admin)
     participant.save(
-        update_fields=['status', 'blocked_at', 'blocked_reason', 'updated_at'],
+        update_fields=['status', 'blocked_at', 'blocked_reason', 'blocked_by_admin', 'updated_at'],
     )
     agent = participant.agent
     if agent.status not in ('active', 'pending_approval'):
-        agent.status = 'pending_payment'
+        agent.status = 'suspended' if by_admin else 'pending_payment'
         agent.save(update_fields=['status', 'updated_at'])
     logger.info(
         'Event referral blocked: agent #%s participant %s',
@@ -260,6 +267,7 @@ def admin_restore_participant(participant, *, extend_hours=0):
         participant.status = EventReferralParticipant.STATUS_ACTIVE
         participant.blocked_at = None
         participant.blocked_reason = ''
+        participant.blocked_by_admin = False
         participant.save()
         if agent.status in ('suspended', 'pending_payment', 'event_challenge'):
             agent.status = 'event_challenge' if not agent.plan_type else 'pending_approval'
