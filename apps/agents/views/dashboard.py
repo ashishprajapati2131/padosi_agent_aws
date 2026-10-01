@@ -2165,25 +2165,38 @@ def agent_upgrade_plan(request):
         plan_type = resolve_checkout_plan_slug(raw_plan_type)
         if plan_type not in ['starter', 'professional']:
             return JsonResponse({'success': False, 'message': 'Invalid plan selection.'}, status=400)
+        # Same rule as the app upgrade link: only a plan above the current one.
+        from plan_upgrade_handoff import upgrade_target_allowed
+        if not upgrade_target_allowed(agent.plan_type, plan_type):
+            return JsonResponse({
+                'success': False,
+                'message': 'You are already on this plan or a higher one.',
+            }, status=400)
 
         promo_code = data.get('promo_code', '').strip()
         promo_obj = None
         if promo_code:
-            from apps.admin_panel.models.promo_code import PromoCode
+            # PromoCode lives in apps.agents.models (the old admin_panel path
+            # did not exist, so every upgrade with a promo code failed).
+            from apps.agents.models import PromoCode
             promo_obj = PromoCode.objects.filter(code=promo_code, is_active=True).first()
 
-        # Re-compute prices
-        admin_default = SiteSetting.get_value('trial_upgrade_discount', 20)
-        agent_specific = agent.upgrade_discount_percent or 0
-        
-        ref_code = ReferralCode.objects.filter(agent=agent).first()
-        referral_discount = 0
-        if ref_code:
-            tier = ref_code.currentTier()
-            if tier and 'discount' in tier:
-                referral_discount = tier['discount']
+        # Re-compute prices. The upgrade discount applies to agents on a free
+        # trial only, exactly as the dashboard displays it; charging it to every
+        # agent made Razorpay take less than the price shown.
+        discount_pct = 0
+        if agent.isOnFreeTrial():
+            admin_default = SiteSetting.get_value('trial_upgrade_discount', 20)
+            agent_specific = agent.upgrade_discount_percent or 0
 
-        discount_pct = max(int(admin_default), int(agent_specific), int(referral_discount))
+            ref_code = ReferralCode.objects.filter(agent=agent).first()
+            referral_discount = 0
+            if ref_code:
+                tier = ref_code.currentTier()
+                if tier and 'discount' in tier:
+                    referral_discount = tier['discount']
+
+            discount_pct = max(int(admin_default), int(agent_specific), int(referral_discount))
 
         pricing_config = SiteSetting.get_value('pricing_config', {
             'starter': {'name': PLAN_LABELS['starter'], 'full_price': 2359},
