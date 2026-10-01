@@ -4149,6 +4149,8 @@ def razorpay_webhook(request):
                 subscription.starts_at = timezone.now()
                 subscription.expires_at = sub_expiry
                 subscription.save()
+                # Same end state as the browser callback when the webhook wins.
+                _deactivate_superseded_subscriptions(agent, subscription.pk)
 
                 # Update Agent status
                 agent.registration_step = 2
@@ -4170,6 +4172,13 @@ def razorpay_webhook(request):
 
                 # Best-effort side effects, each in its own savepoint.
                 _isolated('[Webhook] Referral credit processing', lambda: _credit_referral_conversion(agent))
+                # The callback skips these when the webhook activated first, so a
+                # payer who closed the browser used to give their referrer no
+                # championship / event-referral credit.
+                _isolated('[Webhook] Championship qualification hook',
+                          lambda: _championship_qualification(agent, subscription))
+                _isolated('[Webhook] Event referral qualification hook',
+                          lambda: _event_referral_qualification(agent, subscription))
                 _isolated('[Webhook] Referral code generation', lambda: _ensure_referral_code(agent))
                 _isolated('[Webhook] Promo usage increment',
                           lambda: _increment_promo_usage(subscription.promo_code))
