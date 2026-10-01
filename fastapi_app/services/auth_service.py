@@ -13,7 +13,7 @@ import time
 login_attempts_store = {}
 
 # Mirrors apps/agents/views/auth.py: the only agent statuses that deny a session.
-BLOCKED_AGENT_STATUSES = ('suspended', 'blacklisted', 'rejected')
+BLOCKED_AGENT_STATUSES = ('suspended', 'blacklisted', 'rejected', 'deleted')
 
 def check_login_throttle(ip: str) -> bool:
     record = login_attempts_store.get(ip)

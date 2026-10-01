@@ -6,6 +6,15 @@ from .dashboard import _get_admin_from_session
 
 logger = logging.getLogger(__name__)
 
+def _log_delete(request, model, record_id, outcome):
+    from apps.admin_panel.models import AdminActivityLog
+    try:
+        model_id = int(record_id)
+    except (TypeError, ValueError):
+        model_id = None
+    AdminActivityLog.log(f'Admin delete: {model}', model, model_id, details=outcome, request=request)
+
+
 def admin_delete(request):
     """
     Phase 6B.5: Generic admin delete handler
@@ -36,11 +45,30 @@ def admin_delete(request):
         with connection.cursor() as cursor:
             if model == 'agent':
                 # 1. Fetch agent details
-                cursor.execute("SELECT id, user_id FROM agents WHERE id = %s", [record_id])
+                cursor.execute("SELECT id, user_id, email FROM agents WHERE id = %s", [record_id])
                 agent_row = cursor.fetchone()
                 if not agent_row:
                     return JsonResponse({'success': False, 'message': 'Record not found'}, status=404)
-                user_id = agent_row[1]
+                agent_email = agent_row[2]
+
+                # An agent with payment history is kept (status 'deleted'):
+                # hard-deleting it with FK checks off orphaned its subscriptions
+                # and invoices (needed for GST / refunds).
+                from apps.agents.models import AgentSubscription, Invoice
+                has_payments = (
+                    AgentSubscription.objects.filter(agent_id=record_id, payment_status__in=['completed', 'refunded']).exists()
+                    or Invoice.objects.filter(agent_id=record_id).exists()
+                )
+                if has_payments:
+                    from apps.agents.models import Agent
+                    Agent.objects.filter(pk=record_id).update(status='deleted')
+                    if agent_email:
+                        cursor.execute("UPDATE users SET status = 'suspended' WHERE LOWER(email) = LOWER(%s)", [agent_email])
+                    _log_delete(request, model, record_id, 'soft-deleted (payment records kept)')
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'This agent has payment records, so the agent was marked deleted and the records were kept.',
+                    })
                 
                 # 2. Backup agent record into agent_backup table
                 try:
@@ -70,14 +98,18 @@ def admin_delete(request):
                 except Exception as backup_err:
                     logger.warning(f"Agent backup warning for agent {record_id}: {backup_err}")
 
-                # 3. Suspend linked user account
-                if user_id:
-                    cursor.execute("UPDATE users SET status = 'suspended' WHERE id = %s", [user_id])
+                # 3. Suspend linked user account. By email: agents.user_id is the
+                # Django auth_user id, so "WHERE id = user_id" suspended whichever
+                # person had that users id.
+                if agent_email:
+                    cursor.execute("UPDATE users SET status = 'suspended' WHERE LOWER(email) = LOWER(%s)", [agent_email])
                 
                 # 4. Delete the agent record with foreign key check guard
                 cursor.execute("SET FOREIGN_KEY_CHECKS=0")
                 try:
                     cursor.execute("DELETE FROM registration_activity_logs WHERE agent_id = %s", [record_id])
+                    # No completed payments here: remove its unpaid checkout rows too.
+                    cursor.execute("DELETE FROM agent_subscriptions WHERE agent_id = %s", [record_id])
                     cursor.execute("DELETE FROM agents WHERE id = %s", [record_id])
                 finally:
                     cursor.execute("SET FOREIGN_KEY_CHECKS=1")
@@ -125,6 +157,7 @@ def admin_delete(request):
 
         # Log the deletion
         logger.info(f"Admin deleted record: model={model}, record_id={record_id}, admin_id={admin_id}, ip={request.META.get('REMOTE_ADDR')}")
+        _log_delete(request, model, record_id, 'deleted')
 
         return JsonResponse({
             'success': True,

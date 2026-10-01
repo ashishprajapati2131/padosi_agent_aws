@@ -72,7 +72,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     return user
 
 # Mirrors AuthService.BLOCKED_AGENT_STATUSES and Django's agent_login guard.
-BLOCKED_AGENT_STATUSES = ("suspended", "blacklisted", "rejected")
+BLOCKED_AGENT_STATUSES = ("suspended", "blacklisted", "rejected", "deleted")
 
 def get_current_agent(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Agent:
     agent_repo = AgentRepository(db)
