@@ -36,6 +36,34 @@ def record_login_attempt(ip: str):
 def clear_login_throttle(ip: str):
     login_attempts_store.pop(ip, None)
 
+
+# Per-account limit shared with the website login (Django cache, 10 failures
+# per 15 minutes per email). The per-IP limit above is in-process only and is
+# defeated by changing IP; guessing one account's password is not.
+def account_login_allowed(email: str) -> bool:
+    try:
+        from apps.agents.views.auth import check_email_login_throttle
+        return check_email_login_throttle(email)
+    except Exception:
+        return True
+
+
+def record_account_login_failure(email: str):
+    try:
+        from apps.agents.views.auth import record_email_login_failure
+        record_email_login_failure(email)
+    except Exception:
+        pass
+
+
+def clear_account_login_failures(email: str):
+    try:
+        from django.core.cache import cache
+        from apps.agents.views.auth import _email_throttle_key
+        cache.delete(_email_throttle_key(email))
+    except Exception:
+        pass
+
 class AuthService:
     def __init__(self, user_repo: UserRepository, agent_repo: AgentRepository, db: Session):
         self.user_repo = user_repo
@@ -62,6 +90,12 @@ class AuthService:
             return JSONResponse(
                 status_code=400,
                 content={"success": False, "message": "Please enter both email and password."}
+            )
+
+        if not account_login_allowed(request.email):
+            return JSONResponse(
+                status_code=429,
+                content={"success": False, "message": "Too many failed attempts for this account. Please wait 15 minutes or reset your password."}
             )
 
         # 1. Fetch User by email from primary `users` table
@@ -143,6 +177,7 @@ class AuthService:
 
         if not user or not password_valid:
             record_login_attempt(ip)
+            record_account_login_failure(request.email)
             return JSONResponse(
                 status_code=401,
                 content={"success": False, "message": "Please Enter Valid Login Details"}
@@ -219,6 +254,7 @@ class AuthService:
                 status_code=500,
                 content={"success": False, "message": "Authentication failed due to database transaction error."}
             )
+        clear_account_login_failures(request.email)
 
         return JSONResponse(
             status_code=200,
