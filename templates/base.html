@@ -351,8 +351,14 @@
                                 'X-CSRFToken': '{{ csrf_token }}'
                             },
                             body: JSON.stringify({ lat: lat, lng: lng })
-                        }).then(function() {
-                            if (window.location.pathname.indexOf('/find-agents') !== -1) {
+                        }).then(function(res) {
+                            // Reload once so /find-agents re-sorts by the saved location.
+                            // Never on a failed save: that looped (reload -> ask -> fail -> reload).
+                            var reloadKey = 'padosi_location_reloaded';
+                            var alreadyReloaded = false;
+                            try { alreadyReloaded = sessionStorage.getItem(reloadKey) === '1'; } catch (e) {}
+                            if (res.ok && !alreadyReloaded && window.location.pathname.indexOf('/find-agents') !== -1) {
+                                try { sessionStorage.setItem(reloadKey, '1'); } catch (e) {}
                                 window.location.reload();
                             }
                         }).catch(function() {});

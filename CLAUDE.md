@@ -344,7 +344,7 @@ path('', include('apps.home.urls')),            # catch-all CMS slugs at bottom
 
 **Rule:** `apps.home.urls` is last. Home's CMS `<slug:slug>/` catches anything not matched above. Add new URL patterns ABOVE home's include.
 
-**FastAPI routes:** All under `/api/*` via ASGI mount. Django never sees `/api/**`.
+**FastAPI routes:** All under `/api/*` via ASGI mount, except the Django views listed in `padosi_agent/api_routing.py` (`/api/save-location/`, `/api/facebook/`, `/api/pincode/check-agents/`). Adding a Django URL under `api/`? Add its prefix there too, or FastAPI answers `{"detail":"Not Found"}`.
 
 ---
 

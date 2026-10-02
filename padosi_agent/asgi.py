@@ -27,13 +27,23 @@ async def redirect_to_docs(request):
 try:
     from fastapi_app.main import app as fastapi_application
 
-    application = Starlette(
+    from padosi_agent.api_routing import is_fastapi_path
+
+    _routed_application = Starlette(
         routes=[
             Route("/api", endpoint=redirect_to_docs),
             Mount("/api", app=fastapi_application),
             Mount("/", app=django_application),
         ]
     )
+
+    async def application(scope, receive, send):
+        # Django views under /api/ (save-location, facebook, ...) skip the FastAPI mount.
+        path = scope.get("path", "")
+        if scope.get("type") == "http" and path.startswith("/api/") and not is_fastapi_path(path):
+            await django_application(scope, receive, send)
+            return
+        await _routed_application(scope, receive, send)
 except Exception:
     logger.exception("FastAPI application could not be loaded; serving Django only")
     application = django_application

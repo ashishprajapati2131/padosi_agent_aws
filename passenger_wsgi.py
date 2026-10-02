@@ -73,9 +73,12 @@ def get_asgi_wsgi_application():
         _last_pid = current_pid
     return _asgi_wsgi_app
 
+from padosi_agent.api_routing import is_fastapi_path
+
+
 def application(environ, start_response):
     path = environ.get("PATH_INFO", "")
-    if FASTAPI_ENABLED and (path.startswith("/api/") or path == "/api"):
+    if FASTAPI_ENABLED and is_fastapi_path(path):
         if path == "/api":
             start_response("307 Temporary Redirect", [("Location", "/api/docs"), ("Content-Length", "0")])
             return [b""]
