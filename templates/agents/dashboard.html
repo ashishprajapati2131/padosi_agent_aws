@@ -224,6 +224,112 @@
     #event-referral-mobile-refs { display: block !important; }
 }
 #event-referral-mobile-refs { display: none; }
+
+/* Paldi box: readable referral link + copy, equal link buttons */
+.event-referral-link-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    flex: 2 1 320px;
+    min-width: 0;
+}
+.event-referral-link-row .event-referral-link-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    resize: none;
+    overflow: hidden;
+    height: auto;
+    line-height: 1.35;
+    word-break: break-all;
+    white-space: normal;
+    background: #fff;
+    color: #334155;
+}
+.event-referral-link-row .btn { flex: 0 0 auto; width: auto !important; min-width: 0; white-space: nowrap; }
+.event-referral-actions > .btn { flex: 1 1 160px; display: flex; align-items: center; justify-content: center; }
+@media (min-width: 992px) {
+    .event-referral-link-row .event-referral-link-input { height: 34px; white-space: nowrap; word-break: normal; text-overflow: ellipsis; }
+}
+.event-referral-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.event-referral-links > .btn { flex: 1 1 0; min-width: 0; white-space: nowrap; }
+.event-referral-copied { background: #dcfce7 !important; color: #166534 !important; border-color: #86efac !important; }
+@media (max-width: 767.98px) {
+    .event-referral-link-row { flex: 0 0 auto; width: 100%; }
+    .event-referral-link-row .event-referral-link-input { width: auto !important; font-size: 11.5px; }
+    .event-referral-actions > .btn { flex: 0 0 auto; width: 100%; }
+}
+
+/* Header + tabs (agent dashboard only) */
+.agent-dashboard-wrapper .dashboard-nav-tabs-wrapper { position: relative; }
+.agent-dashboard-wrapper .dash-tabs-more { display: none; }
+@media (max-width: 991.98px) {
+    .agent-dashboard-wrapper .dashboard-main-tabs { scrollbar-width: none; scroll-behavior: smooth; }
+    .agent-dashboard-wrapper .dashboard-main-tabs::-webkit-scrollbar { display: none; }
+    .agent-dashboard-wrapper .dashboard-nav-tabs-wrapper.has-more .dash-tabs-more {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        position: absolute;
+        top: 0;
+        right: 8px;
+        bottom: 8px;
+        width: 56px;
+        padding: 0 4px 0 0;
+        border: 0;
+        background: linear-gradient(to right, rgba(247, 249, 251, 0), #f7f9fb 55%);
+        color: #0d9488;
+        font-size: 15px;
+        cursor: pointer;
+        z-index: 2;
+    }
+    .agent-dashboard-wrapper .dash-tabs-more span {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+@media (max-width: 575.98px) {
+    .agent-dashboard-wrapper .agent-name-text {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 8px;
+        line-height: 1.2;
+    }
+    .agent-dashboard-wrapper .agent-name-text .badge { margin-left: 0 !important; }
+    .agent-dashboard-wrapper .agent-role-text { margin-top: 2px; }
+    .agent-dashboard-wrapper .dashboard-top-actions {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px !important;
+        margin-top: 4px !important;
+    }
+    .agent-dashboard-wrapper .dashboard-top-actions > .btn {
+        width: 100%;
+        height: auto !important;
+        min-height: 64px;
+        margin: 0 !important;
+        padding: 10px 6px !important;
+        display: flex !important;
+        flex-direction: column;
+        align-items: center !important;
+        justify-content: center;
+        text-align: center;
+        white-space: normal;
+        font-size: 12.5px !important;
+        line-height: 1.2;
+        border-radius: 12px !important;
+    }
+    .agent-dashboard-wrapper .dashboard-top-actions > .btn > i {
+        margin: 0 0 6px 0 !important;
+        font-size: 17px;
+    }
+}
 </style>
 {% endblock %}
 
@@ -292,16 +398,18 @@
                     {% if event_referral_whatsapp_url %}
                     <a class="btn btn-success btn-sm font-weight-bold" target="_blank" rel="noopener" href="{{ event_referral_whatsapp_url }}"><i class="fab fa-whatsapp mr-1"></i>Share on WhatsApp</a>
                     {% endif %}
-                    <button type="button" class="btn btn-light btn-sm font-weight-bold" id="event-referral-copy"><i class="fas fa-copy mr-1"></i>Copy referral link</button>
-                    <input type="text" class="form-control form-control-sm event-referral-link-input" id="event-referral-link" readonly value="{{ event_referral_share_url }}">
+                    <div class="event-referral-link-row">
+                        <textarea class="form-control form-control-sm event-referral-link-input" id="event-referral-link" rows="2" readonly aria-label="Your referral link">{{ event_referral_share_url }}</textarea>
+                        <button type="button" class="btn btn-light btn-sm font-weight-bold px-3" id="event-referral-copy"><i class="fas fa-copy mr-1"></i><span>Copy</span></button>
+                    </div>
                 </div>
                 {% endif %}
-                <div class="mt-3 pt-2 border-top border-white-50 d-flex flex-wrap gap-2">
+                <div class="mt-3 pt-3 border-top border-white-50 event-referral-links">
                     <a href="{% url 'championship:agent_dashboard' %}" class="btn btn-outline-light btn-sm font-weight-bold">
-                        <i class="fas fa-trophy mr-1"></i>Referral list (Championship)
+                        <i class="fas fa-trophy mr-1"></i>Referral list<span class="d-none d-sm-inline"> (Championship)</span>
                     </a>
                     <a href="{% url 'event_referral:public_leaderboard' %}" class="btn btn-outline-light btn-sm font-weight-bold" target="_blank" rel="noopener">
-                        <i class="fas fa-chart-bar mr-1"></i>Public leaderboard
+                        <i class="fas fa-chart-bar mr-1"></i><span class="d-none d-sm-inline">Public leaderboard</span><span class="d-sm-none">Leaderboard</span>
                     </a>
                 </div>
             </div>
@@ -511,7 +619,38 @@
                     <a class="nav-link" href="#analytics" data-tab="analytics" data-feature="profile_analytics"><i class="fas fa-chart-line mr-2"></i>Profile Analytics</a>
                 </li>
             </ul>
+            <button type="button" class="dash-tabs-more" aria-label="Show more tabs"><span><i class="fas fa-chevron-right"></i></span></button>
         </div>
+        <script>
+        (function () {
+            // Mobile: the tab bar scrolls sideways. Show an arrow while tabs are hidden
+            // on the right, and keep the selected tab in view.
+            var wrap = document.currentScript.previousElementSibling;
+            var list = wrap && wrap.querySelector('.dashboard-main-tabs');
+            var more = wrap && wrap.querySelector('.dash-tabs-more');
+            if (!list || !more) return;
+            function update() {
+                var hidden = list.scrollWidth - list.clientWidth - list.scrollLeft;
+                wrap.classList.toggle('has-more', list.clientWidth > 0 && hidden > 4);
+            }
+            function centerActive() {
+                var active = list.querySelector('.nav-link.active');
+                if (!active || list.scrollWidth <= list.clientWidth) return;
+                var item = active.parentElement;
+                list.scrollLeft = item.offsetLeft - (list.clientWidth - item.offsetWidth) / 2;
+            }
+            more.addEventListener('click', function () {
+                list.scrollBy({ left: Math.max(120, list.clientWidth * 0.6), behavior: 'smooth' });
+            });
+            list.addEventListener('scroll', update, { passive: true });
+            window.addEventListener('resize', update);
+            list.addEventListener('click', function (e) {
+                if (e.target.closest('.nav-link')) setTimeout(function () { centerActive(); update(); }, 50);
+            });
+            window.addEventListener('load', function () { centerActive(); update(); });
+            update();
+        })();
+        </script>
 
         {% if champ_campaign %}
         <!-- NATIONAL REFERRAL CHAMPIONSHIP HIGHLIGHT CARD (Simplified UI) -->
@@ -2326,11 +2465,20 @@
       var copyBtn = document.getElementById('event-referral-copy');
       var linkInput = document.getElementById('event-referral-link');
       if (copyBtn && linkInput) {
+        var copyLabel = copyBtn.querySelector('span');
+        var copyTimer = null;
         copyBtn.addEventListener('click', function() {
           linkInput.select();
           linkInput.setSelectionRange(0, 99999);
           try { document.execCommand('copy'); } catch (e) {}
-          if (navigator.clipboard) navigator.clipboard.writeText(linkInput.value);
+          if (navigator.clipboard) navigator.clipboard.writeText(linkInput.value).catch(function() {});
+          if (copyLabel) copyLabel.textContent = 'Copied \u2713';
+          copyBtn.classList.add('event-referral-copied');
+          clearTimeout(copyTimer);
+          copyTimer = setTimeout(function() {
+            if (copyLabel) copyLabel.textContent = 'Copy';
+            copyBtn.classList.remove('event-referral-copied');
+          }, 2000);
         });
       }
     })();
