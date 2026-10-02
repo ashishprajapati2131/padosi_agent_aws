@@ -183,7 +183,21 @@
     margin-bottom: 8px;
 }
 .event-referral-ref-card:last-child { margin-bottom: 0; }
+.event-referral-congrats {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.event-referral-congrats-title { font-size: 1.15rem; font-weight: 800; color: #14532d; }
+.event-referral-congrats-sub { font-size: 1rem; font-weight: 700; color: #15803d; margin-bottom: 6px; }
+.event-referral-congrats-list { list-style: none; padding: 0; margin: 0; font-weight: 600; color: #14532d; }
+.event-referral-congrats-list li { margin-bottom: 2px; }
+.event-referral-congrats-list i { width: 18px; text-align: center; margin-right: 4px; }
+.event-referral-congrats-btn { border-radius: 10px; white-space: nowrap; }
 @media (max-width: 767.98px) {
+    .event-referral-congrats-btn { width: 100%; }
     .event-referral-panel { padding: 16px !important; }
     .event-referral-panel-head {
         flex-direction: column;
@@ -219,10 +233,20 @@
 {% with display_initial=display_name|slice:":1"|upper %}
 <div class="agent-dashboard-wrapper">
     <div class="container py-4">
-        {% if event_referral_welcome and event_referral_participant and not admin_lock_preview %}
-        <div class="alert alert-success border-0 shadow-sm mb-3" style="border-radius:12px;">
-            <strong>Welcome to your dashboard!</strong> Share your referral link below. When
-            <strong>{{ event_referral_participant.required_paid_referrals }}</strong> agents complete payment before the timer ends, your Basic plan unlocks.
+        {% if event_referral_participant and event_referral_participant.status == 'active' and not admin_lock_preview %}
+        <div class="alert alert-success border-0 shadow-sm mb-3 event-referral-congrats" style="border-radius:12px;">
+            <div class="event-referral-congrats-text">
+                <div class="event-referral-congrats-title">&#127881; Congratulations {{ display_name }},</div>
+                <div class="event-referral-congrats-sub">You are now Eligible to WIN!!!</div>
+                <ul class="event-referral-congrats-list">
+                    <li><i class="fas fa-coins" style="color:#d97706;"></i> Gold Coin</li>
+                    <li><i class="fas fa-coins" style="color:#64748b;"></i> Silver Coin</li>
+                    <li><i class="fas fa-gift" style="color:#15803d;"></i> &amp; many more...</li>
+                </ul>
+            </div>
+            <a href="{% url 'championship:agent_dashboard' %}" class="btn btn-success font-weight-bold px-4 event-referral-congrats-btn">
+                <i class="fas fa-trophy mr-1"></i>What is the contest?
+            </a>
         </div>
         {% endif %}
         {% if event_referral_expired_locked and not admin_lock_preview %}
@@ -240,7 +264,6 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 event-referral-panel-head">
                     <div class="flex-grow-1" style="min-width: 0;">
                         <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
-                            <h4 class="mb-0 font-weight-bold text-white">{{ paldi_event_name|default:"Paldi" }} Challenge</h4>
                             <span class="event-referral-progress-pill">{{ event_referral_participant.paid_count }} / {{ event_referral_participant.required_paid_referrals }} paid</span>
                         </div>
                         {% if event_referral_participant.status == 'won' %}
@@ -250,11 +273,6 @@
                             Time is up. You reached <strong class="text-white">{{ event_referral_participant.paid_count }}</strong> of
                             <strong class="text-white">{{ event_referral_participant.required_paid_referrals }}</strong> paid referrals.
                             Upgrade to a plan to unlock your dashboard.
-                        </p>
-                        {% else %}
-                        <p class="mb-0 event-referral-panel-text">
-                            Refer <strong class="text-white">{{ event_referral_participant.required_paid_referrals }}</strong> insurance agents who
-                            <strong class="text-white">complete payment</strong> before the timer ends to unlock your Basic plan.
                         </p>
                         {% endif %}
                     </div>

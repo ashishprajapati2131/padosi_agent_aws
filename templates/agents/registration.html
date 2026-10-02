@@ -533,11 +533,6 @@
                 {% elif event_referral_mode %}
                 <header class="event-paldi-hero">
                     <h1 class="event-paldi-hero__title">{{ event_referral_campaign.page_title|default:"Paldi Registration" }}</h1>
-                    <div class="event-paldi-hero__pills">
-                        <span class="event-paldi-pill">{{ event_referral_campaign.window_hours }}h challenge</span>
-                        <span class="event-paldi-pill">{{ event_referral_campaign.required_paid_referrals }} paid referrals</span>
-                        <span class="event-paldi-pill">Basic plan reward</span>
-                    </div>
                 </header>
                 {% endif %}
                 {% if registration_swipe_enabled and registration_swipe_slides and not event_referral_mode %}
