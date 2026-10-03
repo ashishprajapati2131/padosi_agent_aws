@@ -30,6 +30,8 @@ from padosi_agent.views import csrf_refresh_api, health_check_view
 from apps.event_referral.views.public_leaderboard import public_leaderboard as stall_public_leaderboard
 
 urlpatterns = [
+    # Legacy/stale URL — redirect to the actual agent login page
+    path('client-login/', RedirectView.as_view(url='/agent-login/', permanent=True), name='client_login_redirect'),
     path('health/', health_check_view, name='health_check'),
     path('healthz', health_check_view, name='healthz'),
     path('api/v1/csrf-refresh/', csrf_refresh_api, name='csrf_refresh_api'),
