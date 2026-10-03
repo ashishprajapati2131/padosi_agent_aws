@@ -245,6 +245,15 @@
             transition: background-color 0.3s;
         }
 
+        .card.table-card,
+        .card:has(.table-responsive) {
+            overflow: visible;
+        }
+
+        .table-responsive .dropdown-menu {
+            z-index: 1050;
+        }
+
         .card-header {
             background: var(--bg-card) !important;
             border-bottom: 1px solid var(--border-color);
