@@ -850,6 +850,14 @@
             </a>
             {% endif %}
 
+            {% if is_super_admin or 'pincode' in admin_permissions or 'geocoding' in admin_permissions or 'agents' in admin_permissions %}
+            <a href="{% url 'admin_find_agent_locator' %}"
+                class="menu-item {% if '/admin/find-agent-locator/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-location-crosshairs" style="color:#10b981;"></i> Pincode &amp; Find Agent
+                <span class="badge ms-auto" style="background:#10b981;">Live</span>
+            </a>
+            {% endif %}
+
             <!-- Developer & API -->
             {% if is_super_admin or 'fastapi_services' in admin_permissions %}
             <div class="menu-label">Developer &amp; API</div>

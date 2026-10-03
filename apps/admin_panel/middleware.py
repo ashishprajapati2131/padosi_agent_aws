@@ -716,6 +716,15 @@ class AdminPermissionMiddleware:
             'admin_pincode_sample':                     'pincode',
             'admin_pincode_export':                     'pincode',
             'admin_pincode_delete_state':               'pincode',
+            # ── Find Agent Locator (Pincode & Lat/Lng) ────────────────────
+            'admin_find_agent_locator':                 ('pincode', 'geocoding', 'agents'),
+            'admin_find_agent_locator_extract':         ('pincode', 'geocoding', 'agents'),
+            'admin_find_agent_locator_save_pincode':    ('pincode', 'geocoding', 'agents'),
+            'admin_find_agent_locator_search_agents':   ('pincode', 'geocoding', 'agents'),
+            'admin_find_agent_locator_assign_agent':    ('pincode', 'geocoding', 'agents'),
+            'admin_find_agent_locator_create_agent':    ('pincode', 'geocoding', 'agents'),
+            'admin_find_agent_locator_live_preview':    ('pincode', 'geocoding', 'agents'),
+            'admin_find_agent_locator_unlink_agent':    ('pincode', 'geocoding', 'agents'),
             # ── Analytics / Advanced / Error Logs / Threats ───────────────
             'advanced_analytics':                       'analytics',
             'advanced_activity_logs':                   'analytics',

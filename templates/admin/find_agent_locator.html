@@ -1,0 +1,1310 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}Pincode Lat/Lng & Find Agent Locator — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}Pincode Lat/Lng & Find Agent Locator{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet CSS for Interactive Map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+<style>
+    /* Card Styles */
+    .locator-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        margin-bottom: 24px;
+        transition: all 0.2s ease;
+    }
+    .locator-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Stat Cards */
+    .stat-mini-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .stat-mini-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+    .stat-mini-val {
+        font-size: 20px;
+        font-weight: 800;
+        line-height: 1.1;
+    }
+    .stat-mini-lbl {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 2px;
+    }
+
+    /* Pincode Search Input Bar */
+    .pincode-search-bar {
+        display: flex;
+        gap: 12px;
+        align-items: stretch;
+        max-width: 680px;
+    }
+    .pincode-input-wrap {
+        position: relative;
+        flex: 1;
+    }
+    .pincode-input-wrap i.prefix-icon {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #10b981;
+        font-size: 20px;
+    }
+    .pincode-input {
+        width: 100%;
+        height: 54px;
+        padding: 0 48px 0 54px;
+        border-radius: 12px;
+        border: 2px solid var(--border-color);
+        background: var(--input-bg);
+        color: var(--text-primary);
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        transition: all 0.2s;
+    }
+    .pincode-input:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+    }
+    .btn-extract {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        padding: 0 28px;
+        font-size: 16px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .btn-extract:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+    }
+    .btn-extract:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* Quick Samples */
+    .sample-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 99px;
+        background: var(--menu-hover-bg);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .sample-pill:hover {
+        border-color: #10b981;
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.08);
+    }
+
+    /* Coordinates Info Cards */
+    .coord-badge-card {
+        background: var(--bg-body);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 14px 16px;
+        height: 100%;
+    }
+    .coord-lbl {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    .coord-val {
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--text-primary);
+        word-break: break-all;
+    }
+
+    /* Map Box */
+    #mapPreview {
+        height: 280px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+        z-index: 1;
+    }
+
+    /* Tab Switcher */
+    .nav-tabs-locator {
+        display: flex;
+        gap: 8px;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 20px;
+    }
+    .tab-item-btn {
+        padding: 10px 18px;
+        border-radius: 8px 8px 0 0;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-muted);
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .tab-item-btn.active {
+        color: #10b981;
+        border-bottom-color: #10b981;
+        background: rgba(16, 185, 129, 0.05);
+    }
+    .tab-item-btn:hover:not(.active) {
+        color: var(--text-primary);
+    }
+
+    /* Custom Buttons */
+    .btn-loc-primary {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: #fff;
+        border: none;
+        padding: 10px 22px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-loc-primary:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+    }
+    .btn-loc-secondary {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-loc-secondary:hover {
+        background: var(--menu-hover-bg);
+        border-color: #94a3b8;
+    }
+
+    /* Agent preview cards */
+    .agent-res-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px;
+        transition: all 0.2s;
+    }
+    .agent-res-card:hover {
+        border-color: #10b981;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+    }
+    .match-tag-direct {
+        background: #dcfce7;
+        color: #15803d;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 3px 9px;
+        border-radius: 99px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .match-tag-nearby {
+        background: #e0f2fe;
+        color: #0369a1;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 3px 9px;
+        border-radius: 99px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    /* Agent Autocomplete */
+    .agent-search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        max-height: 240px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .agent-search-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border-light);
+        transition: all 0.15s;
+    }
+    .agent-search-item:hover {
+        background: var(--menu-hover-bg);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{# ─── HEADER ─── #}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h1 style="font-size:24px; font-weight:800; margin:0; display:flex; align-items:center; gap:10px;">
+            <i class="fa-solid fa-map-location-dot" style="color:#10b981;"></i>
+            Pincode Lat/Lng &amp; Find Agent Locator
+        </h1>
+        <p style="color:var(--text-muted);font-size:13px;margin:4px 0 0;">
+            Enter any Indian pincode to extract precise Latitude &amp; Longitude and seamlessly add agents to the public Find Agent list.
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'admin_pincode_index' %}" class="btn-loc-secondary">
+            <i class="fa-solid fa-map-pin" style="color:#7c3aed;"></i> Pincode Manager
+        </a>
+        <a href="{% url 'admin_geocoding_index' %}" class="btn-loc-secondary">
+            <i class="fa-solid fa-satellite-dish" style="color:#0891b2;"></i> Geocoding Manager
+        </a>
+        <a href="{% url 'home:find_agents' %}" target="_blank" class="btn-loc-primary">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Public Directory
+        </a>
+    </div>
+</div>
+
+{# ─── STAT COUNTERS ─── #}
+<div class="row g-3 mb-4">
+    <div class="col-md-4 col-12">
+        <div class="stat-mini-card">
+            <div class="stat-mini-icon" style="background:#ecfdf5;">
+                <i class="fa-solid fa-database" style="color:#10b981;"></i>
+            </div>
+            <div>
+                <div class="stat-mini-val" id="statPincodesCount">{{ total_pincodes }}</div>
+                <div class="stat-mini-lbl">Pincodes in Master Database</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-12">
+        <div class="stat-mini-card">
+            <div class="stat-mini-icon" style="background:#eff6ff;">
+                <i class="fa-solid fa-user-tie" style="color:#3b82f6;"></i>
+            </div>
+            <div>
+                <div class="stat-mini-val" id="statActiveAgents">{{ total_active_agents }}</div>
+                <div class="stat-mini-lbl">Active Listed Agents</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-12">
+        <div class="stat-mini-card">
+            <div class="stat-mini-icon" style="background:#fef3c7;">
+                <i class="fa-solid fa-location-crosshairs" style="color:#d97706;"></i>
+            </div>
+            <div>
+                <div class="stat-mini-val" id="statGeocodedAgents">{{ geocoded_agents }}</div>
+                <div class="stat-mini-lbl">Agents with GPS Coordinates</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ─── SECTION 1: PINCODE LOOKUP & LAT/LNG EXTRACTOR ─── #}
+<div class="locator-card">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h5 style="font-weight:800;margin:0;">1. Enter 6-Digit Pincode</h5>
+            <p style="font-size:13px;color:var(--text-muted);margin:3px 0 0;">
+                Extracts GPS latitude, longitude, and locality name from Database, Postal API, or OpenStreetMap.
+            </p>
+        </div>
+        <span class="badge" style="background:#ecfdf5;color:#059669;font-size:12px;padding:6px 12px;font-weight:700;">
+            <i class="fa-solid fa-bolt me-1"></i> Multi-Source Resolver
+        </span>
+    </div>
+
+    <form id="extractForm" onsubmit="event.preventDefault(); handleExtractCoordinates();">
+        <div class="pincode-search-bar mb-3">
+            <div class="pincode-input-wrap">
+                <i class="fa-solid fa-map-pin prefix-icon"></i>
+                <input type="text" id="pincodeInput" class="pincode-input"
+                       placeholder="e.g. 380015" maxlength="6" pattern="[1-9][0-9]{5}"
+                       value="{{ initial_pincode }}" autofocus autocomplete="off">
+            </div>
+            <button type="submit" class="btn-extract" id="extractBtn">
+                <i class="fa-solid fa-magnifying-glass-location"></i>
+                <span>Extract Coordinates</span>
+            </button>
+        </div>
+    </form>
+
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span style="font-size:12px;font-weight:600;color:var(--text-muted);">Try Sample Pincodes:</span>
+        <button type="button" class="sample-pill" onclick="setAndExtract('380015')">
+            <i class="fa-solid fa-location-dot"></i> 380015 (Satellite, Ahmedabad)
+        </button>
+        <button type="button" class="sample-pill" onclick="setAndExtract('395009')">
+            <i class="fa-solid fa-location-dot"></i> 395009 (Adajan, Surat)
+        </button>
+        <button type="button" class="sample-pill" onclick="setAndExtract('400001')">
+            <i class="fa-solid fa-location-dot"></i> 400001 (Mumbai Center)
+        </button>
+        <button type="button" class="sample-pill" onclick="setAndExtract('110001')">
+            <i class="fa-solid fa-location-dot"></i> 110001 (Connaught Place, Delhi)
+        </button>
+        <button type="button" class="sample-pill" onclick="setAndExtract('560001')">
+            <i class="fa-solid fa-location-dot"></i> 560001 (Bangalore Center)
+        </button>
+    </div>
+</div>
+
+{# ─── SECTION 2: EXTRACTED DETAILS & INTERACTIVE MAP (Hidden initially) ─── #}
+<div id="resultContainer" style="display:none;">
+
+    <div class="row g-4 mb-4">
+        {# Left Column: Details Cards #}
+        <div class="col-lg-6">
+            <div class="locator-card h-100">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 style="font-weight:800;margin:0;">
+                        <i class="fa-solid fa-circle-check text-success me-1"></i> Coordinates Resolved
+                    </h5>
+                    <span id="sourceBadge" class="badge" style="background:#e0f2fe;color:#0369a1;font-weight:700;"></span>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-sm-6 col-12">
+                        <div class="coord-badge-card">
+                            <div class="coord-lbl"><i class="fa-solid fa-map-pin text-success me-1"></i> Pincode</div>
+                            <div class="coord-val" id="resPincode">—</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-12">
+                        <div class="coord-badge-card">
+                            <div class="coord-lbl"><i class="fa-solid fa-users text-primary me-1"></i> Currently Found Agents</div>
+                            <div class="coord-val" id="resAgentsCount" style="color:#059669;">0</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-12">
+                        <div class="coord-badge-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="coord-lbl">Latitude (N)</div>
+                                <button type="button" class="btn btn-xs btn-link p-0 text-success text-decoration-none" onclick="copyText('resLat')">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                            <div class="coord-val text-success" id="resLat">—</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-12">
+                        <div class="coord-badge-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="coord-lbl">Longitude (E)</div>
+                                <button type="button" class="btn btn-xs btn-link p-0 text-success text-decoration-none" onclick="copyText('resLng')">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                            <div class="coord-val text-success" id="resLng">—</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="coord-badge-card">
+                            <div class="coord-lbl">Locality / Office Name</div>
+                            <div class="coord-val" id="resOfficeName">—</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-12">
+                        <div class="coord-badge-card">
+                            <div class="coord-lbl">District / City</div>
+                            <div class="coord-val" id="resDistrict">—</div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-12">
+                        <div class="coord-badge-card">
+                            <div class="coord-lbl">State</div>
+                            <div class="coord-val" id="resState">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyCoordinates()">
+                        <i class="fa-solid fa-copy me-1"></i> Copy Lat, Lng
+                    </button>
+                    <a id="btnPublicPreview" href="#" target="_blank" class="btn btn-sm btn-outline-success">
+                        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Test on Find Agents Page
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        {# Right Column: Interactive Map Preview #}
+        <div class="col-lg-6">
+            <div class="locator-card h-100">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h5 style="font-weight:800;margin:0;">
+                        <i class="fa-solid fa-satellite text-info me-1"></i> Interactive Map Preview
+                    </h5>
+                    <small style="color:var(--text-muted);font-size:12px;">Drag pin to adjust coordinates</small>
+                </div>
+                <div id="mapPreview"></div>
+                <div class="mt-2 text-center" style="font-size:12px;color:var(--text-muted);">
+                    Marker coordinates: <span id="markerCoords" class="fw-bold text-dark"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ─── SECTION 3: ADD TO FIND AGENT LIST (Action Tabs) ─── #}
+    <div class="locator-card">
+        <h5 style="font-weight:800;margin-bottom:6px;">2. Add to "Find Agent" List</h5>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">
+            Choose how you want to add these coordinates into the Find Agent marketplace:
+        </p>
+
+        <div class="nav-tabs-locator">
+            <button type="button" class="tab-item-btn active" id="tabAssignBtn" onclick="switchActionTab('assign')">
+                <i class="fa-solid fa-user-plus"></i> Assign to Existing Agent
+            </button>
+            <button type="button" class="tab-item-btn" id="tabCreateBtn" onclick="switchActionTab('create')">
+                <i class="fa-solid fa-user-shield"></i> Quick-Create New Agent
+            </button>
+            <button type="button" class="tab-item-btn" id="tabSavePinBtn" onclick="switchActionTab('savePin')">
+                <i class="fa-solid fa-database"></i> Save to Pincode Master DB
+            </button>
+        </div>
+
+        {# TAB 1: Assign to Existing Agent #}
+        <div id="tabContentAssign">
+            <form id="assignAgentForm" onsubmit="event.preventDefault(); submitAssignAgent();">
+                <div class="row g-3">
+                    <div class="col-md-6 col-12 position-relative">
+                        <label class="form-label fw-bold" style="font-size:13px;">Select Agent to Add</label>
+                        <input type="text" id="agentSearchInput" class="form-control"
+                               placeholder="Type Agent Name, Mobile, Email, or ID..."
+                               autocomplete="off" oninput="handleAgentSearchInput(this.value)">
+                        <input type="hidden" id="selectedAgentId" value="">
+                        <div id="agentSearchResults" class="agent-search-results"></div>
+                        <div id="selectedAgentPreview" class="mt-2" style="display:none;"></div>
+                    </div>
+
+                    <div class="col-md-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Coverage Options</label>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="chkSetPrimary" checked>
+                            <label class="form-check-label" for="chkSetPrimary" style="font-size:13px;">
+                                <strong>Set as Primary Pincode &amp; Coordinates</strong> (Updates agent.latitude, longitude, agent_pincode)
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="chkAddServicePin" checked>
+                            <label class="form-check-label" for="chkAddServicePin" style="font-size:13px;">
+                                <strong>Add to Agent Service Pincodes</strong> (Direct 0 km match when this pincode is searched)
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="chkActivateAgent" checked>
+                            <label class="form-check-label" for="chkActivateAgent" style="font-size:13px;">
+                                <strong>Ensure Agent Status is Active &amp; Profile Card is Visible</strong>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <button type="submit" class="btn-loc-primary" id="btnSubmitAssign">
+                            <i class="fa-solid fa-plus-circle"></i> Add Agent to Find Agent List for this Pincode
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        {# TAB 2: Quick Create New Agent #}
+        <div id="tabContentCreate" style="display:none;">
+            <form id="createAgentForm" onsubmit="event.preventDefault(); submitCreateAgent();">
+                <div class="row g-3">
+                    <div class="col-md-4 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Full Name *</label>
+                        <input type="text" id="newAgentName" class="form-control" required placeholder="e.g. Rahul Sharma">
+                    </div>
+                    <div class="col-md-4 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Mobile Number *</label>
+                        <input type="tel" id="newAgentMobile" class="form-control" required placeholder="e.g. 9876543210" maxlength="15">
+                    </div>
+                    <div class="col-md-4 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Email Address *</label>
+                        <input type="email" id="newAgentEmail" class="form-control" required placeholder="e.g. rahul@example.com">
+                    </div>
+                    <div class="col-md-4 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Insurance Type</label>
+                        <select id="newAgentType" class="form-select">
+                            <option value="Life" selected>Life Insurance</option>
+                            <option value="Health">Health Insurance</option>
+                            <option value="Motor">Motor Insurance</option>
+                            <option value="SME">SME / Business</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Company Name</label>
+                        <input type="text" id="newAgentCompany" class="form-control" placeholder="e.g. LIC / Star Health" value="LIC">
+                    </div>
+                    <div class="col-md-4 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Pincode &amp; Coordinates</label>
+                        <input type="text" id="newAgentCoordsDisplay" class="form-control bg-light" readonly>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn-loc-primary" id="btnSubmitCreate">
+                            <i class="fa-solid fa-user-plus"></i> Create &amp; Add Agent to Find Agent List
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        {# TAB 3: Save to Master Pincode Database #}
+        <div id="tabContentSavePin" style="display:none;">
+            <form id="savePincodeForm" onsubmit="event.preventDefault(); submitSavePincode();">
+                <div class="row g-3">
+                    <div class="col-md-4 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Office / Locality Name *</label>
+                        <input type="text" id="editOfficeName" class="form-control" required>
+                    </div>
+                    <div class="col-md-4 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">District / City *</label>
+                        <input type="text" id="editDistrict" class="form-control" required>
+                    </div>
+                    <div class="col-md-4 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">State *</label>
+                        <input type="text" id="editState" class="form-control" required>
+                    </div>
+                    <div class="col-md-3 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Latitude *</label>
+                        <input type="number" step="0.00000001" id="editLatitude" class="form-control" required>
+                    </div>
+                    <div class="col-md-3 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Longitude *</label>
+                        <input type="number" step="0.00000001" id="editLongitude" class="form-control" required>
+                    </div>
+                    <div class="col-md-3 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Division (Optional)</label>
+                        <input type="text" id="editDivision" class="form-control">
+                    </div>
+                    <div class="col-md-3 col-sm-6 col-12">
+                        <label class="form-label fw-bold" style="font-size:13px;">Taluk (Optional)</label>
+                        <input type="text" id="editTaluk" class="form-control">
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn-loc-primary" id="btnSubmitSavePin">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Coordinates to Master Pincode Database
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# ─── SECTION 4: LIVE FIND AGENT DIRECTORY PREVIEW ─── #}
+    <div class="locator-card">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+            <div>
+                <h5 style="font-weight:800;margin:0;">
+                    <i class="fa-solid fa-list-check text-success me-1"></i> Live "Find Agent" Directory for Pincode <span id="previewPinTitle"></span>
+                </h5>
+                <p style="font-size:13px;color:var(--text-muted);margin:3px 0 0;">
+                    These are the exact agents currently discovered when a customer searches this location on <strong>padosiagent.com/find-agents/</strong>
+                </p>
+            </div>
+            <button type="button" class="btn-loc-secondary" onclick="loadLiveDirectoryPreview()">
+                <i class="fa-solid fa-arrows-rotate"></i> Refresh Results
+            </button>
+        </div>
+
+        <div id="liveAgentsListWrap">
+            <div class="text-center py-4">
+                <div class="spinner-border text-success" role="status"></div>
+                <div class="mt-2 text-muted" style="font-size:13px;">Loading matching agents...</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+    // State
+    let currentExtractedData = null;
+    let leafletMap = null;
+    let mapMarker = null;
+    let searchDebounceTimer = null;
+
+    // CSRF Token Helper
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    // Set sample and extract
+    function setAndExtract(pin) {
+        document.getElementById('pincodeInput').value = pin;
+        handleExtractCoordinates();
+    }
+
+    // Extract coordinates main handler
+    async function handleExtractCoordinates() {
+        const pinInput = document.getElementById('pincodeInput');
+        const pin = pinInput.value.trim();
+        const extractBtn = document.getElementById('extractBtn');
+
+        if (!pin || pin.length !== 6 || !/^[1-9]\d{5}$/.test(pin)) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Invalid Pincode',
+                text: 'Please enter a valid 6-digit Indian pincode (digits 1-9 followed by 5 digits).',
+                confirmButtonColor: '#10b981'
+            });
+            return;
+        }
+
+        extractBtn.disabled = true;
+        extractBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Extracting...';
+
+        try {
+            const resp = await fetch('{% url "admin_find_agent_locator_extract" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ pincode: pin })
+            });
+            const data = await resp.json();
+
+            if (!resp.ok || !data.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lookup Notice',
+                    text: data.message || 'Could not resolve coordinates for this pincode.',
+                    confirmButtonColor: '#10b981'
+                });
+                return;
+            }
+
+            renderExtractedResults(data.data);
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Network error while extracting coordinates: ' + err.message,
+                confirmButtonColor: '#10b981'
+            });
+        } finally {
+            extractBtn.disabled = false;
+            extractBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass-location"></i> <span>Extract Coordinates</span>';
+        }
+    }
+
+    // Render extracted results to UI
+    function renderExtractedResults(item) {
+        currentExtractedData = item;
+
+        document.getElementById('resPincode').innerText = item.pincode;
+        document.getElementById('resLat').innerText = item.latitude ? Number(item.latitude).toFixed(6) : '—';
+        document.getElementById('resLng').innerText = item.longitude ? Number(item.longitude).toFixed(6) : '—';
+        document.getElementById('resOfficeName').innerText = item.office_name || '—';
+        document.getElementById('resDistrict').innerText = item.district || '—';
+        document.getElementById('resState').innerText = item.state || '—';
+        document.getElementById('resAgentsCount').innerText = item.matching_agents_count || 0;
+        document.getElementById('sourceBadge').innerText = item.source || 'Resolved';
+        document.getElementById('previewPinTitle').innerText = item.pincode + (item.office_name ? ' (' + item.office_name + ')' : '');
+
+        // Update links & inputs
+        const publicUrl = '/find-agents/?pincode=' + encodeURIComponent(item.pincode);
+        document.getElementById('btnPublicPreview').setAttribute('href', publicUrl);
+
+        document.getElementById('newAgentCoordsDisplay').value = `${item.pincode} (${Number(item.latitude).toFixed(4)}, ${Number(item.longitude).toFixed(4)})`;
+
+        // Prepopulate Master DB form
+        document.getElementById('editOfficeName').value = item.office_name || '';
+        document.getElementById('editDistrict').value = item.district || '';
+        document.getElementById('editState').value = item.state || '';
+        document.getElementById('editLatitude').value = item.latitude || '';
+        document.getElementById('editLongitude').value = item.longitude || '';
+        document.getElementById('editDivision').value = item.division || '';
+        document.getElementById('editTaluk').value = item.taluk || '';
+
+        // Show result container
+        const cont = document.getElementById('resultContainer');
+        cont.style.display = 'block';
+
+        // Initialize / Update Map
+        initOrUpdateMap(item.latitude, item.longitude, item.pincode, item.office_name);
+
+        // Load live directory agents preview
+        loadLiveDirectoryPreview();
+
+        // Smooth scroll to results
+        cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Initialize or update Leaflet Map
+    function initOrUpdateMap(lat, lng, pin, title) {
+        if (!lat || !lng) return;
+
+        setTimeout(() => {
+            const latNum = parseFloat(lat);
+            const lngNum = parseFloat(lng);
+
+            document.getElementById('markerCoords').innerText = `${latNum.toFixed(6)}, ${lngNum.toFixed(6)}`;
+
+            if (!leafletMap) {
+                leafletMap = L.map('mapPreview').setView([latNum, lngNum], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(leafletMap);
+
+                // Add draggable marker
+                mapMarker = L.marker([latNum, lngNum], { draggable: true }).addTo(leafletMap);
+                mapMarker.bindPopup(`<b>${pin}</b><br>${title || 'Extracted Coordinates'}`).openPopup();
+
+                // When user drags marker
+                mapMarker.on('dragend', function (event) {
+                    const position = mapMarker.getLatLng();
+                    onMarkerMoved(position.lat, position.lng);
+                });
+            } else {
+                leafletMap.invalidateSize();
+                leafletMap.setView([latNum, lngNum], 13);
+                mapMarker.setLatLng([latNum, lngNum]);
+                mapMarker.bindPopup(`<b>${pin}</b><br>${title || 'Extracted Coordinates'}`).openPopup();
+            }
+        }, 100);
+    }
+
+    // Callback when map marker is dragged
+    function onMarkerMoved(lat, lng) {
+        document.getElementById('resLat').innerText = lat.toFixed(6);
+        document.getElementById('resLng').innerText = lng.toFixed(6);
+        document.getElementById('markerCoords').innerText = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+        document.getElementById('editLatitude').value = lat.toFixed(8);
+        document.getElementById('editLongitude').value = lng.toFixed(8);
+
+        if (currentExtractedData) {
+            currentExtractedData.latitude = lat;
+            currentExtractedData.longitude = lng;
+            document.getElementById('newAgentCoordsDisplay').value = `${currentExtractedData.pincode} (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+        }
+    }
+
+    // Switch action tab
+    function switchActionTab(tab) {
+        document.getElementById('tabAssignBtn').classList.toggle('active', tab === 'assign');
+        document.getElementById('tabCreateBtn').classList.toggle('active', tab === 'create');
+        document.getElementById('tabSavePinBtn').classList.toggle('active', tab === 'savePin');
+
+        document.getElementById('tabContentAssign').style.display = tab === 'assign' ? 'block' : 'none';
+        document.getElementById('tabContentCreate').style.display = tab === 'create' ? 'block' : 'none';
+        document.getElementById('tabContentSavePin').style.display = tab === 'savePin' ? 'block' : 'none';
+    }
+
+    // Agent Autocomplete Search
+    function handleAgentSearchInput(query) {
+        clearTimeout(searchDebounceTimer);
+        const resBox = document.getElementById('agentSearchResults');
+
+        if (!query || query.trim().length === 0) {
+            resBox.style.display = 'none';
+            return;
+        }
+
+        searchDebounceTimer = setTimeout(async () => {
+            try {
+                const resp = await fetch('{% url "admin_find_agent_locator_search_agents" %}?q=' + encodeURIComponent(query.trim()));
+                const data = await resp.json();
+                if (data.success && data.agents && data.agents.length > 0) {
+                    let html = '';
+                    data.agents.forEach(ag => {
+                        html += `
+                            <div class="agent-search-item" onclick="selectAgent(${ag.id}, '${escapeHtml(ag.fullname)}', '${escapeHtml(ag.email)}', '${ag.mobile}', '${ag.agent_pincode}', ${ag.has_coords})">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong>#${ag.id} ${escapeHtml(ag.fullname)}</strong>
+                                    <span class="badge ${ag.status === 'active' ? 'bg-success' : 'bg-warning text-dark'}">${ag.status}</span>
+                                </div>
+                                <div style="font-size:12px;color:var(--text-muted);">
+                                    <i class="fa-solid fa-phone me-1"></i> ${ag.mobile} | <i class="fa-solid fa-envelope me-1"></i> ${escapeHtml(ag.email)}
+                                </div>
+                                <div style="font-size:11px;color:#059669;">
+                                    PIN: ${ag.agent_pincode || 'None'} | GPS: ${ag.has_coords ? 'Set' : 'Missing'}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    resBox.innerHTML = html;
+                    resBox.style.display = 'block';
+                } else {
+                    resBox.innerHTML = '<div class="p-3 text-muted text-center" style="font-size:13px;">No agents found matching query</div>';
+                    resBox.style.display = 'block';
+                }
+            } catch (e) {
+                console.error('Agent search error:', e);
+            }
+        }, 250);
+    }
+
+    function selectAgent(id, name, email, mobile, pin, hasCoords) {
+        document.getElementById('selectedAgentId').value = id;
+        document.getElementById('agentSearchInput').value = `#${id} - ${name} (${mobile})`;
+        document.getElementById('agentSearchResults').style.display = 'none';
+
+        const prevBox = document.getElementById('selectedAgentPreview');
+        prevBox.innerHTML = `
+            <div class="p-2 rounded bg-light border" style="font-size:12px;">
+                <strong>Selected:</strong> #${id} ${name} | ${mobile} | ${email}
+                <span class="badge bg-secondary ms-2">Current PIN: ${pin}</span>
+            </div>
+        `;
+        prevBox.style.display = 'block';
+    }
+
+    // Close autocomplete when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#agentSearchInput') && !e.target.closest('#agentSearchResults')) {
+            const resBox = document.getElementById('agentSearchResults');
+            if (resBox) resBox.style.display = 'none';
+        }
+    });
+
+    // Submit Assign Agent
+    async function submitAssignAgent() {
+        if (!currentExtractedData) return;
+        const agentId = document.getElementById('selectedAgentId').value;
+        const btn = document.getElementById('btnSubmitAssign');
+
+        if (!agentId) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Agent Selected',
+                text: 'Please search and select an agent to assign.',
+                confirmButtonColor: '#10b981'
+            });
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Adding Agent...';
+
+        try {
+            const payload = {
+                agent_id: agentId,
+                pincode: currentExtractedData.pincode,
+                latitude: currentExtractedData.latitude,
+                longitude: currentExtractedData.longitude,
+                city_name: currentExtractedData.district || currentExtractedData.office_name || 'City',
+                set_primary: document.getElementById('chkSetPrimary').checked,
+                add_service_pincode: document.getElementById('chkAddServicePin').checked,
+                activate_agent: document.getElementById('chkActivateAgent').checked
+            };
+
+            const resp = await fetch('{% url "admin_find_agent_locator_assign_agent" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+
+            if (!resp.ok || !data.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Assignment Failed',
+                    text: data.message || 'Error assigning agent.',
+                    confirmButtonColor: '#10b981'
+                });
+                return;
+            }
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Agent Added Successfully!',
+                text: data.message,
+                confirmButtonColor: '#10b981'
+            });
+
+            // Refresh live directory results
+            loadLiveDirectoryPreview();
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Error', text: e.message, confirmButtonColor: '#10b981' });
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-plus-circle"></i> Add Agent to Find Agent List for this Pincode';
+        }
+    }
+
+    // Submit Create New Agent
+    async function submitCreateAgent() {
+        if (!currentExtractedData) return;
+        const btn = document.getElementById('btnSubmitCreate');
+
+        const payload = {
+            fullname: document.getElementById('newAgentName').value.trim(),
+            mobile: document.getElementById('newAgentMobile').value.trim(),
+            email: document.getElementById('newAgentEmail').value.trim(),
+            insurance_type: document.getElementById('newAgentType').value,
+            company_name: document.getElementById('newAgentCompany').value.trim(),
+            pincode: currentExtractedData.pincode,
+            latitude: currentExtractedData.latitude,
+            longitude: currentExtractedData.longitude,
+            city_name: currentExtractedData.district || currentExtractedData.office_name || 'City'
+        };
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Creating Agent...';
+
+        try {
+            const resp = await fetch('{% url "admin_find_agent_locator_create_agent" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+
+            if (!resp.ok || !data.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Creation Failed',
+                    text: data.message || 'Error creating agent.',
+                    confirmButtonColor: '#10b981'
+                });
+                return;
+            }
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Agent Created & Added!',
+                text: data.message,
+                confirmButtonColor: '#10b981'
+            });
+
+            // Reset form
+            document.getElementById('newAgentName').value = '';
+            document.getElementById('newAgentMobile').value = '';
+            document.getElementById('newAgentEmail').value = '';
+
+            // Refresh preview
+            loadLiveDirectoryPreview();
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Error', text: e.message, confirmButtonColor: '#10b981' });
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Create &amp; Add Agent to Find Agent List';
+        }
+    }
+
+    // Submit Save to Master Pincode DB
+    async function submitSavePincode() {
+        if (!currentExtractedData) return;
+        const btn = document.getElementById('btnSubmitSavePin');
+
+        const payload = {
+            pincode: currentExtractedData.pincode,
+            office_name: document.getElementById('editOfficeName').value.trim(),
+            district: document.getElementById('editDistrict').value.trim(),
+            state: document.getElementById('editState').value.trim(),
+            latitude: document.getElementById('editLatitude').value,
+            longitude: document.getElementById('editLongitude').value,
+            division: document.getElementById('editDivision').value.trim(),
+            taluk: document.getElementById('editTaluk').value.trim()
+        };
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Saving...';
+
+        try {
+            const resp = await fetch('{% url "admin_find_agent_locator_save_pincode" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+
+            if (!resp.ok || !data.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Save Failed',
+                    text: data.message || 'Error saving pincode to master.',
+                    confirmButtonColor: '#10b981'
+                });
+                return;
+            }
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Saved to Master!',
+                text: data.message,
+                confirmButtonColor: '#10b981'
+            });
+
+            // Update UI
+            document.getElementById('resOfficeName').innerText = payload.office_name;
+            document.getElementById('resDistrict').innerText = payload.district;
+            document.getElementById('resState').innerText = payload.state;
+            document.getElementById('sourceBadge').innerText = 'Database (Master Records)';
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Error', text: e.message, confirmButtonColor: '#10b981' });
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Coordinates to Master Pincode Database';
+        }
+    }
+
+    // Load Live Directory Preview
+    async function loadLiveDirectoryPreview() {
+        if (!currentExtractedData) return;
+        const wrap = document.getElementById('liveAgentsListWrap');
+        wrap.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-success spinner-border-sm" role="status"></div>
+                <div class="mt-2 text-muted" style="font-size:12px;">Querying directory for pincode ${currentExtractedData.pincode}...</div>
+            </div>
+        `;
+
+        try {
+            const url = `{% url 'admin_find_agent_locator_live_preview' %}?pincode=${encodeURIComponent(currentExtractedData.pincode)}&latitude=${currentExtractedData.latitude}&longitude=${currentExtractedData.longitude}`;
+            const resp = await fetch(url);
+            const data = await resp.json();
+
+            if (!data.success || !data.agents || data.agents.length === 0) {
+                wrap.innerHTML = `
+                    <div class="text-center py-5 bg-light rounded-3 border">
+                        <i class="fa-solid fa-users-slash text-muted" style="font-size:36px;margin-bottom:12px;"></i>
+                        <h6 class="fw-bold mb-1">No Agents Currently Listed for this Pincode</h6>
+                        <p class="text-muted mb-3" style="font-size:13px;max-width:440px;margin:0 auto;">
+                            No active agents service pincode <strong>${currentExtractedData.pincode}</strong> or fall within 50 km radius. Use the form above to assign an agent!
+                        </p>
+                    </div>
+                `;
+                document.getElementById('resAgentsCount').innerText = '0';
+                return;
+            }
+
+            document.getElementById('resAgentsCount').innerText = data.total_found;
+
+            let html = `
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light" style="font-size:12px;">
+                            <tr>
+                                <th>Match Type</th>
+                                <th>Agent</th>
+                                <th>Contact</th>
+                                <th>Location (PIN &amp; GPS)</th>
+                                <th>Plan / Rating</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody style="font-size:13px;">
+            `;
+
+            data.agents.forEach(a => {
+                const matchBadge = a.serves_direct
+                    ? `<span class="match-tag-direct"><i class="fa-solid fa-bullseye"></i> Direct Match (0 km)</span>`
+                    : `<span class="match-tag-nearby"><i class="fa-solid fa-location-arrow"></i> ${a.distance_str}</span>`;
+
+                html += `
+                    <tr>
+                        <td>${matchBadge}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:34px;height:34px;border-radius:50%;background:#10b981;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">
+                                    ${a.avatar_letter}
+                                </div>
+                                <div>
+                                    <a href="/admin/agents/${a.id}/" class="fw-bold text-decoration-none text-dark" target="_blank">
+                                        #${a.id} ${escapeHtml(a.fullname)}
+                                    </a>
+                                    <div style="font-size:11px;color:var(--text-muted);">${escapeHtml(a.email)}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div><i class="fa-solid fa-phone text-muted me-1"></i> ${a.mobile}</div>
+                        </td>
+                        <td>
+                            <div><span class="badge bg-light text-dark border">PIN: ${a.agent_pincode || 'None'}</span></div>
+                            <div style="font-size:11px;color:var(--text-muted);" class="mt-1">
+                                ${a.latitude && a.longitude ? `${a.latitude.toFixed(4)}, ${a.longitude.toFixed(4)}` : '<span class="text-danger">No GPS</span>'}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-primary border">${escapeHtml(a.plan_type)}</span>
+                            <div style="font-size:11px;color:#f59e0b;" class="mt-1">
+                                <i class="fa-solid fa-star"></i> ${a.average_rating}
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="${a.public_url}" target="_blank" class="btn btn-outline-success" title="View in Public Search">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger" title="Unlink Pincode from Agent" onclick="unlinkAgentPincode(${a.id}, '${currentExtractedData.pincode}')">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            wrap.innerHTML = html;
+        } catch (e) {
+            wrap.innerHTML = `<div class="alert alert-danger py-2">Error loading preview: ${e.message}</div>`;
+        }
+    }
+
+    // Unlink Agent Pincode
+    async function unlinkAgentPincode(agentId, pin) {
+        const confirm = await Swal.fire({
+            icon: 'warning',
+            title: 'Unlink Pincode?',
+            text: `Are you sure you want to remove pincode ${pin} from Agent #${agentId}?`,
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Yes, Unlink'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        try {
+            const resp = await fetch('{% url "admin_find_agent_locator_unlink_agent" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ agent_id: agentId, pincode: pin })
+            });
+            const data = await resp.json();
+
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Unlinked!', text: data.message, confirmButtonColor: '#10b981' });
+                loadLiveDirectoryPreview();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.message, confirmButtonColor: '#10b981' });
+            }
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Error', text: e.message, confirmButtonColor: '#10b981' });
+        }
+    }
+
+    // Copy utilities
+    function copyText(elemId) {
+        const text = document.getElementById(elemId).innerText.trim();
+        navigator.clipboard.writeText(text);
+        showToast('Copied: ' + text);
+    }
+
+    function copyCoordinates() {
+        if (!currentExtractedData) return;
+        const text = `${currentExtractedData.latitude}, ${currentExtractedData.longitude}`;
+        navigator.clipboard.writeText(text);
+        showToast('Copied coordinates: ' + text);
+    }
+
+    function showToast(msg) {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: msg,
+            showConfirmButton: false,
+            timer: 2000
+        });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    // Auto extract if initial pincode provided
+    document.addEventListener('DOMContentLoaded', function() {
+        const initPin = document.getElementById('pincodeInput').value.trim();
+        if (initPin && initPin.length === 6) {
+            handleExtractCoordinates();
+        }
+    });
+</script>
+{% endblock %}

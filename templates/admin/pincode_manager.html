@@ -42,6 +42,7 @@
         <p style="color:var(--text-muted);font-size:13px;margin-top:4px;">Import, manage and filter India-wide PIN code data by state/district.</p>
     </div>
     <div class="d-flex gap-2">
+        <a href="{% url 'admin_find_agent_locator' %}" class="btn-pm btn-pm-primary"><i class="fa-solid fa-location-crosshairs"></i> Lat/Lng &amp; Find Agent Tool</a>
         <a href="{% url 'admin_pincode_sample' %}" class="btn-pm btn-pm-secondary"><i class="fas fa-download"></i> Sample CSV</a>
         <a href="{% url 'admin_pincode_export' %}{% if state %}?state={{ state }}{% endif %}" class="btn-pm btn-pm-secondary"><i class="fas fa-file-export"></i> Export</a>
     </div>

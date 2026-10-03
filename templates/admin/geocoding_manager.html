@@ -118,9 +118,14 @@
             Convert agent pincodes to GPS coordinates for distance-based matching.
         </p>
     </div>
-    <button class="btn-geo-primary" onclick="refreshStats()" id="refreshBtn">
-        <i class="fas fa-sync-alt"></i> Refresh Stats
-    </button>
+    <div class="d-flex gap-2">
+        <a href="{% url 'admin_find_agent_locator' %}" class="btn-geo-primary" style="text-decoration:none;">
+            <i class="fa-solid fa-location-crosshairs"></i> Lat/Lng &amp; Find Agent Tool
+        </a>
+        <button class="btn-geo-primary" onclick="refreshStats()" id="refreshBtn">
+            <i class="fas fa-sync-alt"></i> Refresh Stats
+        </button>
+    </div>
 </div>
 
 {# ─── STAT CARDS ─── #}
