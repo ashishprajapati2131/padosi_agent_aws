@@ -81,6 +81,22 @@ class FindAgentLocatorTests(TestCase):
         self.assertAlmostEqual(data['data']['longitude'], 72.51, places=1)
 
     @patch('apps.admin_panel.views.find_agent_locator._get_admin_from_session', return_value=1)
+    def test_extract_coordinates_382150_viramgam(self, mock_admin):
+        # 382150 is Viramgam, Ahmedabad, Gujarat
+        req = self._auth_request('POST', '/admin/find-agent-locator/extract/', {'pincode': '382150'})
+        resp = extract_coordinates(req)
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.content)
+        self.assertTrue(data['success'])
+        self.assertEqual(data['data']['pincode'], '382150')
+        self.assertEqual(data['data']['office_name'], 'Viramgam SO')
+        self.assertEqual(data['data']['district'], 'Ahmedabad')
+        self.assertEqual(data['data']['state'], 'Gujarat')
+        self.assertAlmostEqual(data['data']['latitude'], 23.1191, places=3)
+        self.assertAlmostEqual(data['data']['longitude'], 72.0547, places=3)
+        self.assertEqual(data['data']['source'], 'Database (Master Records)')
+
+    @patch('apps.admin_panel.views.find_agent_locator._get_admin_from_session', return_value=1)
     def test_extract_coordinates_invalid_format(self, mock_admin):
         req = self._auth_request('POST', '/admin/find-agent-locator/extract/', {'pincode': '012345'})
         resp = extract_coordinates(req)

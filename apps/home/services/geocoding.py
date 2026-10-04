@@ -27,6 +27,42 @@ class GeocodingService:
             return None
 
         # ─── Step 1: Authoritative pincodes table (before cache) ─────────────
+        # ─── Step 1: Exact hardcoded pins (curated, precise — top priority) ─
+        exact = DistanceService.get_precise_pincode_coordinates(pincode)
+        if exact:
+            office_name = exact.get('office_name') or ''
+            district = exact.get('district') or ''
+            state = exact.get('state') or self.resolve_state_from_pincode(pincode)
+            if office_name and district:
+                display_name = f"{office_name}, {district}"
+            else:
+                display_name = f"{office_name or state} - {pincode}"
+            coords = {
+                'lat': exact['lat'],
+                'lng': exact['lng'],
+                'display_name': display_name,
+            }
+            PincodeCache.store_coordinates(
+                pincode, coords['lat'], coords['lng'], coords['display_name']
+            )
+            try:
+                from decimal import Decimal
+                Pincode.objects.update_or_create(
+                    pincode=pincode,
+                    defaults={
+                        'office_name': office_name or f"PIN {pincode}",
+                        'district': district,
+                        'state': state,
+                        'latitude': Decimal(str(round(exact['lat'], 8))),
+                        'longitude': Decimal(str(round(exact['lng'], 8))),
+                        'taluk': exact.get('taluk') or '',
+                    }
+                )
+            except Exception:
+                pass
+            return coords
+
+        # ─── Step 2: Local database lookup (pre-populated pincodes) ───────
         # Only use DB coordinates if they are NOT coarse regional fallbacks.
         try:
             existing = Pincode.objects.filter(
@@ -57,7 +93,7 @@ class GeocodingService:
         except Exception as e:
             logger.warning(f"GeocodingService: pincodes lookup failed: {e}")
 
-        # ─── Step 2: Cache (skip entries that are only regional fallbacks) ───
+        # ─── Step 3: Cache (skip entries that are only regional fallbacks) ───
         cached = PincodeCache.get_coordinates(pincode)
         if cached and not DistanceService.is_regional_fallback_coordinate(
             pincode, cached.get('lat'), cached.get('lng')
@@ -65,19 +101,6 @@ class GeocodingService:
             dn = cached.get('display_name') or ''
             if dn and not re.match(r'^(Area|Region)\s+\d', dn, re.IGNORECASE):
                 return cached
-
-        # ─── Step 3: Exact hardcoded pins (curated, precise — check before APIs)
-        exact = DistanceService.get_precise_pincode_coordinates(pincode)
-        if exact:
-            coords = {
-                'lat': exact['lat'],
-                'lng': exact['lng'],
-                'display_name': self.resolve_state_from_pincode(pincode) + f" - {pincode}",
-            }
-            PincodeCache.store_coordinates(
-                pincode, coords['lat'], coords['lng'], coords['display_name']
-            )
-            return coords
 
         # ─── Step 4: Lookup via postalpincode.in and geocode place name ─────
         postal_result = self.call_postal_pincode_api(pincode)

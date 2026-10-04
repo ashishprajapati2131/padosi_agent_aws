@@ -497,6 +497,18 @@ def _resolve_registration_pincode(pincode):
     except Exception:
         pass
 
+    from apps.home.services.distance import DistanceService
+    exact = DistanceService.get_precise_pincode_coordinates(pin)
+    if exact:
+        from apps.home.views.pages import _get_or_create_pincode
+        row = _get_or_create_pincode(pin)
+        if row:
+            try:
+                cache.set(cache_key, row, timeout=86400)
+            except Exception:
+                pass
+            return row
+
     row = Pincode.objects.filter(pincode=pin).first()
     if row:
         try:

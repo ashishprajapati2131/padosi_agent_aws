@@ -95,27 +95,61 @@ def extract_coordinates(request):
         'matching_agents_count': 0,
     }
 
-    # Step 1: Check Local Master DB
-    try:
-        db_pin = Pincode.objects.filter(pincode=pincode).first()
-        if db_pin and db_pin.latitude and db_pin.longitude:
-            is_fallback = DistanceService.is_regional_fallback_coordinate(
-                pincode, db_pin.latitude, db_pin.longitude
-            )
-            result['latitude'] = float(db_pin.latitude)
-            result['longitude'] = float(db_pin.longitude)
-            result['office_name'] = db_pin.office_name or ''
-            result['district'] = db_pin.district or ''
-            result['state'] = db_pin.state or ''
-            result['division'] = db_pin.division or ''
-            result['taluk'] = db_pin.taluk or ''
-            result['formatted_location'] = db_pin.formatted_location or f"{db_pin.office_name}, {db_pin.district}"
-            result['is_in_database'] = True
-            result['source'] = 'Database (Master Records)' if not is_fallback else 'Database (Regional Fallback)'
-    except Exception as e:
-        logger.warning(f"[FindAgentLocator] Pincode DB check failed: {e}")
+    # Step 1: Check Exact Curated Pincodes first (highest priority)
+    exact = DistanceService.get_precise_pincode_coordinates(pincode)
+    if exact:
+        result['latitude'] = float(exact['lat'])
+        result['longitude'] = float(exact['lng'])
+        result['office_name'] = exact.get('office_name') or f"PIN {pincode}"
+        result['district'] = exact.get('district') or ''
+        result['state'] = exact.get('state') or 'India'
+        result['division'] = exact.get('division') or ''
+        result['taluk'] = exact.get('taluk') or ''
+        result['formatted_location'] = f"{result['office_name']}, {result['district']}".strip(', ')
+        result['is_in_database'] = True
+        result['source'] = 'Database (Master Records)'
 
-    # Step 2: Check GeocodingService if DB is missing or coordinates are regional fallback
+        # Auto-sync to DB & cache so the whole platform is immediately updated
+        try:
+            PincodeCache.store_coordinates(
+                pincode, result['latitude'], result['longitude'], result['formatted_location']
+            )
+            Pincode.objects.update_or_create(
+                pincode=pincode,
+                defaults={
+                    'office_name': result['office_name'],
+                    'district': result['district'],
+                    'state': result['state'],
+                    'latitude': Decimal(str(round(result['latitude'], 8))),
+                    'longitude': Decimal(str(round(result['longitude'], 8))),
+                    'taluk': result['taluk'],
+                }
+            )
+        except Exception as e:
+            logger.warning(f"[FindAgentLocator] Exact pin auto-sync failed: {e}")
+
+    # Step 2: Check Local Master DB (if not already resolved by exact curated pins)
+    if not result['latitude']:
+        try:
+            db_pin = Pincode.objects.filter(pincode=pincode).first()
+            if db_pin and db_pin.latitude and db_pin.longitude:
+                is_fallback = DistanceService.is_regional_fallback_coordinate(
+                    pincode, db_pin.latitude, db_pin.longitude
+                )
+                result['latitude'] = float(db_pin.latitude)
+                result['longitude'] = float(db_pin.longitude)
+                result['office_name'] = db_pin.office_name or ''
+                result['district'] = db_pin.district or ''
+                result['state'] = db_pin.state or ''
+                result['division'] = db_pin.division or ''
+                result['taluk'] = db_pin.taluk or ''
+                result['formatted_location'] = db_pin.formatted_location or f"{db_pin.office_name}, {db_pin.district}"
+                result['is_in_database'] = True
+                result['source'] = 'Database (Master Records)' if not is_fallback else 'Database (Regional Fallback)'
+        except Exception as e:
+            logger.warning(f"[FindAgentLocator] Pincode DB check failed: {e}")
+
+    # Step 3: Check GeocodingService if DB is missing or coordinates are regional fallback
     if not result['latitude'] or 'Regional Fallback' in result.get('source', ''):
         try:
             geo_svc = GeocodingService()
@@ -138,12 +172,12 @@ def extract_coordinates(request):
         except Exception as e:
             logger.warning(f"[FindAgentLocator] GeocodingService lookup failed: {e}")
 
-    # Step 3: Hardcoded & Regional fallback as last resort
+    # Step 4: Regional fallback as last resort
     if not result['latitude']:
-        hardcoded = DistanceService.get_hardcoded_coordinates(pincode)
-        if hardcoded:
-            result['latitude'] = float(hardcoded['lat'])
-            result['longitude'] = float(hardcoded['lng'])
+        fallback = DistanceService.get_regional_fallback_coordinates(pincode)
+        if fallback:
+            result['latitude'] = float(fallback['lat'])
+            result['longitude'] = float(fallback['lng'])
             result['source'] = 'Regional Fallback'
             if not result['formatted_location']:
                 result['formatted_location'] = f"Area near {pincode}"

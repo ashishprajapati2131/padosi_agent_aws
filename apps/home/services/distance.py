@@ -9,30 +9,30 @@ logger = logging.getLogger(__name__)
 _PIN_RE = re.compile(r'^[1-9]\d{5}$')
 
 EXACT_PINCODE_COORDS = {
-    '380001': {'lat': 23.0225, 'lng': 72.5714},  # Ahmedabad Center
-    '380013': {'lat': 23.0645, 'lng': 72.5312},  # Naranpura
-    '380015': {'lat': 23.0200, 'lng': 72.5100},  # Satellite
-    '380051': {'lat': 23.0333, 'lng': 72.5000},  # Jodhpur
-    '380052': {'lat': 23.0531, 'lng': 72.5029},  # Bodakdev
-    '380054': {'lat': 23.0500, 'lng': 72.5300},  # Memnagar
-    '380058': {'lat': 23.0130, 'lng': 72.5410},  # Ambawadi
-    '380059': {'lat': 23.0450, 'lng': 72.4890},  # Bopal
-    '380061': {'lat': 23.0729, 'lng': 72.5407},  # Ghatlodia
-    '380063': {'lat': 23.0600, 'lng': 72.5100},  # Thaltej
-    '382150': {'lat': 23.1191, 'lng': 72.0547},  # Viramgam
-    '382421': {'lat': 23.0900, 'lng': 72.5800},  # Motera
-    '382424': {'lat': 23.1090, 'lng': 72.5850},  # Sabarmati
-    '382481': {'lat': 23.1200, 'lng': 72.5400},  # Chandkheda
-    '383001': {'lat': 23.6000, 'lng': 72.9500},  # Himatnagar
-    '384240': {'lat': 23.8500, 'lng': 72.3500},  # Patan/Sidhpur
-    '110001': {'lat': 28.6353, 'lng': 77.2250},  # Delhi Center
-    '110060': {'lat': 28.6430, 'lng': 77.1850},  # Karol Bagh / Delhi
-    '400001': {'lat': 18.9220, 'lng': 72.8347},  # Mumbai Center
-    '400013': {'lat': 18.9950, 'lng': 72.8250},  # Worli / Mumbai
-    '560001': {'lat': 12.9716, 'lng': 77.5946},  # Bangalore Center
-    '600001': {'lat': 13.0827, 'lng': 80.2707},  # Chennai Center
-    '700001': {'lat': 22.5726, 'lng': 88.3639},  # Kolkata Center
-    '500001': {'lat': 17.3850, 'lng': 78.4867},  # Hyderabad Center
+    '380001': {'lat': 23.0225, 'lng': 72.5714, 'office_name': 'Ahmedabad GPO', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '380013': {'lat': 23.0645, 'lng': 72.5312, 'office_name': 'Naranpura', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '380015': {'lat': 23.0200, 'lng': 72.5100, 'office_name': 'Satellite', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '380051': {'lat': 23.0333, 'lng': 72.5000, 'office_name': 'Jodhpur', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '380052': {'lat': 23.0531, 'lng': 72.5029, 'office_name': 'Bodakdev', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '380054': {'lat': 23.0500, 'lng': 72.5300, 'office_name': 'Memnagar', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '380058': {'lat': 23.0130, 'lng': 72.5410, 'office_name': 'Ambawadi', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '380059': {'lat': 23.0450, 'lng': 72.4890, 'office_name': 'Bopal', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '380061': {'lat': 23.0729, 'lng': 72.5407, 'office_name': 'Ghatlodia', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '380063': {'lat': 23.0600, 'lng': 72.5100, 'office_name': 'Thaltej', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '382150': {'lat': 23.1191, 'lng': 72.0547, 'office_name': 'Viramgam SO', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Viramgam'},
+    '382421': {'lat': 23.0900, 'lng': 72.5800, 'office_name': 'Motera', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '382424': {'lat': 23.1090, 'lng': 72.5850, 'office_name': 'Sabarmati', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Ahmedabad'},
+    '382481': {'lat': 23.1200, 'lng': 72.5400, 'office_name': 'Chandkheda', 'district': 'Ahmedabad', 'state': 'Gujarat', 'taluk': 'Gandhinagar'},
+    '383001': {'lat': 23.6000, 'lng': 72.9500, 'office_name': 'Himatnagar HO', 'district': 'Sabarkantha', 'state': 'Gujarat', 'taluk': 'Himatnagar'},
+    '384240': {'lat': 23.8500, 'lng': 72.3500, 'office_name': 'Patan / Sidhpur', 'district': 'Patan', 'state': 'Gujarat', 'taluk': 'Patan'},
+    '110001': {'lat': 28.6353, 'lng': 77.2250, 'office_name': 'Connaught Place', 'district': 'Central Delhi', 'state': 'Delhi', 'taluk': 'New Delhi'},
+    '110060': {'lat': 28.6430, 'lng': 77.1850, 'office_name': 'Karol Bagh', 'district': 'Central Delhi', 'state': 'Delhi', 'taluk': 'New Delhi'},
+    '400001': {'lat': 18.9220, 'lng': 72.8347, 'office_name': 'Mumbai GPO', 'district': 'Mumbai', 'state': 'Maharashtra', 'taluk': 'Mumbai'},
+    '400013': {'lat': 18.9950, 'lng': 72.8250, 'office_name': 'Worli', 'district': 'Mumbai', 'state': 'Maharashtra', 'taluk': 'Mumbai'},
+    '560001': {'lat': 12.9716, 'lng': 77.5946, 'office_name': 'Bangalore GPO', 'district': 'Bangalore', 'state': 'Karnataka', 'taluk': 'Bangalore'},
+    '600001': {'lat': 13.0827, 'lng': 80.2707, 'office_name': 'Chennai GPO', 'district': 'Chennai', 'state': 'Tamil Nadu', 'taluk': 'Chennai'},
+    '700001': {'lat': 22.5726, 'lng': 88.3639, 'office_name': 'Kolkata GPO', 'district': 'Kolkata', 'state': 'West Bengal', 'taluk': 'Kolkata'},
+    '500001': {'lat': 17.3850, 'lng': 78.4867, 'office_name': 'Hyderabad GPO', 'district': 'Hyderabad', 'state': 'Telangana', 'taluk': 'Hyderabad'},
 }
 
 

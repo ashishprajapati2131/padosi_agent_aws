@@ -544,18 +544,22 @@ def fetch_filtered_agents_list(request):
     )
     if user_lat and user_lng and needs_area_res:
         try:
-            pincode_match = _find_closest_pincode(user_lat, user_lng, max_km=50.0)
-            
-            resolved_from_db = False
-            if pincode_match and pincode_match.distance < 50:
-                candidate = pincode_match.office_name or pincode_match.district
-                if candidate and not re.match(r'^(Area|Region)\s+\d', candidate, re.IGNORECASE):
-                    detected_area = pincode_match.formatted_location
-                    resolved_from_db = True
-            
-            if not resolved_from_db:
-                geo_svc = GeocodingService()
-                detected_area = geo_svc.reverse_geocode(user_lat, user_lng)
+            exact = DistanceService.get_precise_pincode_coordinates(pincode) if pincode else None
+            if exact and exact.get('office_name'):
+                detected_area = f"{exact['office_name']}, {exact.get('district', '')}".strip(', ')
+            else:
+                pincode_match = _find_closest_pincode(user_lat, user_lng, max_km=50.0)
+                
+                resolved_from_db = False
+                if pincode_match and pincode_match.distance < 50:
+                    candidate = pincode_match.office_name or pincode_match.district
+                    if candidate and not re.match(r'^(Area|Region)\s+\d', candidate, re.IGNORECASE):
+                        detected_area = pincode_match.formatted_location
+                        resolved_from_db = True
+                
+                if not resolved_from_db:
+                    geo_svc = GeocodingService()
+                    detected_area = geo_svc.reverse_geocode(user_lat, user_lng)
         except Exception as e:
             logger.warning(f"find_agents: reverse geocoding failed: {e}")
             
@@ -564,11 +568,15 @@ def fetch_filtered_agents_list(request):
 
     if not detected_area and pincode:
         try:
-            pincode_row = Pincode.objects.filter(pincode=pincode).first()
-            if pincode_row:
-                detected_area = pincode_row.formatted_location
+            exact = DistanceService.get_precise_pincode_coordinates(pincode)
+            if exact and exact.get('office_name'):
+                detected_area = f"{exact['office_name']}, {exact.get('district', '')}".strip(', ')
             else:
-                detected_area = f"PIN: {pincode}"
+                pincode_row = Pincode.objects.filter(pincode=pincode).first()
+                if pincode_row:
+                    detected_area = pincode_row.formatted_location
+                else:
+                    detected_area = f"PIN: {pincode}"
         except Exception:
             detected_area = f"PIN: {pincode}"
         request.session['detected_area'] = detected_area
@@ -992,6 +1000,27 @@ def pincode_fetch(request, pincode):
     if cached_payload is not None and isinstance(cached_payload, dict):
         return JsonResponse(cached_payload)
 
+    # Check exact curated pin first
+    from apps.home.services.distance import DistanceService
+    exact = DistanceService.get_precise_pincode_coordinates(pincode)
+    if exact:
+        formatted_location = f"{exact.get('office_name', '')}, {exact.get('district', '')}".strip(', ')
+        payload = {
+            'success': True,
+            'data': {
+                'office_name': exact.get('office_name') or f"PIN {pincode}",
+                'district': exact.get('district') or '',
+                'state': exact.get('state') or 'India',
+                'formatted_location': formatted_location,
+                'latitude': str(exact['lat']),
+                'longitude': str(exact['lng']),
+            }
+        }
+        cache.set(cache_key, payload, timeout=86400 * 7)
+        # Ensure database is updated with exact curated metadata
+        _get_or_create_pincode(pincode)
+        return JsonResponse(payload)
+
     record = Pincode.objects.filter(pincode=pincode).first()
     if not record:
         record = _get_or_create_pincode(pincode)
@@ -1031,8 +1060,28 @@ def pincode_fetch(request, pincode):
 
 def _get_or_create_pincode(pincode):
     """Upserts the pincodes table from the postalpincode.in API (PincodeService::getOrCreatePincode)."""
+    # 1. Exact curated coordinates take top precedence
+    from apps.home.services.distance import DistanceService
+    exact = DistanceService.get_precise_pincode_coordinates(pincode)
+    if exact:
+        try:
+            record, _ = Pincode.objects.update_or_create(
+                pincode=pincode,
+                defaults={
+                    'office_name': (exact.get('office_name') or f"PIN {pincode}")[:150],
+                    'district': (exact.get('district') or '')[:100],
+                    'state': (exact.get('state') or 'Gujarat')[:50],
+                    'latitude': exact['lat'],
+                    'longitude': exact['lng'],
+                    'taluk': (exact.get('taluk') or '')[:100],
+                }
+            )
+            return record
+        except Exception as e:
+            logger.warning(f"Error saving exact pincode {pincode}: {e}")
+
     existing = Pincode.objects.filter(pincode=pincode).first()
-    if existing:
+    if existing and existing.latitude and existing.longitude:
         return existing
     try:
         resp = http_requests.get(
@@ -1045,7 +1094,9 @@ def _get_or_create_pincode(pincode):
         if not body or body[0].get('Status') != 'Success' or not body[0].get('PostOffice'):
             return None
 
-        po = body[0]['PostOffice'][0]
+        from apps.home.services.geocoding import GeocodingService
+        post_offices = body[0]['PostOffice']
+        po = GeocodingService._pick_best_post_office(post_offices) or post_offices[0]
         try:
             lat_val = po.get('Latitude')
             lng_val = po.get('Longitude')
