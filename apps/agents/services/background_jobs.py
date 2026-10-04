@@ -31,7 +31,9 @@ AUTO_MAX_ATTEMPTS = 3
 def jobs_enabled():
     if getattr(settings, 'TESTING', False):
         return False
-    return bool(getattr(settings, 'BACKGROUND_JOBS_ENABLED', False))
+    # Default mirrors settings.py: on in production (DEBUG=False), off in dev.
+    default = not settings.DEBUG
+    return bool(getattr(settings, 'BACKGROUND_JOBS_ENABLED', default))
 
 
 def retry_missing_invoices(days=7, min_age_minutes=15, apply=False, max_attempts=None, write=None):

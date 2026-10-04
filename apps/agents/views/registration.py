@@ -2568,7 +2568,8 @@ def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment
             agent.distributor_id = draft.distributor_id
         if getattr(draft, 'sub_distributor_id', None):
             agent.sub_distributor_id = draft.sub_distributor_id
-        if getattr(draft, 'referred_by_code', None):
+        # First-touch protection: never overwrite an already-set referral code
+        if getattr(draft, 'referred_by_code', None) and not agent.referred_by_code:
             agent.referred_by_code = draft.referred_by_code
         agent.save()
 
@@ -2754,9 +2755,19 @@ def _increment_promo_usage(promo_code):
 
 
 def _credit_referral_conversion(agent):
-    """Mark the referral as converted and grant the 5-referral reward."""
+    """Mark the referral as converted and apply the correct tier reward."""
     if not agent or not agent.referred_by_code:
         return
+    # Skip ₹0 signups — they don't count as paid conversions for referral tiers
+    from apps.agents.models import AgentSubscription
+    paid = AgentSubscription.objects.filter(
+        agent=agent,
+        payment_status='completed',
+        registration_amount__gt=0,
+    ).exists()
+    if not paid:
+        return
+
     from apps.admin_panel.models.referral_code import ReferralCode
     from apps.admin_panel.models.referral_usage import ReferralUsage
 
@@ -2779,11 +2790,29 @@ def _credit_referral_conversion(agent):
     ref_code_obj.total_referrals = actual_conversions
     ref_code_obj.save()
 
-    if actual_conversions >= 5:
-        referring_agent = Agent.objects.filter(pk=ref_code_obj.agent_id).first()
-        if referring_agent and referring_agent.plan_type == 'free_trial':
-            referring_agent.referral_reward_type = 'pro_plan_1rs'
+    # Apply the highest tier the referrer has now reached (canonical table: 5/10/15)
+    current_tier = ref_code_obj.currentTier()
+    if not current_tier:
+        return
+    referring_agent = Agent.objects.filter(pk=ref_code_obj.agent_id).first()
+    if not referring_agent:
+        return
+    reward = current_tier['reward']
+    if reward == 'pro_plan_1rs' and referring_agent.plan_type == 'free_trial':
+        referring_agent.referral_reward_type = 'pro_plan_1rs'
+        referring_agent.referral_reward_earned_at = timezone.now()
+        referring_agent.save()
+    elif reward == 'discount_50':
+        referring_agent.referral_reward_type = 'discount_50'
+        if not referring_agent.referral_reward_earned_at:
             referring_agent.referral_reward_earned_at = timezone.now()
+        referring_agent.save()
+    elif reward == 'discount_25':
+        # Only set if no better reward already exists
+        if referring_agent.referral_reward_type not in ('discount_50', 'pro_plan_1rs'):
+            referring_agent.referral_reward_type = 'discount_25'
+            if not referring_agent.referral_reward_earned_at:
+                referring_agent.referral_reward_earned_at = timezone.now()
             referring_agent.save()
 
 
@@ -3228,15 +3257,17 @@ def _agent_register_complete_impl(request):
             dist_id_from_session = request.session.get('distributor_id') or getattr(draft, 'distributor_id', None)
             if dist_id_from_session:
                 agent.distributor_id = dist_id_from_session
-                from apps.admin_panel.models.referral_code import ReferralCode
-                ref_obj = ReferralCode.objects.filter(distributor_id=dist_id_from_session, is_active=True).first()
-                if ref_obj:
-                    agent.referred_by_code = ref_obj.code
-                if sub_dist_id:
-                    from apps.distributors.models import SubDistributor
-                    sub_dist_obj = SubDistributor.objects.filter(id=sub_dist_id).first()
-                    if sub_dist_obj:
-                        agent.referred_by_code = sub_dist_obj.code
+                # First-touch protection: only set referral code if not already attributed
+                if not agent.referred_by_code:
+                    from apps.admin_panel.models.referral_code import ReferralCode
+                    ref_obj = ReferralCode.objects.filter(distributor_id=dist_id_from_session, is_active=True).first()
+                    if ref_obj:
+                        agent.referred_by_code = ref_obj.code
+                    if sub_dist_id:
+                        from apps.distributors.models import SubDistributor
+                        sub_dist_obj = SubDistributor.objects.filter(id=sub_dist_id).first()
+                        if sub_dist_obj:
+                            agent.referred_by_code = sub_dist_obj.code
                 agent.save()
                 # ── Event: DISTRIBUTION ──────────────────────────────────
                 RegistrationActivityLog.log(
@@ -3252,7 +3283,8 @@ def _agent_register_complete_impl(request):
                 )
             else:
                 ref_code = request.session.get('ref_code') or request.session.get('championship_ref_id')
-                if ref_code:
+                # First-touch protection: only apply if no referral code already set
+                if ref_code and not agent.referred_by_code:
                     if str(ref_code).startswith('PA-') or str(ref_code).startswith('EV-'):
                         agent.referred_by_code = ref_code
                         agent.save()
@@ -3340,8 +3372,11 @@ def _agent_register_complete_impl(request):
                 subscription.starts_at = timezone.now()
                 subscription.expires_at = sub_expiry
                 subscription.save()
-                
+                _deactivate_superseded_subscriptions(agent, subscription.pk)
+
                 agent.status = 'pending_approval'
+                agent.plan_type = plan_type
+                agent.registration_step = 2
                 if plan_type == 'free_trial':
                     agent.trial_ends_at = timezone.now() + timezone.timedelta(days=trial_days)
                     upgrade_discount = SiteSetting.get_value('trial_upgrade_discount', 20)
@@ -3352,6 +3387,10 @@ def _agent_register_complete_impl(request):
                 _isolated('Promo usage during free checkout',
                           lambda: _increment_promo_usage(subscription.promo_code))
                 _isolated('Referral credit during free checkout', lambda: _credit_referral_conversion(agent))
+                _isolated('Championship qualification hook during free checkout',
+                          lambda: _championship_qualification(agent, subscription))
+                _isolated('Event referral qualification hook during free checkout',
+                          lambda: _event_referral_qualification(agent, subscription))
                 _isolated('Referral code generation', lambda: _ensure_referral_code(agent))
                 _isolated('Queue invoice and welcome during free checkout',
                           lambda: queue_invoice_and_welcome(agent.id, subscription.id))
@@ -3573,115 +3612,52 @@ def _finalize_razorpay_payment(request, data):
         logger.error("Razorpay Signature/Amount Verification Failed: %s", e)
         return {'success': False, 'message': gateway_failure_message()}
 
-    from django.db import transaction
+    # Security check: the order must belong to the agent the checkout session names.
+    agent = subscription.agent
+    if not agent:
+        return {'success': False, 'message': 'Agent record not found.'}
+    if agent_id and str(agent.pk) != str(agent_id):
+        logger.critical(
+            'Razorpay order %s belongs to agent #%s but checkout session names agent #%s — rejecting.',
+            razorpay_order_id, agent.pk, agent_id,
+        )
+        return {'success': False, 'message': 'Invalid transaction ID.'}
 
     try:
-        with transaction.atomic():
-            # Lock the order row so the webhook and this callback cannot both
-            # activate it (double invoice / welcome email / promo count).
-            subscription = AgentSubscription.objects.select_for_update().get(pk=subscription.pk)
-            agent = subscription.agent
-            if not agent:
-                return {'success': False, 'message': 'Agent record not found.'}
-            if agent_id and str(agent.pk) != str(agent_id):
-                logger.critical(
-                    'Razorpay order %s belongs to agent #%s but checkout session names agent #%s — rejecting.',
-                    razorpay_order_id, agent.pk, agent_id,
-                )
-                return {'success': False, 'message': 'Invalid transaction ID.'}
-            if subscription.payment_status == 'completed':
-                raise _PaymentAlreadyFinalized(agent)
+        payment = {'id': razorpay_payment_id, 'signature': razorpay_signature}
+        subscription, activated = _activate_paid_subscription(
+            agent, subscription, payment, log_label='[callback]',
+        )
+        agent = subscription.agent  # refresh after lock
 
-            # The paid order's own plan wins; the session plan is only a fallback
-            # for legacy orders whose selected_plan name does not resolve.
-            order_plan = plan_slug_from_name(subscription.selected_plan or '')
-            if order_plan:
-                plan_type = order_plan
-            elif not plan_type:
-                plan_type = plan_slug_from_name(plan_name)
+        # Activity log — best-effort, after the activation transaction commits.
+        _isolated('[callback] Activity log', lambda: RegistrationActivityLog.log(
+            RegistrationActivityLog.EVENT_PAYMENT_BUTTON,
+            request=request,
+            agent=agent,
+            subscription_id=subscription.pk,
+            extra_details={
+                'plan_type': agent.plan_type or '',
+                'plan_name': plan_name or '',
+                'razorpay_payment_id': razorpay_payment_id or '',
+                'razorpay_order_id': razorpay_order_id or '',
+                'promo_code': (subscription.promo_code or ''),
+            },
+        ))
 
-            is_upgrade = _is_plan_upgrade_payment(agent, razorpay_order_id)
-
-            if plan_type:
-                known_slugs = ('starter', 'professional', 'free_trial', 'exclusive', 'basic')
-                if plan_type not in known_slugs:
-                    try:
-                        from apps.agents.models import SubscriptionPlan as _SPReg
-                        sp = _SPReg.objects.filter(slug=plan_type).first()
-                        if not sp:
-                            sp = _SPReg.objects.filter(name__iexact=plan_type).first()
-                        if sp and sp.slug:
-                            plan_type = sp.slug
-                    except Exception:
-                        pass
-
-            trial_config = SiteSetting.get_value('trial_plan_config', {'duration_days': 30})
-            trial_days = int(trial_config.get('duration_days', 30))
-            trial_days = _trial_days_for(subscription, trial_days)
-
-            sub_expiry = timezone.now() + timezone.timedelta(days=365)
-            if plan_type == 'free_trial':
-                agent.trial_ends_at = timezone.now() + timezone.timedelta(days=trial_days)
-                upgrade_discount = SiteSetting.get_value('trial_upgrade_discount', 20)
-                agent.upgrade_discount_percent = int(upgrade_discount)
-                sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
-
-            if is_upgrade and agent.status == 'active':
-                # Active agent upgrading their plan retains active status
-                pass
-            else:
-                # All new registrations (paid, free trial, 0-amount) move to pending_approval
-                agent.status = 'pending_approval'
-
-            if plan_type:
-                agent.plan_type = plan_type
-            agent.registration_step = 2
-            agent.save()
-
-            paid_sub = subscription
-
-            paid_sub.payment_status = 'completed'
-            paid_sub.status = 'active'
-            paid_sub.razorpay_payment_id = razorpay_payment_id
-            paid_sub.razorpay_signature = razorpay_signature
-            paid_sub.starts_at = timezone.now()
-            paid_sub.expires_at = sub_expiry
-            paid_sub.save()
-            subscription = paid_sub
-            _deactivate_superseded_subscriptions(agent, paid_sub.pk)
-
-            # Best-effort side effects, each isolated so a failure can never
-            # roll back the payment activation above.
-            _isolated('Promo usage increment', lambda: _increment_promo_usage(subscription.promo_code))
-            _isolated('Referral credit during payment success', lambda: _credit_referral_conversion(agent))
-            _isolated('Championship qualification hook', lambda: _championship_qualification(agent, subscription))
-            _isolated('Event referral qualification hook', lambda: _event_referral_qualification(agent, subscription))
-            _isolated('Referral code generation', lambda: _ensure_referral_code(agent))
-
-            # ── Event: PAYMENT_BUTTON ──────────────────────────────────────
-            RegistrationActivityLog.log(
-                RegistrationActivityLog.EVENT_PAYMENT_BUTTON,
-                request=request,
-                agent=agent,
-                subscription_id=subscription.pk,
-                extra_details={
-                    'plan_type': plan_type,
-                    'plan_name': plan_name,
-                    'razorpay_payment_id': razorpay_payment_id or '',
-                    'razorpay_order_id': razorpay_order_id or '',
-                    'promo_code': (subscription.promo_code or ''),
-                },
-            )
-
-            _isolated('Queue invoice and welcome', lambda: queue_invoice_and_welcome(agent.id, subscription.id))
-
-        # Signature was verified above for this order and `agent` is the order's
-        # own agent, so this is the payer — sign them in (works across browsers).
+        # Signature was verified above — this is the payer; sign them in.
         try:
             user = create_or_link_django_user(agent)
             login_agent_user(request, user)
         except Exception as login_err:
-            logger.error(f"Payment success login failed for agent {getattr(agent, 'id', None)}: {login_err}")
+            logger.error('Payment success login failed for agent %s: %s', getattr(agent, 'id', None), login_err)
+
+        if not activated:
+            # Webhook won the lock and already activated before us.
+            request.session.pop('pending_checkout', None)
+            return _activation_success_payload(
+                request, agent, message='Payment already processed successfully.',
+            )
 
         request.session.pop('current_draft_id', None)
         request.session.pop('reg_step', None)
@@ -3690,25 +3666,10 @@ def _finalize_razorpay_payment(request, data):
         request.session['auto_show_invite_studio'] = True
 
         return _activation_success_payload(
-            request,
-            agent,
-            message='Payment successful and account activated.',
-        )
-    except _PaymentAlreadyFinalized as done:
-        # Webhook (or a parallel callback) won the lock and already activated.
-        # The signature for this order was verified in this request.
-        try:
-            login_agent_user(request, create_or_link_django_user(done.agent))
-        except Exception as login_err:
-            logger.error(f"Idempotent payment login failed: {login_err}")
-        request.session.pop('pending_checkout', None)
-        return _activation_success_payload(
-            request,
-            done.agent,
-            message='Payment already processed successfully.',
+            request, agent, message='Payment successful and account activated.',
         )
     except Exception as e:
-        logger.error(f"Error activating account in payment_success: {str(e)}")
+        logger.error('Error activating account in payment_success: %s', e)
         return {'success': False, 'message': 'Failed to activate agent account.', 'status': 500}
 
 
@@ -4445,76 +4406,15 @@ def razorpay_webhook(request):
             )
             return HttpResponse('Payment validation failed: Amount mismatch.', status=400)
 
-        from django.db import transaction
         try:
-            with transaction.atomic():
-                subscription = AgentSubscription.objects.select_for_update().get(pk=subscription.pk)
-                if subscription.payment_status == 'completed':
-                    # The browser callback activated it while we waited on the lock.
-                    return HttpResponse('Webhook processed successfully (already completed)', status=200)
-                agent = subscription.agent
-                plan_type = _order_plan_slug(subscription, agent)
-                is_trial = plan_type == 'free_trial'
-                is_upgrade = _is_plan_upgrade_payment(agent, order_id)
-
-                trial_config = SiteSetting.get_value('trial_plan_config', {'duration_days': 30})
-                trial_days = int(trial_config.get('duration_days', 30))
-                trial_days = _trial_days_for(subscription, trial_days)
-                sub_expiry = timezone.now() + timezone.timedelta(days=365)
-                if is_trial:
-                    sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
-
-                # Update subscription status
-                subscription.payment_status = 'completed'
-                subscription.status = 'active'
-                if payment_id:
-                    subscription.razorpay_payment_id = payment_id
-                subscription.razorpay_signature = signature
-                subscription.starts_at = timezone.now()
-                subscription.expires_at = sub_expiry
-                subscription.save()
-                # Same end state as the browser callback when the webhook wins.
-                _deactivate_superseded_subscriptions(agent, subscription.pk)
-
-                # Update Agent status
-                agent.registration_step = 2
-                if is_trial:
-                    agent.plan_type = 'free_trial'
-                    agent.trial_ends_at = timezone.now() + timezone.timedelta(days=trial_days)
-                    upgrade_discount = SiteSetting.get_value('trial_upgrade_discount', 20)
-                    agent.upgrade_discount_percent = int(upgrade_discount)
-                else:
-                    agent.plan_type = plan_type
-
-                if is_upgrade and agent.status == 'active':
-                    # Existing active agent upgrading retains active status
-                    pass
-                else:
-                    # All new registrations move to pending_approval
-                    agent.status = 'pending_approval'
-                agent.save()
-
-                # Best-effort side effects, each in its own savepoint.
-                _isolated('[Webhook] Referral credit processing', lambda: _credit_referral_conversion(agent))
-                # The callback skips these when the webhook activated first, so a
-                # payer who closed the browser used to give their referrer no
-                # championship / event-referral credit.
-                _isolated('[Webhook] Championship qualification hook',
-                          lambda: _championship_qualification(agent, subscription))
-                _isolated('[Webhook] Event referral qualification hook',
-                          lambda: _event_referral_qualification(agent, subscription))
-                _isolated('[Webhook] Referral code generation', lambda: _ensure_referral_code(agent))
-                _isolated('[Webhook] Promo usage increment',
-                          lambda: _increment_promo_usage(subscription.promo_code))
-
-                # Link django user (isolated so DB sync hiccups do not roll back payment)
-                _isolated('[Webhook] Link django user', lambda: create_or_link_django_user(agent))
-
-                _isolated('[Webhook] Queue invoice and welcome',
-                          lambda: queue_invoice_and_welcome(agent.id, subscription.id))
-
+            payment = {'id': payment_id, 'signature': signature}
+            subscription, activated = _activate_paid_subscription(
+                agent, subscription, payment, log_label='[Webhook]',
+            )
+            if not activated:
+                return HttpResponse('Webhook processed successfully (already completed)', status=200)
         except Exception as db_err:
-            logger.error(f"[Webhook] Database transaction failed: {db_err}")
+            logger.error('[Webhook] Database transaction failed: %s', db_err)
             return HttpResponse('Database transaction failed', status=500)
 
     elif event == 'refund.processed':

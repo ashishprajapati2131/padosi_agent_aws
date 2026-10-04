@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.db.models import Q, F
 from django.contrib import messages
+from django.core.paginator import Paginator
 
 # Use session based authentication
 from apps.admin_panel.views.dashboard import _get_admin_from_session
@@ -27,10 +28,14 @@ def subscriptions_index(request):
         query = query.filter(expires_at__gte=now, expires_at__lte=now + timezone.timedelta(days=30))
 
     # Order by: NULL expires_at should be last, others ascending by expires_at.
-    subscriptions_list = query.order_by(F('expires_at').asc(nulls_last=True))
+    subscriptions_qs = query.order_by(F('expires_at').asc(nulls_last=True))
+
+    page_number = request.GET.get('page', 1)
+    paginator = Paginator(subscriptions_qs, 25)
+    page_obj = paginator.get_page(page_number)
 
     # Precalculate dynamic attributes for each subscription
-    for sub in subscriptions_list:
+    for sub in page_obj:
         if sub.expires_at:
             diff = sub.expires_at - now
             days_left = int(diff.total_seconds() / 86400)
@@ -102,7 +107,8 @@ def subscriptions_index(request):
     }
 
     context = {
-        'subscriptions': subscriptions_list,
+        'subscriptions': page_obj.object_list,
+        'page_obj': page_obj,
         'stats': stats,
         'filter': filter_val,
     }

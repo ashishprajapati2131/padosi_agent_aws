@@ -17,25 +17,25 @@ class ReferralCode(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def current_tier(self) -> dict:
-        # Replicates PHP tier logic:
-        # Tier 1: 1 referral -> 10% discount
-        # Tier 2: 3 referrals -> 20% discount
-        # Tier 3: 5 referrals -> Pro plan for 1 Rupee
+        # Canonical tier table (matches Django ReferralCode.tiers()):
+        # Tier 1:  5 paid conversions -> 25% discount
+        # Tier 2: 10 paid conversions -> 50% discount
+        # Tier 3: 15 paid conversions -> Professional's Plan @ ₹1
         ref_count = self.total_referrals
-        if ref_count >= 5:
-            return {"tier": 3, "discount": 100, "label": "Tier 3: Professional's Plan for 1 Rupee"}
-        elif ref_count >= 3:
-            return {"tier": 2, "discount": 20, "label": "Tier 2: 20% Discount"}
-        elif ref_count >= 1:
-            return {"tier": 1, "discount": 10, "label": "Tier 1: 10% Discount"}
-        return {"tier": 0, "discount": 0, "label": "No referrals yet"}
+        if ref_count >= 15:
+            return {"tier": 3, "discount": 100, "label": "Tier 3: Professional's Plan for ₹1"}
+        elif ref_count >= 10:
+            return {"tier": 2, "discount": 50, "label": "Tier 2: 50% Discount"}
+        elif ref_count >= 5:
+            return {"tier": 1, "discount": 25, "label": "Tier 1: 25% Discount"}
+        return {"tier": 0, "discount": 0, "label": "No tier reached yet"}
 
     def next_tier(self) -> dict:
         ref_count = self.total_referrals
-        if ref_count < 1:
-            return {"tier": 1, "min": 1, "discount": 10, "label": "Tier 1"}
-        elif ref_count < 3:
-            return {"tier": 2, "min": 3, "discount": 20, "label": "Tier 2"}
-        elif ref_count < 5:
-            return {"tier": 3, "min": 5, "discount": 100, "label": "Tier 3"}
+        if ref_count < 5:
+            return {"tier": 1, "min": 5, "discount": 25, "label": "Tier 1"}
+        elif ref_count < 10:
+            return {"tier": 2, "min": 10, "discount": 50, "label": "Tier 2"}
+        elif ref_count < 15:
+            return {"tier": 3, "min": 15, "discount": 100, "label": "Tier 3"}
         return None
