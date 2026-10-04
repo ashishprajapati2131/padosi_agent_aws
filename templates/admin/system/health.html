@@ -100,5 +100,25 @@
         </div>
     </div>
 
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="m-0"><i class="fa-solid fa-clock-rotate-left me-2"></i> Scheduled Maintenance (No-Cron Environment Support)</h5>
+            <span class="badge bg-success">Traffic Automation Active</span>
+        </div>
+        <div class="card-body">
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 12px;">
+                Since this hosting environment operates without a server-level cron daemon, scheduled jobs (missing invoice generation, orphaned Razorpay payment reconciliation, 48-hour challenge expirations, and subscription expiry updates) automatically execute in background threads driven by visitor web traffic.
+            </p>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
+                You can also run all maintenance checks immediately on-demand by clicking the button below:
+            </p>
+            
+            <form action="{% url 'admin_system_run_jobs' %}" method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success"><i class="fa-solid fa-play me-1"></i> Run All Maintenance Tasks Now</button>
+            </form>
+        </div>
+    </div>
+
 </div>
 {% endblock %}

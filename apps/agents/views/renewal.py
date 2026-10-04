@@ -76,7 +76,9 @@ def renew_plan(request):
 
         new_expiry = None
         if active_sub and active_sub.expires_at:
-            base_expiry = active_sub.expires_at if active_sub.expires_at > timezone.now() else timezone.now()
+            now_dt = datetime.now()
+            exp = active_sub.expires_at.replace(tzinfo=None) if hasattr(active_sub.expires_at, 'tzinfo') and active_sub.expires_at.tzinfo else active_sub.expires_at
+            base_expiry = exp if exp > now_dt else now_dt
             new_expiry = base_expiry + timedelta(days=365)
 
         return render(request, 'agents/renew_plan.html', {

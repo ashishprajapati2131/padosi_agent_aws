@@ -1084,6 +1084,18 @@ def store_review(request, slug, state_code=None):
         is_owner = Agent.objects.filter(user=request.user, id=agent.id).exists()
         if is_owner:
             return JsonResponse({'status': 'error', 'message': 'You cannot review yourself'}, status=403)
+
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware, is_ip_blocked
+    client_ip = ThreatMonitorMiddleware.get_client_ip(request)
+    if is_ip_blocked(client_ip):
+        return JsonResponse({'status': 'error', 'message': 'Access denied due to suspicious activity.'}, status=403)
+
+    from django.core.cache import cache
+    rate_key = f"review_ratelimit_{client_ip}"
+    submits = cache.get(rate_key, 0)
+    if submits >= 20:
+        return JsonResponse({'status': 'error', 'message': 'Too many reviews submitted from this network. Please try again later.'}, status=429)
+    cache.set(rate_key, submits + 1, timeout=3600)
             
     rating_val = request.POST.get('rating')
     review_val = request.POST.get('review')
@@ -1915,7 +1927,8 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                     
                     ext = os.path.splitext(irdai_file.name)[1].lower()
                     if irdai_file.size <= 5 * 1024 * 1024:
-                        doc_path = f"app/public/insurance/irdai_{agent.id}_{int(time.time())}{ext}"
+                        import uuid
+                        doc_path = f"app/public/insurance/irdai_{agent.id}_{uuid.uuid4().hex}{ext}"
                         profile.irdai_license_doc = default_storage.save(doc_path, irdai_file)
                     else:
                         return JsonResponse({
@@ -1938,7 +1951,8 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                     
                     ext = os.path.splitext(amfi_file.name)[1].lower()
                     if amfi_file.size <= 5 * 1024 * 1024:
-                        doc_path = f"app/public/investment/amfi_{agent.id}_{int(time.time())}{ext}"
+                        import uuid
+                        doc_path = f"app/public/investment/amfi_{agent.id}_{uuid.uuid4().hex}{ext}"
                         profile.amfi_license_doc = default_storage.save(doc_path, amfi_file)
                     else:
                         return JsonResponse({
@@ -2654,6 +2668,43 @@ def agent_capture_lead(request):
                 thread.start()
             except Exception as fcm_err:
                 logger.error(f"FCM thread dispatch failed: {fcm_err}")
+
+        # Send email notification to advisor so web-only advisors never miss leads
+        if agent and getattr(agent, 'email', None):
+            def _send_lead_email(to_email, to_name, cust_name, cust_phone, cust_email, int_type, serv_type, ins_type, reqs):
+                try:
+                    from apps.agents.services.brevo import email_service
+                    lead_label = cust_name or 'A prospect'
+                    subject = f"New Client Enquiry: {lead_label} reached out on PadosiAgent"
+                    html_content = f"""
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                        <h2 style="color: #273c8e; margin-top: 0;">🎉 You Have a New Client Lead!</h2>
+                        <p>Hello <strong>{to_name}</strong>,</p>
+                        <p>A prospective client just reached out to you through your PadosiAgent profile:</p>
+                        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                            <tr style="background-color: #f8fafc;"><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Name</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{cust_name or 'Not specified'}</td></tr>
+                            <tr><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Phone</td><td style="padding: 10px; border: 1px solid #e2e8f0;"><a href="tel:{cust_phone or ''}" style="color: #06a441; font-weight: bold;">{cust_phone or 'Not specified'}</a></td></tr>
+                            <tr style="background-color: #f8fafc;"><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Email</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{cust_email or 'Not specified'}</td></tr>
+                            <tr><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Interaction Channel</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{int_type or 'Direct'}</td></tr>
+                            <tr style="background-color: #f8fafc;"><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Insurance / Service</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{ins_type or serv_type or 'General Insurance'}</td></tr>
+                            <tr><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Details</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{reqs or 'Standard inquiry'}</td></tr>
+                        </table>
+                        <p style="margin-top: 25px;">
+                            <a href="https://padosiagent.com/agent-login/" style="background-color: #06a441; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">View in Dashboard</a>
+                        </p>
+                        <p style="color: #64748b; font-size: 13px; margin-top: 25px;">Tip: Reach out to your prospective client within 15 minutes for the highest conversion rate!</p>
+                    </div>
+                    """
+                    email_service.send_generic(to_email, to_name, subject, html_content)
+                except Exception as mail_err:
+                    logger.warning(f"Lead email notification failed for agent {to_email}: {mail_err}")
+
+            import threading
+            threading.Thread(
+                target=_send_lead_email,
+                args=(agent.email, agent.fullname or 'Advisor', customer_name, customer_mobile, customer_email, interaction_type, service_type, insurance_type, enquiry_requirements),
+                daemon=True
+            ).start()
 
         return JsonResponse({
             'success': True,

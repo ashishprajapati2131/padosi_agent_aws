@@ -102,5 +102,7 @@ class PincodeCache(models.Model):
             )
             return obj
         except Exception:
-            # Fallback for concurrency
-            return cls.objects.filter(pincode=pincode).first()
+            try:
+                return cls.objects.filter(pincode=pincode).first()
+            except Exception:
+                return None

@@ -891,6 +891,7 @@ function trackGoogleClick(agentId, source) {
     try {
         fetch('{% url "agents:agent_google_review_track_click" %}', {
             method: 'POST',
+            keepalive: true,
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': '{{ csrf_token }}'

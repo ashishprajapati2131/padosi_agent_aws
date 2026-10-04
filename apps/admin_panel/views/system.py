@@ -220,6 +220,68 @@ def run_backup(request):
     referer = request.META.get('HTTP_REFERER')
     return redirect(referer if referer else 'admin_system_backups')
 
+
+def run_maintenance_jobs(request):
+    """
+    Execute all background maintenance tasks on-demand from the Admin Panel
+    or via a secure token-authenticated webhook (for hosts without cron jobs).
+    """
+    from django.conf import settings
+    from django.http import JsonResponse, HttpResponseForbidden
+    from io import StringIO
+    from django.core.management import call_command
+    from apps.agents.services.background_jobs import retry_missing_invoices
+    
+    is_staff = request.user.is_authenticated and request.user.is_staff
+    token = request.GET.get('token') or request.headers.get('X-Cron-Token')
+    expected_token = getattr(settings, 'CRON_TRIGGER_TOKEN', '') or (settings.SECRET_KEY[:24] if settings.SECRET_KEY else '')
+    is_token_valid = bool(token and expected_token and token == expected_token)
+    
+    if not is_staff and not is_token_valid:
+        if token:
+            return HttpResponseForbidden("Invalid cron token.")
+        messages.error(request, "Staff permission required.")
+        return redirect('admin_system_health')
+        
+    summary = []
+    try:
+        invoices_retried = retry_missing_invoices(days=7, apply=True, max_attempts=3)
+        summary.append(f"Invoices checked/retried: {invoices_retried}")
+    except Exception as e:
+        summary.append(f"Invoices: {e}")
+
+    try:
+        out = StringIO()
+        call_command('recover_orphaned_payments', '--days', '14', '--apply', stdout=out)
+        res = out.getvalue().strip()
+        summary.append(f"Orphan payments: {res or 'Clean (0)'}")
+    except Exception as e:
+        summary.append(f"Orphan payments: {e}")
+
+    try:
+        out = StringIO()
+        call_command('process_event_referral_expirations', stdout=out)
+        res = out.getvalue().strip()
+        summary.append(f"Event referral: {res or 'Processed'}")
+    except Exception as e:
+        summary.append(f"Event referral: {e}")
+
+    try:
+        out = StringIO()
+        call_command('expire_subscriptions', '--apply', stdout=out)
+        res = out.getvalue().strip()
+        summary.append(f"Subscriptions: {res or 'Up-to-date'}")
+    except Exception as e:
+        summary.append(f"Subscriptions: {e}")
+
+    if is_token_valid and not is_staff:
+        return JsonResponse({'status': 'ok', 'summary': summary})
+
+    messages.success(request, f"Maintenance completed: {' | '.join(summary)}")
+    referer = request.META.get('HTTP_REFERER')
+    return redirect(referer if referer else 'admin_system_health')
+
+
 def download_backup(request, filename):
     """
     Download a backup file.

@@ -253,6 +253,7 @@ from apps.admin_panel.views.system import (
     api_logs,
     backups,
     run_backup,
+    run_maintenance_jobs,
     download_backup,
 )
 
@@ -584,5 +585,6 @@ urlpatterns = [
     path("admin/system/api-logs/", api_logs, name="admin_system_api_logs"),
     path("admin/system/backups/", backups, name="admin_system_backups"),
     path("admin/system/backups/run/", run_backup, name="admin_system_run_backup"),
+    path("admin/system/run-jobs/", run_maintenance_jobs, name="admin_system_run_jobs"),
     path("admin/system/backups/download/<str:filename>/", download_backup, name="admin_system_download_backup"),
 ]

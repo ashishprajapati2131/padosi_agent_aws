@@ -64,8 +64,15 @@ if not SECRET_KEY:
 # In production: set ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com in .env
 _allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
-if DEBUG and not ALLOWED_HOSTS:
-    ALLOWED_HOSTS = ['*']
+if not ALLOWED_HOSTS:
+    if DEBUG:
+        ALLOWED_HOSTS = ['*']
+    else:
+        ALLOWED_HOSTS = ['padosiagent.com', 'www.padosiagent.com']
+else:
+    for _domain in ('padosiagent.com', 'www.padosiagent.com'):
+        if _domain not in ALLOWED_HOSTS and '*' not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(_domain)
 
 _csrf_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
 _PRODUCTION_CSRF_ORIGINS = [

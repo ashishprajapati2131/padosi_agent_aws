@@ -2774,6 +2774,10 @@ def _credit_referral_conversion(agent):
     ref_code_obj = ReferralCode.objects.filter(code=agent.referred_by_code).first()
     if not ref_code_obj:
         return
+    # Block self-referral abuse (an agent using their own referral code)
+    if ref_code_obj.agent_id == agent.id:
+        logger.warning(f"[Referral] Self-referral attempt blocked for agent {agent.id} using own code {agent.referred_by_code}")
+        return
     usage, u_created = ReferralUsage.objects.get_or_create(
         referral_code=ref_code_obj,
         referred_agent_id=agent.id,

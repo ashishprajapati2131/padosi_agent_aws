@@ -20,6 +20,27 @@
     <meta property="og:image:secure_url" content="{{ og_image_absolute_url }}">
     <meta property="og:image:type" content="image/jpeg">
     <meta property="og:image:alt" content="PadosiAgent insurance advisor profile card">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FinancialService",
+      "name": "{{ agentDisplayName|default:agent.fullname|escapejs }}",
+      "description": "Licensed Insurance and Financial Advisor on PadosiAgent",
+      "url": "{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:'gj' }}/{{ profile.slug }}/",
+      {% if profile.profile_photo_url %}"image": "{{ profile.profile_photo_url }}",{% endif %}
+      {% if agent.mobile %}"telephone": "+91{{ agent.mobile }}",{% endif %}
+      "address": {
+        "@type": "PostalAddress",
+        {% if agent.agent_pincode %}"postalCode": "{{ agent.agent_pincode }}",{% endif %}
+        "addressCountry": "IN"
+      }{% if agent.average_rating and agent.review_count %},
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "{{ agent.average_rating }}",
+        "reviewCount": "{{ agent.review_count }}"
+      }{% endif %}
+    }
+    </script>
 {% endblock %}
 
 {% block extra_css %}

@@ -905,55 +905,67 @@ def find_agents(request):
     # search page for visitors. Tracking only fires on real search renders
     # (not resets, not filter-gate screens).
     if not invalid_pincode and agents_page:
-        try:
-            from apps.agents.models import AgentCardImpression, AgentSearchEvent
-            from django.db.models import F
-            from datetime import date as _date
-            _today = _date.today()
-            _pincode = pincode or None
+        def _async_track_search(search_pincode, agent_ids):
+            try:
+                from django.db import close_old_connections
+                close_old_connections()
+                from apps.agents.models import AgentCardImpression, AgentSearchEvent
+                from django.db.models import F
+                from datetime import date as _date
+                _today = _date.today()
 
-            # Hook A — record that someone searched this pincode today
-            if _pincode:
-                _se, _se_created = AgentSearchEvent.objects.get_or_create(
-                    search_date=_today,
-                    pincode=_pincode,
-                    defaults={'event_count': 1},
-                )
-                if not _se_created:
-                    AgentSearchEvent.objects.filter(pk=_se.pk).update(event_count=F('event_count') + 1)
-
-            # Hook B — record a card impression for each agent on this page in bulk
-            _agent_ids = [_a.id for _a in agents_page]
-            if _agent_ids:
-                _existing_map = {
-                    ci.agent_id: ci.id
-                    for ci in AgentCardImpression.objects.filter(
-                        agent_id__in=_agent_ids,
-                        impression_date=_today,
-                        search_pincode=_pincode
+                if search_pincode:
+                    _se, _se_created = AgentSearchEvent.objects.get_or_create(
+                        search_date=_today,
+                        pincode=search_pincode,
+                        defaults={'event_count': 1},
                     )
-                }
-                _to_create = []
-                _update_ids = []
-                for _aid in _agent_ids:
-                    if _aid in _existing_map:
-                        _update_ids.append(_existing_map[_aid])
-                    else:
-                        _to_create.append(AgentCardImpression(
-                            agent_id=_aid,
+                    if not _se_created:
+                        AgentSearchEvent.objects.filter(pk=_se.pk).update(event_count=F('event_count') + 1)
+
+                if agent_ids:
+                    _existing_map = {
+                        ci.agent_id: ci.id
+                        for ci in AgentCardImpression.objects.filter(
+                            agent_id__in=agent_ids,
                             impression_date=_today,
-                            search_pincode=_pincode,
-                            impression_count=1
-                        ))
-                if _to_create:
-                    AgentCardImpression.objects.bulk_create(_to_create, ignore_conflicts=True)
-                if _update_ids:
-                    AgentCardImpression.objects.filter(id__in=_update_ids).update(
-                        impression_count=F('impression_count') + 1
-                    )
+                            search_pincode=search_pincode
+                        )
+                    }
+                    _to_create = []
+                    _update_ids = []
+                    for _aid in agent_ids:
+                        if _aid in _existing_map:
+                            _update_ids.append(_existing_map[_aid])
+                        else:
+                            _to_create.append(AgentCardImpression(
+                                agent_id=_aid,
+                                impression_date=_today,
+                                search_pincode=search_pincode,
+                                impression_count=1
+                            ))
+                    if _to_create:
+                        AgentCardImpression.objects.bulk_create(_to_create, ignore_conflicts=True)
+                    if _update_ids:
+                        AgentCardImpression.objects.filter(id__in=_update_ids).update(
+                            impression_count=F('impression_count') + 1
+                        )
+            except Exception as _e:
+                logger.warning(f"Analytics tracking error in find_agents: {_e}")
+            finally:
+                from django.db import close_old_connections
+                close_old_connections()
 
-        except Exception as _e:
-            logger.warning(f"Analytics tracking error in find_agents: {_e}")
+        try:
+            import threading
+            _tracked_agent_ids = [_a.id for _a in agents_page]
+            threading.Thread(
+                target=_async_track_search,
+                args=(pincode or None, _tracked_agent_ids),
+                daemon=True
+            ).start()
+        except Exception as _t_err:
+            logger.warning(f"Failed to dispatch search analytics thread: {_t_err}")
     # ── End Analytics Tracking ────────────────────────────────────────────
 
     context = {
