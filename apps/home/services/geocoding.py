@@ -226,7 +226,11 @@ class GeocodingService:
         """
         try:
             url = f"https://api.postalpincode.in/pincode/{pincode}"
-            response = requests.get(url, timeout=self.TIMEOUT_SEC)
+            response = requests.get(
+                url,
+                headers={'User-Agent': self.USER_AGENT},
+                timeout=self.TIMEOUT_SEC
+            )
             if response.status_code != 200:
                 return None
 

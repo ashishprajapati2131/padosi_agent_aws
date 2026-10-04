@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.views.decorators.http import require_POST
 
 from apps.agents.models import Agent
+from apps.agents.services.account_auth import resolve_agent_for_user
 from apps.agents.services.feature_unlock import profile_completion_percent
 from apps.agents.services.review_growth import agent_review_count
 from apps.referral_championship.models import (
@@ -499,7 +500,7 @@ def agent_championship_dashboard_api(request):
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=401)
 
-    agent = Agent.objects.filter(user=request.user).first()
+    agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
     if not agent:
         return JsonResponse({'success': False, 'message': 'Agent account required'}, status=403)
 
@@ -524,7 +525,7 @@ def agent_championship_dashboard(request):
             return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=401)
         return redirect('agents:agent_login')
 
-    agent = Agent.objects.filter(user=request.user).first()
+    agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
     if not agent:
         if request.GET.get('format') == 'json' or 'application/json' in request.headers.get('Accept', ''):
             return JsonResponse({'success': False, 'message': 'Agent account required'}, status=403)
@@ -696,7 +697,7 @@ def claim_reward_ajax(request, slab_id):
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=401)
 
-    agent = Agent.objects.filter(user=request.user).first()
+    agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
     if not agent:
         return JsonResponse({'success': False, 'message': 'Agent not found'}, status=404)
 
@@ -766,7 +767,7 @@ def download_qr_code(request):
     if not request.user.is_authenticated:
         return HttpResponse('Unauthorized', status=401)
 
-    agent = Agent.objects.filter(user=request.user).first()
+    agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
     if not agent:
         return HttpResponse('Agent not found', status=404)
 

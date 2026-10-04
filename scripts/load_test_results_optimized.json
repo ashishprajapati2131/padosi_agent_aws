@@ -1,0 +1,2183 @@
+{
+  "baseline_1": {
+    "name": "Baseline_1_User",
+    "concurrency": 1,
+    "duration_sec": 10.296758799999225,
+    "total_requests": 64,
+    "rps": 6.22,
+    "avg_ms": 139.93,
+    "p50_ms": 17.83,
+    "p90_ms": 206.72,
+    "p95_ms": 506.25,
+    "p99_ms": 1659.06,
+    "min_ms": 3.24,
+    "max_ms": 2059.8,
+    "errors": 0,
+    "error_rate_pct": 0.0,
+    "cpu_pct": 16.8,
+    "memory_mb": 100.83,
+    "status_distribution": {
+      "200": 64
+    },
+    "endpoints": {
+      "FindAgents_Directory": {
+        "count": 9,
+        "avg_ms": 234.81,
+        "p50_ms": 196.85,
+        "p95_ms": 409.14,
+        "p99_ms": 514.3,
+        "errors": 0,
+        "rps": 0.87
+      },
+      "CSRF_Refresh": {
+        "count": 4,
+        "avg_ms": 5.19,
+        "p50_ms": 4.05,
+        "p95_ms": 8.37,
+        "p99_ms": 8.95,
+        "errors": 0,
+        "rps": 0.39
+      },
+      "FastAPI_Plans": {
+        "count": 8,
+        "avg_ms": 29.43,
+        "p50_ms": 8.52,
+        "p95_ms": 117.65,
+        "p99_ms": 163.94,
+        "errors": 0,
+        "rps": 0.78
+      },
+      "FindAgents_SmartRank": {
+        "count": 5,
+        "avg_ms": 38.61,
+        "p50_ms": 38.33,
+        "p95_ms": 43.97,
+        "p99_ms": 44.33,
+        "errors": 0,
+        "rps": 0.49
+      },
+      "Calculators_Hub": {
+        "count": 4,
+        "avg_ms": 18.46,
+        "p50_ms": 18.55,
+        "p95_ms": 18.95,
+        "p99_ms": 18.98,
+        "errors": 0,
+        "rps": 0.39
+      },
+      "About_Page": {
+        "count": 5,
+        "avg_ms": 9.86,
+        "p50_ms": 9.97,
+        "p95_ms": 10.48,
+        "p99_ms": 10.52,
+        "errors": 0,
+        "rps": 0.49
+      },
+      "Admin_LoginPage": {
+        "count": 6,
+        "avg_ms": 9.25,
+        "p50_ms": 6.1,
+        "p95_ms": 20.23,
+        "p99_ms": 23.69,
+        "errors": 0,
+        "rps": 0.58
+      },
+      "Homepage": {
+        "count": 7,
+        "avg_ms": 31.21,
+        "p50_ms": 18.15,
+        "p95_ms": 82.16,
+        "p99_ms": 103.83,
+        "errors": 0,
+        "rps": 0.68
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 5,
+        "avg_ms": 216.35,
+        "p50_ms": 190.96,
+        "p95_ms": 290.26,
+        "p99_ms": 307.34,
+        "errors": 0,
+        "rps": 0.49
+      },
+      "FastAPI_Pincode": {
+        "count": 3,
+        "avg_ms": 1614.7,
+        "p50_ms": 1423.7,
+        "p95_ms": 1996.19,
+        "p99_ms": 2047.08,
+        "errors": 0,
+        "rps": 0.29
+      },
+      "Agent_LoginPage": {
+        "count": 3,
+        "avg_ms": 8.64,
+        "p50_ms": 8.2,
+        "p95_ms": 9.66,
+        "p99_ms": 9.79,
+        "errors": 0,
+        "rps": 0.29
+      },
+      "Django_PincodeCheck": {
+        "count": 2,
+        "avg_ms": 9.01,
+        "p50_ms": 9.01,
+        "p95_ms": 12.41,
+        "p99_ms": 12.71,
+        "errors": 0,
+        "rps": 0.19
+      },
+      "Django_Health": {
+        "count": 2,
+        "avg_ms": 11.49,
+        "p50_ms": 11.49,
+        "p95_ms": 11.73,
+        "p99_ms": 11.75,
+        "errors": 0,
+        "rps": 0.19
+      },
+      "FastAPI_Health": {
+        "count": 1,
+        "avg_ms": 3.24,
+        "p50_ms": 3.24,
+        "p95_ms": 3.24,
+        "p99_ms": 3.24,
+        "errors": 0,
+        "rps": 0.1
+      }
+    }
+  },
+  "baseline_5": {
+    "name": "Baseline_5_Users",
+    "concurrency": 5,
+    "duration_sec": 11.383863800001564,
+    "total_requests": 276,
+    "rps": 24.24,
+    "avg_ms": 181.3,
+    "p50_ms": 27.17,
+    "p90_ms": 441.27,
+    "p95_ms": 1464.84,
+    "p99_ms": 1607.41,
+    "min_ms": 4.11,
+    "max_ms": 1763.25,
+    "errors": 0,
+    "error_rate_pct": 0.0,
+    "cpu_pct": 31.4,
+    "memory_mb": 101.45,
+    "status_distribution": {
+      "200": 262,
+      "429": 12,
+      "302": 2
+    },
+    "endpoints": {
+      "FastAPI_Plans": {
+        "count": 35,
+        "avg_ms": 21.26,
+        "p50_ms": 17.61,
+        "p95_ms": 54.32,
+        "p99_ms": 95.59,
+        "errors": 0,
+        "rps": 3.07
+      },
+      "About_Page": {
+        "count": 10,
+        "avg_ms": 24.83,
+        "p50_ms": 22.09,
+        "p95_ms": 39.91,
+        "p99_ms": 43.07,
+        "errors": 0,
+        "rps": 0.88
+      },
+      "Homepage": {
+        "count": 67,
+        "avg_ms": 56.96,
+        "p50_ms": 27.39,
+        "p95_ms": 205.57,
+        "p99_ms": 451.98,
+        "errors": 0,
+        "rps": 5.89
+      },
+      "CSRF_Refresh": {
+        "count": 16,
+        "avg_ms": 6.87,
+        "p50_ms": 6.09,
+        "p95_ms": 12.25,
+        "p99_ms": 12.51,
+        "errors": 0,
+        "rps": 1.41
+      },
+      "Django_PincodeCheck": {
+        "count": 13,
+        "avg_ms": 12.26,
+        "p50_ms": 11.66,
+        "p95_ms": 19.15,
+        "p99_ms": 19.58,
+        "errors": 0,
+        "rps": 1.14
+      },
+      "Register_Step1_Submit": {
+        "count": 20,
+        "avg_ms": 113.06,
+        "p50_ms": 36.94,
+        "p95_ms": 342.44,
+        "p99_ms": 358.86,
+        "errors": 0,
+        "rps": 1.76
+      },
+      "Django_Health": {
+        "count": 7,
+        "avg_ms": 54.14,
+        "p50_ms": 21.09,
+        "p95_ms": 183.31,
+        "p99_ms": 230.25,
+        "errors": 0,
+        "rps": 0.61
+      },
+      "Event_Landing": {
+        "count": 8,
+        "avg_ms": 94.38,
+        "p50_ms": 63.3,
+        "p95_ms": 261.94,
+        "p99_ms": 338.1,
+        "errors": 0,
+        "rps": 0.7
+      },
+      "FindAgents_SmartRank": {
+        "count": 8,
+        "avg_ms": 51.08,
+        "p50_ms": 50.64,
+        "p95_ms": 69.4,
+        "p99_ms": 74.89,
+        "errors": 0,
+        "rps": 0.7
+      },
+      "Agent_LoginPage": {
+        "count": 9,
+        "avg_ms": 14.36,
+        "p50_ms": 13.29,
+        "p95_ms": 19.54,
+        "p99_ms": 19.72,
+        "errors": 0,
+        "rps": 0.79
+      },
+      "FindAgents_Directory": {
+        "count": 20,
+        "avg_ms": 406.66,
+        "p50_ms": 356.05,
+        "p95_ms": 645.92,
+        "p99_ms": 1213.24,
+        "errors": 0,
+        "rps": 1.76
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 15,
+        "avg_ms": 321.49,
+        "p50_ms": 317.96,
+        "p95_ms": 504.91,
+        "p99_ms": 510.51,
+        "errors": 0,
+        "rps": 1.32
+      },
+      "Admin_LoginPage": {
+        "count": 9,
+        "avg_ms": 28.29,
+        "p50_ms": 12.64,
+        "p95_ms": 103.0,
+        "p99_ms": 145.88,
+        "errors": 0,
+        "rps": 0.79
+      },
+      "Calculators_Hub": {
+        "count": 14,
+        "avg_ms": 26.81,
+        "p50_ms": 26.44,
+        "p95_ms": 38.1,
+        "p99_ms": 38.1,
+        "errors": 0,
+        "rps": 1.23
+      },
+      "FastAPI_Health": {
+        "count": 7,
+        "avg_ms": 9.28,
+        "p50_ms": 7.08,
+        "p95_ms": 21.75,
+        "p99_ms": 26.18,
+        "errors": 0,
+        "rps": 0.61
+      },
+      "FastAPI_Pincode": {
+        "count": 18,
+        "avg_ms": 1521.0,
+        "p50_ms": 1496.23,
+        "p95_ms": 1651.09,
+        "p99_ms": 1740.82,
+        "errors": 0,
+        "rps": 1.58
+      }
+    }
+  },
+  "baseline_10": {
+    "name": "Baseline_10_Users",
+    "concurrency": 10,
+    "duration_sec": 13.425664999998844,
+    "total_requests": 106,
+    "rps": 7.9,
+    "avg_ms": 978.22,
+    "p50_ms": 337.14,
+    "p90_ms": 3491.18,
+    "p95_ms": 4117.71,
+    "p99_ms": 5722.21,
+    "min_ms": 3.58,
+    "max_ms": 6330.17,
+    "errors": 0,
+    "error_rate_pct": 0.0,
+    "cpu_pct": 21.8,
+    "memory_mb": 106.98,
+    "status_distribution": {
+      "200": 100,
+      "429": 5,
+      "302": 1
+    },
+    "endpoints": {
+      "Django_PincodeCheck": {
+        "count": 4,
+        "avg_ms": 296.76,
+        "p50_ms": 270.44,
+        "p95_ms": 535.65,
+        "p99_ms": 566.37,
+        "errors": 0,
+        "rps": 0.3
+      },
+      "Agent_LoginPage": {
+        "count": 6,
+        "avg_ms": 339.78,
+        "p50_ms": 344.61,
+        "p95_ms": 613.87,
+        "p99_ms": 616.13,
+        "errors": 0,
+        "rps": 0.45
+      },
+      "Admin_LoginPage": {
+        "count": 5,
+        "avg_ms": 237.81,
+        "p50_ms": 226.21,
+        "p95_ms": 516.04,
+        "p99_ms": 573.38,
+        "errors": 0,
+        "rps": 0.37
+      },
+      "About_Page": {
+        "count": 2,
+        "avg_ms": 129.79,
+        "p50_ms": 129.79,
+        "p95_ms": 221.91,
+        "p99_ms": 230.1,
+        "errors": 0,
+        "rps": 0.15
+      },
+      "FastAPI_Plans": {
+        "count": 9,
+        "avg_ms": 122.93,
+        "p50_ms": 13.1,
+        "p95_ms": 392.47,
+        "p99_ms": 475.4,
+        "errors": 0,
+        "rps": 0.67
+      },
+      "Homepage": {
+        "count": 23,
+        "avg_ms": 236.63,
+        "p50_ms": 94.85,
+        "p95_ms": 633.5,
+        "p99_ms": 687.07,
+        "errors": 0,
+        "rps": 1.71
+      },
+      "CSRF_Refresh": {
+        "count": 8,
+        "avg_ms": 14.31,
+        "p50_ms": 4.84,
+        "p95_ms": 49.17,
+        "p99_ms": 64.77,
+        "errors": 0,
+        "rps": 0.6
+      },
+      "Django_Health": {
+        "count": 4,
+        "avg_ms": 641.61,
+        "p50_ms": 166.04,
+        "p95_ms": 1927.45,
+        "p99_ms": 2163.58,
+        "errors": 0,
+        "rps": 0.3
+      },
+      "FindAgents_Directory": {
+        "count": 12,
+        "avg_ms": 1902.29,
+        "p50_ms": 1445.5,
+        "p95_ms": 3875.22,
+        "p99_ms": 4158.07,
+        "errors": 0,
+        "rps": 0.89
+      },
+      "FastAPI_Health": {
+        "count": 1,
+        "avg_ms": 3.6,
+        "p50_ms": 3.6,
+        "p95_ms": 3.6,
+        "p99_ms": 3.6,
+        "errors": 0,
+        "rps": 0.07
+      },
+      "FastAPI_Pincode": {
+        "count": 6,
+        "avg_ms": 1976.47,
+        "p50_ms": 1633.53,
+        "p95_ms": 3181.33,
+        "p99_ms": 3457.77,
+        "errors": 0,
+        "rps": 0.45
+      },
+      "FindAgents_SmartRank": {
+        "count": 2,
+        "avg_ms": 1077.44,
+        "p50_ms": 1077.44,
+        "p95_ms": 1185.73,
+        "p99_ms": 1195.36,
+        "errors": 0,
+        "rps": 0.15
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 4,
+        "avg_ms": 3931.36,
+        "p50_ms": 3637.52,
+        "p95_ms": 5327.02,
+        "p99_ms": 5539.84,
+        "errors": 0,
+        "rps": 0.3
+      },
+      "Event_Landing": {
+        "count": 6,
+        "avg_ms": 2304.07,
+        "p50_ms": 1854.28,
+        "p95_ms": 4204.6,
+        "p99_ms": 4360.71,
+        "errors": 0,
+        "rps": 0.45
+      },
+      "Calculators_Hub": {
+        "count": 4,
+        "avg_ms": 587.86,
+        "p50_ms": 481.6,
+        "p95_ms": 1146.17,
+        "p99_ms": 1219.37,
+        "errors": 0,
+        "rps": 0.3
+      },
+      "Register_Step1_Submit": {
+        "count": 10,
+        "avg_ms": 2104.09,
+        "p50_ms": 310.52,
+        "p95_ms": 6059.65,
+        "p99_ms": 6276.07,
+        "errors": 0,
+        "rps": 0.74
+      }
+    }
+  },
+  "normal_25": {
+    "name": "Normal_25_Users",
+    "concurrency": 25,
+    "duration_sec": 17.269353699999556,
+    "total_requests": 234,
+    "rps": 13.55,
+    "avg_ms": 1747.89,
+    "p50_ms": 1068.26,
+    "p90_ms": 4672.0,
+    "p95_ms": 6526.85,
+    "p99_ms": 9164.17,
+    "min_ms": 3.2,
+    "max_ms": 12662.81,
+    "errors": 0,
+    "error_rate_pct": 0.0,
+    "cpu_pct": 24.8,
+    "memory_mb": 117.55,
+    "status_distribution": {
+      "200": 225,
+      "302": 3,
+      "429": 6
+    },
+    "endpoints": {
+      "FastAPI_Health": {
+        "count": 7,
+        "avg_ms": 139.48,
+        "p50_ms": 111.76,
+        "p95_ms": 342.71,
+        "p99_ms": 392.19,
+        "errors": 0,
+        "rps": 0.41
+      },
+      "CSRF_Refresh": {
+        "count": 10,
+        "avg_ms": 54.19,
+        "p50_ms": 18.83,
+        "p95_ms": 180.3,
+        "p99_ms": 193.73,
+        "errors": 0,
+        "rps": 0.58
+      },
+      "Django_PincodeCheck": {
+        "count": 11,
+        "avg_ms": 596.75,
+        "p50_ms": 289.6,
+        "p95_ms": 1150.48,
+        "p99_ms": 1194.2,
+        "errors": 0,
+        "rps": 0.64
+      },
+      "Agent_LoginPage": {
+        "count": 15,
+        "avg_ms": 576.74,
+        "p50_ms": 302.0,
+        "p95_ms": 1256.23,
+        "p99_ms": 1354.53,
+        "errors": 0,
+        "rps": 0.87
+      },
+      "Homepage": {
+        "count": 52,
+        "avg_ms": 689.92,
+        "p50_ms": 462.31,
+        "p95_ms": 1435.05,
+        "p99_ms": 1847.28,
+        "errors": 0,
+        "rps": 3.01
+      },
+      "FastAPI_Plans": {
+        "count": 16,
+        "avg_ms": 279.14,
+        "p50_ms": 256.33,
+        "p95_ms": 695.72,
+        "p99_ms": 1273.34,
+        "errors": 0,
+        "rps": 0.93
+      },
+      "Register_Step1_Submit": {
+        "count": 9,
+        "avg_ms": 489.23,
+        "p50_ms": 249.61,
+        "p95_ms": 1193.81,
+        "p99_ms": 1248.83,
+        "errors": 0,
+        "rps": 0.52
+      },
+      "Django_Health": {
+        "count": 8,
+        "avg_ms": 2478.31,
+        "p50_ms": 2536.28,
+        "p95_ms": 4556.95,
+        "p99_ms": 5197.2,
+        "errors": 0,
+        "rps": 0.46
+      },
+      "About_Page": {
+        "count": 12,
+        "avg_ms": 678.58,
+        "p50_ms": 603.84,
+        "p95_ms": 1128.74,
+        "p99_ms": 1157.61,
+        "errors": 0,
+        "rps": 0.69
+      },
+      "FindAgents_Directory": {
+        "count": 25,
+        "avg_ms": 4207.27,
+        "p50_ms": 3429.78,
+        "p95_ms": 8839.5,
+        "p99_ms": 9196.87,
+        "errors": 0,
+        "rps": 1.45
+      },
+      "Calculators_Hub": {
+        "count": 15,
+        "avg_ms": 803.17,
+        "p50_ms": 665.6,
+        "p95_ms": 1498.38,
+        "p99_ms": 1509.83,
+        "errors": 0,
+        "rps": 0.87
+      },
+      "FastAPI_Pincode": {
+        "count": 16,
+        "avg_ms": 2346.99,
+        "p50_ms": 1830.01,
+        "p95_ms": 3871.97,
+        "p99_ms": 4570.76,
+        "errors": 0,
+        "rps": 0.93
+      },
+      "FindAgents_SmartRank": {
+        "count": 11,
+        "avg_ms": 4161.52,
+        "p50_ms": 3991.55,
+        "p95_ms": 6098.66,
+        "p99_ms": 6927.81,
+        "errors": 0,
+        "rps": 0.64
+      },
+      "Admin_LoginPage": {
+        "count": 10,
+        "avg_ms": 1441.88,
+        "p50_ms": 1244.34,
+        "p95_ms": 2911.24,
+        "p99_ms": 3015.74,
+        "errors": 0,
+        "rps": 0.58
+      },
+      "Event_Landing": {
+        "count": 6,
+        "avg_ms": 3880.98,
+        "p50_ms": 3854.57,
+        "p95_ms": 5326.32,
+        "p99_ms": 5594.55,
+        "errors": 0,
+        "rps": 0.35
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 11,
+        "avg_ms": 7390.6,
+        "p50_ms": 7133.56,
+        "p95_ms": 11465.34,
+        "p99_ms": 12423.32,
+        "errors": 0,
+        "rps": 0.64
+      }
+    }
+  },
+  "normal_50": {
+    "name": "Normal_50_Users",
+    "concurrency": 50,
+    "duration_sec": 17.96386209999946,
+    "total_requests": 472,
+    "rps": 26.27,
+    "avg_ms": 1631.28,
+    "p50_ms": 1272.22,
+    "p90_ms": 3085.34,
+    "p95_ms": 3441.39,
+    "p99_ms": 3978.76,
+    "min_ms": 64.01,
+    "max_ms": 4647.84,
+    "errors": 0,
+    "error_rate_pct": 0.0,
+    "cpu_pct": 40.3,
+    "memory_mb": 119.02,
+    "status_distribution": {
+      "200": 456,
+      "302": 13,
+      "429": 3
+    },
+    "endpoints": {
+      "CSRF_Refresh": {
+        "count": 29,
+        "avg_ms": 785.18,
+        "p50_ms": 829.48,
+        "p95_ms": 1257.0,
+        "p99_ms": 1284.12,
+        "errors": 0,
+        "rps": 1.61
+      },
+      "Agent_LoginPage": {
+        "count": 23,
+        "avg_ms": 1014.62,
+        "p50_ms": 1011.61,
+        "p95_ms": 1433.39,
+        "p99_ms": 1833.22,
+        "errors": 0,
+        "rps": 1.28
+      },
+      "Django_PincodeCheck": {
+        "count": 17,
+        "avg_ms": 1001.82,
+        "p50_ms": 1043.32,
+        "p95_ms": 1325.61,
+        "p99_ms": 1648.88,
+        "errors": 0,
+        "rps": 0.95
+      },
+      "Admin_LoginPage": {
+        "count": 24,
+        "avg_ms": 957.25,
+        "p50_ms": 1047.66,
+        "p95_ms": 1345.23,
+        "p99_ms": 1422.84,
+        "errors": 0,
+        "rps": 1.34
+      },
+      "About_Page": {
+        "count": 24,
+        "avg_ms": 1198.34,
+        "p50_ms": 1210.48,
+        "p95_ms": 1646.13,
+        "p99_ms": 2037.72,
+        "errors": 0,
+        "rps": 1.34
+      },
+      "Homepage": {
+        "count": 101,
+        "avg_ms": 1168.11,
+        "p50_ms": 1170.92,
+        "p95_ms": 1759.23,
+        "p99_ms": 2779.4,
+        "errors": 0,
+        "rps": 5.62
+      },
+      "Calculators_Hub": {
+        "count": 29,
+        "avg_ms": 1151.9,
+        "p50_ms": 1169.75,
+        "p95_ms": 1461.97,
+        "p99_ms": 2265.89,
+        "errors": 0,
+        "rps": 1.61
+      },
+      "FastAPI_Plans": {
+        "count": 52,
+        "avg_ms": 1414.09,
+        "p50_ms": 1587.23,
+        "p95_ms": 2043.57,
+        "p99_ms": 2288.38,
+        "errors": 0,
+        "rps": 2.89
+      },
+      "Django_Health": {
+        "count": 11,
+        "avg_ms": 1706.05,
+        "p50_ms": 1836.28,
+        "p95_ms": 2222.55,
+        "p99_ms": 2355.56,
+        "errors": 0,
+        "rps": 0.61
+      },
+      "Register_Step1_Submit": {
+        "count": 16,
+        "avg_ms": 871.86,
+        "p50_ms": 901.34,
+        "p95_ms": 1183.72,
+        "p99_ms": 1374.08,
+        "errors": 0,
+        "rps": 0.89
+      },
+      "FindAgents_Directory": {
+        "count": 45,
+        "avg_ms": 2903.14,
+        "p50_ms": 2926.69,
+        "p95_ms": 4056.09,
+        "p99_ms": 4429.45,
+        "errors": 0,
+        "rps": 2.51
+      },
+      "FindAgents_SmartRank": {
+        "count": 18,
+        "avg_ms": 2410.29,
+        "p50_ms": 2459.02,
+        "p95_ms": 3141.22,
+        "p99_ms": 3244.49,
+        "errors": 0,
+        "rps": 1.0
+      },
+      "Event_Landing": {
+        "count": 16,
+        "avg_ms": 2264.64,
+        "p50_ms": 2267.57,
+        "p95_ms": 2912.56,
+        "p99_ms": 2958.13,
+        "errors": 0,
+        "rps": 0.89
+      },
+      "FastAPI_Pincode": {
+        "count": 23,
+        "avg_ms": 2990.43,
+        "p50_ms": 3053.64,
+        "p95_ms": 3663.26,
+        "p99_ms": 3761.27,
+        "errors": 0,
+        "rps": 1.28
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 34,
+        "avg_ms": 3241.98,
+        "p50_ms": 3204.12,
+        "p95_ms": 3824.09,
+        "p99_ms": 4229.12,
+        "errors": 0,
+        "rps": 1.89
+      },
+      "FastAPI_Health": {
+        "count": 10,
+        "avg_ms": 819.15,
+        "p50_ms": 835.32,
+        "p95_ms": 1065.42,
+        "p99_ms": 1092.4,
+        "errors": 0,
+        "rps": 0.56
+      }
+    }
+  },
+  "normal_100": {
+    "name": "Normal_100_Users",
+    "concurrency": 100,
+    "duration_sec": 18.238961400000335,
+    "total_requests": 478,
+    "rps": 26.21,
+    "avg_ms": 3223.22,
+    "p50_ms": 2852.39,
+    "p90_ms": 4970.56,
+    "p95_ms": 5981.39,
+    "p99_ms": 6974.22,
+    "min_ms": 68.45,
+    "max_ms": 7093.41,
+    "errors": 0,
+    "error_rate_pct": 0.0,
+    "cpu_pct": 39.6,
+    "memory_mb": 136.93,
+    "status_distribution": {
+      "200": 454,
+      "302": 22,
+      "429": 2
+    },
+    "endpoints": {
+      "CSRF_Refresh": {
+        "count": 19,
+        "avg_ms": 1710.01,
+        "p50_ms": 2142.33,
+        "p95_ms": 2698.59,
+        "p99_ms": 2730.82,
+        "errors": 0,
+        "rps": 1.04
+      },
+      "FastAPI_Health": {
+        "count": 8,
+        "avg_ms": 1325.68,
+        "p50_ms": 922.01,
+        "p95_ms": 2660.18,
+        "p99_ms": 2712.68,
+        "errors": 0,
+        "rps": 0.44
+      },
+      "FastAPI_Plans": {
+        "count": 51,
+        "avg_ms": 3371.75,
+        "p50_ms": 4162.21,
+        "p95_ms": 4884.45,
+        "p99_ms": 4989.81,
+        "errors": 0,
+        "rps": 2.8
+      },
+      "Django_PincodeCheck": {
+        "count": 23,
+        "avg_ms": 2206.36,
+        "p50_ms": 2169.38,
+        "p95_ms": 2882.28,
+        "p99_ms": 3116.48,
+        "errors": 0,
+        "rps": 1.26
+      },
+      "Calculators_Hub": {
+        "count": 20,
+        "avg_ms": 2427.27,
+        "p50_ms": 2518.42,
+        "p95_ms": 3299.95,
+        "p99_ms": 3418.5,
+        "errors": 0,
+        "rps": 1.1
+      },
+      "About_Page": {
+        "count": 25,
+        "avg_ms": 2699.55,
+        "p50_ms": 2622.47,
+        "p95_ms": 3511.82,
+        "p99_ms": 3590.05,
+        "errors": 0,
+        "rps": 1.37
+      },
+      "Agent_LoginPage": {
+        "count": 25,
+        "avg_ms": 2519.57,
+        "p50_ms": 2524.39,
+        "p95_ms": 3122.99,
+        "p99_ms": 3384.39,
+        "errors": 0,
+        "rps": 1.37
+      },
+      "Register_Step1_Submit": {
+        "count": 24,
+        "avg_ms": 2097.67,
+        "p50_ms": 2094.88,
+        "p95_ms": 3002.0,
+        "p99_ms": 3189.95,
+        "errors": 0,
+        "rps": 1.32
+      },
+      "Homepage": {
+        "count": 100,
+        "avg_ms": 2782.96,
+        "p50_ms": 2637.61,
+        "p95_ms": 4260.06,
+        "p99_ms": 4366.62,
+        "errors": 0,
+        "rps": 5.48
+      },
+      "Django_Health": {
+        "count": 13,
+        "avg_ms": 3128.15,
+        "p50_ms": 2980.7,
+        "p95_ms": 3998.09,
+        "p99_ms": 4210.31,
+        "errors": 0,
+        "rps": 0.71
+      },
+      "Admin_LoginPage": {
+        "count": 24,
+        "avg_ms": 3063.21,
+        "p50_ms": 2685.12,
+        "p95_ms": 4768.5,
+        "p99_ms": 4831.24,
+        "errors": 0,
+        "rps": 1.32
+      },
+      "FindAgents_Directory": {
+        "count": 42,
+        "avg_ms": 4118.66,
+        "p50_ms": 4223.78,
+        "p95_ms": 5397.15,
+        "p99_ms": 5425.45,
+        "errors": 0,
+        "rps": 2.3
+      },
+      "FastAPI_Pincode": {
+        "count": 28,
+        "avg_ms": 4493.28,
+        "p50_ms": 4540.11,
+        "p95_ms": 6195.41,
+        "p99_ms": 6480.88,
+        "errors": 0,
+        "rps": 1.54
+      },
+      "FindAgents_SmartRank": {
+        "count": 15,
+        "avg_ms": 4097.02,
+        "p50_ms": 3714.7,
+        "p95_ms": 6348.59,
+        "p99_ms": 6431.19,
+        "errors": 0,
+        "rps": 0.82
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 37,
+        "avg_ms": 5172.54,
+        "p50_ms": 4756.51,
+        "p95_ms": 7038.33,
+        "p99_ms": 7088.2,
+        "errors": 0,
+        "rps": 2.03
+      },
+      "Event_Landing": {
+        "count": 24,
+        "avg_ms": 4225.81,
+        "p50_ms": 3550.47,
+        "p95_ms": 6832.43,
+        "p99_ms": 6910.28,
+        "errors": 0,
+        "rps": 1.32
+      }
+    }
+  },
+  "high_250": {
+    "name": "High_250_Users",
+    "concurrency": 250,
+    "duration_sec": 28.57748309999988,
+    "total_requests": 708,
+    "rps": 24.77,
+    "avg_ms": 7494.65,
+    "p50_ms": 7709.1,
+    "p90_ms": 14215.68,
+    "p95_ms": 15421.44,
+    "p99_ms": 17284.58,
+    "min_ms": 250.9,
+    "max_ms": 17978.84,
+    "errors": 33,
+    "error_rate_pct": 4.66,
+    "cpu_pct": 41.4,
+    "memory_mb": 159.06,
+    "status_distribution": {
+      "200": 630,
+      "302": 45,
+      "0": 3,
+      "400": 29,
+      "500": 1
+    },
+    "endpoints": {
+      "Agent_LoginPage": {
+        "count": 47,
+        "avg_ms": 7231.61,
+        "p50_ms": 7759.73,
+        "p95_ms": 14062.7,
+        "p99_ms": 16480.52,
+        "errors": 0,
+        "rps": 1.64
+      },
+      "Admin_LoginPage": {
+        "count": 29,
+        "avg_ms": 7211.15,
+        "p50_ms": 7696.33,
+        "p95_ms": 14665.3,
+        "p99_ms": 14856.01,
+        "errors": 0,
+        "rps": 1.01
+      },
+      "CSRF_Refresh": {
+        "count": 34,
+        "avg_ms": 6770.13,
+        "p50_ms": 6388.1,
+        "p95_ms": 14099.8,
+        "p99_ms": 16084.0,
+        "errors": 1,
+        "rps": 1.19
+      },
+      "Django_PincodeCheck": {
+        "count": 35,
+        "avg_ms": 7737.57,
+        "p50_ms": 7610.67,
+        "p95_ms": 16805.74,
+        "p99_ms": 17248.66,
+        "errors": 0,
+        "rps": 1.22
+      },
+      "FastAPI_Health": {
+        "count": 7,
+        "avg_ms": 7994.2,
+        "p50_ms": 7998.0,
+        "p95_ms": 11321.17,
+        "p99_ms": 11712.19,
+        "errors": 0,
+        "rps": 0.24
+      },
+      "Homepage": {
+        "count": 130,
+        "avg_ms": 7934.73,
+        "p50_ms": 7761.65,
+        "p95_ms": 15656.82,
+        "p99_ms": 17141.31,
+        "errors": 0,
+        "rps": 4.55
+      },
+      "Calculators_Hub": {
+        "count": 55,
+        "avg_ms": 6823.23,
+        "p50_ms": 7713.8,
+        "p95_ms": 13964.84,
+        "p99_ms": 16860.65,
+        "errors": 0,
+        "rps": 1.92
+      },
+      "About_Page": {
+        "count": 29,
+        "avg_ms": 7797.71,
+        "p50_ms": 7687.27,
+        "p95_ms": 16692.58,
+        "p99_ms": 16925.84,
+        "errors": 0,
+        "rps": 1.01
+      },
+      "FindAgents_SmartRank": {
+        "count": 31,
+        "avg_ms": 6867.05,
+        "p50_ms": 6832.69,
+        "p95_ms": 13234.5,
+        "p99_ms": 15965.31,
+        "errors": 8,
+        "rps": 1.08
+      },
+      "Event_Landing": {
+        "count": 27,
+        "avg_ms": 6265.17,
+        "p50_ms": 4455.22,
+        "p95_ms": 12742.76,
+        "p99_ms": 14588.6,
+        "errors": 7,
+        "rps": 0.94
+      },
+      "FindAgents_Directory": {
+        "count": 63,
+        "avg_ms": 8084.8,
+        "p50_ms": 8739.56,
+        "p95_ms": 15423.65,
+        "p99_ms": 17298.73,
+        "errors": 10,
+        "rps": 2.2
+      },
+      "Django_Health": {
+        "count": 22,
+        "avg_ms": 7702.98,
+        "p50_ms": 8741.43,
+        "p95_ms": 14333.68,
+        "p99_ms": 14574.51,
+        "errors": 0,
+        "rps": 0.77
+      },
+      "FastAPI_Plans": {
+        "count": 77,
+        "avg_ms": 8520.08,
+        "p50_ms": 9287.79,
+        "p95_ms": 14988.62,
+        "p99_ms": 16728.96,
+        "errors": 0,
+        "rps": 2.69
+      },
+      "Register_Step1_Submit": {
+        "count": 50,
+        "avg_ms": 3980.76,
+        "p50_ms": 4021.42,
+        "p95_ms": 7405.7,
+        "p99_ms": 7903.88,
+        "errors": 1,
+        "rps": 1.75
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 39,
+        "avg_ms": 8951.16,
+        "p50_ms": 9240.58,
+        "p95_ms": 16740.52,
+        "p99_ms": 17854.73,
+        "errors": 6,
+        "rps": 1.36
+      },
+      "FastAPI_Pincode": {
+        "count": 33,
+        "avg_ms": 9160.31,
+        "p50_ms": 9199.13,
+        "p95_ms": 17071.36,
+        "p99_ms": 17667.18,
+        "errors": 0,
+        "rps": 1.15
+      }
+    }
+  },
+  "stress_350": {
+    "name": "Stress_350_Users",
+    "concurrency": 350,
+    "duration_sec": 27.58945870000025,
+    "total_requests": 775,
+    "rps": 28.09,
+    "avg_ms": 7965.08,
+    "p50_ms": 7517.61,
+    "p90_ms": 12333.84,
+    "p95_ms": 13892.51,
+    "p99_ms": 15952.22,
+    "min_ms": 301.39,
+    "max_ms": 18105.66,
+    "errors": 63,
+    "error_rate_pct": 8.13,
+    "cpu_pct": 40.0,
+    "memory_mb": 194.68,
+    "status_distribution": {
+      "200": 668,
+      "302": 42,
+      "429": 2,
+      "0": 61,
+      "400": 2
+    },
+    "endpoints": {
+      "Agent_LoginPage": {
+        "count": 51,
+        "avg_ms": 7117.71,
+        "p50_ms": 5694.83,
+        "p95_ms": 14295.76,
+        "p99_ms": 15445.62,
+        "errors": 1,
+        "rps": 1.85
+      },
+      "Django_PincodeCheck": {
+        "count": 35,
+        "avg_ms": 6955.89,
+        "p50_ms": 7355.58,
+        "p95_ms": 10127.94,
+        "p99_ms": 12928.54,
+        "errors": 5,
+        "rps": 1.27
+      },
+      "Admin_LoginPage": {
+        "count": 44,
+        "avg_ms": 6459.77,
+        "p50_ms": 5660.38,
+        "p95_ms": 10705.71,
+        "p99_ms": 11768.32,
+        "errors": 3,
+        "rps": 1.59
+      },
+      "About_Page": {
+        "count": 43,
+        "avg_ms": 8253.07,
+        "p50_ms": 8106.74,
+        "p95_ms": 14596.73,
+        "p99_ms": 14885.28,
+        "errors": 2,
+        "rps": 1.56
+      },
+      "Homepage": {
+        "count": 163,
+        "avg_ms": 7910.81,
+        "p50_ms": 6978.68,
+        "p95_ms": 13573.31,
+        "p99_ms": 15881.24,
+        "errors": 7,
+        "rps": 5.91
+      },
+      "FastAPI_Health": {
+        "count": 14,
+        "avg_ms": 6143.02,
+        "p50_ms": 5593.38,
+        "p95_ms": 9180.97,
+        "p99_ms": 9599.53,
+        "errors": 3,
+        "rps": 0.51
+      },
+      "CSRF_Refresh": {
+        "count": 42,
+        "avg_ms": 7000.84,
+        "p50_ms": 6600.47,
+        "p95_ms": 11299.69,
+        "p99_ms": 14322.1,
+        "errors": 3,
+        "rps": 1.52
+      },
+      "Calculators_Hub": {
+        "count": 32,
+        "avg_ms": 7932.66,
+        "p50_ms": 6744.86,
+        "p95_ms": 13367.17,
+        "p99_ms": 14712.9,
+        "errors": 3,
+        "rps": 1.16
+      },
+      "Event_Landing": {
+        "count": 38,
+        "avg_ms": 7962.56,
+        "p50_ms": 6652.08,
+        "p95_ms": 14038.63,
+        "p99_ms": 15019.88,
+        "errors": 5,
+        "rps": 1.38
+      },
+      "FindAgents_SmartRank": {
+        "count": 22,
+        "avg_ms": 9267.56,
+        "p50_ms": 9891.72,
+        "p95_ms": 16209.69,
+        "p99_ms": 17719.29,
+        "errors": 2,
+        "rps": 0.8
+      },
+      "Django_Health": {
+        "count": 29,
+        "avg_ms": 8216.34,
+        "p50_ms": 7951.27,
+        "p95_ms": 13993.63,
+        "p99_ms": 14176.1,
+        "errors": 2,
+        "rps": 1.05
+      },
+      "FastAPI_Pincode": {
+        "count": 39,
+        "avg_ms": 10119.59,
+        "p50_ms": 10296.46,
+        "p95_ms": 14816.84,
+        "p99_ms": 15486.16,
+        "errors": 9,
+        "rps": 1.41
+      },
+      "FastAPI_Plans": {
+        "count": 60,
+        "avg_ms": 7492.09,
+        "p50_ms": 7562.5,
+        "p95_ms": 13264.15,
+        "p99_ms": 14031.8,
+        "errors": 3,
+        "rps": 2.17
+      },
+      "Register_Step1_Submit": {
+        "count": 50,
+        "avg_ms": 5865.14,
+        "p50_ms": 3829.47,
+        "p95_ms": 15583.81,
+        "p99_ms": 17300.26,
+        "errors": 5,
+        "rps": 1.81
+      },
+      "FindAgents_Directory": {
+        "count": 79,
+        "avg_ms": 9703.38,
+        "p50_ms": 11069.69,
+        "p95_ms": 12671.58,
+        "p99_ms": 15250.84,
+        "errors": 7,
+        "rps": 2.86
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 34,
+        "avg_ms": 10449.19,
+        "p50_ms": 11979.37,
+        "p95_ms": 13731.39,
+        "p99_ms": 15773.19,
+        "errors": 3,
+        "rps": 1.23
+      }
+    }
+  },
+  "spike_pre": {
+    "name": "Spike_Pre_10",
+    "concurrency": 10,
+    "duration_sec": 5.747321099999681,
+    "total_requests": 169,
+    "rps": 29.41,
+    "avg_ms": 295.91,
+    "p50_ms": 102.99,
+    "p90_ms": 880.36,
+    "p95_ms": 1135.69,
+    "p99_ms": 1621.17,
+    "min_ms": 8.07,
+    "max_ms": 1762.26,
+    "errors": 6,
+    "error_rate_pct": 3.55,
+    "cpu_pct": 38.9,
+    "memory_mb": 172.62,
+    "status_distribution": {
+      "200": 161,
+      "429": 2,
+      "500": 1,
+      "400": 5
+    },
+    "endpoints": {
+      "Agent_LoginPage": {
+        "count": 13,
+        "avg_ms": 79.03,
+        "p50_ms": 61.48,
+        "p95_ms": 188.27,
+        "p99_ms": 279.59,
+        "errors": 0,
+        "rps": 2.26
+      },
+      "Admin_LoginPage": {
+        "count": 8,
+        "avg_ms": 51.8,
+        "p50_ms": 44.54,
+        "p95_ms": 95.58,
+        "p99_ms": 102.82,
+        "errors": 0,
+        "rps": 1.39
+      },
+      "About_Page": {
+        "count": 9,
+        "avg_ms": 137.01,
+        "p50_ms": 109.0,
+        "p95_ms": 280.76,
+        "p99_ms": 285.74,
+        "errors": 0,
+        "rps": 1.57
+      },
+      "Homepage": {
+        "count": 39,
+        "avg_ms": 110.4,
+        "p50_ms": 93.58,
+        "p95_ms": 178.1,
+        "p99_ms": 215.96,
+        "errors": 0,
+        "rps": 6.79
+      },
+      "Django_PincodeCheck": {
+        "count": 7,
+        "avg_ms": 74.67,
+        "p50_ms": 39.61,
+        "p95_ms": 199.46,
+        "p99_ms": 243.21,
+        "errors": 0,
+        "rps": 1.22
+      },
+      "CSRF_Refresh": {
+        "count": 8,
+        "avg_ms": 51.96,
+        "p50_ms": 23.85,
+        "p95_ms": 173.99,
+        "p99_ms": 232.99,
+        "errors": 0,
+        "rps": 1.39
+      },
+      "Calculators_Hub": {
+        "count": 8,
+        "avg_ms": 97.73,
+        "p50_ms": 77.91,
+        "p95_ms": 222.52,
+        "p99_ms": 277.2,
+        "errors": 0,
+        "rps": 1.39
+      },
+      "FindAgents_Directory": {
+        "count": 7,
+        "avg_ms": 638.06,
+        "p50_ms": 537.65,
+        "p95_ms": 974.2,
+        "p99_ms": 1023.26,
+        "errors": 0,
+        "rps": 1.22
+      },
+      "FindAgents_SmartRank": {
+        "count": 8,
+        "avg_ms": 292.1,
+        "p50_ms": 252.52,
+        "p95_ms": 530.88,
+        "p99_ms": 597.07,
+        "errors": 1,
+        "rps": 1.39
+      },
+      "Register_Step1_Submit": {
+        "count": 7,
+        "avg_ms": 543.37,
+        "p50_ms": 487.43,
+        "p95_ms": 1020.04,
+        "p99_ms": 1090.64,
+        "errors": 1,
+        "rps": 1.22
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 20,
+        "avg_ms": 881.31,
+        "p50_ms": 874.7,
+        "p95_ms": 1167.65,
+        "p99_ms": 1170.31,
+        "errors": 2,
+        "rps": 3.48
+      },
+      "FastAPI_Health": {
+        "count": 5,
+        "avg_ms": 102.88,
+        "p50_ms": 32.06,
+        "p95_ms": 233.04,
+        "p99_ms": 234.44,
+        "errors": 0,
+        "rps": 0.87
+      },
+      "FastAPI_Plans": {
+        "count": 17,
+        "avg_ms": 62.77,
+        "p50_ms": 57.19,
+        "p95_ms": 111.79,
+        "p99_ms": 165.37,
+        "errors": 0,
+        "rps": 2.96
+      },
+      "Event_Landing": {
+        "count": 4,
+        "avg_ms": 304.63,
+        "p50_ms": 258.16,
+        "p95_ms": 463.93,
+        "p99_ms": 491.61,
+        "errors": 2,
+        "rps": 0.7
+      },
+      "FastAPI_Pincode": {
+        "count": 6,
+        "avg_ms": 1598.49,
+        "p50_ms": 1585.1,
+        "p95_ms": 1734.11,
+        "p99_ms": 1756.63,
+        "errors": 0,
+        "rps": 1.04
+      },
+      "Django_Health": {
+        "count": 3,
+        "avg_ms": 228.07,
+        "p50_ms": 211.31,
+        "p95_ms": 367.8,
+        "p99_ms": 381.71,
+        "errors": 0,
+        "rps": 0.52
+      }
+    }
+  },
+  "spike_burst_100": {
+    "name": "Spike_Burst_100",
+    "concurrency": 100,
+    "duration_sec": 7.532780000001367,
+    "total_requests": 200,
+    "rps": 26.55,
+    "avg_ms": 3133.53,
+    "p50_ms": 2998.22,
+    "p90_ms": 5036.47,
+    "p95_ms": 5672.37,
+    "p99_ms": 6872.03,
+    "min_ms": 158.79,
+    "max_ms": 6877.23,
+    "errors": 0,
+    "error_rate_pct": 0.0,
+    "cpu_pct": 40.0,
+    "memory_mb": 186.47,
+    "status_distribution": {
+      "200": 194,
+      "302": 6
+    },
+    "endpoints": {
+      "CSRF_Refresh": {
+        "count": 7,
+        "avg_ms": 1506.89,
+        "p50_ms": 842.64,
+        "p95_ms": 2860.2,
+        "p99_ms": 2906.92,
+        "errors": 0,
+        "rps": 0.93
+      },
+      "FastAPI_Plans": {
+        "count": 28,
+        "avg_ms": 2372.31,
+        "p50_ms": 2514.93,
+        "p95_ms": 4062.17,
+        "p99_ms": 4109.64,
+        "errors": 0,
+        "rps": 3.72
+      },
+      "Django_PincodeCheck": {
+        "count": 13,
+        "avg_ms": 2077.32,
+        "p50_ms": 1896.5,
+        "p95_ms": 3108.52,
+        "p99_ms": 3207.31,
+        "errors": 0,
+        "rps": 1.73
+      },
+      "Agent_LoginPage": {
+        "count": 12,
+        "avg_ms": 2523.96,
+        "p50_ms": 2539.01,
+        "p95_ms": 3333.14,
+        "p99_ms": 3398.46,
+        "errors": 0,
+        "rps": 1.59
+      },
+      "Calculators_Hub": {
+        "count": 7,
+        "avg_ms": 2317.72,
+        "p50_ms": 1861.9,
+        "p95_ms": 3294.17,
+        "p99_ms": 3387.54,
+        "errors": 0,
+        "rps": 0.93
+      },
+      "About_Page": {
+        "count": 12,
+        "avg_ms": 2623.07,
+        "p50_ms": 2727.58,
+        "p95_ms": 3302.31,
+        "p99_ms": 3383.29,
+        "errors": 0,
+        "rps": 1.59
+      },
+      "Admin_LoginPage": {
+        "count": 10,
+        "avg_ms": 2548.54,
+        "p50_ms": 2680.49,
+        "p95_ms": 3037.73,
+        "p99_ms": 3052.59,
+        "errors": 0,
+        "rps": 1.33
+      },
+      "Register_Step1_Submit": {
+        "count": 8,
+        "avg_ms": 2496.8,
+        "p50_ms": 1600.01,
+        "p95_ms": 6230.36,
+        "p99_ms": 6421.28,
+        "errors": 0,
+        "rps": 1.06
+      },
+      "Homepage": {
+        "count": 37,
+        "avg_ms": 3049.6,
+        "p50_ms": 2993.29,
+        "p95_ms": 3907.85,
+        "p99_ms": 4014.75,
+        "errors": 0,
+        "rps": 4.91
+      },
+      "FastAPI_Pincode": {
+        "count": 8,
+        "avg_ms": 2994.32,
+        "p50_ms": 2752.29,
+        "p95_ms": 3931.45,
+        "p99_ms": 4015.71,
+        "errors": 0,
+        "rps": 1.06
+      },
+      "Django_Health": {
+        "count": 7,
+        "avg_ms": 3821.05,
+        "p50_ms": 3777.16,
+        "p95_ms": 4233.78,
+        "p99_ms": 4310.22,
+        "errors": 0,
+        "rps": 0.93
+      },
+      "FastAPI_Health": {
+        "count": 1,
+        "avg_ms": 1368.25,
+        "p50_ms": 1368.25,
+        "p95_ms": 1368.25,
+        "p99_ms": 1368.25,
+        "errors": 0,
+        "rps": 0.13
+      },
+      "FindAgents_Directory": {
+        "count": 22,
+        "avg_ms": 4305.85,
+        "p50_ms": 4631.86,
+        "p95_ms": 5047.59,
+        "p99_ms": 5262.99,
+        "errors": 0,
+        "rps": 2.92
+      },
+      "Event_Landing": {
+        "count": 9,
+        "avg_ms": 4554.26,
+        "p50_ms": 5261.91,
+        "p95_ms": 5496.65,
+        "p99_ms": 5558.4,
+        "errors": 0,
+        "rps": 1.19
+      },
+      "FindAgents_SmartRank": {
+        "count": 9,
+        "avg_ms": 4479.03,
+        "p50_ms": 5489.92,
+        "p95_ms": 6267.97,
+        "p99_ms": 6328.21,
+        "errors": 0,
+        "rps": 1.19
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 10,
+        "avg_ms": 5834.63,
+        "p50_ms": 6819.6,
+        "p95_ms": 6876.13,
+        "p99_ms": 6877.01,
+        "errors": 0,
+        "rps": 1.33
+      }
+    }
+  },
+  "spike_burst_250": {
+    "name": "Spike_Burst_250",
+    "concurrency": 250,
+    "duration_sec": 10.948693700000149,
+    "total_requests": 299,
+    "rps": 27.31,
+    "avg_ms": 5827.85,
+    "p50_ms": 5276.47,
+    "p90_ms": 10271.26,
+    "p95_ms": 10426.81,
+    "p99_ms": 10721.64,
+    "min_ms": 917.86,
+    "max_ms": 10739.88,
+    "errors": 0,
+    "error_rate_pct": 0.0,
+    "cpu_pct": 44.8,
+    "memory_mb": 142.54,
+    "status_distribution": {
+      "200": 289,
+      "302": 10
+    },
+    "endpoints": {
+      "Django_PincodeCheck": {
+        "count": 15,
+        "avg_ms": 4455.75,
+        "p50_ms": 5004.11,
+        "p95_ms": 5268.82,
+        "p99_ms": 5276.92,
+        "errors": 0,
+        "rps": 1.37
+      },
+      "Agent_LoginPage": {
+        "count": 19,
+        "avg_ms": 4648.54,
+        "p50_ms": 4918.95,
+        "p95_ms": 6253.05,
+        "p99_ms": 6264.24,
+        "errors": 0,
+        "rps": 1.74
+      },
+      "CSRF_Refresh": {
+        "count": 22,
+        "avg_ms": 4479.27,
+        "p50_ms": 4834.16,
+        "p95_ms": 5134.82,
+        "p99_ms": 5247.85,
+        "errors": 0,
+        "rps": 2.01
+      },
+      "FastAPI_Health": {
+        "count": 3,
+        "avg_ms": 4844.22,
+        "p50_ms": 4842.4,
+        "p95_ms": 4847.93,
+        "p99_ms": 4848.42,
+        "errors": 0,
+        "rps": 0.27
+      },
+      "Admin_LoginPage": {
+        "count": 22,
+        "avg_ms": 4637.4,
+        "p50_ms": 4959.0,
+        "p95_ms": 5394.21,
+        "p99_ms": 5397.41,
+        "errors": 0,
+        "rps": 2.01
+      },
+      "Homepage": {
+        "count": 44,
+        "avg_ms": 5630.28,
+        "p50_ms": 5141.88,
+        "p95_ms": 7181.29,
+        "p99_ms": 7240.34,
+        "errors": 0,
+        "rps": 4.02
+      },
+      "Calculators_Hub": {
+        "count": 16,
+        "avg_ms": 6070.01,
+        "p50_ms": 5158.97,
+        "p95_ms": 10001.47,
+        "p99_ms": 10029.37,
+        "errors": 0,
+        "rps": 1.46
+      },
+      "About_Page": {
+        "count": 17,
+        "avg_ms": 5059.6,
+        "p50_ms": 5020.37,
+        "p95_ms": 6278.87,
+        "p99_ms": 6341.36,
+        "errors": 0,
+        "rps": 1.55
+      },
+      "Event_Landing": {
+        "count": 10,
+        "avg_ms": 5431.36,
+        "p50_ms": 5379.44,
+        "p95_ms": 6867.14,
+        "p99_ms": 6950.94,
+        "errors": 0,
+        "rps": 0.91
+      },
+      "FastAPI_Pincode": {
+        "count": 15,
+        "avg_ms": 4751.18,
+        "p50_ms": 5352.53,
+        "p95_ms": 5406.05,
+        "p99_ms": 5415.22,
+        "errors": 0,
+        "rps": 1.37
+      },
+      "Django_Health": {
+        "count": 4,
+        "avg_ms": 5368.39,
+        "p50_ms": 5364.13,
+        "p95_ms": 5387.02,
+        "p99_ms": 5389.51,
+        "errors": 0,
+        "rps": 0.37
+      },
+      "FastAPI_Plans": {
+        "count": 32,
+        "avg_ms": 4756.58,
+        "p50_ms": 5475.28,
+        "p95_ms": 6014.91,
+        "p99_ms": 6025.23,
+        "errors": 0,
+        "rps": 2.92
+      },
+      "Register_Step1_Submit": {
+        "count": 12,
+        "avg_ms": 1465.48,
+        "p50_ms": 1120.27,
+        "p95_ms": 2290.95,
+        "p99_ms": 2397.27,
+        "errors": 0,
+        "rps": 1.1
+      },
+      "FindAgents_SmartRank": {
+        "count": 17,
+        "avg_ms": 7493.56,
+        "p50_ms": 8212.88,
+        "p95_ms": 8526.06,
+        "p99_ms": 8542.65,
+        "errors": 0,
+        "rps": 1.55
+      },
+      "FindAgents_Directory": {
+        "count": 37,
+        "avg_ms": 9391.48,
+        "p50_ms": 10224.34,
+        "p95_ms": 10415.0,
+        "p99_ms": 10429.24,
+        "errors": 0,
+        "rps": 3.38
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 14,
+        "avg_ms": 10691.09,
+        "p50_ms": 10682.78,
+        "p95_ms": 10731.45,
+        "p99_ms": 10738.19,
+        "errors": 0,
+        "rps": 1.28
+      }
+    }
+  },
+  "spike_recovery": {
+    "name": "Spike_Recovery_10",
+    "concurrency": 10,
+    "duration_sec": 6.731296399999337,
+    "total_requests": 123,
+    "rps": 18.27,
+    "avg_ms": 421.44,
+    "p50_ms": 137.07,
+    "p90_ms": 1427.45,
+    "p95_ms": 1736.37,
+    "p99_ms": 2233.71,
+    "min_ms": 7.39,
+    "max_ms": 2557.48,
+    "errors": 6,
+    "error_rate_pct": 4.88,
+    "cpu_pct": 48.0,
+    "memory_mb": 112.05,
+    "status_distribution": {
+      "200": 108,
+      "429": 4,
+      "400": 6,
+      "302": 5
+    },
+    "endpoints": {
+      "CSRF_Refresh": {
+        "count": 6,
+        "avg_ms": 26.98,
+        "p50_ms": 16.45,
+        "p95_ms": 64.73,
+        "p99_ms": 74.49,
+        "errors": 0,
+        "rps": 0.89
+      },
+      "FastAPI_Plans": {
+        "count": 13,
+        "avg_ms": 110.12,
+        "p50_ms": 82.98,
+        "p95_ms": 212.39,
+        "p99_ms": 254.02,
+        "errors": 0,
+        "rps": 1.93
+      },
+      "Homepage": {
+        "count": 17,
+        "avg_ms": 112.53,
+        "p50_ms": 92.07,
+        "p95_ms": 190.37,
+        "p99_ms": 199.12,
+        "errors": 0,
+        "rps": 2.53
+      },
+      "Calculators_Hub": {
+        "count": 10,
+        "avg_ms": 150.65,
+        "p50_ms": 84.22,
+        "p95_ms": 396.02,
+        "p99_ms": 433.51,
+        "errors": 0,
+        "rps": 1.49
+      },
+      "Agent_LoginPage": {
+        "count": 4,
+        "avg_ms": 114.12,
+        "p50_ms": 126.34,
+        "p95_ms": 153.26,
+        "p99_ms": 154.19,
+        "errors": 0,
+        "rps": 0.59
+      },
+      "Event_Landing": {
+        "count": 9,
+        "avg_ms": 437.18,
+        "p50_ms": 310.94,
+        "p95_ms": 1107.57,
+        "p99_ms": 1377.73,
+        "errors": 1,
+        "rps": 1.34
+      },
+      "Django_Health": {
+        "count": 6,
+        "avg_ms": 482.67,
+        "p50_ms": 327.44,
+        "p95_ms": 1193.25,
+        "p99_ms": 1323.56,
+        "errors": 0,
+        "rps": 0.89
+      },
+      "Admin_LoginPage": {
+        "count": 5,
+        "avg_ms": 75.86,
+        "p50_ms": 61.56,
+        "p95_ms": 104.59,
+        "p99_ms": 106.99,
+        "errors": 0,
+        "rps": 0.74
+      },
+      "Register_Step1_Submit": {
+        "count": 7,
+        "avg_ms": 607.32,
+        "p50_ms": 449.32,
+        "p95_ms": 1418.94,
+        "p99_ms": 1650.61,
+        "errors": 0,
+        "rps": 1.04
+      },
+      "About_Page": {
+        "count": 8,
+        "avg_ms": 150.1,
+        "p50_ms": 116.22,
+        "p95_ms": 315.62,
+        "p99_ms": 328.72,
+        "errors": 0,
+        "rps": 1.19
+      },
+      "FindAgents_Directory": {
+        "count": 11,
+        "avg_ms": 1126.3,
+        "p50_ms": 1006.57,
+        "p95_ms": 1711.78,
+        "p99_ms": 1733.93,
+        "errors": 2,
+        "rps": 1.63
+      },
+      "FastAPI_Health": {
+        "count": 3,
+        "avg_ms": 54.53,
+        "p50_ms": 24.88,
+        "p95_ms": 120.69,
+        "p99_ms": 129.2,
+        "errors": 0,
+        "rps": 0.45
+      },
+      "FastAPI_Pincode": {
+        "count": 5,
+        "avg_ms": 1910.85,
+        "p50_ms": 1881.05,
+        "p95_ms": 2442.66,
+        "p99_ms": 2534.52,
+        "errors": 0,
+        "rps": 0.74
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 7,
+        "avg_ms": 1389.03,
+        "p50_ms": 1045.02,
+        "p95_ms": 2231.05,
+        "p99_ms": 2239.04,
+        "errors": 2,
+        "rps": 1.04
+      },
+      "Django_PincodeCheck": {
+        "count": 8,
+        "avg_ms": 63.78,
+        "p50_ms": 58.19,
+        "p95_ms": 97.69,
+        "p99_ms": 101.62,
+        "errors": 0,
+        "rps": 1.19
+      },
+      "FindAgents_SmartRank": {
+        "count": 4,
+        "avg_ms": 341.21,
+        "p50_ms": 256.39,
+        "p95_ms": 632.32,
+        "p99_ms": 676.0,
+        "errors": 1,
+        "rps": 0.59
+      }
+    }
+  },
+  "soak_50": {
+    "name": "Soak_50_Users",
+    "concurrency": 50,
+    "duration_sec": 31.690522599999895,
+    "total_requests": 919,
+    "rps": 29.0,
+    "avg_ms": 1639.86,
+    "p50_ms": 1090.45,
+    "p90_ms": 5064.25,
+    "p95_ms": 5680.89,
+    "p99_ms": 6450.71,
+    "min_ms": 4.51,
+    "max_ms": 6998.48,
+    "errors": 0,
+    "error_rate_pct": 0.0,
+    "cpu_pct": 41.4,
+    "memory_mb": 148.04,
+    "status_distribution": {
+      "200": 866,
+      "302": 9,
+      "429": 44
+    },
+    "endpoints": {
+      "CSRF_Refresh": {
+        "count": 52,
+        "avg_ms": 189.44,
+        "p50_ms": 19.31,
+        "p95_ms": 1020.0,
+        "p99_ms": 1226.8,
+        "errors": 0,
+        "rps": 1.64
+      },
+      "Django_PincodeCheck": {
+        "count": 45,
+        "avg_ms": 266.3,
+        "p50_ms": 37.99,
+        "p95_ms": 1073.97,
+        "p99_ms": 1250.43,
+        "errors": 0,
+        "rps": 1.42
+      },
+      "Agent_LoginPage": {
+        "count": 46,
+        "avg_ms": 714.01,
+        "p50_ms": 720.28,
+        "p95_ms": 1280.85,
+        "p99_ms": 1471.58,
+        "errors": 0,
+        "rps": 1.45
+      },
+      "Admin_LoginPage": {
+        "count": 46,
+        "avg_ms": 389.36,
+        "p50_ms": 166.28,
+        "p95_ms": 1408.86,
+        "p99_ms": 1518.56,
+        "errors": 0,
+        "rps": 1.45
+      },
+      "Homepage": {
+        "count": 180,
+        "avg_ms": 1170.07,
+        "p50_ms": 1174.6,
+        "p95_ms": 1701.72,
+        "p99_ms": 2013.87,
+        "errors": 0,
+        "rps": 5.68
+      },
+      "About_Page": {
+        "count": 38,
+        "avg_ms": 846.61,
+        "p50_ms": 861.79,
+        "p95_ms": 1470.13,
+        "p99_ms": 1591.52,
+        "errors": 0,
+        "rps": 1.2
+      },
+      "Django_Health": {
+        "count": 32,
+        "avg_ms": 502.21,
+        "p50_ms": 170.74,
+        "p95_ms": 2061.58,
+        "p99_ms": 2158.73,
+        "errors": 0,
+        "rps": 1.01
+      },
+      "Register_Step1_Submit": {
+        "count": 54,
+        "avg_ms": 265.6,
+        "p50_ms": 46.24,
+        "p95_ms": 1094.16,
+        "p99_ms": 3451.0,
+        "errors": 0,
+        "rps": 1.7
+      },
+      "FastAPI_Plans": {
+        "count": 95,
+        "avg_ms": 313.53,
+        "p50_ms": 47.27,
+        "p95_ms": 1865.84,
+        "p99_ms": 2178.01,
+        "errors": 0,
+        "rps": 3.0
+      },
+      "FindAgents_Directory": {
+        "count": 94,
+        "avg_ms": 4736.45,
+        "p50_ms": 5204.18,
+        "p95_ms": 6456.78,
+        "p99_ms": 6568.79,
+        "errors": 0,
+        "rps": 2.97
+      },
+      "Event_Landing": {
+        "count": 31,
+        "avg_ms": 1290.95,
+        "p50_ms": 1182.4,
+        "p95_ms": 2289.1,
+        "p99_ms": 3647.63,
+        "errors": 0,
+        "rps": 0.98
+      },
+      "FastAPI_Pincode": {
+        "count": 45,
+        "avg_ms": 2439.07,
+        "p50_ms": 2595.6,
+        "p95_ms": 3195.59,
+        "p99_ms": 3276.28,
+        "errors": 0,
+        "rps": 1.42
+      },
+      "Calculators_Hub": {
+        "count": 51,
+        "avg_ms": 3357.79,
+        "p50_ms": 3689.69,
+        "p95_ms": 4387.19,
+        "p99_ms": 4627.33,
+        "errors": 0,
+        "rps": 1.61
+      },
+      "FindAgents_SmartRank": {
+        "count": 30,
+        "avg_ms": 2009.65,
+        "p50_ms": 1915.56,
+        "p95_ms": 3102.57,
+        "p99_ms": 3268.91,
+        "errors": 0,
+        "rps": 0.95
+      },
+      "FastAPI_Health": {
+        "count": 20,
+        "avg_ms": 129.95,
+        "p50_ms": 17.08,
+        "p95_ms": 855.84,
+        "p99_ms": 883.19,
+        "errors": 0,
+        "rps": 0.63
+      },
+      "FindAgents_PincodeSearch": {
+        "count": 60,
+        "avg_ms": 5038.6,
+        "p50_ms": 5241.26,
+        "p95_ms": 6396.0,
+        "p99_ms": 6990.26,
+        "errors": 0,
+        "rps": 1.89
+      }
+    }
+  }
+}

@@ -50,13 +50,19 @@ class EmailService:
             logo_url = f"{settings.APP_URL}/{logo_url.lstrip('/')}"
 
         login_url = f"{settings.APP_URL}/agent-login"
-        current_year = datetime.utcnow().year
+        current_year = datetime.now().year
 
         # Render JINJA welcome email template
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        template_dir = os.path.join(base_dir, "templates")
+        fastapi_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        project_root = os.path.dirname(fastapi_dir)
+        search_dirs = [
+            os.path.join(fastapi_dir, "templates"),
+            os.path.join(project_root, "templates", "emails"),
+            os.path.join(project_root, "templates"),
+        ]
+        valid_dirs = [d for d in search_dirs if os.path.isdir(d)]
         # autoescape: agent_name / email are user-controlled and go into HTML.
-        env = Environment(loader=FileSystemLoader(template_dir), autoescape=True)
+        env = Environment(loader=FileSystemLoader(valid_dirs), autoescape=True)
         template = env.get_template("agent_credentials.html")
 
         html_content = template.render(
@@ -65,7 +71,9 @@ class EmailService:
             password=password,
             logo_url=logo_url,
             login_url=login_url,
-            current_year=current_year
+            current_year=current_year,
+            agent={"fullname": to_name, "email": to_email},
+            site_logo=logo_url
         )
 
         url = "https://api.brevo.com/v3/smtp/email"
@@ -110,15 +118,15 @@ class EmailService:
         try:
             with urllib.request.urlopen(req, timeout=20) as response:
                 res_body = response.read().decode("utf-8")
-                print("Brevo Email Sent:", res_body)
+                logger.info(f"Brevo Email Sent: {res_body}")
                 return True
         except urllib.error.HTTPError as e:
             error_body = e.read().decode("utf-8")
-            print(f"Brevo HTTP Error ({e.code}): {error_body}")
+            logger.error(f"Brevo HTTP Error ({e.code}): {error_body}")
             # If fallback enabled, we return success so that the user doesn't get blocked
             return settings.BREVO_OTP_FALLBACK
         except Exception as ex:
-            print(f"Brevo HTTP Connection Error: {ex}")
+            logger.error(f"Brevo HTTP Connection Error: {ex}")
             return settings.BREVO_OTP_FALLBACK
 
     @staticmethod
@@ -161,7 +169,7 @@ class EmailService:
                 response.read()
                 return True
         except Exception as e:
-            print(f"Brevo HTTP error: {e}")
+            logger.error(f"Brevo HTTP error: {e}")
             return False
 
     @staticmethod

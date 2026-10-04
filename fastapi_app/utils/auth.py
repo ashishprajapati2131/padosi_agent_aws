@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Union, Any
 from uuid import uuid4
 from jose import jwt, JWTError
@@ -24,7 +24,7 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if expires_delta:
         expire = now + expires_delta
     else:
@@ -41,7 +41,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if expires_delta:
         expire = now + expires_delta
     else:
@@ -62,7 +62,7 @@ def generate_and_register_token(db: Session, email: str, role: str, user_id: int
     from fastapi_app.models.user_token import UserToken
     jti = str(uuid4())
     token_version = 1
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     # Issue standard expiration token according to configured ACCESS_TOKEN_EXPIRE_MINUTES
     if not expires_delta:

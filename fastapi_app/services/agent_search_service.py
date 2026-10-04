@@ -173,15 +173,15 @@ class AgentSearchService:
             (CASE WHEN (SELECT AVG(rating) FROM agent_reviews WHERE agent_reviews.agent_id = agents.id AND agent_reviews.is_approved = 1) >= 4.5 THEN 10 ELSE 0 END) +
             (CASE 
                 WHEN COALESCE(
-                    (SELECT last_login_at FROM users WHERE users.id = agents.user_id),
+                    (SELECT last_login_at FROM users WHERE users.email = agents.email),
                     (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
                 ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 DAY) THEN 50
                 WHEN COALESCE(
-                    (SELECT last_login_at FROM users WHERE users.id = agents.user_id),
+                    (SELECT last_login_at FROM users WHERE users.email = agents.email),
                     (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
                 ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 14 DAY) THEN 25
                 WHEN COALESCE(
-                    (SELECT last_login_at FROM users WHERE users.id = agents.user_id),
+                    (SELECT last_login_at FROM users WHERE users.email = agents.email),
                     (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
                 ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY) THEN 10
                 ELSE 0

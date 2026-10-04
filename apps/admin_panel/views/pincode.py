@@ -159,8 +159,12 @@ def index(request):
     
     import_logs = PincodeImportLog.objects.order_by('-created_at')[:10]
     
+    elided_page_range = paginator.get_elided_page_range(pincodes.number, on_each_side=2, on_ends=1) if pincodes.has_other_pages() else []
+    
     context = {
         'pincodes': pincodes,
+        'elided_page_range': elided_page_range,
+        'ellipsis': paginator.ELLIPSIS,
         'states': states,
         'districts': districts,
         'stats': stats,
@@ -482,7 +486,21 @@ def delete_by_state(request):
         if not state:
             return JsonResponse({'success': False, 'message': 'State parameter is required.'}, status=422)
         deleted = Pincode.objects.filter(state=state).delete()
-        return JsonResponse({'success': True, 'deleted': deleted[0]})
+        try:
+            from apps.admin_panel.models.admin_activity_log import AdminActivityLog
+            AdminActivityLog.log(
+                f'Deleted pincodes for state: {state}',
+                'Pincode',
+                details={'state': state, 'deleted_count': deleted[0]},
+                request=request
+            )
+        except Exception:
+            pass
+        return JsonResponse({
+            'success': True,
+            'deleted': deleted[0],
+            'message': f'Successfully deleted {deleted[0]} pincodes for {state}.'
+        })
     return JsonResponse({'success': False, 'message': 'Method not allowed.'}, status=405)
 
 def get_districts(request):

@@ -134,11 +134,13 @@ class FacebookAutoPost {
 
     async handleProductionFlow(participant, contestPost) {
         try {
+            const csrfToken = (document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '');
             const response = await fetch(this.endpoints.autoPost, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRFToken': csrfToken,
+                    'X-CSRF-TOKEN': csrfToken
                 },
                 body: JSON.stringify({
                     participant_id: participant.id,
@@ -206,11 +208,13 @@ Let's build a stronger community together! 🚀
     // Store Facebook access token
     async storeAccessToken(participantId, accessToken, userId) {
         try {
+            const csrfToken = (document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '');
             const response = await fetch(this.endpoints.storeToken, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRFToken': csrfToken,
+                    'X-CSRF-TOKEN': csrfToken
                 },
                 body: JSON.stringify({
                     participant_id: participantId,

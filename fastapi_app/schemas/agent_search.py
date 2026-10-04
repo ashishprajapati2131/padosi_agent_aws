@@ -1,12 +1,12 @@
 from typing import List, Optional, Any, Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class FindAgentsRequest(BaseModel):
-    pincode: Optional[str] = Field(None, description="6-digit Indian Pincode", example="380015")
-    location: Optional[str] = Field(None, description="City, State, or Area search string", example="Satellite, Ahmedabad")
-    lat: Optional[float] = Field(None, description="User Latitude", example=23.0200)
-    lng: Optional[float] = Field(None, description="User Longitude", example=72.5100)
+    pincode: Optional[str] = Field(None, description="6-digit Indian Pincode", json_schema_extra={"example": "380015"})
+    location: Optional[str] = Field(None, description="City, State, or Area search string", json_schema_extra={"example": "Satellite, Ahmedabad"})
+    lat: Optional[float] = Field(None, description="User Latitude", json_schema_extra={"example": 23.0200})
+    lng: Optional[float] = Field(None, description="User Longitude", json_schema_extra={"example": 72.5100})
 
     service_types: Optional[List[str]] = Field(
         default=[],
@@ -40,8 +40,7 @@ class FindAgentsRequest(BaseModel):
     page: int = Field(1, ge=1, description="Page number (1-indexed)")
     page_size: int = Field(5, ge=1, le=100, description="Number of agents per page")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class RecognitionBadge(BaseModel):

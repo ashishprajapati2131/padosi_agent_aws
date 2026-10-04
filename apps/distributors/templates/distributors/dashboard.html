@@ -263,6 +263,7 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
                 'X-CSRF-TOKEN': '{{ csrf_token }}'
             },
             body: JSON.stringify({ custom_invite_message: msg })

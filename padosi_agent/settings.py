@@ -404,6 +404,7 @@ LOGGING = {
 SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
 if SENTRY_DSN:
     try:
+        import logging
         import sentry_sdk
         from sentry_sdk.integrations.django import DjangoIntegration
         from sentry_sdk.integrations.logging import LoggingIntegration
@@ -419,8 +420,9 @@ if SENTRY_DSN:
             send_default_pii=False,
             environment=os.environ.get('APP_ENV', 'production' if not DEBUG else 'development'),
         )
-    except Exception:
-        pass
+    except Exception as _sentry_err:
+        import warnings
+        warnings.warn(f"Failed to initialize Sentry: {_sentry_err}")
 
 TEST_RUNNER = 'apps.home.test_runner.ManagedModelsTestRunner'
 

@@ -5,7 +5,7 @@ import random
 import string
 
 class ReferralCode(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.SET_NULL, null=True, blank=True, related_name='referral_codes')
+    agent = models.ForeignKey(Agent, on_delete=models.SET_NULL, null=True, blank=True, related_name='referral_codes', db_constraint=False)
     distributor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='distributor_referral_codes', db_column='distributor_id')
     code = models.CharField(max_length=255, unique=True)
     is_active = models.BooleanField(default=True)

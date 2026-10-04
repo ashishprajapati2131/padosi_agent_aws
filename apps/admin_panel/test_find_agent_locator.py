@@ -18,6 +18,13 @@ from apps.admin_panel.views.find_agent_locator import (
     live_preview,
     unlink_agent_pincode,
 )
+from apps.admin_panel.views.pincode import (
+    index as pincode_index,
+    sample_download as pincode_sample,
+    export_data as pincode_export,
+    delete_by_state as pincode_delete_state,
+)
+from apps.admin_panel.models.admin_activity_log import AdminActivityLog
 
 
 class FindAgentLocatorTests(TestCase):
@@ -193,3 +200,63 @@ class FindAgentLocatorTests(TestCase):
         self.profile.refresh_from_db()
         pins = [p.get('pincode') if isinstance(p, dict) else p for p in (self.profile.service_pincodes or [])]
         self.assertNotIn('380015', pins)
+
+    @patch('apps.admin_panel.views.pincode._get_admin_from_session', return_value=1)
+    def test_pincode_index_elided_pagination_and_context(self, mock_admin):
+        # Create sample pincodes
+        for i in range(1, 15):
+            Pincode.objects.get_or_create(
+                pincode=f"3800{i:02d}",
+                defaults={
+                    'office_name': f"Area {i}",
+                    'district': "Ahmedabad",
+                    'state': "Gujarat",
+                    'latitude': Decimal("23.0300"),
+                    'longitude': Decimal("72.5000"),
+                }
+            )
+
+        req = self._auth_request('GET', '/admin/pincode-manager/?search=Area&state=Gujarat')
+        resp = pincode_index(req)
+        self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode()
+        self.assertIn('Pincode Manager', content)
+        self.assertIn('Gujarat', content)
+        self.assertIn('Purge Gujarat', content)
+
+    @patch('apps.admin_panel.views.pincode._get_admin_from_session', return_value=1)
+    def test_pincode_sample_and_export_downloads(self, mock_admin):
+        # Test sample download
+        req_sample = self._auth_request('GET', '/admin/pincode-manager/sample/')
+        resp_sample = pincode_sample(req_sample)
+        self.assertEqual(resp_sample.status_code, 200)
+        self.assertIn('text/csv', resp_sample['Content-Type'])
+        self.assertIn('pincode_sample.csv', resp_sample['Content-Disposition'])
+
+        # Test export
+        req_export = self._auth_request('GET', '/admin/pincode-manager/export/?state=Gujarat')
+        resp_export = pincode_export(req_export)
+        self.assertEqual(resp_export.status_code, 200)
+        self.assertIn('text/csv', resp_export['Content-Type'])
+        self.assertIn('pincodes_export.csv', resp_export['Content-Disposition'])
+
+    @patch('apps.admin_panel.views.pincode._get_admin_from_session', return_value=1)
+    def test_delete_by_state_with_audit_log(self, mock_admin):
+        Pincode.objects.get_or_create(
+            pincode="403001",
+            defaults={
+                'office_name': "Panaji",
+                'district': "North Goa",
+                'state': "Goa",
+                'latitude': Decimal("15.4909"),
+                'longitude': Decimal("73.8278"),
+            }
+        )
+        self.assertTrue(Pincode.objects.filter(state="Goa").exists())
+
+        req = self._auth_request('POST', '/admin/pincode-manager/delete-state/', {'state': 'Goa'})
+        resp = pincode_delete_state(req)
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.content)
+        self.assertTrue(data['success'])
+        self.assertFalse(Pincode.objects.filter(state="Goa").exists())

@@ -32,7 +32,7 @@ from django.db import connection
 from django.utils import timezone
 from apps.agents.models import Agent, AgentDraft, AgentProfile
 from apps.event_referral.models import EventReferralCampaign, EventReferralParticipant
-from password_hashing import hash_password, verify_password, BCRYPT_ROUNDS
+from password_hashing import hash_password, check_password_hash as verify_password, DEFAULT_BCRYPT_ROUNDS as BCRYPT_ROUNDS
 
 
 def benchmark_password_hashing():

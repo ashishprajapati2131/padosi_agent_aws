@@ -1,7 +1,7 @@
 from django.db import models
 
 class AgentServicePincode(models.Model):
-    agent = models.ForeignKey('agents.Agent', on_delete=models.CASCADE, related_name='servicePincodes')
+    agent = models.ForeignKey('agents.Agent', on_delete=models.CASCADE, related_name='servicePincodes', db_constraint=False)
     service_pincode = models.CharField(max_length=10)
     city_name = models.CharField(max_length=150)
     selected_areas_json = models.JSONField(null=True, blank=True)

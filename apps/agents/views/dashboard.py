@@ -360,14 +360,21 @@ def agent_dashboard(request):
     start_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     try:
-        lead_base_query = AgentLead.objects.filter(agent=agent)
-        total_leads = lead_base_query.count()
-        monthly_leads = lead_base_query.filter(created_at__gte=start_of_month).count()
-
-        new_leads = lead_base_query.filter(lead_status='new').count()
-        contacted_leads = lead_base_query.filter(lead_status='contacted').count()
-        follow_up_leads = lead_base_query.filter(lead_status='follow_up').count()
-        closed_leads = lead_base_query.filter(lead_status='closed').count()
+        from django.db.models import Count
+        lead_stats = AgentLead.objects.filter(agent=agent).aggregate(
+            total=Count('id'),
+            monthly=Count('id', filter=Q(created_at__gte=start_of_month)),
+            new=Count('id', filter=Q(lead_status='new')),
+            contacted=Count('id', filter=Q(lead_status='contacted')),
+            follow_up=Count('id', filter=Q(lead_status='follow_up')),
+            closed=Count('id', filter=Q(lead_status='closed')),
+        )
+        total_leads = lead_stats['total'] or 0
+        monthly_leads = lead_stats['monthly'] or 0
+        new_leads = lead_stats['new'] or 0
+        contacted_leads = lead_stats['contacted'] or 0
+        follow_up_leads = lead_stats['follow_up'] or 0
+        closed_leads = lead_stats['closed'] or 0
     except Exception as e:
         logger.warning(f"Dashboard lead stats unavailable for agent #{agent.id}: {e}")
         total_leads = monthly_leads = new_leads = contacted_leads = follow_up_leads = closed_leads = 0
@@ -376,11 +383,12 @@ def agent_dashboard(request):
     conversion_rate = round((closed_leads / total_leads * 100), 1) if total_leads > 0 else 0.0
 
     try:
-        total_page_views = AgentProfileView.objects.filter(agent=agent).aggregate(Sum('view_count'))['view_count__sum'] or 0
-        monthly_visits = AgentProfileView.objects.filter(
-            agent=agent,
-            view_date__gte=start_of_month.date()
-        ).aggregate(Sum('view_count'))['view_count__sum'] or 0
+        pv_stats = AgentProfileView.objects.filter(agent=agent).aggregate(
+            total=Sum('view_count'),
+            monthly=Sum('view_count', filter=Q(view_date__gte=start_of_month.date()))
+        )
+        total_page_views = pv_stats['total'] or 0
+        monthly_visits = pv_stats['monthly'] or 0
     except Exception as e:
         logger.warning(f"Dashboard profile view stats unavailable for agent #{agent.id}: {e}")
         total_page_views = monthly_visits = 0
@@ -2772,7 +2780,8 @@ def serve_private_file(request, file_path):
     is_owner = False
     if request.user.is_authenticated:
         from apps.agents.models import Agent, Invoice
-        agent = Agent.objects.filter(user=request.user).first()
+        from apps.agents.services.account_auth import resolve_agent_for_user
+        agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
         if agent:
             invoice_exists = Invoice.objects.filter(agent=agent, pdf_path=normalized_path).exists()
             if invoice_exists:
@@ -2810,7 +2819,12 @@ def agent_update_visibility(request):
         return JsonResponse({'success': False, 'message': 'Invalid field'})
 
     try:
-        profile = AgentProfile.objects.filter(agent__user=request.user).first()
+        from apps.agents.services.account_auth import resolve_agent_for_user
+        agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
+        if not agent:
+            return JsonResponse({'success': False, 'message': 'Agent profile not found'})
+
+        profile = AgentProfile.objects.filter(agent=agent).first()
         if not profile:
             return JsonResponse({'success': False, 'message': 'Agent profile not found'})
 

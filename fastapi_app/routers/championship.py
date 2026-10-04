@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, 
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import datetime
+from fastapi_app.utils.datetime_util import get_current_time
 
 from fastapi_app.database import get_db
 from fastapi_app.dependencies.auth import get_current_agent
@@ -118,7 +119,7 @@ def calculate_days_left(end_date) -> int:
         if isinstance(end_dt, str):
             from dateutil.parser import parse
             end_dt = parse(end_dt)
-        now = datetime.utcnow()
+        now = get_current_time()
         if hasattr(end_dt, 'tzinfo') and end_dt.tzinfo is not None:
             from datetime import timezone
             now = datetime.now(timezone.utc)
@@ -156,8 +157,8 @@ def get_agent_championship_dashboard(
     is_unlocked = (completion >= min_profile and review_count >= min_reviews)
     if is_unlocked and not participant.is_unlocked:
         participant.is_unlocked = True
-        participant.profile_completed_at = datetime.utcnow()
-        participant.reviews_completed_at = datetime.utcnow()
+        participant.profile_completed_at = get_current_time()
+        participant.reviews_completed_at = get_current_time()
         db.commit()
 
     unlock_gate_data = UnlockProgressSchema(

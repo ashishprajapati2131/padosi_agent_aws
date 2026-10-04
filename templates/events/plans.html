@@ -1429,7 +1429,7 @@
         let ribbonCanvases = document.querySelectorAll('.ribbon-scratch-canvas');
         let isRibbonDrawing = false;
         let ribbonTotalPixels = 0;
-        let scratchThreshold = {{ exclusive_config.scratch_threshold_percent|default: 40 }};
+        let scratchThreshold = {{ exclusive_config.scratch_threshold_percent|default:40 }};
         let agentId = '{{ event_registration.id|default:"event" }}';
 
         let activeRibbonCtx = null;

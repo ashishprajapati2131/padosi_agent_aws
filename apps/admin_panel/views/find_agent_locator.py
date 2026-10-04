@@ -186,8 +186,10 @@ def save_pincode_to_master(request):
     taluk = str(data.get('taluk', '')).strip() or None
 
     try:
-        lat = float(data.get('latitude'))
-        lng = float(data.get('longitude'))
+        lat_val = data.get('latitude') if data.get('latitude') is not None else data.get('lat')
+        lng_val = data.get('longitude') if data.get('longitude') is not None else data.get('lng')
+        lat = float(lat_val)
+        lng = float(lng_val)
     except (TypeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Valid numeric latitude and longitude are required.'}, status=422)
 
@@ -309,8 +311,10 @@ def assign_agent_to_pincode(request):
     activate_agent = bool(data.get('activate_agent', True))
 
     try:
-        lat = float(data.get('latitude'))
-        lng = float(data.get('longitude'))
+        lat_val = data.get('latitude') if data.get('latitude') is not None else data.get('lat')
+        lng_val = data.get('longitude') if data.get('longitude') is not None else data.get('lng')
+        lat = float(lat_val)
+        lng = float(lng_val)
     except (TypeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Valid latitude and longitude are required.'}, status=422)
 
@@ -439,8 +443,10 @@ def create_and_add_agent(request):
     city_name = str(data.get('city_name', '')).strip() or 'Default City'
 
     try:
-        lat = float(data.get('latitude'))
-        lng = float(data.get('longitude'))
+        lat_val = data.get('latitude') if data.get('latitude') is not None else data.get('lat')
+        lng_val = data.get('longitude') if data.get('longitude') is not None else data.get('lng')
+        lat = float(lat_val)
+        lng = float(lng_val)
     except (TypeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Valid latitude and longitude are required.'}, status=422)
 
@@ -452,6 +458,11 @@ def create_and_add_agent(request):
 
     if Agent.objects.filter(mobile=mobile).exists():
         return JsonResponse({'success': False, 'message': f'An agent with mobile {mobile} already exists.'}, status=422)
+
+    from apps.agents.services.account_auth import email_owned_by_non_agent_account, create_or_link_django_user
+
+    if email_owned_by_non_agent_account(email):
+        return JsonResponse({'success': False, 'message': f'This email ({email}) is associated with an admin or portal account and cannot be registered as an agent.'}, status=422)
 
     try:
         now = timezone.now()
@@ -471,6 +482,11 @@ def create_and_add_agent(request):
             insurance_companies=[company_name] if company_name else ['LIC'],
             user_types=[insurance_type.lower()] if insurance_type else ['life'],
         )
+
+        try:
+            create_or_link_django_user(agent)
+        except Exception as _user_err:
+            logger.warning(f"Could not link Django user for quick-created agent {agent.id}: {_user_err}")
 
         AgentProfile.objects.create(
             agent=agent,

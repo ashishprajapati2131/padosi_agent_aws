@@ -10,6 +10,8 @@ class StaleCookieSanitizerMiddleware:
     """
     Sanitizes malformed or corrupted HTTP_COOKIE header strings before Django parses them.
     Prevents 400 Bad Request or Cookie parsing crashes for end clients.
+    Also bridges alternative CSRF headers like HTTP_X_CSRF_TOKEN to HTTP_X_CSRFTOKEN
+    so legacy or third-party frontend fetch calls aren't rejected by Django's CsrfViewMiddleware.
     """
     def __init__(self, get_response):
         self.get_response = get_response
@@ -20,6 +22,10 @@ class StaleCookieSanitizerMiddleware:
             sanitized = re.sub(r'[\x00-\x1F\x7F]', '', raw_cookie)
             if sanitized != raw_cookie:
                 request.META['HTTP_COOKIE'] = sanitized
+
+        if 'HTTP_X_CSRF_TOKEN' in request.META and 'HTTP_X_CSRFTOKEN' not in request.META:
+            request.META['HTTP_X_CSRFTOKEN'] = request.META['HTTP_X_CSRF_TOKEN']
+
         return self.get_response(request)
 
 
@@ -36,7 +42,14 @@ class AutoCsrfCookieMiddleware:
         if request.method == 'GET' and response.status_code == 200:
             token = get_token(request)
             if token and 'padosi_csrf_token' not in request.COOKIES:
-                response.set_cookie('padosi_csrf_token', token, path='/', samesite='Lax')
+                response.set_cookie(
+                    'padosi_csrf_token',
+                    token,
+                    path='/',
+                    samesite='Lax',
+                    secure=request.is_secure(),
+                    httponly=False,
+                )
         return response
 
 

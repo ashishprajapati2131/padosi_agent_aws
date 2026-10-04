@@ -618,15 +618,15 @@ def fetch_filtered_agents_list(request):
         (CASE WHEN (SELECT AVG(rating) FROM agent_reviews WHERE agent_reviews.agent_id = agents.id AND agent_reviews.is_approved = 1) >= 4.5 THEN 10 ELSE 0 END) +
         (CASE 
             WHEN COALESCE(
-                (SELECT last_login_at FROM users WHERE users.id = agents.user_id),
+                (SELECT last_login_at FROM users WHERE users.email = agents.email),
                 (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
             ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 DAY) THEN 50
             WHEN COALESCE(
-                (SELECT last_login_at FROM users WHERE users.id = agents.user_id),
+                (SELECT last_login_at FROM users WHERE users.email = agents.email),
                 (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
             ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 14 DAY) THEN 25
             WHEN COALESCE(
-                (SELECT last_login_at FROM users WHERE users.id = agents.user_id),
+                (SELECT last_login_at FROM users WHERE users.email = agents.email),
                 (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
             ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY) THEN 10
             ELSE 0
@@ -914,16 +914,35 @@ def find_agents(request):
                 if not _se_created:
                     AgentSearchEvent.objects.filter(pk=_se.pk).update(event_count=F('event_count') + 1)
 
-            # Hook B — record a card impression for each agent on this page
-            for _agent in agents_page:
-                _ci, _ci_created = AgentCardImpression.objects.get_or_create(
-                    agent_id=_agent.id,
-                    impression_date=_today,
-                    search_pincode=_pincode,
-                    defaults={'impression_count': 1},
-                )
-                if not _ci_created:
-                    AgentCardImpression.objects.filter(pk=_ci.pk).update(impression_count=F('impression_count') + 1)
+            # Hook B — record a card impression for each agent on this page in bulk
+            _agent_ids = [_a.id for _a in agents_page]
+            if _agent_ids:
+                _existing_map = {
+                    ci.agent_id: ci.id
+                    for ci in AgentCardImpression.objects.filter(
+                        agent_id__in=_agent_ids,
+                        impression_date=_today,
+                        search_pincode=_pincode
+                    )
+                }
+                _to_create = []
+                _update_ids = []
+                for _aid in _agent_ids:
+                    if _aid in _existing_map:
+                        _update_ids.append(_existing_map[_aid])
+                    else:
+                        _to_create.append(AgentCardImpression(
+                            agent_id=_aid,
+                            impression_date=_today,
+                            search_pincode=_pincode,
+                            impression_count=1
+                        ))
+                if _to_create:
+                    AgentCardImpression.objects.bulk_create(_to_create, ignore_conflicts=True)
+                if _update_ids:
+                    AgentCardImpression.objects.filter(id__in=_update_ids).update(
+                        impression_count=F('impression_count') + 1
+                    )
 
         except Exception as _e:
             logger.warning(f"Analytics tracking error in find_agents: {_e}")
@@ -1012,11 +1031,13 @@ def pincode_fetch(request, pincode):
 
 def _get_or_create_pincode(pincode):
     """Upserts the pincodes table from the postalpincode.in API (PincodeService::getOrCreatePincode)."""
+    existing = Pincode.objects.filter(pincode=pincode).first()
+    if existing:
+        return existing
     try:
         resp = http_requests.get(
             f'https://api.postalpincode.in/pincode/{pincode}',
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'},
-            verify=False,
             timeout=(2.0, 3.0)
         )
         resp.raise_for_status()
@@ -1472,15 +1493,15 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
         (CASE WHEN (SELECT AVG(rating) FROM agent_reviews WHERE agent_reviews.agent_id = agents.id AND agent_reviews.is_approved = 1) >= 4.5 THEN 10 ELSE 0 END) +
         (CASE 
             WHEN COALESCE(
-                (SELECT last_login_at FROM users WHERE users.id = agents.user_id),
+                (SELECT last_login_at FROM users WHERE users.email = agents.email),
                 (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
             ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 DAY) THEN 50
             WHEN COALESCE(
-                (SELECT last_login_at FROM users WHERE users.id = agents.user_id),
+                (SELECT last_login_at FROM users WHERE users.email = agents.email),
                 (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
             ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 14 DAY) THEN 25
             WHEN COALESCE(
-                (SELECT last_login_at FROM users WHERE users.id = agents.user_id),
+                (SELECT last_login_at FROM users WHERE users.email = agents.email),
                 (SELECT last_login FROM auth_user WHERE auth_user.id = agents.user_id)
             ) >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 DAY) THEN 10
             ELSE 0

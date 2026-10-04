@@ -1635,10 +1635,13 @@ def register_step1(request):
     from django.contrib.auth.models import User
     from apps.agents.models import Agent, Invoice, AgentDraft
 
+    # Check if an Agent record already exists for the email
+    existing_agent = Agent.objects.filter(email__iexact=email).first() if email else None
+
     # Check if a paid invoice or active agent exists matching this email
     paid_agent_exists = (
         Invoice.objects.filter(agent_email__iexact=email, payment_status='paid').exists()
-        or Agent.objects.filter(email__iexact=email, status__in=['active', 'pending_approval']).exists()
+        or bool(existing_agent and existing_agent.status in ['active', 'pending_approval'])
     )
     if paid_agent_exists:
         return JsonResponse({
@@ -1674,7 +1677,6 @@ def register_step1(request):
         }, status=422)
 
     # Check if an Agent record already exists for the email but has NO paid invoice
-    existing_agent = Agent.objects.filter(email=email).first()
     owns_existing = bool(
         existing_agent and request.user.is_authenticated
         and existing_agent.user_id and existing_agent.user_id == request.user.pk
@@ -1797,27 +1799,49 @@ def register_step1(request):
         request.session.create()
         session_key = request.session.session_key
 
-    draft_id = request.session.get('current_draft_id')
-    if draft_id:
+    from django.db import connection, transaction
+    lock_name = f"reg_draft_{email}"
+    has_lock = False
+    if connection.vendor == 'mysql':
         try:
-            draft = AgentDraft.objects.get(pk=draft_id)
-        except AgentDraft.DoesNotExist:
-            draft = AgentDraft(session_key=session_key)
-    else:
-        draft = AgentDraft(session_key=session_key)
+            with connection.cursor() as cur:
+                cur.execute("SELECT GET_LOCK(%s, 5)", [lock_name])
+                res = cur.fetchone()
+                has_lock = bool(res and res[0] == 1)
+        except Exception:
+            has_lock = False
 
-    draft.email = email
-    _assign_step1_draft_fields(draft, request)
-    draft.email_verified = True
-    draft.registration_step = 1
-    if draft.promo_code:
-        request.session['applied_promo_code'] = draft.promo_code
-    elif not request.session.get('distributor_led_registration') and not request.session.get('distributor_id'):
-        request.session.pop('applied_promo_code', None)
-    draft.save()
+    try:
+        with transaction.atomic():
+            draft = None
+            draft_id = request.session.get('current_draft_id')
+            if draft_id:
+                draft = AgentDraft.objects.select_for_update().filter(pk=draft_id).first()
+            if not draft and email:
+                draft = AgentDraft.objects.select_for_update().filter(email=email).order_by('-pk').first()
+            if not draft:
+                draft = AgentDraft(session_key=session_key, email=email)
 
-    request.session['current_draft_id'] = draft.pk
-    request.session['reg_step'] = 2
+            draft.session_key = session_key
+            draft.email = email
+            _assign_step1_draft_fields(draft, request)
+            draft.email_verified = True
+            draft.registration_step = 1
+            if draft.promo_code:
+                request.session['applied_promo_code'] = draft.promo_code
+            elif not request.session.get('distributor_led_registration') and not request.session.get('distributor_id'):
+                request.session.pop('applied_promo_code', None)
+            draft.save()
+
+            request.session['current_draft_id'] = draft.pk
+            request.session['reg_step'] = 2
+    finally:
+        if has_lock and connection.vendor == 'mysql':
+            try:
+                with connection.cursor() as cur:
+                    cur.execute("SELECT RELEASE_LOCK(%s)", [lock_name])
+            except Exception:
+                pass
 
     logger.info(f'Agent Step 1 saved — draft #{draft.pk}, email={email}')
 
@@ -2962,6 +2986,10 @@ _PAID_PLAN_NAMES = {
     'starter': PLAN_LABELS['starter'],
     'professional': PLAN_LABELS['professional'],
 }
+
+# Canonical display names for each plan slug; used to override a client-supplied
+# plan_name that resolved to a *different* plan (security: prevents plan escalation).
+_CANONICAL_PLAN_NAMES = {k: v for k, v in PLAN_LABELS.items()}
 
 
 @require_POST

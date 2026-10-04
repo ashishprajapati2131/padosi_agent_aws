@@ -354,14 +354,39 @@ class Agent(models.Model):
 
     @property
     def average_rating(self):
+        if hasattr(self, '_avg_rating'):
+            return self._avg_rating
+        if hasattr(self, '_cached_avg_rating'):
+            return self._cached_avg_rating
+        if 'reviews' in getattr(self, '_prefetched_objects_cache', {}):
+            approved = [r for r in self.reviews.all() if getattr(r, 'is_approved', False)]
+            if approved:
+                val = sum(r.rating for r in approved if r.rating is not None) / len(approved)
+            else:
+                val = 0.0
+            self._cached_avg_rating = val
+            return val
         approved_reviews = self.reviews.filter(is_approved=True)
         if approved_reviews.exists():
-            return approved_reviews.aggregate(models.Avg('rating'))['rating__avg'] or 0.0
-        return 0.0
+            val = approved_reviews.aggregate(models.Avg('rating'))['rating__avg'] or 0.0
+        else:
+            val = 0.0
+        self._cached_avg_rating = val
+        return val
 
     @property
     def review_count(self):
-        return self.reviews.filter(is_approved=True).count()
+        if hasattr(self, '_review_count'):
+            return self._review_count
+        if hasattr(self, '_cached_review_count'):
+            return self._cached_review_count
+        if 'reviews' in getattr(self, '_prefetched_objects_cache', {}):
+            val = sum(1 for r in self.reviews.all() if getattr(r, 'is_approved', False))
+            self._cached_review_count = val
+            return val
+        val = self.reviews.filter(is_approved=True).count()
+        self._cached_review_count = val
+        return val
 
     @property
     def star_rating_list(self):
@@ -655,7 +680,7 @@ class Agent(models.Model):
 
 
 class AgentSubscription(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='subscriptions')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='subscriptions', db_constraint=False)
     selected_plan = models.CharField(max_length=255)
     promo_code = models.CharField(max_length=255, null=True, blank=True)
     registration_amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -692,7 +717,7 @@ class AgentSubscription(models.Model):
 
 
 class AgentProfile(models.Model):
-    agent = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='profile')
+    agent = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='profile', db_constraint=False)
     slug = models.CharField(max_length=255, unique=True, blank=True)
     profile_photo_path = models.CharField(max_length=255, blank=True, null=True)
     display_name = models.CharField(max_length=255, blank=True, null=True)
@@ -907,7 +932,7 @@ class City(models.Model):
 
 
 class AgentInsuranceSegment(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='insuranceSegments')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='insuranceSegments', db_constraint=False)
     segment_type = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -918,7 +943,7 @@ class AgentInsuranceSegment(models.Model):
 
 
 class AgentPerformanceStat(models.Model):
-    agent = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='performanceStats')
+    agent = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='performanceStats', db_constraint=False)
     claims_processed = models.IntegerField(default=0)
     claims_settled = models.IntegerField(default=0)
     claims_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0.0)
@@ -942,7 +967,7 @@ class AgentPerformanceStat(models.Model):
 
 
 class AgentLead(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='leads')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='leads', db_constraint=False)
     customer_name = models.CharField(max_length=255, blank=True, null=True)
     customer_email = models.EmailField(blank=True, null=True)
     customer_mobile = models.CharField(max_length=20, blank=True, null=True)
@@ -964,7 +989,7 @@ class AgentLead(models.Model):
 
 
 class AgentProfileView(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='profile_views')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='profile_views', db_constraint=False)
     view_date = models.DateField()
     view_count = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1005,7 +1030,7 @@ class AgentSearchEvent(models.Model):
 
 
 class AgentReview(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='reviews')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='reviews', db_constraint=False)
     user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
     reviewer_name = models.CharField(max_length=255, blank=True, null=True)
     reviewer_email = models.EmailField(blank=True, null=True)
@@ -1084,7 +1109,7 @@ class AgentBackup(models.Model):
 
 
 class AgentFamilyLicense(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='familyLicenses')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='familyLicenses', db_constraint=False)
     full_name = models.CharField(max_length=255)
     relationship = models.CharField(max_length=255)
     license_number = models.CharField(max_length=255)
@@ -1097,7 +1122,7 @@ class AgentFamilyLicense(models.Model):
 
 
 class AgentPortfolio(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='portfolios')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='portfolios', db_constraint=False)
     segment_type = models.CharField(max_length=255)
     primary_companies = models.JSONField(null=True, blank=True)
     secondary_companies = models.JSONField(null=True, blank=True)
@@ -1182,7 +1207,7 @@ def resolve_stored_file_url(path, fallback_subdirs=None, missing='/static/img/av
 
 
 class AgentAchievementPhoto(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='achievementPhotos')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='achievementPhotos', db_constraint=False)
     photo_path = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1206,7 +1231,7 @@ class AgentAchievementPhoto(models.Model):
 
 
 class AgentLeadPreference(models.Model):
-    agent = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='leadPreferences')
+    agent = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='leadPreferences', db_constraint=False)
     leads_new_business = models.BooleanField(default=True)
     leads_portfolio_analysis = models.BooleanField(default=True)
     portfolio_charging = models.CharField(max_length=50, blank=True, default='free')
@@ -1224,7 +1249,7 @@ class AgentLeadPreference(models.Model):
 
 
 class AgentProductExpertise(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='productExpertise')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='productExpertise', db_constraint=False)
     segment_type = models.CharField(max_length=100)
     product_name = models.CharField(max_length=255)
     expertise_level = models.IntegerField(default=0)
@@ -1238,7 +1263,7 @@ class AgentProductExpertise(models.Model):
 
 
 class AgentCareerTimeline(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='careerTimelines')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='careerTimelines', db_constraint=False)
     event_type = models.CharField(max_length=255)
     event_text = models.TextField()
     month = models.CharField(max_length=50, blank=True, default='')
@@ -1256,7 +1281,7 @@ class AgentCareerTimeline(models.Model):
 
 
 class AgentDeviceToken(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, db_column='agent_id', related_name='device_tokens')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, db_column='agent_id', related_name='device_tokens', db_constraint=False)
     token = models.CharField(max_length=512, unique=True)
     platform = models.CharField(max_length=50, null=True, blank=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
@@ -1285,7 +1310,7 @@ class Event(models.Model):
 
 
 class AgentProfileEditLog(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='edit_logs')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='edit_logs', db_constraint=False)
     edited_by = models.CharField(max_length=50)
     edited_by_id = models.IntegerField(null=True, blank=True)
     step = models.IntegerField(null=True, blank=True)
@@ -1336,7 +1361,7 @@ class Client(models.Model):
 
 class Invoice(models.Model):
     invoice_number = models.CharField(max_length=255, unique=True)
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='invoices')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='invoices', db_constraint=False)
     agent_name = models.CharField(max_length=255)
     agent_email = models.EmailField(db_index=True)
     agent_mobile = models.CharField(max_length=20, null=True, blank=True)
@@ -1413,7 +1438,7 @@ class AgentNotification(models.Model):
     managed=False: the table is owned by the Laravel schema (shared MySQL DB),
     exactly like the admin_panel mirror models.
     """
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, db_column='agent_id', related_name='notifications')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, db_column='agent_id', related_name='notifications', db_constraint=False)
     title = models.CharField(max_length=191)
     body = models.TextField()
     is_read = models.BooleanField(default=False)
@@ -1438,7 +1463,7 @@ class FavoriteAgent(models.Model):
     the Laravel-side user space.
     """
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE, db_column='user_id', related_name='favorite_agents')
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, db_column='agent_id', related_name='favorited_by')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, db_column='agent_id', related_name='favorited_by', db_constraint=False)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 

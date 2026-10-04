@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, Boolean, Text
 from datetime import datetime
 from fastapi_app.database import Base
+from fastapi_app.utils.datetime_util import get_current_time
 
 class PromoCode(Base):
     __tablename__ = "promo_codes"
@@ -19,13 +20,13 @@ class PromoCode(Base):
     times_used = Column(Integer, default=0)
     applicable_plan = Column(String(255), nullable=True)
     expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=get_current_time)
+    updated_at = Column(DateTime, default=get_current_time, onupdate=get_current_time)
 
     def is_valid(self) -> bool:
         if not self.is_active:
             return False
-        if self.expires_at and self.expires_at < datetime.utcnow():
+        if self.expires_at and self.expires_at < get_current_time():
             return False
         if self.max_uses and self.times_used >= self.max_uses:
             return False

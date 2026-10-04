@@ -25,6 +25,19 @@ class ManagedModelsTestRunner(DiscoverRunner):
         # Update connections dictionary
         connections.databases['default'] = settings.DATABASES['default']
         
+        # Force cache to in-memory LocMemCache during test execution so disk I/O, file locks, and Windows permission issues don't pollute or break tests
+        settings.CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'test-runner-cache',
+            }
+        }
+        try:
+            from django.core.cache import caches
+            caches['default'] = caches.create_connection('default')
+        except Exception:
+            pass
+
         # Clear the cached connection instance if it was already initialized
         try:
             connections['default'].close()

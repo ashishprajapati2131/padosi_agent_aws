@@ -84,7 +84,7 @@ def clear_admin_session(request, response=None):
 
 
 def _get_admin_from_session(request):
-    """
+    r"""
     Validate the admin session from the session_token cookie.
 
     Checks:
@@ -101,8 +101,7 @@ def _get_admin_from_session(request):
     if not token:
         return None
 
-    now_utc = datetime.utcnow()
-
+    now_curr = datetime.now()
 
     try:
         with connection.cursor() as cursor:
@@ -115,7 +114,7 @@ def _get_admin_from_session(request):
                   AND expires_at > %s
                 LIMIT 1
                 """,
-                [token, now_utc],
+                [token, now_curr],
             )
             row = cursor.fetchone()
             if not row:
@@ -276,9 +275,9 @@ def admin_login(request):
 
     # --- 4. Create session ---
     token      = secrets.token_hex(32)                        # 64-char hex string
-    now_utc    = datetime.utcnow()
+    now_curr   = datetime.now()
 
-    expires_at = now_utc + timedelta(days=ADMIN_SESSION_DAYS)
+    expires_at = now_curr + timedelta(days=ADMIN_SESSION_DAYS)
     ip_address = (request.META.get("REMOTE_ADDR") or "")[:45]
     user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
 
@@ -297,7 +296,7 @@ def admin_login(request):
                     """,
                     [
                         token, admin_db_id, ip_address, user_agent,
-                        now_utc, expires_at, now_utc, now_utc,
+                        now_curr, expires_at, now_curr, now_curr,
                     ],
                 )
             except Exception:
@@ -311,7 +310,7 @@ def admin_login(request):
                     """,
                     [
                         token, ip_address, user_agent,
-                        now_utc, expires_at, now_utc, now_utc,
+                        now_curr, expires_at, now_curr, now_curr,
                     ],
                 )
             session_id = cursor.lastrowid
@@ -324,7 +323,7 @@ def admin_login(request):
                 VALUES
                     (%s, %s, %s, %s, %s)
                 """,
-                [session_id, "admin_id", str(admin_db_id), now_utc, now_utc],
+                [session_id, "admin_id", str(admin_db_id), now_curr, now_curr],
             )
     except Exception as exc:
         logger.error("Session creation error: %s", exc)
@@ -508,7 +507,7 @@ def _fetch_plan_breakdown():
 
 
 def _fetch_engagement_stats():
-    """
+    r"""
     Fetch page views, leads, reviews, contacts, and profile views.
 
     Laravel equivalent (lines 63–76 of AdminDashboardController):

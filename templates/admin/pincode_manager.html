@@ -171,13 +171,18 @@
             </select>
             <button type="submit" class="btn-pm btn-pm-primary"><i class="fas fa-search"></i></button>
             <a href="{% url 'admin_pincode_index' %}" class="btn-pm btn-pm-secondary">Reset</a>
+            {% if state %}
+                <button type="button" class="btn-pm btn-pm-danger ms-auto" onclick="confirmDeleteState('{{ state|escapejs }}')">
+                    <i class="fas fa-trash-alt"></i> Purge {{ state }}
+                </button>
+            {% endif %}
         </form>
 
         <div style="overflow-x:auto;">
             <table class="table" style="font-size:13px;">
                 <thead>
                     <tr>
-                        <th>Pincode</th><th>Area</th><th>District</th><th>State</th><th>Lat / Lng</th>
+                        <th>Pincode</th><th>Area</th><th>District</th><th>State</th><th>Lat / Lng</th><th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -188,9 +193,14 @@
                         <td>{{ pc.district }}</td>
                         <td><span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;">{{ pc.state }}</span></td>
                         <td style="color:var(--text-muted);">{{ pc.latitude }}, {{ pc.longitude }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'admin_find_agent_locator' %}?pincode={{ pc.pincode }}" class="btn btn-sm btn-outline-success" title="Locate &amp; Assign Agents" style="font-size:11px;padding:3px 8px;border-radius:6px;font-weight:600;">
+                                <i class="fa-solid fa-location-crosshairs"></i> Locate
+                            </a>
+                        </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="text-center" style="color:var(--text-muted);padding:30px;">No pincodes found. Import a CSV/Excel file to get started.</td></tr>
+                    <tr><td colspan="6" class="text-center" style="color:var(--text-muted);padding:30px;">No pincodes found. Import a CSV/Excel file to get started.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -209,10 +219,12 @@
                         <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
                     {% endif %}
 
-                    {% for num in pincodes.paginator.page_range %}
-                        {% if pincodes.number == num %}
+                    {% for num in elided_page_range %}
+                        {% if num == ellipsis %}
+                            <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                        {% elif pincodes.number == num %}
                             <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                        {% elif num > pincodes.number|add:'-3' and num < pincodes.number|add:'3' %}
+                        {% else %}
                             <li class="page-item">
                                 <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if state %}&state={{ state }}{% endif %}{% if district %}&district={{ district }}{% endif %}">{{ num }}</a>
                             </li>
@@ -409,6 +421,35 @@ function startImport() {
     })
     .catch(err => {
         document.getElementById('importStatus').textContent = '❌ Error occurred.';
+        console.error(err);
+    });
+}
+
+function confirmDeleteState(stateName) {
+    if (!stateName) return;
+    if (!confirm(`Are you sure you want to permanently delete all pincodes for "${stateName}"?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+    const csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '{{ csrf_token }}';
+    fetch('{% url "admin_pincode_delete_state" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ state: stateName })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || `Successfully deleted ${data.deleted} pincodes for ${stateName}.`);
+            window.location.href = '{% url "admin_pincode_index" %}';
+        } else {
+            alert('Error: ' + (data.message || 'Failed to delete pincodes.'));
+        }
+    })
+    .catch(err => {
+        alert('An error occurred while deleting pincodes.');
         console.error(err);
     });
 }

@@ -118,11 +118,41 @@ class Command(BaseCommand):
 
     def _backup_dumpdata(self, backup_dir, base_filename):
         from django.core.management import call_command
+        from django.apps import apps
+        from django.db import connection
         target_file = backup_dir / f"{base_filename}_data.json.gz"
         try:
             temp_json = backup_dir / f"tmp_{base_filename}.json"
+            excludes = ['contenttypes', 'auth.permission']
+
+            existing_tables = set()
+            try:
+                existing_tables = set(connection.introspection.table_names())
+            except Exception:
+                pass
+
+            for model in apps.get_models():
+                model_label = f"{model._meta.app_label}.{model._meta.model_name}"
+                is_unmanaged = (
+                    not getattr(model._meta, 'managed', True)
+                    or getattr(model._meta, 'original_attrs', {}).get('managed') is False
+                )
+                if is_unmanaged:
+                    excludes.append(model_label)
+                elif existing_tables and model._meta.db_table not in existing_tables:
+                    excludes.append(model_label)
+                else:
+                    try:
+                        model.objects.exists()
+                    except Exception:
+                        excludes.append(model_label)
+
+            cmd_args = ['dumpdata']
+            for exc in set(excludes):
+                cmd_args.extend(['--exclude', exc])
+
             with open(temp_json, 'w', encoding='utf-8') as f:
-                call_command('dumpdata', '--exclude', 'contenttypes', '--exclude', 'auth.permission', stdout=f)
+                call_command(*cmd_args, stdout=f)
             with open(temp_json, 'rb') as f_in, gzip.open(target_file, 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
             if temp_json.exists():

@@ -5,7 +5,7 @@ from apps.agents.models import Agent
 class AgentApprovalRequest(models.Model):
     id = models.BigAutoField(primary_key=True)
     insurance = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='approval_requests', db_column='insurance_id')
-    agent = models.ForeignKey(Agent, on_delete=models.DO_NOTHING, related_name='approval_requests', db_column='agent_id')
+    agent = models.ForeignKey(Agent, on_delete=models.DO_NOTHING, related_name='approval_requests', db_column='agent_id', db_constraint=False)
     action = models.CharField(max_length=50)
     status = models.CharField(max_length=50, default='pending')
     reason = models.TextField(null=True, blank=True)

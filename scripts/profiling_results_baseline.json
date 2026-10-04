@@ -1,0 +1,326 @@
+[
+  {
+    "name": "01_Homepage",
+    "url": "/",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 8.09,
+    "query_count": 0,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": []
+  },
+  {
+    "name": "02_HealthCheck",
+    "url": "/health/",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 5.14,
+    "query_count": 1,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": [
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT 1;"
+      }
+    ]
+  },
+  {
+    "name": "03_PincodeCheck",
+    "url": "/api/pincode/check-agents/380015",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 1.07,
+    "query_count": 0,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": []
+  },
+  {
+    "name": "04_FindAgents_Directory",
+    "url": "/find-agents/",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 174.63,
+    "query_count": 55,
+    "total_db_time_ms": 109.0,
+    "num_duplicates": 29,
+    "duplicate_queries": {
+      "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subscriptions`.`razorpay_order_id`, `agent_subscriptions`.`razorpay_payment_id`, `agent_subscriptions`.`razorpay_signature`, `agent_subscriptions`.`payment_status`, `agent_subscriptions`.`starts_at`, `agent_subscriptions`.`expires_at`, `agent_subscriptions`.`status`, `agent_subscriptions`.`created_at`, `agent_subscriptions`.`updated_at` FROM `agent_subscriptions` WHERE (`agent_subscriptions`.`agent_id` = 19 AND `agent_subscriptions`.`expires_at` > '2026-10-04 18:11:12.867665' AND `agent_subscriptions`.`status` = 'active') ORDER BY `agent_subscriptions`.`starts_at` DESC, `agent_subscriptions`.`created_at` DESC, `agent_subscriptions`.`id` DESC LIMIT 1": 2,
+      "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 19": 6,
+      "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subscriptions`.`razorpay_order_id`, `agent_subscriptions`.`razorpay_payment_id`, `agent_subscriptions`.`razorpay_signature`, `agent_subscriptions`.`payment_status`, `agent_subscriptions`.`starts_at`, `agent_subscriptions`.`expires_at`, `agent_subscriptions`.`status`, `agent_subscriptions`.`created_at`, `agent_subscriptions`.`updated_at` FROM `agent_subscriptions` WHERE (`agent_subscriptions`.`agent_id` = 72 AND `agent_subscriptions`.`expires_at` > '2026-10-04 18:11:12.875041' AND `agent_subscriptions`.`status` = 'active') ORDER BY `agent_subscriptions`.`starts_at` DESC, `agent_subscriptions`.`created_at` DESC, `agent_subscriptions`.`id` DESC LIMIT 1": 2,
+      "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 72": 6,
+      "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subscriptions`.`razorpay_order_id`, `agent_subscriptions`.`razorpay_payment_id`, `agent_subscriptions`.`razorpay_signature`, `agent_subscriptions`.`payment_status`, `agent_subscriptions`.`starts_at`, `agent_subscriptions`.`expires_at`, `agent_subscriptions`.`status`, `agent_subscriptions`.`created_at`, `agent_subscriptions`.`updated_at` FROM `agent_subscriptions` WHERE (`agent_subscriptions`.`agent_id` = 103 AND `agent_subscriptions`.`expires_at` > '2026-10-04 18:11:12.888547' AND `agent_subscriptions`.`status` = 'active') ORDER BY `agent_subscriptions`.`starts_at` DESC, `agent_subscriptions`.`created_at` DESC, `agent_subscriptions`.`id` DESC LIMIT 1": 2,
+      "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 103": 6,
+      "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subscriptions`.`razorpay_order_id`, `agent_subscriptions`.`razorpay_payment_id`, `agent_subscriptions`.`razorpay_signature`, `agent_subscriptions`.`payment_status`, `agent_subscriptions`.`starts_at`, `agent_subscriptions`.`expires_at`, `agent_subscriptions`.`status`, `agent_subscriptions`.`created_at`, `agent_subscriptions`.`updated_at` FROM `agent_subscriptions` WHERE (`agent_subscriptions`.`agent_id` = 221 AND `agent_subscriptions`.`expires_at` > '2026-10-04 18:11:12.904228' AND `agent_subscriptions`.`status` = 'active') ORDER BY `agent_subscriptions`.`starts_at` DESC, `agent_subscriptions`.`created_at` DESC, `agent_subscriptions`.`id` DESC LIMIT 1": 2,
+      "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 221": 6,
+      "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 102": 6
+    },
+    "slowest_queries": [
+      {
+        "time_ms": 78.0,
+        "sql": "SELECT `agents`.`id`, `agents`.`user_id`, `agents`.`fullname`, `agents`.`email`, `agents`.`google_id`, `agents`.`email_verified_at`, `agents`.`mobile`, `agents`.`user_types`, `agents`.`insurance_compa"
+      },
+      {
+        "time_ms": 16.0,
+        "sql": "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subs"
+      },
+      {
+        "time_ms": 15.0,
+        "sql": "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 221"
+      }
+    ]
+  },
+  {
+    "name": "05_FindAgents_SearchPincode",
+    "url": "/find-agents/?pincode=380015",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 173.79,
+    "query_count": 66,
+    "total_db_time_ms": 126.0,
+    "num_duplicates": 28,
+    "duplicate_queries": {
+      "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subscriptions`.`razorpay_order_id`, `agent_subscriptions`.`razorpay_payment_id`, `agent_subscriptions`.`razorpay_signature`, `agent_subscriptions`.`payment_status`, `agent_subscriptions`.`starts_at`, `agent_subscriptions`.`expires_at`, `agent_subscriptions`.`status`, `agent_subscriptions`.`created_at`, `agent_subscriptions`.`updated_at` FROM `agent_subscriptions` WHERE (`agent_subscriptions`.`agent_id` = 19 AND `agent_subscriptions`.`expires_at` > '2026-10-04 18:11:13.228688' AND `agent_subscriptions`.`status` = 'active') ORDER BY `agent_subscriptions`.`starts_at` DESC, `agent_subscriptions`.`created_at` DESC, `agent_subscriptions`.`id` DESC LIMIT 1": 2,
+      "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 19": 6,
+      "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 72": 6,
+      "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subscriptions`.`razorpay_order_id`, `agent_subscriptions`.`razorpay_payment_id`, `agent_subscriptions`.`razorpay_signature`, `agent_subscriptions`.`payment_status`, `agent_subscriptions`.`starts_at`, `agent_subscriptions`.`expires_at`, `agent_subscriptions`.`status`, `agent_subscriptions`.`created_at`, `agent_subscriptions`.`updated_at` FROM `agent_subscriptions` WHERE (`agent_subscriptions`.`agent_id` = 214 AND `agent_subscriptions`.`expires_at` > '2026-10-04 18:11:13.249467' AND `agent_subscriptions`.`status` = 'active') ORDER BY `agent_subscriptions`.`starts_at` DESC, `agent_subscriptions`.`created_at` DESC, `agent_subscriptions`.`id` DESC LIMIT 1": 2,
+      "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 214": 6,
+      "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 83": 6,
+      "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subscriptions`.`razorpay_order_id`, `agent_subscriptions`.`razorpay_payment_id`, `agent_subscriptions`.`razorpay_signature`, `agent_subscriptions`.`payment_status`, `agent_subscriptions`.`starts_at`, `agent_subscriptions`.`expires_at`, `agent_subscriptions`.`status`, `agent_subscriptions`.`created_at`, `agent_subscriptions`.`updated_at` FROM `agent_subscriptions` WHERE (`agent_subscriptions`.`agent_id` = 59 AND `agent_subscriptions`.`expires_at` > '2026-10-04 18:11:13.270201' AND `agent_subscriptions`.`status` = 'active') ORDER BY `agent_subscriptions`.`starts_at` DESC, `agent_subscriptions`.`created_at` DESC, `agent_subscriptions`.`id` DESC LIMIT 1": 2,
+      "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 59": 6
+    },
+    "slowest_queries": [
+      {
+        "time_ms": 78.0,
+        "sql": "SELECT `agents`.`id`, `agents`.`user_id`, `agents`.`fullname`, `agents`.`email`, `agents`.`google_id`, `agents`.`email_verified_at`, `agents`.`mobile`, `agents`.`user_types`, `agents`.`insurance_compa"
+      },
+      {
+        "time_ms": 16.0,
+        "sql": "UPDATE `agent_card_impressions` SET `impression_count` = (`agent_card_impressions`.`impression_count` + 1) WHERE `agent_card_impressions`.`id` IN (1331, 1332, 1333, 1334, 1335)"
+      },
+      {
+        "time_ms": 16.0,
+        "sql": "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subs"
+      }
+    ]
+  },
+  {
+    "name": "06_FindAgents_SearchSmartRank",
+    "url": "/find-agents/?pincode=380015&search=insurance",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 20.87,
+    "query_count": 7,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": [
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT `pincodes`.`id`, `pincodes`.`pincode`, `pincodes`.`office_name`, `pincodes`.`district`, `pincodes`.`state`, `pincodes`.`latitude`, `pincodes`.`longitude`, `pincodes`.`division`, `pincodes`.`reg"
+      },
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT `pincodes`.`id`, `pincodes`.`pincode`, `pincodes`.`office_name`, `pincodes`.`district`, `pincodes`.`state`, `pincodes`.`latitude`, `pincodes`.`longitude`, `pincodes`.`division`, `pincodes`.`reg"
+      },
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT `pincode_cache`.`id`, `pincode_cache`.`pincode`, `pincode_cache`.`latitude`, `pincode_cache`.`longitude`, `pincode_cache`.`display_name`, `pincode_cache`.`created_at` FROM `pincode_cache` WHERE"
+      }
+    ]
+  },
+  {
+    "name": "07_ChoosePlan_Page",
+    "url": "/chooseplan/",
+    "method": "GET",
+    "status_code": 302,
+    "wall_duration_ms": 0.97,
+    "query_count": 0,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": []
+  },
+  {
+    "name": "08_Event_Landing",
+    "url": "/48HR/",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 10.86,
+    "query_count": 5,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": [
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT `investment_types`.`id`, `investment_types`.`name`, `investment_types`.`is_active`, `investment_types`.`created_at`, `investment_types`.`updated_at` FROM `investment_types` WHERE `investment_ty"
+      },
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT DISTINCT `pincodes`.`state` AS `state` FROM `pincodes` ORDER BY 1 ASC"
+      },
+      {
+        "time_ms": 0.0,
+        "sql": "BEGIN"
+      }
+    ]
+  },
+  {
+    "name": "09_Event_Leaderboard",
+    "url": "/stall-leaderboard/",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 31.07,
+    "query_count": 28,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": [
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT SUM(`event_referral_participants`.`paid_count`) AS `total_paid` FROM `event_referral_participants` WHERE `event_referral_participants`.`campaign_id` = 1"
+      },
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT COUNT(*) AS `__count` FROM `event_referral_participants` WHERE `event_referral_participants`.`campaign_id` = 1"
+      },
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT `event_referral_participants`.`id`, `event_referral_participants`.`campaign_id`, `event_referral_participants`.`agent_id`, `event_referral_participants`.`referral_code`, `event_referral_partici"
+      }
+    ]
+  },
+  {
+    "name": "10_Agent_Login_Page",
+    "url": "/agent-login/",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 2.31,
+    "query_count": 0,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": []
+  },
+  {
+    "name": "11_Agent_Dashboard",
+    "url": "/agent/dashboard/",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 75.62,
+    "query_count": 55,
+    "total_db_time_ms": 31.0,
+    "num_duplicates": 24,
+    "duplicate_queries": {
+      "SELECT `agents`.`id`, `agents`.`user_id`, `agents`.`fullname`, `agents`.`email`, `agents`.`google_id`, `agents`.`email_verified_at`, `agents`.`mobile`, `agents`.`user_types`, `agents`.`insurance_companies`, `agents`.`onboarded_by_id`, `agents`.`experience_range`, `agents`.`client_base`, `agents`.`registration_step`, `agents`.`status`, `agents`.`plan_type`, `agents`.`trial_ends_at`, `agents`.`upgrade_discount_percent`, `agents`.`referred_by_code`, `agents`.`referral_reward_type`, `agents`.`referral_reward_claimed`, `agents`.`agent_pincode`, `agents`.`latitude`, `agents`.`longitude`, `agents`.`badge`, `agents`.`admin_notes`, `agents`.`event_id`, `agents`.`registration_draft`, `agents`.`distributor_id`, `agents`.`sub_distributor_id`, `agents`.`insurance_id`, `agents`.`created_at`, `agents`.`updated_at`, `agents`.`is_approved`, `agents`.`approved_at`, `agents`.`achievement_photo_limit`, `agents`.`profession`, `agents`.`is_blacklisted`, `agents`.`blacklist_reason`, `agents`.`blacklisted_at`, `agents`.`blacklist_source`, `agents`.`payment_method`, `agents`.`payment_reference`, `agents`.`payment_recorded_at`, `agents`.`payment_recorded_by_id` FROM `agents` WHERE `agents`.`user_id` = 34 ORDER BY `agents`.`id` ASC LIMIT 1": 2,
+      "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subscriptions`.`razorpay_order_id`, `agent_subscriptions`.`razorpay_payment_id`, `agent_subscriptions`.`razorpay_signature`, `agent_subscriptions`.`payment_status`, `agent_subscriptions`.`starts_at`, `agent_subscriptions`.`expires_at`, `agent_subscriptions`.`status`, `agent_subscriptions`.`created_at`, `agent_subscriptions`.`updated_at` FROM `agent_subscriptions` WHERE (`agent_subscriptions`.`agent_id` = 16 AND `agent_subscriptions`.`payment_status` = 'completed')": 3,
+      "SELECT `event_referral_participants`.`id`, `event_referral_participants`.`campaign_id`, `event_referral_participants`.`agent_id`, `event_referral_participants`.`referral_code`, `event_referral_participants`.`registered_at`, `event_referral_participants`.`deadline_at`, `event_referral_participants`.`window_hours`, `event_referral_participants`.`required_paid_referrals`, `event_referral_participants`.`reward_plan_slug`, `event_referral_participants`.`paid_count`, `event_referral_participants`.`status`, `event_referral_participants`.`won_at`, `event_referral_participants`.`blocked_at`, `event_referral_participants`.`blocked_reason`, `event_referral_participants`.`page_active_seconds`, `event_referral_participants`.`blocked_by_admin`, `event_referral_participants`.`created_at`, `event_referral_participants`.`updated_at`, `event_referral_campaigns`.`id`, `event_referral_campaigns`.`is_enabled`, `event_referral_campaigns`.`window_hours`, `event_referral_campaigns`.`required_paid_referrals`, `event_referral_campaigns`.`reward_plan_slug`, `event_referral_campaigns`.`page_title`, `event_referral_campaigns`.`page_instructions`, `event_referral_campaigns`.`closed_message`, `event_referral_campaigns`.`registration_link_open_count`, `event_referral_campaigns`.`created_at`, `event_referral_campaigns`.`updated_at` FROM `event_referral_participants` INNER JOIN `event_referral_campaigns` ON (`event_referral_participants`.`campaign_id` = `event_referral_campaigns`.`id`) WHERE `event_referral_participants`.`agent_id` = 16 ORDER BY `event_referral_participants`.`registered_at` DESC LIMIT 1": 2,
+      "SELECT 1 AS `a` FROM `agent_serviceable_cities` WHERE `agent_serviceable_cities`.`agent_id` = 16 LIMIT 1": 3,
+      "SELECT 1 AS `a` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 16 LIMIT 1": 2,
+      "SELECT COUNT(*) AS `__count` FROM `agent_reviews` WHERE (`agent_reviews`.`agent_id` = 16 AND `agent_reviews`.`is_approved` = 1)": 5,
+      "SELECT 1 AS `a` FROM `agents` WHERE `agents`.`user_id` = 34 LIMIT 1": 4,
+      "SELECT `cities`.`id`, `cities`.`name`, `cities`.`state`, `cities`.`slug`, `cities`.`is_active` FROM `cities` INNER JOIN `agent_serviceable_cities` ON (`cities`.`id` = `agent_serviceable_cities`.`city_id`) WHERE `agent_serviceable_cities`.`agent_id` = 16 ORDER BY `cities`.`id` ASC LIMIT 1": 2,
+      "SELECT COUNT(*) AS `__count` FROM `agent_serviceable_cities` WHERE `agent_serviceable_cities`.`agent_id` = 16": 3,
+      "SELECT `agent_insurance_segments`.`segment_type` AS `segment_type` FROM `agent_insurance_segments` WHERE `agent_insurance_segments`.`agent_id` = 16": 7,
+      "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subscriptions`.`razorpay_order_id`, `agent_subscriptions`.`razorpay_payment_id`, `agent_subscriptions`.`razorpay_signature`, `agent_subscriptions`.`payment_status`, `agent_subscriptions`.`starts_at`, `agent_subscriptions`.`expires_at`, `agent_subscriptions`.`status`, `agent_subscriptions`.`created_at`, `agent_subscriptions`.`updated_at` FROM `agent_subscriptions` WHERE (`agent_subscriptions`.`agent_id` = 16 AND `agent_subscriptions`.`expires_at` > '2026-10-04 18:11:13.631340' AND `agent_subscriptions`.`status` = 'active') ORDER BY `agent_subscriptions`.`starts_at` DESC, `agent_subscriptions`.`created_at` DESC, `agent_subscriptions`.`id` DESC LIMIT 1": 2
+    },
+    "slowest_queries": [
+      {
+        "time_ms": 16.0,
+        "sql": "SELECT `agent_leads`.`id`, `agent_leads`.`agent_id`, `agent_leads`.`customer_name`, `agent_leads`.`customer_email`, `agent_leads`.`customer_mobile`, `agent_leads`.`customer_pincode`, `agent_leads`.`in"
+      },
+      {
+        "time_ms": 15.0,
+        "sql": "SELECT `agent_subscriptions`.`id`, `agent_subscriptions`.`agent_id`, `agent_subscriptions`.`selected_plan`, `agent_subscriptions`.`promo_code`, `agent_subscriptions`.`registration_amount`, `agent_subs"
+      },
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT `auth_user`.`id`, `auth_user`.`password`, `auth_user`.`last_login`, `auth_user`.`is_superuser`, `auth_user`.`username`, `auth_user`.`first_name`, `auth_user`.`last_name`, `auth_user`.`email`, `"
+      }
+    ]
+  },
+  {
+    "name": "12_Admin_Agents_List",
+    "url": "/admin/agents/",
+    "method": "GET",
+    "status_code": 302,
+    "wall_duration_ms": 0.71,
+    "query_count": 0,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": []
+  },
+  {
+    "name": "13_Calculators_Hub",
+    "url": "/calculators/",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 9.19,
+    "query_count": 2,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": [
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT `calculators`.`id`, `calculators`.`slug`, `calculators`.`title`, `calculators`.`short_description`, `calculators`.`category_id`, `calculators`.`icon_class`, `calculators`.`is_active`, `calculat"
+      },
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT `calculator_categories`.`id`, `calculator_categories`.`name`, `calculator_categories`.`slug`, `calculator_categories`.`icon_class`, `calculator_categories`.`is_active`, `calculator_categories`."
+      }
+    ]
+  },
+  {
+    "name": "14_Check_Pincode",
+    "url": "/check-pincode?pincode=380015",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 7.7,
+    "query_count": 2,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": [
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT `pincodes`.`id`, `pincodes`.`pincode`, `pincodes`.`office_name`, `pincodes`.`district`, `pincodes`.`state`, `pincodes`.`latitude`, `pincodes`.`longitude`, `pincodes`.`division`, `pincodes`.`reg"
+      },
+      {
+        "time_ms": 0.0,
+        "sql": "SELECT COUNT(*) FROM (SELECT DISTINCT `agents`.`id` AS `col1`, `agents`.`user_id` AS `col2`, `agents`.`fullname` AS `col3`, `agents`.`email` AS `col4`, `agents`.`google_id` AS `col5`, `agents`.`email_"
+      }
+    ]
+  },
+  {
+    "name": "15_About_Page",
+    "url": "/about/",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 3.5,
+    "query_count": 0,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": []
+  },
+  {
+    "name": "16_Contact_Page",
+    "url": "/contact/",
+    "method": "GET",
+    "status_code": 200,
+    "wall_duration_ms": 3.4,
+    "query_count": 0,
+    "total_db_time_ms": 0.0,
+    "num_duplicates": 0,
+    "duplicate_queries": {},
+    "slowest_queries": []
+  }
+]
