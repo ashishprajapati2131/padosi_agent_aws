@@ -756,16 +756,16 @@
                 </div>
 
                 {% if profile.show_reviews and agent_plan.show_review_management != False and google_review_display and google_review_display.enabled %}
-                <!-- Filter Tabs: Same place view with 2 sections -->
+                <!-- Filter Tabs: 1. Website active by default -->
                 <div class="review-tabs-bar d-flex align-items-center gap-2 flex-wrap" role="tablist">
-                    <button type="button" class="review-tab-pill active" id="tabBtnBoth" onclick="switchReviewTab('both')">
-                        <i class="fa-solid fa-layer-group"></i> Both Sections
-                    </button>
-                    <button type="button" class="review-tab-pill" id="tabBtnWebsite" onclick="switchReviewTab('website')">
+                    <button type="button" class="review-tab-pill active" id="tabBtnWebsite" onclick="switchReviewTab('website')">
                         <i class="far fa-star text-warning"></i> 1. Website ({{ agent.review_count }})
                     </button>
                     <button type="button" class="review-tab-pill google-pill" id="tabBtnGoogle" onclick="switchReviewTab('google')">
                         <i class="fa-brands fa-google text-primary"></i> 2. Google ({{ google_review_display.rating }} ★)
+                    </button>
+                    <button type="button" class="review-tab-pill" id="tabBtnBoth" onclick="switchReviewTab('both')">
+                        <i class="fa-solid fa-layer-group"></i> Both Sections
                     </button>
                 </div>
                 {% endif %}

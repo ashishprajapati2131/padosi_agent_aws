@@ -1,6 +1,6 @@
 {% if google_review_display and google_review_display.enabled %}
 <!-- 2. Google Reviews & Rating Section -->
-<div id="subSectionGoogleReviews" class="review-sub-section {% if profile.show_reviews and agent_plan.show_review_management != False %}mt-4 pt-4 border-top{% endif %}">
+<div id="subSectionGoogleReviews" class="review-sub-section" {% if profile.show_reviews and agent_plan.show_review_management != False %}style="display: none;"{% endif %}>
     <!-- Header Row -->
     <div class="reviews-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 pb-2" style="border-bottom: 2px solid #f0f4f8;">
         <div class="d-flex align-items-center gap-3">
