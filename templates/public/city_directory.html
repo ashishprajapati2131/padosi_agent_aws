@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ meta_title }}{% endblock %}
+{% block meta_description %}{{ meta_description }}{% endblock %}
+{% block meta_keywords %}{{ meta_keywords }}{% endblock %}
+{% block canonical_url %}{{ canonical_url }}{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Verified Insurance Agents in {{ city_name }}",
+  "description": "{{ meta_description|escapejs }}",
+  "numberOfItems": {{ agent_count }},
+  "itemListElement": [
+    {% for a in agents %}
+    {
+      "@type": "ListItem",
+      "position": {{ forloop.counter }},
+      "item": {
+        "@type": "InsuranceAgency",
+        "name": "{{ a.fullname|escapejs }}",
+        {% if a.profile.profile_photo_url %}"image": "{{ a.profile.profile_photo_url }}",{% endif %}
+        {% if a.mobile %}"telephone": "+91{{ a.mobile }}",{% endif %}
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "{{ city_name|escapejs }}",
+          "addressRegion": "{{ state_name|escapejs }}",
+          "postalCode": "{{ a.agent_pincode|default:'380001' }}",
+          "addressCountry": "IN"
+        }{% if a.average_rating and a.review_count %},
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "{{ a.average_rating }}",
+          "reviewCount": "{{ a.review_count }}"
+        }{% endif %}
+      }
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/find-agents.css' %}?v=20261005-1">
+<style>
+  .city-hero-card {
+    background: linear-gradient(135deg, #f0f4ff 0%, #ffffff 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 32px 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 16px rgba(39, 60, 142, 0.04);
+  }
+  .city-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #273c8e;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+  }
+  .city-title {
+    color: #0f172a;
+    font-size: 1.85rem;
+    font-weight: 800;
+    line-height: 1.25;
+    margin-bottom: 8px;
+  }
+  .city-desc {
+    color: #475569;
+    font-size: 14.5px;
+    line-height: 1.55;
+    max-width: 800px;
+  }
+  .city-pill-link {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 24px;
+    color: #1e293b;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .city-pill-link:hover {
+    background: #273c8e;
+    color: #ffffff;
+    border-color: #273c8e;
+    transform: translateY(-2px);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb navigation -->
+<nav aria-label="breadcrumb" style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 12px 0;">
+  <div class="container">
+    <ol class="breadcrumb mb-0" style="font-size: 13px; background: transparent; padding: 0;">
+      <li class="breadcrumb-item"><a href="{% url 'home:home' %}" style="color: #273c8e; text-decoration: none; font-weight: 600;">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'home:find_agents' %}" style="color: #273c8e; text-decoration: none; font-weight: 600;">Insurance Agents</a></li>
+      <li class="breadcrumb-item active text-muted" aria-current="page">{{ city_name }}</li>
+    </ol>
+  </div>
+</nav>
+
+<div class="container py-4">
+  <!-- City SEO Header -->
+  <div class="city-hero-card">
+    <div class="city-badge">
+      <i class="fas fa-location-dot"></i> {{ city_name }}, {{ state_name }}
+    </div>
+    <h1 class="city-title">Verified Insurance Agents in {{ city_name }}</h1>
+    <p class="city-desc mb-0">
+      Looking for a trusted, licensed insurance agent in {{ city_name }}? Browse verified local advisors for Health, Life, Motor, and SME insurance. Compare client reviews, ratings, claim settlement track records, and connect directly for doorstep assistance.
+    </p>
+  </div>
+
+  <!-- Agent Listings Grid -->
+  <div class="row">
+    <div class="col-lg-8 col-12">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin: 0;">
+          Showing {{ agent_count }} Verified Advisor{{ agent_count|pluralize }} in {{ city_name }}
+        </h2>
+        <a href="{% url 'home:find_agents' %}" class="btn btn-sm btn-outline-primary" style="font-size: 12px; font-weight: 600; border-radius: 6px;">
+          <i class="fas fa-sliders me-1"></i> Filter Agents
+        </a>
+      </div>
+
+      {% if agents %}
+        <div class="agents-list-wrapper">
+          {% for agent in agents %}
+            {% include 'partials/agent-card.html' with agent=agent %}
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="card p-5 text-center rounded-4 border-0 shadow-sm">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: #eff6ff; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+            <i class="fas fa-user-tie" style="font-size: 28px; color: #273c8e;"></i>
+          </div>
+          <h3 style="font-size: 1.25rem; font-weight: 700; color: #1e293b;">Expanding in {{ city_name }}</h3>
+          <p class="text-muted" style="font-size: 14px; max-width: 500px; margin: 0 auto 20px;">
+            We are actively onboarding licensed insurance advisors in {{ city_name }}. In the meantime, browse top-rated agents in nearby areas or all across Gujarat and India.
+          </p>
+          <div>
+            <a href="{% url 'home:find_agents' %}" class="btn btn-primary px-4 py-2" style="background: #273c8e; font-weight: 700; border-radius: 8px;">
+              Find Agents Nearby
+            </a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Sidebar: Advisor Onboarding CTA & Local Trust Signals -->
+    <div class="col-lg-4 col-12 mt-4 mt-lg-0">
+      <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background: linear-gradient(135deg, #273c8e 0%, #1e293b 100%); color: #ffffff;">
+        <span class="badge bg-warning text-dark mb-2 align-self-start font-weight-bold" style="border-radius: 20px; font-size: 11px;">ADVISOR GROWTH</span>
+        <h3 style="font-size: 1.2rem; font-weight: 800; color: #ffffff;">Are you an Insurance Agent in {{ city_name }}?</h3>
+        <p style="font-size: 13.5px; color: #e2e8f0; line-height: 1.5; margin-bottom: 20px;">
+          Join PadosiAgent to get verified, receive high-converting client enquiries from {{ city_name }}, and build your online reputation.
+        </p>
+        <a href="{% url 'agents:agent_registration' %}" class="btn btn-warning font-weight-bold w-100 py-2 text-dark" style="border-radius: 8px; font-size: 14px;">
+          Join as Insurance Agent <i class="fas fa-arrow-right ms-1"></i>
+        </a>
+      </div>
+
+      <!-- Why Choose a Local Insurance Agent Box -->
+      <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background: #ffffff; border: 1px solid #e2e8f0;">
+        <h4 style="font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 14px;">
+          <i class="fas fa-shield-halved me-2 text-success"></i> Why a PadosiAgent?
+        </h4>
+        <ul class="list-unstyled mb-0" style="font-size: 13.5px; color: #475569; line-height: 1.7;">
+          <li class="mb-2"><i class="fas fa-check text-success me-2"></i><strong>100% Free Service:</strong> Same premium as online portals with no extra fees.</li>
+          <li class="mb-2"><i class="fas fa-check text-success me-2"></i><strong>Doorstep Claim Assistance:</strong> A real human by your family's side during emergencies.</li>
+          <li class="mb-2"><i class="fas fa-check text-success me-2"></i><strong>IRDAI Licensed:</strong> Every advisor is verified for regulatory compliance.</li>
+          <li><i class="fas fa-check text-success me-2"></i><strong>Local Insight:</strong> In-depth knowledge of local hospital networks in {{ city_name }}.</li>
+        </ul>
+      </div>
+
+      <!-- Other Cities Links -->
+      {% if top_cities %}
+      <div class="card border-0 shadow-sm rounded-4 p-4" style="background: #ffffff; border: 1px solid #e2e8f0;">
+        <h4 style="font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 12px;">
+          <i class="fas fa-map-location-dot me-2 text-primary"></i> Other Cities
+        </h4>
+        <div class="d-flex flex-wrap gap-2">
+          {% for c in top_cities %}
+            {% if c.slug or c.name %}
+              <a href="{% url 'home:city_agents_directory' city_slug=c.slug|default:c.name|slugify %}" class="city-pill-link">
+                {{ c.name }}
+              </a>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

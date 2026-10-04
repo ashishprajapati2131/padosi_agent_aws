@@ -266,7 +266,7 @@ def home(request):
             return f'<span class="pa-heading-highlight">{word}</span>'
         else:
             return f'<span class="pa-heading-trusted">{word}</span>'
-    hero_heading_html = re.sub(r'\b(Trusted|Licensed|Licenced|Padosi)\b', replace_word, cleaned_heading, flags=re.IGNORECASE)
+    hero_heading_html = re.sub(r'\b(Trusted|Licensed|Licenced|Padosi|Agent)\b', replace_word, cleaned_heading, flags=re.IGNORECASE)
 
     return render(request, 'public/home.html', {
         'settings': settings,
@@ -1793,5 +1793,77 @@ def save_user_location(request):
         return JsonResponse({'success': True, 'message': 'Pincode saved', 'pincode': pincode})
 
     return JsonResponse({'success': False, 'message': 'No valid location data provided'}, status=400)
+
+
+def city_agents_directory(request, city_slug):
+    """
+    Programmatic Local SEO Hub: /insurance-agents/<city_slug>/
+    Targeting 'insurance agent in <city>', 'best insurance agent in <city>'.
+    """
+    from apps.agents.models import City, Agent
+    from django.db.models import Q
+    from django.shortcuts import render
+
+    raw_slug = str(city_slug).strip().lower()
+    city_query_name = raw_slug.replace('-', ' ')
+
+    city = (
+        City.objects.filter(slug=raw_slug).first()
+        or City.objects.filter(name__iexact=city_query_name).first()
+    )
+
+    if city:
+        city_display = city.name
+        state_display = city.state or 'Gujarat'
+        agents_qs = Agent.objects.filter(
+            serviceableCities=city,
+            is_approved=True,
+            status='active'
+        )
+    else:
+        city_display = city_query_name.title()
+        state_display = 'India'
+        agents_qs = Agent.objects.filter(
+            serviceableCities__name__iexact=city_query_name,
+            is_approved=True,
+            status='active'
+        )
+
+    agents = list(
+        agents_qs
+        .select_related('profile')
+        .prefetch_related('serviceableCities', 'insuranceSegments', 'reviews')
+        .distinct()
+        .order_by('-created_at')[:40]
+    )
+    agents.sort(key=lambda a: (getattr(a, 'average_rating', 0) or 0), reverse=True)
+
+    # Nearby / active cities for internal linking footer
+    top_cities = list(
+        City.objects.filter(is_active=True, agents__is_approved=True, agents__status='active')
+        .exclude(slug=raw_slug)
+        .exclude(name__iexact=city_display)
+        .distinct()[:15]
+    )
+
+    canonical_url = request.build_absolute_uri(f"/insurance-agents/{raw_slug}/")
+    meta_title = f"Verified Insurance Agents in {city_display} | Licensed Advisors — PadosiAgent"
+    meta_desc = f"Looking for trusted insurance agents in {city_display}? Find verified local advisors for Health, Life, Car & Bike insurance with ratings & doorstep assistance on PadosiAgent."
+    meta_kw = f"insurance agent in {city_display}, best insurance agent in {city_display}, insurance agent near me {city_display}, licensed insurance agent {city_display}, health insurance agent {city_display}, life insurance agent {city_display}, PadosiAgent"
+
+    context = {
+        'city_name': city_display,
+        'state_name': state_display,
+        'city_slug': raw_slug,
+        'agents': agents,
+        'agent_count': len(agents),
+        'top_cities': top_cities,
+        'canonical_url': canonical_url,
+        'meta_title': meta_title,
+        'meta_description': meta_desc,
+        'meta_keywords': meta_kw,
+    }
+    return render(request, 'public/city_directory.html', context)
+
 
 

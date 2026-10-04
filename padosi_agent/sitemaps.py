@@ -78,10 +78,26 @@ class AgentSitemap(Sitemap):
         slug = getattr(obj, 'agent_slug', str(obj.id))
         return reverse('agents:agent_public_profile_state_direct', kwargs={'state_code': state_code, 'slug': slug})
 
+class CitySitemap(Sitemap):
+    priority = 0.85
+    changefreq = 'daily'
+
+    def items(self):
+        from apps.agents.models import City
+        return City.objects.filter(is_active=True, agents__is_approved=True, agents__status='active').distinct().order_by('name')
+
+    def location(self, obj):
+        from django.utils.text import slugify
+        slug = obj.slug or slugify(obj.name)
+        return reverse('home:city_agents_directory', kwargs={'city_slug': slug})
+
+
 sitemaps = {
     'static': StaticViewSitemap,
     'pages': PageSitemap,
     'calculators': CalculatorSitemap,
     'calculator_categories': CalculatorCategorySitemap,
+    'cities': CitySitemap,
     'agents': AgentSitemap,
 }
+

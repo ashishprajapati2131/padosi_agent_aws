@@ -54,6 +54,18 @@
 {% endblock %}
 
 {% block content %}
+<div class="container py-2" style="max-width: 1200px;">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0 bg-transparent p-0" style="font-size: 12.5px;">
+            <li class="breadcrumb-item"><a href="{% url 'home:home' %}" style="color: #273c8e; text-decoration: none; font-weight: 500;">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'home:find_agents' %}" style="color: #273c8e; text-decoration: none; font-weight: 500;">Insurance Agents</a></li>
+            {% if agent.serviceableCities.first %}
+            <li class="breadcrumb-item"><a href="{% url 'home:city_agents_directory' city_slug=agent.serviceableCities.first.slug|default:agent.serviceableCities.first.name|slugify %}" style="color: #273c8e; text-decoration: none; font-weight: 500;">{{ agent.serviceableCities.first.name }}</a></li>
+            {% endif %}
+            <li class="breadcrumb-item active text-muted" aria-current="page">{{ agentDisplayName|default:agent.fullname }}</li>
+        </ol>
+    </nav>
+</div>
 <div class="profile_view_outer profile-view-wrapper" id="profile-container">
     <div class="profile-banner">
         {% if isOwnerView %}
