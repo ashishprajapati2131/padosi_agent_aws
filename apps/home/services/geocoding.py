@@ -66,7 +66,20 @@ class GeocodingService:
             if dn and not re.match(r'^(Area|Region)\s+\d', dn, re.IGNORECASE):
                 return cached
 
-        # ─── Step 3: Lookup via postalpincode.in and geocode place name ─────
+        # ─── Step 3: Exact hardcoded pins (curated, precise — check before APIs)
+        exact = DistanceService.get_precise_pincode_coordinates(pincode)
+        if exact:
+            coords = {
+                'lat': exact['lat'],
+                'lng': exact['lng'],
+                'display_name': self.resolve_state_from_pincode(pincode) + f" - {pincode}",
+            }
+            PincodeCache.store_coordinates(
+                pincode, coords['lat'], coords['lng'], coords['display_name']
+            )
+            return coords
+
+        # ─── Step 4: Lookup via postalpincode.in and geocode place name ─────
         postal_result = self.call_postal_pincode_api(pincode)
         if postal_result:
             PincodeCache.store_coordinates(
@@ -81,7 +94,7 @@ class GeocodingService:
                 pass
             return postal_result
 
-        # ─── Step 4: Call Nominatim API ──────────────────────────
+        # ─── Step 5: Call Nominatim API ──────────────────────────
         api_result = self.call_nominatim_with_retry(pincode)
         if api_result:
             PincodeCache.store_coordinates(
@@ -95,16 +108,6 @@ class GeocodingService:
             except Exception:
                 pass
             return api_result
-
-        # ─── Step 5: Exact hardcoded pins only (never cache regional fallback)
-        exact = DistanceService.get_precise_pincode_coordinates(pincode)
-        if exact:
-            coords = {
-                'lat': exact['lat'],
-                'lng': exact['lng'],
-                'display_name': self.resolve_state_from_pincode(pincode) + f" - {pincode}",
-            }
-            return coords
 
         # ─── Step 6: Regional fallback for display only — do NOT cache ────────
         fallback = DistanceService.get_regional_fallback_coordinates(pincode)
