@@ -465,6 +465,41 @@
         </div>
         {% endif %}
 
+        {# ──────── SUBSCRIPTION RENEWAL BANNER ──────── #}
+        {% if not isOnTrial and not admin_lock_preview and active_sub and active_sub.expires_at %}
+        <div id="renewalBanner" style="
+            border-radius: 12px;
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            {% if sub_days_left is not None and sub_days_left <= 30 %}
+            background: #fff8e1; border: 1px solid #ffca28;
+            {% else %}
+            background: #e8f5e9; border: 1px solid #a5d6a7;
+            {% endif %}
+        ">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <i class="fas fa-calendar-check" style="font-size:1.2rem;{% if sub_days_left is not None and sub_days_left <= 30 %}color:#f9a825;{% else %}color:#388e3c;{% endif %}"></i>
+                <div>
+                    <div style="font-weight:700;font-size:14px;color:#1a1a2e;">
+                        {{ planName }} — active until {{ active_sub.expires_at|date:"d M Y" }}
+                        {% if sub_days_left is not None and sub_days_left <= 30 %}
+                        <span style="color:#e65100;font-size:12px;margin-left:6px;">(expires in {{ sub_days_left }} day{{ sub_days_left|pluralize }})</span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size:12px;color:#555;">Renewing extends your subscription by 1 year from the current expiry.</div>
+                </div>
+            </div>
+            <a href="{% url 'agents:agent_renew_plan' %}" class="btn btn-sm font-weight-bold" style="{% if sub_days_left is not None and sub_days_left <= 30 %}background:#e65100;{% else %}background:#2e7d32;{% endif %}color:#fff;border-radius:8px;padding:8px 18px;white-space:nowrap;">
+                <i class="fas fa-sync-alt mr-1"></i> Renew Plan
+            </a>
+        </div>
+        {% endif %}
+
         {# UPGRADE PAYMENT MODAL — shared by trial banner and starter review-growth CTA #}
         <div class="modal fade" id="upgradeModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">

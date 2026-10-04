@@ -2874,11 +2874,31 @@ def _activate_paid_subscription(agent, subscription, payment, log_label='[activa
         plan_type = _order_plan_slug(subscription, agent)
         is_trial = plan_type == 'free_trial'
         is_upgrade = _is_plan_upgrade_payment(agent, subscription.razorpay_order_id)
+        # A renewal is a same-plan re-payment from an already-paid agent.
+        from apps.agents.services.feature_unlock import normalize_plan_slug as _nps
+        is_renewal = (
+            is_upgrade
+            and not is_trial
+            and _nps(agent.plan_type or '') == plan_type
+        )
 
         trial_config = SiteSetting.get_value('trial_plan_config', {'duration_days': 30})
         trial_days = int(trial_config.get('duration_days', 30))
         trial_days = _trial_days_for(subscription, trial_days)
         sub_expiry = timezone.now() + timezone.timedelta(days=365)
+
+        if is_renewal:
+            # Extend from the current active subscription's expiry so early
+            # renewals don't lose remaining days.
+            prev_sub = (
+                AgentSubscription.objects
+                .filter(agent=agent, status='active', payment_status='completed')
+                .exclude(pk=subscription.pk)
+                .order_by('-expires_at')
+                .first()
+            )
+            if prev_sub and prev_sub.expires_at and prev_sub.expires_at > timezone.now():
+                sub_expiry = prev_sub.expires_at + timezone.timedelta(days=365)
 
         if is_trial:
             agent.plan_type = 'free_trial'

@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Renew Plan — PadosiAgent{% endblock %}
+
+{% block extra_css %}
+<style>
+  .renew-card {
+    max-width: 520px;
+    margin: 60px auto;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    padding: 40px 36px 36px;
+  }
+  .renew-badge {
+    display: inline-block;
+    background: #e8f5e9;
+    color: #2e7d32;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    border-radius: 20px;
+    padding: 4px 14px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+  .renew-plan-name {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+  }
+  .renew-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 20px 0 4px;
+  }
+  .renew-price-main {
+    font-size: 38px;
+    font-weight: 800;
+    color: #1565c0;
+  }
+  .renew-price-label {
+    font-size: 14px;
+    color: #666;
+  }
+  .renew-breakdown {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 20px;
+  }
+  .renew-expiry-info {
+    background: #f3f8ff;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 24px;
+  }
+  .renew-expiry-info strong { color: #1565c0; }
+  .btn-renew {
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #1565c0, #1e88e5);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  .btn-renew:hover { opacity: .9; }
+  .btn-renew:disabled { opacity: .6; cursor: not-allowed; }
+  .back-link { display: block; text-align: center; margin-top: 16px; font-size: 13px; color: #888; }
+  .back-link a { color: #1565c0; text-decoration: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="renew-card">
+    <div class="renew-badge">Renew Subscription</div>
+    <div class="renew-plan-name">{{ plan_name }}</div>
+    <p class="text-muted" style="font-size:14px;margin-bottom:0;">Renewing extends your active subscription by 1 year.</p>
+
+    <div class="renew-price-row">
+      <span class="renew-price-main">₹{{ total|floatformat:0 }}</span>
+      <span class="renew-price-label">/ year (incl. GST)</span>
+    </div>
+    <div class="renew-breakdown">₹{{ base_price|floatformat:0 }} + ₹{{ gst|floatformat:2 }} GST (18%)</div>
+
+    {% if new_expiry %}
+    <div class="renew-expiry-info">
+      Your subscription will be active until <strong>{{ new_expiry|date:"d M Y" }}</strong>
+      {% if active_sub and active_sub.expires_at %}
+        (extended from {{ active_sub.expires_at|date:"d M Y" }})
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="renew-expiry-info">
+      Your subscription will be active for <strong>1 year</strong> from today.
+    </div>
+    {% endif %}
+
+    <button class="btn-renew" id="renewBtn" onclick="startRenewal()">
+      Pay ₹{{ total|floatformat:0 }} &amp; Renew
+    </button>
+    <div class="back-link"><a href="{% url 'agents:agent_dashboard' %}">← Back to Dashboard</a></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+var CSRF_TOKEN = document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('padosi_csrf_token='))?.split('=')[1] || '';
+var CALLBACK_URL = "{{ request.build_absolute_uri }}".replace('/agent/renew/', '/agent-register/payment-callback/');
+
+function startRenewal() {
+  var btn = document.getElementById('renewBtn');
+  btn.disabled = true;
+  btn.textContent = 'Creating order…';
+
+  fetch("{% url 'agents:agent_renew_plan' %}", {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': CSRF_TOKEN,
+      'Content-Type': 'application/json',
+    },
+    body: '{}',
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.success) {
+      alert(data.message || 'Something went wrong. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Pay ₹{{ total|floatformat:0 }} & Renew';
+      return;
+    }
+    if (data.mock_checkout) {
+      // Local dev mock — simulate callback
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = "{% url 'agents:agent_register_payment_callback' %}";
+      [
+        ['razorpay_order_id', data.razorpay_order_id],
+        ['razorpay_payment_id', data.mock_payment_id || 'pay_mock_renew'],
+        ['razorpay_signature', data.mock_signature || 'test_signature_skip'],
+        ['csrfmiddlewaretoken', CSRF_TOKEN],
+      ].forEach(([k,v]) => {
+        var i = document.createElement('input');
+        i.type = 'hidden'; i.name = k; i.value = v;
+        form.appendChild(i);
+      });
+      document.body.appendChild(form);
+      form.submit();
+      return;
+    }
+    var options = {
+      key: data.razorpay_key_id || data.key,
+      amount: data.amount_paise || data.amount,
+      currency: 'INR',
+      name: 'PadosiAgent',
+      description: '{{ plan_name }} Renewal',
+      order_id: data.razorpay_order_id,
+      callback_url: "{% url 'agents:agent_register_payment_callback' %}",
+      prefill: {
+        name: data.customer_name || '',
+        email: data.customer_email || '',
+        contact: data.customer_phone || '',
+      },
+      theme: { color: '#1565c0' },
+      handler: function(response) {
+        // Redirect-callback mode handled by callback_url above.
+        // This fires in non-redirect mode (rare).
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{% url 'agents:agent_register_payment_callback' %}";
+        [
+          ['razorpay_order_id', response.razorpay_order_id],
+          ['razorpay_payment_id', response.razorpay_payment_id],
+          ['razorpay_signature', response.razorpay_signature],
+          ['csrfmiddlewaretoken', CSRF_TOKEN],
+        ].forEach(([k,v]) => {
+          var i = document.createElement('input');
+          i.type = 'hidden'; i.name = k; i.value = v;
+          form.appendChild(i);
+        });
+        document.body.appendChild(form);
+        form.submit();
+      },
+    };
+    if (data.checkout_use_callback) {
+      options.redirect = true;
+    }
+    var rzp = new Razorpay(options);
+    rzp.on('payment.failed', function(resp) {
+      alert('Payment failed: ' + (resp.error && resp.error.description || 'Unknown error'));
+      btn.disabled = false;
+      btn.textContent = 'Pay ₹{{ total|floatformat:0 }} & Renew';
+    });
+    rzp.open();
+  })
+  .catch(err => {
+    console.error(err);
+    alert('Network error. Please try again.');
+    btn.disabled = false;
+    btn.textContent = 'Pay ₹{{ total|floatformat:0 }} & Renew';
+  });
+}
+</script>
+{% endblock %}

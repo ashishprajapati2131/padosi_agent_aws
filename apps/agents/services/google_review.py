@@ -35,7 +35,7 @@ DEFAULT_GOOGLE_REVIEW_SYSTEM = {
     # Dashboard dynamic labels
     'dashboard_section_title': 'Google Reviews & Rating',
     'dashboard_section_desc': 'Showcase your Google rating & top reviews on your public profile and invite clients to review you on Google.',
-    'dashboard_url_placeholder': 'https://g.page/r/.../review or your Google Place review link',
+    'dashboard_url_placeholder': 'https://g.page/r/your-place-id/review or your Google Place review link',
 }
 
 

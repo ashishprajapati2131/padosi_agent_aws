@@ -585,7 +585,10 @@
 
         fetch('{% url "admin_coming_soon_feature_save" %}', {
             method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken },
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             body: formData
         })
         .then(function(r) { return r.json(); })
@@ -614,7 +617,8 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
             }
         })
         .then(function(r) { return r.json(); })
@@ -641,7 +645,8 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': csrfToken
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
                 .then(function(r) { return r.json(); })
@@ -669,7 +674,8 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': csrfToken
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
                 .then(function(r) { return r.json(); })
@@ -731,7 +737,8 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: 'plan=' + encodeURIComponent(plan) + '&html_content=' + encodeURIComponent(content)
         })
@@ -753,13 +760,17 @@
         var btnText = document.getElementById('btnGrMasterToggleText');
         var badge = document.getElementById('grMasterStatusBadge');
         var hiddenInput = document.getElementById('grInputEnabled');
+        var form = document.getElementById('grConfigForm');
+        var token = (form && form.querySelector('[name=csrfmiddlewaretoken]')) ? form.querySelector('[name=csrfmiddlewaretoken]').value : csrfToken;
 
         btn.disabled = true;
 
         fetch('{% url "admin_google_review_toggle" %}', {
             method: 'POST',
             headers: {
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': token,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             }
         })
         .then(function(r) { return r.json(); })
@@ -801,6 +812,7 @@
         var formData = new FormData(form);
         var saveBtn = document.getElementById('btnGrSave');
         var originalHtml = saveBtn.innerHTML;
+        var token = (form && form.querySelector('[name=csrfmiddlewaretoken]')) ? form.querySelector('[name=csrfmiddlewaretoken]').value : csrfToken;
 
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Saving Settings...';
@@ -808,7 +820,9 @@
         fetch('{% url "admin_google_review_config_save" %}', {
             method: 'POST',
             headers: {
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': token,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             },
             body: formData
         })

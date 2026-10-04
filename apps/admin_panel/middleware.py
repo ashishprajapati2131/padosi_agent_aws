@@ -165,7 +165,10 @@ class ThreatMonitorMiddleware:
             'html_code', 'config_json', 'digital_price', 'professional_price', 'modal_title',
             'modal_subtitle', 'tab_review_label', 'tab_social_label', 'config', 'settings',
             'json_data', 'template_text', 'body', 'message', 'subject', 'description',
-            'custom_css', 'custom_js', 'html', 'raw_html', 'payload', 'json_config'
+            'custom_css', 'custom_js', 'html', 'raw_html', 'payload', 'json_config',
+            'badge_title', 'badge_subtitle', 'cta_button_text', 'nudge_title', 'nudge_message',
+            'nudge_yes_text', 'nudge_skip_text', 'dashboard_section_title', 'dashboard_section_desc',
+            'dashboard_url_placeholder',
         ]
 
         # Collect request input fields
@@ -203,7 +206,7 @@ class ThreatMonitorMiddleware:
         patterns = {
             'SQL Injection': r"(union select\s|select\s+\*\s+from|insert\s+into|update\s+\w+\s+set|'\s*or\s*'1'\s*=\s*'1|sleep\(\d+\)|benchmark\s*\(|group_concat|information_schema)",
             'Cross Site Scripting (XSS)': r"(<script\b[^>]*>|javascript:|onerror=|onload=|eval\(|setTimeout\(|setInterval\(|alert\(|document\.cookie|document\.domain|window\.location)",
-            'Path Traversal / LFI': r"(\.\.\/|\.\.\\\\|\/etc\/passwd|\/etc\/shadow|\/etc\/group|\/etc\/hosts|\/proc\/self|php:\/\/filter|php:\/\/input|expect:\/\/)",
+            'Path Traversal / LFI': r"((?<!\.)\.\.[/\\]|\/etc\/passwd|\/etc\/shadow|\/etc\/group|\/etc\/hosts|\/proc\/self|php:\/\/filter|php:\/\/input|expect:\/\/)",
             'RCE / Shell Injection': r"(system\(|exec\(|passthru\(|shell_exec\(|proc_open\(|pcntl_exec\(|python\s+-c|perl\s+-e|ruby\s+-e|bash\s+-i|nc\s+-e)",
             'SSRF / Metadata API': r"(169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data\/)",
             'XML External Entity (XXE)': r"(<!ENTITY\s+|SYSTEM\s+[\"']|PUBLIC\s+[\"'])",
@@ -652,6 +655,19 @@ class AdminPermissionMiddleware:
             'admin_pages_edit':                         'content',
             'admin_pages_update':                       'content',
             'admin_pages_delete':                       'content',
+            'admin_coming_soon_index':                  'content',
+            'admin_coming_soon_save':                   'content',
+            'admin_coming_soon_feature_save':           'content',
+            'admin_coming_soon_feature_toggle':         'content',
+            'admin_coming_soon_feature_delete':         'content',
+            'admin_coming_soon_feature_reorder':        'content',
+            'admin_coming_soon_feature_seed':           'content',
+            'admin_google_review_config_save':          'content',
+            'admin_google_review_toggle':               'content',
+            'admin_qr_files_index':                     'content',
+            'admin_qr_files_store':                     'content',
+            'admin_qr_files_update':                    'content',
+            'admin_qr_files_delete':                    'content',
             # ── Revenue ───────────────────────────────────────────────────
             'admin_revenue':                            'revenue',
             'admin_search':                             'dashboard',

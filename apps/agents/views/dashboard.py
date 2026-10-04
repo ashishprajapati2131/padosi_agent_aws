@@ -727,6 +727,12 @@ def agent_dashboard(request):
         'event_referral_expired_locked': event_referral_expired_locked,
         'paldi_event_name': 'Paldi',
         'app_upgrade_plan': app_upgrade_plan,
+        'active_sub': latest_completed_sub,
+        'sub_days_left': (
+            (latest_completed_sub.expires_at - timezone.now()).days
+            if (latest_completed_sub and latest_completed_sub.expires_at)
+            else None
+        ),
     }
 
     return render(request, 'agents/dashboard.html', context)
