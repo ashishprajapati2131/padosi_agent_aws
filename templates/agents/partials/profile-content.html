@@ -223,6 +223,17 @@
             }
         }
 
+        /* Google Reviews Section */
+        #google-reviews-section {
+            scroll-margin-top: 80px;
+        }
+
+        #google-reviews-section .google-review-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+            border-color: #cbd5e1 !important;
+        }
+
         /* Lightbox Styles */
         .padosi-lightbox {
             display: none;
@@ -454,17 +465,35 @@
             </div>
 
             {% if profile.show_ratings %}
-            <div class="reviews-summary" style="cursor: pointer;" onclick="document.getElementById('reviews-section').scrollIntoView({behavior: 'smooth'})">
-                <div class="stars">
-                    {% for i in "12345" %}
-                        {% if agent.average_rating >= forloop.counter %}
-                            <i class="fas fa-star text-warning"></i>
-                        {% else %}
-                            <i class="far fa-star text-warning"></i>
-                        {% endif %}
-                    {% endfor %}
+            <div class="d-flex align-items-center gap-2 flex-wrap mb-4">
+                <div class="reviews-summary" style="cursor: pointer;" onclick="document.getElementById('reviews-section') ? document.getElementById('reviews-section').scrollIntoView({behavior: 'smooth'}) : null">
+                    <div class="stars">
+                        {% for i in "12345" %}
+                            {% if agent.average_rating >= forloop.counter %}
+                                <i class="fas fa-star text-warning"></i>
+                            {% else %}
+                                <i class="far fa-star text-warning"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {{ agent.average_rating|floatformat:1 }} ({{ agent.review_count }} website reviews) <i class="fas fa-arrow-down ml-1" style="font-size: 10px;"></i>
                 </div>
-                {{ agent.average_rating|floatformat:1 }} ({{ agent.review_count }} reviews) <i class="fas fa-arrow-up-right-from-square ml-2" style="font-size: 10px;"></i>
+
+                {% if google_review_display and google_review_display.enabled %}
+                <div class="reviews-summary" style="cursor: pointer; background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border-color: #93c5fd; color: #0369a1;" onclick="document.getElementById('google-reviews-section') ? document.getElementById('google-reviews-section').scrollIntoView({behavior: 'smooth'}) : null">
+                    <i class="fa-brands fa-google text-primary" style="font-size: 13px;"></i>
+                    <div class="stars" style="color: #f59e0b;">
+                        {% for i in "12345" %}
+                            {% if google_review_display.rating >= forloop.counter %}
+                                <i class="fas fa-star text-warning"></i>
+                            {% else %}
+                                <i class="far fa-star text-warning"></i>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {{ google_review_display.rating }} ({{ google_review_display.review_count }} Google reviews) <i class="fas fa-arrow-down ml-1" style="font-size: 10px;"></i>
+                </div>
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -680,15 +709,16 @@
         {% endif %}
 
         {% if profile.show_reviews and agent_plan.show_review_management != False %}
-        <!-- Reviews (Section 8) -->
+        <!-- 1. Website Reviews & Rating (Section 8) -->
         <div class="section-card section-reviews" id="reviews-section" data-scroll-delay="{{ review_scroll_delay_ms|default:3000 }}">
             <div class="reviews-header">
-                <h2 class="section-title mb-0"><i class="far fa-star"></i> Reviews</h2>
+                <div class="d-flex align-items-center gap-2">
+                    <h2 class="section-title mb-0"><i class="far fa-star text-warning"></i> Website Reviews &amp; Rating</h2>
+                </div>
                 <span class="total-reviews">{{ agent.review_count }} total</span>
             </div>
 
             <div class="reviews-body">
-                {% include 'agents/partials/google_review_badge.html' %}
                 <div class="reviews-list">
                     {% for review in reviews %}
                         <div class="review-item">
@@ -715,7 +745,7 @@
                             <div class="review-date">{{ review.created_at|date:"M d, Y"|default:"N/A" }}</div>
                         </div>
                     {% empty %}
-                        <div class="review-empty">No reviews yet. Be the first to review!</div>
+                        <div class="review-empty">No website reviews yet. Be the first to review!</div>
                     {% endfor %}
                 </div>
 
@@ -754,9 +784,9 @@
         </div>
         {% endif %}
 
-        {% if not profile.show_reviews and google_review_display and google_review_display.enabled %}
-        <!-- Standalone Google Reviews Section when platform reviews are disabled -->
-        <div class="section-card section-reviews" id="google-reviews-section">
+        {% if google_review_display and google_review_display.enabled %}
+        <!-- 2. Google Reviews & Rating (Section 9) -->
+        <div class="section-card section-google-reviews" id="google-reviews-section">
             {% include 'agents/partials/google_review_badge.html' %}
         </div>
         {% endif %}
