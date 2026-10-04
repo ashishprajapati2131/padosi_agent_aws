@@ -19,6 +19,7 @@ EXACT_PINCODE_COORDS = {
     '380059': {'lat': 23.0450, 'lng': 72.4890},  # Bopal
     '380061': {'lat': 23.0729, 'lng': 72.5407},  # Ghatlodia
     '380063': {'lat': 23.0600, 'lng': 72.5100},  # Thaltej
+    '382150': {'lat': 23.1191, 'lng': 72.0547},  # Viramgam
     '382421': {'lat': 23.0900, 'lng': 72.5800},  # Motera
     '382424': {'lat': 23.1090, 'lng': 72.5850},  # Sabarmati
     '382481': {'lat': 23.1200, 'lng': 72.5400},  # Chandkheda

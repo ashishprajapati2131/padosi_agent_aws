@@ -223,6 +223,8 @@ class GeocodingService:
     def call_postal_pincode_api(self, pincode):
         """
         Call postalpincode.in API to get place name and geocode it via Nominatim.
+        Picks the most representative post office (Head/Sub PO or Block center)
+        rather than the first alphabetical branch office.
         """
         try:
             url = f"https://api.postalpincode.in/pincode/{pincode}"
@@ -239,23 +241,21 @@ class GeocodingService:
                 return None
 
             post_offices = data[0]['PostOffice']
-            post_office = None
-            for po in post_offices:
-                if po.get('DeliveryStatus') == 'Delivery':
-                    post_office = po
-                    break
+            post_office = self._pick_best_post_office(post_offices)
             if not post_office:
                 post_office = post_offices[0]
 
             name = post_office.get('Name', '')
+            block = post_office.get('Block', '')
             district = post_office.get('District', '')
             state = post_office.get('State', '')
 
-            if not name:
+            if not name and not block:
                 return None
 
-            # Now geocode this place name via Nominatim
-            query = f"{name}, {district}, {state}, India"
+            # Prefer geocoding by Block/Taluk name (main town) for better accuracy
+            geocode_name = block if block and block.lower() not in ('na', 'n/a', '') else name
+            query = f"{geocode_name}, {district}, {state}, India"
             headers = {'User-Agent': self.USER_AGENT}
             params = {
                 'q': query,
@@ -270,16 +270,90 @@ class GeocodingService:
                     lat = float(item.get('lat', 0))
                     lng = float(item.get('lon', 0))
                     if self.is_within_india(lat, lng):
+                        display_name = Pincode.format_location_name(
+                            geocode_name, district, post_office.get('Division')
+                        )
                         return {
                             'lat': round(lat, 7),
                             'lng': round(lng, 7),
-                            'display_name': Pincode.format_location_name(name, district, post_office.get('Division'))
+                            'display_name': display_name
                         }
+
+            # Fallback: try geocoding with the post office name if Block didn't work
+            if geocode_name != name and name:
+                query2 = f"{name}, {district}, {state}, India"
+                nominatim_resp2 = requests.get(
+                    self.NOMINATIM_URL, params={'q': query2, 'format': 'json', 'limit': 1},
+                    headers=headers, timeout=self.TIMEOUT_SEC
+                )
+                if nominatim_resp2.status_code == 200:
+                    res_data2 = nominatim_resp2.json()
+                    if res_data2:
+                        item2 = res_data2[0]
+                        lat2 = float(item2.get('lat', 0))
+                        lng2 = float(item2.get('lon', 0))
+                        if self.is_within_india(lat2, lng2):
+                            return {
+                                'lat': round(lat2, 7),
+                                'lng': round(lng2, 7),
+                                'display_name': Pincode.format_location_name(name, district, post_office.get('Division'))
+                            }
 
         except Exception as e:
             logger.error(f"GeocodingService: PostalPincode API failed: {e}")
 
         return None
+
+    @staticmethod
+    def _pick_best_post_office(post_offices):
+        """
+        Pick the most representative post office from a list.
+        Priority:
+          1. Head Post Office (main regional hub)
+          2. Sub Post Office matching the Block/Taluk name (main town)
+          3. Any Sub Post Office with Delivery status
+          4. Branch Post Office matching the Block name
+          5. First Branch Post Office with Delivery status
+        """
+        if not post_offices:
+            return None
+
+        block_name = ''
+        for po in post_offices:
+            b = (po.get('Block') or '').strip()
+            if b and b.lower() not in ('na', 'n/a', ''):
+                block_name = b
+                break
+
+        head_po = None
+        sub_po_block_match = None
+        sub_po_delivery = None
+        branch_block_match = None
+        branch_delivery = None
+
+        for po in post_offices:
+            branch_type = (po.get('BranchType') or '').strip()
+            delivery = po.get('DeliveryStatus') == 'Delivery'
+            po_name = (po.get('Name') or '').strip().lower()
+            block_lower = block_name.lower()
+
+            if branch_type == 'Head Post Office':
+                head_po = po
+                break  # Best possible match
+
+            if branch_type == 'Sub Post Office':
+                if block_lower and block_lower in po_name:
+                    sub_po_block_match = sub_po_block_match or po
+                elif delivery and not sub_po_delivery:
+                    sub_po_delivery = po
+            elif branch_type == 'Branch Post Office':
+                if block_lower and block_lower in po_name:
+                    branch_block_match = branch_block_match or po
+                elif delivery and not branch_delivery:
+                    branch_delivery = po
+
+        return (head_po or sub_po_block_match or sub_po_delivery
+                or branch_block_match or branch_delivery)
 
     def is_within_india(self, lat, lng):
         return (6.0 <= lat <= 37.5) and (68.0 <= lng <= 97.5)
