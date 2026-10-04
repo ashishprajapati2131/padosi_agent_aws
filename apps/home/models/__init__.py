@@ -10,3 +10,4 @@ from .blacklisted_agent import BlacklistedAgent
 from .calculator import Calculator
 from .calculator_category import CalculatorCategory
 from .upcoming_feature import UpcomingFeature
+from .google_review_config import GoogleReviewConfig

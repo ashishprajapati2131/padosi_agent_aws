@@ -507,6 +507,11 @@
                     <a class="nav-link" href="#comingsoon" data-tab="comingsoon"><i class="fas fa-rocket mr-2"></i>Coming Soon</a>
                 </li>
                 {% endif %}
+                {% if google_review_system_enabled %}
+                <li class="nav-item">
+                    <a class="nav-link" href="#googlereviews" data-tab="googlereviews"><i class="fab fa-google mr-2 text-warning"></i>Google Reviews</a>
+                </li>
+                {% endif %}
                 <li class="nav-item">
                     <a class="nav-link" href="#analytics" data-tab="analytics" data-feature="profile_analytics"><i class="fas fa-chart-line mr-2"></i>Profile Analytics</a>
                 </li>
@@ -835,6 +840,15 @@
             </div>
             {% endif %}
         </div>
+
+        {% if google_review_system_enabled %}
+        <!-- Google Reviews Manager Section -->
+        <div id="googlereviews-content" class="tab-panel" style="display: none;">
+            <div class="px-2 py-3">
+                {% include 'agents/partials/google_review_dashboard_widget.html' %}
+            </div>
+        </div>
+        {% endif %}
 
         {% if has_upcoming_features or coming_soon_html %}
         <!-- Coming Soon Section -->
@@ -1481,6 +1495,7 @@
                 leads: document.getElementById('leads-content'),
                 qrcodes: document.getElementById('qr-content'),
                 comingsoon: document.getElementById('comingsoon-content') || null,
+                googlereviews: document.getElementById('googlereviews-content') || null,
                 analytics: document.getElementById('analytics-content') || null
             };
             // Only include optional tabs if the panel element exists

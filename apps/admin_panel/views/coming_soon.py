@@ -105,6 +105,32 @@ def coming_soon_index(request):
     coming_soon_starter_html = SiteSetting.get_value('coming_soon_starter_html', '') or ''
     coming_soon_professional_html = SiteSetting.get_value('coming_soon_professional_html', '') or ''
 
+    # Google Review Rating System Context
+    from apps.agents.services.google_review import get_google_review_system_config
+    from apps.home.models import GoogleReviewConfig
+    from apps.agents.services.feature_unlock import PLAN_LABELS, PLAN_SLUGS
+
+    google_review_cfg = get_google_review_system_config()
+
+    try:
+        gr_configured_agents = GoogleReviewConfig.objects.count()
+        gr_enabled_agents = GoogleReviewConfig.objects.filter(is_enabled=True).count()
+        from django.db.models import Sum, Avg
+        clicks_sum = GoogleReviewConfig.objects.aggregate(Sum('google_review_clicks'))['google_review_clicks__sum']
+        gr_total_clicks = clicks_sum or 0
+        avg_res = GoogleReviewConfig.objects.filter(is_enabled=True, google_rating__isnull=False).aggregate(Avg('google_rating'))['google_rating__avg']
+        gr_avg_rating = round(float(avg_res), 1) if avg_res else 0.0
+    except Exception:
+        gr_configured_agents = 0
+        gr_enabled_agents = 0
+        gr_total_clicks = 0
+        gr_avg_rating = 0.0
+
+    plan_options = [
+        {'slug': slug, 'label': PLAN_LABELS.get(slug, slug.title())}
+        for slug in PLAN_SLUGS
+    ]
+
     return render(request, 'admin/coming_soon/index.html', {
         'features': features,
         'total_count': total_count,
@@ -114,6 +140,12 @@ def coming_soon_index(request):
         'table_exists': table_exists,
         'coming_soon_starter_html': coming_soon_starter_html,
         'coming_soon_professional_html': coming_soon_professional_html,
+        'google_review_config': google_review_cfg,
+        'gr_configured_agents': gr_configured_agents,
+        'gr_enabled_agents': gr_enabled_agents,
+        'gr_total_clicks': gr_total_clicks,
+        'gr_avg_rating': gr_avg_rating,
+        'plan_options': plan_options,
     })
 
 
@@ -330,3 +362,72 @@ def save_coming_soon(request):
         'success': True,
         'message': f'{plan_label} Plan Coming Soon content saved successfully!'
     })
+
+
+@require_POST
+def save_google_review_config(request):
+    """Save global Google Review system config to SiteSetting."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+
+    from apps.agents.services.google_review import save_google_review_system_config
+
+    eligible_plans = request.POST.getlist('eligible_plans[]') or request.POST.getlist('eligible_plans')
+    enabled = request.POST.get('enabled') in ('1', 'true', 'on', True)
+    show_google_logo = request.POST.get('show_google_logo') in ('1', 'true', 'on', True)
+
+    payload = {
+        'enabled': enabled,
+        'eligible_plans': eligible_plans,
+        'max_reviews_shown': request.POST.get('max_reviews_shown', 5),
+        'badge_style': request.POST.get('badge_style', 'compact'),
+        'show_google_logo': show_google_logo,
+        'badge_title': request.POST.get('badge_title', ''),
+        'badge_subtitle': request.POST.get('badge_subtitle', ''),
+        'cta_button_text': request.POST.get('cta_button_text', ''),
+        'nudge_title': request.POST.get('nudge_title', ''),
+        'nudge_message': request.POST.get('nudge_message', ''),
+        'nudge_yes_text': request.POST.get('nudge_yes_text', ''),
+        'nudge_skip_text': request.POST.get('nudge_skip_text', ''),
+        'nudge_delay_ms': request.POST.get('nudge_delay_ms', 1200),
+        'dashboard_section_title': request.POST.get('dashboard_section_title', ''),
+        'dashboard_section_desc': request.POST.get('dashboard_section_desc', ''),
+        'dashboard_url_placeholder': request.POST.get('dashboard_url_placeholder', ''),
+    }
+
+    try:
+        saved = save_google_review_system_config(payload)
+        return JsonResponse({
+            'success': True,
+            'message': 'Google Review system configuration updated successfully!',
+            'config': saved
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Failed to save: {str(e)}'}, status=500)
+
+
+@require_POST
+def toggle_google_review_system(request):
+    """Quick ON/OFF toggle for the global Google Review system."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+
+    from apps.agents.services.google_review import (
+        get_google_review_system_config,
+        save_google_review_system_config,
+    )
+
+    try:
+        cfg = get_google_review_system_config()
+        cfg['enabled'] = not cfg.get('enabled', False)
+        saved = save_google_review_system_config(cfg)
+        status_text = 'Enabled' if saved['enabled'] else 'Disabled'
+        return JsonResponse({
+            'success': True,
+            'enabled': saved['enabled'],
+            'message': f'Google Review system is now {status_text}.'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Error toggling: {str(e)}'}, status=500)

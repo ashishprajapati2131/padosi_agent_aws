@@ -1,0 +1,335 @@
+<!-- Google Reviews Manager Tab Panel for Coming Soon Manager -->
+<div id="panelGoogleReview" style="display: none;">
+    <!-- Stats Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="cs-stat-card d-flex align-items-center gap-3">
+                <div class="cs-stat-icon" style="background:#e0f2fe; color:#0284c7;">
+                    <i class="fa-brands fa-google"></i>
+                </div>
+                <div>
+                    <div class="h5 mb-0 font-weight-bold text-dark">{{ gr_configured_agents|default:0 }}</div>
+                    <div class="small text-muted">Configured Agents</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="cs-stat-card d-flex align-items-center gap-3">
+                <div class="cs-stat-icon" style="background:#dcfce7; color:#16a34a;">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                    <div class="h5 mb-0 font-weight-bold text-dark">{{ gr_enabled_agents|default:0 }}</div>
+                    <div class="small text-muted">Active Displays</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="cs-stat-card d-flex align-items-center gap-3">
+                <div class="cs-stat-icon" style="background:#fef3c7; color:#d97706;">
+                    <i class="fa-solid fa-arrow-pointer"></i>
+                </div>
+                <div>
+                    <div class="h5 mb-0 font-weight-bold text-dark">{{ gr_total_clicks|default:0 }}</div>
+                    <div class="small text-muted">Google Clicks</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="cs-stat-card d-flex align-items-center gap-3">
+                <div class="cs-stat-icon" style="background:#f3e8ff; color:#7c3aed;">
+                    <i class="fa-solid fa-star"></i>
+                </div>
+                <div>
+                    <div class="h5 mb-0 font-weight-bold text-dark">{{ gr_avg_rating|default:"5.0" }} ★</div>
+                    <div class="small text-muted">Avg Rating</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Status Banner -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #fff;">
+        <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 26px;">
+                    <i class="fa-brands fa-google text-warning"></i>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <h5 class="mb-0 font-weight-bold text-white">Google Reviews System</h5>
+                        <span id="grMasterStatusBadge" class="badge {% if google_review_config.enabled %}bg-success text-white{% else %}bg-secondary text-white{% endif %} px-2 py-1">
+                            {% if google_review_config.enabled %}ACTIVE / ON{% else %}DISABLED / OFF{% endif %}
+                        </span>
+                    </div>
+                    <p class="text-white-50 mb-0 small" style="max-width: 600px;">
+                        Control Google review showcase on agent public profiles, post-review Google rating nudge prompts, and plan-level eligibility.
+                    </p>
+                </div>
+            </div>
+            <div>
+                <button type="button" class="btn {% if google_review_config.enabled %}btn-danger{% else %}btn-success{% endif %} px-4 py-2 font-weight-bold shadow-sm" id="btnGrMasterToggle" onclick="toggleGoogleReviewSystem()">
+                    <i class="fa-solid fa-power-off me-1"></i>
+                    <span id="btnGrMasterToggleText">{% if google_review_config.enabled %}Turn OFF System{% else %}Turn ON System{% endif %}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <form id="grConfigForm" onsubmit="saveGoogleReviewConfigForm(event)">
+        {% csrf_token %}
+        <input type="hidden" name="enabled" id="grInputEnabled" value="{{ google_review_config.enabled|yesno:'1,0' }}">
+
+        <div class="row g-4">
+            <!-- Left Column: Settings -->
+            <div class="col-lg-7">
+                <!-- 1. Plan Eligibility Matrix -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h6 class="font-weight-bold mb-0 text-dark">
+                                <i class="fa-solid fa-id-card-clip text-primary me-2"></i> Plan Eligibility Matrix
+                            </h6>
+                            <span class="badge bg-light text-muted border">Which plans get this feature</span>
+                        </div>
+                        <p class="text-muted small mb-3">
+                            Select which agent subscription plans have permission to configure and display Google Reviews on their profiles.
+                        </p>
+
+                        <div class="row g-2">
+                            {% for plan in plan_options %}
+                            <div class="col-sm-6">
+                                <label class="border rounded-3 p-3 d-flex align-items-center justify-content-between cursor-pointer w-100 hover-shadow transition" style="background: #f8fafc;">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="checkbox" name="eligible_plans[]" value="{{ plan.slug }}" class="form-check-input mt-0 gr-plan-checkbox"
+                                               {% if plan.slug in google_review_config.eligible_plans %}checked{% endif %}
+                                               onchange="updateGrPreview()">
+                                        <span class="font-weight-bold small text-dark ms-1">{{ plan.label }}</span>
+                                    </div>
+                                    <code class="text-muted small" style="font-size: 11px;">{{ plan.slug }}</code>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Display & Appearance Settings -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <h6 class="font-weight-bold mb-3 text-dark">
+                            <i class="fa-solid fa-sliders text-success me-2"></i> Display & Appearance
+                        </h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label font-weight-bold small text-dark">Max Reviews Shown</label>
+                                <input type="number" name="max_reviews_shown" id="grMaxReviews" class="form-control" min="1" max="10" value="{{ google_review_config.max_reviews_shown|default:5 }}" onchange="updateGrPreview()">
+                                <small class="text-muted">Between 1 and 10 reviews on agent profile</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label font-weight-bold small text-dark">Badge Layout Style</label>
+                                <select name="badge_style" id="grBadgeStyle" class="form-select" onchange="updateGrPreview()">
+                                    <option value="compact" {% if google_review_config.badge_style == 'compact' %}selected{% endif %}>Compact (Modern Pill & Summary)</option>
+                                    <option value="detailed" {% if google_review_config.badge_style == 'detailed' %}selected{% endif %}>Detailed (Ratings + Featured Cards)</option>
+                                    <option value="cards" {% if google_review_config.badge_style == 'cards' %}selected{% endif %}>Cards Carousel (Horizontal Slider)</option>
+                                </select>
+                                <small class="text-muted">Visual arrangement on profile</small>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox" name="show_google_logo" id="grShowGoogleLogo" value="1" {% if google_review_config.show_google_logo %}checked{% endif %} onchange="updateGrPreview()">
+                                    <label class="form-check-label font-weight-bold small text-dark" for="grShowGoogleLogo">
+                                        Display Official Google "G" Badge Icon
+                                    </label>
+                                </div>
+                                <small class="text-muted d-block ms-5">Shows full color Google "G" emblem next to reviews badge</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Dynamic Profile Content -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <h6 class="font-weight-bold mb-3 text-dark">
+                            <i class="fa-solid fa-pen-fancy text-info me-2"></i> Dynamic Content (Public Profile)
+                        </h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label font-weight-bold small text-dark">Badge Section Title</label>
+                                <input type="text" name="badge_title" id="grBadgeTitle" class="form-control" value="{{ google_review_config.badge_title|default:'Google Reviews' }}" oninput="updateGrPreview()">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label font-weight-bold small text-dark">Badge Subtitle</label>
+                                <input type="text" name="badge_subtitle" id="grBadgeSubtitle" class="form-control" value="{{ google_review_config.badge_subtitle|default:'Verified client reviews from Google' }}" oninput="updateGrPreview()">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label font-weight-bold small text-dark">CTA Button Text (Review on Google)</label>
+                                <input type="text" name="cta_button_text" id="grCtaText" class="form-control" value="{{ google_review_config.cta_button_text|default:'Review on Google' }}" oninput="updateGrPreview()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Dynamic Post-Review Nudge Popup Content -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h6 class="font-weight-bold mb-0 text-dark">
+                                <i class="fa-solid fa-comments text-warning me-2"></i> Post-Review Google Nudge Popup
+                            </h6>
+                            <span class="badge bg-warning text-dark">Prompt after submission</span>
+                        </div>
+                        <p class="text-muted small mb-3">
+                            When a client submits an on-platform review on the agent's profile, show this popup nudging them to also write a Google review.
+                        </p>
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label font-weight-bold small text-dark">Nudge Popup Title</label>
+                                <input type="text" name="nudge_title" id="grNudgeTitle" class="form-control" value="{{ google_review_config.nudge_title }}" oninput="updateGrPreview()">
+                                <small class="text-muted">Use <code>&#123;&#123;agent_name&#125;&#125;</code> as dynamic placeholder for agent name</small>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label font-weight-bold small text-dark">Nudge Message Prompt</label>
+                                <textarea name="nudge_message" id="grNudgeMessage" class="form-control" rows="2" oninput="updateGrPreview()">{{ google_review_config.nudge_message }}</textarea>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label font-weight-bold small text-dark">"Yes" Button Text</label>
+                                <input type="text" name="nudge_yes_text" id="grNudgeYesText" class="form-control" value="{{ google_review_config.nudge_yes_text|default:'Yes, Review on Google' }}" oninput="updateGrPreview()">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label font-weight-bold small text-dark">"Skip" Button Text</label>
+                                <input type="text" name="nudge_skip_text" id="grNudgeSkipText" class="form-control" value="{{ google_review_config.nudge_skip_text|default:'Maybe Later' }}" oninput="updateGrPreview()">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label font-weight-bold small text-dark">Popup Delay (Milliseconds)</label>
+                                <input type="number" name="nudge_delay_ms" class="form-control" min="300" max="10000" step="100" value="{{ google_review_config.nudge_delay_ms|default:1200 }}">
+                                <small class="text-muted">e.g. 1200ms = 1.2s delay after review submission</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Agent Dashboard Section Content -->
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <h6 class="font-weight-bold mb-3 text-dark">
+                            <i class="fa-solid fa-gauge-high text-secondary me-2"></i> Agent Dashboard Card Labels
+                        </h6>
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label font-weight-bold small text-dark">Dashboard Section Title</label>
+                                <input type="text" name="dashboard_section_title" class="form-control" value="{{ google_review_config.dashboard_section_title|default:'Google Reviews & Rating' }}">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label font-weight-bold small text-dark">Dashboard Section Description</label>
+                                <textarea name="dashboard_section_desc" class="form-control" rows="2">{{ google_review_config.dashboard_section_desc|default:'Showcase your Google rating & top reviews on your public profile and invite clients to review you on Google.' }}</textarea>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label font-weight-bold small text-dark">Google URL Placeholder</label>
+                                <input type="text" name="dashboard_url_placeholder" class="form-control" value="{{ google_review_config.dashboard_url_placeholder|default:'https://g.page/r/.../review or your Google Place review link' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Live Interactive Preview -->
+            <div class="col-lg-5">
+                <div class="sticky-top" style="top: 20px; z-index: 10;">
+                    <!-- Save Button Card -->
+                    <div class="card border-0 shadow-sm rounded-4 mb-4 p-3 bg-white">
+                        <button type="submit" class="btn btn-success btn-lg w-100 py-3 font-weight-bold shadow-sm" id="btnGrSave">
+                            <i class="fa-solid fa-cloud-arrow-up me-2"></i> Save All Google Review Settings
+                        </button>
+                    </div>
+
+                    <!-- Live Profile Badge Preview -->
+                    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+                        <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+                            <span class="font-weight-bold text-dark small"><i class="fa-solid fa-eye text-primary me-2"></i> Profile Badge Preview</span>
+                            <span class="badge bg-light text-muted border">Live Preview</span>
+                        </div>
+                        <div class="card-body p-4" style="background: #f8fafc;">
+                            <div id="previewBadgeBox" class="p-3 bg-white rounded-3 border shadow-sm">
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div id="prevGoogleLogo" style="width: 32px; height: 32px; border-radius: 8px; background: #fff; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center;">
+                                            <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0 font-weight-bold text-dark" id="prevBadgeTitle">Google Reviews</h6>
+                                            <div class="text-muted" style="font-size: 11px;" id="prevBadgeSubtitle">Verified client reviews from Google</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="d-flex align-items-center gap-1 text-warning font-weight-bold" style="font-size: 14px;">
+                                            <i class="fa-solid fa-star"></i> 4.8
+                                        </div>
+                                        <span class="text-muted" style="font-size: 11px;">(127 reviews)</span>
+                                    </div>
+                                </div>
+
+                                <!-- Sample Review Item -->
+                                <div class="p-2 rounded-2 mt-2" style="background: #f1f5f9; font-size: 12px;">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <span class="font-weight-bold text-dark">Amit Patel</span>
+                                        <span class="text-warning">★★★★★</span>
+                                    </div>
+                                    <p class="text-muted mb-0" style="font-size: 11px; line-height: 1.35;">
+                                        "Excellent guidance for life insurance! Rahul explained everything transparently."
+                                    </p>
+                                </div>
+
+                                <div class="mt-3 text-center">
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 py-1 font-weight-bold" style="font-size: 12px;" id="prevCtaBtn">
+                                        <i class="fa-solid fa-star me-1 text-warning"></i> <span id="prevCtaText">Review on Google</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Nudge Modal Preview -->
+                    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+                        <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+                            <span class="font-weight-bold text-dark small"><i class="fa-solid fa-bullhorn text-warning me-2"></i> Post-Review Nudge Preview</span>
+                            <span class="badge bg-light text-muted border">Popup Modal</span>
+                        </div>
+                        <div class="card-body p-4" style="background: #0f172a;">
+                            <div class="bg-white rounded-4 p-4 text-center shadow-lg" style="max-width: 380px; margin: 0 auto;">
+                                <div style="width: 48px; height: 48px; border-radius: 50%; background: #eff6ff; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                                    <svg width="24" height="24" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                                </div>
+                                <h6 class="font-weight-bold text-dark mb-2" id="prevNudgeTitle">Help Rahul Sharma grow!</h6>
+                                <p class="text-muted small mb-4" id="prevNudgeMessage" style="font-size: 13px; line-height: 1.45;">
+                                    Your review matters! Would you also leave a quick 5-star review on Google?
+                                </p>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-primary font-weight-bold py-2 rounded-3 shadow-sm" id="prevNudgeYes">
+                                        <i class="fa-brands fa-google me-1"></i> <span id="prevNudgeYesText">Yes, Review on Google</span>
+                                    </button>
+                                    <button type="button" class="btn btn-light text-muted font-weight-bold py-2 rounded-3" id="prevNudgeSkipText">
+                                        Maybe Later
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

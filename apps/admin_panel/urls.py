@@ -189,6 +189,8 @@ from .views.coming_soon import (
     delete_feature,
     reorder_features,
     seed_default_features,
+    save_google_review_config,
+    toggle_google_review_system,
 )
 from .views.plans import (
     plans_index,
@@ -530,6 +532,8 @@ urlpatterns = [
     path("admin/coming-soon/feature/<int:id>/delete/", delete_feature, name="admin_coming_soon_feature_delete"),
     path("admin/coming-soon/feature/reorder/", reorder_features, name="admin_coming_soon_feature_reorder"),
     path("admin/coming-soon/feature/seed/", seed_default_features, name="admin_coming_soon_feature_seed"),
+    path("admin/coming-soon/google-review/save/", save_google_review_config, name="admin_google_review_config_save"),
+    path("admin/coming-soon/google-review/toggle/", toggle_google_review_system, name="admin_google_review_toggle"),
 
     # Staff Admin Management
     path("admin/admins/", admins_index, name="admin_admins_index"),

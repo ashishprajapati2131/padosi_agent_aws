@@ -20,7 +20,7 @@ from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 
-from apps.agents.views.dashboard import serve_private_file
+from apps.agents.views.dashboard import serve_private_file, track_google_review_click_view
 from apps.agents.views import pwa as pwa_views
 
 from django.contrib.auth import views as auth_views
@@ -57,6 +57,7 @@ urlpatterns = [
     path('', include('apps.admin_panel.urls')),
     path('', include('apps.agents.urls')),
     path('events/', include('apps.agents.urls_events')),
+    path('api/google-review/track-click/', track_google_review_click_view, name='agent_google_review_track_click'),
     path('chatbot-api/', include('apps.chatbot.urls')),
     path('', include('apps.distributors.urls')),
     path('insurance/', include('apps.insurance.urls')),

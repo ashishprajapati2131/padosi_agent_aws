@@ -226,6 +226,9 @@
             <button class="cs-main-tab" id="tabBtnLegacy" onclick="switchMainTab('legacy')">
                 <i class="fa-solid fa-code me-1"></i> Legacy HTML Editor (Optional)
             </button>
+            <button class="cs-main-tab" id="tabBtnGoogleReview" onclick="switchMainTab('google_review')">
+                <i class="fa-brands fa-google me-1 text-warning"></i> Google Reviews Manager
+            </button>
         </div>
 
         <!-- Plan Filter (for dynamic cards) -->
@@ -443,6 +446,9 @@
     </div>
 </div>
 
+<!-- ── Panel 3: Google Reviews Manager ── -->
+{% include 'admin/coming_soon/google_review_tab.html' %}
+
 <!-- ── Live Dashboard Preview Modal ── -->
 <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
@@ -482,17 +488,16 @@
     function switchMainTab(mode) {
         document.getElementById('panelDynamic').style.display = (mode === 'dynamic') ? 'block' : 'none';
         document.getElementById('panelLegacy').style.display = (mode === 'legacy') ? 'block' : 'none';
+        var pGr = document.getElementById('panelGoogleReview');
+        if (pGr) pGr.style.display = (mode === 'google_review') ? 'block' : 'none';
         document.getElementById('dynamicFilters').style.display = (mode === 'dynamic') ? 'flex' : 'none';
 
         var bDyn = document.getElementById('tabBtnDynamic');
         var bLeg = document.getElementById('tabBtnLegacy');
-        if (mode === 'dynamic') {
-            bDyn.className = 'cs-main-tab active';
-            bLeg.className = 'cs-main-tab';
-        } else {
-            bDyn.className = 'cs-main-tab';
-            bLeg.className = 'cs-main-tab active';
-        }
+        var bGr = document.getElementById('tabBtnGoogleReview');
+        bDyn.className = (mode === 'dynamic') ? 'cs-main-tab active' : 'cs-main-tab';
+        bLeg.className = (mode === 'legacy') ? 'cs-main-tab active' : 'cs-main-tab';
+        if (bGr) bGr.className = (mode === 'google_review') ? 'cs-main-tab active' : 'cs-main-tab';
     }
 
     function filterFeatures(plan, btn) {
@@ -740,6 +745,137 @@
                 showConfirmButton: false
             });
         });
+    }
+
+    // Google Reviews System Admin JS
+    function toggleGoogleReviewSystem() {
+        var btn = document.getElementById('btnGrMasterToggle');
+        var btnText = document.getElementById('btnGrMasterToggleText');
+        var badge = document.getElementById('grMasterStatusBadge');
+        var hiddenInput = document.getElementById('grInputEnabled');
+
+        btn.disabled = true;
+
+        fetch('{% url "admin_google_review_toggle" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            if (data.success) {
+                hiddenInput.value = data.enabled ? '1' : '0';
+                if (data.enabled) {
+                    badge.className = 'badge bg-success text-white px-2 py-1';
+                    badge.textContent = 'ACTIVE / ON';
+                    btn.className = 'btn btn-danger px-4 py-2 font-weight-bold shadow-sm';
+                    btnText.textContent = 'Turn OFF System';
+                } else {
+                    badge.className = 'badge bg-secondary text-white px-2 py-1';
+                    badge.textContent = 'DISABLED / OFF';
+                    btn.className = 'btn btn-success px-4 py-2 font-weight-bold shadow-sm';
+                    btnText.textContent = 'Turn ON System';
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Status Updated',
+                    text: data.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire('Error', data.message || 'Could not update status', 'error');
+            }
+        })
+        .catch(function(err) {
+            btn.disabled = false;
+            Swal.fire('Error', 'Network or server error', 'error');
+        });
+    }
+
+    function saveGoogleReviewConfigForm(e) {
+        e.preventDefault();
+        var form = document.getElementById('grConfigForm');
+        var formData = new FormData(form);
+        var saveBtn = document.getElementById('btnGrSave');
+        var originalHtml = saveBtn.innerHTML;
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Saving Settings...';
+
+        fetch('{% url "admin_google_review_config_save" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalHtml;
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Configuration Saved!',
+                    text: data.message,
+                    timer: 1800,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire('Error', data.message || 'Failed to save settings', 'error');
+            }
+        })
+        .catch(function(err) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalHtml;
+            Swal.fire('Error', 'Network error occurred while saving', 'error');
+        });
+    }
+
+    function updateGrPreview() {
+        var title = document.getElementById('grBadgeTitle') ? document.getElementById('grBadgeTitle').value : '';
+        var subtitle = document.getElementById('grBadgeSubtitle') ? document.getElementById('grBadgeSubtitle').value : '';
+        var cta = document.getElementById('grCtaText') ? document.getElementById('grCtaText').value : '';
+        var logoCheckbox = document.getElementById('grShowGoogleLogo');
+        var showLogo = logoCheckbox ? logoCheckbox.checked : true;
+
+        if (document.getElementById('prevBadgeTitle')) {
+            document.getElementById('prevBadgeTitle').textContent = title || 'Google Reviews';
+        }
+        if (document.getElementById('prevBadgeSubtitle')) {
+            document.getElementById('prevBadgeSubtitle').textContent = subtitle || 'Verified client reviews from Google';
+        }
+        if (document.getElementById('prevCtaText')) {
+            document.getElementById('prevCtaText').textContent = cta || 'Review on Google';
+        }
+        if (document.getElementById('prevGoogleLogo')) {
+            document.getElementById('prevGoogleLogo').style.display = showLogo ? 'flex' : 'none';
+        }
+
+        // Nudge preview
+        var nTitle = document.getElementById('grNudgeTitle') ? document.getElementById('grNudgeTitle').value : '';
+        var nMsg = document.getElementById('grNudgeMessage') ? document.getElementById('grNudgeMessage').value : '';
+        var nYes = document.getElementById('grNudgeYesText') ? document.getElementById('grNudgeYesText').value : '';
+        var nSkip = document.getElementById('grNudgeSkipText') ? document.getElementById('grNudgeSkipText').value : '';
+
+        var agentPlaceholder = '{' + '{agent_name}}';
+        if (document.getElementById('prevNudgeTitle')) {
+            var rawTitle = nTitle || ('Help ' + agentPlaceholder + ' grow!');
+            document.getElementById('prevNudgeTitle').textContent = rawTitle.split(agentPlaceholder).join('Rahul Sharma');
+        }
+        if (document.getElementById('prevNudgeMessage')) {
+            var rawMsg = nMsg || 'Your review matters! Would you also leave a quick review on Google?';
+            document.getElementById('prevNudgeMessage').textContent = rawMsg.split(agentPlaceholder).join('Rahul Sharma');
+        }
+        if (document.getElementById('prevNudgeYesText')) {
+            document.getElementById('prevNudgeYesText').textContent = nYes || 'Yes, Review on Google';
+        }
+        if (document.getElementById('prevNudgeSkipText')) {
+            document.getElementById('prevNudgeSkipText').textContent = nSkip || 'Maybe Later';
+        }
     }
 </script>
 {% endblock %}

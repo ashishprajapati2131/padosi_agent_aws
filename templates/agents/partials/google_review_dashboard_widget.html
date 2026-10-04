@@ -1,0 +1,347 @@
+<!-- Google Reviews Agent Dashboard Widget -->
+<div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden" style="border: 1px solid #e2e8f0; background: #fff;">
+    {% if not google_review_eligible %}
+    <!-- Locked Plan State -->
+    <div class="card-body p-4 p-md-5 text-center position-relative">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: #eff6ff; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+            <svg width="32" height="32" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+        </div>
+        <div class="badge bg-warning text-dark mb-2 px-3 py-1 font-weight-bold">
+            <i class="fa-solid fa-lock me-1"></i> Plan Exclusive Feature
+        </div>
+        <h4 class="font-weight-bold text-dark mb-2">{{ google_review_sys_cfg.dashboard_section_title|default:'Google Reviews & Rating' }}</h4>
+        <p class="text-muted mx-auto mb-4" style="max-width: 500px; font-size: 14px;">
+            Showcase your verified 5-star Google reviews and rating directly on your PadosiAgent public profile. Automatically prompt visitors to leave you a Google review.
+        </p>
+        <button type="button" class="btn btn-primary font-weight-bold px-4 py-2 rounded-pill shadow-sm" onclick="openUpgradeModal ? openUpgradeModal('professional') : (location.href='{% url 'agents:agent_upgrade_plan' %}')">
+            <i class="fa-solid fa-rocket me-1"></i> Upgrade Plan to Unlock
+        </button>
+    </div>
+
+    {% else %}
+    <!-- Eligible Agent Management Interface -->
+    <div class="card-header bg-white border-bottom p-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #eff6ff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <svg width="26" height="26" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+            </div>
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <h5 class="font-weight-bold text-dark mb-0">{{ google_review_sys_cfg.dashboard_section_title|default:'Google Reviews & Rating' }}</h5>
+                    <span id="agentGrBadgeStatus" class="badge {% if agent_gr_cfg.is_enabled %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
+                        {% if agent_gr_cfg.is_enabled %}Active on Profile{% else %}Hidden{% endif %}
+                    </span>
+                </div>
+                <p class="text-muted small mb-0">{{ google_review_sys_cfg.dashboard_section_desc|default:'Showcase your Google rating & top reviews on your public profile and invite clients to review you on Google.' }}</p>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+            <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="agentGrToggleSwitch" style="width: 44px; height: 22px; cursor: pointer;"
+                       {% if agent_gr_cfg.is_enabled %}checked{% endif %} onchange="agentToggleGoogleReview()">
+                <label class="form-check-label font-weight-bold small text-dark cursor-pointer" for="agentGrToggleSwitch">
+                    Display on Profile
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-body p-4">
+        <form id="agentGoogleReviewForm" onsubmit="saveAgentGoogleReviewForm(event)">
+            {% csrf_token %}
+            <input type="hidden" name="is_enabled" id="agentGrFormIsEnabled" value="{{ agent_gr_cfg.is_enabled|yesno:'1,0' }}">
+
+            <div class="row g-4 mb-4">
+                <!-- Google Review URL -->
+                <div class="col-md-12">
+                    <label class="form-label font-weight-bold small text-dark">
+                        Your Google Review Link <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted border-end-0">
+                            <i class="fa-solid fa-link"></i>
+                        </span>
+                        <input type="url" name="google_review_url" id="agentGrReviewUrl" class="form-control border-start-0"
+                               placeholder="{{ google_review_sys_cfg.dashboard_url_placeholder|default:'https://g.page/r/.../review' }}"
+                               value="{{ agent_gr_cfg.google_review_url|default:'' }}" required>
+                    </div>
+                    <small class="text-muted mt-1 d-block">
+                        <i class="fa-solid fa-circle-info text-primary me-1"></i>
+                        Clients will be redirected to this link to write reviews. (Find this in your Google Business Profile &gt; "Ask for reviews" &gt; Copy link).
+                    </small>
+                </div>
+
+                <!-- Place Name / Business Name -->
+                <div class="col-md-6">
+                    <label class="form-label font-weight-bold small text-dark">Google Business / Listing Name</label>
+                    <input type="text" name="google_place_name" class="form-control"
+                           placeholder="e.g. Rahul Sharma LIC Advisor"
+                           value="{{ agent_gr_cfg.google_place_name|default:'' }}">
+                </div>
+
+                <!-- Google Rating (1.0 - 5.0) -->
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label font-weight-bold small text-dark">Google Rating</label>
+                    <div class="input-group">
+                        <input type="number" step="0.1" min="1.0" max="5.0" name="google_rating" id="agentGrRating" class="form-control"
+                               placeholder="4.8" value="{{ agent_gr_cfg.google_rating|default:'4.8' }}">
+                        <span class="input-group-text bg-light text-warning">★</span>
+                    </div>
+                </div>
+
+                <!-- Total Review Count -->
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label font-weight-bold small text-dark">Total Google Reviews</label>
+                    <input type="number" min="0" name="google_review_count" id="agentGrReviewCount" class="form-control"
+                           placeholder="127" value="{{ agent_gr_cfg.google_review_count|default:0 }}">
+                </div>
+            </div>
+
+            <!-- Featured Reviews Section -->
+            <div class="border-top pt-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <h6 class="font-weight-bold text-dark mb-0">
+                            <i class="fa-solid fa-comments text-primary me-1"></i> Featured Reviews (Up to 5)
+                        </h6>
+                        <small class="text-muted">Manually enter up to 5 of your top Google client reviews to showcase on your profile.</small>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill font-weight-bold" id="btnAddReviewRow" onclick="addReviewRow()">
+                        <i class="fa-solid fa-plus me-1"></i> Add Review
+                    </button>
+                </div>
+
+                <div id="reviewsRepeaterContainer" class="d-flex flex-column gap-3">
+                    {% for r in agent_gr_reviews %}
+                    <div class="review-row-item card border p-3 rounded-3" style="background: #f8fafc;">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-light text-dark border font-weight-bold">Review #<span class="review-num">{{ forloop.counter }}</span></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1" onclick="removeReviewRow(this)">
+                                <i class="fa-solid fa-trash-can"></i> Remove
+                            </button>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-md-5">
+                                <label class="small text-muted font-weight-bold">Client Name</label>
+                                <input type="text" name="review_author[]" class="form-control form-control-sm" placeholder="Client Name" value="{{ r.author|default:'' }}" required>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="small text-muted font-weight-bold">Rating</label>
+                                <select name="review_rating[]" class="form-select form-select-sm">
+                                    <option value="5" {% if r.rating == 5 or not r.rating %}selected{% endif %}>★★★★★ (5 Stars)</option>
+                                    <option value="4" {% if r.rating == 4 %}selected{% endif %}>★★★★☆ (4 Stars)</option>
+                                    <option value="3" {% if r.rating == 3 %}selected{% endif %}>★★★☆☆ (3 Stars)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="small text-muted font-weight-bold">Date / Relative Time</label>
+                                <input type="text" name="review_time[]" class="form-control form-control-sm" placeholder="e.g. 2 weeks ago" value="{{ r.time|default:'' }}">
+                            </div>
+                            <div class="col-12">
+                                <label class="small text-muted font-weight-bold">Review Text</label>
+                                <textarea name="review_text[]" class="form-control form-control-sm" rows="2" placeholder="Paste the client's Google review feedback here..." required>{{ r.text|default:'' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <!-- Default initial empty review card -->
+                    <div class="review-row-item card border p-3 rounded-3" style="background: #f8fafc;">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge bg-light text-dark border font-weight-bold">Review #<span class="review-num">1</span></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1" onclick="removeReviewRow(this)">
+                                <i class="fa-solid fa-trash-can"></i> Remove
+                            </button>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-md-5">
+                                <label class="small text-muted font-weight-bold">Client Name</label>
+                                <input type="text" name="review_author[]" class="form-control form-control-sm" placeholder="Client Name" required>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="small text-muted font-weight-bold">Rating</label>
+                                <select name="review_rating[]" class="form-select form-select-sm">
+                                    <option value="5" selected>★★★★★ (5 Stars)</option>
+                                    <option value="4">★★★★☆ (4 Stars)</option>
+                                    <option value="3">★★★☆☆ (3 Stars)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 col-6">
+                                <label class="small text-muted font-weight-bold">Date / Relative Time</label>
+                                <input type="text" name="review_time[]" class="form-control form-control-sm" placeholder="e.g. 2 weeks ago">
+                            </div>
+                            <div class="col-12">
+                                <label class="small text-muted font-weight-bold">Review Text</label>
+                                <textarea name="review_text[]" class="form-control form-control-sm" rows="2" placeholder="Paste the client's Google review feedback here..." required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Submit Button Bar -->
+            <div class="d-flex align-items-center justify-content-between mt-4 pt-3 border-top flex-wrap gap-2">
+                <div class="text-muted small">
+                    <i class="fa-solid fa-arrow-pointer text-success me-1"></i>
+                    Total clicks on your Google Review button: <strong>{{ agent_gr_cfg.google_review_clicks|default:0 }}</strong>
+                </div>
+                <button type="submit" class="btn btn-success px-4 py-2 font-weight-bold shadow-sm" id="btnAgentGrSave">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> Save Google Review Settings
+                </button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function updateReviewNumbers() {
+        var items = document.querySelectorAll('#reviewsRepeaterContainer .review-row-item');
+        items.forEach(function(el, idx) {
+            var numSpan = el.querySelector('.review-num');
+            if (numSpan) numSpan.textContent = idx + 1;
+        });
+        var addBtn = document.getElementById('btnAddReviewRow');
+        if (addBtn) {
+            addBtn.style.display = items.length >= 5 ? 'none' : 'inline-block';
+        }
+    }
+
+    function addReviewRow() {
+        var container = document.getElementById('reviewsRepeaterContainer');
+        var count = container.querySelectorAll('.review-row-item').length;
+        if (count >= 5) {
+            Swal.fire('Limit Reached', 'You can display up to 5 featured Google reviews.', 'info');
+            return;
+        }
+
+        var html = `
+            <div class="review-row-item card border p-3 rounded-3" style="background: #f8fafc;">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="badge bg-light text-dark border font-weight-bold">Review #<span class="review-num">${count + 1}</span></span>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1" onclick="removeReviewRow(this)">
+                        <i class="fa-solid fa-trash-can"></i> Remove
+                    </button>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-5">
+                        <label class="small text-muted font-weight-bold">Client Name</label>
+                        <input type="text" name="review_author[]" class="form-control form-control-sm" placeholder="Client Name" required>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <label class="small text-muted font-weight-bold">Rating</label>
+                        <select name="review_rating[]" class="form-select form-select-sm">
+                            <option value="5" selected>★★★★★ (5 Stars)</option>
+                            <option value="4">★★★★☆ (4 Stars)</option>
+                            <option value="3">★★★☆☆ (3 Stars)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 col-6">
+                        <label class="small text-muted font-weight-bold">Date / Relative Time</label>
+                        <input type="text" name="review_time[]" class="form-control form-control-sm" placeholder="e.g. 2 weeks ago">
+                    </div>
+                    <div class="col-12">
+                        <label class="small text-muted font-weight-bold">Review Text</label>
+                        <textarea name="review_text[]" class="form-control form-control-sm" rows="2" placeholder="Paste the client's Google review feedback here..." required></textarea>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+        updateReviewNumbers();
+    }
+
+    function removeReviewRow(btn) {
+        var card = btn.closest('.review-row-item');
+        if (card) {
+            card.remove();
+            updateReviewNumbers();
+        }
+    }
+
+    function agentToggleGoogleReview() {
+        var toggle = document.getElementById('agentGrToggleSwitch');
+        var badge = document.getElementById('agentGrBadgeStatus');
+        var hiddenInput = document.getElementById('agentGrFormIsEnabled');
+
+        fetch('{% url "agents:agent_google_review_toggle" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                hiddenInput.value = data.is_enabled ? '1' : '0';
+                toggle.checked = data.is_enabled;
+                if (data.is_enabled) {
+                    badge.className = 'badge bg-success text-white';
+                    badge.textContent = 'Active on Profile';
+                } else {
+                    badge.className = 'badge bg-secondary text-white';
+                    badge.textContent = 'Hidden';
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: data.is_enabled ? 'Enabled' : 'Disabled',
+                    text: data.message,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            } else {
+                toggle.checked = !toggle.checked;
+                Swal.fire('Error', data.message || 'Could not update status', 'error');
+            }
+        })
+        .catch(function(err) {
+            toggle.checked = !toggle.checked;
+            Swal.fire('Error', 'Server or connection error', 'error');
+        });
+    }
+
+    function saveAgentGoogleReviewForm(e) {
+        e.preventDefault();
+        var form = document.getElementById('agentGoogleReviewForm');
+        var formData = new FormData(form);
+        var saveBtn = document.getElementById('btnAgentGrSave');
+        var originalHtml = saveBtn.innerHTML;
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...';
+
+        fetch('{% url "agents:agent_google_review_save" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalHtml;
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Saved!',
+                    text: data.message,
+                    timer: 1600,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire('Error', data.message || 'Failed to save settings', 'error');
+            }
+        })
+        .catch(function(err) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalHtml;
+            Swal.fire('Error', 'Network error occurred while saving', 'error');
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateReviewNumbers();
+    });
+</script>

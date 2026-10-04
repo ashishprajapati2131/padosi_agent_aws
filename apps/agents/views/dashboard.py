@@ -627,8 +627,25 @@ def agent_dashboard(request):
     from apps.agents.services.plan_upgrade_handoff import dashboard_upgrade_slug
     app_upgrade_plan = dashboard_upgrade_slug(agent, request.GET.get('upgrade'))
 
+    # ── Google Review System Context ──
+    from apps.agents.services.google_review import (
+        get_google_review_system_config,
+        agent_can_use_google_reviews,
+        get_agent_google_review_config,
+    )
+    google_review_sys_cfg = get_google_review_system_config()
+    google_review_system_enabled = bool(google_review_sys_cfg.get('enabled', False))
+    google_review_eligible = agent_can_use_google_reviews(agent)
+    agent_gr_cfg = get_agent_google_review_config(agent)
+    agent_gr_reviews = agent_gr_cfg.cached_reviews if (agent_gr_cfg and isinstance(agent_gr_cfg.cached_reviews, list)) else []
+
     context = {
         **studio_context,
+        'google_review_system_enabled': google_review_system_enabled,
+        'google_review_eligible': google_review_eligible,
+        'agent_gr_cfg': agent_gr_cfg,
+        'agent_gr_reviews': agent_gr_reviews,
+        'google_review_sys_cfg': google_review_sys_cfg,
         'auto_show_invite_studio': auto_show_studio,
         'champ_campaign': champ_campaign,
         'champ_participant': champ_participant,
@@ -1024,6 +1041,19 @@ def agent_public_profile(request, slug, state_code=None):
         context['review_scroll_delay_ms'] = get_review_growth_config()['review_scroll_delay_ms']
     except Exception:
         pass
+
+    # Google Review Showcase & Nudge Context
+    try:
+        from apps.agents.services.google_review import (
+            get_agent_google_review_data,
+            get_google_nudge_config,
+        )
+        context['google_review_display'] = get_agent_google_review_data(agent)
+        context['google_nudge_config'] = get_google_nudge_config(agent)
+    except Exception:
+        context['google_review_display'] = None
+        context['google_nudge_config'] = None
+
     return render(request, 'agents/profile_view.html', context)
 
 
@@ -1181,6 +1211,13 @@ def store_review(request, slug, state_code=None):
             f'{response_message} You unlocked the Professional upgrade — open your agent dashboard to continue.'
         )
 
+    nudge_data = None
+    try:
+        from apps.agents.services.google_review import get_google_nudge_config
+        nudge_data = get_google_nudge_config(agent)
+    except Exception:
+        pass
+
     return JsonResponse({
         'status': 'success',
         'message': response_message,
@@ -1188,6 +1225,7 @@ def store_review(request, slug, state_code=None):
         'min_reviews': growth_status.get('min_reviews', 3),
         'upgrade_ready': bool(growth_status.get('upgrade_ready')),
         'review_created': bool(created),
+        'google_nudge': nudge_data,
     })
 
 
@@ -2834,5 +2872,170 @@ def agent_update_visibility(request):
     except Exception as e:
         logger.error(f"Error updating agent visibility: {e}")
         return JsonResponse({'success': False, 'message': 'Database error'})
+
+
+@require_POST
+def save_google_review_settings(request):
+    """
+    Agent endpoint: Save/update Google review URL, rating, count, place name,
+    is_enabled status, and up to 5 reviews.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required.'}, status=401)
+
+    from apps.agents.services.account_auth import resolve_agent_for_user
+    agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
+    if not agent:
+        return JsonResponse({'success': False, 'message': 'Agent profile not found.'}, status=404)
+
+    from apps.agents.services.google_review import (
+        agent_can_use_google_reviews,
+        get_agent_google_review_config,
+        get_google_review_system_config,
+    )
+    from decimal import Decimal, InvalidOperation
+
+    if not agent_can_use_google_reviews(agent):
+        return JsonResponse({
+            'success': False,
+            'message': 'Your current plan does not include the Google Review feature. Please upgrade your plan.'
+        }, status=403)
+
+    cfg = get_agent_google_review_config(agent)
+    if not cfg:
+        return JsonResponse({'success': False, 'message': 'Could not initialize Google review config.'}, status=500)
+
+    url = request.POST.get('google_review_url', '').strip()
+    is_enabled = request.POST.get('is_enabled') in ('1', 'true', 'on', True)
+    rating_raw = request.POST.get('google_rating', '').strip()
+    count_raw = request.POST.get('google_review_count', '').strip()
+    place_name = request.POST.get('google_place_name', '').strip()
+
+    # Parse rating (e.g. 4.8)
+    google_rating = None
+    if rating_raw:
+        try:
+            val = float(rating_raw)
+            if 1.0 <= val <= 5.0:
+                google_rating = Decimal(str(round(val, 1)))
+        except (ValueError, TypeError, InvalidOperation):
+            pass
+
+    # Parse review count
+    try:
+        google_review_count = max(0, int(count_raw)) if count_raw else 0
+    except (ValueError, TypeError):
+        google_review_count = 0
+
+    # Parse reviews array
+    import json
+    reviews_json_raw = request.POST.get('reviews_json')
+    reviews_list = []
+    if reviews_json_raw:
+        try:
+            parsed = json.loads(reviews_json_raw)
+            if isinstance(parsed, list):
+                reviews_list = parsed
+        except Exception:
+            pass
+
+    if not reviews_list:
+        authors = request.POST.getlist('review_author[]') or request.POST.getlist('review_author')
+        ratings = request.POST.getlist('review_rating[]') or request.POST.getlist('review_rating')
+        texts = request.POST.getlist('review_text[]') or request.POST.getlist('review_text')
+        times = request.POST.getlist('review_time[]') or request.POST.getlist('review_time')
+
+        for i in range(len(texts)):
+            t = texts[i].strip() if i < len(texts) else ''
+            if not t:
+                continue
+            a = authors[i].strip() if i < len(authors) and authors[i] else 'Client'
+            try:
+                r_num = min(5, max(1, int(ratings[i]))) if i < len(ratings) else 5
+            except (ValueError, TypeError):
+                r_num = 5
+            tm = times[i].strip() if i < len(times) and times[i] else ''
+            reviews_list.append({
+                'author': a,
+                'rating': r_num,
+                'text': t,
+                'time': tm,
+            })
+
+    sys_cfg = get_google_review_system_config()
+    max_reviews = sys_cfg.get('max_reviews_shown', 5)
+    reviews_list = reviews_list[:max_reviews]
+
+    cfg.google_review_url = url
+    cfg.is_enabled = is_enabled
+    cfg.google_rating = google_rating
+    cfg.google_review_count = google_review_count
+    cfg.google_place_name = place_name
+    cfg.cached_reviews = reviews_list
+    cfg.save()
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Google Review settings saved successfully!',
+        'is_enabled': cfg.is_enabled,
+        'review_count': len(reviews_list),
+    })
+
+
+@require_POST
+def toggle_agent_google_review(request):
+    """Agent endpoint: Quick ON/OFF toggle for profile Google review display."""
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Authentication required.'}, status=401)
+
+    from apps.agents.services.account_auth import resolve_agent_for_user
+    agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
+    if not agent:
+        return JsonResponse({'success': False, 'message': 'Agent profile not found.'}, status=404)
+
+    from apps.agents.services.google_review import (
+        agent_can_use_google_reviews,
+        get_agent_google_review_config,
+    )
+
+    if not agent_can_use_google_reviews(agent):
+        return JsonResponse({
+            'success': False,
+            'message': 'Your current plan does not include the Google Review feature. Please upgrade your plan.'
+        }, status=403)
+
+    cfg = get_agent_google_review_config(agent)
+    cfg.is_enabled = not cfg.is_enabled
+    cfg.save(update_fields=['is_enabled', 'updated_at'])
+
+    status_str = 'enabled' if cfg.is_enabled else 'disabled'
+    return JsonResponse({
+        'success': True,
+        'is_enabled': cfg.is_enabled,
+        'message': f'Google Reviews showcase is now {status_str} on your public profile.'
+    })
+
+
+@require_POST
+def track_google_review_click_view(request):
+    """Public or client endpoint: Tracks when a user clicks 'Review on Google'."""
+    agent_id = request.POST.get('agent_id')
+    if not agent_id:
+        import json
+        try:
+            body = json.loads(request.body.decode('utf-8'))
+            agent_id = body.get('agent_id')
+        except Exception:
+            agent_id = None
+
+    if not agent_id:
+        return JsonResponse({'success': False, 'message': 'Missing agent_id'}, status=400)
+
+    try:
+        from apps.agents.services.google_review import track_google_review_click
+        clicks = track_google_review_click(int(agent_id))
+        return JsonResponse({'success': True, 'clicks': clicks})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 
