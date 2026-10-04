@@ -503,35 +503,17 @@
             </div>
 
             {% if profile.show_ratings %}
-            <div class="d-flex align-items-center gap-2 flex-wrap mb-4">
-                <div class="reviews-summary" style="cursor: pointer;" onclick="if(window.switchReviewTab) switchReviewTab('website'); document.getElementById('reviews-section') ? document.getElementById('reviews-section').scrollIntoView({behavior: 'smooth'}) : null">
-                    <div class="stars">
-                        {% for i in "12345" %}
-                            {% if agent.average_rating >= forloop.counter %}
-                                <i class="fas fa-star text-warning"></i>
-                            {% else %}
-                                <i class="far fa-star text-warning"></i>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                    {{ agent.average_rating|floatformat:1 }} ({{ agent.review_count }} website reviews) <i class="fas fa-arrow-down ml-1" style="font-size: 10px;"></i>
+            <div class="reviews-summary" style="cursor: pointer;" onclick="if(window.switchReviewTab) switchReviewTab('website'); document.getElementById('reviews-section') ? document.getElementById('reviews-section').scrollIntoView({behavior: 'smooth'}) : null">
+                <div class="stars">
+                    {% for i in "12345" %}
+                        {% if agent.average_rating >= forloop.counter %}
+                            <i class="fas fa-star text-warning"></i>
+                        {% else %}
+                            <i class="far fa-star text-warning"></i>
+                        {% endif %}
+                    {% endfor %}
                 </div>
-
-                {% if google_review_display and google_review_display.enabled %}
-                <div class="reviews-summary" style="cursor: pointer; background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border-color: #93c5fd; color: #0369a1;" onclick="if(window.switchReviewTab) switchReviewTab('google'); document.getElementById('reviews-section') ? document.getElementById('reviews-section').scrollIntoView({behavior: 'smooth'}) : null">
-                    <i class="fa-brands fa-google text-primary" style="font-size: 13px;"></i>
-                    <div class="stars" style="color: #f59e0b;">
-                        {% for i in "12345" %}
-                            {% if google_review_display.rating >= forloop.counter %}
-                                <i class="fas fa-star text-warning"></i>
-                            {% else %}
-                                <i class="far fa-star text-warning"></i>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                    {{ google_review_display.rating }} ({{ google_review_display.review_count }} Google reviews) <i class="fas fa-arrow-down ml-1" style="font-size: 10px;"></i>
-                </div>
-                {% endif %}
+                {{ agent.average_rating|floatformat:1 }} ({{ agent.review_count }} reviews) <i class="fas fa-arrow-up-right-from-square ml-2" style="font-size: 10px;"></i>
             </div>
             {% endif %}
         </div>
