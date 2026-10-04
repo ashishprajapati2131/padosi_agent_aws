@@ -1,8 +1,8 @@
 {% if google_review_display and google_review_display.enabled %}
-<!-- Google Reviews Verified Showcase -->
-<div class="google-reviews-section-content">
+<!-- 2. Google Reviews & Rating Section -->
+<div id="subSectionGoogleReviews" class="review-sub-section {% if profile.show_reviews and agent_plan.show_review_management != False %}mt-4 pt-4 border-top{% endif %}">
     <!-- Header Row -->
-    <div class="reviews-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 pb-3" style="border-bottom: 2px solid #f0f4f8;">
+    <div class="reviews-header d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4 pb-2" style="border-bottom: 2px solid #f0f4f8;">
         <div class="d-flex align-items-center gap-3">
             {% if google_review_display.show_google_logo %}
             <div style="width: 48px; height: 48px; border-radius: 12px; background: #ffffff; border: 1.5px solid #e2e8f0; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); flex-shrink: 0;">
@@ -11,9 +11,10 @@
             {% endif %}
             <div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <h2 class="section-title mb-0" style="margin-bottom: 0;">
-                        {{ google_review_display.badge_title|default:'Google Reviews & Rating' }}
-                    </h2>
+                    <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 4px 8px; border: 1px solid #bae6fd;">SECTION 2</span>
+                    <h3 class="section-title mb-0" style="margin-bottom: 0; font-size: 1.15rem;">
+                        {{ google_review_display.badge_title|default:'Google Client Reviews' }}
+                    </h3>
                     <span class="badge" style="background: #e0f2fe; color: #0284c7; font-size: 11px; font-weight: 700; border-radius: 9999px; padding: 4px 10px;">
                         <i class="fa-solid fa-circle-check me-1"></i> Google Verified
                     </span>
@@ -90,8 +91,8 @@
     </div>
     {% else %}
     <div class="p-4 rounded-3 text-center" style="background: #f8fafc; border: 1.5px dashed #cbd5e1;">
-        <div style="width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-            <i class="fa-brands fa-google text-primary" style="font-size: 24px;"></i>
+        <div style="width: 48px; height: 48px; margin: 0 auto 10px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+            <i class="fa-brands fa-google text-primary" style="font-size: 22px;"></i>
         </div>
         <h6 class="font-weight-bold text-dark mb-1">Official Google Reviews &amp; Rating</h6>
         <p class="text-muted mb-3 small" style="max-width: 500px; margin: 0 auto;">

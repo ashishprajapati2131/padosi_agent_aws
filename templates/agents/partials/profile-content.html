@@ -223,12 +223,50 @@
             }
         }
 
-        /* Google Reviews Section */
-        #google-reviews-section {
+        /* Review Section Tabs & Pills */
+        #reviews-section {
             scroll-margin-top: 80px;
         }
 
-        #google-reviews-section .google-review-card:hover {
+        .review-tab-pill {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 9999px;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            outline: none;
+        }
+
+        .review-tab-pill:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .review-tab-pill.active {
+            background: #0f766e;
+            color: #ffffff !important;
+            border-color: #0f766e;
+            box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+        }
+
+        .review-tab-pill.active i {
+            color: #ffffff !important;
+        }
+
+        .review-tab-pill.google-pill.active {
+            background: #1a73e8;
+            border-color: #1a73e8;
+            box-shadow: 0 2px 8px rgba(26, 115, 232, 0.25);
+        }
+
+        .google-review-card:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
             border-color: #cbd5e1 !important;
@@ -466,7 +504,7 @@
 
             {% if profile.show_ratings %}
             <div class="d-flex align-items-center gap-2 flex-wrap mb-4">
-                <div class="reviews-summary" style="cursor: pointer;" onclick="document.getElementById('reviews-section') ? document.getElementById('reviews-section').scrollIntoView({behavior: 'smooth'}) : null">
+                <div class="reviews-summary" style="cursor: pointer;" onclick="if(window.switchReviewTab) switchReviewTab('website'); document.getElementById('reviews-section') ? document.getElementById('reviews-section').scrollIntoView({behavior: 'smooth'}) : null">
                     <div class="stars">
                         {% for i in "12345" %}
                             {% if agent.average_rating >= forloop.counter %}
@@ -480,7 +518,7 @@
                 </div>
 
                 {% if google_review_display and google_review_display.enabled %}
-                <div class="reviews-summary" style="cursor: pointer; background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border-color: #93c5fd; color: #0369a1;" onclick="document.getElementById('google-reviews-section') ? document.getElementById('google-reviews-section').scrollIntoView({behavior: 'smooth'}) : null">
+                <div class="reviews-summary" style="cursor: pointer; background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border-color: #93c5fd; color: #0369a1;" onclick="if(window.switchReviewTab) switchReviewTab('google'); document.getElementById('reviews-section') ? document.getElementById('reviews-section').scrollIntoView({behavior: 'smooth'}) : null">
                     <i class="fa-brands fa-google text-primary" style="font-size: 13px;"></i>
                     <div class="stars" style="color: #f59e0b;">
                         {% for i in "12345" %}
@@ -708,86 +746,114 @@
         </div>
         {% endif %}
 
-        {% if profile.show_reviews and agent_plan.show_review_management != False %}
-        <!-- 1. Website Reviews & Rating (Section 8) -->
+        {% if profile.show_reviews and agent_plan.show_review_management != False or google_review_display.enabled %}
+        <!-- Reviews (Unified Section Card with 2 Sections at Same Place) -->
         <div class="section-card section-reviews" id="reviews-section" data-scroll-delay="{{ review_scroll_delay_ms|default:3000 }}">
-            <div class="reviews-header">
+            <!-- Master Header with Section Tabs -->
+            <div class="reviews-header d-flex align-items-center justify-content-between flex-wrap gap-3 pb-3 mb-4 border-bottom">
                 <div class="d-flex align-items-center gap-2">
-                    <h2 class="section-title mb-0"><i class="far fa-star text-warning"></i> Website Reviews &amp; Rating</h2>
-                </div>
-                <span class="total-reviews">{{ agent.review_count }} total</span>
-            </div>
-
-            <div class="reviews-body">
-                <div class="reviews-list">
-                    {% for review in reviews %}
-                        <div class="review-item">
-                            <div class="review-top">
-                                <div class="reviewer-info">
-                                    <div class="reviewer-avatar">
-                                        {{ review.author_display|slice:":1"|upper }}
-                                    </div>
-                                    <div class="reviewer-name">
-                                        {{ review.author_display }}
-                                    </div>
-                                </div>
-                                <div class="stars">
-                                    {% for i in "12345" %}
-                                        {% if review.rating >= forloop.counter %}
-                                            <i class="fas fa-star"></i>
-                                        {% else %}
-                                            <i class="far fa-star"></i>
-                                        {% endif %}
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <p class="review-text">{{ review.review|striptags }}</p>
-                            <div class="review-date">{{ review.created_at|date:"M d, Y"|default:"N/A" }}</div>
-                        </div>
-                    {% empty %}
-                        <div class="review-empty">No website reviews yet. Be the first to review!</div>
-                    {% endfor %}
+                    <h2 class="section-title mb-0"><i class="fas fa-star-half-stroke text-warning"></i> Client Reviews &amp; Ratings</h2>
                 </div>
 
-                {% if not isOwnerView %}
-                <div class="write-review-box">
-                    <h3 class="write-review-title">Write a Review</h3>
-                    <form id="submit-review-form" data-is-guest="{% if request.user.is_authenticated %}false{% else %}true{% endif %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="rating" id="review-rating-input" value="{% if existingReview %}{{ existingReview.rating }}{% else %}0{% endif %}">
-                        
-                        <label class="review-rating-label">Your Rating:</label>
-                        <div class="review-stars-input">
-                            {% for i in "12345" %}
-                                <i class="{% if existingReview and existingReview.rating >= forloop.counter %}fas{% else %}far{% endif %} fa-star" data-rating="{{ forloop.counter }}"></i>
-                            {% endfor %}
-                        </div>
-                        
-                        <textarea id="review-text-input" name="review" class="form-control" rows="4" placeholder="Share your experience with this agent (minimum 10 characters)..." required minlength="10" maxlength="500">{% if existingReview %}{{ existingReview.review }}{% endif %}</textarea>
-                        
-                        <div class="char-counter">
-                            <span id="review-char-count">{% if existingReview %}{{ existingReview.review|length }}{% else %}0{% endif %}</span> / 500 characters
-                        </div>
-                        
-                        <button type="submit" class="btn btn-whatsapp" id="submit-review-btn">
-                            {% if request.user.is_authenticated and existingReview %}Update Review{% else %}Submit Review{% endif %}
-                        </button>
-                        {% if not request.user.is_authenticated %}
-                            <p class="text-muted small mt-2">
-                                Note: You will be asked to share your name, email, and mobile number to submit this review.
-                            </p>
-                        {% endif %}
-                    </form>
+                {% if profile.show_reviews and agent_plan.show_review_management != False and google_review_display and google_review_display.enabled %}
+                <!-- Filter Tabs: Same place view with 2 sections -->
+                <div class="review-tabs-bar d-flex align-items-center gap-2 flex-wrap" role="tablist">
+                    <button type="button" class="review-tab-pill active" id="tabBtnBoth" onclick="switchReviewTab('both')">
+                        <i class="fa-solid fa-layer-group"></i> Both Sections
+                    </button>
+                    <button type="button" class="review-tab-pill" id="tabBtnWebsite" onclick="switchReviewTab('website')">
+                        <i class="far fa-star text-warning"></i> 1. Website ({{ agent.review_count }})
+                    </button>
+                    <button type="button" class="review-tab-pill google-pill" id="tabBtnGoogle" onclick="switchReviewTab('google')">
+                        <i class="fa-brands fa-google text-primary"></i> 2. Google ({{ google_review_display.rating }} ★)
+                    </button>
                 </div>
                 {% endif %}
             </div>
-        </div>
-        {% endif %}
 
-        {% if google_review_display and google_review_display.enabled %}
-        <!-- 2. Google Reviews & Rating (Section 9) -->
-        <div class="section-card section-google-reviews" id="google-reviews-section">
+            {% if profile.show_reviews and agent_plan.show_review_management != False %}
+            <!-- 1. Website Reviews & Rating Section -->
+            <div id="subSectionWebsiteReviews" class="review-sub-section">
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge" style="background: #f0fdf4; color: #166534; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 4px 8px; border: 1px solid #bbf7d0;">SECTION 1</span>
+                        <h3 class="h6 mb-0 font-weight-bold text-dark d-flex align-items-center gap-1.5">
+                            <i class="far fa-star text-warning"></i> Website Reviews &amp; Rating
+                        </h3>
+                    </div>
+                    <span class="total-reviews" style="font-size: 12px;">{{ agent.review_count }} total ratings</span>
+                </div>
+
+                <div class="reviews-body">
+                    <div class="reviews-list">
+                        {% for review in reviews %}
+                            <div class="review-item">
+                                <div class="review-top">
+                                    <div class="reviewer-info">
+                                        <div class="reviewer-avatar">
+                                            {{ review.author_display|slice:":1"|upper }}
+                                        </div>
+                                        <div class="reviewer-name">
+                                            {{ review.author_display }}
+                                        </div>
+                                    </div>
+                                    <div class="stars">
+                                        {% for i in "12345" %}
+                                            {% if review.rating >= forloop.counter %}
+                                                <i class="fas fa-star"></i>
+                                            {% else %}
+                                                <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <p class="review-text">{{ review.review|striptags }}</p>
+                                <div class="review-date">{{ review.created_at|date:"M d, Y"|default:"N/A" }}</div>
+                            </div>
+                        {% empty %}
+                            <div class="review-empty">No website reviews yet. Be the first to review!</div>
+                        {% endfor %}
+                    </div>
+
+                    {% if not isOwnerView %}
+                    <div class="write-review-box">
+                        <h3 class="write-review-title">Write a Review</h3>
+                        <form id="submit-review-form" data-is-guest="{% if request.user.is_authenticated %}false{% else %}true{% endif %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="rating" id="review-rating-input" value="{% if existingReview %}{{ existingReview.rating }}{% else %}0{% endif %}">
+                            
+                            <label class="review-rating-label">Your Rating:</label>
+                            <div class="review-stars-input">
+                                {% for i in "12345" %}
+                                    <i class="{% if existingReview and existingReview.rating >= forloop.counter %}fas{% else %}far{% endif %} fa-star" data-rating="{{ forloop.counter }}"></i>
+                                {% endfor %}
+                            </div>
+                            
+                            <textarea id="review-text-input" name="review" class="form-control" rows="4" placeholder="Share your experience with this agent (minimum 10 characters)..." required minlength="10" maxlength="500">{% if existingReview %}{{ existingReview.review }}{% endif %}</textarea>
+                            
+                            <div class="char-counter">
+                                <span id="review-char-count">{% if existingReview %}{{ existingReview.review|length }}{% else %}0{% endif %}</span> / 500 characters
+                            </div>
+                            
+                            <button type="submit" class="btn btn-whatsapp" id="submit-review-btn">
+                                {% if request.user.is_authenticated and existingReview %}Update Review{% else %}Submit Review{% endif %}
+                            </button>
+                            {% if not request.user.is_authenticated %}
+                                <p class="text-muted small mt-2">
+                                    Note: You will be asked to share your name, email, and mobile number to submit this review.
+                                </p>
+                            {% endif %}
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if google_review_display and google_review_display.enabled %}
+            <!-- 2. Google Reviews & Rating Section -->
             {% include 'agents/partials/google_review_badge.html' %}
+            {% endif %}
         </div>
         {% endif %}
     </div>
@@ -804,6 +870,39 @@ window.googleNudgeConfig = {% if google_nudge_config %}{
     delay_ms: {{ google_nudge_config.delay_ms|default:1200 }},
     agent_id: {{ google_nudge_config.agent_id|default:0 }}
 }{% else %}null{% endif %};
+
+function switchReviewTab(mode) {
+    var secWeb = document.getElementById('subSectionWebsiteReviews');
+    var secGgl = document.getElementById('subSectionGoogleReviews');
+    var btnBoth = document.getElementById('tabBtnBoth');
+    var btnWeb = document.getElementById('tabBtnWebsite');
+    var btnGgl = document.getElementById('tabBtnGoogle');
+
+    if (btnBoth) btnBoth.classList.remove('active');
+    if (btnWeb) btnWeb.classList.remove('active');
+    if (btnGgl) btnGgl.classList.remove('active');
+
+    if (mode === 'website') {
+        if (secWeb) secWeb.style.display = 'block';
+        if (secGgl) secGgl.style.display = 'none';
+        if (btnWeb) btnWeb.classList.add('active');
+    } else if (mode === 'google') {
+        if (secWeb) secWeb.style.display = 'none';
+        if (secGgl) {
+            secGgl.style.display = 'block';
+            secGgl.classList.remove('mt-4', 'pt-4', 'border-top');
+        }
+        if (btnGgl) btnGgl.classList.add('active');
+    } else {
+        if (secWeb) secWeb.style.display = 'block';
+        if (secGgl) {
+            secGgl.style.display = 'block';
+            secGgl.classList.add('mt-4', 'pt-4', 'border-top');
+        }
+        if (btnBoth) btnBoth.classList.add('active');
+    }
+}
+window.switchReviewTab = switchReviewTab;
 
 function trackGoogleClick(agentId, source) {
     if (!agentId) return;
