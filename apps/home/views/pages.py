@@ -1795,52 +1795,285 @@ def save_user_location(request):
     return JsonResponse({'success': False, 'message': 'No valid location data provided'}, status=400)
 
 
+
+# ---------------------------------------------------------------------------
+# Area/locality → pincodes mapping for major Indian cities.
+# Used by city_agents_directory to resolve hyperlocal area slugs.
+# ---------------------------------------------------------------------------
+_AREA_PINCODE_MAP = {
+    # Ahmedabad localities
+    'paldi': ['380007'],
+    'satellite': ['380015'],
+    'bopal': ['380058'],
+    'bodakdev': ['380054'],
+    'vastrapur': ['380015'],
+    'navrangpura': ['380009'],
+    'sg highway': ['382481', '380059'],
+    's g highway': ['382481', '380059'],
+    'prahlad nagar': ['380015'],
+    'thaltej': ['380059'],
+    'maninagar': ['380008'],
+    'vastral': ['382418'],
+    'chandkheda': ['382424'],
+    'gota': ['382481'],
+    'nikol': ['382350'],
+    'naranpura': ['380013'],
+    'memnagar': ['380052'],
+    'vejalpur': ['380051'],
+    'juhapura': ['380055'],
+    'isanpur': ['382443'],
+    'odhav': ['382415'],
+    'naroda': ['382330'],
+    'motera': ['380005'],
+    'sabarmati': ['380019'],
+    'ranip': ['382480'],
+    'science city': ['380060'],
+    'shilaj': ['380058'],
+    'shela': ['382213'],
+    'ambli': ['380058'],
+    'uvarsad': ['382422'],
+    'sanand': ['382110'],
+    'ghuma': ['380058'],
+    'south bopal': ['380058'],
+    'new ranip': ['382480'],
+    'krishnanagar': ['382346'],
+    'vatva': ['382445'],
+    'rakhial': ['380023'],
+    'ghodasar': ['380050'],
+    'nikol-naroda': ['382350'],
+    'new cg road': ['382421'],
+    'chharodi': ['382481'],
+    'tragad': ['382470'],
+    'sola': ['380060'],
+    'hebatpur': ['382422'],
+    'dhandhuka': ['382460'],
+    'dholka': ['382225'],
+    'bavla': ['382220'],
+    'dehgam': ['382305'],
+    'unjha': ['384170'],
+    'mehsana': ['384002'],
+    'gandhinagar': ['382010', '382021', '382022', '382023', '382024', '382028'],
+    'kudasan': ['382421'],
+    'adalaj': ['382421'],
+    'pethapur': ['382610'],
+    # Surat localities
+    'adajan': ['395009'],
+    'athwa': ['395001'],
+    'citylight': ['395007'],
+    'vesu': ['395007'],
+    'piplod': ['395007'],
+    'althan': ['395017'],
+    'pal': ['395009'],
+    'katargam': ['395004'],
+    'udhna': ['394210'],
+    'varachha': ['395006'],
+    'rander': ['395005'],
+    'dumas': ['394550'],
+    'sachin': ['394230'],
+    'pandesara': ['394221'],
+    'bhestan': ['395023'],
+    'magdalla': ['395007'],
+    'ghod dod road': ['395001'],
+    'ghod-dod road': ['395001'],
+    'laskana': ['394210'],
+    # Rajkot localities
+    'kalawad road': ['360005'],
+    'gondal road': ['360002'],
+    'mavdi': ['360004'],
+    'raiya road': ['360007'],
+    'university road': ['360005'],
+    'bhaktinagar': ['360002'],
+    'pedak road': ['360003'],
+    'kothariya': ['360003'],
+    'aji industrial': ['360003'],
+    'metoda': ['360021'],
+    # Vadodara localities
+    'alkapuri': ['390007'],
+    'fatehgunj': ['390002'],
+    'productivity road': ['390020'],
+    'harni': ['390022'],
+    'gorwa': ['390016'],
+    'makarpura': ['390014'],
+    'karelibaug': ['390018'],
+    'waghodia road': ['390019'],
+    'subhanpura': ['390023'],
+    'vasna': ['390007'],
+    'manjalpur': ['390011'],
+    'sama': ['390008'],
+    # Mumbai localities
+    'andheri': ['400058', '400053', '400069'],
+    'bandra': ['400050', '400051'],
+    'powai': ['400076'],
+    'malad': ['400064', '400095'],
+    'borivali': ['400066', '400091', '400092'],
+    'kandivali': ['400067', '400101'],
+    'goregaon': ['400062', '400063'],
+    'jogeshwari': ['400060'],
+    'vile parle': ['400056', '400057'],
+    'santacruz': ['400054', '400055'],
+    'kurla': ['400070', '400024'],
+    'ghatkopar': ['400077', '400086'],
+    'mulund': ['400080', '400081'],
+    'thane': ['400601', '400602', '400603'],
+    'navi mumbai': ['400614', '400703', '400705'],
+    # Bangalore localities
+    'koramangala': ['560034'],
+    'indiranagar': ['560038'],
+    'whitefield': ['560066'],
+    'hsr layout': ['560102'],
+    'marathahalli': ['560037'],
+    'electronic city': ['560100'],
+    'jp nagar': ['560078'],
+    'jayanagar': ['560041'],
+    'btm layout': ['560076'],
+    'yelahanka': ['560064'],
+    # Pune localities
+    'baner': ['411045'],
+    'kothrud': ['411038'],
+    'viman nagar': ['411014'],
+    'hinjewadi': ['411057'],
+    'wakad': ['411057'],
+    'kharadi': ['411014'],
+    'hadapsar': ['411028'],
+    'aundh': ['411007'],
+    'deccan': ['411004'],
+    'pimpri chinchwad': ['411017', '411018', '411019'],
+}
+
+
+def _resolve_area_to_pincodes(area_name_lower):
+    """Return a list of pincodes for a known locality/area name, else empty list."""
+    area = area_name_lower.strip()
+    if area in _AREA_PINCODE_MAP:
+        return _AREA_PINCODE_MAP[area]
+    # Partial match: check if any key starts with / contains the area
+    for key, pins in _AREA_PINCODE_MAP.items():
+        if area in key or key in area:
+            return pins
+    return []
+
+
 def city_agents_directory(request, city_slug):
     """
     Programmatic Local SEO Hub: /insurance-agents/<city_slug>/
     Targeting 'insurance agent in <city>', 'best insurance agent in <city>'.
+
+    Multi-tier resolution:
+      1. Exact City model match → filter by serviceableCities (M2M)
+      2. Known locality/area → filter by servicePincodes / address
+      3. Text search on address / agent_pincode fields
+      4. City-wide fallback using parent city name
     """
-    from apps.agents.models import City, Agent
+    from apps.agents.models import City
     from django.db.models import Q
-    from django.shortcuts import render
 
     raw_slug = str(city_slug).strip().lower()
     city_query_name = raw_slug.replace('-', ' ')
 
-    city = (
+    # --- Tier 1: Try exact City model match ---
+    city_obj = (
         City.objects.filter(slug=raw_slug).first()
         or City.objects.filter(name__iexact=city_query_name).first()
     )
 
-    if city:
-        city_display = city.name
-        state_display = city.state or 'Gujarat'
-        agents_qs = Agent.objects.filter(
-            serviceableCities=city,
-            is_approved=True,
-            status='active'
-        )
+    if city_obj:
+        city_display = city_obj.name
+        state_display = city_obj.state or 'Gujarat'
+
+        # Use listed_agents_queryset() so PHP-imported agents are included
+        base_qs = listed_agents_queryset()
+        agents_qs = base_qs.filter(serviceableCities=city_obj).distinct()
+
+        # If very few results, broaden to address/pincode text match as well
+        if agents_qs.count() < 5:
+            text_q = (
+                Q(profile__address__icontains=city_display)
+                | Q(profile__office_address__icontains=city_display)
+                | Q(serviceableCities__name__icontains=city_display)
+            )
+            agents_qs = base_qs.filter(text_q).distinct()
     else:
+        # --- Tier 2: Check locality/area dictionary ---
+        area_pincodes = _resolve_area_to_pincodes(city_query_name)
+
+        # Guess a "parent city" display name from the slug
+        # e.g. 'paldi-ahmedabad' → 'Ahmedabad', 'satellite' → 'Satellite'
+        parts = city_query_name.split()
         city_display = city_query_name.title()
         state_display = 'India'
-        agents_qs = Agent.objects.filter(
-            serviceableCities__name__iexact=city_query_name,
-            is_approved=True,
-            status='active'
-        )
+
+        # Detect parent city name in slug parts (common city names)
+        _KNOWN_CITIES = {
+            'ahmedabad', 'surat', 'rajkot', 'vadodara', 'gandhinagar',
+            'mumbai', 'delhi', 'bangalore', 'bengaluru', 'pune', 'hyderabad',
+            'chennai', 'kolkata', 'jaipur', 'lucknow', 'indore',
+        }
+        parent_city_name = None
+        for part in parts:
+            if part in _KNOWN_CITIES:
+                parent_city_name = part.title()
+                break
+
+        # For state we can set Gujarat for known Gujarat localities
+        _GUJARAT_AREAS = set()
+        for _key in _AREA_PINCODE_MAP:
+            if any(p.startswith('3') for p in _AREA_PINCODE_MAP[_key]):
+                _GUJARAT_AREAS.add(_key)
+        if city_query_name in _GUJARAT_AREAS or (parent_city_name and parent_city_name.lower() in {
+            'ahmedabad', 'surat', 'rajkot', 'vadodara', 'gandhinagar'
+        }):
+            state_display = 'Gujarat'
+
+        base_qs = listed_agents_queryset()
+
+        if area_pincodes:
+            # Tier 2a: Match agents whose agent_pincode or service_pincodes overlaps
+            pin_q = Q()
+            for pin in area_pincodes:
+                pin_q |= Q(agent_pincode__icontains=pin)
+                pin_q |= Q(profile__address__icontains=pin)
+                pin_q |= Q(servicePincodes__pincode=pin)
+
+            # Also include area name in address
+            pin_q |= Q(profile__address__icontains=city_query_name)
+            pin_q |= Q(profile__office_address__icontains=city_query_name)
+
+            agents_qs = base_qs.filter(pin_q).distinct()
+
+            # If still sparse, add the parent city agents too
+            if agents_qs.count() < 3 and parent_city_name:
+                parent_city_obj = City.objects.filter(name__iexact=parent_city_name).first()
+                if parent_city_obj:
+                    city_qs = base_qs.filter(serviceableCities=parent_city_obj).distinct()
+                    agents_qs = (agents_qs | city_qs).distinct()
+        else:
+            # --- Tier 3: Pure text search on address/city fields ---
+            tokens = [t.strip() for t in city_query_name.split() if len(t.strip()) >= 3]
+            text_q = Q()
+            for token in tokens:
+                text_q |= Q(profile__address__icontains=token)
+                text_q |= Q(profile__office_address__icontains=token)
+                text_q |= Q(serviceableCities__name__icontains=token)
+                text_q |= Q(agent_pincode__icontains=token)
+
+            agents_qs = base_qs.filter(text_q).distinct()
+
+            # --- Tier 4: Fallback to any agent if nothing found ---
+            if not agents_qs.exists() and parent_city_name:
+                parent_city_obj = City.objects.filter(name__iexact=parent_city_name).first()
+                if parent_city_obj:
+                    agents_qs = base_qs.filter(serviceableCities=parent_city_obj).distinct()
 
     agents = list(
         agents_qs
-        .select_related('profile')
-        .prefetch_related('serviceableCities', 'insuranceSegments', 'reviews')
-        .distinct()
         .order_by('-created_at')[:40]
     )
+    # Sort by rating descending
     agents.sort(key=lambda a: (getattr(a, 'average_rating', 0) or 0), reverse=True)
 
     # Nearby / active cities for internal linking footer
     top_cities = list(
-        City.objects.filter(is_active=True, agents__is_approved=True, agents__status='active')
+        City.objects.filter(is_active=True, agents__status='active')
         .exclude(slug=raw_slug)
         .exclude(name__iexact=city_display)
         .distinct()[:15]
