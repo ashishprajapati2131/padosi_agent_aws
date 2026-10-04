@@ -2064,12 +2064,21 @@ def city_agents_directory(request, city_slug):
                 if parent_city_obj:
                     agents_qs = base_qs.filter(serviceableCities=parent_city_obj).distinct()
 
-    agents = list(
+    agents_list = list(
         agents_qs
-        .order_by('-created_at')[:40]
+        .order_by('-created_at')[:200]   # cap to avoid full-table scans
     )
     # Sort by rating descending
-    agents.sort(key=lambda a: (getattr(a, 'average_rating', 0) or 0), reverse=True)
+    agents_list.sort(key=lambda a: (getattr(a, 'average_rating', 0) or 0), reverse=True)
+
+    # ---- Pagination: 12 cards per page ----
+    from django.core.paginator import Paginator, InvalidPage
+    paginator = Paginator(agents_list, 12)
+    page_num = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page_num)
+    except InvalidPage:
+        page_obj = paginator.page(1)
 
     # Nearby / active cities for internal linking footer
     top_cities = list(
@@ -2088,8 +2097,10 @@ def city_agents_directory(request, city_slug):
         'city_name': city_display,
         'state_name': state_display,
         'city_slug': raw_slug,
-        'agents': agents,
-        'agent_count': len(agents),
+        'agents': page_obj.object_list,
+        'agent_count': paginator.count,
+        'page_obj': page_obj,
+        'paginator': paginator,
         'top_cities': top_cities,
         'canonical_url': canonical_url,
         'meta_title': meta_title,

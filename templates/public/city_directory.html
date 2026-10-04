@@ -98,6 +98,60 @@
     border-color: #273c8e;
     transform: translateY(-2px);
   }
+  /* ---- Pagination ---- */
+  .dir-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 32px;
+    margin-bottom: 8px;
+  }
+  .dir-pagination a,
+  .dir-pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.18s ease;
+  }
+  .dir-pagination a {
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    color: #1e293b;
+  }
+  .dir-pagination a:hover {
+    background: #273c8e;
+    border-color: #273c8e;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(39,60,142,0.18);
+  }
+  .dir-pagination span.current {
+    background: #273c8e;
+    border: 1.5px solid #273c8e;
+    color: #ffffff;
+    box-shadow: 0 3px 10px rgba(39,60,142,0.22);
+  }
+  .dir-pagination span.dots {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 14px;
+  }
+  .dir-page-info {
+    text-align: center;
+    font-size: 12.5px;
+    color: #94a3b8;
+    margin-top: 8px;
+  }
 </style>
 {% endblock %}
 
@@ -130,7 +184,11 @@
     <div class="col-lg-8 col-12">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin: 0;">
-          Showing {{ agent_count }} Verified Advisor{{ agent_count|pluralize }} in {{ city_name }}
+          {% if paginator.num_pages > 1 %}
+            Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ agent_count }} Advisor{{ agent_count|pluralize }} in {{ city_name }}
+          {% else %}
+            Showing {{ agent_count }} Verified Advisor{{ agent_count|pluralize }} in {{ city_name }}
+          {% endif %}
         </h2>
         <a href="{% url 'home:find_agents' %}" class="btn btn-sm btn-outline-primary" style="font-size: 12px; font-weight: 600; border-radius: 6px;">
           <i class="fas fa-sliders me-1"></i> Filter Agents
@@ -143,6 +201,34 @@
             {% include 'partials/agent-card.html' with agent=agent %}
           {% endfor %}
         </div>
+
+        {% if paginator.num_pages > 1 %}
+        <nav class="dir-pagination" aria-label="Page navigation">
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          {% endif %}
+
+          {% for num in paginator.page_range %}
+            {% if num == page_obj.number %}
+              <span class="current">{{ num }}</span>
+            {% elif num == 1 or num == paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+              <a href="?page={{ num }}">{{ num }}</a>
+            {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}
+              <span class="dots">…</span>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          {% endif %}
+        </nav>
+        <p class="dir-page-info">Page {{ page_obj.number }} of {{ paginator.num_pages }}</p>
+        {% endif %}
+
       {% else %}
         <div class="card p-5 text-center rounded-4 border-0 shadow-sm">
           <div style="width: 64px; height: 64px; border-radius: 50%; background: #eff6ff; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
