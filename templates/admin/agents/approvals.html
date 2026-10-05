@@ -392,6 +392,7 @@
     {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&plan={{ plan_filter }}&city={{ city_filter }}&event_id={{ event_filter }}">&raquo;</a></li>{% endif %}
   </ul>
 </nav>
+{% endif %}
 
 {# ═══════════════ MISSING IRDAI LICENSES SECTION ═══════════════ #}
 {% if is_super_admin or 'approvals_missing_licenses' in admin_permissions %}
@@ -567,6 +568,7 @@
         </a>
     </div>
 </div>
+{% endblock %}
 
 {% block extra_js %}
 <script>
@@ -1010,5 +1012,4 @@ $(document).ready(function() {
     });
 });
 </script>
-{% endblock %}
 {% endblock %}
