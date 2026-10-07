@@ -258,7 +258,26 @@ $(document).on('click', '.view-message-btn', function(e) {
                 $('#modal-message').text(res.data.message);
 
                 const modalEl = document.getElementById('messageModal');
-                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                } else {
+                    // Fallback: trigger BS5 modal via data attribute
+                    modalEl.classList.add('show');
+                    modalEl.style.display = 'block';
+                    document.body.classList.add('modal-open');
+                    let backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    backdrop.id = 'manual-backdrop';
+                    document.body.appendChild(backdrop);
+                    modalEl.querySelector('[data-bs-dismiss="modal"]') &&
+                        modalEl.querySelector('[data-bs-dismiss="modal"]').addEventListener('click', function () {
+                            modalEl.classList.remove('show');
+                            modalEl.style.display = 'none';
+                            document.body.classList.remove('modal-open');
+                            let bd = document.getElementById('manual-backdrop');
+                            if (bd) bd.remove();
+                        }, { once: true });
+                }
             } else {
                 Swal.fire('Error', 'Could not load message details.', 'error');
             }
