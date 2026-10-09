@@ -1,0 +1,168 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}Active Sessions — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}System &rsaquo; Session &amp; Device Management{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h5 class="fw-bold mb-1">Session &amp; Device Management</h5>
+    <p class="text-muted mb-0" style="font-size: 13px;">
+        Active admin sessions with device, IP and last activity. Revoke a session to force an immediate logout.
+    </p>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#eef2ff;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-desktop" style="color:#4f46e5;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.total }}</div>
+                <div class="stat-label">Total Sessions</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#ecfdf5;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-circle-check" style="color:#059669;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.active }}</div>
+                <div class="stat-label">Active</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#fef2f2;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-clock" style="color:#dc2626;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.expired }}</div>
+                <div class="stat-label">Expired</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+    <div class="card-header bg-white py-3">
+        <h6 class="m-0 fw-bold">Admin Sessions ({{ stats.total }})</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Admin</th>
+                    <th>Device</th>
+                    <th>IP Address</th>
+                    <th>Last Activity</th>
+                    <th>Expires</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in sessions %}
+                <tr id="session-row-{{ s.id }}">
+                    <td>
+                        <div style="font-weight:600;font-size:13px;">
+                            {{ s.admin_name }}
+                            {% if s.is_current %}<span class="badge bg-info text-dark ms-1" style="font-size:10px;">This device</span>{% endif %}
+                        </div>
+                        <div style="font-size:11px;color:#64748b;">
+                            {{ s.admin_email }}{% if s.admin_role %} · {{ s.admin_role }}{% endif %}
+                        </div>
+                    </td>
+                    <td style="font-size:12px;color:#475569;" title="{{ s.user_agent }}">{{ s.device }}</td>
+                    <td><code style="font-size:11px;">{{ s.ip_address }}</code></td>
+                    <td style="font-size:12px;color:#64748b;white-space:nowrap;">
+                        {% if s.last_activity %}{{ s.last_activity|date:"d M Y, H:i" }}{% else %}—{% endif %}
+                    </td>
+                    <td style="font-size:12px;color:#64748b;white-space:nowrap;">
+                        {% if s.expires_at %}{{ s.expires_at|date:"d M Y, H:i" }}{% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if s.is_expired %}
+                            <span class="badge bg-secondary">Expired</span>
+                        {% else %}
+                            <span class="badge bg-success">Active</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger session-revoke-btn"
+                                data-id="{{ s.id }}" {% if s.is_current %}data-current="1"{% endif %}
+                                title="Revoke session">
+                            <i class="fa-solid fa-right-from-bracket"></i> Revoke
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No sessions found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF_TOKEN = '{{ csrf_token }}';
+
+$(document).on('click', '.session-revoke-btn', function(e) {
+    e.preventDefault();
+    const button = $(this);
+    const id = button.data('id');
+    const isCurrent = button.data('current') === 1;
+    const row = button.closest('tr');
+
+    Swal.fire({
+        title: 'Revoke this session?',
+        text: isCurrent
+            ? 'This is YOUR current session — you will be logged out immediately.'
+            : 'This device will be logged out immediately.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, revoke',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+        $.ajax({
+            url: '{% url "admin_sessions_revoke" %}',
+            type: 'POST',
+            headers: { 'X-CSRFToken': CSRF_TOKEN },
+            data: { id: id },
+            success: function(res) {
+                if (res.success) {
+                    Swal.fire({ title: 'Revoked', text: res.message, icon: 'success', timer: 1400, showConfirmButton: false });
+                    if (isCurrent) {
+                        setTimeout(() => { window.location.href = '/admin/login/'; }, 900);
+                    } else {
+                        row.fadeOut(300, function() { $(this).remove(); });
+                    }
+                } else {
+                    Swal.fire('Error', res.message || 'Failed to revoke', 'error');
+                    button.prop('disabled', false).html('<i class="fa-solid fa-right-from-bracket"></i> Revoke');
+                }
+            },
+            error: function(xhr) {
+                Swal.fire('Error', 'Server error: ' + (xhr.responseJSON?.message || xhr.status), 'error');
+                button.prop('disabled', false).html('<i class="fa-solid fa-right-from-bracket"></i> Revoke');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

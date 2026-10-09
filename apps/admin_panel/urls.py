@@ -69,6 +69,17 @@ from .views.contacts import (
     contacts_show,
     contacts_update_status,
     contacts_delete,
+    contacts_assign,
+    contacts_set_priority,
+    contacts_reply,
+)
+from .views.app_version import (
+    app_version_index,
+    app_version_save,
+)
+from .views.sessions import (
+    sessions_index,
+    sessions_revoke,
 )
 from .views.geocoding import (
     index as geocoding_index,
@@ -446,6 +457,10 @@ urlpatterns = [
     path("admin/contacts/<int:submission_id>/",   contacts_show,          name="admin_contacts_show"),
     path("admin/contacts/update-status/",         contacts_update_status, name="admin_contacts_update_status"),
     path("admin/contacts/delete/",                contacts_delete,        name="admin_contacts_delete"),
+    # Module #8 — Support ticket actions
+    path("admin/contacts/assign/",                contacts_assign,        name="admin_contacts_assign"),
+    path("admin/contacts/priority/",              contacts_set_priority,  name="admin_contacts_set_priority"),
+    path("admin/contacts/reply/",                 contacts_reply,         name="admin_contacts_reply"),
 
     # Phase GEOCODING: Geocoding Manager
     path("admin/geocoding-manager/",               geocoding_index,  name="admin_geocoding_index"),
@@ -587,4 +602,12 @@ urlpatterns = [
     path("admin/system/backups/run/", run_backup, name="admin_system_run_backup"),
     path("admin/system/run-jobs/", run_maintenance_jobs, name="admin_system_run_jobs"),
     path("admin/system/backups/download/<str:filename>/", download_backup, name="admin_system_download_backup"),
+
+    # Module #16 — Force-Update & App Version Control
+    path("admin/app-version/", app_version_index, name="admin_app_version"),
+    path("admin/app-version/save/", app_version_save, name="admin_app_version_save"),
+
+    # Module #15 — Session & Device Management
+    path("admin/sessions/", sessions_index, name="admin_sessions_index"),
+    path("admin/sessions/revoke/", sessions_revoke, name="admin_sessions_revoke"),
 ]

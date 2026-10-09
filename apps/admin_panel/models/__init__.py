@@ -10,6 +10,7 @@ from .referral_code import ReferralCode
 from .referral_usage import ReferralUsage
 from .admin_activity_log import AdminActivityLog
 from .contact_submission import ContactSubmission
+from .contact_reply import ContactReply
 from .pincode_import_log import PincodeImportLog
 from .admin_auth import Admin, SecurityThreatLog
 from .qr_file import QrFile
@@ -18,6 +19,7 @@ from .user_session import UserSession, UserSessionData
 from .admin_broadcast import AdminBroadcast
 from .error_log import ErrorLog
 from .api_log import ApiLog
+from .app_version import AppVersion
 
 __all__ = [
     'Agent',
@@ -32,6 +34,7 @@ __all__ = [
     'AdminActivityLog',
     'AdminBroadcast',
     'ContactSubmission',
+    'ContactReply',
     'PincodeImportLog',
     'Admin',
     'SecurityThreatLog',
@@ -41,5 +44,6 @@ __all__ = [
     'UserSessionData',
     'ErrorLog',
     'ApiLog',
+    'AppVersion',
 ]
 

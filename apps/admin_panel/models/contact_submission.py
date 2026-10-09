@@ -4,9 +4,17 @@ from django.db import models
 
 class ContactSubmission(models.Model):
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('replied', 'Replied'),
-        ('closed',  'Closed'),
+        ('pending',     'Pending'),
+        ('in_progress', 'In Progress'),
+        ('replied',     'Replied'),
+        ('closed',      'Closed'),
+    ]
+
+    PRIORITY_CHOICES = [
+        ('low',    'Low'),
+        ('normal', 'Normal'),
+        ('high',   'High'),
+        ('urgent', 'Urgent'),
     ]
 
     reference_id = models.CharField(max_length=50, unique=True, blank=True)
@@ -17,6 +25,10 @@ class ContactSubmission(models.Model):
     subject      = models.CharField(max_length=100)
     message      = models.TextField()
     status       = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    # ── Ticketing fields (module #8 — additive, all nullable/defaulted) ──
+    priority          = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='normal')
+    assigned_admin_id = models.IntegerField(null=True, blank=True)
+    last_reply_at     = models.DateTimeField(null=True, blank=True)
     created_at   = models.DateTimeField(auto_now_add=True)
     updated_at   = models.DateTimeField(auto_now=True)
 

@@ -66,6 +66,7 @@
                 <select name="status" class="form-select form-select-sm">
                     <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All</option>
                     <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>In Progress</option>
                     <option value="replied" {% if status_filter == 'replied' %}selected{% endif %}>Replied</option>
                     <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>Closed</option>
                 </select>
@@ -108,10 +109,23 @@
                             {{ sub.email }}{% if sub.mobile %} · {{ sub.mobile }}{% endif %}
                         </div>
                         {% if sub.company %}
-                            <span style="font-size: 10px; color: #94a3b8;">{{ sub.company }}</span>
+                            <span style="font-size: 10px; color: #94a3b8;">{{ sub.company }}</span><br>
                         {% endif %}
+                        <span style="font-size: 10px; color: #475569;">
+                            <i class="fa-solid fa-user-tag"></i>
+                            {% if sub.assignee_name %}{{ sub.assignee_name }}{% else %}<em class="text-muted">Unassigned</em>{% endif %}
+                        </span>
                     </td>
-                    <td style="font-weight: 600; font-size: 13px; max-width: 180px;">{{ sub.subject|truncatechars:40 }}</td>
+                    <td style="font-weight: 600; font-size: 13px; max-width: 180px;">
+                        {{ sub.subject|truncatechars:40 }}
+                        <div class="mt-1">
+                            {% if sub.priority == 'urgent' %}<span class="badge bg-danger">Urgent</span>
+                            {% elif sub.priority == 'high' %}<span class="badge" style="background:#f97316;">High</span>
+                            {% elif sub.priority == 'low' %}<span class="badge bg-secondary">Low</span>
+                            {% else %}<span class="badge bg-light text-dark border">Normal</span>{% endif %}
+                            {% if sub.reply_count %}<span class="badge bg-info text-dark" title="Replies"><i class="fa-solid fa-comments"></i> {{ sub.reply_count }}</span>{% endif %}
+                        </div>
+                    </td>
                     <td style="font-size: 12px; color: #475569; max-width: 250px;">
                         {{ sub.message|truncatechars:80 }}
                         {% if sub.message|length > 80 %}
@@ -119,8 +133,9 @@
                         {% endif %}
                     </td>
                     <td>
-                        <select class="form-select form-select-sm contact-status-select" data-id="{{ sub.id }}" style="width: 110px; font-size: 12px;">
+                        <select class="form-select form-select-sm contact-status-select" data-id="{{ sub.id }}" style="width: 120px; font-size: 12px;">
                             <option value="pending" {% if sub.status == 'pending' %}selected{% endif %}>🟡 Pending</option>
+                            <option value="in_progress" {% if sub.status == 'in_progress' %}selected{% endif %}>🟠 In Progress</option>
                             <option value="replied" {% if sub.status == 'replied' %}selected{% endif %}>🔵 Replied</option>
                             <option value="closed"  {% if sub.status == 'closed'  %}selected{% endif %}>⚫ Closed</option>
                         </select>
@@ -131,6 +146,7 @@
                     </td>
                     <td>
                         <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-sm btn-primary manage-ticket-btn" data-id="{{ sub.id }}" title="Manage ticket" style="padding: 4px 8px;"><i class="fa-solid fa-headset"></i></button>
                             {% if sub.email %}
                             <a href="mailto:{{ sub.email }}?subject=Re: {{ sub.subject }}" class="btn btn-sm btn-outline-primary" title="Reply via Email"><i class="fa-solid fa-reply"></i></a>
                             {% endif %}
@@ -213,6 +229,75 @@
         </div>
     </div>
 </div>
+
+<!-- Ticket Modal (module #8) -->
+<div class="modal fade" id="ticketModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0" id="ticket-subject">Ticket</h5>
+                    <div class="text-muted" style="font-size:12px;" id="ticket-meta"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="ticket-id">
+
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted" style="font-size:12px;">Assigned to</label>
+                        <select id="ticket-assignee" class="form-select form-select-sm">
+                            <option value="">— Unassigned —</option>
+                            {% for a in admins %}
+                            <option value="{{ a.id }}">{{ a.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted" style="font-size:12px;">Priority</label>
+                        <select id="ticket-priority" class="form-select form-select-sm">
+                            <option value="low">Low</option>
+                            <option value="normal">Normal</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-body py-2">
+                        <div class="text-muted mb-1" style="font-size:12px;" id="ticket-from"></div>
+                        <div style="white-space:pre-wrap;font-size:14px;line-height:1.6;color:#333;" id="ticket-message"></div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold" style="font-size:13px;">Conversation</h6>
+                <div id="ticket-thread" class="mb-3" style="max-height:260px;overflow-y:auto;">
+                    <div class="text-muted" style="font-size:12px;">No replies yet.</div>
+                </div>
+
+                <hr>
+                <h6 class="fw-bold" style="font-size:13px;">Add reply / note</h6>
+                <textarea id="ticket-reply-message" class="form-control form-control-sm mb-2" rows="3" placeholder="Type your reply or an internal note..."></textarea>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ticket-internal">
+                        <label class="form-check-label" for="ticket-internal" style="font-size:13px;">Internal note (not shown to customer)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ticket-email" checked>
+                        <label class="form-check-label" for="ticket-email" style="font-size:13px;">Also email the customer</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary btn-sm" id="ticket-send-reply"><i class="fa-solid fa-paper-plane me-1"></i> Send</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -284,7 +369,22 @@ $(document).on('click', '.view-message-btn', function(e) {
         },
         error: function(xhr) {
             $btn.text(originalText).css('pointer-events', 'auto');
-            Swal.fire('Error', 'Server error: ' + xhr.status, 'error');
+            if (xhr.status === 0) {
+                // Connection dropped / server restarting / session lost.
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Connection lost',
+                    text: 'Could not reach the server. Please check your connection or refresh the page, then try again.',
+                    confirmButtonText: 'Refresh now',
+                    showCancelButton: true,
+                    cancelButtonText: 'Dismiss'
+                }).then((r) => { if (r.isConfirmed) location.reload(); });
+            } else if (xhr.status === 401 || xhr.status === 403) {
+                Swal.fire({ icon: 'warning', title: 'Session expired', text: 'Please sign in again.' })
+                    .then(() => { window.location.href = '/admin/login/'; });
+            } else {
+                Swal.fire('Error', 'Could not load the message (status ' + xhr.status + ').', 'error');
+            }
         }
     });
 });
@@ -331,6 +431,139 @@ $(document).on('click', '.contact-delete-btn', function(e) {
                     button.prop('disabled', false).html('<i class="fas fa-trash"></i>');
                 }
             });
+        }
+    });
+});
+
+/* ── Support ticket modal (module #8) ──────────────────────────────────────── */
+function escapeHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function renderThread(replies) {
+    const $thread = $('#ticket-thread');
+    if (!replies || !replies.length) {
+        $thread.html('<div class="text-muted" style="font-size:12px;">No replies yet.</div>');
+        return;
+    }
+    let html = '';
+    replies.forEach(function(r) {
+        const noteBadge = r.is_internal_note
+            ? '<span class="badge bg-warning text-dark" style="font-size:10px;">Internal note</span>'
+            : '<span class="badge bg-success" style="font-size:10px;">Reply</span>';
+        const mail = r.emailed ? ' <span class="badge bg-info text-dark" style="font-size:10px;"><i class="fa-solid fa-envelope"></i> emailed</span>' : '';
+        const bg = r.is_internal_note ? '#fffbeb' : '#f0fdf4';
+        html += '<div style="border:1px solid var(--border-light);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:' + bg + ';">'
+             + '<div style="font-size:11px;color:#64748b;margin-bottom:4px;">' + noteBadge + mail
+             + ' &middot; <b>' + escapeHtml(r.admin_name) + '</b> &middot; ' + escapeHtml(r.created_at) + '</div>'
+             + '<div style="font-size:13px;white-space:pre-wrap;color:#333;">' + escapeHtml(r.message) + '</div>'
+             + '</div>';
+    });
+    $('#ticket-thread').html(html);
+}
+
+function openTicket(id) {
+    $.ajax({
+        url: '/admin/contacts/' + id + '/',
+        type: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        success: function(res) {
+            if (!res.success || !res.data) { Swal.fire('Error', 'Could not load ticket.', 'error'); return; }
+            const d = res.data;
+            $('#ticket-id').val(d.id);
+            $('#ticket-subject').text(d.subject || 'Ticket');
+            $('#ticket-meta').text((d.reference_id || ('#' + d.id)) + ' · ' + (d.created_at || ''));
+            $('#ticket-from').html('From <b>' + escapeHtml(d.name) + '</b> (' + escapeHtml(d.email || 'no email') + (d.mobile ? ' · ' + escapeHtml(d.mobile) : '') + ')');
+            $('#ticket-message').text(d.message || '');
+            $('#ticket-assignee').val(d.assigned_admin_id ? String(d.assigned_admin_id) : '');
+            $('#ticket-priority').val(d.priority || 'normal');
+            $('#ticket-reply-message').val('');
+            $('#ticket-internal').prop('checked', false);
+            $('#ticket-email').prop('checked', true).prop('disabled', false);
+            renderThread(d.replies);
+
+            const modalEl = document.getElementById('ticketModal');
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        },
+        error: function(xhr) { Swal.fire('Error', 'Server error: ' + xhr.status, 'error'); }
+    });
+}
+
+$(document).on('click', '.manage-ticket-btn', function() { openTicket($(this).data('id')); });
+
+/* Internal note → cannot email the customer */
+$(document).on('change', '#ticket-internal', function() {
+    if ($(this).is(':checked')) {
+        $('#ticket-email').prop('checked', false).prop('disabled', true);
+    } else {
+        $('#ticket-email').prop('disabled', false).prop('checked', true);
+    }
+});
+
+/* Assign */
+$(document).on('change', '#ticket-assignee', function() {
+    $.ajax({
+        url: '{% url "admin_contacts_assign" %}',
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+        data: { id: $('#ticket-id').val(), admin_id: $(this).val() },
+        success: function(res) {
+            if (res.success) {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Assignment updated', showConfirmButton: false, timer: 1200 });
+            } else { Swal.fire('Error', res.message || 'Failed', 'error'); }
+        },
+        error: function() { Swal.fire('Error', 'Failed to assign.', 'error'); }
+    });
+});
+
+/* Priority */
+$(document).on('change', '#ticket-priority', function() {
+    $.ajax({
+        url: '{% url "admin_contacts_set_priority" %}',
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+        data: { id: $('#ticket-id').val(), priority: $(this).val() },
+        success: function(res) {
+            if (res.success) {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Priority updated', showConfirmButton: false, timer: 1200 });
+            } else { Swal.fire('Error', res.message || 'Failed', 'error'); }
+        },
+        error: function() { Swal.fire('Error', 'Failed to update priority.', 'error'); }
+    });
+});
+
+/* Send reply / note */
+$(document).on('click', '#ticket-send-reply', function() {
+    const $btn = $(this);
+    const id = $('#ticket-id').val();
+    const message = $('#ticket-reply-message').val().trim();
+    if (!message) { Swal.fire('Note', 'Please type a message first.', 'info'); return; }
+    const isInternal = $('#ticket-internal').is(':checked') ? '1' : '0';
+    const sendEmail = $('#ticket-email').is(':checked') ? '1' : '0';
+
+    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+    $.ajax({
+        url: '{% url "admin_contacts_reply" %}',
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN },
+        data: { id: id, message: message, is_internal_note: isInternal, send_email: sendEmail },
+        success: function(res) {
+            $btn.prop('disabled', false).html('<i class="fa-solid fa-paper-plane me-1"></i> Send');
+            if (res.success) {
+                $('#ticket-reply-message').val('');
+                // Re-fetch to refresh the thread + status badges.
+                openTicket(id);
+                const msg = res.emailed ? 'Reply sent and emailed.' : (isInternal === '1' ? 'Internal note saved.' : 'Reply saved.');
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: msg, showConfirmButton: false, timer: 1600 });
+            } else {
+                Swal.fire('Error', res.message || 'Failed to send.', 'error');
+            }
+        },
+        error: function(xhr) {
+            $btn.prop('disabled', false).html('<i class="fa-solid fa-paper-plane me-1"></i> Send');
+            Swal.fire('Error', 'Server error: ' + (xhr.responseJSON?.message || xhr.status), 'error');
         }
     });
 });

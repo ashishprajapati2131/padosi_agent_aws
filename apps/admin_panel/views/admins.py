@@ -49,6 +49,8 @@ def get_permissions_list():
         {'key': 'logs', 'label': 'Logs'},
         {'key': 'api_logs', 'label': 'API Logs'},
         {'key': 'backups', 'label': 'Backups'},
+        {'key': 'sessions', 'label': 'Session & Device Management'},
+        {'key': 'app_version', 'label': 'App Version Control'},
         {'key': 'fastapi_services', 'label': 'FastAPI Services'}
     ]
 

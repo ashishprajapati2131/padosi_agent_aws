@@ -602,6 +602,9 @@ class AdminPermissionMiddleware:
             'admin_contacts_show':                      'contacts',
             'admin_contacts_update_status':             'contacts',
             'admin_contacts_delete':                    'contacts',
+            'admin_contacts_assign':                    'contacts',
+            'admin_contacts_set_priority':              'contacts',
+            'admin_contacts_reply':                     'contacts',
             # ── Reviews ───────────────────────────────────────────────────
             'admin_reviews_index':                      'reviews',
             'admin_reviews_toggle_approval':            'reviews',
@@ -774,6 +777,12 @@ class AdminPermissionMiddleware:
             'admin_system_run_backup':                  'backups',
             'admin_system_download_backup':             'backups',
             'admin_system_clear_cache':                 'server_health',
+            # ── Session & Device Management (module #15) ──────────────────
+            'admin_sessions_index':                     'sessions',
+            'admin_sessions_revoke':                    'sessions',
+            # ── App Version Control (module #16) ──────────────────────────
+            'admin_app_version':                        'app_version',
+            'admin_app_version_save':                   'app_version',
         }.get(url_name)
 
     def get_first_allowed_route(self, admin):
@@ -814,6 +823,8 @@ class AdminPermissionMiddleware:
             'logs': 'admin_system_logs',
             'api_logs': 'admin_system_api_logs',
             'backups': 'admin_system_backups',
+            'sessions': 'admin_sessions_index',
+            'app_version': 'admin_app_version',
             'fastapi_services': 'admin_dashboard',
         }
         

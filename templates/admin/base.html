@@ -948,6 +948,20 @@
             </a>
             {% endif %}
 
+            {% if is_super_admin or 'sessions' in admin_permissions %}
+            <a href="{% url 'admin_sessions_index' %}"
+                class="menu-item {% if '/admin/sessions/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-desktop"></i> Active Sessions
+            </a>
+            {% endif %}
+
+            {% if is_super_admin or 'app_version' in admin_permissions %}
+            <a href="{% url 'admin_app_version' %}"
+                class="menu-item {% if '/admin/app-version/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-mobile-screen-button"></i> App Version Control
+            </a>
+            {% endif %}
+
             <div style="margin-top:40px; border-top:1px solid var(--border-light); padding-top:20px;">
                 <a href="/admin/logout/" class="menu-item text-danger">
                     <i class="fa-solid fa-right-from-bracket"></i> Logout
