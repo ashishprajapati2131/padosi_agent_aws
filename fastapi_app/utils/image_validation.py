@@ -1,6 +1,34 @@
 import io
+import os
 from PIL import Image
 from fastapi import HTTPException, status
+
+_DANGEROUS_EXTENSIONS = {
+    'js', 'jsx', 'mjs', 'cjs', 'ts', 'tsx', 'php', 'phtml', 'php3', 'php4', 'php5', 'phar',
+    'asp', 'aspx', 'jsp', 'cgi', 'pl', 'py', 'rb', 'sh', 'bash', 'bat', 'cmd', 'ps1',
+    'exe', 'dll', 'com', 'scr', 'msi', 'vbs', 'wsf', 'html', 'htm', 'svg', 'xml', 'xhtml',
+    'htaccess', 'jar', 'war', 'swf', 'shtml',
+}
+_DISGUISED_NAME = (
+    'This file name is not allowed. Use a single extension such as certificate.pdf. '
+    'Renamed files like name.js.jpg cannot be uploaded.'
+)
+
+
+def _basename(filename):
+    name = os.path.basename((filename or '').replace('\\', '/'))
+    if '\x00' in name:
+        return ''
+    return name
+
+
+def _reject_disguised_name(filename):
+    parts = _basename(filename).lower().split('.')
+    if len(parts) > 2 and any(part in _DANGEROUS_EXTENSIONS for part in parts[1:-1]):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=_DISGUISED_NAME,
+        )
 
 def validate_image_file(file_content: bytes, filename: str, content_type: str) -> bytes:
     """
@@ -20,9 +48,11 @@ def validate_image_file(file_content: bytes, filename: str, content_type: str) -
         )
 
     # 2. Extension Check
+    _reject_disguised_name(filename)
     allowed_exts = {".jpg", ".jpeg", ".png", ".webp"}
-    filename_lower = filename.lower()
-    if not any(filename_lower.endswith(ext) for ext in allowed_exts):
+    filename_lower = _basename(filename).lower()
+    ext = os.path.splitext(filename_lower)[1]
+    if ext not in allowed_exts:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Invalid file extension. Only .jpg, .jpeg, .png, and .webp are allowed."
@@ -52,6 +82,13 @@ def validate_image_file(file_content: bytes, filename: str, content_type: str) -
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="File signature (magic bytes) mismatch. The file is not a valid PNG, JPEG, or WEBP image."
+        )
+    expected = 'png' if ext == '.png' else 'webp' if ext == '.webp' else 'jpeg'
+    detected = 'png' if is_png else 'webp' if is_webp else 'jpeg'
+    if detected != expected:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The file content does not match its extension. A renamed code or document file cannot be uploaded."
         )
 
     # 5. Integrity Check & Sanitization (using Pillow)
@@ -94,9 +131,11 @@ def validate_document_file(file_content: bytes, filename: str, content_type: str
         )
 
     # 2. Extension Check
+    _reject_disguised_name(filename)
     allowed_exts = {".jpg", ".jpeg", ".png", ".pdf"}
-    filename_lower = filename.lower()
-    if not any(filename_lower.endswith(ext) for ext in allowed_exts):
+    filename_lower = _basename(filename).lower()
+    ext = os.path.splitext(filename_lower)[1]
+    if ext not in allowed_exts:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Invalid file extension. Only .pdf, .jpg, .jpeg, and .png are allowed."
@@ -111,7 +150,7 @@ def validate_document_file(file_content: bytes, filename: str, content_type: str
         )
 
     # 4. Handle PDF validation
-    if filename_lower.endswith(".pdf"):
+    if ext == ".pdf":
         # Magic bytes for PDF: %PDF-
         if not file_content.startswith(b'%PDF-'):
             raise HTTPException(

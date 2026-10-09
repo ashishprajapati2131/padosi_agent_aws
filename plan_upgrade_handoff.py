@@ -42,6 +42,27 @@ def upgrade_target_allowed(current_plan, target_slug):
     return plan_rank(current_plan) < plan_rank(target)
 
 
+def allowed_handoff_targets(current_plan):
+    """Paid plan slugs the agent may upgrade to from their current plan."""
+    current = normalize_upgrade_slug(current_plan)
+    return [
+        slug for slug in ALLOWED_UPGRADE_SLUGS
+        if upgrade_target_allowed(current, slug)
+    ]
+
+
+def suggest_upgrade_slug(current_plan):
+    """
+    Default target when the app taps Upgrade without picking a plan.
+
+    Picks the highest allowed tier (usually professional for starter/trial).
+    """
+    targets = allowed_handoff_targets(current_plan)
+    if not targets:
+        return None
+    return max(targets, key=plan_rank)
+
+
 def new_handoff_token():
     return secrets.token_urlsafe(32)
 

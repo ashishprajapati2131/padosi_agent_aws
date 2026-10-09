@@ -13,6 +13,7 @@ from apps.agents.models import Agent, AgentSubscription, PlanUpgradeHandoff
 from plan_upgrade_handoff import (
     hash_handoff_token,
     new_handoff_token,
+    suggest_upgrade_slug,
     upgrade_target_allowed,
 )
 
@@ -57,6 +58,13 @@ class UpgradeTargetTests(SimpleTestCase):
         self.assertFalse(upgrade_target_allowed('professional', 'professional'))
         self.assertFalse(upgrade_target_allowed('exclusive', 'professional'))
         self.assertFalse(upgrade_target_allowed('starter', 'exclusive'))
+
+    def test_suggest_upgrade_picks_highest_allowed_tier(self):
+        self.assertEqual(suggest_upgrade_slug('starter'), 'professional')
+        self.assertEqual(suggest_upgrade_slug('free_trial'), 'professional')
+        self.assertEqual(suggest_upgrade_slug(''), 'professional')
+        self.assertIsNone(suggest_upgrade_slug('professional'))
+        self.assertIsNone(suggest_upgrade_slug('exclusive'))
 
 
 class AppUpgradeHandoffTests(TestCase):
@@ -253,6 +261,23 @@ class FastAPIHandoffApiTests(SimpleTestCase):
         self.assertEqual(db.added[0].plan_slug, 'professional')
         self.assertEqual(db.added[0].token_hash, hash_handoff_token(token))
         self.assertNotIn(token, db.added[0].token_hash)
+
+    def test_handoff_without_plan_slug_uses_suggested_target(self):
+        db = _FakeDB()
+        self.app.dependency_overrides[self.get_current_agent] = lambda: self._agent('starter')
+        self.app.dependency_overrides[self.get_db] = lambda: db
+        resp = self.client.post('/v1/agents/plan-upgrade/handoff', json={})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['plan_slug'], 'professional')
+
+    def test_plan_upgrade_status_for_starter_agent(self):
+        self.app.dependency_overrides[self.get_current_agent] = lambda: self._agent('starter')
+        resp = self.client.get('/v1/agents/plan-upgrade/status')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertTrue(body['can_upgrade'])
+        self.assertEqual(body['suggested_plan_slug'], 'professional')
+        self.assertEqual(body['allowed_plan_slugs'], ['professional'])
 
     def test_same_or_lower_plan_is_rejected(self):
         self.app.dependency_overrides[self.get_current_agent] = lambda: self._agent('professional')

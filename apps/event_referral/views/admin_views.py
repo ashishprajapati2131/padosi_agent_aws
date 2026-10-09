@@ -57,6 +57,21 @@ def admin_dashboard(request):
 
     campaign, participants, stats = run_with_db_retry(_load_dashboard_context)
 
+    from datetime import datetime
+    from apps.event_referral.services.participant_service import expire_admin_grant_if_due
+
+    now = datetime.now()
+    refreshed = []
+    for participant in participants:
+        if (
+            participant.grant_plan_slug
+            and participant.grant_expires_at
+            and participant.grant_expires_at <= now
+        ):
+            participant = expire_admin_grant_if_due(participant)
+        refreshed.append(participant)
+    participants = refreshed
+
     from django.conf import settings
 
     public_base = (getattr(settings, 'APP_URL', '') or '').rstrip('/')
@@ -153,9 +168,39 @@ def admin_update_target(request, participant_id):
 def admin_grant_plan(request, participant_id):
     if not _require_admin(request):
         return redirect('/admin/login/')
+    from datetime import datetime, timedelta
+
+    from apps.event_referral.services.participant_service import _normalize_grant_plan
+
     participant = get_object_or_404(EventReferralParticipant, pk=participant_id)
-    admin_grant_win(participant)
-    messages.success(request, 'Basic plan granted.')
+    raw_plan = (request.POST.get('plan') or 'basic').strip().lower()
+    plan = _normalize_grant_plan(raw_plan)
+    if not plan:
+        messages.error(request, 'Choose Basic or Professional.')
+        return redirect('admin_event_referral_dashboard')
+
+    duration = (request.POST.get('duration') or 'permanent').strip().lower()
+    expires_at = None
+    days = None
+    if duration == 'temporary':
+        try:
+            days = int(request.POST.get('grant_days') or 30)
+        except (TypeError, ValueError):
+            days = 0
+        if days < 1 or days > 365:
+            messages.error(request, 'A temporary grant must be between 1 and 365 days.')
+            return redirect('admin_event_referral_dashboard')
+        expires_at = datetime.now() + timedelta(days=days)
+    elif duration != 'permanent':
+        messages.error(request, 'Choose a permanent grant or a temporary one.')
+        return redirect('admin_event_referral_dashboard')
+
+    admin_grant_win(participant, plan_slug=plan, expires_at=expires_at)
+    label = 'Professional' if plan == 'professional' else 'Basic'
+    if days:
+        messages.success(request, f'{label} plan granted for {days} days.')
+    else:
+        messages.success(request, f'{label} plan granted permanently.')
     return redirect('admin_event_referral_dashboard')
 
 

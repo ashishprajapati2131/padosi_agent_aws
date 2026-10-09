@@ -74,7 +74,15 @@ class PlanFollowRequest(BaseModel):
 
 
 class PlanUpgradeHandoffRequest(BaseModel):
-    plan_slug: str
+    plan_slug: Optional[str] = None
+
+
+class PlanUpgradeStatusResponse(BaseModel):
+    success: bool = True
+    can_upgrade: bool
+    current_plan_type: Optional[str] = None
+    suggested_plan_slug: Optional[str] = None
+    allowed_plan_slugs: List[str] = []
 
 
 class PlanUpgradeHandoffResponse(BaseModel):

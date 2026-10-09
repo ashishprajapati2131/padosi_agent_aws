@@ -32,7 +32,11 @@ document.addEventListener('DOMContentLoaded', function () {
             window.showPaymentSuccessPopup({
                 agentName: agentName,
                 redirectUrl: redirectUrl,
-                duration: 3000
+                duration: 3000,
+                {% if is_plan_upgrade %}
+                title: 'Plan upgraded successfully',
+                lead: 'Your new plan is active. Opening your dashboard…'
+                {% endif %}
             });
             return;
         }

@@ -113,6 +113,123 @@ class EventReferralFixTests(TestCase):
         self.assertEqual(self.participant.status, EventReferralParticipant.STATUS_WON)
         self.assertEqual((self.referrer.status, self.referrer.plan_type), ('active', 'basic'))
 
+    def test_grant_form_offers_both_plans_and_both_durations(self):
+        from apps.event_referral.views.admin_views import admin_dashboard
+
+        request = RequestFactory().get('/admin/event-referral/')
+        SessionMiddleware(lambda r: None).process_request(request)
+        request._messages = FallbackStorage(request)
+        with patch('apps.event_referral.views.admin_views._get_admin_from_session', return_value=1):
+            response = admin_dashboard(request)
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode()
+        self.assertIn('value="basic"', body)
+        self.assertIn('value="professional"', body)
+        self.assertIn('value="permanent"', body)
+        self.assertIn('value="temporary"', body)
+        self.assertIn('Grant plan', body)
+
+    def test_grant_basic_and_professional_permanent(self):
+        from apps.event_referral.services.participant_service import event_referral_effective_plan_type
+        from apps.event_referral.views.admin_views import admin_grant_plan
+
+        self._admin_post(admin_grant_plan, plan='basic', duration='permanent')
+        self.referrer.refresh_from_db()
+        self.participant.refresh_from_db()
+        self.assertEqual((self.referrer.status, self.referrer.plan_type), ('pending_approval', 'basic'))
+        self.assertEqual(self.participant.grant_plan_slug, 'basic')
+        self.assertIsNone(self.participant.grant_expires_at)
+        self.assertEqual(event_referral_effective_plan_type(self.referrer, self.participant), 'starter')
+
+        self._admin_post(admin_grant_plan, plan='professional', duration='permanent')
+        self.referrer.refresh_from_db()
+        self.participant.refresh_from_db()
+        self.assertEqual(self.referrer.plan_type, 'professional')
+        self.assertEqual(self.participant.grant_plan_slug, 'professional')
+        self.assertIsNone(self.participant.grant_expires_at)
+        self.assertEqual(event_referral_effective_plan_type(self.referrer, self.participant), 'professional')
+
+    def test_temporary_professional_grant_expires(self):
+        from datetime import datetime
+        from apps.event_referral.services.participant_service import (
+            event_referral_effective_plan_type,
+            expire_admin_grant_if_due,
+        )
+        from apps.event_referral.views.admin_views import admin_grant_plan
+
+        self._admin_post(admin_grant_plan, plan='professional', duration='temporary', grant_days='10')
+        self.referrer.refresh_from_db()
+        self.participant.refresh_from_db()
+        self.assertEqual(self.referrer.plan_type, 'professional')
+        self.assertGreater(self.participant.grant_expires_at, datetime.now() + timedelta(days=9))
+        self.assertEqual(event_referral_effective_plan_type(self.referrer, self.participant), 'professional')
+
+        self.participant.grant_expires_at = datetime.now() - timedelta(minutes=1)
+        self.participant.save(update_fields=['grant_expires_at'])
+        expire_admin_grant_if_due(self.participant)
+        self.referrer.refresh_from_db()
+        self.participant.refresh_from_db()
+        self.assertEqual(self.participant.status, EventReferralParticipant.STATUS_ACTIVE)
+        self.assertEqual(self.participant.grant_plan_slug, '')
+        self.assertEqual((self.referrer.status, self.referrer.plan_type), ('event_challenge', ''))
+
+    def test_temporary_professional_falls_back_after_an_earned_win(self):
+        from datetime import datetime
+        from apps.event_referral.services.participant_service import (
+            event_referral_effective_plan_type,
+            expire_admin_grant_if_due,
+        )
+        from apps.event_referral.views.admin_views import admin_grant_plan
+
+        for i in range(2):
+            friend = Agent.objects.create(
+                fullname='F', email=f'grant{i}@example.com', mobile=f'900000030{i}',
+                status='pending_approval', plan_type='starter',
+                referred_by_code=self.participant.referral_code,
+            )
+            register_referred_agent(friend)
+            qualify_event_referral(
+                friend,
+                _paid_sub(friend, order=f'order_GRANT000000{i}', pay=f'pay_GRANT0000000{i}'),
+            )
+        self.participant.refresh_from_db()
+        self.assertEqual(self.participant.status, EventReferralParticipant.STATUS_WON)
+
+        self._admin_post(admin_grant_plan, plan='professional', duration='temporary', grant_days='5')
+        self.referrer.refresh_from_db()
+        self.assertEqual(self.referrer.plan_type, 'professional')
+
+        self.participant.refresh_from_db()
+        self.participant.grant_expires_at = datetime.now() - timedelta(minutes=1)
+        self.participant.save(update_fields=['grant_expires_at'])
+        expire_admin_grant_if_due(self.participant)
+        self.referrer.refresh_from_db()
+        self.participant.refresh_from_db()
+        self.assertEqual(self.participant.status, EventReferralParticipant.STATUS_WON)
+        self.assertEqual(self.participant.grant_plan_slug, '')
+        self.assertEqual(self.referrer.plan_type, 'basic')
+        self.assertEqual(event_referral_effective_plan_type(self.referrer, self.participant), 'starter')
+
+    def test_temporary_grant_rejects_invalid_days(self):
+        from apps.event_referral.views.admin_views import admin_grant_plan
+
+        self._admin_post(admin_grant_plan, plan='basic', duration='temporary', grant_days='0')
+        self.referrer.refresh_from_db()
+        self.participant.refresh_from_db()
+        self.assertEqual(self.referrer.plan_type, '')
+        self.assertEqual(self.participant.status, EventReferralParticipant.STATUS_ACTIVE)
+
+    def test_restore_undoes_a_professional_grant(self):
+        from apps.event_referral.views.admin_views import admin_grant_plan, admin_restore_participant
+
+        self._admin_post(admin_grant_plan, plan='professional', duration='permanent')
+        self._admin_post(admin_restore_participant, extend_hours='0')
+        self.referrer.refresh_from_db()
+        self.participant.refresh_from_db()
+        self.assertEqual(self.participant.status, EventReferralParticipant.STATUS_ACTIVE)
+        self.assertEqual(self.participant.grant_plan_slug, '')
+        self.assertEqual((self.referrer.status, self.referrer.plan_type), ('event_challenge', ''))
+
     def test_admin_restore_never_takes_a_paid_plan(self):
         from apps.event_referral.views.admin_views import admin_grant_plan, admin_restore_participant
         _paid_sub(self.referrer, order='order_OWNPAID000001', pay='pay_OWNPAID0000001')

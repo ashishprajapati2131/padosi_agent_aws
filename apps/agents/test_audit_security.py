@@ -355,6 +355,34 @@ class DefaultPasswordTests(TestCase):
         self.assertFalse(ok_email)
 
 
+class LicenseDocumentValidationTests(SimpleTestCase):
+    def test_pdf_and_jpeg_accepted_and_disguised_names_rejected(self):
+        import io
+        from PIL import Image
+        from apps.agents.utils.file_validation import validate_license_document
+
+        ok, err, ext = validate_license_document(b'%PDF-1.4\n%', 'irdai.pdf')
+        self.assertTrue(ok, err)
+        self.assertEqual(ext, '.pdf')
+
+        buf = io.BytesIO()
+        Image.new('RGB', (8, 8), (10, 20, 30)).save(buf, format='JPEG')
+        ok, err, ext = validate_license_document(buf.getvalue(), 'scan.jpg')
+        self.assertTrue(ok, err)
+        self.assertEqual(ext, '.jpg')
+
+        ok, err, _ext = validate_license_document(b'console.log(1)', 'notes.js.jpg')
+        self.assertFalse(ok)
+        self.assertIn('js.jpg', err)
+
+        ok, err, _ext = validate_license_document(b'console.log(1)', 'notes.jpg')
+        self.assertFalse(ok)
+        self.assertIn('content', err.lower())
+
+        ok, err, _ext = validate_license_document(b'%PDF-1.4', 'scan.jpg')
+        self.assertFalse(ok)
+
+
 class RegistrationPhotoUploadTests(SimpleTestCase):
     """Real photos keep uploading whatever their file name; non-images are refused."""
 
@@ -383,6 +411,12 @@ class RegistrationPhotoUploadTests(SimpleTestCase):
         from apps.agents.views.registration import _validated_photo_upload
         html = SimpleUploadedFile('evil.jpg', b'<html><script>alert(1)</script></html>', content_type='image/jpeg')
         svg = SimpleUploadedFile('x.svg', b'<svg xmlns="http://www.w3.org/2000/svg"></svg>', content_type='image/svg+xml')
+        renamed = SimpleUploadedFile('evil.js.jpg', b'console.log(1)', content_type='image/jpeg')
         self.assertIsNone(_validated_photo_upload(html))
         self.assertIsNone(_validated_photo_upload(svg))
+        self.assertIsNone(_validated_photo_upload(renamed))
         self.assertIsNone(_validated_photo_upload(None))
+
+    def test_real_image_with_script_extension_is_rejected(self):
+        from apps.agents.views.registration import _validated_photo_upload
+        self.assertIsNone(_validated_photo_upload(self._image_upload('photo.js.jpg', 'JPEG')))

@@ -18,6 +18,8 @@ BLOCK_MESSAGE = (
 def get_participant_for_agent(agent):
     if not agent:
         return None
+    from apps.event_referral.services.schema_compat import ensure_event_referral_metrics_schema
+    ensure_event_referral_metrics_schema(log_errors=False)
     return (
         EventReferralParticipant.objects.filter(agent=agent)
         .select_related('campaign')
@@ -50,6 +52,7 @@ def prepare_event_referral_portal_state(agent):
     participant = get_participant_for_agent(agent)
     if not participant:
         return None, False, False
+    participant = expire_admin_grant_if_due(participant) or participant
     if participant.status == EventReferralParticipant.STATUS_ACTIVE:
         evaluate_agent(agent, block_on_expire=True)
         participant = get_participant_for_agent(agent)
@@ -95,23 +98,143 @@ def force_lock_all_dashboard_features(participant):
     return True
 
 
+def _normalize_grant_plan(plan_slug):
+    """Admin grant plans: basic (starter features) or professional."""
+    slug = (plan_slug or '').strip().lower()
+    if slug in ('professional', 'pro'):
+        return 'professional'
+    if slug in ('basic', 'starter', 'standard'):
+        return 'basic'
+    return ''
+
+
+def _feature_plan_slug(plan_slug):
+    slug = (plan_slug or '').strip().lower()
+    if slug in ('basic', 'starter', 'standard'):
+        return 'starter'
+    return slug
+
+
+def _same_plan(left, right):
+    from plan_upgrade_handoff import normalize_upgrade_slug
+    a = normalize_upgrade_slug(left)
+    b = normalize_upgrade_slug(right)
+    return bool(a) and a == b
+
+
+def _clear_grant_fields(participant):
+    participant.grant_plan_slug = ''
+    participant.grant_expires_at = None
+    participant.grant_previous_plan = ''
+
+
+def expire_admin_grant_if_due(participant):
+    """End a temporary admin grant once its clock runs out.
+
+    An earned win (enough paid referrals) stays won and falls back to the
+    campaign reward plan. A grant that was not earned is undone, the same
+    way Restore does.
+    """
+    if not participant or not participant.grant_expires_at or not (participant.grant_plan_slug or '').strip():
+        return participant
+    if participant.grant_expires_at > datetime.now():
+        return participant
+
+    with transaction.atomic():
+        participant = (
+            EventReferralParticipant.objects.select_for_update()
+            .filter(pk=participant.pk)
+            .first()
+        )
+        if not participant or not participant.grant_expires_at or participant.grant_expires_at > datetime.now():
+            return participant
+        if not (participant.grant_plan_slug or '').strip():
+            return participant
+
+        granted = participant.grant_plan_slug
+        agent = Agent.objects.select_for_update().get(pk=participant.agent_id)
+        from apps.agents.services.account_auth import agent_has_completed_payment
+        paid = agent_has_completed_payment(agent)
+        earned = _recount_paid(participant) >= participant.required_paid_referrals
+
+        if earned:
+            if not paid and _same_plan(agent.plan_type, granted):
+                agent.plan_type = participant.reward_plan_slug or 'basic'
+                agent.save(update_fields=['plan_type', 'updated_at'])
+            _clear_grant_fields(participant)
+            participant.save(update_fields=[
+                'grant_plan_slug', 'grant_expires_at', 'grant_previous_plan', 'updated_at',
+            ])
+            participant.refresh_from_db()
+            return participant
+
+        _undo_unearned_grant(participant, agent)
+        participant.refresh_from_db()
+        if (
+            participant.status == EventReferralParticipant.STATUS_ACTIVE
+            and datetime.now() >= participant.deadline_at
+        ):
+            _block_participant(
+                participant,
+                reason='Temporary granted plan ended and the challenge deadline has passed.',
+            )
+            participant.refresh_from_db()
+        return participant
+
+
+def _undo_unearned_grant(participant, agent):
+    """Take back an admin grant that was not earned with paid referrals."""
+    granted = participant.grant_plan_slug or participant.reward_plan_slug or 'basic'
+    previous = participant.grant_previous_plan or ''
+    participant.status = EventReferralParticipant.STATUS_ACTIVE
+    participant.won_at = None
+    participant.blocked_at = None
+    participant.blocked_reason = ''
+    _clear_grant_fields(participant)
+    participant.save()
+    from apps.agents.services.account_auth import agent_has_completed_payment
+    if not agent_has_completed_payment(agent):
+        fields = ['status', 'updated_at']
+        agent.status = 'event_challenge'
+        reward = participant.reward_plan_slug or 'basic'
+        if _same_plan(agent.plan_type, granted) or agent.plan_type == reward:
+            agent.plan_type = previous if previous and not _same_plan(previous, granted) else ''
+            fields.append('plan_type')
+        agent.save(update_fields=fields)
+
+
 def event_referral_effective_plan_type(agent, participant=None):
     """
     Plan slug used for feature gates during the Paldi / event referral challenge.
     - Active (within 48h): Professional trial — same as paid Professional.
-    - Won: reward plan (usually basic/starter).
+    - Won: the admin grant while it is still in force, otherwise the reward plan.
     - Blocked: None (dashboard access is revoked separately).
+    A paid plan that is already higher than the grant is kept.
     """
     participant = participant or get_participant_for_agent(agent)
     if not participant:
         return None
+    if (
+        participant.status == EventReferralParticipant.STATUS_WON
+        and participant.grant_expires_at
+        and participant.grant_plan_slug
+        and participant.grant_expires_at <= datetime.now()
+    ):
+        participant = expire_admin_grant_if_due(participant) or participant
     if participant.status == EventReferralParticipant.STATUS_ACTIVE:
         return 'professional'
     if participant.status == EventReferralParticipant.STATUS_WON:
-        slug = (participant.reward_plan_slug or 'basic').strip().lower() or 'basic'
-        if slug in ('basic', 'starter', 'standard'):
-            return 'starter'
-        return slug
+        granted = (participant.grant_plan_slug or '').strip().lower()
+        if granted and (not participant.grant_expires_at or participant.grant_expires_at > datetime.now()):
+            slug = granted
+        else:
+            slug = (participant.reward_plan_slug or 'basic').strip().lower() or 'basic'
+        chosen = _feature_plan_slug(slug)
+        current = _feature_plan_slug(getattr(agent, 'plan_type', '') or '')
+        from plan_upgrade_handoff import plan_rank
+        if current and plan_rank(current) > plan_rank(chosen):
+            return current
+        return chosen
     return None
 
 
@@ -220,12 +343,42 @@ def evaluate_agent(agent, *, block_on_expire=True):
     return evaluate_participant(participant, block_on_expire=block_on_expire)
 
 
-def admin_grant_win(participant):
-    """Manual grant from admin."""
+def admin_grant_win(participant, *, plan_slug='basic', expires_at=None):
+    """Manual grant from admin.
+
+    plan_slug is 'basic' or 'professional'. expires_at is None for a permanent
+    grant and a datetime for a temporary one.
+    """
+    plan_slug = _normalize_grant_plan(plan_slug) or 'basic'
     with transaction.atomic():
-        participant = EventReferralParticipant.objects.select_for_update().get(pk=participant.pk)
+        participant = (
+            EventReferralParticipant.objects.select_for_update()
+            .select_related('agent')
+            .get(pk=participant.pk)
+        )
+        agent = Agent.objects.select_for_update().get(pk=participant.agent_id)
+        if not (participant.grant_plan_slug or '').strip():
+            participant.grant_previous_plan = agent.plan_type or ''
+        participant.grant_plan_slug = plan_slug
+        participant.grant_expires_at = expires_at
         if participant.status != EventReferralParticipant.STATUS_WON:
             _grant_win(participant)
+            agent.refresh_from_db()
+        from apps.agents.services.account_auth import agent_has_completed_payment
+        from plan_upgrade_handoff import plan_rank
+        paid_higher = (
+            agent_has_completed_payment(agent)
+            and plan_rank(agent.plan_type or '') > plan_rank(plan_slug)
+        )
+        if not paid_higher:
+            agent.plan_type = plan_slug
+            if agent.status != 'active':
+                agent.status = 'pending_approval'
+            agent.registration_step = max(agent.registration_step or 1, 2)
+            agent.save(update_fields=['status', 'plan_type', 'registration_step', 'updated_at'])
+        participant.save(update_fields=[
+            'grant_plan_slug', 'grant_expires_at', 'grant_previous_plan', 'updated_at',
+        ])
     participant.refresh_from_db()
     return participant
 
@@ -248,19 +401,7 @@ def admin_restore_participant(participant, *, extend_hours=0):
             # An admin "Grant plan": Restore undoes it, so the agent leaves
             # the Approvals queue and is back in the challenge. An agent who
             # paid for a plan themselves keeps their plan and status.
-            participant.status = EventReferralParticipant.STATUS_ACTIVE
-            participant.won_at = None
-            participant.blocked_at = None
-            participant.blocked_reason = ''
-            participant.save()
-            from apps.agents.services.account_auth import agent_has_completed_payment
-            if not agent_has_completed_payment(agent):
-                fields = ['status', 'updated_at']
-                agent.status = 'event_challenge'
-                if agent.plan_type == (participant.reward_plan_slug or 'basic'):
-                    agent.plan_type = ''
-                    fields.append('plan_type')
-                agent.save(update_fields=fields)
+            _undo_unearned_grant(participant, agent)
             participant.refresh_from_db()
             participant.restore_outcome = 'undid_grant'
             return participant
