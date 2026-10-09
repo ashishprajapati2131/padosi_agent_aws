@@ -1,243 +1,585 @@
 {% extends 'admin/base.html' %}
 {% load static %}
 
-{% block title %}Social Share (OG) Card Studio — PadosiAgent Admin{% endblock %}
-{% block breadcrumb %}System &rsaquo; Social Share (OG) Card Studio{% endblock %}
+{% block title %}WhatsApp & Social Card Studio — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}System &rsaquo; WhatsApp & Social Card Studio{% endblock %}
 
 {% block extra_head %}
 <style>
-/* WhatsApp Simulator Styles */
-.wa-chat-container {
-    background-color: #0b141a;
-    background-image: radial-gradient(#121b22 15%, transparent 16%);
-    background-size: 16px 16px;
-    border-radius: 14px;
-    padding: 16px;
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.4);
+/* ───────────────────────────────────────────────────────────
+   PREMIUM WHATSAPP CHAT SIMULATOR (PIXEL-PERFECT REPLICA)
+   ─────────────────────────────────────────────────────────── */
+.phone-mockup {
+    max-width: 410px;
+    margin: 0 auto;
+    border-radius: 36px;
+    background: #000;
+    padding: 10px;
+    box-shadow: 0 20px 45px -10px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08);
+    position: relative;
 }
-.wa-bubble {
+.phone-screen {
+    border-radius: 28px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 620px;
+    transition: background 0.3s ease;
+}
+
+/* Dark Theme */
+.wa-theme-dark .phone-screen {
+    background-color: #0b141a;
+}
+.wa-theme-dark .wa-topbar {
+    background: #1f2c34;
+    color: #e9edef;
+}
+.wa-theme-dark .wa-wallpaper {
+    background-color: #0b141a;
+    background-image: 
+        radial-gradient(circle at 50% 50%, rgba(30, 44, 53, 0.4) 0%, transparent 60%),
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0, rgba(255,255,255,0.015) 1px, transparent 0, transparent 16px);
+}
+.wa-theme-dark .wa-msg-bubble {
     background-color: #005c4b;
     color: #e9edef;
-    border-radius: 8px;
-    padding: 4px;
-    max-width: 360px;
-    margin-left: auto;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    position: relative;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
-.wa-card-preview {
+.wa-theme-dark .wa-card-box {
     background-color: #025143;
-    border-radius: 6px;
-    overflow: hidden;
 }
-.wa-card-img-wrap {
-    width: 100%;
-    height: 180px;
-    background-color: #0c1317;
-    overflow: hidden;
+.wa-theme-dark .wa-title-text { color: #ffffff; }
+.wa-theme-dark .wa-desc-text { color: #aebac1; }
+.wa-theme-dark .wa-domain-text { color: #8696a0; }
+.wa-theme-dark .wa-link-text { color: #53bdeb; }
+.wa-theme-dark .wa-meta-time { color: #8696a0; }
+.wa-theme-dark .wa-input-bar { background: #1f2c34; color: #8696a0; }
+
+/* Light Theme */
+.wa-theme-light .phone-screen {
+    background-color: #efeae2;
+}
+.wa-theme-light .wa-topbar {
+    background: #008069;
+    color: #ffffff;
+}
+.wa-theme-light .wa-wallpaper {
+    background-color: #efeae2;
+    background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.02) 0, rgba(0,0,0,0.02) 1px, transparent 0, transparent 16px);
+}
+.wa-theme-light .wa-msg-bubble {
+    background-color: #d9fdd3;
+    color: #111b21;
+}
+.wa-theme-light .wa-card-box {
+    background-color: #c7f0be;
+}
+.wa-theme-light .wa-title-text { color: #111b21; }
+.wa-theme-light .wa-desc-text { color: #54656f; }
+.wa-theme-light .wa-domain-text { color: #667781; }
+.wa-theme-light .wa-link-text { color: #027eb5; }
+.wa-theme-light .wa-meta-time { color: #667781; }
+.wa-theme-light .wa-input-bar { background: #ffffff; color: #8696a0; }
+
+/* Topbar */
+.wa-topbar {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    z-index: 5;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+.wa-topbar .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #25d366;
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+/* Chat Wallpaper & Area */
+.wa-wallpaper {
+    flex: 1;
+    padding: 14px 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+.wa-date-pill {
+    align-self: center;
+    background: rgba(18, 27, 34, 0.7);
+    color: #8696a0;
+    font-size: 10.5px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+}
+.wa-theme-light .wa-date-pill {
+    background: rgba(255, 255, 255, 0.85);
+    color: #54656f;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.06);
+}
+
+/* Bubble & Card */
+.wa-bubble-wrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    justify-content: flex-end;
+    margin-bottom: 4px;
+}
+.wa-forward-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    color: #8696a0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+.wa-msg-bubble {
+    border-radius: 9px;
+    border-top-right-radius: 2px;
+    padding: 4px;
+    max-width: 325px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    position: relative;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.wa-link-head {
+    padding: 4px 6px 4px;
+    font-size: 12.5px;
+    line-height: 1.3;
+    word-break: break-all;
+}
+.wa-card-box {
+    border-radius: 7px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+.wa-card-box:hover {
+    filter: brightness(1.03);
+}
+
+/* CARD VIEW MODES */
+/* 1. Large Card Mode (Top Banner) */
+.wa-mode-large .wa-card-image-wrap {
+    width: 100%;
+    height: 165px;
+    background: #000;
+    overflow: hidden;
     position: relative;
 }
-.wa-card-img-wrap img {
+.wa-mode-large .wa-card-image-wrap img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
-.wa-card-content {
+.wa-mode-large .wa-card-body {
     padding: 8px 10px;
 }
-.wa-card-title {
+
+/* 2. Compact Thumbnail Mode (Left Square) */
+.wa-mode-compact .wa-card-box {
+    display: flex;
+    align-items: center;
+    padding: 6px;
+    gap: 10px;
+}
+.wa-mode-compact .wa-card-image-wrap {
+    width: 70px;
+    height: 70px;
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.wa-mode-compact .wa-card-image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.wa-mode-compact .wa-card-body {
+    padding: 0;
+    flex: 1;
+    min-width: 0;
+}
+
+.wa-title-text {
     font-size: 13.5px;
     font-weight: 700;
-    color: #ffffff;
     line-height: 1.25;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
-.wa-card-desc {
+.wa-desc-text {
     font-size: 11.5px;
-    color: #aebac1;
-    line-height: 1.35;
+    line-height: 1.3;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
 }
-.wa-card-domain {
-    font-size: 11px;
-    color: #8696a0;
+.wa-domain-text {
+    font-size: 10.5px;
     text-transform: lowercase;
 }
-.wa-meta-footer {
+.wa-footer-bar {
     display: flex;
-    justify-content: flex-end;
     align-items: center;
+    justify-content: flex-end;
     gap: 4px;
-    padding: 2px 6px 0;
+    padding: 1px 6px 2px;
     font-size: 10.5px;
-    color: #8696a0;
 }
-.card-style-radio {
-    border: 2px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 12px;
+
+/* WhatsApp Bottom Input Bar */
+.wa-input-bar {
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    z-index: 5;
+}
+.wa-input-bubble {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+}
+.wa-theme-light .wa-input-bubble {
+    background: #f0f2f5;
+}
+
+/* ───────────────────────────────────────────────────────────
+   STUDIO INTERACTIVE CONTROLS
+   ─────────────────────────────────────────────────────────── */
+.page-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #334155;
     cursor: pointer;
     transition: all 0.2s ease;
+    user-select: none;
+    margin-bottom: 6px;
 }
-.card-style-radio:hover {
+.page-chip:hover {
     border-color: #10b981;
-    background-color: #f0fdf4;
+    background: #ecfdf5;
+    color: #065f46;
+    transform: translateY(-1px);
 }
-.form-check-input:checked + .card-style-label .card-style-radio {
+.page-chip.active {
     border-color: #059669;
-    background-color: #ecfdf5;
+    background: #059669;
+    color: #ffffff;
+    box-shadow: 0 4px 10px -2px rgba(5, 150, 105, 0.4);
+}
+
+.card-format-box {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #ffffff;
+    height: 100%;
+}
+.card-format-box:hover {
+    border-color: #10b981;
+    background: #f0fdf4;
+}
+.form-check-input:checked + .card-format-label .card-format-box {
+    border-color: #059669;
+    background: #ecfdf5;
+    box-shadow: 0 0 0 1px #059669;
+}
+
+.dropzone-box {
+    border: 2px dashed #cbd5e1;
+    border-radius: 14px;
+    padding: 24px;
+    text-align: center;
+    background: #f8fafc;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.dropzone-box:hover {
+    border-color: #10b981;
+    background: #ecfdf5;
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-lg-12">
-        <!-- Top Banner Header -->
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+<div class="row g-4">
+    <div class="col-12">
+        <!-- Main Studio Header -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-3">
             <div>
-                <h4 class="m-0 fw-bold text-dark"><i class="fa-solid fa-wand-magic-sparkles text-success me-2"></i> WhatsApp & Social Card Studio</h4>
-                <small class="text-muted">Create high-converting, full-width WhatsApp cards with zero cropping. Select a page, upload any photo, and it automatically formats to a 1200&times;630 preview card!</small>
+                <h4 class="m-0 fw-bold text-dark"><i class="fa-brands fa-whatsapp text-success me-2"></i> WhatsApp & Social Card Studio</h4>
+                <div class="text-muted small">Create high-converting, full-width WhatsApp preview cards. Just click a page chip, select an image, and save!</div>
             </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-success shadow-sm px-4" data-bs-toggle="modal" data-bs-target="#linkOgModal" onclick="openAddLinkModal()">
-                    <i class="fa-solid fa-plus-circle me-1"></i> Add Custom Link Card
-                </button>
+            <div class="d-flex align-items-center gap-2">
+                <!-- Theme Toggle -->
+                <div class="btn-group btn-group-sm bg-white p-1 rounded-pill border shadow-xs" role="group">
+                    <button type="button" class="btn btn-sm rounded-pill active" id="btnThemeDark" onclick="setSimulatorTheme('dark')">
+                        <i class="fa-solid fa-moon me-1"></i> WhatsApp Dark
+                    </button>
+                    <button type="button" class="btn btn-sm rounded-pill" id="btnThemeLight" onclick="setSimulatorTheme('light')">
+                        <i class="fa-solid fa-sun me-1"></i> Light
+                    </button>
+                </div>
+
+                <!-- Card Mode Toggle -->
+                <div class="btn-group btn-group-sm bg-white p-1 rounded-pill border shadow-xs" role="group">
+                    <button type="button" class="btn btn-sm rounded-pill btn-success text-white" id="btnModeLarge" onclick="setSimulatorMode('large')">
+                        <i class="fa-solid fa-image me-1"></i> Big Banner Card
+                    </button>
+                    <button type="button" class="btn btn-sm rounded-pill text-secondary" id="btnModeCompact" onclick="setSimulatorMode('compact')">
+                        <i class="fa-solid fa-square me-1"></i> Small Thumb
+                    </button>
+                </div>
             </div>
         </div>
+    </div>
 
-        <!-- GLOBAL DEFAULT CARD SECTION (WITH LIVE SIMULATOR) -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold text-dark"><i class="fa-solid fa-globe text-primary me-2"></i> Default Website Social Card (Applies to all links unless customized)</h6>
-                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1">Auto-Resized & Compressed &lt; 250KB</span>
+    <!-- LEFT COLUMN: CREATOR STUDIO (SELECTION + FORM) -->
+    <div class="col-lg-7">
+        <form method="POST" action="{% url 'admin_link_og_save' %}" enctype="multipart/form-data" id="studioForm">
+            {% csrf_token %}
+            <input type="hidden" name="rule_id" id="studioRuleId" value="">
+
+            <!-- STEP 1: 1-CLICK PAGE SELECTION CHIPS -->
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold text-dark">
+                        <span class="badge bg-success rounded-pill me-2">1</span> Select Website Page (1-Click Selection)
+                    </h6>
+                    <small class="text-muted">Click any page to auto-fill everything!</small>
+                </div>
+                <div class="card-body py-3">
+                    <div class="d-flex flex-wrap gap-2">
+                        <div class="page-chip active" onclick="selectPageChip(this, 'home')">🏠 Homepage ( / )</div>
+                        <div class="page-chip" onclick="selectPageChip(this, 'find_agents')">🔍 Find Agents ( /find-agents/ )</div>
+                        <div class="page-chip" onclick="selectPageChip(this, 'registration')">📝 Agent Registration</div>
+                        <div class="page-chip" onclick="selectPageChip(this, 'health')">🏥 Health / Mediclaim</div>
+                        <div class="page-chip" onclick="selectPageChip(this, 'life')">🛡️ Life & Term Insurance</div>
+                        <div class="page-chip" onclick="selectPageChip(this, 'motor')">🚗 Car & Bike Insurance</div>
+                        <div class="page-chip" onclick="selectPageChip(this, 'claims')">💼 Claim Assistance</div>
+                        <div class="page-chip" onclick="selectPageChip(this, 'about')">ℹ️ About Us</div>
+                        <div class="page-chip" onclick="selectPageChip(this, 'contact')">📞 Contact Us</div>
+                        <div class="page-chip" onclick="selectPageChip(this, 'custom')">✏️ Custom URL...</div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label fw-semibold small text-muted">Target Page URL Path</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light font-monospace text-muted">https://padosiagent.com</span>
+                            <input type="text" class="form-control font-monospace fw-bold" name="path" id="studioPath" value="/" required oninput="syncSimulator()">
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <form method="POST" action="{% url 'admin_settings_update' %}" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <input type="hidden" name="group" value="seo">
 
-                    <div class="row g-4 align-items-center">
-                        <!-- Left: Inputs -->
-                        <div class="col-lg-7">
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Default Card Title (WhatsApp / Facebook)</label>
-                                <input type="text" class="form-control" name="seo_og_title" id="globalOgTitle" value="{{ seo_og_title|default:'Expert & Trusted Insurance Agent in your Padosi' }}" oninput="updateGlobalPreview()">
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Default Card Description</label>
-                                <textarea class="form-control" name="seo_og_description" id="globalOgDesc" rows="2" oninput="updateGlobalPreview()">{{ seo_og_description|default:'Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent.' }}</textarea>
-                            </div>
-
-                            <!-- Card Styler Selector -->
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold d-block">Card Layout Format (Auto-fit so text is never cropped)</label>
-                                <div class="row g-2">
-                                    <div class="col-md-6">
-                                        <label class="d-block w-100 card-style-label">
-                                            <input type="radio" name="og_card_style" value="smart_fit" class="form-check-input d-none" checked>
-                                            <div class="card-style-radio">
-                                                <div class="fw-bold text-success"><i class="fa-solid fa-shield-halved me-1"></i> Smart Fit (Recommended)</div>
-                                                <div class="small text-muted" style="font-size: 11px;">Padded safe-zone + ambient blurred background. Text & logos 100% visible on WhatsApp!</div>
-                                            </div>
-                                        </label>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="d-block w-100 card-style-label">
-                                            <input type="radio" name="og_card_style" value="cover" class="form-check-input d-none">
-                                            <div class="card-style-radio">
-                                                <div class="fw-bold text-dark"><i class="fa-solid fa-expand me-1"></i> Full Cover Canvas</div>
-                                                <div class="small text-muted" style="font-size: 11px;">Fills the entire 1200&times;630 frame edge-to-edge. Best for pre-designed wide banners.</div>
-                                            </div>
-                                        </label>
-                                    </div>
+            <!-- STEP 2: IMAGE UPLOAD & FORMAT -->
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold text-dark">
+                        <span class="badge bg-success rounded-pill me-2">2</span> Upload Card Image & Layout
+                    </h6>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">Auto-Fits to 1200 &times; 630</span>
+                </div>
+                <div class="card-body">
+                    <!-- Format Radio Options -->
+                    <label class="form-label fw-semibold small text-muted mb-2">Card Style Engine</label>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="d-block card-format-label">
+                                <input type="radio" name="card_style" value="smart_fit" class="form-check-input d-none" checked>
+                                <div class="card-format-box">
+                                    <div class="fw-bold text-success mb-1"><i class="fa-solid fa-shield-halved me-1"></i> Smart Fit (Recommended)</div>
+                                    <div class="text-muted" style="font-size: 11px;">Padded safe-zone with ambient blurred backdrop. No logo or text is <strong>ever cut off</strong> on WhatsApp!</div>
                                 </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Upload Image / Logo</label>
-                                <input type="file" class="form-control" name="og_default_image" id="globalOgFile" accept="image/png, image/jpeg, image/webp, image/gif">
-                                <div class="form-text text-muted" style="font-size: 11.5px;">
-                                    <i class="fa-solid fa-circle-check text-success me-1"></i> <strong>Upload any image</strong> (even square logos). Our system automatically creates a 1200&times;630 card compressed to &lt; 200KB for WhatsApp!
+                            </label>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="d-block card-format-label">
+                                <input type="radio" name="card_style" value="cover" class="form-check-input d-none">
+                                <div class="card-format-box">
+                                    <div class="fw-bold text-dark mb-1"><i class="fa-solid fa-expand me-1"></i> Edge-to-Edge Cover</div>
+                                    <div class="text-muted" style="font-size: 11px;">Stretches/crops image to full 1200&times;630 frame without padding. Best for landscape banners.</div>
                                 </div>
-                            </div>
+                            </label>
+                        </div>
+                    </div>
 
-                            <div class="text-start mt-4">
-                                <button type="submit" class="btn btn-primary px-4 shadow-sm">
-                                    <i class="fa-solid fa-cloud-arrow-up me-2"></i> Save Default Social Settings
-                                </button>
-                            </div>
+                    <!-- Dropzone / File Picker -->
+                    <div class="dropzone-box" onclick="document.getElementById('studioImageFile').click()">
+                        <input type="file" class="d-none" name="image_file" id="studioImageFile" accept="image/png, image/jpeg, image/webp, image/gif">
+                        <i class="fa-solid fa-cloud-arrow-up fa-2x text-success mb-2 d-block"></i>
+                        <span class="fw-bold text-dark d-block">Click to Upload Image / Poster</span>
+                        <span class="text-muted small">Upload ANY photo (square, banner, or logo). Our system automatically optimizes it to a 1200&times;630 card &lt; 250KB.</span>
+                    </div>
+
+                    <div class="mt-2 text-center">
+                        <small class="text-muted">Or paste an existing image URL:</small>
+                        <input type="text" class="form-control form-control-sm text-center font-monospace mt-1" name="image_url" id="studioImageUrl" placeholder="https://... or /media/og/banner.jpg" oninput="syncSimulator()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3: SOCIAL META DETAILS (PRE-FILLED) -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold text-dark">
+                        <span class="badge bg-success rounded-pill me-2">3</span> Card Title & Description (Pre-filled automatically)
+                    </h6>
+                    <span class="badge bg-light text-muted border">Live Synced with Simulator</span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-muted">Card Title (WhatsApp preview title)</label>
+                        <input type="text" class="form-control" name="title" id="studioTitle" value="PadosiAgent — Expert & Trusted Insurance Agent in your Neighbourhood" oninput="syncSimulator()">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-muted">Card Description (WhatsApp snippet)</label>
+                        <textarea class="form-control" name="description" id="studioDesc" rows="2" oninput="syncSimulator()">Find trusted & verified insurance experts in your locality. Connect with local licensed advisors for Health, Life, and Motor insurance.</textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center pt-2">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" name="is_active" id="studioIsActive" checked value="1">
+                            <label class="form-check-label fw-semibold small" for="studioIsActive">Rule Active</label>
                         </div>
 
-                        <!-- Right: WhatsApp Live Simulator -->
-                        <div class="col-lg-5">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-semibold text-muted small"><i class="fa-brands fa-whatsapp text-success me-1"></i> Live WhatsApp Card Preview</span>
-                                <span class="badge bg-dark font-monospace" style="font-size: 10px;">1200 &times; 630 px</span>
-                            </div>
+                        <button type="submit" class="btn btn-success btn-lg px-4 shadow-sm">
+                            <i class="fa-solid fa-paper-plane me-2"></i> Save & Publish Card
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
 
-                            <div class="wa-chat-container">
-                                <div class="wa-bubble">
-                                    <div class="wa-card-preview">
-                                        <div class="wa-card-img-wrap">
-                                            <img id="globalSimImg" src="{{ og_default_image|default:'/static/img/logo.png' }}" alt="WhatsApp Preview">
-                                        </div>
-                                        <div class="wa-card-content">
-                                            <div class="wa-card-title" id="globalSimTitle">{{ seo_og_title|default:'Expert & Trusted Insurance Agent in your Padosi' }}</div>
-                                            <div class="wa-card-desc" id="globalSimDesc">{{ seo_og_description|default:'Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent.' }}</div>
-                                            <div class="wa-card-domain">padosiagent.com</div>
-                                        </div>
+    <!-- RIGHT COLUMN: LIVE WHATSAPP PHONE SIMULATOR -->
+    <div class="col-lg-5">
+        <div class="sticky-top" style="top: 20px;">
+            <div class="phone-mockup">
+                <div class="phone-screen wa-theme-dark wa-mode-large" id="phoneScreen">
+                    <!-- WhatsApp Topbar -->
+                    <div class="wa-topbar">
+                        <i class="fa-solid fa-arrow-left" style="font-size: 13px;"></i>
+                        <div class="avatar">PA</div>
+                        <div class="flex-grow-1" style="line-height: 1.2;">
+                            <div class="fw-bold text-truncate" style="font-size: 13px;">PadosiAgent</div>
+                            <div style="font-size: 10px; opacity: 0.85;">online</div>
+                        </div>
+                        <i class="fa-solid fa-video me-2" style="font-size: 13px;"></i>
+                        <i class="fa-solid fa-phone me-2" style="font-size: 13px;"></i>
+                        <i class="fa-solid fa-ellipsis-vertical" style="font-size: 13px;"></i>
+                    </div>
+
+                    <!-- Chat Wallpaper & Conversation Area -->
+                    <div class="wa-wallpaper">
+                        <div class="wa-date-pill">TODAY</div>
+
+                        <!-- Outgoing Message Bubble with Card -->
+                        <div class="wa-bubble-wrapper">
+                            <div class="wa-forward-btn"><i class="fa-solid fa-share"></i></div>
+
+                            <div class="wa-msg-bubble">
+                                <!-- Link Text at Top -->
+                                <div class="wa-link-head">
+                                    <span class="wa-link-text fw-semibold" id="simLinkText">https://padosiagent.com/</span>
+                                </div>
+
+                                <!-- The Interactive Card -->
+                                <div class="wa-card-box">
+                                    <div class="wa-card-image-wrap">
+                                        <img id="simCardImg" src="{{ og_default_image|default:'/static/img/logo.png' }}" alt="Card Banner">
                                     </div>
-                                    <div class="wa-meta-footer">
-                                        <span>6:30 pm</span>
-                                        <i class="fa-solid fa-check-double text-info" style="font-size: 9px;"></i>
+                                    <div class="wa-card-body">
+                                        <div class="wa-title-text" id="simTitle">PadosiAgent — Expert & Trusted Insurance Agent in your Neighbourhood</div>
+                                        <div class="wa-desc-text" id="simDesc">Find trusted & verified insurance experts in your locality. Connect with local licensed advisors for Health, Life, and Motor insurance.</div>
+                                        <div class="wa-domain-text">padosiagent.com</div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="text-center mt-2">
-                                <small class="text-muted" style="font-size: 11px;"><i class="fa-solid fa-sparkles text-warning me-1"></i> This is exactly how your card appears when shared on WhatsApp.</small>
+
+                                <!-- Timestamp & Double Blue Ticks -->
+                                <div class="wa-footer-bar">
+                                    <span class="wa-meta-time">6:31 pm</span>
+                                    <i class="fa-solid fa-check-double text-info" style="font-size: 9px;"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </form>
+
+                    <!-- WhatsApp Bottom Input Bar -->
+                    <div class="wa-input-bar">
+                        <i class="fa-regular fa-face-smile"></i>
+                        <div class="wa-input-bubble">Message</div>
+                        <i class="fa-solid fa-paperclip"></i>
+                        <i class="fa-solid fa-camera"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <span class="badge bg-light text-dark border px-3 py-2 shadow-xs">
+                    <i class="fa-solid fa-circle-info text-primary me-1"></i> 
+                    WhatsApp requires <strong>1.91:1 ratio (1200&times;630)</strong> and <strong>&lt; 300KB</strong> for the Big Banner Card. Our studio guarantees both!
+                </span>
             </div>
         </div>
+    </div>
 
-        <!-- LINK-SPECIFIC OG RULES MANAGER TABLE -->
+    <!-- SAVED RULES TABLE SECTION -->
+    <div class="col-12 mt-2">
         <div class="card shadow-sm border-0 mb-5">
-            <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <div>
-                    <h5 class="m-0 fw-bold text-dark"><i class="fa-solid fa-link text-success me-2"></i> Custom Link OG Cards (કોઈપણ Link માટે Custom Image)</h5>
-                    <small class="text-muted">Customized banners for specific pages. Just pick a page from dropdown, drop an image, and it's done!</small>
-                </div>
-                <button type="button" class="btn btn-success shadow-sm" data-bs-toggle="modal" data-bs-target="#linkOgModal" onclick="openAddLinkModal()">
-                    <i class="fa-solid fa-plus me-1"></i> Add Custom Link Card
-                </button>
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="m-0 fw-bold text-dark"><i class="fa-solid fa-list-check text-success me-2"></i> Active Custom Social Cards</h5>
+                <span class="badge bg-success-subtle text-success border border-success-subtle">{{ link_rules.count }} Custom Cards</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 260px;">Target Link / Page</th>
+                                <th style="width: 250px;">Page URL Path</th>
                                 <th style="width: 140px;">Card Image</th>
-                                <th>Social Meta (Title & Description)</th>
+                                <th>Social Meta</th>
                                 <th style="width: 110px;">Status</th>
-                                <th style="width: 130px;">Last Updated</th>
-                                <th style="width: 120px;" class="text-center">Actions</th>
+                                <th style="width: 140px;">Last Updated</th>
+                                <th style="width: 110px;" class="text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -252,8 +594,8 @@
                                     </td>
                                     <td>
                                         {% if rule.image %}
-                                        <a href="{{ rule.image }}" target="_blank" title="View Full 1200x630 Card">
-                                            <img src="{{ rule.image }}" alt="OG Preview" class="img-thumbnail rounded shadow-xs" style="width: 110px; height: 58px; object-fit: cover;">
+                                        <a href="{{ rule.image }}" target="_blank" title="View 1200x630 Card">
+                                            <img src="{{ rule.image }}" alt="OG Card" class="img-thumbnail rounded shadow-xs" style="width: 110px; height: 58px; object-fit: cover;">
                                         </a>
                                         {% else %}
                                         <span class="text-muted small">No image</span>
@@ -261,12 +603,10 @@
                                     </td>
                                     <td>
                                         {% if rule.title %}
-                                            <div class="fw-semibold text-dark text-truncate" style="max-width: 340px;">{{ rule.title }}</div>
-                                        {% else %}
-                                            <span class="text-muted fst-italic small">Default title</span>
+                                            <div class="fw-semibold text-dark text-truncate" style="max-width: 320px;">{{ rule.title }}</div>
                                         {% endif %}
                                         {% if rule.description %}
-                                            <div class="small text-muted text-truncate" style="max-width: 340px;">{{ rule.description }}</div>
+                                            <div class="small text-muted text-truncate" style="max-width: 320px;">{{ rule.description }}</div>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -288,8 +628,8 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm">
-                                            <button type="button" class="btn btn-light border text-primary" title="Edit Rule"
-                                                onclick="openEditLinkModal({{ rule.id }}, '{{ rule.path|escapejs }}', '{{ rule.image|escapejs }}', '{{ rule.title|escapejs }}', '{{ rule.description|escapejs }}', {{ rule.is_active|yesno:'true,false' }})">
+                                            <button type="button" class="btn btn-light border text-primary" title="Edit in Studio"
+                                                onclick="loadRuleIntoStudio({{ rule.id }}, '{{ rule.path|escapejs }}', '{{ rule.image|escapejs }}', '{{ rule.title|escapejs }}', '{{ rule.description|escapejs }}', {{ rule.is_active|yesno:'true,false' }})">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </button>
                                             <button type="button" class="btn btn-light border text-danger" title="Delete Rule"
@@ -305,7 +645,7 @@
                                     <td colspan="6" class="text-center py-5 text-muted">
                                         <i class="fa-solid fa-link-slash fa-2x mb-2 text-secondary d-block"></i>
                                         <strong>No custom link cards yet.</strong><br>
-                                        <span class="small">All links use the global default social card. Click <strong>"Add Custom Link Card"</strong> to give any page its own custom banner!</span>
+                                        <span class="small">All links use the global default social card. Click any page chip above to create one!</span>
                                     </td>
                                 </tr>
                             {% endif %}
@@ -317,170 +657,13 @@
     </div>
 </div>
 
-<!-- INTERACTIVE MODAL: ADD / EDIT LINK OG CARD -->
-<div class="modal fade" id="linkOgModal" tabindex="-1" aria-labelledby="linkOgModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl">
-        <div class="modal-content border-0 shadow-lg">
-            <form method="POST" action="{% url 'admin_link_og_save' %}" enctype="multipart/form-data" id="linkOgForm">
-                {% csrf_token %}
-                <input type="hidden" name="rule_id" id="modalRuleId" value="">
-
-                <div class="modal-header bg-light border-bottom">
-                    <h5 class="modal-title fw-bold" id="linkOgModalLabel">
-                        <i class="fa-solid fa-wand-magic-sparkles text-success me-2"></i> Custom Social Card Creator
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-
-                <div class="modal-body p-4">
-                    <div class="row g-4">
-                        <!-- Left Column: Fast Selection & Inputs -->
-                        <div class="col-lg-7">
-                            <!-- 1-Click Page Quick Selector -->
-                            <div class="p-3 bg-light rounded-3 border mb-3">
-                                <label class="form-label fw-bold text-success mb-1">
-                                    <i class="fa-solid fa-hand-pointer me-1"></i> Quick Page Selection (Just Selection — No Typing Needed!)
-                                </label>
-                                <select class="form-select form-select-lg border-success fw-semibold" id="quickPageSelect" onchange="handleQuickPageSelect(this)">
-                                    <option value="" selected>-- Select a Website Page to Auto-Fill --</option>
-                                    <option value="home">🏠 Homepage ( / )</option>
-                                    <option value="find_agents">🔍 Find Local Agents ( /find-agents/ )</option>
-                                    <option value="registration">📝 Agent Registration ( /agent/registration/ )</option>
-                                    <option value="health">🏥 Health Insurance / Mediclaim</option>
-                                    <option value="life">🛡️ Life & Term Insurance</option>
-                                    <option value="motor">🚗 Car & Bike Insurance</option>
-                                    <option value="claims">💼 Claim Assistance Support</option>
-                                    <option value="about">ℹ️ About Us ( /about/ )</option>
-                                    <option value="contact">📞 Contact Us ( /contact/ )</option>
-                                    <option value="terms">📜 Terms & Conditions ( /terms/ )</option>
-                                    <option value="privacy">🔒 Privacy Policy ( /privacy/ )</option>
-                                    <option value="custom">✏️ Custom URL Path...</option>
-                                </select>
-                                <div class="text-muted mt-1" style="font-size: 11px;">
-                                    Selecting a page automatically fills the URL path, recommended title, and description!
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Target URL Path <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-white font-monospace text-muted">https://padosiagent.com</span>
-                                    <input type="text" class="form-control font-monospace" name="path" id="modalPath" placeholder="/agent/registration/" required oninput="updateModalSimulator()">
-                                </div>
-                            </div>
-
-                            <!-- Card Format Style -->
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold d-block">Card Layout Format (Auto-fit so text is never cropped)</label>
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <label class="d-block w-100 card-style-label">
-                                            <input type="radio" name="card_style" value="smart_fit" class="form-check-input d-none" checked>
-                                            <div class="card-style-radio">
-                                                <div class="fw-bold text-success"><i class="fa-solid fa-shield-halved me-1"></i> Smart Fit (Recommended)</div>
-                                                <div class="small text-muted" style="font-size: 11px;">Safe padding + ambient blur. Zero cut-off!</div>
-                                            </div>
-                                        </label>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="d-block w-100 card-style-label">
-                                            <input type="radio" name="card_style" value="cover" class="form-check-input d-none">
-                                            <div class="card-style-radio">
-                                                <div class="fw-bold text-dark"><i class="fa-solid fa-expand me-1"></i> Full Cover Canvas</div>
-                                                <div class="small text-muted" style="font-size: 11px;">Fills 1200&times;630 frame edge-to-edge.</div>
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Upload Image / Poster File</label>
-                                <input type="file" class="form-control" name="image_file" id="modalImageFile" accept="image/png, image/jpeg, image/webp, image/gif">
-                                <div class="form-text text-muted" style="font-size: 11px;">
-                                    Upload ANY image (square, poster, logo). Our Pillow processor automatically centers it on a 1200&times;630 canvas and compresses it to &lt; 200KB for WhatsApp.
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold small text-muted">Or Direct Image URL (Optional)</label>
-                                <input type="text" class="form-control form-control-sm" name="image_url" id="modalImageUrl" placeholder="https://... or /media/og/banner.jpg" oninput="updateModalSimulator()">
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Custom Social Title</label>
-                                <input type="text" class="form-control" name="title" id="modalTitle" placeholder="Title displayed on WhatsApp" oninput="updateModalSimulator()">
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Custom Social Description</label>
-                                <textarea class="form-control" name="description" id="modalDescription" rows="2" placeholder="Description snippet below the title" oninput="updateModalSimulator()"></textarea>
-                            </div>
-
-                            <div class="form-check form-switch mt-2">
-                                <input class="form-check-input" type="checkbox" role="switch" name="is_active" id="modalIsActive" checked value="1">
-                                <label class="form-check-label fw-semibold" for="modalIsActive">Rule Active (Serve this custom card when link is shared)</label>
-                            </div>
-                        </div>
-
-                        <!-- Right Column: Live WhatsApp Chat Bubble Simulator -->
-                        <div class="col-lg-5">
-                            <div class="sticky-top" style="top: 20px;">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="fw-bold text-dark small"><i class="fa-brands fa-whatsapp text-success me-1"></i> Live WhatsApp Link Preview</span>
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle">Large Card View</span>
-                                </div>
-
-                                <div class="wa-chat-container">
-                                    <div class="wa-bubble">
-                                        <div class="wa-card-preview">
-                                            <div class="wa-card-img-wrap">
-                                                <img id="modalSimImg" src="/static/img/logo.png" alt="Card Preview">
-                                            </div>
-                                            <div class="wa-card-content">
-                                                <div class="wa-card-title" id="modalSimTitle">Expert & Trusted Insurance Agent in your Padosi</div>
-                                                <div class="wa-card-desc" id="modalSimDesc">Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent.</div>
-                                                <div class="wa-card-domain" id="modalSimDomain">padosiagent.com</div>
-                                            </div>
-                                        </div>
-                                        <div class="wa-meta-footer">
-                                            <span>6:31 pm</span>
-                                            <i class="fa-solid fa-check-double text-info" style="font-size: 9px;"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="p-3 bg-light rounded mt-3 border">
-                                    <div class="small fw-bold text-dark mb-1"><i class="fa-solid fa-lightbulb text-warning me-1"></i> Why WhatsApp Shows Large Cards:</div>
-                                    <ul class="mb-0 ps-3 text-muted" style="font-size: 11px;">
-                                        <li>Aspect ratio must be <strong>1.91:1 (1200 &times; 630 px)</strong>.</li>
-                                        <li>Image file size must be <strong>under 300 KB</strong>.</li>
-                                        <li>Our system automatically optimizes both conditions on save!</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer bg-light border-top">
-                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success px-4 shadow-sm">
-                        <i class="fa-solid fa-check me-1"></i> Save Social Card
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <!-- HIDDEN FORM FOR DELETION -->
 <form id="deleteRuleForm" method="POST" action="" class="d-none">
     {% csrf_token %}
 </form>
 
 <script>
-// PRE-BUILT PAGE PRESETS FOR 1-CLICK SELECTION
+// PRESETS FOR 1-CLICK SELECTION
 var pagePresets = {
     'home': {
         path: '/',
@@ -527,115 +710,111 @@ var pagePresets = {
         title: 'Contact PadosiAgent — Customer Support & Inquiries',
         desc: 'Need help or have questions? Get in touch with our team for prompt assistance.'
     },
-    'terms': {
-        path: '/terms/',
-        title: 'Terms of Service — PadosiAgent',
-        desc: 'Review the terms and conditions for using the PadosiAgent platform.'
-    },
-    'privacy': {
-        path: '/privacy/',
-        title: 'Privacy Policy — PadosiAgent',
-        desc: 'Learn how we protect your personal and insurance information with enterprise-grade privacy.'
+    'custom': {
+        path: '/custom-campaign/',
+        title: 'Exclusive Offer | PadosiAgent',
+        desc: 'Connect with verified insurance experts for special rates.'
     }
 };
 
-function handleQuickPageSelect(selectElem) {
-    var val = selectElem.value;
-    if (pagePresets[val]) {
-        var preset = pagePresets[val];
-        document.getElementById('modalPath').value = preset.path;
-        document.getElementById('modalTitle').value = preset.title;
-        document.getElementById('modalDescription').value = preset.desc;
-        updateModalSimulator();
+function selectPageChip(chipElem, key) {
+    document.querySelectorAll('.page-chip').forEach(c => c.classList.remove('active'));
+    chipElem.classList.add('active');
+
+    if (pagePresets[key]) {
+        var p = pagePresets[key];
+        document.getElementById('studioPath').value = p.path;
+        document.getElementById('studioTitle').value = p.title;
+        document.getElementById('studioDesc').value = p.desc;
+        syncSimulator();
     }
 }
 
-function openAddLinkModal() {
-    document.getElementById('linkOgModalLabel').innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-success me-2"></i> Custom Social Card Creator';
-    document.getElementById('modalRuleId').value = '';
-    document.getElementById('quickPageSelect').value = '';
-    document.getElementById('modalPath').value = '';
-    document.getElementById('modalImageUrl').value = '';
-    document.getElementById('modalImageFile').value = '';
-    document.getElementById('modalTitle').value = '';
-    document.getElementById('modalDescription').value = '';
-    document.getElementById('modalIsActive').checked = true;
-    
-    document.getElementById('modalSimImg').src = document.getElementById('globalSimImg').src;
-    document.getElementById('modalSimTitle').textContent = 'Expert & Trusted Insurance Agent in your Padosi';
-    document.getElementById('modalSimDesc').textContent = 'Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent.';
-    document.getElementById('modalSimDomain').textContent = 'padosiagent.com';
-}
+function syncSimulator() {
+    var path = document.getElementById('studioPath').value.trim();
+    var title = document.getElementById('studioTitle').value.trim();
+    var desc = document.getElementById('studioDesc').value.trim();
+    var imgUrl = document.getElementById('studioImageUrl').value.trim();
 
-function openEditLinkModal(id, path, image, title, description, isActive) {
-    document.getElementById('linkOgModalLabel').innerHTML = '<i class="fa-solid fa-pen-to-square text-primary me-2"></i> Edit Social Card';
-    document.getElementById('modalRuleId').value = id;
-    document.getElementById('quickPageSelect').value = '';
-    document.getElementById('modalPath').value = path;
-    document.getElementById('modalImageUrl').value = image || '';
-    document.getElementById('modalImageFile').value = '';
-    document.getElementById('modalTitle').value = title || '';
-    document.getElementById('modalDescription').value = description || '';
-    document.getElementById('modalIsActive').checked = isActive;
-
-    if (image) {
-        document.getElementById('modalSimImg').src = image;
-    }
-    updateModalSimulator();
-
-    var modal = new bootstrap.Modal(document.getElementById('linkOgModal'));
-    modal.show();
-}
-
-function updateModalSimulator() {
-    var title = document.getElementById('modalTitle').value.trim();
-    var desc = document.getElementById('modalDescription').value.trim();
-    var path = document.getElementById('modalPath').value.trim();
-    var imgUrl = document.getElementById('modalImageUrl').value.trim();
-
-    document.getElementById('modalSimTitle').textContent = title || 'Expert & Trusted Insurance Agent in your Padosi';
-    document.getElementById('modalSimDesc').textContent = desc || 'Find trusted & verified insurance experts in your neighbourhood.';
-    
-    if (path) {
-        document.getElementById('modalSimDomain').textContent = 'padosiagent.com' + (path.startsWith('/') ? path : '/' + path);
-    } else {
-        document.getElementById('modalSimDomain').textContent = 'padosiagent.com';
-    }
+    document.getElementById('simLinkText').textContent = 'https://padosiagent.com' + (path.startsWith('/') ? path : '/' + path);
+    document.getElementById('simTitle').textContent = title || 'PadosiAgent — Expert & Trusted Insurance Agent';
+    document.getElementById('simDesc').textContent = desc || 'Find trusted & verified insurance experts in your neighbourhood.';
 
     if (imgUrl) {
-        document.getElementById('modalSimImg').src = imgUrl;
+        document.getElementById('simCardImg').src = imgUrl;
     }
 }
 
-function updateGlobalPreview() {
-    var title = document.getElementById('globalOgTitle').value.trim();
-    var desc = document.getElementById('globalOgDesc').value.trim();
-    document.getElementById('globalSimTitle').textContent = title || 'Expert & Trusted Insurance Agent in your Padosi';
-    document.getElementById('globalSimDesc').textContent = desc || 'Find trusted & verified insurance experts in your neighbourhood.';
-}
-
-// Live Image preview on file selection
-document.getElementById('modalImageFile').addEventListener('change', function(e) {
+// Live Image update when choosing a file
+document.getElementById('studioImageFile').addEventListener('change', function(e) {
     var file = e.target.files[0];
     if (file) {
         var reader = new FileReader();
         reader.onload = function(evt) {
-            document.getElementById('modalSimImg').src = evt.target.result;
+            document.getElementById('simCardImg').src = evt.target.result;
         };
         reader.readAsDataURL(file);
     }
 });
 
-document.getElementById('globalOgFile').addEventListener('change', function(e) {
-    var file = e.target.files[0];
-    if (file) {
-        var reader = new FileReader();
-        reader.onload = function(evt) {
-            document.getElementById('globalSimImg').src = evt.target.result;
-        };
-        reader.readAsDataURL(file);
+// Simulator Theme (Dark vs Light)
+function setSimulatorTheme(theme) {
+    var screen = document.getElementById('phoneScreen');
+    var btnDark = document.getElementById('btnThemeDark');
+    var btnLight = document.getElementById('btnThemeLight');
+
+    if (theme === 'light') {
+        screen.classList.remove('wa-theme-dark');
+        screen.classList.add('wa-theme-light');
+        btnLight.classList.add('active', 'btn-light');
+        btnDark.classList.remove('active');
+    } else {
+        screen.classList.remove('wa-theme-light');
+        screen.classList.add('wa-theme-dark');
+        btnDark.classList.add('active');
+        btnLight.classList.remove('active', 'btn-light');
     }
-});
+}
+
+// Simulator Card Mode (Large Banner vs Compact)
+function setSimulatorMode(mode) {
+    var screen = document.getElementById('phoneScreen');
+    var btnLarge = document.getElementById('btnModeLarge');
+    var btnCompact = document.getElementById('btnModeCompact');
+
+    if (mode === 'compact') {
+        screen.classList.remove('wa-mode-large');
+        screen.classList.add('wa-mode-compact');
+        btnCompact.classList.add('btn-success', 'text-white');
+        btnCompact.classList.remove('text-secondary');
+        btnLarge.classList.remove('btn-success', 'text-white');
+        btnLarge.classList.add('text-secondary');
+    } else {
+        screen.classList.remove('wa-mode-compact');
+        screen.classList.add('wa-mode-large');
+        btnLarge.classList.add('btn-success', 'text-white');
+        btnLarge.classList.remove('text-secondary');
+        btnCompact.classList.remove('btn-success', 'text-white');
+        btnCompact.classList.add('text-secondary');
+    }
+}
+
+function loadRuleIntoStudio(id, path, image, title, description, isActive) {
+    document.getElementById('studioRuleId').value = id;
+    document.getElementById('studioPath').value = path;
+    document.getElementById('studioImageUrl').value = image || '';
+    document.getElementById('studioTitle').value = title || '';
+    document.getElementById('studioDesc').value = description || '';
+    document.getElementById('studioIsActive').checked = isActive;
+
+    if (image) {
+        document.getElementById('simCardImg').src = image;
+    }
+    syncSimulator();
+
+    // Scroll smoothly to studio form
+    document.getElementById('studioForm').scrollIntoView({ behavior: 'smooth' });
+}
 
 function confirmDeleteRule(ruleId, path) {
     Swal.fire({
