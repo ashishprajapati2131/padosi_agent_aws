@@ -6,6 +6,7 @@
 no spam calls, only trusted licensed agents.{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/find-agents-filter-v2.css' %}?v=20261007g">
 <style>
     .header {
         background-color: #f3f4fa !important;
@@ -160,7 +161,8 @@ no spam calls, only trusted licensed agents.{% endblock %}
         display: none !important;
     }
 
-    .circle-tile {
+    /* Legacy circle cards (only if circle-tiles-grid is used elsewhere) */
+    .circle-tiles-grid .circle-tile:not(.pa-filter-chip) {
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
@@ -173,8 +175,6 @@ no spam calls, only trusted licensed agents.{% endblock %}
         outline: none !important;
         transition: all 0.2s ease-in-out !important;
         box-shadow: none !important;
-
-        /* Force same size */
         width: 92px !important;
         min-width: 92px !important;
         height: 104px !important;
@@ -217,42 +217,40 @@ no spam calls, only trusted licensed agents.{% endblock %}
         transition: all 0.2s ease-in-out;
     }
 
-    .circle-tile:hover {
+    .circle-tiles-grid .circle-tile:not(.pa-filter-chip):hover {
         background: #f1f5f9;
         border-color: #cbd5e1;
         transform: translateY(-2px);
     }
 
-    .circle-tile:hover .tile-icon-wrapper {
+    .circle-tiles-grid .circle-tile:not(.pa-filter-chip):hover .tile-icon-wrapper {
         background: #e2e8f0;
         color: #0f172a;
     }
 
-    .circle-tile:hover .tile-label {
+    .circle-tiles-grid .circle-tile:not(.pa-filter-chip):hover .tile-label {
         color: #0f172a;
     }
 
-    .circle-tile.active {
+    .circle-tiles-grid .circle-tile:not(.pa-filter-chip).active {
         background: #f0f9ff;
         border-color: #0284c7;
         box-shadow: 0 4px 12px rgba(3, 105, 161, 0.15);
     }
 
-    .circle-tile.active .tile-icon-wrapper {
+    .circle-tiles-grid .circle-tile:not(.pa-filter-chip).active .tile-icon-wrapper {
         background: #3b82f6;
-        /* Solid blue icon wrapper */
         color: #ffffff;
         border-color: transparent;
         box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
     }
 
-    .circle-tile.active .tile-label {
+    .circle-tiles-grid .circle-tile:not(.pa-filter-chip).active .tile-label {
         color: #0369a1;
-        /* Dark blue text for active status */
         font-weight: 700;
     }
 
-    .circle-tile.active:hover {
+    .circle-tiles-grid .circle-tile:not(.pa-filter-chip).active:hover {
         background: #e0f2fe;
         border-color: #0284c7;
     }
@@ -1486,18 +1484,29 @@ no spam calls, only trusted licensed agents.{% endblock %}
         <div class="row find-agents-grid">
             <!-- Sidebar Filters (Visible as sidebar on desktop) -->
             <div class="col-lg-4 col-xl-3" id="sidebar-filters">
-                <div class="find-agents-filter-wrapper premium-dark-filter">
-                    <!-- Mobile Bottom Sheet Header -->
-                    <div class="mobile-filter-top d-lg-none">
-                        <div class="mobile-filter-title-wrap">
-                            <i class="fas fa-sliders-h"></i>
-                            <span class="mobile-filter-title">Filter</span>
+                <div class="find-agents-filter-wrapper premium-dark-filter pa-filter-v2-wrapper">
+                    <div class="pa-filter-v2-sticky">
+                        <div class="pa-filter-v2-top">
+                            <div>
+                                <div class="pa-filter-v2-title-row">
+                                    <h3 class="pa-filter-v2-title">Filters</h3>
+                                    <span class="pa-filter-count-badge" id="pa-filter-count-badge">0</span>
+                                </div>
+                                <p class="pa-filter-v2-subtitle">Find your agent</p>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="pa-filter-clear-link" id="pa-filter-clear-link">Clear</button>
+                                <button type="button" class="pa-filter-close-btn close-mobile-filter" aria-label="Close filters">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
                         </div>
-                        <a href="javascript:void(0)" class="close-mobile-filter">
-                            <i class="fas fa-times"></i>
-                        </a>
+                        <div class="pa-filter-your-picks" id="pa-filter-your-picks" hidden>
+                            <p class="pa-filter-your-picks-label">YOUR PICKS</p>
+                            <div class="pa-filter-picks-chips" id="pa-filter-picks-chips"></div>
+                        </div>
                     </div>
-                    <div class="find-agents-filter">
+                    <div class="find-agents-filter pa-filter-v2-body">
                         <!-- Location Status & Change Option -->
                         <div class="current-location-sidebar mb-4 p-3 rounded border d-flex align-items-center justify-content-between shadow-sm"
                             style="border-left: 4px solid #047857 !important; background: #f8fafc; border-color: #e2e8f0;">
@@ -1535,28 +1544,15 @@ no spam calls, only trusted licensed agents.{% endblock %}
                                     Type.</span>
                             </div>
 
-                            <!-- 1. Looking for Section -->
-                            <div class="filter-section mb-4">
-                                <h4 class="filter-section-title">I AM LOOKING PADOSIAGENT FOR...</h4>
-                                <div class="pills-grid">
-                                    <button type="button" class="filter-pill" data-value="Buying new insurance"
-                                        data-service-value="New Policy">
-                                        <i class="fas fa-shopping-cart mr-2"></i>Buy New Insurance
-                                    </button>
-                                    <button type="button" class="filter-pill" data-value="Port / transfer"
-                                        data-service-value="Policy Review">
-                                        <i class="fas fa-shield-alt mr-2"></i> Port / Transfer Insurance
-                                    </button>
-                                    <button type="button" class="filter-pill" data-value="Insurance audit"
-                                        data-service-value="Policy Review">
-                                        <i class="fas fa-search-dollar mr-2"></i> Insurance Audit
-                                    </button>
-                                    <button type="button" class="filter-pill" data-value="Claim"
-                                        data-service-value="Claim Assistance">
-                                        <i class="fas fa-exclamation-triangle mr-2"></i> Claims Support
-                                    </button>
-                                </div>
+                            <div class="pa-filter-service-bridge" aria-hidden="true">
+                                <button type="button" class="filter-pill" data-value="Buying new insurance" data-service-value="New Policy"></button>
+                                <button type="button" class="filter-pill" data-value="Port / transfer" data-service-value="Policy Review"></button>
+                                <button type="button" class="filter-pill" data-value="Insurance audit" data-service-value="Policy Review"></button>
+                                <button type="button" class="filter-pill" data-value="Claim" data-service-value="Claim Assistance"></button>
+                                <button type="button" class="filter-pill" data-value="Policy Review" data-service-value="Policy Review"></button>
                             </div>
+
+                            <div id="pa-filter-accordions-mount" class="pa-filter-accordions mb-3"></div>
 
                             <!-- Complaint Type (only visible if Claim is active) -->
                             <div class="form-group mb-4" id="ComplaintTypeContainer"
@@ -1570,178 +1566,6 @@ no spam calls, only trusted licensed agents.{% endblock %}
                                     <option value="Claim Short settled" {% if request.GET.ComplaintType == 'Claim Short settled' %}selected{% endif %} style="background: #f8fafc; color: #334155;">Claim Short settled</option>
                                     <option value="Mis-selling" {% if request.GET.ComplaintType == 'Mis-selling' %}selected{% endif %} style="background: #f8fafc; color: #334155;">Mis-selling</option>
                                 </select>
-                            </div>
-
-                            <!-- 2. Health Insurance Section -->
-                            <div class="product-category-section mb-4" data-category="Health Insurance">
-                                <div class="category-header d-flex align-items-center mb-3">
-                                    <h4 class="category-title mb-0">HEALTH INSURANCE PRODUCTS</h4>
-                                </div>
-                                <div class="circle-tiles-grid grid-3">
-                                    <button type="button" class="circle-tile" data-product="Mediclaim">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-heartbeat"></i>
-                                        </div>
-                                        <span class="tile-label">Mediclaim</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Family Mediclaim">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-users"></i>
-                                        </div>
-                                        <span class="tile-label">Family Mediclaim</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Personal Accident">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-wave-square"></i>
-                                        </div>
-                                        <span class="tile-label">Accident Insurance</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Critical Illness">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-stethoscope"></i>
-                                        </div>
-                                        <span class="tile-label">Critical Illness</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Top-up">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-arrow-circle-up"></i>
-                                        </div>
-                                        <span class="tile-label">Top-up</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Hospital Cash">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-bed"></i>
-                                        </div>
-                                        <span class="tile-label">Hospital Cash</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Others">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-ellipsis-h"></i>
-                                        </div>
-                                        <span class="tile-label">Others</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- 3. Vehicle Insurance Section -->
-                            <div class="product-category-section mb-4" data-category="Motor Insurance">
-                                <div class="category-header d-flex align-items-center mb-3">
-                                    <i class="fas fa-car mr-2 category-icon"></i>
-                                    <h4 class="category-title mb-0">VEHICLE INSURANCE</h4>
-                                </div>
-                                <div class="circle-tiles-grid grid-4">
-                                    <button type="button" class="circle-tile" data-product="Private Car">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-car"></i>
-                                        </div>
-                                        <span class="tile-label">Car</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Two Wheeler">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-motorcycle"></i>
-                                        </div>
-                                        <span class="tile-label">2-Wheeler</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Commercial Vehicle">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-truck"></i>
-                                        </div>
-                                        <span class="tile-label">Commercial</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Others">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-ellipsis-h"></i>
-                                        </div>
-                                        <span class="tile-label">Others</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- 4. Life Insurance Section -->
-                            <div class="product-category-section mb-4" id="life-insurance-section"
-                                data-category="Life Insurance">
-                                <div class="category-header d-flex align-items-center mb-3">
-                                    <i class="fas fa-umbrella mr-2 category-icon"></i>
-                                    <h4 class="category-title mb-0">LIFE INSURANCE</h4>
-                                </div>
-                                <div class="circle-tiles-grid grid-4">
-                                    <button type="button" class="circle-tile" data-product="Term Plan">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-shield-alt"></i>
-                                        </div>
-                                        <span class="tile-label">Term</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="ULIP Plan">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-chart-line"></i>
-                                        </div>
-                                        <span class="tile-label">ULIP</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Saving Plan">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-piggy-bank"></i>
-                                        </div>
-                                        <span class="tile-label">Endowment</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Pension Plan">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-clock"></i>
-                                        </div>
-                                        <span class="tile-label">Pension</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Others">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-ellipsis-h"></i>
-                                        </div>
-                                        <span class="tile-label">Others</span>
-                                    </button>
-                                </div>
-                                <!-- Disclaimer banner -->
-                                <div id="life-insurance-disclaimer" class="disclaimer-banner mt-3"
-                                    style="display: none;">
-                                    <i class="fas fa-info-circle mr-2"></i>
-                                    <span>Life insurance is not applicable for port/transfer</span>
-                                </div>
-                            </div>
-
-                            <!-- 5. Business Insurance Section -->
-                            <div class="product-category-section mb-4" data-category="SME Insurance">
-                                <div class="category-header d-flex align-items-center mb-3">
-                                    <i class="fas fa-building mr-2 category-icon"></i>
-                                    <h4 class="category-title mb-0">BUSINESS INSURANCE</h4>
-                                </div>
-                                <div class="circle-tiles-grid grid-4">
-                                    <button type="button" class="circle-tile" data-product="Fire">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-store"></i>
-                                        </div>
-                                        <span class="tile-label">Property</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="GPA/GMC">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-users"></i>
-                                        </div>
-                                        <span class="tile-label">Group health</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Liability">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-briefcase"></i>
-                                        </div>
-                                        <span class="tile-label">Liability</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Cyber">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-desktop"></i>
-                                        </div>
-                                        <span class="tile-label">Cyber</span>
-                                    </button>
-                                    <button type="button" class="circle-tile" data-product="Others">
-                                        <div class="tile-icon-wrapper">
-                                            <i class="fas fa-ellipsis-h"></i>
-                                        </div>
-                                        <span class="tile-label">Others</span>
-                                    </button>
-                                </div>
                             </div>
 
                             <!-- Insurance Company Dropdown (only shown in Claim mode after a tile is selected) -->
@@ -2118,6 +1942,8 @@ no spam calls, only trusted licensed agents.{% endblock %}
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/find-agents-filter-config.js' %}?v=20261007f"></script>
+<script src="{% static 'js/find-agents-filter-ui.js' %}?v=20261007f"></script>
 <script>
     window._padosiGuestAuthenticated = false;
     window._padosiGuestData = null;
@@ -2303,6 +2129,10 @@ no spam calls, only trusted licensed agents.{% endblock %}
         // Redesigned Premium Filter Logic
         // =====================================================
 
+        if (window.PAFilterUI) {
+            window.PAFilterUI.render('#pa-filter-accordions-mount');
+        }
+
         const categoryAbbr = {
             'Health Insurance': 'Health',
             'Motor Insurance': 'Motor',
@@ -2317,8 +2147,11 @@ no spam calls, only trusted licensed agents.{% endblock %}
             'SME': 'SME Insurance'
         };
 
+        window.paFilterUpdateUiState = function () { updateUiState(); };
+        window.paFilterSyncHidden = function () { syncFiltersToHiddenInputs(); };
+
         // --- Single-select Pill Logic ---
-        $('.filter-pill').on('click', function (e) {
+        $(document).on('click', '.filter-pill', function (e) {
             e.preventDefault();
             const $this = $(this);
 
@@ -2342,9 +2175,23 @@ no spam calls, only trusted licensed agents.{% endblock %}
         });
 
         // --- Circle Tile Toggle Logic ---
-        $('.circle-tile').on('click', function (e) {
+        $(document).on('click', '.circle-tile', function (e) {
             e.preventDefault();
             const $this = $(this);
+            const extId = $this.data('ext-id');
+            if (extId && !$this.hasClass('active')) {
+                $('.circle-tile.active').each(function () {
+                    var otherExt = $(this).data('ext-id');
+                    if (otherExt && otherExt !== extId) {
+                        $(this).removeClass('active');
+                    }
+                });
+                var pillValue = $this.data('pill-value');
+                if (pillValue && window.PAFilterUI) {
+                    window.PAFilterUI.activateServicePill(pillValue);
+                    window.PAFilterUI.expandForPill(pillValue);
+                }
+            }
             const parentSection = $this.closest('.product-category-section');
 
             // If the Life Insurance section is collapsed, don't allow interactions
@@ -2377,6 +2224,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
             updateUiState();
             syncFiltersToHiddenInputs();
+            if (window.PAFilterUI) window.PAFilterUI.updatePicksAndCount();
         });
 
         // --- Complaint Type Dropdown Change Logic ---
@@ -2611,7 +2459,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
                 if (activeServices.includes('Buying new insurance')) {
                     $('#ServiceType-compact-container .dropdown-item[data-value="New Policy"]').addClass('active');
                 }
-                if (activeServices.includes('Insurance audit') || activeServices.includes('Port / transfer')) {
+                if (activeServices.includes('Insurance audit') || activeServices.includes('Port / transfer') || activeServices.includes('Policy Review')) {
                     $('#ServiceType-compact-container .dropdown-item[data-value="Policy Review"]').addClass('active');
                 }
             }
@@ -2763,6 +2611,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
             updateUiState();
             syncFiltersToHiddenInputs();
+            if (window.PAFilterUI) window.PAFilterUI.updatePicksAndCount();
             submitFilterForm();
         });
 
@@ -2785,7 +2634,7 @@ no spam calls, only trusted licensed agents.{% endblock %}
             const serviceTypeToPill = {
                 'New Policy': 'Buying new insurance',
                 'Claim Assistance': 'Claim',
-                'Policy Review': 'Insurance audit',   // default pill for Policy Review
+                'Policy Review': 'Policy Review',
                 'Buying new insurance': 'Buying new insurance',
                 'Claim': 'Claim',
                 'Insurance audit': 'Insurance audit',
@@ -2833,6 +2682,8 @@ no spam calls, only trusted licensed agents.{% endblock %}
                 }
             }
 
+            var activePillForRestore = $('.filter-pill.active').first().data('value');
+
             if (insuranceTypes.length > 0) {
                 $('.circle-tile').removeClass('active');
                 insuranceTypes.forEach(insType => {
@@ -2844,9 +2695,19 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
                     const $section = $(`.product-category-section[data-category="${categoryName}"]`);
                     if ($section.length > 0) {
-                        if (!($section.attr('id') === 'life-insurance-section' && $section.hasClass('collapsed'))) {
-                            $section.find('.circle-tile').addClass('active');
-                        }
+                        $section.each(function () {
+                            var $sec = $(this);
+                            if ($sec.attr('id') === 'life-insurance-section' && $sec.hasClass('collapsed')) {
+                                return;
+                            }
+                            var $tiles = $sec.find('.circle-tile');
+                            if (activePillForRestore) {
+                                $tiles = $tiles.filter(function () {
+                                    return $(this).data('pill-value') === activePillForRestore;
+                                });
+                            }
+                            $tiles.addClass('active');
+                        });
                     }
                 });
             }
@@ -2888,9 +2749,14 @@ no spam calls, only trusted licensed agents.{% endblock %}
                         });
                         return;
                     }
-                    const $tile = $(`.circle-tile[data-product="${product}"]`);
+                    var $tile = $('.circle-tile[data-product="' + product + '"]');
+                    if (activePillForRestore) {
+                        $tile = $tile.filter(function () {
+                            return $(this).data('pill-value') === activePillForRestore;
+                        });
+                    }
                     if ($tile.length > 0) {
-                        $tile.addClass('active');
+                        $tile.first().addClass('active');
                     }
                 };
                 if (isClaimMode) {
@@ -2920,6 +2786,12 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
             // ─── 7. Sync hidden inputs ────────────────────────────────────────
             syncFiltersToHiddenInputs();
+
+            if (window.PAFilterUI) {
+                var activePill = $('.filter-pill.active').first().data('value');
+                if (activePill) window.PAFilterUI.expandForPill(activePill);
+                window.PAFilterUI.updatePicksAndCount();
+            }
 
             // ─── 8. Auto-submit if pre-filters came from homepage ─────────────
             const hasPreFilters = services.length > 0 || insuranceTypes.length > 0;

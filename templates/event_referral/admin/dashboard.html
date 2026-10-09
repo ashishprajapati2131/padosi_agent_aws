@@ -101,6 +101,7 @@
                 </div>
                 <button type="submit" class="btn btn-primary mt-3">Save settings</button>
             </form>
+            <p class="text-muted small mt-2 mb-0">Grant plan applies Basic or Professional. Permanent keeps that plan until you press Restore. Temporary keeps it for the number of days you enter (1–365), then it ends.</p>
             <p class="text-muted small mt-2 mb-0">Timer and referral count changes apply to new registrations only. Existing participants keep their snapshotted deadline and target.</p>
             <p class="text-muted small mt-2 mb-0">WhatsApp link previews use <code>/static/img/paldi_48hr_championship_og.jpg</code> (48 HR Championship top artwork).</p>
         </div>
@@ -118,14 +119,34 @@
                     <td><code>{{ p.referral_code }}</code></td>
                     <td>{{ p.deadline_at }}</td>
                     <td>{{ p.paid_count }} / {{ p.required_paid_referrals }}</td>
-                    <td>{{ p.status }}</td>
+                    <td>
+                        {{ p.status }}
+                        {% if p.grant_plan_slug %}
+                        <br><small class="text-success">
+                            {% if p.grant_plan_slug == 'professional' %}Professional{% else %}Basic{% endif %}
+                            · {% if p.grant_expires_at %}until {{ p.grant_expires_at|date:"d M Y, H:i" }}{% else %}permanent{% endif %}
+                        </small>
+                        {% endif %}
+                    </td>
                     <td class="text-nowrap">
                         <form method="post" action="{% url 'admin_event_referral_extend' p.id %}" class="d-inline">
                             {% csrf_token %}
                             <input type="hidden" name="extend_hours" value="24">
                             <button class="btn btn-sm btn-outline-secondary" type="submit">+24h</button>
                         </form>
-                        <form method="post" action="{% url 'admin_event_referral_grant' p.id %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-success" type="submit">Grant plan</button></form>
+                        <form method="post" action="{% url 'admin_event_referral_grant' p.id %}" class="d-inline-flex flex-wrap align-items-center gap-1 mt-1">
+                            {% csrf_token %}
+                            <select name="plan" class="form-control form-control-sm" style="width:auto" aria-label="Plan to grant">
+                                <option value="basic" {% if p.grant_plan_slug != 'professional' %}selected{% endif %}>Basic</option>
+                                <option value="professional" {% if p.grant_plan_slug == 'professional' %}selected{% endif %}>Professional</option>
+                            </select>
+                            <select name="duration" class="form-control form-control-sm grant-duration" style="width:auto" aria-label="How long the plan lasts">
+                                <option value="permanent" {% if not p.grant_expires_at %}selected{% endif %}>Permanent</option>
+                                <option value="temporary" {% if p.grant_expires_at %}selected{% endif %}>Temporary</option>
+                            </select>
+                            <input type="number" name="grant_days" value="30" min="1" max="365" class="form-control form-control-sm grant-days" style="width:76px;{% if not p.grant_expires_at %}display:none{% endif %}" aria-label="Number of days" title="Days the temporary plan stays active">
+                            <button class="btn btn-sm btn-success" type="submit">Grant plan</button>
+                        </form>
                         <form method="post" action="{% url 'admin_event_referral_restore' p.id %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-primary" type="submit">Restore</button></form>
                         <form method="post" action="{% url 'admin_event_referral_block' p.id %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" type="submit">Block</button></form>
                         {% if is_super_admin or debug_mode %}
@@ -155,4 +176,18 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.grant-duration').forEach(function (sel) {
+    var days = sel.form ? sel.form.querySelector('.grant-days') : null;
+    if (!days) return;
+    function sync() {
+        days.style.display = sel.value === 'temporary' ? '' : 'none';
+    }
+    sel.addEventListener('change', sync);
+    sync();
+});
+</script>
 {% endblock %}

@@ -10,6 +10,7 @@ from fastapi_app.schemas.plans import (
     PlanScratchRequest,
     PlanUpgradeHandoffRequest,
     PlanUpgradeHandoffResponse,
+    PlanUpgradeStatusResponse,
     PlansListResponse,
 )
 from fastapi_app.services.plan_service import PlanService
@@ -58,6 +59,29 @@ def follow_platform(
     return PlanService(db).record_follow(agent, payload.platform)
 
 
+@router.get("/plan-upgrade/status", response_model=PlanUpgradeStatusResponse)
+def plan_upgrade_status(
+    current_agent: Agent = Depends(get_current_agent),
+):
+    """
+    Whether this agent can upgrade via the website handoff.
+
+    Use before showing Upgrade Plan in the app. When `plan_slug` is omitted on
+    POST /plan-upgrade/handoff, `suggested_plan_slug` is used.
+    """
+    from plan_upgrade_handoff import allowed_handoff_targets, suggest_upgrade_slug
+
+    current = getattr(current_agent, 'plan_type', '') or ''
+    allowed = allowed_handoff_targets(current)
+    suggested = suggest_upgrade_slug(current)
+    return PlanUpgradeStatusResponse(
+        can_upgrade=bool(suggested),
+        current_plan_type=current or None,
+        suggested_plan_slug=suggested,
+        allowed_plan_slugs=allowed,
+    )
+
+
 @router.post("/plan-upgrade/handoff", response_model=PlanUpgradeHandoffResponse)
 def create_plan_upgrade_handoff(
     body: PlanUpgradeHandoffRequest,
@@ -67,8 +91,9 @@ def create_plan_upgrade_handoff(
     """
     One-time website URL for the logged-in agent.
 
-    The Android app opens `url` in a Chrome Custom Tab. The website logs that
-    agent in and opens the upgrade payment for `plan_slug`. The link expires
-    in 3 minutes and works once. The agent is taken from the bearer token.
+    The mobile app opens `url` in Chrome / a Custom Tab (never pass passwords).
+    The website consumes the token, opens a session, and launches checkout for
+    `plan_slug` (optional — defaults to `suggested_plan_slug` from GET status).
+    The link expires in 3 minutes and works once. Auth is the bearer token.
     """
     return issue_plan_upgrade_handoff(db, current_agent, body.plan_slug)

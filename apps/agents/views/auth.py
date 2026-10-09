@@ -424,6 +424,8 @@ def app_upgrade_handoff(request):
 
     logger.info("App upgrade handoff logged in agent #%s for plan %s.", agent.pk, row.plan_slug)
 
+    request.session['app_upgrade_handoff_plan'] = row.plan_slug
+
     if agent_can_access_dashboard(agent):
         destination = reverse('agents:agent_dashboard') + '?upgrade=' + row.plan_slug
     else:

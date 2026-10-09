@@ -10,7 +10,12 @@ from django.views.decorators.http import require_POST
 import json
 
 from .dashboard import _get_admin_from_session
-from apps.agents.services.feature_unlock import PLAN_LABELS, paid_plan_label, plan_slug_from_name
+from apps.agents.services.feature_unlock import (
+    PLAN_LABELS,
+    paid_plan_label,
+    plan_slug_from_name,
+    resolve_agent_display_plan_label,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +25,7 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
     """
     query = """
         SELECT
-            a.id, a.fullname, a.email, a.mobile, a.status, a.created_at, a.badge, a.is_blacklisted,
+            a.id, a.fullname, a.email, a.mobile, a.status, a.plan_type, a.created_at, a.badge, a.is_blacklisted,
             ap.address, ap.state, ap.display_name,
             s.selected_plan, s.expires_at,
             (SELECT AVG(rating) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) AS avg_rating,
@@ -40,8 +45,19 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
         params.extend([search_param, search_param, search_param])
         
     if plan_filter and plan_filter != 'All Plans':
-        query += " AND s.selected_plan = %s"
-        params.append(plan_filter)
+        if plan_filter == PLAN_LABELS['professional']:
+            query += (
+                " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('professional', 'pro'))"
+            )
+            params.append(plan_filter)
+        elif plan_filter == PLAN_LABELS['starter']:
+            query += (
+                " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('basic', 'starter', 'standard'))"
+            )
+            params.append(plan_filter)
+        else:
+            query += " AND s.selected_plan = %s"
+            params.append(plan_filter)
 
     # Status Filter logic
     if status_filter == 'blacklisted':
@@ -74,6 +90,16 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
     query += " ORDER BY a.id DESC"
     
     return query, params
+
+
+def _apply_resolved_plan_label(agent_row):
+    if not agent_row:
+        return
+    label = resolve_agent_display_plan_label(
+        agent_row.get('plan_type'),
+        agent_row.get('selected_plan'),
+    )
+    agent_row['selected_plan'] = label or agent_row.get('selected_plan') or 'FREE'
 
 
 class _RawAgentPage:
@@ -118,7 +144,10 @@ class _RawAgentPage:
             with connection.cursor() as cursor:
                 cursor.execute(self.query + ' LIMIT %s OFFSET %s', self.params + [stop - start, start])
                 columns = [col[0] for col in cursor.description]
-                return [dict(zip(columns, row)) for row in cursor.fetchall()]
+                rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                for row in rows:
+                    _apply_resolved_plan_label(row)
+                return rows
         except Exception as e:
             logger.error(f"Error fetching agents list: {e}")
             return []
@@ -169,7 +198,7 @@ def manage_agent(request, id):
     agent = None
     query = """
         SELECT
-            a.id, a.fullname, a.email, a.mobile, a.status, a.created_at, a.experience_range, a.admin_notes, a.achievement_photo_limit,
+            a.id, a.fullname, a.email, a.mobile, a.status, a.plan_type, a.created_at, a.experience_range, a.admin_notes, a.achievement_photo_limit,
             ap.address, ap.license_number, ap.experience_years, ap.office_address, ap.pan_number, ap.profile_photo_path,
             ap.is_profile_visible, ap.is_card_visible, ap.show_certificates, ap.show_achievements, ap.show_reviews,
             ap.show_experience, ap.show_claims_stats, ap.show_client_base, ap.show_ratings,
@@ -192,6 +221,7 @@ def manage_agent(request, id):
             if row:
                 columns = [col[0] for col in cursor.description]
                 agent = dict(zip(columns, row))
+                _apply_resolved_plan_label(agent)
     except Exception as e:
         logger.error(f"Error fetching agent details: {e}")
 
@@ -945,7 +975,7 @@ def _build_queue_query(status_filter, search, plan_filter, city_filter, event_fi
 
     query = f'''
         SELECT
-            a.id, a.fullname, a.email, a.mobile, a.status, a.event_id,
+            a.id, a.fullname, a.email, a.mobile, a.status, a.plan_type, a.event_id,
             (SELECT e.name FROM events e WHERE e.id = a.event_id LIMIT 1) AS event_name,
             a.created_at, a.updated_at, a.badge, a.registration_step, a.is_blacklisted,
             ap.address, ap.display_name, ap.profile_photo_path, ap.pan_number,
@@ -981,8 +1011,19 @@ def _build_queue_query(status_filter, search, plan_filter, city_filter, event_fi
         params.extend([search_param, search_param, search_param])
 
     if plan_filter and plan_filter != 'All Plans':
-        query += " AND s.selected_plan = %s"
-        params.append(plan_filter)
+        if plan_filter == PLAN_LABELS['professional']:
+            query += (
+                " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('professional', 'pro'))"
+            )
+            params.append(plan_filter)
+        elif plan_filter == PLAN_LABELS['starter']:
+            query += (
+                " AND (s.selected_plan = %s OR LOWER(a.plan_type) IN ('basic', 'starter', 'standard'))"
+            )
+            params.append(plan_filter)
+        else:
+            query += " AND s.selected_plan = %s"
+            params.append(plan_filter)
 
     if city_filter:
         query += " AND ap.address LIKE %s"
@@ -1078,6 +1119,7 @@ def agent_approvals(request):
         logger.error(f"Error fetching approvals list: {e}")
 
     for agent in agents:
+        _apply_resolved_plan_label(agent)
         total_pending += 1
         hours_waiting = agent.get('hours_waiting') or 0
         total_wait_hours += hours_waiting
@@ -1159,6 +1201,9 @@ def agent_pending_registrations(request):
             agents = [dict(zip(columns, row)) for row in cursor.fetchall()]
     except Exception as e:
         logger.error(f"Error fetching pending registrations list: {e}")
+
+    for agent in agents:
+        _apply_resolved_plan_label(agent)
 
     # ── Also fetch AgentDraft entries (Step 1 done, plan not yet chosen) ──
     # Only include drafts whose email does NOT already exist in the agents table.

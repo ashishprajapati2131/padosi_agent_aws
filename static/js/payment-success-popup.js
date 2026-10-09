@@ -14,11 +14,13 @@
             .replace(/"/g, '&quot;');
     }
 
-    function buildHtml(agentName) {
+    function buildHtml(agentName, kicker, lead) {
         var safeName = escapeHtml(agentName);
         var nameBlock = safeName
             ? '<h3 class="pay-success-name">Welcome, ' + safeName + '!</h3>'
             : '<h3 class="pay-success-name">You\'re all set!</h3>';
+        var kickerText = escapeHtml(kicker || 'Payment Successful');
+        var leadText = escapeHtml(lead || 'Your account is activated and ready to use.');
 
         return ''
             + '<div class="pay-success-popup">'
@@ -27,9 +29,9 @@
             + '      <div class="pay-success-icon-ring"></div>'
             + '      <div class="pay-success-icon-circle"><i class="fa-solid fa-check"></i></div>'
             + '    </div>'
-            + '    <p class="pay-success-kicker">Payment Successful</p>'
+            + '    <p class="pay-success-kicker">' + kickerText + '</p>'
             +      nameBlock
-            + '    <p class="pay-success-lead">Your account is activated and ready to use.</p>'
+            + '    <p class="pay-success-lead">' + leadText + '</p>'
             + '  </div>'
             + '  <ul class="pay-success-notes">'
             + '    <li><i class="fa-solid fa-shield-halved"></i> Payment verified securely via Razorpay</li>'
@@ -48,6 +50,8 @@
         var redirectUrl = options.redirectUrl || '/agent/dashboard/';
         var agentName = options.agentName || '';
         var duration = typeof options.duration === 'number' ? options.duration : DEFAULT_MS;
+        var kicker = options.title || options.kicker;
+        var lead = options.lead;
 
         function go() {
             window.location.replace(redirectUrl);
@@ -59,7 +63,7 @@
         }
 
         return window.Swal.fire({
-            html: buildHtml(agentName),
+            html: buildHtml(agentName, kicker, lead),
             customClass: { popup: 'payment-success-popup' },
             showConfirmButton: false,
             showCloseButton: false,

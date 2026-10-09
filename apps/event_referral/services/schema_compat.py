@@ -34,6 +34,24 @@ _METRIC_COLUMNS = (
         'TINYINT(1) NOT NULL DEFAULT 0',
         'INTEGER NOT NULL DEFAULT 0',
     ),
+    (
+        'event_referral_participants',
+        'grant_plan_slug',
+        "VARCHAR(50) NOT NULL DEFAULT ''",
+        "VARCHAR(50) NOT NULL DEFAULT ''",
+    ),
+    (
+        'event_referral_participants',
+        'grant_expires_at',
+        'DATETIME NULL',
+        'DATETIME NULL',
+    ),
+    (
+        'event_referral_participants',
+        'grant_previous_plan',
+        "VARCHAR(50) NOT NULL DEFAULT ''",
+        "VARCHAR(50) NOT NULL DEFAULT ''",
+    ),
 )
 
 _BLOCKED_BY_ADMIN_INDEX = (

@@ -19,7 +19,12 @@ from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentLead
 from apps.home.models import SiteSetting, UpcomingFeature
 from apps.admin_panel.models.referral_code import ReferralCode
 from apps.admin_panel.models.referral_usage import ReferralUsage
-from apps.agents.utils.file_validation import validate_magic_bytes
+from apps.agents.utils.file_validation import (
+    EXTENSION_KIND,
+    has_dangerous_extra_extension,
+    validate_license_document,
+    validate_magic_bytes,
+)
 from apps.agents.services.feature_unlock import (
     FEATURE_ATTR_MAP,
     PLAN_LABELS,
@@ -1439,6 +1444,48 @@ def _email_taken_by_other_login(email, agent):
     return fetch_users_row(email=new) is not None
 
 
+def _collect_license_uploads(request):
+    """Read IRDAI and AMFI certificates before any profile write.
+
+    The upload controls live on professional details (step 2). The wizard never
+    posts step 5, which is the only place these files used to be stored, so a
+    new certificate looked selected and then disappeared on refresh.
+    """
+    from django.http import JsonResponse
+
+    payloads = []
+    specs = (
+        ('irdai', 'irdai_license_doc', 'IRDAI certificate'),
+        ('amfi', 'amfi_license_doc', 'AMFI certificate'),
+    )
+    for kind, field, label in specs:
+        upload = request.FILES.get(field)
+        if not upload:
+            continue
+        content = b''
+        too_big = False
+        for chunk in upload.chunks():
+            content += chunk
+            if len(content) > 5 * 1024 * 1024:
+                too_big = True
+                break
+        if too_big:
+            return None, JsonResponse({
+                'status': 'error',
+                'message': f'{label} file size must be under 5MB.',
+                'errors': {field: ['File size must be under 5MB.']},
+            }, status=422)
+        ok, err, ext = validate_license_document(content, upload.name)
+        if not ok:
+            return None, JsonResponse({
+                'status': 'error',
+                'message': f'Invalid file type for {label}: {err}',
+                'errors': {field: [err]},
+            }, status=422)
+        payloads.append((field, content, ext, kind))
+    return payloads, None
+
+
 def apply_profile_update(request, agent, is_admin_edit=False):
     from django.http import JsonResponse
     from django.db import transaction
@@ -1454,6 +1501,9 @@ def apply_profile_update(request, agent, is_admin_edit=False):
     import uuid
     profile, _ = AgentProfile.objects.get_or_create(agent=agent)
     current_step = request.POST.get('current_step')
+    license_payloads, license_error = _collect_license_uploads(request)
+    if license_error:
+        return license_error
     
     # helper for step processing
     def should_process(step):
@@ -1524,8 +1574,8 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                     
                 if not address:
                     errors['address'] = ['The address field is required.']
-                elif len(address) > 255:
-                    errors['address'] = ['Address cannot exceed 255 characters.']
+                elif len(address) > 155:
+                    errors['address'] = ['Address cannot exceed 155 characters.']
                     
                 if errors:
                     return JsonResponse({'status': 'error', 'message': 'Validation failed', 'errors': errors}, status=422)
@@ -1569,37 +1619,37 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                 profile_photo = request.FILES.get('profile_photo')
                 if profile_photo:
                     allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
-                    file_ext = os.path.splitext(profile_photo.name)[1].lower()
-                    if file_ext not in allowed_extensions:
+                    file_ext = os.path.splitext(os.path.basename(profile_photo.name or ''))[1].lower()
+                    photo_error = None
+                    if has_dangerous_extra_extension(profile_photo.name):
+                        photo_error = 'Renamed files like name.js.jpg cannot be used as a profile photo.'
+                    elif file_ext not in allowed_extensions:
+                        photo_error = 'Only JPG, JPEG, PNG, GIF, and WEBP files are allowed.'
+                    elif profile_photo.size > 5 * 1024 * 1024:
+                        photo_error = 'Profile photo must be less than 5MB.'
+                    else:
+                        from PIL import Image
+                        try:
+                            profile_photo.seek(0)
+                            img = Image.open(profile_photo)
+                            detected = {'JPEG': 'jpeg', 'MPO': 'jpeg', 'PNG': 'png', 'GIF': 'gif', 'WEBP': 'webp'}.get((img.format or '').upper())
+                            img.verify()
+                            profile_photo.seek(0)
+                        except Exception:
+                            detected = None
+                        if not detected or EXTENSION_KIND.get(file_ext) != detected:
+                            photo_error = 'Invalid or corrupted image file.'
+                        else:
+                            safe_ext = {'jpeg': '.jpg', 'png': '.png', 'gif': '.gif', 'webp': '.webp'}[detected]
+                            file_name = f"app/public/profile/agent_{agent.id}_{int(time.time())}{safe_ext}"
+                            saved_path = default_storage.save(file_name, profile_photo)
+                            profile.profile_photo_path = saved_path
+                    if photo_error:
                         return JsonResponse({
                             'status': 'error',
                             'message': 'Validation failed',
-                            'errors': {'profile_photo': ['Only JPG, JPEG, PNG, GIF, and WEBP files are allowed.']}
+                            'errors': {'profile_photo': [photo_error]}
                         }, status=422)
-
-                    if profile_photo.size > 5 * 1024 * 1024:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Validation failed',
-                            'errors': {'profile_photo': ['Profile photo must be less than 5MB.']}
-                        }, status=422)
-
-                    from PIL import Image
-                    try:
-                        profile_photo.seek(0)
-                        img = Image.open(profile_photo)
-                        img.verify()
-                        profile_photo.seek(0)
-                    except Exception:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Validation failed',
-                            'errors': {'profile_photo': ['Invalid or corrupted image file.']}
-                        }, status=422)
-
-                    file_name = f"app/public/profile/agent_{agent.id}_{int(time.time())}{file_ext}"
-                    saved_path = default_storage.save(file_name, profile_photo)
-                    profile.profile_photo_path = saved_path
                     
                 profile.save()
                 
@@ -1910,56 +1960,6 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                             'achievement_photos': [f"You can upload up to {max_achievement_photos} achievement photos."]
                         }
                     }, status=422)
-                    
-                # Process license document uploads
-                allowed_doc_exts = ['.pdf', '.jpg', '.jpeg', '.png']
-                if 'irdai_license_doc' in request.FILES:
-                    irdai_file = request.FILES['irdai_license_doc']
-                    file_content = irdai_file.read()
-                    irdai_file.seek(0)
-                    is_valid, error_msg = validate_magic_bytes(file_content, irdai_file.name)
-                    if not is_valid:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': f'Invalid file type for IRDAI certificate: {error_msg}',
-                            'errors': {'irdai_license_doc': [error_msg]}
-                        }, status=422)
-                    
-                    ext = os.path.splitext(irdai_file.name)[1].lower()
-                    if irdai_file.size <= 5 * 1024 * 1024:
-                        import uuid
-                        doc_path = f"app/public/insurance/irdai_{agent.id}_{uuid.uuid4().hex}{ext}"
-                        profile.irdai_license_doc = default_storage.save(doc_path, irdai_file)
-                    else:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'IRDAI certificate file size must be under 5MB.',
-                            'errors': {'irdai_license_doc': ['File too large.']}
-                        }, status=422)
-
-                if 'amfi_license_doc' in request.FILES:
-                    amfi_file = request.FILES['amfi_license_doc']
-                    file_content = amfi_file.read()
-                    amfi_file.seek(0)
-                    is_valid, error_msg = validate_magic_bytes(file_content, amfi_file.name)
-                    if not is_valid:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': f'Invalid file type for AMFI certificate: {error_msg}',
-                            'errors': {'amfi_license_doc': [error_msg]}
-                        }, status=422)
-                    
-                    ext = os.path.splitext(amfi_file.name)[1].lower()
-                    if amfi_file.size <= 5 * 1024 * 1024:
-                        import uuid
-                        doc_path = f"app/public/investment/amfi_{agent.id}_{uuid.uuid4().hex}{ext}"
-                        profile.amfi_license_doc = default_storage.save(doc_path, amfi_file)
-                    else:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'AMFI certificate file size must be under 5MB.',
-                            'errors': {'amfi_license_doc': ['File too large.']}
-                        }, status=422)
 
                 profile.website_url = website
                 profile.social_links = {
@@ -2089,18 +2089,32 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                     agent.status = 'pending_approval'
                     agent.save()
                     
+            if license_payloads:
+                from django.core.files.base import ContentFile
+                for field, content, ext, kind in license_payloads:
+                    folder = 'insurance' if kind == 'irdai' else 'investment'
+                    doc_path = f"app/public/{folder}/{kind}_{agent.id}_{uuid.uuid4().hex}{ext}"
+                    setattr(profile, field, default_storage.save(doc_path, ContentFile(content)))
+                profile.save()
+
             # Clear OG image cache so changes (like WhatsApp, Photo, Name) reflect immediately
             from django.core.cache import cache
             from apps.agents.models import og_image_cache_key
             cache.delete(og_image_cache_key(agent.id))
-                    
+
+            def _doc_url(field_file):
+                name = str(field_file or '').strip()
+                return f'/media/{name}' if name else None
+
             return JsonResponse({
                 'status': 'success',
                 'message': 'Profile saved successfully' if not current_step else 'Progress saved',
                 'redirect': None if current_step and str(current_step) != '7' else (
                     '/admin/agents/manage/' + str(agent.id) + '/' if is_admin_edit else '/agent/dashboard/'
                 ),
-                'profile_photo_url': profile.profile_photo_url
+                'profile_photo_url': profile.profile_photo_url,
+                'irdai_license_doc_url': _doc_url(profile.irdai_license_doc),
+                'amfi_license_doc_url': _doc_url(profile.amfi_license_doc),
             })
             
     except Exception as e:

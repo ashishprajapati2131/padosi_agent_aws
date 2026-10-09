@@ -150,6 +150,45 @@ class AgentRegistrationEndToEndTests(TestCase):
         self.assertEqual(dash.status_code, 302)
         self.assertIn('/chooseplan/', dash['Location'])
 
+    def test_step1_rejects_renamed_code_photo_and_bad_fields(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        script = SimpleUploadedFile('notes.js.jpg', b'console.log(1)', content_type='image/jpeg')
+        photo = self.client.post('/agent-register-step1/', {
+            'fullname': 'Photo Agent',
+            'email': 'photo.agent@example.com',
+            'mobile': '9876543299',
+            'agent_pincode': '380001',
+            'state': 'Gujarat',
+            'experience_range': '5',
+            'segments[]': ['life'],
+            'photo': script,
+        })
+        self.assertEqual(photo.status_code, 422, photo.content)
+        self.assertIn('photo', photo.json()['message'].lower())
+
+        overlong = self.client.post('/agent-register-step1/', {
+            'fullname': 'A' * 71,
+            'email': 'long.name@example.com',
+            'mobile': '9876543298',
+            'agent_pincode': '380001',
+            'state': 'Gujarat',
+            'experience_range': '5',
+            'segments[]': ['life'],
+        })
+        self.assertEqual(overlong.status_code, 400, overlong.content)
+
+        bad_segment = self.client.post('/agent-register-step1/', {
+            'fullname': 'Segment Agent',
+            'email': 'segment.agent@example.com',
+            'mobile': '9876543297',
+            'agent_pincode': '380001',
+            'state': 'Gujarat',
+            'experience_range': '99',
+            'segments[]': ['<script>'],
+        })
+        self.assertEqual(bad_segment.status_code, 400, bad_segment.content)
+        self.assertIn('segment', bad_segment.json()['message'].lower())
+
     def test_step1_rejects_bad_input_and_keeps_good_input(self):
         bad = self.client.post('/agent-register-step1/', {
             'fullname': 'X', 'email': 'nope', 'mobile': '12345',

@@ -108,6 +108,11 @@ class EventReferralParticipant(models.Model):
     # Columns added by migration 0005 (fields were missing here).
     page_active_seconds = models.PositiveIntegerField(default=0)
     blocked_by_admin = models.BooleanField(default=False, db_index=True)
+    # Admin "Grant plan" on the event-referral page. Empty slug means no
+    # manual grant. A null expiry means the grant does not expire.
+    grant_plan_slug = models.CharField(max_length=50, blank=True, default='')
+    grant_expires_at = models.DateTimeField(null=True, blank=True)
+    grant_previous_plan = models.CharField(max_length=50, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

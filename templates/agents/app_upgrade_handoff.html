@@ -4,29 +4,98 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <title>Opening payment — PadosiAgent</title>
+    <title>Opening upgrade checkout — PadosiAgent</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #f7f9fb;
+            color: #1e293b;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .card {
+            max-width: 420px;
+            width: 100%;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+            padding: 28px 24px;
+            text-align: center;
+        }
+        .logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #2c7a7b, #1d7d5d);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+        h1 { font-size: 1.15rem; margin: 0 0 8px; }
+        p { font-size: 14px; color: #64748b; line-height: 1.5; margin: 0 0 20px; }
+        .btn-primary {
+            background: linear-gradient(135deg, #2c7a7b, #1d7d5d);
+            color: #fff;
+            border: 0;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+        }
+        .btn-link {
+            display: inline-block;
+            margin-top: 12px;
+            color: #64748b;
+            font-size: 13px;
+            text-decoration: none;
+        }
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #2c7a7b;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
-    {% if switch_from %}
-    <p>You are signed in as <strong>{{ switch_from }}</strong> on this browser.</p>
-    <p>Continue to the upgrade payment as <strong>{{ switch_to }}</strong>? You will be signed out of {{ switch_from }}.</p>
-    <form method="post" action="{% url 'agents:app_upgrade_handoff' %}">
-        {% csrf_token %}
-        <input type="hidden" name="token" value="{{ token }}">
-        <input type="hidden" name="confirm_switch" value="1">
-        <button type="submit">Continue as {{ switch_to }}</button>
-        <a href="/">Cancel</a>
-    </form>
-    {% else %}
-    <p>Opening your payment…</p>
-    <form id="upgrade-handoff" method="post" action="{% url 'agents:app_upgrade_handoff' %}">
-        {% csrf_token %}
-        <input type="hidden" name="token" value="{{ token }}">
-        <noscript><button type="submit">Continue to payment</button></noscript>
-    </form>
-    <script>
-        document.getElementById('upgrade-handoff').submit();
-    </script>
-    {% endif %}
+    <div class="card">
+        <div class="logo">P</div>
+        {% if switch_from %}
+        <h1>Switch account?</h1>
+        <p>You are signed in as <strong>{{ switch_from }}</strong>. Continue to upgrade as <strong>{{ switch_to }}</strong>? You will be signed out of the other account.</p>
+        <form method="post" action="{% url 'agents:app_upgrade_handoff' %}">
+            {% csrf_token %}
+            <input type="hidden" name="token" value="{{ token }}">
+            <input type="hidden" name="confirm_switch" value="1">
+            <button type="submit" class="btn-primary">Continue as {{ switch_to }}</button>
+            <a class="btn-link" href="/">Cancel</a>
+        </form>
+        {% else %}
+        <div class="spinner" aria-hidden="true"></div>
+        <h1>Opening secure checkout</h1>
+        <p>Signing you in and loading your upgrade options…</p>
+        <form id="upgrade-handoff" method="post" action="{% url 'agents:app_upgrade_handoff' %}">
+            {% csrf_token %}
+            <input type="hidden" name="token" value="{{ token }}">
+            <noscript><button type="submit" class="btn-primary">Continue to checkout</button></noscript>
+        </form>
+        <script>
+            document.getElementById('upgrade-handoff').submit();
+        </script>
+        {% endif %}
+    </div>
 </body>
 </html>

@@ -34,6 +34,7 @@ from apps.home.services.distance import (
 )
 from apps.home.services.geocoding import GeocodingService
 from apps.home.services.ai_picks import AIPicksService
+from apps.home.services.matching import assign_match_percents
 from django.db.models import Avg, Q
 from django.db.models.expressions import RawSQL
 from django.core.paginator import Paginator
@@ -711,24 +712,13 @@ def fetch_filtered_agents_list(request):
     # - Company-matched agents: 88-99% range (higher band)
     # - Non-matched agents:     72-85% range (lower band)
     # - No filter active:       80-99% range (normal)
+    assign_match_percents(all_agents, claim_company_lower)
+    for a in all_agents:
+        a.review_count_val = a.review_count
+
     max_smart_rank = max([a.padosi_smart_rank or 0 for a in all_agents]) if all_agents else 165
     if max_smart_rank <= 0:
         max_smart_rank = 165
-
-    for a in all_agents:
-        rank = a.padosi_smart_rank or 0
-        match_flag = getattr(a, 'has_claim_company_match', None)
-        if match_flag is True:
-            # Company match: show 88–99%
-            a.match_percent = int(min(99.0, max(88.0, 88.0 + (rank / max_smart_rank) * 11.0)))
-        elif match_flag is False:
-            # Company not matched: show 72–85% (clearly lower, still visible)
-            a.match_percent = int(min(85.0, max(72.0, 72.0 + (rank / max_smart_rank) * 13.0)))
-        else:
-            # No claim filter active — normal 80-99% band
-            a.match_percent = int(min(99.0, max(80.0, 80.0 + (rank / max_smart_rank) * 19.0)))
-        # Attach helper attributes for templates
-        a.review_count_val = a.review_count
 
     return all_agents, user_lat, user_lng, sort_by, invalid_pincode, max_smart_rank
 
@@ -1776,6 +1766,13 @@ def save_user_location(request):
         for k in ['last_pincode', 'last_location', 'pincode', 'location', 'detected_area']:
             request.session.pop(k, None)
         try:
+            geo_svc = GeocodingService()
+            area = geo_svc.reverse_geocode(float(lat), float(lng))
+            if area:
+                request.session['detected_area'] = area
+        except Exception:
+            pass
+        try:
             request.session.modified = True
         except AttributeError:
             pass
@@ -1783,14 +1780,24 @@ def save_user_location(request):
 
     if pincode and re.match(r'^[1-9]\d{5}$', pincode):
         request.session['last_pincode'] = pincode
-        request.session['detected_area'] = pincode
-        for k in ['last_lat', 'last_lng', 'lat', 'lng', 'last_location']:
+        for k in ['last_lat', 'last_lng', 'lat', 'lng', 'last_location', 'detected_area']:
             request.session.pop(k, None)
+        loc = resolve_home_location(request)
+        request.session['detected_area'] = loc.get('detected_area') or pincode
+        if loc.get('user_lat') is not None and loc.get('user_lng') is not None:
+            request.session['last_lat'] = str(loc['user_lat'])
+            request.session['last_lng'] = str(loc['user_lng'])
         try:
             request.session.modified = True
         except AttributeError:
             pass
-        return JsonResponse({'success': True, 'message': 'Pincode saved', 'pincode': pincode})
+        return JsonResponse({
+            'success': True,
+            'message': 'Pincode saved',
+            'pincode': pincode,
+            'detected_area': request.session.get('detected_area', pincode),
+            'city_label': loc.get('city_label') or pincode,
+        })
 
     return JsonResponse({'success': False, 'message': 'No valid location data provided'}, status=400)
 

@@ -1,0 +1,277 @@
+/* Find Agents — accordion filter v2 */
+.pa-filter-v2-wrapper {
+  background: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08) !important;
+  overflow: hidden;
+}
+.pa-filter-v2-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #fff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 16px 18px 12px;
+}
+.pa-filter-v2-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pa-filter-v2-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pa-filter-v2-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+.pa-filter-count-badge {
+  display: none;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #273c8e;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 22px;
+  text-align: center;
+}
+.pa-filter-clear-link {
+  border: none;
+  background: none;
+  color: #0d9488;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.pa-filter-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.pa-filter-close-btn:hover { background: #f1f5f9; color: #0f172a; }
+.pa-filter-v2-subtitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #64748b;
+  margin: 10px 0 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pa-filter-your-picks {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+}
+.pa-filter-your-picks-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  margin: 0 0 8px;
+}
+.pa-filter-picks-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pa-filter-pick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #ecfdf5;
+  color: #047857;
+  cursor: pointer;
+}
+.pa-filter-pick-x { font-size: 0.9rem; opacity: 0.75; line-height: 1; }
+
+.pa-filter-v2-body {
+  padding: 12px 18px 20px !important;
+  max-height: calc(92vh - 140px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+@media (min-width: 1181px) {
+  .pa-filter-v2-body { max-height: calc(100vh - 220px); }
+}
+
+.pa-filter-service-bridge {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.pa-filter-ext {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  margin-bottom: 10px;
+  background: #fafbfc;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+.pa-filter-ext.is-open {
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+}
+.pa-filter-ext-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+.pa-filter-ext-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #273c8e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+.pa-filter-ext-text { flex: 1; min-width: 0; }
+.pa-filter-ext-title {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.25;
+}
+.pa-filter-ext-sub {
+  display: block;
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+.pa-filter-ext-chevron {
+  color: #94a3b8;
+  transition: transform 0.25s ease;
+  font-size: 0.75rem;
+}
+.pa-filter-ext.is-open .pa-filter-ext-chevron { transform: rotate(180deg); }
+.pa-filter-ext-body {
+  display: none;
+  padding: 0 14px 14px;
+  animation: paFilterSlide 0.25s ease;
+}
+.pa-filter-ext.is-open .pa-filter-ext-body { display: block; }
+@keyframes paFilterSlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pa-filter-cat { margin-top: 14px; }
+.pa-filter-cat:first-child { margin-top: 4px; }
+.pa-filter-cat.collapsed { opacity: 0.45; pointer-events: none; }
+.pa-filter-cat-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #64748b;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+.pa-filter-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  align-items: flex-start;
+}
+/* Subtype pills — override legacy circle-tile card rules in find-agents.html */
+.pa-filter-v2-wrapper .pa-filter-chip.circle-tile {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  flex: 0 1 auto !important;
+  border-radius: 999px !important;
+  padding: 8px 16px !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  line-height: 1.25 !important;
+  color: #334155 !important;
+  background: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transform: none !important;
+}
+.pa-filter-v2-wrapper .pa-filter-chip.circle-tile:hover {
+  border-color: #cbd5e1 !important;
+  background: #f8fafc !important;
+  transform: none !important;
+}
+.pa-filter-v2-wrapper .pa-filter-chip.circle-tile.active {
+  background: #0d9488 !important;
+  border-color: #0d9488 !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+.pa-filter-v2-wrapper .pa-filter-chip.circle-tile.active:hover {
+  background: #0f766e !important;
+  border-color: #0f766e !important;
+}
+.pa-filter-chip .tile-icon-wrapper,
+.pa-filter-chip .tile-label { display: none !important; }
+
+.pa-filter-footnote,
+.pa-filter-disclaimer {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  line-height: 1.4;
+}
+
+@media (max-width: 1180px) {
+  .pa-filter-v2-wrapper {
+    border-radius: 28px 28px 0 0 !important;
+    border-bottom: none !important;
+  }
+  .pa-filter-v2-sticky { padding: 18px 20px 12px; }
+  .pa-filter-v2-body { padding: 8px 20px 24px !important; }
+}

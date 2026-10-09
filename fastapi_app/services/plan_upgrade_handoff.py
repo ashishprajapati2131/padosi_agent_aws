@@ -13,14 +13,21 @@ from plan_upgrade_handoff import (
     hash_handoff_token,
     new_handoff_token,
     normalize_upgrade_slug,
+    suggest_upgrade_slug,
     upgrade_target_allowed,
 )
 
 MAX_HANDOFFS_PER_MINUTE = 5
 
 
-def issue_plan_upgrade_handoff(db, agent, plan_slug: str) -> dict:
-    target = normalize_upgrade_slug(plan_slug)
+def issue_plan_upgrade_handoff(db, agent, plan_slug=None) -> dict:
+    raw = (plan_slug or '').strip()
+    target = normalize_upgrade_slug(raw) if raw else suggest_upgrade_slug(getattr(agent, 'plan_type', ''))
+    if not target:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No upgrade is available for your current plan.",
+        )
     if target not in ALLOWED_UPGRADE_SLUGS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -70,6 +70,18 @@ INSURANCE_SEGMENTS = [
     {'id': 'motor',  'label': 'Motor',   'icon': 'fas fa-car'},
     {'id': 'sme',    'label': 'SME',     'icon': 'fas fa-building'},
 ]
+ALLOWED_SEGMENT_IDS = frozenset(item['id'] for item in INSURANCE_SEGMENTS)
+ALLOWED_INVESTMENT_TYPES = frozenset({'sip', 'lumpsum', 'elss'})
+_RESERVED_PROFILE_SLUGS = frozenset({
+    'admin', 'django-admin', 'about', 'contact', 'terms', 'privacy', 'faq',
+    'find-agents', 'calculators', 'calculator', 'coming-soon', 'lic-agent',
+    'cancellation-refund-policy', 'blacklisted-agents', 'marketing', 'media',
+    'static', 'agent-registration', 'agent-register-step1', 'agent-register-step2',
+    'agent-login', 'forgot-password', 'reset-password', 'agent-logout', 'logout',
+    'profile', 'card', 'review', 'review-card', 'join', 'auth', 'events',
+    'chatbot-api', 'championship', 'insurance', 'insurance-login', 'api',
+    'manifest.webmanifest', 'sw.js', 'offline.html', 'sitemap.xml', 'robots.txt',
+})
 
 LANGUAGE_OPTIONS = [
     'Hindi', 'English', 'Gujarati', 'Marathi', 'Tamil',
@@ -1367,6 +1379,9 @@ def _validated_photo_upload(upload):
         return None
     if upload.size > 5 * 1024 * 1024:
         return None
+    from apps.agents.utils.file_validation import has_dangerous_extra_extension
+    if has_dangerous_extra_extension(upload.name):
+        return None
     try:
         from PIL import Image
         upload.seek(0)
@@ -1451,42 +1466,39 @@ def _assign_step1_draft_fields(draft, request, extra=None):
     return draft
 
 
-@require_http_methods(["GET"])
-def check_slug_availability(request):
-    """Check if a custom slug is available for an agent profile."""
+def _registration_slug_status(raw_slug):
+    """Return (available, message, normalized_slug) for a claimed profile URL."""
     from django.utils.text import slugify
     from apps.agents.models import AgentProfile
     from apps.home.models.page import Page
 
+    slug = slugify((raw_slug or '').strip())
+    if (
+        not slug
+        or len(slug) < 3
+        or len(slug) > 50
+        or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', slug)
+        or slug in _RESERVED_PROFILE_SLUGS
+    ):
+        return False, 'Profile URL must be 3–50 characters and use only letters, numbers, and hyphens.', slug
+    if Page.objects.filter(slug=slug).exists() or AgentProfile.objects.filter(slug=slug).exists():
+        return False, 'This URL is already taken. Please choose another.', slug
+    return True, 'URL is available!', slug
+
+
+@require_http_methods(["GET"])
+def check_slug_availability(request):
+    """Check if a custom slug is available for an agent profile."""
     raw_slug = request.GET.get('slug', '').strip()
     if not raw_slug:
         return JsonResponse({'success': False, 'available': False, 'message': 'Slug is required.'})
 
-    slug = slugify(raw_slug)
-
-    RESERVED_SLUGS = {
-        'admin', 'django-admin', 'about', 'contact', 'terms', 'privacy', 'faq',
-        'find-agents', 'calculators', 'calculator', 'coming-soon', 'lic-agent',
-        'cancellation-refund-policy', 'blacklisted-agents', 'marketing', 'media',
-        'static', 'agent-registration', 'agent-register-step1', 'agent-register-step2',
-        'agent-login', 'forgot-password', 'reset-password', 'agent-logout', 'logout',
-        'profile', 'card', 'review', 'review-card', 'join', 'auth', 'events',
-        'chatbot-api', 'championship', 'insurance', 'insurance-login', 'api',
-        'manifest.webmanifest', 'sw.js', 'offline.html', 'sitemap.xml', 'robots.txt'
-    }
-
-    if slug.lower() in RESERVED_SLUGS or Page.objects.filter(slug=slug).exists() or AgentProfile.objects.filter(slug=slug).exists():
-        return JsonResponse({
-            'success': True,
-            'available': False,
-            'slug': slug,
-            'message': 'This URL is already taken. Please choose another.',
-        })
+    available, message, slug = _registration_slug_status(raw_slug)
     return JsonResponse({
         'success': True,
-        'available': True,
+        'available': available,
         'slug': slug,
-        'message': 'URL is available!',
+        'message': message,
     })
 
 
@@ -1580,14 +1592,7 @@ def register_step1(request):
     mobile = request.POST.get('mobile', '').strip()
     agent_pincode = request.POST.get('agent_pincode', '').strip()
     state = request.POST.get('state', '').strip()
-    experience = request.POST.get('experience_range', '')
-    if experience:
-        try:
-            exp_digits = re.sub(r'\D', '', str(experience))
-            if exp_digits and int(exp_digits) > 60:
-                experience = '60'
-        except (TypeError, ValueError):
-            pass
+    experience = (request.POST.get('experience_range', '') or '').strip()
     segments = request.POST.getlist('segments[]') or request.POST.getlist('segments')
     investment_types = request.POST.getlist('investment_types[]') or request.POST.getlist('investment_types')
     promo_code = request.POST.get('promo_code', '').strip()
@@ -1608,16 +1613,38 @@ def register_step1(request):
     field_errors = {}
     if not fullname:
         errors.append('Full name is required.')
-    elif re.search(r'[<>]', fullname) or len(fullname) > 255:
-        # Names are rendered on public pages and in JS-built HTML.
-        errors.append('Full name contains invalid characters.')
-    if not email or '@' not in email:
+    elif (
+        len(fullname) > 70
+        or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9 ._\-]{1,69}', fullname)
+        or not re.search(r'[A-Za-z].*[A-Za-z]|[A-Za-z]{2}', fullname)
+    ):
+        # Names are rendered on public pages and stored in a 70-character field.
+        # Underscores stay allowed because batch signups use them in the name.
+        errors.append('Please enter a valid full name (2–70 characters).')
+    if not email or len(email) > 254:
         errors.append('Please enter a valid email address.')
+    else:
+        from django.core.validators import validate_email
+        from django.core.exceptions import ValidationError
+        try:
+            validate_email(email)
+        except ValidationError:
+            errors.append('Please enter a valid email address.')
     if not mobile or not re.match(r'^[6-9]\d{9}$', mobile):
         errors.append('Please enter a valid 10-digit mobile number starting with 6-9.')
     whatsapp = request.POST.get('whatsapp', '').strip()
     if whatsapp and not re.match(r'^[6-9]\d{9}$', whatsapp):
         errors.append('Please enter a valid 10-digit WhatsApp number starting with 6-9.')
+    if experience and (not re.fullmatch(r'\d{1,2}', str(experience)) or int(experience) > 60):
+        errors.append('Experience must be a whole number from 0 to 60.')
+    if client_base and not re.fullmatch(r'\d{1,4}', client_base):
+        errors.append('Client count must be a number up to 4 digits.')
+    claims_raw = request.POST.get('claims_settled', '').strip()
+    if claims_raw and not re.fullmatch(r'\d{1,4}', claims_raw):
+        errors.append('Claims settled must be a number up to 4 digits.')
+    claim_amount_raw = request.POST.get('claim_amount', '').strip()
+    if claim_amount_raw and not re.fullmatch(r'\d{1,3}', claim_amount_raw):
+        errors.append('Claim amount must be a number up to 3 digits.')
     if not agent_pincode or not re.match(r'^[1-9]\d{5}$', agent_pincode):
         msg = 'Please enter a valid 6-digit pincode.'
         errors.append(msg)
@@ -1632,8 +1659,17 @@ def register_step1(request):
             state = (pin_row.state or '').strip()
     if not state:
         errors.append('Please select a state.')
+    if any(seg not in ALLOWED_SEGMENT_IDS for seg in segments):
+        errors.append('Please select a valid insurance segment.')
+    if any(item not in ALLOWED_INVESTMENT_TYPES for item in investment_types):
+        errors.append('Please select a valid investment type.')
     if not segments and not investment_types:
         errors.append('Please select at least one insurance segment or investment type.')
+    if slug:
+        slug_ok, slug_message, _normalized = _registration_slug_status(slug)
+        if not slug_ok:
+            errors.append(slug_message)
+            field_errors['slug'] = [slug_message]
     pan_number = request.POST.get('pan_number', '').strip().upper()
     if pan_number and not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', pan_number):
         errors.append('PAN must be 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).')
@@ -1643,6 +1679,14 @@ def register_step1(request):
         if field_errors:
             payload['errors'] = field_errors
         return JsonResponse(payload, status=400)
+
+    raw_photo = request.FILES.get('photo')
+    if raw_photo and _validated_photo_upload(raw_photo) is None:
+        return JsonResponse({
+            'success': False,
+            'message': 'Profile photo must be a real JPG, PNG, WEBP, or GIF image under 5MB. Renamed code files are not allowed.',
+            'errors': {'photo': ['Profile photo must be a real JPG, PNG, WEBP, or GIF image under 5MB.']},
+        }, status=422)
 
     from django.contrib.auth.models import User
     from apps.agents.models import Agent, Invoice, AgentDraft
@@ -3774,9 +3818,13 @@ def payment_complete(request):
         return redirect('agents:chooseplan')
 
     redirect_url = reverse('distributors:agents_index') if is_distributor(request.user) else reverse('agents:agent_dashboard')
+    handoff_plan = request.session.pop('app_upgrade_handoff_plan', None)
+    if handoff_plan and not is_distributor(request.user):
+        redirect_url = redirect_url + '?upgrade_success=1'
     return render(request, 'agents/payment_complete.html', {
         'agent_name': (getattr(agent, 'fullname', '') or '').strip(),
         'redirect_url': redirect_url,
+        'is_plan_upgrade': bool(handoff_plan),
         'hide_chatbot': True,
     })
 

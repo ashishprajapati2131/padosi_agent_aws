@@ -21,7 +21,11 @@ from fastapi_app.schemas.profile import (
     ProfessionalProfileUpdateRequest,
     PortfolioProfileUpdateRequest,
     AdditionalProfileUpdateRequest,
+    VisibilityResponse,
+    VisibilityUpdateRequest,
+    VisibilityUpdateResponse,
 )
+from fastapi_app.services.visibility_service import get_visibility, update_visibility
 from fastapi_app.repositories.agent_repository import AgentRepository
 from fastapi_app.services.profile_service import ProfileService
 from fastapi_app.services.cloudinary_service import CloudinaryService
@@ -821,6 +825,47 @@ def delete_irdai_license_doc(
         profile.irdai_license_doc = None
         db.commit()
     return {"success": True, "message": "IRDAI certificate document removed."}
+
+
+@router.get("/profile/visibility", response_model=VisibilityResponse)
+@router.get("/profile/visibility/", response_model=VisibilityResponse, include_in_schema=False)
+def get_agent_visibility(
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+):
+    """
+    Current public-profile section switches for the logged-in agent.
+    Mobile path: GET /api/v1/agents/profile/visibility
+    """
+    return {"success": True, "visibility": get_visibility(db, current_agent.id)}
+
+
+@router.post("/profile/visibility", response_model=VisibilityUpdateResponse)
+@router.post("/profile/visibility/", response_model=VisibilityUpdateResponse, include_in_schema=False)
+@router.post("/update-visibility", response_model=VisibilityUpdateResponse)
+@router.post("/update-visibility/", response_model=VisibilityUpdateResponse, include_in_schema=False)
+def update_agent_visibility(
+    payload: VisibilityUpdateRequest,
+    current_agent: Agent = Depends(get_current_agent),
+    db: Session = Depends(get_db),
+):
+    """
+    Turn one public-profile section on or off.
+
+    The website calls Django POST /agent/update-visibility/, which needs a
+    browser session. The Flutter app calls this route with the login bearer token.
+
+    Mobile paths:
+      POST /api/v1/agents/profile/visibility
+      POST /api/v1/agents/update-visibility
+    """
+    visibility = update_visibility(db, current_agent.id, payload.field, payload.value)
+    return {
+        "success": True,
+        "field": payload.field,
+        "value": visibility[payload.field],
+        "visibility": visibility,
+    }
 
 
 @router.delete("/profile/licenses/amfi")
