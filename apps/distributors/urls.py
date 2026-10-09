@@ -8,6 +8,7 @@ from .views.sub_distributors import (
     sub_distributors_index,
     sub_distributor_create,
     sub_distributor_toggle_status,
+    sub_distributor_reset_password,
     sub_distributor_agents,
     sub_distributor_join,
     sub_distributor_login,
@@ -39,6 +40,7 @@ urlpatterns = [
     path('distributor/sub-distributors/', sub_distributors_index, name='sub_distributors_index'),
     path('distributor/sub-distributors/create/', sub_distributor_create, name='sub_distributor_create'),
     path('distributor/sub-distributors/<int:pk>/toggle/', sub_distributor_toggle_status, name='sub_distributor_toggle_status'),
+    path('distributor/sub-distributors/<int:pk>/reset-password/', sub_distributor_reset_password, name='sub_distributor_reset_password'),
     path('distributor/sub-distributors/<int:pk>/agents/', sub_distributor_agents, name='sub_distributor_agents'),
 
     # Public Sub-Distributor candidate onboarding link

@@ -567,6 +567,8 @@ class AdminPermissionMiddleware:
             'admin_distributors_create':                'distributors',
             'admin_distributors_store':                 'distributors',
             'admin_distributor_toggle_status':          'distributors',
+            'admin_distributor_reset_password':         'distributors',
+            'admin_subdistributor_reset_password':      'distributors',
             'admin_distributor_detail':                 'distributors',
             # ── Insurance Companies ───────────────────────────────────────
             'admin_insurance_index':                    'insurance',
