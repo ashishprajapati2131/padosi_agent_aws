@@ -56,8 +56,38 @@ def apply_contact_ticketing_schema(apps, schema_editor):
                 )
 
     if not _table_exists(schema_editor, 'contact_replies'):
-        ContactReply = apps.get_model('admin_panel', 'ContactReply')
-        schema_editor.create_model(ContactReply)
+        with schema_editor.connection.cursor() as cursor:
+            if schema_editor.connection.vendor == 'mysql':
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS contact_replies (
+                        id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        submission_id BIGINT NOT NULL,
+                        admin_id INT NULL,
+                        admin_name VARCHAR(255) NOT NULL DEFAULT '',
+                        message LONGTEXT NOT NULL,
+                        is_internal_note TINYINT(1) NOT NULL DEFAULT 0,
+                        emailed TINYINT(1) NOT NULL DEFAULT 0,
+                        created_at DATETIME NOT NULL,
+                        CONSTRAINT fk_contact_replies_submission
+                            FOREIGN KEY (submission_id)
+                            REFERENCES contact_submissions(id)
+                            ON DELETE CASCADE
+                    )
+                """)
+            else:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS contact_replies (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        submission_id INTEGER NOT NULL
+                            REFERENCES contact_submissions(id) DEFERRABLE INITIALLY DEFERRED,
+                        admin_id INTEGER NULL,
+                        admin_name VARCHAR(255) NOT NULL DEFAULT '',
+                        message TEXT NOT NULL,
+                        is_internal_note BOOLEAN NOT NULL DEFAULT 0,
+                        emailed BOOLEAN NOT NULL DEFAULT 0,
+                        created_at DATETIME NOT NULL
+                    )
+                """)
 
 
 class Migration(migrations.Migration):
