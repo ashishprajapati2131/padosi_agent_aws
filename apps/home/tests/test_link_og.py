@@ -105,6 +105,22 @@ class LinkOgSettingTests(TestCase):
             link_og_delete(req_del, rule.id)
             self.assertFalse(LinkOgSetting.objects.filter(path='/campaign/special/').exists())
 
+    def test_optimize_and_format_og_image_service(self):
+        import io
+        from PIL import Image
+        from apps.home.services.og_image_card import optimize_and_format_og_image
+
+        # Create a square dummy image (like the one that got cropped in WhatsApp)
+        raw_img = Image.new('RGB', (600, 600), (30, 140, 100))
+        buf = io.BytesIO()
+        raw_img.save(buf, format='PNG')
+        buf.seek(0)
+        buf.name = 'test_logo.png'
+
+        saved_url = optimize_and_format_og_image(buf, 'test_logo.png', style='smart_fit', folder='og')
+        self.assertTrue(saved_url.startswith('/media/og/'))
+        self.assertTrue(saved_url.endswith('.jpg'))
+
 
 
 

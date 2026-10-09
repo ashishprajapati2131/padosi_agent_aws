@@ -374,17 +374,24 @@ def update_settings(request):
             allowed_file_keys = {'og_default_image'}
 
         allowed_image_exts = {'.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico'}
+        from apps.home.services.og_image_card import optimize_and_format_og_image
         for key, file_obj in request.FILES.items():
             orig_name, ext = os.path.splitext(file_obj.name)
             if key not in allowed_file_keys or ext.lower() not in allowed_image_exts:
                 messages.error(request, f'Rejected upload "{file_obj.name}": only PNG/JPG/JPEG/WEBP/GIF image files are allowed.')
                 continue
-            orig_name = re.sub(r'[^A-Za-z0-9_-]', '_', orig_name)[:60] or 'file'
-            random_suffix = uuid.uuid4().hex[:8]
-            new_filename = f"{orig_name}_{random_suffix}{ext}"
             
-            filename = fs.save(new_filename, file_obj)
-            file_url = fs.url(filename)
+            if key == 'og_default_image':
+                # Automatically format into a 1200x630 high-res card < 250KB for WhatsApp
+                card_style = request.POST.get('og_card_style', 'smart_fit')
+                file_url = optimize_and_format_og_image(file_obj, file_obj.name, style=card_style, folder='og')
+            else:
+                orig_name = re.sub(r'[^A-Za-z0-9_-]', '_', orig_name)[:60] or 'file'
+                random_suffix = uuid.uuid4().hex[:8]
+                new_filename = f"{orig_name}_{random_suffix}{ext}"
+                filename = fs.save(new_filename, file_obj)
+                file_url = fs.url(filename)
+                
             SiteSetting.set_value(key, file_url, group=group)
             
         label = 'SEO' if group == 'seo' else group.capitalize()
@@ -440,20 +447,14 @@ def link_og_save(request):
 
         # Handle file upload or image URL input
         image_url = request.POST.get('image_url', '').strip()
+        card_style = request.POST.get('card_style', 'smart_fit')
         if 'image_file' in request.FILES:
             file_obj = request.FILES['image_file']
             orig_name, ext = os.path.splitext(file_obj.name)
             allowed_exts = {'.png', '.jpg', '.jpeg', '.webp', '.gif'}
             if ext.lower() in allowed_exts:
-                fs = FileSystemStorage(
-                    location=os.path.join(settings.MEDIA_ROOT, 'og'),
-                    base_url='/media/og/'
-                )
-                orig_name = re.sub(r'[^A-Za-z0-9_-]', '_', orig_name)[:60] or 'og'
-                random_suffix = uuid.uuid4().hex[:8]
-                new_filename = f"{orig_name}_{random_suffix}{ext}"
-                saved_name = fs.save(new_filename, file_obj)
-                image_url = fs.url(saved_name)
+                from apps.home.services.og_image_card import optimize_and_format_og_image
+                image_url = optimize_and_format_og_image(file_obj, file_obj.name, style=card_style, folder='og')
             else:
                 messages.error(request, f'Invalid file format "{ext}". Allowed: PNG, JPG, JPEG, WEBP, GIF.')
                 return redirect('admin_settings_seo')
