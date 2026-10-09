@@ -2185,7 +2185,7 @@ Overview
                 }
             };
             reader.readAsDataURL(blob);
-        });
+        }, 'image/jpeg', 0.92);
     });
 
     function leadPreferenceItemsAllLocked() {
@@ -2573,6 +2573,7 @@ Overview
 
             // Add cropped profile photo if exists
             if (typeof pg_croppedBlob !== 'undefined' && pg_croppedBlob) {
+                formData.delete('profile_photo');
                 formData.append('profile_photo', pg_croppedBlob, 'profile_photo.jpg');
             }
 
@@ -2805,6 +2806,7 @@ Overview
 
         // Add cropped profile photo if exists
         if (typeof pg_croppedBlob !== 'undefined' && pg_croppedBlob) {
+            formData.delete('profile_photo');
             formData.append('profile_photo', pg_croppedBlob, 'profile_photo.jpg');
         }
 

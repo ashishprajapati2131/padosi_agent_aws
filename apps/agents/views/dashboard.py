@@ -281,21 +281,9 @@ def agent_dashboard(request):
             logger.warning('Event referral dashboard context failed: %s', ev_err)
 
     event_referral_whatsapp_url = ''
-    if event_referral_participant and event_referral_share_url and agent:
-        req_n = event_referral_participant.required_paid_referrals
-        agent_label = (agent.fullname or 'Your friend').strip()
-        wa_lines = [
-            f'Hello!',
-            '',
-            f'I am {agent_label}, a PadosiAgent insurance advisor.',
-            '',
-            'Register as an agent on PadosiAgent using my referral link and complete your plan payment:',
-            event_referral_share_url,
-            '',
-            f'Your paid registration counts toward my referral goal ({req_n} agents). Thank you!',
-        ]
+    if event_referral_share_url:
         event_referral_whatsapp_url = (
-            'https://api.whatsapp.com/send?text=' + quote('\n'.join(wa_lines))
+            'https://api.whatsapp.com/send?text=' + quote(event_referral_share_url)
         )
 
     event_referral_welcome = bool(request.session.pop('event_referral_welcome_dashboard', False))
@@ -1618,33 +1606,22 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                 # Profile Photo upload
                 profile_photo = request.FILES.get('profile_photo')
                 if profile_photo:
-                    allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
-                    file_ext = os.path.splitext(os.path.basename(profile_photo.name or ''))[1].lower()
-                    photo_error = None
-                    if has_dangerous_extra_extension(profile_photo.name):
-                        photo_error = 'Renamed files like name.js.jpg cannot be used as a profile photo.'
-                    elif file_ext not in allowed_extensions:
-                        photo_error = 'Only JPG, JPEG, PNG, GIF, and WEBP files are allowed.'
-                    elif profile_photo.size > 5 * 1024 * 1024:
-                        photo_error = 'Profile photo must be less than 5MB.'
-                    else:
-                        from PIL import Image
-                        try:
-                            profile_photo.seek(0)
-                            img = Image.open(profile_photo)
-                            detected = {'JPEG': 'jpeg', 'MPO': 'jpeg', 'PNG': 'png', 'GIF': 'gif', 'WEBP': 'webp'}.get((img.format or '').upper())
-                            img.verify()
-                            profile_photo.seek(0)
-                        except Exception:
-                            detected = None
-                        if not detected or EXTENSION_KIND.get(file_ext) != detected:
-                            photo_error = 'Invalid or corrupted image file.'
-                        else:
-                            safe_ext = {'jpeg': '.jpg', 'png': '.png', 'gif': '.gif', 'webp': '.webp'}[detected]
-                            file_name = f"app/public/profile/agent_{agent.id}_{int(time.time())}{safe_ext}"
-                            saved_path = default_storage.save(file_name, profile_photo)
-                            profile.profile_photo_path = saved_path
-                    if photo_error:
+                    from django.core.files.base import ContentFile
+                    from apps.agents.utils.file_validation import validate_profile_photo
+
+                    photo_bytes = b''.join(profile_photo.chunks())
+                    ok, photo_error, safe_ext = validate_profile_photo(
+                        photo_bytes,
+                        profile_photo.name,
+                    )
+                    if ok:
+                        file_name = f"app/public/profile/agent_{agent.id}_{int(time.time())}{safe_ext}"
+                        saved_path = default_storage.save(
+                            file_name,
+                            ContentFile(photo_bytes),
+                        )
+                        profile.profile_photo_path = saved_path
+                    elif photo_error:
                         return JsonResponse({
                             'status': 'error',
                             'message': 'Validation failed',

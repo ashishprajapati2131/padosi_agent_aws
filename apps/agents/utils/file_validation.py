@@ -74,6 +74,53 @@ def _verify_image(content):
         return False
 
 
+def _decode_image(content):
+    """Decode image bytes; returns jpeg/png/gif/webp or None."""
+    kind = detect_binary_kind(content)
+    if kind in ('jpeg', 'png', 'gif', 'webp'):
+        try:
+            with Image.open(io.BytesIO(content)) as img:
+                img.load()
+            return kind
+        except Exception:
+            return None
+    try:
+        with Image.open(io.BytesIO(content)) as img:
+            img.load()
+            fmt = (img.format or '').upper()
+            return {'JPEG': 'jpeg', 'MPO': 'jpeg', 'PNG': 'png', 'GIF': 'gif', 'WEBP': 'webp'}.get(fmt)
+    except Exception:
+        return None
+
+
+PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024
+PROFILE_PHOTO_KINDS = frozenset({'jpeg', 'png', 'gif', 'webp'})
+PROFILE_PHOTO_EXT = {
+    'jpeg': '.jpg',
+    'png': '.png',
+    'gif': '.gif',
+    'webp': '.webp',
+}
+
+
+def validate_profile_photo(file_content, filename=None):
+    """Validate profile photo from raw bytes (content is authoritative).
+
+    Returns (True, None, safe_extension) or (False, error_message, None).
+    """
+    if not file_content:
+        return False, 'The file is empty.', None
+    if len(file_content) > PROFILE_PHOTO_MAX_BYTES:
+        return False, 'Profile photo must be less than 5MB.', None
+    if filename and has_dangerous_extra_extension(filename):
+        return False, 'Renamed files like name.js.jpg cannot be used as a profile photo.', None
+
+    kind = _decode_image(file_content)
+    if kind not in PROFILE_PHOTO_KINDS:
+        return False, 'Invalid or corrupted image file. Use JPG, PNG, WEBP, or GIF.', None
+    return True, None, PROFILE_PHOTO_EXT[kind]
+
+
 def validate_license_document(file_content, filename):
     """Validate an IRDAI or AMFI certificate.
 
