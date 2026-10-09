@@ -45,15 +45,57 @@ def footer_settings(request):
 
 def seo_context(request):
     """
-    Provides default SEO context variables across all pages.
+    Provides SEO and Open Graph context variables across all pages.
+    - If a custom LinkOgSetting exists for request.path, it takes priority!
+    - Otherwise, falls back to global SiteSetting 'og_default_image' (or /static/img/logo.png).
+    Admin can change both directly from the Admin Panel without code changes.
     """
     from apps.agents.services.og_urls import build_og_absolute_url, get_public_site_base
+    from apps.home.models.link_og_setting import LinkOgSetting
+
+    # 1. Base SEO defaults from SiteSetting or fallback strings
+    meta_title = SiteSetting.get_value('seo_meta_title', 'PadosiAgent — Expert & Trusted Insurance Agent')
+    meta_description = SiteSetting.get_value(
+        'seo_meta_description',
+        'Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent.'
+    )
+
+    # 2. Global Default OG Image from SiteSetting
+    global_og_image = SiteSetting.get_value('og_default_image', '')
+    if global_og_image:
+        if not global_og_image.startswith(('http://', 'https://')):
+            global_og_image = build_og_absolute_url(request, global_og_image)
+    else:
+        global_og_image = build_og_absolute_url(request, '/static/img/logo.png')
+
+    # 3. Path-specific OG / Meta override
+    link_meta = None
+    try:
+        link_meta = LinkOgSetting.get_for_path(request.path)
+    except Exception:
+        link_meta = None
+
+    final_og_image = global_og_image
+    has_custom_link_og = False
+    if link_meta and link_meta.get('image'):
+        has_custom_link_og = True
+        custom_img = link_meta['image']
+        if not custom_img.startswith(('http://', 'https://')):
+            final_og_image = build_og_absolute_url(request, custom_img)
+        else:
+            final_og_image = custom_img
+
+        if link_meta.get('title'):
+            meta_title = link_meta['title']
+        if link_meta.get('description'):
+            meta_description = link_meta['description']
 
     return {
         'default_canonical_url': build_og_absolute_url(request, request.path),
-        'default_meta_title': 'PadosiAgent — Expert & Trusted Insurance Agent',
-        'default_meta_description': 'Find trusted & verified insurance experts in your neighbourhood. Connect with your local PadosiAgent.',
-        'default_og_image': build_og_absolute_url(request, '/static/img/logo.png'),
+        'default_meta_title': meta_title,
+        'default_meta_description': meta_description,
+        'default_og_image': final_og_image,
+        'has_custom_link_og': has_custom_link_og,
         'public_site_base': get_public_site_base(request),
     }
 

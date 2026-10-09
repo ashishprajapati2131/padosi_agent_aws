@@ -1,69 +1,356 @@
 {% extends 'admin/base.html' %}
 {% load static %}
 
-{% block title %}SEO Settings — PadosiAgent Admin{% endblock %}
-{% block breadcrumb %}System &rsaquo; SEO Meta Tags{% endblock %}
+{% block title %}SEO & Social OG Preview Settings — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}System &rsaquo; SEO & OG Preview Settings{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-lg-12">
-        <form method="POST" action="{% url 'admin_settings_update' %}">
+        <!-- GLOBAL SEO & DEFAULT OG FORM -->
+        <form method="POST" action="{% url 'admin_settings_update' %}" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" name="group" value="seo">
             
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="m-0">Search Engine Optimization</h4>
-                <button type="submit" class="btn btn-primary shadow-sm"><i class="fa-solid fa-cloud-arrow-up me-2"></i> Save SEO Settings</button>
+                <div>
+                    <h4 class="m-0 fw-bold"><i class="fa-solid fa-share-nodes text-primary me-2"></i> SEO & Social Share (OG) Settings</h4>
+                    <small class="text-muted">Manage global search engine metadata and default social share preview cards for WhatsApp, Facebook, LinkedIn, Twitter.</small>
+                </div>
+                <button type="submit" class="btn btn-primary shadow-sm px-4">
+                    <i class="fa-solid fa-cloud-arrow-up me-2"></i> Save Global Settings
+                </button>
             </div>
 
             <!-- Global Tags -->
-            <div class="card mb-4">
-                <div class="card-header bg-white py-3">
-                    <h6 class="m-0 font-weight-bold"><i class="fa-solid fa-magnifying-glass me-2"></i> Global Meta Tags</h6>
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="m-0 font-weight-bold text-dark"><i class="fa-solid fa-magnifying-glass text-info me-2"></i> Global Search Engine Meta Tags</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label" style="font-weight: 600;">Meta Title (SEO Title)</label>
-                            <input type="text" class="form-control" name="seo_meta_title" value="{{ seo_meta_title }}">
-                            <div class="text-muted mt-1" style="font-size: 11px;">Recommended: 50-60 characters</div>
-                        </div>
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label" style="font-weight: 600;">Meta Description</label>
-                            <textarea class="form-control" name="seo_meta_description" rows="3">{{ seo_meta_description }}</textarea>
-                            <div class="text-muted mt-1" style="font-size: 11px;">Recommended: 150-160 characters</div>
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold">Global Meta Title (SEO Title)</label>
+                            <input type="text" class="form-control" name="seo_meta_title" value="{{ seo_meta_title }}" placeholder="e.g. PadosiAgent — Expert & Trusted Insurance Agent">
+                            <div class="text-muted mt-1" style="font-size: 11px;">Recommended length: 50-60 characters</div>
                         </div>
                         <div class="col-md-12">
-                            <label class="form-label" style="font-weight: 600;">SEO Keywords (Comma separated)</label>
-                            <input type="text" class="form-control" name="seo_keywords" value="{{ seo_keywords }}">
+                            <label class="form-label fw-semibold">Global Meta Description</label>
+                            <textarea class="form-control" name="seo_meta_description" rows="2" placeholder="Brief summary of the platform">{{ seo_meta_description }}</textarea>
+                            <div class="text-muted mt-1" style="font-size: 11px;">Recommended length: 150-160 characters</div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold">SEO Keywords (Comma-separated)</label>
+                            <input type="text" class="form-control" name="seo_keywords" value="{{ seo_keywords }}" placeholder="insurance, agent, padosiagent, life insurance, mediclaim">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Open Graph (Social Sharing) -->
-            <div class="card mb-4">
-                <div class="card-header bg-white py-3">
-                    <h6 class="m-0 font-weight-bold"><i class="fa-solid fa-share-nodes me-2"></i> Social Sharing (Open Graph)</h6>
+            <!-- Global Open Graph (Default Social Card) -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-dark"><i class="fa-solid fa-image text-primary me-2"></i> Default Social Share Preview (Open Graph)</h6>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1">Applies to all links by default</span>
                 </div>
                 <div class="card-body">
-                   <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label" style="font-weight: 600;">OG Title</label>
-                            <input type="text" class="form-control" name="seo_og_title" value="{{ seo_og_title }}">
+                    <div class="row g-4 align-items-center">
+                        <div class="col-lg-7">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Default OG Title</label>
+                                <input type="text" class="form-control" name="seo_og_title" value="{{ seo_og_title }}" placeholder="Title displayed in WhatsApp / Facebook previews">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Default OG Description</label>
+                                <textarea class="form-control" name="seo_og_description" rows="2" placeholder="Description displayed below the title in link previews">{{ seo_og_description }}</textarea>
+                            </div>
+                            <div>
+                                <label class="form-label fw-semibold">Upload Default OG Image</label>
+                                <input type="file" class="form-control" name="og_default_image" accept="image/png, image/jpeg, image/webp, image/gif">
+                                <div class="text-muted mt-1" style="font-size: 11px;">
+                                    <i class="fa-solid fa-circle-info text-primary me-1"></i> Recommended size: <strong>1200 &times; 630 pixels</strong> (Aspect Ratio 1.91:1). Supported: PNG, JPG, WEBP.
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-12">
-                            <label class="form-label" style="font-weight: 600;">OG Description</label>
-                            <textarea class="form-control" name="seo_og_description" rows="2">{{ seo_og_description }}</textarea>
+                        <div class="col-lg-5">
+                            <label class="form-label fw-semibold text-muted d-block">Current Default Preview Image</label>
+                            <div class="border rounded p-2 text-center bg-light position-relative" style="min-height: 160px;">
+                                {% if og_default_image %}
+                                    <img src="{{ og_default_image }}" alt="Current OG Image" class="img-fluid rounded shadow-sm" style="max-height: 180px; object-fit: contain;">
+                                    <div class="mt-2 text-truncate small text-muted px-2">{{ og_default_image }}</div>
+                                {% else %}
+                                    <div class="d-flex flex-column align-items-center justify-content-center p-4 text-muted">
+                                        <i class="fa-regular fa-image fa-3x mb-2 text-secondary"></i>
+                                        <span>Using Fallback (/static/img/logo.png)</span>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
-                   </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white border-top py-3 text-end">
+                    <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                        <i class="fa-solid fa-save me-2"></i> Save Default Social Settings
+                    </button>
                 </div>
             </div>
-
-            <div class="text-end mb-5">
-                <button type="submit" class="btn btn-primary btn-lg shadow-sm px-5"><i class="fa-solid fa-save me-2"></i> Save Meta Info</button>
-            </div>
         </form>
+
+        <!-- LINK-SPECIFIC OG RULES MANAGER -->
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h5 class="m-0 fw-bold text-dark"><i class="fa-solid fa-link text-primary me-2"></i> Link-Specific OG Images (કોઈપણ Link માટે Custom Image)</h5>
+                    <small class="text-muted">Set specific OG images for distinct pages (e.g., registration page, event banners, specific landing pages).</small>
+                </div>
+                <button type="button" class="btn btn-success shadow-sm" data-bs-toggle="modal" data-bs-target="#linkOgModal" onclick="openAddLinkModal()">
+                    <i class="fa-solid fa-plus me-1"></i> Add Custom Link OG Rule
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 250px;">URL Path</th>
+                                <th style="width: 140px;">OG Preview Image</th>
+                                <th>Social Meta (Title / Description)</th>
+                                <th style="width: 110px;">Status</th>
+                                <th style="width: 140px;">Last Updated</th>
+                                <th style="width: 130px;" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if link_rules %}
+                                {% for rule in link_rules %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ rule.path }}" target="_blank" class="fw-bold text-decoration-none text-primary d-inline-flex align-items-center gap-1">
+                                            <code>{{ rule.path }}</code>
+                                            <i class="fa-solid fa-arrow-up-right-from-square font-monospace" style="font-size: 11px;"></i>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if rule.image %}
+                                        <a href="{{ rule.image }}" target="_blank" title="Click to view full image">
+                                            <img src="{{ rule.image }}" alt="OG Preview" class="img-thumbnail rounded shadow-xs" style="width: 100px; height: 55px; object-fit: cover;">
+                                        </a>
+                                        {% else %}
+                                        <span class="text-muted small">No image</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if rule.title %}
+                                            <div class="fw-semibold text-dark text-truncate" style="max-width: 320px;">{{ rule.title }}</div>
+                                        {% else %}
+                                            <span class="text-muted fst-italic small">Default title</span>
+                                        {% endif %}
+                                        {% if rule.description %}
+                                            <div class="small text-muted text-truncate" style="max-width: 320px;">{{ rule.description }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="POST" action="{% url 'admin_link_og_toggle' rule.id %}" class="d-inline">
+                                            {% csrf_token %}
+                                            {% if rule.is_active %}
+                                                <button type="submit" class="btn btn-sm btn-outline-success rounded-pill px-2 py-0" title="Click to disable">
+                                                    <i class="fa-solid fa-circle-check me-1"></i> Active
+                                                </button>
+                                            {% else %}
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0" title="Click to enable">
+                                                    <i class="fa-solid fa-circle-xmark me-1"></i> Inactive
+                                                </button>
+                                            {% endif %}
+                                        </form>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ rule.updated_at|date:"d M Y, h:i A" }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-light border text-primary" title="Edit Rule"
+                                                onclick="openEditLinkModal({{ rule.id }}, '{{ rule.path|escapejs }}', '{{ rule.image|escapejs }}', '{{ rule.title|escapejs }}', '{{ rule.description|escapejs }}', {{ rule.is_active|yesno:'true,false' }})">
+                                                <i class="fa-solid fa-pen-to-square"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-light border text-danger" title="Delete Rule"
+                                                onclick="confirmDeleteRule({{ rule.id }}, '{{ rule.path|escapejs }}')">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="fa-solid fa-link-slash fa-2x mb-2 text-secondary d-block"></i>
+                                        <strong>No custom link rules added yet.</strong><br>
+                                        <span class="small">All links currently use the default site-wide OG image. Click <strong>"Add Custom Link OG Rule"</strong> to customize a specific URL!</span>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- MODAL: ADD / EDIT LINK OG RULE -->
+<div class="modal fade" id="linkOgModal" tabindex="-1" aria-labelledby="linkOgModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow">
+            <form method="POST" action="{% url 'admin_link_og_save' %}" enctype="multipart/form-data" id="linkOgForm">
+                {% csrf_token %}
+                <input type="hidden" name="rule_id" id="modalRuleId" value="">
+                
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold" id="linkOgModalLabel">
+                        <i class="fa-solid fa-wand-magic-sparkles text-primary me-2"></i> Add Custom Link OG Rule
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Page URL / Path <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light font-monospace">https://padosiagent.com</span>
+                                <input type="text" class="form-control font-monospace" name="path" id="modalPath" placeholder="/agent/registration/ or /events/paldi/" required>
+                            </div>
+                            <div class="form-text text-muted" style="font-size: 12px;">
+                                Enter the relative path (e.g. <code>/</code> for homepage, <code>/agent/registration/</code>, <code>/events/paldi/</code>, or any custom link).
+                            </div>
+                        </div>
+
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold">Upload OG Image File</label>
+                            <input type="file" class="form-control" name="image_file" id="modalImageFile" accept="image/png, image/jpeg, image/webp, image/gif">
+                            <div class="form-text text-muted" style="font-size: 11px;">
+                                Recommended: <strong>1200 &times; 630 px</strong> (JPG, PNG, WEBP).
+                            </div>
+
+                            <div class="mt-3">
+                                <label class="form-label fw-semibold text-muted small">Or Enter Direct Image URL</label>
+                                <input type="text" class="form-control form-control-sm" name="image_url" id="modalImageUrl" placeholder="https://... or /media/og/banner.jpg">
+                            </div>
+                        </div>
+
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold small text-muted">Preview Thumbnail</label>
+                            <div class="border rounded p-2 text-center bg-light d-flex align-items-center justify-content-center" style="height: 140px;" id="modalPreviewBox">
+                                <span class="text-muted small" id="modalPreviewPlaceholder">Select an image to preview</span>
+                                <img src="" alt="Preview" id="modalPreviewImg" class="img-fluid rounded d-none" style="max-height: 120px; object-fit: contain;">
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Custom Social Title <span class="text-muted small">(Optional)</span></label>
+                            <input type="text" class="form-control" name="title" id="modalTitle" placeholder="Leave blank to use default page title">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Custom Social Description <span class="text-muted small">(Optional)</span></label>
+                            <textarea class="form-control" name="description" id="modalDescription" rows="2" placeholder="Leave blank to use default page description"></textarea>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" role="switch" name="is_active" id="modalIsActive" checked value="1">
+                                <label class="form-check-label fw-semibold" for="modalIsActive">Rule Active (Serve this OG image when link is shared)</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                        <i class="fa-solid fa-check me-1"></i> Save Link OG Rule
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- HIDDEN FORM FOR DELETION -->
+<form id="deleteRuleForm" method="POST" action="" class="d-none">
+    {% csrf_token %}
+</form>
+
+<script>
+function openAddLinkModal() {
+    document.getElementById('linkOgModalLabel').innerHTML = '<i class="fa-solid fa-plus-circle text-primary me-2"></i> Add Custom Link OG Rule';
+    document.getElementById('modalRuleId').value = '';
+    document.getElementById('modalPath').value = '';
+    document.getElementById('modalImageUrl').value = '';
+    document.getElementById('modalImageFile').value = '';
+    document.getElementById('modalTitle').value = '';
+    document.getElementById('modalDescription').value = '';
+    document.getElementById('modalIsActive').checked = true;
+    
+    document.getElementById('modalPreviewImg').classList.add('d-none');
+    document.getElementById('modalPreviewPlaceholder').classList.remove('d-none');
+}
+
+function openEditLinkModal(id, path, image, title, description, isActive) {
+    document.getElementById('linkOgModalLabel').innerHTML = '<i class="fa-solid fa-pen-to-square text-primary me-2"></i> Edit Link OG Rule';
+    document.getElementById('modalRuleId').value = id;
+    document.getElementById('modalPath').value = path;
+    document.getElementById('modalImageUrl').value = image || '';
+    document.getElementById('modalImageFile').value = '';
+    document.getElementById('modalTitle').value = title || '';
+    document.getElementById('modalDescription').value = description || '';
+    document.getElementById('modalIsActive').checked = isActive;
+
+    var previewImg = document.getElementById('modalPreviewImg');
+    var placeholder = document.getElementById('modalPreviewPlaceholder');
+    if (image) {
+        previewImg.src = image;
+        previewImg.classList.remove('d-none');
+        placeholder.classList.add('d-none');
+    } else {
+        previewImg.classList.add('d-none');
+        placeholder.classList.remove('d-none');
+    }
+
+    var modal = new bootstrap.Modal(document.getElementById('linkOgModal'));
+    modal.show();
+}
+
+// Live preview when file chosen in modal
+document.getElementById('modalImageFile').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (file) {
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+            var previewImg = document.getElementById('modalPreviewImg');
+            previewImg.src = evt.target.result;
+            previewImg.classList.remove('d-none');
+            document.getElementById('modalPreviewPlaceholder').classList.add('d-none');
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Delete confirmation using SweetAlert2
+function confirmDeleteRule(ruleId, path) {
+    Swal.fire({
+        title: 'Delete OG Rule?',
+        html: `Are you sure you want to remove the custom OG image for <code>${path}</code>? It will revert to the global default image.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            var form = document.getElementById('deleteRuleForm');
+            form.action = `/admin/settings/seo/link-og/${ruleId}/delete/`;
+            form.submit();
+        }
+    });
+}
+</script>
 {% endblock %}

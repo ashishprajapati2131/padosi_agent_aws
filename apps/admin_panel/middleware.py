@@ -764,6 +764,9 @@ class AdminPermissionMiddleware:
             # ── Site Settings / Security (blocked IPs) ────────────────────
             'admin_settings_general':                   'site_settings',
             'admin_settings_seo':                       'site_settings',
+            'admin_link_og_save':                       'site_settings',
+            'admin_link_og_delete':                     'site_settings',
+            'admin_link_og_toggle':                     'site_settings',
             'admin_settings_security':                  'site_settings',
             'admin_settings_templates':                 'email_templates',
             'admin_settings_templates_update':          'email_templates',

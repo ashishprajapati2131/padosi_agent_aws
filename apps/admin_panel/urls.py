@@ -494,6 +494,9 @@ urlpatterns = [
     # Phase SETTINGS: Settings & Homepage Editor
     path("admin/settings/general/",         settings.general,             name="admin_settings_general"),
     path("admin/settings/seo/",             settings.seo,                 name="admin_settings_seo"),
+    path("admin/settings/seo/link-og/save/", settings.link_og_save,        name="admin_link_og_save"),
+    path("admin/settings/seo/link-og/<int:rule_id>/delete/", settings.link_og_delete, name="admin_link_og_delete"),
+    path("admin/settings/seo/link-og/<int:rule_id>/toggle/", settings.link_og_toggle, name="admin_link_og_toggle"),
     path("admin/settings/security/",        settings.security,            name="admin_settings_security"),
     path("admin/settings/templates/",       settings.templates,           name="admin_settings_templates"),
     path("admin/settings/templates/update/",settings.update_templates,    name="admin_settings_templates_update"),

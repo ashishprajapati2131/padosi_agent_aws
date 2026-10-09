@@ -332,7 +332,7 @@ SETTINGS_FORM_KEYS = {
     },
     'seo': {
         'seo_meta_title', 'seo_meta_description', 'seo_keywords',
-        'seo_og_title', 'seo_og_description',
+        'seo_og_title', 'seo_og_description', 'og_default_image',
     },
     'security': {'rate_limit_clicks', 'rate_limit_timeframe', 'subscription_expiry_enforced'},
 }
@@ -353,24 +353,31 @@ def update_settings(request):
 
         # Save each standard parsed key
         for key, value in parsed_post.items():
-            if key in ['group', 'site_logo', 'site_favicon']:
+            if key in ['group', 'site_logo', 'site_favicon', 'og_default_image']:
                 continue
             if key not in allowed_keys:
                 continue
             SiteSetting.set_value(key, value, group=group)
             
-        # Handle file uploads (site_logo, site_favicon)
+        # Handle file uploads (site_logo, site_favicon, og_default_image)
         import uuid
-        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'site'), base_url='/media/site/')
-        # Only the logo/favicon inputs exist, and only raster images: any other
-        # key/extension (e.g. .html/.svg) was stored under /media/site/ and
-        # served same-origin — stored XSS for anyone with settings access.
-        allowed_file_keys = {'site_logo', 'site_favicon'} if group == 'general' else set()
+        upload_subfolder = 'og' if group == 'seo' else 'site'
+        fs = FileSystemStorage(
+            location=os.path.join(settings.MEDIA_ROOT, upload_subfolder),
+            base_url=f'/media/{upload_subfolder}/'
+        )
+        
+        allowed_file_keys = set()
+        if group == 'general':
+            allowed_file_keys = {'site_logo', 'site_favicon'}
+        elif group == 'seo':
+            allowed_file_keys = {'og_default_image'}
+
         allowed_image_exts = {'.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico'}
         for key, file_obj in request.FILES.items():
             orig_name, ext = os.path.splitext(file_obj.name)
             if key not in allowed_file_keys or ext.lower() not in allowed_image_exts:
-                messages.error(request, f'Rejected upload "{file_obj.name}": only PNG/JPG/WEBP/GIF/ICO logo or favicon files are allowed.')
+                messages.error(request, f'Rejected upload "{file_obj.name}": only PNG/JPG/JPEG/WEBP/GIF image files are allowed.')
                 continue
             orig_name = re.sub(r'[^A-Za-z0-9_-]', '_', orig_name)[:60] or 'file'
             random_suffix = uuid.uuid4().hex[:8]
@@ -396,14 +403,131 @@ def seo(request):
     admin_id = _get_admin_from_session(request)
     if not admin_id: return redirect('admin_login')
 
+    from apps.home.models.link_og_setting import LinkOgSetting
+
     context = {
         'seo_meta_title': SiteSetting.get_value('seo_meta_title', 'Expert & Trusted Insurance Agent in your Padosi'),
         'seo_meta_description': SiteSetting.get_value('seo_meta_description', ''),
         'seo_keywords': SiteSetting.get_value('seo_keywords', 'insurance, agent, neighborhood, padosiagent, life insurance'),
         'seo_og_title': SiteSetting.get_value('seo_og_title', ''),
         'seo_og_description': SiteSetting.get_value('seo_og_description', ''),
+        'og_default_image': SiteSetting.get_value('og_default_image', ''),
+        'link_rules': LinkOgSetting.objects.all().order_by('-updated_at'),
     }
     return render(request, 'admin/settings/seo.html', context)
+
+
+def link_og_save(request):
+    """Create or update a custom OG image and meta rule for any specific link path."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id: return redirect('admin_login')
+
+    from apps.home.models.link_og_setting import LinkOgSetting
+    import uuid
+
+    if request.method == 'POST':
+        rule_id = request.POST.get('rule_id', '').strip()
+        path = request.POST.get('path', '').strip()
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        is_active = request.POST.get('is_active') in ('1', 'true', 'on', True)
+
+        if not path:
+            messages.error(request, 'URL Path is required (e.g. / or /agent/registration/).')
+            return redirect('admin_settings_seo')
+
+        clean_path = LinkOgSetting.normalize_path(path)
+
+        # Handle file upload or image URL input
+        image_url = request.POST.get('image_url', '').strip()
+        if 'image_file' in request.FILES:
+            file_obj = request.FILES['image_file']
+            orig_name, ext = os.path.splitext(file_obj.name)
+            allowed_exts = {'.png', '.jpg', '.jpeg', '.webp', '.gif'}
+            if ext.lower() in allowed_exts:
+                fs = FileSystemStorage(
+                    location=os.path.join(settings.MEDIA_ROOT, 'og'),
+                    base_url='/media/og/'
+                )
+                orig_name = re.sub(r'[^A-Za-z0-9_-]', '_', orig_name)[:60] or 'og'
+                random_suffix = uuid.uuid4().hex[:8]
+                new_filename = f"{orig_name}_{random_suffix}{ext}"
+                saved_name = fs.save(new_filename, file_obj)
+                image_url = fs.url(saved_name)
+            else:
+                messages.error(request, f'Invalid file format "{ext}". Allowed: PNG, JPG, JPEG, WEBP, GIF.')
+                return redirect('admin_settings_seo')
+
+        if rule_id:
+            try:
+                rule = LinkOgSetting.objects.get(id=rule_id)
+                rule.path = clean_path
+                if image_url:
+                    rule.image = image_url
+                rule.title = title
+                rule.description = description
+                rule.is_active = is_active
+                rule.save()
+                AdminActivityLog.log(f'Updated Link OG rule: {clean_path}', 'LinkOgSetting', request=request)
+                messages.success(request, f'OG rule for "{clean_path}" updated successfully.')
+            except LinkOgSetting.DoesNotExist:
+                messages.error(request, 'Rule not found.')
+        else:
+            if not image_url:
+                messages.error(request, 'Please upload an image or provide an image URL.')
+                return redirect('admin_settings_seo')
+
+            rule, created = LinkOgSetting.objects.update_or_create(
+                path=clean_path,
+                defaults={
+                    'image': image_url,
+                    'title': title,
+                    'description': description,
+                    'is_active': is_active,
+                }
+            )
+            AdminActivityLog.log(f'Created Link OG rule: {clean_path}', 'LinkOgSetting', request=request)
+            messages.success(request, f'OG rule for "{clean_path}" saved successfully.')
+
+    return redirect('admin_settings_seo')
+
+
+def link_og_delete(request, rule_id):
+    """Delete a custom Link OG rule."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id: return redirect('admin_login')
+
+    from apps.home.models.link_og_setting import LinkOgSetting
+    try:
+        rule = LinkOgSetting.objects.get(id=rule_id)
+        path = rule.path
+        rule.delete()
+        AdminActivityLog.log(f'Deleted Link OG rule: {path}', 'LinkOgSetting', request=request)
+        messages.success(request, f'OG rule for "{path}" deleted successfully.')
+    except LinkOgSetting.DoesNotExist:
+        messages.error(request, 'Rule not found.')
+
+    return redirect('admin_settings_seo')
+
+
+def link_og_toggle(request, rule_id):
+    """Toggle active status of a Link OG rule."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id: return redirect('admin_login')
+
+    from apps.home.models.link_og_setting import LinkOgSetting
+    try:
+        rule = LinkOgSetting.objects.get(id=rule_id)
+        rule.is_active = not rule.is_active
+        rule.save()
+        status_label = 'Activated' if rule.is_active else 'Deactivated'
+        AdminActivityLog.log(f'{status_label} Link OG rule: {rule.path}', 'LinkOgSetting', request=request)
+        messages.success(request, f'OG rule for "{rule.path}" is now {status_label.lower()}.')
+    except LinkOgSetting.DoesNotExist:
+        messages.error(request, 'Rule not found.')
+
+    return redirect('admin_settings_seo')
+
 
 
 def security(request):
