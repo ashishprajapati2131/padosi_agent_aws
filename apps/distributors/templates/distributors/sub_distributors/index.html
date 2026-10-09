@@ -120,6 +120,11 @@
                             <button class="btn btn-sm btn-light border shadow-sm" onclick="copyAgentLink('{{ sd.agent_link }}')" title="Copy Agent Reg Link">
                                 <i class="fa-solid fa-link text-primary"></i>
                             </button>
+                            <button type="button" class="btn btn-sm btn-light border shadow-sm text-warning reset-sub-pwd-btn"
+                                    title="Reset Password" data-bs-toggle="modal" data-bs-target="#resetSubPwdModal"
+                                    data-id="{{ sd.obj.id }}" data-name="{{ sd.obj.fullname }}">
+                                <i class="fa-solid fa-key"></i>
+                            </button>
                             <form action="{% url 'distributors:sub_distributor_toggle_status' sd.obj.id %}" method="POST" class="d-inline">
                                 {% csrf_token %}
                                 {% if sd.obj.status == 'active' %}
@@ -192,6 +197,37 @@
     .bg-danger-light { background: #fee2e2 !important; }
 </style>
 
+<!-- Reset sub-distributor password modal -->
+<div class="modal fade" id="resetSubPwdModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="resetSubPwdForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Reset Sub-Distributor Password</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted" style="font-size:13px;">Set a new login password for <b id="resetSubName"></b>. Share it with them securely.</p>
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size:13px;">New password</label>
+                        <input type="text" name="password" class="form-control" minlength="8" required placeholder="At least 8 characters">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label" style="font-size:13px;">Confirm password</label>
+                        <input type="text" name="confirm_password" class="form-control" minlength="8" required>
+                    </div>
+                    <button type="button" class="btn btn-link btn-sm p-0" id="genSubPwdBtn">Generate a strong password</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning btn-sm"><i class="fa-solid fa-rotate me-1"></i> Reset Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -214,5 +250,31 @@
         navigator.clipboard.writeText(link);
         alert("Agent Registration Link copied for this Sub-Distributor!");
     }
+
+    // Reset-password modal: point the form at the clicked sub-distributor.
+    document.querySelectorAll('.reset-sub-pwd-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.getAttribute('data-id');
+            document.getElementById('resetSubPwdForm').action =
+                '/distributor/sub-distributors/' + id + '/reset-password/';
+            document.getElementById('resetSubName').textContent = this.getAttribute('data-name') || '';
+            var f = document.getElementById('resetSubPwdForm');
+            f.querySelector('input[name="password"]').value = '';
+            f.querySelector('input[name="confirm_password"]').value = '';
+        });
+    });
+    (function() {
+        var gen = document.getElementById('genSubPwdBtn');
+        if (!gen) return;
+        gen.addEventListener('click', function() {
+            var chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$%';
+            var arr = new Uint32Array(12), out = '';
+            (window.crypto || window.msCrypto).getRandomValues(arr);
+            for (var i = 0; i < 12; i++) out += chars[arr[i] % chars.length];
+            var f = document.getElementById('resetSubPwdForm');
+            f.querySelector('input[name="password"]').value = out;
+            f.querySelector('input[name="confirm_password"]').value = out;
+        });
+    })();
 </script>
 {% endblock %}

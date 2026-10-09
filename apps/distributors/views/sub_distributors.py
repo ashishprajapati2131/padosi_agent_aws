@@ -522,3 +522,33 @@ def sub_distributor_register_agent(request):
     context['sub_distributor_name'] = sub_dist.fullname
 
     return render(request, 'agents/registration.html', context)
+
+
+@login_required(login_url='distributors:login')
+@user_passes_test(is_distributor, login_url='distributors:login')
+def sub_distributor_reset_password(request, pk):
+    """Parent distributor resets one of THEIR OWN sub-distributors' passwords.
+
+    Ownership is enforced by filtering on the logged-in distributor's id, so a
+    distributor can never reset a sub-distributor that is not theirs.
+    """
+    if request.method != 'POST':
+        return redirect('distributors:sub_distributors_index')
+
+    distributor_id = _distributor_laravel_id(request)
+    sub_dist = get_object_or_404(SubDistributor, pk=pk, distributor_id=distributor_id)
+
+    password = request.POST.get('password', '')
+    confirm = request.POST.get('confirm_password', '')
+
+    if not password or len(password) < 8:
+        messages.error(request, 'Password must be at least 8 characters.')
+        return redirect('distributors:sub_distributors_index')
+    if password != confirm:
+        messages.error(request, 'Passwords do not match.')
+        return redirect('distributors:sub_distributors_index')
+
+    sub_dist.password = hash_password(password)
+    sub_dist.save(update_fields=['password', 'updated_at'])
+    messages.success(request, f"Password reset for sub-distributor '{sub_dist.fullname}'.")
+    return redirect('distributors:sub_distributors_index')

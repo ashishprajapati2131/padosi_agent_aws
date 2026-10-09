@@ -114,6 +114,8 @@ from .views.distributors import (
     distributor_store,
     distributor_detail,
     toggle_distributor_status,
+    distributor_reset_password,
+    subdistributor_reset_password,
 )
 from .views.users import user_list, user_edit, user_update
 from .views.events import event_list, event_show, event_export
@@ -380,6 +382,8 @@ urlpatterns = [
     path("admin/distributors/create/", distributor_create, name="admin_distributors_create"),
     path("admin/distributors/store/", distributor_store, name="admin_distributors_store"),
     path("admin/distributors/toggle-status/", toggle_distributor_status, name="admin_distributor_toggle_status"),
+    path("admin/distributors/reset-password/", distributor_reset_password, name="admin_distributor_reset_password"),
+    path("admin/distributors/sub/reset-password/", subdistributor_reset_password, name="admin_subdistributor_reset_password"),
     path("admin/distributors/<int:distributor_id>/", distributor_detail, name="admin_distributor_detail"),
 
     # Phase 6C: Users
