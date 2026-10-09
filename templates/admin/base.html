@@ -855,6 +855,12 @@
                 <i class="fa-solid fa-location-crosshairs" style="color:#10b981;"></i> Pincode &amp; Find Agent
                 <span class="badge ms-auto" style="background:#10b981;">Live</span>
             </a>
+
+            <a href="{% url 'admin_pincode_heatmap' %}"
+                class="menu-item {% if '/admin/pincode-heatmap/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-fire-flame-curved" style="color:#f59e0b;"></i> Pincode Heatmap (BI)
+                <span class="badge ms-auto bg-warning-subtle text-warning border border-warning-subtle" style="font-size: 10px;">Beta</span>
+            </a>
             {% endif %}
 
             <!-- Developer & API -->
@@ -905,6 +911,12 @@
             <a href="/admin/settings/seo/"
                 class="menu-item {% if '/admin/settings/seo/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-magnifying-glass-chart"></i> SEO Meta
+            </a>
+
+            <a href="{% url 'admin_settings_banner_popup' %}"
+                class="menu-item {% if '/admin/settings/banner-popup/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-bullhorn" style="color:#10b981;"></i> Banner &amp; Popup Studio
+                <span class="badge ms-auto bg-success text-white" style="font-size: 10px;">Live</span>
             </a>
 
             <a href="/admin/settings/security/"

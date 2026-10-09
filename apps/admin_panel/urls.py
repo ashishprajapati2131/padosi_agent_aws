@@ -106,7 +106,7 @@ from .views.find_agent_locator import (
     live_preview as find_agent_locator_live_preview,
     unlink_agent_pincode as find_agent_locator_unlink_agent,
 )
-from .views import settings, subscriptions
+from .views import settings, subscriptions, pincode_heatmap
 from .views.delete import admin_delete
 from .views.distributors import (
     distributor_list,
@@ -490,6 +490,8 @@ urlpatterns = [
     path("admin/find-agent-locator/create-agent/",  find_agent_locator_create_agent,   name="admin_find_agent_locator_create_agent"),
     path("admin/find-agent-locator/live-preview/",  find_agent_locator_live_preview,   name="admin_find_agent_locator_live_preview"),
     path("admin/find-agent-locator/unlink-agent/",  find_agent_locator_unlink_agent,   name="admin_find_agent_locator_unlink_agent"),
+    path("admin/pincode-heatmap/",                  pincode_heatmap.pincode_heatmap_index, name="admin_pincode_heatmap"),
+    path("admin/pincode-heatmap/toggle-flag/",      pincode_heatmap.toggle_heatmap_flag,   name="admin_toggle_heatmap_flag"),
 
     # Phase SETTINGS: Settings & Homepage Editor
     path("admin/settings/general/",         settings.general,             name="admin_settings_general"),
@@ -497,6 +499,10 @@ urlpatterns = [
     path("admin/settings/seo/link-og/save/", settings.link_og_save,        name="admin_link_og_save"),
     path("admin/settings/seo/link-og/<int:rule_id>/delete/", settings.link_og_delete, name="admin_link_og_delete"),
     path("admin/settings/seo/link-og/<int:rule_id>/toggle/", settings.link_og_toggle, name="admin_link_og_toggle"),
+    path("admin/settings/banner-popup/",    settings.banner_popup_studio, name="admin_settings_banner_popup"),
+    path("admin/settings/banner-popup/save-banner/", settings.save_banner_settings, name="admin_save_banner_settings"),
+    path("admin/settings/banner-popup/save-popup/", settings.save_popup_settings, name="admin_save_popup_settings"),
+    path("admin/settings/banner-popup/toggle/<str:target>/", settings.toggle_banner_popup, name="admin_toggle_banner_popup"),
     path("admin/settings/security/",        settings.security,            name="admin_settings_security"),
     path("admin/settings/templates/",       settings.templates,           name="admin_settings_templates"),
     path("admin/settings/templates/update/",settings.update_templates,    name="admin_settings_templates_update"),

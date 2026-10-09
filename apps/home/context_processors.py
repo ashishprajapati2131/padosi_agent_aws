@@ -97,7 +97,88 @@ def seo_context(request):
         'default_og_image': final_og_image,
         'has_custom_link_og': has_custom_link_og,
         'public_site_base': get_public_site_base(request),
+        'site_banner': get_banner_config(request),
+        'site_popup': get_exit_popup_config(request),
     }
+
+
+def get_banner_config(request):
+    """Fetches live top announcement banner configuration (cached 5 min)."""
+    cached = cache.get('site_announcement_banner_data')
+    if cached is None:
+        val = SiteSetting.get_value('site_announcement_banner', None)
+        if isinstance(val, str) and val.strip().startswith(('{', '[')):
+            try:
+                cached = json.loads(val)
+            except Exception:
+                cached = None
+        elif isinstance(val, dict):
+            cached = val
+        else:
+            cached = {
+                'is_active': False,
+                'message': '🎉 Special Offer: Connect with Verified Insurance Agents in Your Padosi!',
+                'btn_text': 'Find Agents',
+                'btn_url': '/find-agents/',
+                'theme': 'emerald',
+                'bg_color': '#059669',
+                'text_color': '#ffffff',
+                'is_dismissible': True,
+                'target_page': 'all',
+            }
+        cache.set('site_announcement_banner_data', cached, timeout=300)
+
+    if not cached or not cached.get('is_active'):
+        return None
+
+    target = cached.get('target_page', 'all')
+    path = request.path
+    if target == 'home_only' and path != '/':
+        return None
+    if target == 'agents_only' and not ('/find-agents/' in path or '/agent/' in path):
+        return None
+
+    return cached
+
+
+def get_exit_popup_config(request):
+    """Fetches live exit-intent lead popup configuration (cached 5 min)."""
+    cached = cache.get('site_exit_popup_data')
+    if cached is None:
+        val = SiteSetting.get_value('site_exit_popup', None)
+        if isinstance(val, str) and val.strip().startswith(('{', '[')):
+            try:
+                cached = json.loads(val)
+            except Exception:
+                cached = None
+        elif isinstance(val, dict):
+            cached = val
+        else:
+            cached = {
+                'is_active': False,
+                'popup_type': 'lead_form',
+                'eyebrow': 'WAIT! BEFORE YOU GO',
+                'title': 'Need Free Guidance from a Local Insurance Advisor?',
+                'description': 'Tell us your pincode & insurance need. A verified licensed advisor will connect with you within 15 minutes. 100% free consultation!',
+                'btn_text': 'Request Free Callback',
+                'btn_url': '/find-agents/',
+                'timer_seconds': 15,
+                'dismiss_days': 3,
+                'target_page': 'all',
+            }
+        cache.set('site_exit_popup_data', cached, timeout=300)
+
+    if not cached or not cached.get('is_active'):
+        return None
+
+    target = cached.get('target_page', 'all')
+    path = request.path
+    if target == 'home_only' and path != '/':
+        return None
+    if target == 'agents_only' and not ('/find-agents/' in path or '/agent/' in path):
+        return None
+
+    return cached
 
 
 def calculator_nav(request):

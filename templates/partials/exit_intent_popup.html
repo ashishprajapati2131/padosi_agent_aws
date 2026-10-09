@@ -1,0 +1,281 @@
+{% if site_popup and site_popup.is_active %}
+<!-- PADOSIAGENT EXIT-INTENT / TIMED LEAD POPUP -->
+<div id="padosiExitPopupModal" class="padosi-exit-backdrop" style="display: none;">
+    <div class="padosi-exit-card">
+        <!-- Close Button -->
+        <button type="button" class="padosi-exit-close" onclick="closePadosiExitPopup()" aria-label="Close modal">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <!-- Brand Icon / Eyebrow -->
+        <div class="text-center mb-2">
+            <div class="padosi-exit-icon-wrap">
+                <i class="fa-solid fa-shield-halved text-success"></i>
+            </div>
+            {% if site_popup.eyebrow %}
+            <span class="padosi-exit-eyebrow">{{ site_popup.eyebrow }}</span>
+            {% endif %}
+            <h4 class="padosi-exit-title">{{ site_popup.title|default:'Need Free Guidance from a Local Insurance Expert?' }}</h4>
+            <p class="padosi-exit-desc">{{ site_popup.description|default:'Tell us your locality, and our verified licensed agent will connect with you in 15 minutes. 100% free consultation.' }}</p>
+        </div>
+
+        {% if site_popup.popup_type == 'cta_card' %}
+            <!-- CTA CARD MODE -->
+            <div class="text-center pt-2">
+                <a href="{{ site_popup.btn_url|default:'/find-agents/' }}" class="btn btn-success btn-lg rounded-pill w-100 py-3 fw-bold shadow-sm" onclick="closePadosiExitPopup()">
+                    {{ site_popup.btn_text|default:'Find Nearby Agents' }} <i class="fa-solid fa-arrow-right ms-2"></i>
+                </a>
+            </div>
+        {% else %}
+            <!-- LEAD CAPTURE FORM MODE -->
+            <form id="padosiExitPopupForm" onsubmit="submitExitPopupLead(event)">
+                {% csrf_token %}
+                <div class="mb-2">
+                    <label class="padosi-exit-label">Full Name</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-end-0"><i class="fa-solid fa-user text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0" name="name" id="exitLeadName" placeholder="Enter your name" required>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-2">
+                    <div class="col-7">
+                        <label class="padosi-exit-label">Mobile Number</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light border-end-0 font-monospace text-muted">+91</span>
+                            <input type="tel" class="form-control border-start-0 font-monospace" name="mobile" id="exitLeadMobile" placeholder="10-digit mobile" maxlength="10" required>
+                        </div>
+                    </div>
+                    <div class="col-5">
+                        <label class="padosi-exit-label">Your Pincode</label>
+                        <input type="text" class="form-control form-control-sm font-monospace text-center" name="pincode" id="exitLeadPincode" placeholder="e.g. 380009" maxlength="6">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="padosi-exit-label">Insurance Requirement</label>
+                    <select class="form-select form-select-sm" name="insurance_type" id="exitLeadType">
+                        <option value="Health Insurance" selected>🏥 Health Insurance (Mediclaim)</option>
+                        <option value="Life Insurance">🛡️ Life / Term Insurance</option>
+                        <option value="Motor Insurance">🚗 Car / Bike Insurance</option>
+                        <option value="Claim Assistance">💼 Claim Assistance & Settlement</option>
+                        <option value="General Advice">ℹ️ General Insurance Consultation</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-success rounded-pill w-100 py-2 fw-bold shadow-sm" id="btnExitLeadSubmit">
+                    <i class="fa-solid fa-phone-volume me-2"></i> {{ site_popup.btn_text|default:'Request Free Callback' }}
+                </button>
+
+                <div class="text-center mt-2">
+                    <small class="text-muted" style="font-size: 11px;">
+                        <i class="fa-solid fa-lock text-success me-1"></i> No spam calls. Connect strictly with licensed advisors.
+                    </small>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.padosi-exit-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 999999;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: padosiFadeIn 0.25s ease-out;
+}
+.padosi-exit-card {
+    background: #ffffff;
+    width: 100%;
+    max-width: 440px;
+    border-radius: 24px;
+    padding: 26px 24px 22px;
+    position: relative;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    animation: padosiSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: 'Outfit', system-ui, sans-serif;
+}
+.padosi-exit-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    border: none;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.padosi-exit-close:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+.padosi-exit-icon-wrap {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #ecfdf5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 8px;
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.1);
+}
+.padosi-exit-eyebrow {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #059669;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-bottom: 6px;
+}
+.padosi-exit-title {
+    font-size: 19px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.25;
+    margin-bottom: 4px;
+}
+.padosi-exit-desc {
+    font-size: 12.5px;
+    color: #64748b;
+    line-height: 1.4;
+    margin-bottom: 12px;
+}
+.padosi-exit-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 3px;
+    display: block;
+}
+@keyframes padosiFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes padosiSlideUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 576px) {
+    .padosi-exit-card {
+        padding: 20px 18px 18px;
+        border-radius: 20px;
+    }
+    .padosi-exit-title {
+        font-size: 17px;
+    }
+}
+</style>
+
+<script>
+(function() {
+    var POPUP_DISMISS_KEY = 'padosi_exit_popup_dismissed';
+    var COOLDOWN_DAYS = parseInt("{{ site_popup.dismiss_days|default:'3' }}", 10) || 3;
+    var TIMER_SECONDS = parseInt("{{ site_popup.timer_seconds|default:'15' }}", 10) || 15;
+
+    // Check if dismissed within cooldown period
+    try {
+        var dismissedUntil = localStorage.getItem(POPUP_DISMISS_KEY);
+        if (dismissedUntil && Date.now() < parseInt(dismissedUntil, 10)) {
+            return; // Still in cooldown
+        }
+    } catch(e) {}
+
+    var hasTriggered = false;
+
+    function openModal() {
+        if (hasTriggered) return;
+        hasTriggered = true;
+        var modal = document.getElementById('padosiExitPopupModal');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    // 1. Desktop Exit-Intent: Cursor leaves window at the top
+    document.addEventListener('mouseleave', function(e) {
+        if (e.clientY <= 10) {
+            openModal();
+        }
+    });
+
+    // 2. Mobile / Inactive Timer Trigger
+    setTimeout(function() {
+        openModal();
+    }, TIMER_SECONDS * 1000);
+
+    window.closePadosiExitPopup = function() {
+        var modal = document.getElementById('padosiExitPopupModal');
+        if (modal) modal.style.display = 'none';
+        try {
+            var expiry = Date.now() + (COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+            localStorage.setItem(POPUP_DISMISS_KEY, expiry.toString());
+        } catch(e) {}
+    };
+
+    window.submitExitPopupLead = function(e) {
+        e.preventDefault();
+        var form = document.getElementById('padosiExitPopupForm');
+        var btn = document.getElementById('btnExitLeadSubmit');
+        var originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Submitting...';
+
+        var formData = new FormData(form);
+
+        fetch('/api/quick-lead-capture/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            if (data.status === 'success') {
+                closePadosiExitPopup();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Request Received!',
+                        text: data.message || 'Our licensed advisor will call you shortly.',
+                        confirmButtonColor: '#10b981',
+                        confirmButtonText: 'Great, thanks!'
+                    });
+                } else {
+                    alert(data.message);
+                }
+            } else {
+                alert(data.message || 'Something went wrong.');
+            }
+        })
+        .catch(function(err) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            alert('Could not submit request. Please try again.');
+        });
+    };
+})();
+</script>
+{% endif %}

@@ -1,0 +1,551 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}Live Announcement & Exit-Intent Popup Studio — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}System &rsaquo; Announcement & Popup Studio{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ─────────────────────────────────────────────────────────────
+   STUDIO CONTROLS & BROWSER SIMULATOR STYLING
+   ───────────────────────────────────────────────────────────── */
+.simulator-wrapper {
+    position: sticky;
+    top: 85px;
+    z-index: 20;
+}
+@media (max-width: 991.98px) {
+    .simulator-wrapper {
+        position: static !important;
+        margin-top: 1.5rem;
+    }
+}
+
+.browser-mockup {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.12);
+    overflow: hidden;
+}
+
+.browser-header {
+    background: #f1f5f9;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.browser-dots {
+    display: flex;
+    gap: 5px;
+}
+.browser-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+}
+.dot-red { background: #ef4444; }
+.dot-yellow { background: #f59e0b; }
+.dot-green { background: #10b981; }
+
+.browser-address-bar {
+    flex: 1;
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 11px;
+    color: #475569;
+    font-family: monospace;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #e2e8f0;
+}
+
+.browser-viewport {
+    height: 480px;
+    background: #f8fafc;
+    overflow-y: auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Preset Color Swatches */
+.color-swatch-card {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 10px 12px;
+    cursor: pointer;
+    background: #ffffff;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.color-swatch-card:hover {
+    border-color: #10b981;
+    background: #f0fdf4;
+}
+.form-check-input:checked + .color-swatch-label .color-swatch-card {
+    border-color: #059669;
+    background: #ecfdf5;
+    box-shadow: 0 0 0 1px #059669;
+}
+
+.swatch-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Simulated Popup inside Browser Viewport */
+.sim-popup-modal {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 50;
+    animation: fadeIn 0.2s ease;
+}
+.sim-popup-content {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 20px;
+    max-width: 320px;
+    width: 100%;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+    position: relative;
+    animation: slideUp 0.25s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Top Header -->
+    <div class="col-12">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-1 gap-3">
+            <div>
+                <h4 class="m-0 fw-bold text-dark"><i class="fa-solid fa-bullhorn text-warning me-2"></i> Announcement Bar &amp; Exit-Intent Popup Studio</h4>
+                <div class="text-muted small">Design, preview, and launch high-converting top announcements and exit-intent lead capture modals on your live website without touching any code!</div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a href="/" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> View Live Site
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- LEFT COLUMN: STUDIO CONTROLS -->
+    <div class="col-lg-7">
+        <!-- STUDIO NAV TABS -->
+        <ul class="nav nav-pills mb-3 p-1 bg-white rounded-pill border shadow-xs d-inline-flex" id="studioTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active rounded-pill px-3 py-1 fw-semibold small" id="tab-banner" data-bs-toggle="pill" data-bs-target="#panel-banner" type="button" role="tab">
+                    <i class="fa-solid fa-rectangle-ad text-success me-1"></i> Top Announcement Bar
+                    {% if banner.is_active %}<span class="badge bg-success ms-1">Live</span>{% endif %}
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link rounded-pill px-3 py-1 fw-semibold small" id="tab-popup" data-bs-toggle="pill" data-bs-target="#panel-popup" type="button" role="tab">
+                    <i class="fa-solid fa-arrow-up-right-dots text-primary me-1"></i> Exit-Intent Lead Popup
+                    {% if popup.is_active %}<span class="badge bg-success ms-1">Live</span>{% endif %}
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="studioTabsContent">
+            <!-- ─────────────────────────────────────────────
+                 TAB 1: TOP ANNOUNCEMENT BAR
+                 ───────────────────────────────────────────── -->
+            <div class="tab-pane fade show active" id="panel-banner" role="tabpanel">
+                <form method="POST" action="{% url 'admin_save_banner_settings' %}" id="bannerForm">
+                    {% csrf_token %}
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="m-0 fw-bold text-dark"><i class="fa-solid fa-bullhorn text-success me-2"></i> Top Header Announcement Bar</h6>
+                                <small class="text-muted">Displays a full-width header strip at the very top of your pages</small>
+                            </div>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" role="switch" name="is_active" id="bannerActiveSwitch" value="1" {% if banner.is_active %}checked{% endif %} onchange="syncSimulator()">
+                                <label class="form-check-label fw-bold small" for="bannerActiveSwitch">Active on Site</label>
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <!-- Theme Palette Selection -->
+                            <label class="form-label fw-semibold small text-muted mb-2">Preset Color Palette &amp; Style</label>
+                            <div class="row g-2 mb-3">
+                                <div class="col-sm-6">
+                                    <input type="radio" name="theme" value="emerald" id="themeEmerald" class="form-check-input d-none" {% if banner.theme == 'emerald' or not banner.theme %}checked{% endif %} onchange="setBannerTheme('emerald', 'linear-gradient(135deg, #059669 0%, #10b981 100%)', '#ffffff')">
+                                    <label class="d-block color-swatch-label" for="themeEmerald">
+                                        <div class="color-swatch-card">
+                                            <div class="swatch-circle" style="background: linear-gradient(135deg, #059669, #10b981);"></div>
+                                            <div>
+                                                <div class="fw-bold text-dark small">🌿 Emerald Growth</div>
+                                                <div class="text-muted" style="font-size: 10.5px;">Vibrant Green Gradient</div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div class="col-sm-6">
+                                    <input type="radio" name="theme" value="royal_blue" id="themeBlue" class="form-check-input d-none" {% if banner.theme == 'royal_blue' %}checked{% endif %} onchange="setBannerTheme('royal_blue', 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', '#ffffff')">
+                                    <label class="d-block color-swatch-label" for="themeBlue">
+                                        <div class="color-swatch-card">
+                                            <div class="swatch-circle" style="background: linear-gradient(135deg, #1e3a8a, #2563eb);"></div>
+                                            <div>
+                                                <div class="fw-bold text-dark small">💎 Royal Navy</div>
+                                                <div class="text-muted" style="font-size: 10.5px;">Trustworthy Deep Blue</div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div class="col-sm-6">
+                                    <input type="radio" name="theme" value="sunset_amber" id="themeAmber" class="form-check-input d-none" {% if banner.theme == 'sunset_amber' %}checked{% endif %} onchange="setBannerTheme('sunset_amber', 'linear-gradient(135deg, #ea580c 0%, #f59e0b 100%)', '#ffffff')">
+                                    <label class="d-block color-swatch-label" for="themeAmber">
+                                        <div class="color-swatch-card">
+                                            <div class="swatch-circle" style="background: linear-gradient(135deg, #ea580c, #f59e0b);"></div>
+                                            <div>
+                                                <div class="fw-bold text-dark small">🌅 Sunset Amber</div>
+                                                <div class="text-muted" style="font-size: 10.5px;">Festival &amp; Urgency Banner</div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div class="col-sm-6">
+                                    <input type="radio" name="theme" value="midnight" id="themeMidnight" class="form-check-input d-none" {% if banner.theme == 'midnight' %}checked{% endif %} onchange="setBannerTheme('midnight', '#0f172a', '#ffffff')">
+                                    <label class="d-block color-swatch-label" for="themeMidnight">
+                                        <div class="color-swatch-card">
+                                            <div class="swatch-circle" style="background: #0f172a;"></div>
+                                            <div>
+                                                <div class="fw-bold text-dark small">⚡ Midnight Dark</div>
+                                                <div class="text-muted" style="font-size: 10.5px;">Sleek Slate Dark Mode</div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="bg_color" id="bannerBgColor" value="{{ banner.bg_color|default:'linear-gradient(135deg, #059669 0%, #10b981 100%)' }}">
+                            <input type="hidden" name="text_color" id="bannerTextColor" value="{{ banner.text_color|default:'#ffffff' }}">
+
+                            <!-- Message Content -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-muted">Announcement Message (Supports Emojis)</label>
+                                <textarea class="form-control" name="message" id="bannerMessageInput" rows="2" placeholder="e.g. 🎉 Special Festival Offer: Get 30 Days Free Listing for All Licensed Agents!" oninput="syncSimulator()">{{ banner.message }}</textarea>
+                            </div>
+
+                            <!-- Button Controls -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Action Button Text</label>
+                                    <input type="text" class="form-control" name="btn_text" id="bannerBtnTextInput" value="{{ banner.btn_text|default:'Find Agents' }}" placeholder="e.g. Claim Free Listing" oninput="syncSimulator()">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Action Button URL</label>
+                                    <input type="text" class="form-control font-monospace" name="btn_url" id="bannerBtnUrlInput" value="{{ banner.btn_url|default:'/find-agents/' }}" placeholder="e.g. /agent/registration/" oninput="syncSimulator()">
+                                </div>
+                            </div>
+
+                            <!-- Settings / Rules -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Target Pages</label>
+                                    <select class="form-select form-select-sm" name="target_page" id="bannerTargetPage">
+                                        <option value="all" {% if banner.target_page == 'all' or not banner.target_page %}selected{% endif %}>🌐 All Public Pages</option>
+                                        <option value="home_only" {% if banner.target_page == 'home_only' %}selected{% endif %}>🏠 Homepage Only ( / )</option>
+                                        <option value="agents_only" {% if banner.target_page == 'agents_only' %}selected{% endif %}>👥 Agent Discovery Pages Only</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-center pt-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" name="is_dismissible" id="bannerDismissible" value="1" {% if banner.is_dismissible %}checked{% endif %} onchange="syncSimulator()">
+                                        <label class="form-check-label fw-semibold small" for="bannerDismissible">Allow Visitors to Dismiss (Close)</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-success btn-lg px-4 shadow-sm w-100">
+                                <i class="fa-solid fa-floppy-disk me-2"></i> Save &amp; Publish Announcement Bar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ─────────────────────────────────────────────
+                 TAB 2: EXIT-INTENT LEAD POPUP
+                 ───────────────────────────────────────────── -->
+            <div class="tab-pane fade" id="panel-popup" role="tabpanel">
+                <form method="POST" action="{% url 'admin_save_popup_settings' %}" id="popupForm">
+                    {% csrf_token %}
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="m-0 fw-bold text-dark"><i class="fa-solid fa-arrow-up-right-dots text-primary me-2"></i> Exit-Intent &amp; Timed Lead Popup</h6>
+                                <small class="text-muted">Captures abandoning visitors before they close the tab</small>
+                            </div>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" role="switch" name="is_active" id="popupActiveSwitch" value="1" {% if popup.is_active %}checked{% endif %} onchange="syncSimulator()">
+                                <label class="form-check-label fw-bold small" for="popupActiveSwitch">Active on Site</label>
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <!-- Popup Mode -->
+                            <label class="form-label fw-semibold small text-muted mb-2">Popup Functionality Type</label>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="d-block style-card-label">
+                                        <input type="radio" name="popup_type" value="lead_form" class="form-check-input d-none" {% if popup.popup_type == 'lead_form' or not popup.popup_type %}checked{% endif %} onchange="syncSimulator()">
+                                        <div class="color-swatch-card">
+                                            <i class="fa-solid fa-address-card text-success fa-lg"></i>
+                                            <div>
+                                                <div class="fw-bold text-dark small">Lead Capture Form</div>
+                                                <div class="text-muted" style="font-size: 10.5px;">Collects Name, Phone &amp; Pincode</div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="d-block style-card-label">
+                                        <input type="radio" name="popup_type" value="cta_card" class="form-check-input d-none" {% if popup.popup_type == 'cta_card' %}checked{% endif %} onchange="syncSimulator()">
+                                        <div class="color-swatch-card">
+                                            <i class="fa-solid fa-bullseye text-primary fa-lg"></i>
+                                            <div>
+                                                <div class="fw-bold text-dark small">Promo CTA Card</div>
+                                                <div class="text-muted" style="font-size: 10.5px;">Big direct button to offer / page</div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-muted">Eyebrow / Badge Text</label>
+                                <input type="text" class="form-control" name="eyebrow" id="popupEyebrowInput" value="{{ popup.eyebrow|default:'WAIT! BEFORE YOU GO' }}" placeholder="e.g. WAIT! BEFORE YOU GO" oninput="syncSimulator()">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-muted">Headline Title</label>
+                                <input type="text" class="form-control fw-bold" name="title" id="popupTitleInput" value="{{ popup.title|default:'Need Free Guidance from a Local Insurance Expert?' }}" placeholder="e.g. Need Free Guidance from a Local Insurance Expert?" oninput="syncSimulator()">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-muted">Subtitle / Value Proposition</label>
+                                <textarea class="form-control" name="description" id="popupDescInput" rows="2" placeholder="Explain why they should leave their details..." oninput="syncSimulator()">{{ popup.description }}</textarea>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">CTA Button Text</label>
+                                    <input type="text" class="form-control" name="btn_text" id="popupBtnTextInput" value="{{ popup.btn_text|default:'Request Free Callback' }}" oninput="syncSimulator()">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">CTA Button URL (For Promo Card)</label>
+                                    <input type="text" class="form-control font-monospace" name="btn_url" id="popupBtnUrlInput" value="{{ popup.btn_url|default:'/find-agents/' }}">
+                                </div>
+                            </div>
+
+                            <!-- Trigger Rules -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small text-muted">Mobile Timer (Seconds)</label>
+                                    <input type="number" class="form-control" name="timer_seconds" id="popupTimerInput" value="{{ popup.timer_seconds|default:'15' }}" min="3" max="120">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small text-muted">Dismiss Cooldown (Days)</label>
+                                    <input type="number" class="form-control" name="dismiss_days" id="popupDaysInput" value="{{ popup.dismiss_days|default:'3' }}" min="1" max="30">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small text-muted">Target Pages</label>
+                                    <select class="form-select" name="target_page">
+                                        <option value="all" {% if popup.target_page == 'all' or not popup.target_page %}selected{% endif %}>🌐 All Public Pages</option>
+                                        <option value="home_only" {% if popup.target_page == 'home_only' %}selected{% endif %}>🏠 Homepage Only</option>
+                                        <option value="agents_only" {% if popup.target_page == 'agents_only' %}selected{% endif %}>👥 Agent Discovery Only</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-lg px-4 shadow-sm w-100">
+                                <i class="fa-solid fa-floppy-disk me-2"></i> Save &amp; Publish Exit-Intent Popup
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT COLUMN: INTERACTIVE BROWSER SIMULATOR -->
+    <div class="col-lg-5">
+        <div class="simulator-wrapper">
+            <div class="browser-mockup">
+                <!-- Browser Bar -->
+                <div class="browser-header">
+                    <div class="browser-dots">
+                        <div class="browser-dot dot-red"></div>
+                        <div class="browser-dot dot-yellow"></div>
+                        <div class="browser-dot dot-green"></div>
+                    </div>
+                    <div class="browser-address-bar">
+                        <span><i class="fa-solid fa-lock text-success me-1" style="font-size: 9px;"></i> https://padosiagent.com</span>
+                        <span class="badge bg-light text-muted border py-0 px-1" style="font-size: 9px;">Preview Mode</span>
+                    </div>
+                </div>
+
+                <!-- Browser Viewport Canvas -->
+                <div class="browser-viewport" id="browserViewport">
+                    <!-- Live Announcement Bar Component -->
+                    <div id="simAnnouncementBar" class="py-2 px-3 text-center d-flex align-items-center justify-content-between shadow-xs" style="
+                        background: {{ banner.bg_color|default:'linear-gradient(135deg, #059669 0%, #10b981 100%)' }};
+                        color: {{ banner.text_color|default:'#ffffff' }};
+                        font-size: 11.5px;
+                        transition: all 0.2s ease;
+                    ">
+                        <div class="d-flex align-items-center justify-content-center flex-grow-1 gap-2 text-truncate">
+                            <span id="simBannerText" class="fw-medium text-truncate">{{ banner.message|default:'🎉 Special Offer: Connect with Verified Insurance Agents in Your Padosi!' }}</span>
+                            <span id="simBannerBtn" class="badge bg-white text-dark rounded-pill px-2 py-1 shadow-xs fw-bold" style="font-size: 10px;">
+                                {{ banner.btn_text|default:'Find Agents' }} &rarr;
+                            </span>
+                        </div>
+                        <span id="simBannerClose" style="opacity: 0.8; font-size: 11px; cursor: pointer;"><i class="fa-solid fa-xmark"></i></span>
+                    </div>
+
+                    <!-- Simulated Website Hero Area -->
+                    <div class="p-3 text-center flex-grow-1 d-flex flex-column justify-content-center align-items-center" style="background: #ffffff;">
+                        <img src="/static/img/logo.webp" alt="PadosiAgent" style="height: 32px;" class="mb-2">
+                        <h6 class="fw-bold text-dark mb-1">Find a Trusted Insurance Expert in your Padosi</h6>
+                        <p class="text-muted small mb-3" style="font-size: 11px; max-width: 260px;">India's hyperlocal insurance discovery network for Health, Life &amp; Motor cover.</p>
+                        
+                        <div class="p-2 border rounded-pill bg-light d-flex align-items-center w-100 mb-3" style="max-width: 240px;">
+                            <i class="fa-solid fa-location-dot text-muted me-2 ms-1" style="font-size: 11px;"></i>
+                            <span class="text-muted small" style="font-size: 10.5px;">Enter your pincode...</span>
+                        </div>
+
+                        <!-- Button to manually test popup inside simulator -->
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-xs" onclick="toggleSimPopup()">
+                            <i class="fa-solid fa-eye me-1"></i> Preview Exit-Intent Popup
+                        </button>
+                    </div>
+
+                    <!-- Live Simulated Popup Modal (Hidden until toggled) -->
+                    <div id="simPopupModal" class="sim-popup-modal d-none">
+                        <div class="sim-popup-content text-center">
+                            <button type="button" class="btn-close position-absolute top-0 end-0 m-3" style="font-size: 10px;" onclick="toggleSimPopup()"></button>
+                            <div class="mb-2">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-monospace" style="font-size: 9px;" id="simPopupEyebrow">
+                                    {{ popup.eyebrow|default:'WAIT! BEFORE YOU GO' }}
+                                </span>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1" id="simPopupTitle" style="font-size: 13px;">
+                                {{ popup.title|default:'Need Free Guidance from a Local Insurance Expert?' }}
+                            </h6>
+                            <p class="text-muted small mb-2" id="simPopupDesc" style="font-size: 10px;">
+                                {{ popup.description|default:'Tell us your locality, and our verified licensed agent will connect with you in 15 minutes.' }}
+                            </p>
+
+                            <div class="border rounded-3 p-2 bg-light mb-2 text-start" style="font-size: 10px;">
+                                <div class="mb-1 text-muted">Full Name: <span class="fw-bold text-dark">Rahul Sharma</span></div>
+                                <div class="mb-1 text-muted">Mobile: <span class="fw-bold text-dark">+91 98765 43210</span></div>
+                                <div class="text-muted">Need: <span class="badge bg-success text-white">Health Insurance</span></div>
+                            </div>
+
+                            <button type="button" class="btn btn-success btn-sm rounded-pill w-100 fw-bold shadow-xs" id="simPopupBtn" style="font-size: 11px;">
+                                {{ popup.btn_text|default:'Request Free Callback' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Helpful tips -->
+            <div class="alert alert-light border py-2 px-3 small text-muted text-center mt-3 rounded-3 shadow-xs">
+                <i class="fa-solid fa-circle-check text-success me-1"></i> Changes publish instantly across your live website!
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function setBannerTheme(themeKey, bgStyle, textStyle) {
+    document.getElementById('bannerBgColor').value = bgStyle;
+    document.getElementById('bannerTextColor').value = textStyle;
+    syncSimulator();
+}
+
+function syncSimulator() {
+    // 1. Sync Announcement Bar
+    var msg = document.getElementById('bannerMessageInput').value.trim();
+    var btnText = document.getElementById('bannerBtnTextInput').value.trim();
+    var bgColor = document.getElementById('bannerBgColor').value;
+    var textColor = document.getElementById('bannerTextColor').value;
+    var isDismissible = document.getElementById('bannerDismissible').checked;
+    var isBannerActive = document.getElementById('bannerActiveSwitch').checked;
+
+    var bar = document.getElementById('simAnnouncementBar');
+    var barText = document.getElementById('simBannerText');
+    var barBtn = document.getElementById('simBannerBtn');
+    var barClose = document.getElementById('simBannerClose');
+
+    if (isBannerActive) {
+        bar.style.display = 'flex';
+        bar.style.background = bgColor;
+        bar.style.color = textColor;
+        barText.textContent = msg || 'Special Announcement Banner';
+        if (btnText) {
+            barBtn.textContent = btnText + ' →';
+            barBtn.style.display = 'inline-block';
+        } else {
+            barBtn.style.display = 'none';
+        }
+        barClose.style.display = isDismissible ? 'inline-block' : 'none';
+    } else {
+        bar.style.display = 'none';
+    }
+
+    // 2. Sync Exit Popup
+    var eyebrow = document.getElementById('popupEyebrowInput').value.trim();
+    var title = document.getElementById('popupTitleInput').value.trim();
+    var desc = document.getElementById('popupDescInput').value.trim();
+    var pBtnText = document.getElementById('popupBtnTextInput').value.trim();
+
+    document.getElementById('simPopupEyebrow').textContent = eyebrow || 'SPECIAL OFFER';
+    document.getElementById('simPopupTitle').textContent = title || 'Need Help?';
+    document.getElementById('simPopupDesc').textContent = desc || 'Connect with verified advisors.';
+    document.getElementById('simPopupBtn').textContent = pBtnText || 'Connect Now';
+}
+
+function toggleSimPopup() {
+    var modal = document.getElementById('simPopupModal');
+    if (modal.classList.contains('d-none')) {
+        modal.classList.remove('d-none');
+    } else {
+        modal.classList.add('d-none');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    syncSimulator();
+});
+</script>
+{% endblock %}

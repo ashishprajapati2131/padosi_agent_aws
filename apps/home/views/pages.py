@@ -2117,4 +2117,42 @@ def city_agents_directory(request, city_slug):
     return render(request, 'public/city_directory.html', context)
 
 
+@require_POST
+def quick_lead_capture(request):
+    """Handle instant lead inquiries submitted via the exit-intent popup."""
+    name = request.POST.get('name', '').strip()
+    mobile = request.POST.get('mobile', '').strip()
+    pincode = request.POST.get('pincode', '').strip()
+    insurance_type = request.POST.get('insurance_type', 'General').strip()
+
+    if not name or not mobile:
+        return JsonResponse({'status': 'error', 'message': 'Name and mobile number are required.'}, status=400)
+
+    clean_mobile = re.sub(r'[^0-9]', '', mobile)
+    if len(clean_mobile) < 10:
+        return JsonResponse({'status': 'error', 'message': 'Please enter a valid 10-digit mobile number.'}, status=400)
+
+    email = request.POST.get('email', '').strip() or f"lead_{clean_mobile}@padosiagent.com"
+    subject = f"Exit Popup Lead: {insurance_type}"[:100]
+    message = f"Customer Name: {name}\nMobile: {mobile}\nPincode: {pincode}\nInsurance Type: {insurance_type}\nSource: Exit-Intent Popup"
+
+    try:
+        ContactSubmission.objects.create(
+            name=name[:100],
+            email=email,
+            mobile=clean_mobile[:10],
+            subject=subject,
+            message=message,
+            status='pending'
+        )
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Thank you! A verified neighbourhood advisor will connect with you shortly.'
+        })
+    except Exception as e:
+        logger.error("Error creating exit popup lead: %s", e)
+        return JsonResponse({'status': 'error', 'message': 'Could not submit your request. Please try again.'}, status=500)
+
+
+
 

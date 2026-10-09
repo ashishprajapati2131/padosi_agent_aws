@@ -1,8 +1,10 @@
 import re
 import os
+import json
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.conf import settings
+from django.core.cache import cache
 from django.core.files.storage import FileSystemStorage
 from apps.home.models.site_setting import SiteSetting
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
@@ -528,6 +530,168 @@ def link_og_toggle(request, rule_id):
         messages.error(request, 'Rule not found.')
 
     return redirect('admin_settings_seo')
+
+
+def banner_popup_studio(request):
+    """Admin Studio to design, preview & publish Top Announcement Banners and Exit-Intent Popups."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id: return redirect('admin_login')
+
+    banner_default = {
+        'is_active': False,
+        'message': '🎉 Special Festival Offer: Connect with Verified Insurance Agents in Your Padosi!',
+        'btn_text': 'Find Agents',
+        'btn_url': '/find-agents/',
+        'theme': 'emerald',
+        'bg_color': '#059669',
+        'text_color': '#ffffff',
+        'is_dismissible': True,
+        'target_page': 'all',
+    }
+    banner = SiteSetting.get_value('site_announcement_banner', banner_default)
+    if not isinstance(banner, dict):
+        try:
+            banner = json.loads(banner) if isinstance(banner, str) else banner_default
+        except Exception:
+            banner = banner_default
+
+    popup_default = {
+        'is_active': False,
+        'popup_type': 'lead_form',
+        'eyebrow': 'WAIT! BEFORE YOU GO',
+        'title': 'Need Free Guidance from a Local Insurance Advisor?',
+        'description': 'Tell us your pincode & insurance need. A verified licensed advisor will connect with you within 15 minutes. 100% free consultation!',
+        'btn_text': 'Request Free Callback',
+        'btn_url': '/find-agents/',
+        'timer_seconds': 15,
+        'dismiss_days': 3,
+        'target_page': 'all',
+    }
+    popup = SiteSetting.get_value('site_exit_popup', popup_default)
+    if not isinstance(popup, dict):
+        try:
+            popup = json.loads(popup) if isinstance(popup, str) else popup_default
+        except Exception:
+            popup = popup_default
+
+    context = {
+        'banner': banner,
+        'popup': popup,
+    }
+    return render(request, 'admin/settings/banner_popup_studio.html', context)
+
+
+def save_banner_settings(request):
+    """Save top announcement banner settings."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id: return redirect('admin_login')
+
+    if request.method == 'POST':
+        is_active = request.POST.get('is_active') in ('1', 'true', 'on', True)
+        message = request.POST.get('message', '').strip()
+        btn_text = request.POST.get('btn_text', '').strip()
+        btn_url = request.POST.get('btn_url', '').strip()
+        theme = request.POST.get('theme', 'emerald').strip()
+        bg_color = request.POST.get('bg_color', '#059669').strip()
+        text_color = request.POST.get('text_color', '#ffffff').strip()
+        is_dismissible = request.POST.get('is_dismissible') in ('1', 'true', 'on', True)
+        target_page = request.POST.get('target_page', 'all').strip()
+
+        payload = {
+            'is_active': is_active,
+            'message': message,
+            'btn_text': btn_text,
+            'btn_url': btn_url,
+            'theme': theme,
+            'bg_color': bg_color,
+            'text_color': text_color,
+            'is_dismissible': is_dismissible,
+            'target_page': target_page,
+        }
+
+        SiteSetting.set_value('site_announcement_banner', payload, 'general')
+        cache.delete('site_announcement_banner_data')
+        AdminActivityLog.log('Updated Top Announcement Banner settings', 'SiteSetting', request=request)
+        messages.success(request, 'Announcement Banner settings saved & published successfully!')
+
+    return redirect('admin_settings_banner_popup')
+
+
+def save_popup_settings(request):
+    """Save exit-intent lead popup settings."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id: return redirect('admin_login')
+
+    if request.method == 'POST':
+        is_active = request.POST.get('is_active') in ('1', 'true', 'on', True)
+        popup_type = request.POST.get('popup_type', 'lead_form').strip()
+        eyebrow = request.POST.get('eyebrow', '').strip()
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
+        btn_text = request.POST.get('btn_text', '').strip()
+        btn_url = request.POST.get('btn_url', '').strip()
+        try:
+            timer_seconds = int(request.POST.get('timer_seconds', 15))
+        except ValueError:
+            timer_seconds = 15
+        try:
+            dismiss_days = int(request.POST.get('dismiss_days', 3))
+        except ValueError:
+            dismiss_days = 3
+        target_page = request.POST.get('target_page', 'all').strip()
+
+        payload = {
+            'is_active': is_active,
+            'popup_type': popup_type,
+            'eyebrow': eyebrow,
+            'title': title,
+            'description': description,
+            'btn_text': btn_text,
+            'btn_url': btn_url,
+            'timer_seconds': timer_seconds,
+            'dismiss_days': dismiss_days,
+            'target_page': target_page,
+        }
+
+        SiteSetting.set_value('site_exit_popup', payload, 'general')
+        cache.delete('site_exit_popup_data')
+        AdminActivityLog.log('Updated Exit-Intent Popup settings', 'SiteSetting', request=request)
+        messages.success(request, 'Exit-Intent Lead Popup settings saved & published successfully!')
+
+    return redirect('admin_settings_banner_popup')
+
+
+def toggle_banner_popup(request, target):
+    """Quick 1-click toggle for banner or popup active state."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id: return redirect('admin_login')
+
+    if target == 'banner':
+        banner = SiteSetting.get_value('site_announcement_banner', {})
+        if not isinstance(banner, dict):
+            try:
+                banner = json.loads(banner)
+            except Exception:
+                banner = {}
+        banner['is_active'] = not banner.get('is_active', False)
+        SiteSetting.set_value('site_announcement_banner', banner, 'general')
+        cache.delete('site_announcement_banner_data')
+        status = 'activated' if banner['is_active'] else 'deactivated'
+        messages.success(request, f'Announcement Banner is now {status}.')
+    elif target == 'popup':
+        popup = SiteSetting.get_value('site_exit_popup', {})
+        if not isinstance(popup, dict):
+            try:
+                popup = json.loads(popup)
+            except Exception:
+                popup = {}
+        popup['is_active'] = not popup.get('is_active', False)
+        SiteSetting.set_value('site_exit_popup', popup, 'general')
+        cache.delete('site_exit_popup_data')
+        status = 'activated' if popup['is_active'] else 'deactivated'
+        messages.success(request, f'Exit-Intent Popup is now {status}.')
+
+    return redirect('admin_settings_banner_popup')
 
 
 
