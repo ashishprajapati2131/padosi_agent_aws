@@ -369,6 +369,102 @@ def paid_plan_label(slug_or_display_name):
     return raw
 
 
+def effective_plan_slug(plan_type=None, selected_plan=None):
+    """Pick the higher-tier plan slug from agents.plan_type vs subscription label."""
+    from plan_upgrade_handoff import normalize_upgrade_slug, plan_rank
+
+    type_slug = normalize_upgrade_slug(plan_type or '')
+    sub_slug = plan_slug_from_name(selected_plan or '')
+    if not type_slug and not sub_slug:
+        return ''
+    if plan_rank(type_slug) >= plan_rank(sub_slug):
+        return type_slug or sub_slug
+    return sub_slug or type_slug
+
+
+def resolve_agent_display_plan_label(plan_type=None, selected_plan=None):
+    """
+    Single admin/dashboard label for an agent's current plan.
+
+    Prefers the higher of agents.plan_type and the latest subscription row so
+    event-referral admin grants match the active agents list.
+    """
+    slug = effective_plan_slug(plan_type, selected_plan)
+    if slug == 'free_trial':
+        return 'Free Trial'
+    if slug == 'exclusive':
+        return PLAN_LABELS['exclusive']
+    if slug in ('starter', 'basic', 'professional'):
+        return paid_plan_label(slug)
+    label = paid_plan_label(selected_plan or '')
+    if label in (PLAN_LABELS['starter'], PLAN_LABELS['professional'], PLAN_LABELS['exclusive']):
+        return label
+    if label:
+        return label
+    return ''
+
+
+def sync_agent_plan_from_admin_slug(agent, plan_slug):
+    """
+    Keep agents.plan_type and the current subscription row aligned (admin grant / manual fix).
+    plan_slug: basic/starter or professional/pro.
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.agents.models import AgentSubscription
+
+    raw = (plan_slug or '').strip().lower()
+    if raw in ('basic', 'starter', 'standard'):
+        display_plan = PLAN_LABELS['starter']
+        plan_type = 'basic'
+    elif raw in ('professional', 'pro'):
+        display_plan = PLAN_LABELS['professional']
+        plan_type = 'professional'
+    else:
+        display_plan = paid_plan_label(raw)
+        plan_type = normalize_plan_slug(raw) or (agent.plan_type or '')
+
+    agent.plan_type = plan_type
+    now = timezone.now()
+    current = (
+        AgentSubscription.objects.filter(agent_id=agent.pk, status='active')
+        .order_by('-created_at', '-id')
+        .first()
+        or AgentSubscription.objects.filter(agent_id=agent.pk).order_by('-id').first()
+    )
+    if current:
+        current.selected_plan = display_plan
+        current.payment_status = 'completed'
+        current.status = 'active'
+        if not current.starts_at:
+            current.starts_at = now
+        if not current.expires_at:
+            current.expires_at = now + timedelta(days=365)
+        current.save(
+            update_fields=[
+                'selected_plan',
+                'payment_status',
+                'status',
+                'starts_at',
+                'expires_at',
+                'updated_at',
+            ]
+        )
+    elif display_plan:
+        AgentSubscription.objects.create(
+            agent_id=agent.pk,
+            selected_plan=display_plan,
+            registration_amount=0,
+            payment_status='completed',
+            status='active',
+            starts_at=now,
+            expires_at=now + timedelta(days=365),
+        )
+    agent.save(update_fields=['plan_type', 'updated_at'])
+
+
 def resolve_checkout_plan_slug(plan_type, plan_name=None):
     """
     Accept checkout identifiers from web, upgrade, and legacy clients.

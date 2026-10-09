@@ -371,11 +371,13 @@ def admin_grant_win(participant, *, plan_slug='basic', expires_at=None):
             and plan_rank(agent.plan_type or '') > plan_rank(plan_slug)
         )
         if not paid_higher:
-            agent.plan_type = plan_slug
+            from apps.agents.services.feature_unlock import sync_agent_plan_from_admin_slug
+
             if agent.status != 'active':
                 agent.status = 'pending_approval'
             agent.registration_step = max(agent.registration_step or 1, 2)
-            agent.save(update_fields=['status', 'plan_type', 'registration_step', 'updated_at'])
+            agent.save(update_fields=['status', 'registration_step', 'updated_at'])
+            sync_agent_plan_from_admin_slug(agent, plan_slug)
         participant.save(update_fields=[
             'grant_plan_slug', 'grant_expires_at', 'grant_previous_plan', 'updated_at',
         ])

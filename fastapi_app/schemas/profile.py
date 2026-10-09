@@ -265,3 +265,34 @@ class CareerTimelineResponse(BaseModel):
 class DeleteItemResponse(BaseModel):
     success: bool
     message: str
+
+
+class VisibilityState(BaseModel):
+    show_certificates: bool = True
+    show_achievements: bool = True
+    show_reviews: bool = True
+    show_experience: bool = True
+    show_claims_stats: bool = True
+    show_client_base: bool = True
+    show_ratings: bool = True
+    show_languages: bool = True
+    show_gallery: bool = True
+    show_contact_info: bool = True
+    show_social_links: bool = True
+
+
+class VisibilityUpdateRequest(BaseModel):
+    field: str
+    value: bool
+
+
+class VisibilityResponse(BaseModel):
+    success: bool
+    visibility: VisibilityState
+
+
+class VisibilityUpdateResponse(BaseModel):
+    success: bool
+    field: str
+    value: bool
+    visibility: VisibilityState

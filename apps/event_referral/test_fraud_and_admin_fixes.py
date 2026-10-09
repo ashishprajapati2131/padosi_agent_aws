@@ -148,6 +148,16 @@ class EventReferralFixTests(TestCase):
         self.assertEqual(self.participant.grant_plan_slug, 'professional')
         self.assertIsNone(self.participant.grant_expires_at)
         self.assertEqual(event_referral_effective_plan_type(self.referrer, self.participant), 'professional')
+        from apps.agents.models import AgentSubscription
+        from apps.agents.services.feature_unlock import PLAN_LABELS, resolve_agent_display_plan_label
+
+        sub = AgentSubscription.objects.filter(agent=self.referrer).order_by('-id').first()
+        self.assertIsNotNone(sub)
+        self.assertEqual(sub.selected_plan, PLAN_LABELS['professional'])
+        self.assertEqual(
+            resolve_agent_display_plan_label(self.referrer.plan_type, sub.selected_plan),
+            PLAN_LABELS['professional'],
+        )
 
     def test_temporary_professional_grant_expires(self):
         from datetime import datetime
