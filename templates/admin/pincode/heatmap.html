@@ -200,19 +200,24 @@
                     </div>
 
                     <!-- Filter Buttons -->
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-secondary active" data-filter="all" id="btnFilterAll">
-                            All (<span id="cntFilterAll">{{ total_clusters }}</span>)
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnFitIndia" onclick="resetToIndiaView()" title="Fit strictly to all India boundaries">
+                            <i class="fa-solid fa-earth-asia me-1 text-primary"></i> India View
                         </button>
-                        <button type="button" class="btn btn-outline-success" data-filter="high" id="btnFilterHigh">
-                            High (<span id="cntFilterHigh">{{ high_supply_count }}</span>)
-                        </button>
-                        <button type="button" class="btn btn-outline-warning" data-filter="medium" id="btnFilterMed">
-                            Medium (<span id="cntFilterMed">{{ medium_supply_count }}</span>)
-                        </button>
-                        <button type="button" class="btn btn-outline-danger" data-filter="opportunity" id="btnFilterOpp">
-                            Unserved (<span id="cntFilterOpp">{{ opportunity_count }}</span>)
-                        </button>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary active" data-filter="all" id="btnFilterAll">
+                                All (<span id="cntFilterAll">{{ total_clusters }}</span>)
+                            </button>
+                            <button type="button" class="btn btn-outline-success" data-filter="high" id="btnFilterHigh">
+                                High (<span id="cntFilterHigh">{{ high_supply_count }}</span>)
+                            </button>
+                            <button type="button" class="btn btn-outline-warning" data-filter="medium" id="btnFilterMed">
+                                Medium (<span id="cntFilterMed">{{ medium_supply_count }}</span>)
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" data-filter="opportunity" id="btnFilterOpp">
+                                Unserved (<span id="cntFilterOpp">{{ opportunity_count }}</span>)
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -328,12 +333,31 @@ var clusters = {{ clusters_json|safe }};
 var activeFilter = 'all';
 var clusterMarkersMap = {}; // pincode -> marker object
 
+// Strict India geographical bounding box
+// South-West: Lat 6.46, Lng 68.10 (Southern islands / West Gujarat)
+// North-East: Lat 37.10, Lng 97.40 (Kashmir / Ladakh north to East Arunachal)
+var indiaBounds = L.latLngBounds(
+    L.latLng(6.46, 68.10),
+    L.latLng(37.10, 97.40)
+);
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Leaflet map centered on Gujarat / Central India
-    map = L.map('indiaHeatmap').setView([22.2587, 71.1924], 7);
+    // Initialize Leaflet map restricted strictly to India
+    map = L.map('indiaHeatmap', {
+        center: [22.8, 79.5],
+        zoom: 5,
+        minZoom: 4,                  // Prevents zooming out to whole globe
+        maxZoom: 18,
+        maxBounds: indiaBounds,      // Restricts camera panning strictly to India
+        maxBoundsViscosity: 1.0,     // 1.0 = hard boundary, cannot drag outside India
+        worldCopyJump: false
+    });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        minZoom: 4,
         maxZoom: 18,
+        bounds: indiaBounds,
+        noWrap: true,                // Disables horizontal wrapping of the world map
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
@@ -453,11 +477,21 @@ function renderClusters(filter) {
 
 function fitMapBounds() {
     if (clusters.length > 0) {
-        var points = clusters.map(c => [c.lat, c.lng]);
-        try {
-            map.fitBounds(points, { padding: [40, 40], maxZoom: 12 });
-        } catch(e) {}
+        var points = clusters
+            .filter(c => c.lat >= 6.46 && c.lat <= 37.10 && c.lng >= 68.10 && c.lng <= 97.40)
+            .map(c => [c.lat, c.lng]);
+        if (points.length > 0) {
+            try {
+                map.fitBounds(points, { padding: [35, 35], maxZoom: 11 });
+                return;
+            } catch(e) {}
+        }
     }
+    map.fitBounds(indiaBounds);
+}
+
+function resetToIndiaView() {
+    map.fitBounds(indiaBounds);
 }
 
 function showStatusAlert(msg, type) {
