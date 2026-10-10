@@ -102,3 +102,15 @@ class BannerPopupAndHeatmapTests(TestCase):
         with patch('apps.admin_panel.views.pincode_heatmap._get_admin_from_session', return_value=self.admin.pk):
             resp_toggle = pincode_heatmap.toggle_heatmap_flag(post_req)
         self.assertEqual(resp_toggle.status_code, 302)
+
+    def test_pincode_lookup_endpoint(self):
+        req = self.rf.get('/admin/pincode-heatmap/lookup/?pincode=380015')
+        self._setup_req(req)
+        with patch('apps.admin_panel.views.pincode_heatmap._get_admin_from_session', return_value=self.admin.pk):
+            resp = pincode_heatmap.pincode_lookup(req)
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.content.decode('utf-8'))
+        self.assertTrue(data['success'])
+        self.assertEqual(data['data']['pincode'], '380015')
+        self.assertIsNotNone(data['data']['lat'])
+        self.assertIsNotNone(data['data']['lng'])

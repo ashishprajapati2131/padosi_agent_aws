@@ -492,6 +492,7 @@ urlpatterns = [
     path("admin/find-agent-locator/unlink-agent/",  find_agent_locator_unlink_agent,   name="admin_find_agent_locator_unlink_agent"),
     path("admin/pincode-heatmap/",                  pincode_heatmap.pincode_heatmap_index, name="admin_pincode_heatmap"),
     path("admin/pincode-heatmap/toggle-flag/",      pincode_heatmap.toggle_heatmap_flag,   name="admin_toggle_heatmap_flag"),
+    path("admin/pincode-heatmap/lookup/",           pincode_heatmap.pincode_lookup,        name="admin_pincode_heatmap_lookup"),
 
     # Phase SETTINGS: Settings & Homepage Editor
     path("admin/settings/general/",         settings.general,             name="admin_settings_general"),

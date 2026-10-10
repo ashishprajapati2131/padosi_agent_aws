@@ -9,10 +9,9 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <style>
 .heatmap-container {
-    height: 480px;
+    height: 520px;
     width: 100%;
-    border-radius: 16px;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+    border-radius: 0 0 16px 16px;
     z-index: 1;
 }
 .stat-widget-card {
@@ -39,6 +38,32 @@
 .beacon-inactive {
     background: #94a3b8;
     box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.25);
+}
+.quick-pin-pill {
+    cursor: pointer;
+    font-size: 11.5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.quick-pin-pill:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    transform: translateY(-1px);
+}
+.pulse-marker-ring {
+    animation: marker-pulse 1.8s infinite;
+}
+@keyframes marker-pulse {
+    0% { transform: scale(0.95); opacity: 0.9; }
+    50% { transform: scale(1.3); opacity: 0.4; }
+    100% { transform: scale(0.95); opacity: 0.9; }
 }
 </style>
 {% endblock %}
@@ -117,15 +142,15 @@
         <div class="stat-widget-card">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <div class="text-muted small fw-semibold">Cities Covered</div>
-                    <h3 class="m-0 fw-bold text-primary mt-1">{{ cities_with_agents }}</h3>
+                    <div class="text-muted small fw-semibold">Plotted Clusters</div>
+                    <h3 class="m-0 fw-bold text-primary mt-1" id="statPlottedClusters">{{ total_clusters }}</h3>
                 </div>
                 <div class="p-3 bg-primary-subtle text-primary rounded-3">
-                    <i class="fa-solid fa-city fa-xl"></i>
+                    <i class="fa-solid fa-earth-asia fa-xl"></i>
                 </div>
             </div>
             <div class="mt-2 text-muted" style="font-size: 11px;">
-                <i class="fa-solid fa-location-dot text-primary me-1"></i> Active urban clusters
+                <i class="fa-solid fa-location-dot text-primary me-1"></i> Active geospatial nodes
             </div>
         </div>
     </div>
@@ -150,18 +175,66 @@
     <!-- MAIN GEOSPATIAL MAP -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+            <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <div>
                     <h6 class="m-0 fw-bold text-dark"><i class="fa-solid fa-earth-asia text-primary me-2"></i> National Coverage &amp; Density Heatmap</h6>
-                    <small class="text-muted">Interactive geospatial cluster visualization across India</small>
+                    <small class="text-muted">Interactive live geospatial pincode intelligence across India</small>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-success text-white px-2 py-1"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i> High Supply</span>
-                    <span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i> Medium</span>
-                    <span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i> Unserved Demand</span>
+                    <span class="badge bg-success text-white px-2 py-1"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i> High Supply (&ge;5)</span>
+                    <span class="badge bg-warning text-dark px-2 py-1"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i> Medium (1-4)</span>
+                    <span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i> Unserved (0)</span>
                 </div>
             </div>
-            <div class="card-body p-2">
+
+            <!-- PINCODE SEARCH & FILTER CONTROLS TOOLBAR -->
+            <div class="p-3 bg-light border-bottom">
+                <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                    <!-- Search Input -->
+                    <div class="input-group" style="max-width: 380px;">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                        <input type="text" id="pincodeSearchInput" class="form-control border-start-0" placeholder="Search any 6-digit Pincode (e.g. 380015)..." maxlength="6" inputmode="numeric">
+                        <button class="btn btn-primary fw-semibold px-3" id="btnSearchPincode" type="button">
+                            <i class="fa-solid fa-crosshairs me-1"></i> Locate
+                        </button>
+                    </div>
+
+                    <!-- Filter Buttons -->
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary active" data-filter="all" id="btnFilterAll">
+                            All (<span id="cntFilterAll">{{ total_clusters }}</span>)
+                        </button>
+                        <button type="button" class="btn btn-outline-success" data-filter="high" id="btnFilterHigh">
+                            High (<span id="cntFilterHigh">{{ high_supply_count }}</span>)
+                        </button>
+                        <button type="button" class="btn btn-outline-warning" data-filter="medium" id="btnFilterMed">
+                            Medium (<span id="cntFilterMed">{{ medium_supply_count }}</span>)
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" data-filter="opportunity" id="btnFilterOpp">
+                            Unserved (<span id="cntFilterOpp">{{ opportunity_count }}</span>)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Jump Pincodes -->
+                <div class="d-flex flex-wrap align-items-center gap-1 mt-2 pt-2 border-top">
+                    <span class="text-muted small fw-semibold me-1"><i class="fa-solid fa-bolt text-warning me-1"></i> Quick Jump:</span>
+                    <button type="button" class="quick-pin-pill" onclick="locateAndHighlight('380015')">380015 (Satellite)</button>
+                    <button type="button" class="quick-pin-pill" onclick="locateAndHighlight('380001')">380001 (Ahmedabad GPO)</button>
+                    <button type="button" class="quick-pin-pill" onclick="locateAndHighlight('395007')">395007 (Surat)</button>
+                    <button type="button" class="quick-pin-pill" onclick="locateAndHighlight('390001')">390001 (Vadodara)</button>
+                    <button type="button" class="quick-pin-pill" onclick="locateAndHighlight('360001')">360001 (Rajkot)</button>
+                    <button type="button" class="quick-pin-pill" onclick="locateAndHighlight('400001')">400001 (Mumbai)</button>
+                    <button type="button" class="quick-pin-pill" onclick="locateAndHighlight('110001')">110001 (Delhi)</button>
+                    <button type="button" class="quick-pin-pill" onclick="locateAndHighlight('364001')">364001 (Bhavnagar)</button>
+                    <button type="button" class="quick-pin-pill" onclick="locateAndHighlight('361001')">361001 (Jamnagar)</button>
+                </div>
+
+                <!-- Dynamic Status Alert Message -->
+                <div id="pincodeStatusAlert" class="mt-2 py-2 px-3 rounded small d-none"></div>
+            </div>
+
+            <div class="card-body p-0">
                 <div id="indiaHeatmap" class="heatmap-container"></div>
             </div>
         </div>
@@ -171,8 +244,11 @@
     <div class="col-lg-4">
         <!-- TOP SUPPLY CLUSTERS -->
         <div class="card shadow-sm border-0 mb-3">
-            <div class="card-header bg-white py-3 border-bottom">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
                 <h6 class="m-0 fw-bold text-dark"><i class="fa-solid fa-trophy text-warning me-2"></i> Top Agent Clusters</h6>
+                <a href="{% url 'admin_find_agent_locator' %}" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0" style="font-size: 11px;">
+                    Locator Tool &rarr;
+                </a>
             </div>
             <div class="card-body p-0">
                 <ul class="list-group list-group-flush">
@@ -199,7 +275,7 @@
         <div class="card shadow-sm border-0 mb-3">
             <div class="card-header bg-white py-3 border-bottom">
                 <h6 class="m-0 fw-bold text-dark"><i class="fa-solid fa-circle-exclamation text-danger me-2"></i> High Opportunity Hotspots</h6>
-                <small class="text-muted">Cities with search inquiries but 0 registered agents</small>
+                <small class="text-muted">Target zones with search inquiries but 0 registered agents</small>
             </div>
             <div class="card-body p-0">
                 <ul class="list-group list-group-flush">
@@ -210,13 +286,13 @@
                                 <span class="fw-semibold text-dark">{{ city.name }}</span>
                                 <small class="text-danger d-block" style="font-size: 10px;">0 Local Advisors</small>
                             </div>
-                            <a href="/admin/distributors/" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0" style="font-size: 11px;">
+                            <a href="{% url 'admin_find_agent_locator' %}" class="btn btn-xs btn-outline-danger rounded-pill px-2 py-0" style="font-size: 11px;">
                                 Recruit Agent &rarr;
                             </a>
                         </li>
                         {% endfor %}
                     {% else %}
-                        <li class="list-group-item text-muted text-center py-3">All target cities have at least 1 agent!</li>
+                        <li class="list-group-item text-muted text-center py-3">All target cities have registered agents!</li>
                     {% endif %}
                 </ul>
             </div>
@@ -225,15 +301,15 @@
         <!-- ROADMAP CARD -->
         <div class="card shadow-sm border-0 bg-light">
             <div class="card-body p-3">
-                <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-timeline text-primary me-2"></i> Feature Roadmap</h6>
+                <h6 class="fw-bold text-dark mb-2"><i class="fa-solid fa-timeline text-primary me-2"></i> Pincode BI Intelligence</h6>
                 <div class="small text-muted mb-2">
-                    <strong>Phase 1:</strong> Geospatial cluster rendering (Current)
+                    <strong>Coverage:</strong> Real-time visualization of agent registrations, active service areas &amp; customer search demand.
                 </div>
                 <div class="small text-muted mb-2">
-                    <strong>Phase 2:</strong> Real-time customer search heatmap integration
+                    <strong>Pincode Locator:</strong> Use search box to locate any Indian pincode and inspect licensed advisor availability.
                 </div>
                 <div class="small text-muted">
-                    <strong>Phase 3:</strong> Autonomous proximity-based lead routing engine
+                    <strong>Lead Matching:</strong> Automatically routes nearby leads within 50 km proximity radius.
                 </div>
             </div>
         </div>
@@ -245,32 +321,84 @@
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
+// Global variables
+var map;
+var markerLayerGroup;
+var clusters = {{ clusters_json|safe }};
+var activeFilter = 'all';
+var clusterMarkersMap = {}; // pincode -> marker object
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Leaflet map centered on Gujarat / Central India
-    var map = L.map('indiaHeatmap').setView([22.2587, 71.1924], 7);
+    map = L.map('indiaHeatmap').setView([22.2587, 71.1924], 7);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 18,
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // Major India Insurance Clusters
-    var clusters = [
-        { name: "Ahmedabad", lat: 23.0225, lng: 72.5714, count: 18, type: "high" },
-        { name: "Surat", lat: 21.1702, lng: 72.8311, count: 12, type: "high" },
-        { name: "Vadodara", lat: 22.3072, lng: 73.1812, count: 8, type: "medium" },
-        { name: "Rajkot", lat: 22.3039, lng: 70.8022, count: 6, type: "medium" },
-        { name: "Gandhinagar", lat: 23.2156, lng: 72.6369, count: 5, type: "medium" },
-        { name: "Mumbai", lat: 19.0760, lng: 72.8777, count: 15, type: "high" },
-        { name: "Pune", lat: 18.5204, lng: 73.8567, count: 9, type: "medium" },
-        { name: "Delhi NCR", lat: 28.6139, lng: 77.2090, count: 14, type: "high" },
-        { name: "Bhavnagar (Opportunity)", lat: 21.7645, lng: 72.1519, count: 0, type: "opportunity" },
-        { name: "Jamnagar (Opportunity)", lat: 22.4707, lng: 70.0577, count: 0, type: "opportunity" }
-    ];
+    markerLayerGroup = L.layerGroup().addTo(map);
+
+    // Initial render
+    renderClusters(activeFilter);
+
+    // Auto-fit bounds if we have points
+    fitMapBounds();
+
+    // Setup filter buttons
+    document.querySelectorAll('[data-filter]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            activeFilter = this.getAttribute('data-filter');
+            renderClusters(activeFilter);
+        });
+    });
+
+    // Search button and input
+    var searchBtn = document.getElementById('btnSearchPincode');
+    var searchInput = document.getElementById('pincodeSearchInput');
+
+    searchBtn.addEventListener('click', function() {
+        var pin = searchInput.value.trim();
+        if (pin) locateAndHighlight(pin);
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            var pin = searchInput.value.trim();
+            if (pin) locateAndHighlight(pin);
+        }
+    });
+
+    // Check URL parameters for ?pincode=XXXXXX
+    var urlParams = new URLSearchParams(window.location.search);
+    var pinParam = urlParams.get('pincode');
+    if (pinParam && /^[1-9]\d{5}$/.test(pinParam)) {
+        searchInput.value = pinParam;
+        setTimeout(function() {
+            locateAndHighlight(pinParam);
+        }, 300);
+    }
+});
+
+function renderClusters(filter) {
+    markerLayerGroup.clearLayers();
+    clusterMarkersMap = {};
+
+    var bounds = [];
+    var highCnt = 0, medCnt = 0, oppCnt = 0;
 
     clusters.forEach(function(c) {
+        if (c.type === 'high') highCnt++;
+        else if (c.type === 'medium') medCnt++;
+        else if (c.type === 'opportunity') oppCnt++;
+
+        if (filter !== 'all' && c.type !== filter) return;
+
         var color = c.type === 'high' ? '#10b981' : (c.type === 'medium' ? '#f59e0b' : '#ef4444');
-        var radius = c.count > 0 ? Math.max(12, c.count * 1.8) : 8;
+        var radius = c.count >= 5 ? 18 : (c.count > 0 ? Math.max(11, c.count * 2.2) : 9);
 
         var circle = L.circleMarker([c.lat, c.lng], {
             radius: radius,
@@ -279,13 +407,135 @@ document.addEventListener('DOMContentLoaded', function() {
             weight: 2,
             opacity: 1,
             fillOpacity: 0.7
-        }).addTo(map);
+        });
 
-        circle.bindPopup(
-            "<strong>" + c.name + "</strong><br>" +
-            (c.count > 0 ? "Agents: <span class='badge bg-success'>" + c.count + " Active</span>" : "<span class='badge bg-danger'>0 Agents — High Opportunity</span>")
-        );
+        var badgeClass = c.type === 'high' ? 'bg-success' : (c.type === 'medium' ? 'bg-warning text-dark' : 'bg-danger');
+        var badgeText = c.type === 'high' ? 'High Supply' : (c.type === 'medium' ? 'Medium Supply' : 'Unserved Opportunity');
+
+        var popupContent = `
+            <div style="min-width: 220px; font-family: system-ui, -apple-system, sans-serif;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:6px; margin-bottom:8px;">
+                    <strong style="font-size:14px; color:#0f172a;">${c.name}</strong>
+                    <span class="badge ${badgeClass}" style="font-size:10px;">${badgeText}</span>
+                </div>
+                <div style="font-size:12px; color:#475569; margin-bottom:4px;">
+                    <i class="fa-solid fa-map-pin" style="color:#2563eb; width:16px;"></i> <strong>PIN Code:</strong> <code>${c.pincode}</code>
+                </div>
+                ${c.district ? `<div style="font-size:12px; color:#475569; margin-bottom:4px;"><i class="fa-solid fa-city" style="color:#0284c7; width:16px;"></i> <strong>District:</strong> ${c.district} ${c.state ? '('+c.state+')' : ''}</div>` : ''}
+                <div style="font-size:12px; margin-bottom:6px;">
+                    <i class="fa-solid fa-users" style="color:#10b981; width:16px;"></i> <strong>Active Agents:</strong>
+                    <span style="font-weight:700; color:${c.count > 0 ? '#10b981' : '#ef4444'};">${c.count} Active</span>
+                </div>
+                ${c.demand_count > 0 ? `<div style="font-size:11.5px; color:#d97706; margin-bottom:8px;"><i class="fa-solid fa-bullhorn" style="width:16px;"></i> <strong>Inquiry Demand:</strong> ${c.demand_count} searches</div>` : ''}
+                <div style="padding-top:6px; border-top:1px solid #e2e8f0; display:flex; gap:6px;">
+                    <a href="/admin/find-agent-locator/?pincode=${c.pincode}" class="btn btn-xs btn-outline-primary w-100 py-1" style="font-size:11px; text-decoration:none;">
+                        <i class="fa-solid fa-location-crosshairs me-1"></i> Open Locator &rarr;
+                    </a>
+                </div>
+            </div>
+        `;
+
+        circle.bindPopup(popupContent);
+        circle.bindTooltip(`<strong>${c.pincode}</strong>: ${c.name} (${c.count} agents)`, { direction: 'top' });
+
+        circle.addTo(markerLayerGroup);
+        clusterMarkersMap[c.pincode] = circle;
+        bounds.push([c.lat, c.lng]);
     });
-});
+
+    // Update counts
+    document.getElementById('cntFilterAll').innerText = clusters.length;
+    document.getElementById('cntFilterHigh').innerText = highCnt;
+    document.getElementById('cntFilterMed').innerText = medCnt;
+    document.getElementById('cntFilterOpp').innerText = oppCnt;
+    document.getElementById('statPlottedClusters').innerText = clusters.length;
+}
+
+function fitMapBounds() {
+    if (clusters.length > 0) {
+        var points = clusters.map(c => [c.lat, c.lng]);
+        try {
+            map.fitBounds(points, { padding: [40, 40], maxZoom: 12 });
+        } catch(e) {}
+    }
+}
+
+function showStatusAlert(msg, type) {
+    var el = document.getElementById('pincodeStatusAlert');
+    el.className = `mt-2 py-2 px-3 rounded small alert alert-${type}`;
+    el.innerHTML = msg;
+    el.classList.remove('d-none');
+}
+
+function locateAndHighlight(pincode) {
+    pincode = String(pincode).trim();
+    if (!/^[1-9]\d{5}$/.test(pincode)) {
+        showStatusAlert('<i class="fa-solid fa-triangle-exclamation me-1"></i> Please enter a valid 6-digit Indian PIN code.', 'warning');
+        return;
+    }
+
+    // Check if marker already exists on map
+    var existingCluster = clusters.find(c => c.pincode === pincode);
+
+    if (existingCluster && clusterMarkersMap[pincode]) {
+        // If hidden by current filter, switch back to 'all'
+        if (activeFilter !== 'all' && existingCluster.type !== activeFilter) {
+            activeFilter = 'all';
+            document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+            document.getElementById('btnFilterAll').classList.add('active');
+            renderClusters('all');
+        }
+
+        var marker = clusterMarkersMap[pincode];
+        map.flyTo([existingCluster.lat, existingCluster.lng], 13, { duration: 1.2 });
+        setTimeout(function() {
+            marker.openPopup();
+        }, 1300);
+
+        showStatusAlert(`
+            <i class="fa-solid fa-circle-check text-success me-1"></i> Located pincode <strong>${pincode}</strong> (${existingCluster.name}):
+            <strong>${existingCluster.count}</strong> Active Agents.
+            <a href="/admin/find-agent-locator/?pincode=${pincode}" class="ms-2 fw-semibold text-primary">Manage in Locator &rarr;</a>
+        `, 'success');
+        return;
+    }
+
+    // Otherwise, fetch in real-time from server lookup API
+    showStatusAlert(`<i class="fa-solid fa-spinner fa-spin me-1"></i> Locating pincode <strong>${pincode}</strong> across geospatial database...`, 'info');
+
+    fetch(`{% url 'admin_pincode_heatmap_lookup' %}?pincode=${pincode}`)
+        .then(res => res.json())
+        .then(res => {
+            if (res.success && res.data) {
+                var d = res.data;
+                // Add to clusters list
+                clusters.push(d);
+
+                // Render marker
+                renderClusters(activeFilter);
+
+                map.flyTo([d.lat, d.lng], 13, { duration: 1.2 });
+                setTimeout(function() {
+                    if (clusterMarkersMap[pincode]) {
+                        clusterMarkersMap[pincode].openPopup();
+                    }
+                }, 1300);
+
+                showStatusAlert(`
+                    <i class="fa-solid fa-circle-check text-success me-1"></i> Located &amp; plotted pincode <strong>${pincode}</strong> (${d.name}):
+                    <strong>${d.count}</strong> Active Agents.
+                    <a href="/admin/find-agent-locator/?pincode=${pincode}" class="ms-2 fw-semibold text-primary">Manage in Locator &rarr;</a>
+                `, 'success');
+            } else {
+                showStatusAlert(`
+                    <i class="fa-solid fa-circle-exclamation text-warning me-1"></i> ${res.message || 'Pincode coordinates not found.'}
+                    <a href="/admin/find-agent-locator/?pincode=${pincode}" class="ms-2 fw-semibold text-primary">Add in Lat/Lng Locator &rarr;</a>
+                `, 'warning');
+            }
+        })
+        .catch(err => {
+            showStatusAlert(`<i class="fa-solid fa-triangle-exclamation text-danger me-1"></i> Error resolving pincode: ${err}`, 'danger');
+        });
+}
 </script>
 {% endblock %}
