@@ -383,18 +383,20 @@ document.addEventListener('DOMContentLoaded', function() {
     var searchBtn = document.getElementById('btnSearchPincode');
     var searchInput = document.getElementById('pincodeSearchInput');
 
-    searchBtn.addEventListener('click', function() {
-        var pin = searchInput.value.trim();
-        if (pin) locateAndHighlight(pin);
-    });
-
-    searchInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
+    if (searchBtn && searchInput) {
+        searchBtn.addEventListener('click', function() {
             var pin = searchInput.value.trim();
             if (pin) locateAndHighlight(pin);
-        }
-    });
+        });
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                var pin = searchInput.value.trim();
+                if (pin) locateAndHighlight(pin);
+            }
+        });
+    }
 
     // Check URL parameters for ?pincode=XXXXXX
     var urlParams = new URLSearchParams(window.location.search);
@@ -468,11 +470,11 @@ function renderClusters(filter) {
     });
 
     // Update counts
-    document.getElementById('cntFilterAll').innerText = clusters.length;
-    document.getElementById('cntFilterHigh').innerText = highCnt;
-    document.getElementById('cntFilterMed').innerText = medCnt;
-    document.getElementById('cntFilterOpp').innerText = oppCnt;
-    document.getElementById('statPlottedClusters').innerText = clusters.length;
+    var elAll = document.getElementById('cntFilterAll'); if (elAll) elAll.innerText = clusters.length;
+    var elHigh = document.getElementById('cntFilterHigh'); if (elHigh) elHigh.innerText = highCnt;
+    var elMed = document.getElementById('cntFilterMed'); if (elMed) elMed.innerText = medCnt;
+    var elOpp = document.getElementById('cntFilterOpp'); if (elOpp) elOpp.innerText = oppCnt;
+    var elStat = document.getElementById('statPlottedClusters'); if (elStat) elStat.innerText = clusters.length;
 }
 
 function fitMapBounds() {
