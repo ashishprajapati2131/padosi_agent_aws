@@ -534,6 +534,8 @@ def agent_dashboard(request):
     growth_status = get_review_growth_status(agent)
     professional_plan = _resolve_agent_plan('professional', agent=agent)
     review_unlock_summary = build_review_unlock_summary(agent, agent_plan, professional_plan)
+    from apps.agents.services.review_growth import get_review_milestone_features
+    review_milestone_features = get_review_milestone_features(agent_plan, professional_plan)
     from apps.agents.views.registration import _PROFESSIONAL_PLAN_UI_FEATURES
     prof_cfg = pricing_config.get('professional', {})
     prof_name = PLAN_LABELS['professional']
@@ -701,6 +703,7 @@ def agent_dashboard(request):
         'fcm_vapid_key': getattr(settings, 'FCM_VAPID_KEY', ''),
         'hide_footer': True,
         'review_unlock_summary': review_unlock_summary,
+        'review_milestone_features': review_milestone_features,
         'review_unlock_summary_json': json_dumps(review_unlock_summary, ensure_ascii=False) if review_unlock_summary else 'null',
         'review_growth_status_json': json_dumps(growth_status, ensure_ascii=False),
         'professional_plan_features': _PROFESSIONAL_PLAN_UI_FEATURES,

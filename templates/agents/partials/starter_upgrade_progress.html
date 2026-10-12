@@ -1,25 +1,57 @@
 {% if show_starter_upgrade_progress %}
-<div class="pa-upgrade-progress-banner" role="status" aria-live="polite">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
-        <div>
-            <span class="pa-upgrade-progress-kicker">Review goal in progress</span>
-            <h4 class="pa-upgrade-progress-title mb-1">Collect {{ review_growth.min_reviews }} customer reviews to unlock Professional upgrade</h4>
-            <p class="pa-upgrade-progress-copy mb-0">Each unique customer email counts as one review. Share your review link from QR Codes or your review card.</p>
+<div class="pa-upgrade-progress-banner pa-review-milestone-card pa-review-milestone-card--progress" role="status" aria-live="polite">
+    <!-- Row 1: Status & Header & Action CTA in single horizontal row -->
+    <div class="pa-milestone-row-head">
+        <div class="pa-milestone-head-left">
+            <span class="pa-milestone-badge pa-milestone-badge--progress">
+                <i class="fas fa-bullseye"></i> Goal: {{ review_count_display }}/{{ review_growth.min_reviews }}
+            </span>
+            <span class="pa-milestone-title">Review Goal in Progress</span>
+            <span class="pa-milestone-msg">
+                {% if review_growth_status.remaining_reviews == 1 %}
+                    Just <strong>1 more unique review</strong> needed to unlock features!
+                {% else %}
+                    <strong>{{ review_growth_status.remaining_reviews }} more reviews</strong> needed to unlock features.
+                {% endif %}
+            </span>
         </div>
-        <div class="pa-upgrade-progress-count">
-            <strong>{{ review_count_display }}</strong>
-            <span>/ {{ review_growth.min_reviews }}</span>
+        <div class="pa-milestone-head-right">
+            <button type="button" class="pa-milestone-btn pa-milestone-btn--share" data-toggle="modal" data-target="#reviewShareModal">
+                <i class="fas fa-share-alt mr-1"></i> Get Reviews
+            </button>
         </div>
     </div>
-    <div class="review-share-progress mb-2" aria-hidden="true">
-        <span style="width:{% widthratio review_count_display review_growth.min_reviews 100 %}%;max-width:100%;"></span>
+
+    <!-- Row 2: Features that will unlock with reviews (Horizontal Line) -->
+    {% if review_milestone_features.review_unlock_features %}
+    <div class="pa-milestone-row-features">
+        <span class="pa-feat-group-tag pa-feat-group-tag--will-unlock">
+            <i class="fas fa-key"></i> UNLOCKS AT {{ review_growth.min_reviews }} REVIEWS
+        </span>
+        <div class="pa-feat-chips-wrap">
+            {% for item in review_milestone_features.review_unlock_features %}
+            <span class="pa-feat-chip pa-feat-chip--will-unlock" title="{{ item.label }}">
+                <i class="fas fa-lock"></i> {{ item.label }}
+            </span>
+            {% endfor %}
+        </div>
     </div>
-    <p class="pa-upgrade-progress-foot mb-0">
-        {% if review_growth_status.remaining_reviews == 1 %}
-            Just <strong>1 more unique review</strong> to unlock the upgrade banner and payment option.
-        {% else %}
-            <strong>{{ review_growth_status.remaining_reviews }} more unique reviews</strong> needed to unlock your Professional upgrade.
-        {% endif %}
-    </p>
+    {% endif %}
+
+    <!-- Row 3: Features that require Professional Plan (Horizontal Line - ALL Features Shown) -->
+    {% if review_milestone_features.pro_features %}
+    <div class="pa-milestone-row-features">
+        <span class="pa-feat-group-tag pa-feat-group-tag--pro">
+            <i class="fas fa-crown"></i> PRO PLAN
+        </span>
+        <div class="pa-feat-chips-wrap">
+            {% for item in review_milestone_features.pro_features %}
+            <span class="pa-feat-chip pa-feat-chip--pro" title="{{ item.label }}">
+                <i class="fas fa-lock"></i> {{ item.label }}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endif %}

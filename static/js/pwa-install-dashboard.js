@@ -7,6 +7,8 @@
     var BTN_ID = 'pwaInstallAppBtn';
     var IOS_MODAL_ID = 'pwaInstallIosModal';
     var deferredPrompt = null;
+    var hideTimer = null;
+    var BLINK_DURATION_MS = 5000;
 
     function isStandalone() {
         return (
@@ -30,15 +32,47 @@
 
     function showInstallButton() {
         var btn = getBtn();
-        if (btn) {
-            btn.classList.remove('d-none');
-            btn.setAttribute('aria-hidden', 'false');
+        if (!btn || isStandalone()) {
+            return;
         }
+
+        btn.classList.remove('d-none');
+        btn.setAttribute('aria-hidden', 'false');
+        btn.classList.add('pwa-btn-blink');
+        btn.style.opacity = '1';
+        btn.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+
+        if (hideTimer) {
+            clearTimeout(hideTimer);
+        }
+
+        // Stop blinking after 2-3 blinks (approx 2.7 seconds)
+        setTimeout(function () {
+            btn.classList.remove('pwa-btn-blink');
+        }, 2700);
+
+        // Then hide smoothly after a short pause (total ~4.5 seconds)
+        hideTimer = setTimeout(function () {
+            btn.classList.remove('pwa-btn-blink');
+            btn.style.opacity = '0';
+            btn.style.transform = 'scale(0.95)';
+            setTimeout(function () {
+                hideInstallButton();
+                btn.style.opacity = '';
+                btn.style.transform = '';
+                btn.style.transition = '';
+            }, 500);
+        }, 4500);
     }
 
     function hideInstallButton() {
         var btn = getBtn();
         if (btn) {
+            if (hideTimer) {
+                clearTimeout(hideTimer);
+                hideTimer = null;
+            }
+            btn.classList.remove('pwa-btn-blink');
             btn.classList.add('d-none');
             btn.setAttribute('aria-hidden', 'true');
         }
@@ -115,6 +149,28 @@
         }
 
         btn.addEventListener('click', onInstallClick);
+        btn.addEventListener('mouseenter', function () {
+            if (hideTimer) {
+                clearTimeout(hideTimer);
+                hideTimer = null;
+            }
+            btn.classList.remove('pwa-btn-blink');
+            btn.style.opacity = '1';
+        });
+        btn.addEventListener('mouseleave', function () {
+            if (!hideTimer && !btn.classList.contains('d-none')) {
+                hideTimer = setTimeout(function () {
+                    btn.style.opacity = '0';
+                    btn.style.transform = 'scale(0.95)';
+                    setTimeout(function () {
+                        hideInstallButton();
+                        btn.style.opacity = '';
+                        btn.style.transform = '';
+                        btn.style.transition = '';
+                    }, 500);
+                }, 2000);
+            }
+        });
     }
 
     if (document.readyState === 'loading') {

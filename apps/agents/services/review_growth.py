@@ -386,17 +386,11 @@ DASHBOARD_UPGRADE_SECTIONS = (
     ('show_claim_support', 'Claims & Settled Stats'),
     ('show_visibility_aio', 'AIO Visibility'),
     ('show_visibility_geo', 'GEO Visibility'),
-    ('show_visibility_seo', 'SEO Visibility'),
-    ('show_visibility_priority_ranking', 'Priority Ranking'),
-    ('show_lead_portfolio_analysis', 'Portfolio Analysis Leads'),
-    ('show_lead_claims_support', 'Claims Support Leads'),
 )
 
 
-def build_review_unlock_summary(agent, starter_plan, professional_plan):
-    """Sections unlocked by reviews vs still locked until Professional upgrade."""
-    if not should_show_upgrade_cta(agent):
-        return None
+def get_review_milestone_features(starter_plan, professional_plan):
+    """Features unlocked by review goal vs features exclusive to Professional plan."""
     cfg = get_review_growth_config()
 
     unlocked = []
@@ -404,7 +398,7 @@ def build_review_unlock_summary(agent, starter_plan, professional_plan):
     unlocked_attrs = set()
     for feat in cfg.get('unlock_feature_slugs') or []:
         attrs = FEATURE_ATTR_MAP.get(feat, [])
-        if not any(plan_shows_feature(starter_plan, attr, default=False) for attr in attrs):
+        if starter_plan and not any(plan_shows_feature(starter_plan, attr, default=False) for attr in attrs):
             continue
         unlocked_attrs.update(attrs)
         label = FEATURE_LABELS.get(feat, feat.replace('_', ' ').title())
@@ -417,24 +411,35 @@ def build_review_unlock_summary(agent, starter_plan, professional_plan):
     for attr, label in DASHBOARD_UPGRADE_SECTIONS:
         if attr in unlocked_attrs or label in seen:
             continue
-        if plan_shows_feature(starter_plan, attr, default=False):
+        if starter_plan and plan_shows_feature(starter_plan, attr, default=False):
             continue
-        if not plan_shows_feature(professional_plan, attr, default=True):
+        if professional_plan and not plan_shows_feature(professional_plan, attr, default=True):
             continue
         if label in seen_locked:
             continue
         seen_locked.add(label)
         still_locked.append({'attr': attr, 'label': label})
 
-    unlocked_preview = unlocked[:4]
-    locked_preview = still_locked[:5]
+    return {
+        'review_unlock_features': unlocked,
+        'pro_features': still_locked,
+    }
+
+
+def build_review_unlock_summary(agent, starter_plan, professional_plan):
+    """Sections unlocked by reviews vs still locked until Professional upgrade."""
+    if not should_show_upgrade_cta(agent):
+        return None
+    feats = get_review_milestone_features(starter_plan, professional_plan)
+    unlocked = feats['review_unlock_features']
+    still_locked = feats['pro_features']
     return {
         'unlocked': unlocked,
         'still_locked': still_locked,
-        'unlocked_preview': unlocked_preview,
-        'locked_preview': locked_preview,
-        'unlocked_more': max(0, len(unlocked) - len(unlocked_preview)),
-        'locked_more': max(0, len(still_locked) - len(locked_preview)),
+        'unlocked_preview': unlocked,
+        'locked_preview': still_locked,
+        'unlocked_more': 0,
+        'locked_more': 0,
         'title': 'Review condition complete!',
         'message': 'Your review goal is done. A few sections are open — upgrade to Professional for the rest.',
     }
