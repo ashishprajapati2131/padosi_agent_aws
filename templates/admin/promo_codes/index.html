@@ -5,7 +5,9 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="h4 mb-0"><i class="fa-solid fa-ticket-alt me-2 text-primary"></i> Promo Codes</h2>
-    <button class="btn btn-primary" id="btnAddNewPromo" data-toggle="modal" data-target="#addPromoModal">
+    <button type="button" class="btn btn-primary" id="btnAddNewPromo" 
+            data-bs-toggle="modal" data-bs-target="#addPromoModal" 
+            data-toggle="modal" data-target="#addPromoModal">
         <i class="fa-solid fa-plus me-1"></i> Add New Promo
     </button>
 </div>
@@ -41,9 +43,9 @@
                         </td>
                         <td>
                             {% if promo.discount_type == 'percentage' %}
-                                {{ promo.discount_value|floatformat:0 }}%
+                                {{ promo.discount_value|floatformat:-2 }}%
                             {% else %}
-                                ₹{{ promo.discount_value|floatformat:0 }}
+                                ₹{{ promo.discount_value|floatformat:-2 }}
                             {% endif %}
                         </td>
                         <td>
@@ -76,7 +78,8 @@
                         </td>
                         <td class="text-end pe-4">
                             <button type="button" class="btn btn-sm btn-light text-primary btn-edit me-1" 
-                                    data-promo='{"id": {{ promo.id }}, "code": "{{ promo.code|escapejs }}", "discount_type": "{{ promo.discount_type }}", "discount_value": "{{ promo.discount_value|floatformat:0 }}", "applicable_plan": "{% if promo.applicable_plan %}{{ promo.applicable_plan }}{% endif %}", "max_uses": "{% if promo.max_uses %}{{ promo.max_uses }}{% endif %}", "expires_at": "{% if promo.expires_at %}{{ promo.expires_at|date:'c' }}{% endif %}"}'
+                                    data-promo='{"id": {{ promo.id }}, "code": "{{ promo.code|escapejs }}", "discount_type": "{{ promo.discount_type }}", "discount_value": "{{ promo.discount_value|floatformat:-2 }}", "applicable_plan": "{% if promo.applicable_plan %}{{ promo.applicable_plan }}{% endif %}", "max_uses": "{% if promo.max_uses %}{{ promo.max_uses }}{% endif %}", "expires_at": "{% if promo.expires_at %}{{ promo.expires_at|date:'c' }}{% endif %}"}'
+                                    data-bs-toggle="modal" data-bs-target="#addPromoModal"
                                     data-toggle="modal" data-target="#addPromoModal" title="Edit" style="padding: 4px 8px;">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -102,25 +105,25 @@
 </div>
 
 <!-- Add/Edit Promo Modal -->
-<div class="modal fade" id="addPromoModal" tabindex="-1">
+<div class="modal fade" id="addPromoModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-bottom-0">
                 <h5 class="modal-title fw-bold" id="modalTitle">Create Promo Code</h5>
-                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{% url 'admin_promo_code_store' %}" method="POST" id="promoForm">
                 {% csrf_token %}
                 <div class="modal-body bg-light">
                     <div class="mb-3 bg-white p-3 rounded border">
-                        <label class="form-label text-muted small fw-bold">PROMO CODE</label>
-                        <input type="text" name="code" id="promoCode" class="form-control" required placeholder="e.g., SUMMER50" maxlength="50" oninput="this.value = this.value.toUpperCase()">
+                        <label class="form-label text-muted small fw-bold">PROMO CODE *</label>
+                        <input type="text" name="code" id="promoCode" class="form-control text-uppercase" required placeholder="e.g., SUMMER50" maxlength="50" oninput="this.value = this.value.toUpperCase()">
                     </div>
                     
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <div class="bg-white p-3 rounded border h-100">
-                                <label class="form-label text-muted small fw-bold">DISCOUNT TYPE</label>
+                                <label class="form-label text-muted small fw-bold">DISCOUNT TYPE *</label>
                                 <select name="discount_type" id="discountType" class="form-select" required>
                                     <option value="percentage">Percentage (%)</option>
                                     <option value="fixed">Fixed Amount (₹)</option>
@@ -129,8 +132,8 @@
                         </div>
                         <div class="col-md-6">
                             <div class="bg-white p-3 rounded border h-100">
-                                <label class="form-label text-muted small fw-bold">DISCOUNT VALUE</label>
-                                <input type="number" step="0.01" name="discount_value" id="discountValue" class="form-control" required placeholder="50">
+                                <label class="form-label text-muted small fw-bold">DISCOUNT VALUE *</label>
+                                <input type="number" step="0.01" name="discount_value" id="discountValue" class="form-control" required placeholder="50" min="0.01">
                             </div>
                         </div>
                     </div>
@@ -159,8 +162,8 @@
                     </div>
                 </div>
                 <div class="modal-footer border-top-0">
-                    <button type="button" class="btn btn-light" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary px-4">Save Promo Code</button>
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4" id="btnSubmitPromo">Save Promo Code</button>
                 </div>
             </form>
         </div>
@@ -173,16 +176,59 @@ document.addEventListener('DOMContentLoaded', function() {
     const promoForm = document.getElementById('promoForm');
     const modalTitle = document.getElementById('modalTitle');
     const storeUrl = "{% url 'admin_promo_code_store' %}";
+    const modalEl = document.getElementById('addPromoModal');
     
-    document.getElementById('btnAddNewPromo').addEventListener('click', function() {
-        modalTitle.textContent = 'Add Promo Code';
-        promoForm.action = storeUrl;
-        promoForm.reset();
-        document.getElementById('promoCode').readOnly = false;
-    });
+    function showPromoModal() {
+        if (!modalEl) return;
+        if (window.bootstrap && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else if (window.$ && typeof $.fn.modal === 'function') {
+            $(modalEl).modal('show');
+        }
+    }
+
+    function updateDiscountUI() {
+        const typeEl = document.getElementById('discountType');
+        const valEl = document.getElementById('discountValue');
+        if (!typeEl || !valEl) return;
+        if (typeEl.value === 'percentage') {
+            valEl.placeholder = 'e.g., 20';
+            valEl.max = '100';
+            valEl.min = '0.01';
+        } else {
+            valEl.placeholder = 'e.g., 500';
+            valEl.removeAttribute('max');
+            valEl.min = '1';
+        }
+    }
+
+    const discountTypeSelect = document.getElementById('discountType');
+    if (discountTypeSelect) {
+        discountTypeSelect.addEventListener('change', updateDiscountUI);
+    }
+    
+    const btnAddNew = document.getElementById('btnAddNewPromo');
+    if (btnAddNew) {
+        btnAddNew.addEventListener('click', function(e) {
+            e.preventDefault();
+            modalTitle.textContent = 'Create Promo Code';
+            promoForm.action = storeUrl;
+            promoForm.reset();
+            document.getElementById('promoCode').value = '';
+            document.getElementById('promoCode').readOnly = false;
+            document.getElementById('discountType').value = 'percentage';
+            document.getElementById('discountValue').value = '';
+            document.getElementById('applicablePlan').value = '';
+            document.getElementById('maxUses').value = '';
+            document.getElementById('expiresAt').value = '';
+            updateDiscountUI();
+            showPromoModal();
+        });
+    }
 
     document.querySelectorAll('.btn-edit').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
             const promo = JSON.parse(this.getAttribute('data-promo'));
             modalTitle.textContent = 'Edit Promo Code';
             
@@ -191,6 +237,7 @@ document.addEventListener('DOMContentLoaded', function() {
             promoForm.action = updateUrl;
             
             document.getElementById('promoCode').value = promo.code;
+            document.getElementById('promoCode').readOnly = false;
             document.getElementById('discountType').value = promo.discount_type;
             document.getElementById('discountValue').value = promo.discount_value;
             document.getElementById('applicablePlan').value = promo.applicable_plan || "";
@@ -201,8 +248,44 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 document.getElementById('expiresAt').value = "";
             }
+            updateDiscountUI();
+            showPromoModal();
         });
     });
+
+    if (promoForm) {
+        promoForm.addEventListener('submit', function(e) {
+            const codeInput = document.getElementById('promoCode');
+            codeInput.value = codeInput.value.trim().toUpperCase();
+            if (!codeInput.value) {
+                e.preventDefault();
+                alert('Please enter a valid promo code.');
+                codeInput.focus();
+                return false;
+            }
+
+            const discountType = document.getElementById('discountType').value;
+            const discountValue = parseFloat(document.getElementById('discountValue').value);
+            if (isNaN(discountValue) || discountValue <= 0) {
+                e.preventDefault();
+                alert('Please enter a valid discount value greater than 0.');
+                document.getElementById('discountValue').focus();
+                return false;
+            }
+            if (discountType === 'percentage' && discountValue > 100) {
+                e.preventDefault();
+                alert('Percentage discount cannot exceed 100%.');
+                document.getElementById('discountValue').focus();
+                return false;
+            }
+
+            const submitBtn = document.getElementById('btnSubmitPromo');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+            }
+        });
+    }
 
     // Delete Button Logic (SweetAlert)
     $(document).on('click', '.delete-btn', function(e) {
