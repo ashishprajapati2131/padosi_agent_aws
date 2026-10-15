@@ -1,0 +1,261 @@
+{% extends 'wholesale/base.html' %}
+{% load humanize %}
+
+{% block title %}Seller Dashboard — {{ profile.business_name }} — PadosiAgent Wholesale{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5">
+
+    <!-- Top Profile & Verification Status Banner -->
+    <div class="ws-card p-4 mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <h3 class="fw-bold mb-0 text-dark">{{ profile.business_name }}</h3>
+                    <span class="badge bg-light text-secondary border">{{ profile.get_business_type_display }}</span>
+                </div>
+                <div class="text-secondary small">
+                    <i class="fa-solid fa-location-dot text-danger mr-1"></i> {{ profile.city }}, {{ profile.state }} |
+                    <i class="fa-solid fa-user mr-1 text-primary"></i> {{ profile.contact_person }} ({{ profile.phone }})
+                </div>
+            </div>
+
+            <!-- Verification Status Badge -->
+            <div class="text-end">
+                <span class="small text-muted d-block mb-1 text-uppercase font-weight-bold">Verification Status</span>
+                {% if profile.verification_status == 'APPROVED' %}
+                <span class="ws-badge ws-badge-approved fs-6 py-2 px-3">
+                    <i class="fa-solid fa-circle-check"></i> Verified &amp; Active
+                </span>
+                {% elif profile.verification_status in 'SUBMITTED,UNDER_REVIEW' %}
+                <span class="ws-badge ws-badge-under-review fs-6 py-2 px-3">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Under KYC Verification
+                </span>
+                {% elif profile.verification_status == 'INFO_REQUIRED' %}
+                <span class="ws-badge ws-badge-changes-requested fs-6 py-2 px-3">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Additional Info Required
+                </span>
+                {% elif profile.verification_status == 'REJECTED' %}
+                <span class="ws-badge ws-badge-rejected fs-6 py-2 px-3">
+                    <i class="fa-solid fa-circle-xmark"></i> Verification Rejected
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Verification Feedback Alert -->
+        {% if not profile.is_verified %}
+        <div class="alert alert-info border-0 rounded-3 mt-3 mb-0 small d-flex align-items-center">
+            <i class="fa-solid fa-clock-rotate-left fs-5 mr-2 text-primary"></i>
+            <div>
+                <strong>Account Verification in Progress:</strong> Your business documents are currently being reviewed by the Administrator. Once your account is verified, product creation and bulk uploading will be automatically unlocked.
+            </div>
+        </div>
+        {% endif %}
+
+        {% if profile.rejection_reason %}
+        <div class="alert alert-warning border-0 rounded-3 mt-3 mb-0 small">
+            <strong>Admin Verification Feedback:</strong> {{ profile.rejection_reason }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Actions Bar -->
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        {% if profile.is_verified %}
+        <a href="{% url 'wholesale:product_create' %}" class="btn ws-btn-primary font-weight-bold">
+            <i class="fa-solid fa-plus mr-1"></i> Create New Product
+        </a>
+        <a href="{% url 'wholesale:bulk_upload' %}" class="btn btn-outline-secondary font-weight-bold">
+            <i class="fa-solid fa-file-csv mr-1"></i> Bulk CSV Upload
+        </a>
+        {% else %}
+        <button class="btn btn-light border text-muted" disabled style="cursor: not-allowed;" title="Admin KYC approval required">
+            <i class="fa-solid fa-lock mr-1 text-warning"></i> Add Product (Pending Admin KYC Verification)
+        </button>
+        {% endif %}
+        <a href="{% url 'wholesale:wholesaler_products' %}" class="btn btn-outline-secondary font-weight-bold">
+            <i class="fa-solid fa-boxes-stacked mr-1"></i> All Products ({{ kpi.total_products }})
+        </a>
+        <a href="{% url 'wholesale:wholesaler_inquiries' %}" class="btn btn-outline-secondary font-weight-bold position-relative">
+            <i class="fa-solid fa-comments mr-1"></i> Buyer Leads / RFQs
+            {% if kpi.new_inquiries > 0 %}
+            <span class="badge badge-danger ml-1">{{ kpi.new_inquiries }} new</span>
+            {% endif %}
+        </a>
+    </div>
+
+    <!-- KPI Metric Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="ws-card p-3 border-start border-4 border-primary h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small font-weight-bold text-uppercase">Live Listings</div>
+                        <h3 class="fw-extrabold mb-0 text-primary">{{ kpi.published_products }}</h3>
+                    </div>
+                    <i class="fa-solid fa-store fs-2 text-primary opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="ws-card p-3 border-start border-4 border-warning h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small font-weight-bold text-uppercase">Pending Approval</div>
+                        <h3 class="fw-extrabold mb-0 text-warning">{{ kpi.pending_approvals }}</h3>
+                    </div>
+                    <i class="fa-solid fa-hourglass-half fs-2 text-warning opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="ws-card p-3 border-start border-4 border-danger h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small font-weight-bold text-uppercase">Changes Needed</div>
+                        <h3 class="fw-extrabold mb-0 text-danger">{{ kpi.changes_requested }}</h3>
+                    </div>
+                    <i class="fa-solid fa-pen-ruler fs-2 text-danger opacity-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="ws-card p-3 border-start border-4 border-success h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small font-weight-bold text-uppercase">Total Inquiries</div>
+                        <h3 class="fw-extrabold mb-0 text-success">{{ kpi.total_inquiries }}</h3>
+                    </div>
+                    <i class="fa-solid fa-envelope-open-text fs-2 text-success opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Buyer RFQ Leads & Listings -->
+    <div class="row g-4 mb-4">
+        <!-- Recent Buyer RFQ Leads (7 cols) -->
+        <div class="col-lg-7">
+            <div class="ws-card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="fa-solid fa-bullhorn mr-2 text-primary"></i> Recent Buyer Inquiries &amp; RFQs
+                    </h5>
+                    <a href="{% url 'wholesale:wholesaler_inquiries' %}" class="small font-weight-bold text-decoration-none">
+                        View All RFQs &raquo;
+                    </a>
+                </div>
+
+                {% if recent_inquiries %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase">
+                            <tr>
+                                <th>Buyer &amp; City</th>
+                                <th>Product Details</th>
+                                <th>Quantity</th>
+                                <th>Status</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inq in recent_inquiries %}
+                            <tr>
+                                <td>
+                                    <div class="font-weight-bold text-dark">{{ inq.buyer_name }}</div>
+                                    <div class="small text-muted">{{ inq.delivery_city }}</div>
+                                </td>
+                                <td>
+                                    <div class="small font-weight-bold text-truncate" style="max-width: 160px;">{{ inq.product.title }}</div>
+                                    {% if inq.target_price_per_unit %}
+                                    <span class="small text-muted">Target: ₹{{ inq.target_price_per_unit }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge badge-light border">{{ inq.requested_quantity }} units</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border small">{{ inq.get_status_display }}</span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex gap-1">
+                                        {% if inq.buyer_phone %}
+                                        <a href="https://wa.me/{{ inq.buyer_phone|cut:' '|cut:'+' }}?text=Hello%20{{ inq.buyer_name|urlencode }},%20regarding%20your%20RFQ%20for%20{{ inq.product.title|urlencode }}" target="_blank" class="btn btn-sm btn-outline-success" title="Chat on WhatsApp">
+                                            <i class="fa-brands fa-whatsapp"></i>
+                                        </a>
+                                        <a href="tel:{{ inq.buyer_phone }}" class="btn btn-sm btn-outline-secondary" title="Call Buyer">
+                                            <i class="fa-solid fa-phone"></i>
+                                        </a>
+                                        {% endif %}
+                                        <a href="{% url 'wholesale:wholesaler_inquiries' %}#inq-{{ inq.id }}" class="btn btn-sm ws-btn-primary font-weight-bold">
+                                            Reply
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-inbox display-4 opacity-50 mb-3 d-block text-secondary"></i>
+                    <h6 class="font-weight-bold text-dark">No Inquiries Yet</h6>
+                    <p class="small text-muted mb-0">Buyer inquiries and RFQs from agents will appear here.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Listings (5 cols) -->
+        <div class="col-lg-5">
+            <div class="ws-card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="fa-solid fa-boxes-stacked mr-2 text-primary"></i> Recent Inventory Listings
+                    </h5>
+                    <a href="{% url 'wholesale:wholesaler_products' %}" class="small font-weight-bold text-decoration-none">
+                        Manage Catalog &raquo;
+                    </a>
+                </div>
+
+                {% if recent_products %}
+                <div class="list-group list-group-flush">
+                    {% for p in recent_products %}
+                    <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            {% if p.primary_image %}
+                            <img src="{{ p.primary_image.image.url }}" class="rounded border" style="width: 44px; height: 44px; object-fit: cover;">
+                            {% else %}
+                            <div class="rounded bg-light border d-flex align-items-center justify-content-center text-muted" style="width: 44px; height: 44px;">
+                                <i class="fa-solid fa-box small"></i>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <h6 class="font-weight-bold mb-0 small text-truncate" style="max-width: 170px;">
+                                    <a href="{% url 'wholesale:product_edit' product_id=p.id %}" class="text-dark text-decoration-none">{{ p.title }}</a>
+                                </h6>
+                                <span class="small text-muted font-monospace">SKU: {{ p.sku }} • ₹{{ p.base_price }}</span>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <span class="ws-badge ws-badge-{{ p.approval_status|lower }} small" style="font-size: 10px;">
+                                {{ p.get_approval_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-box-open display-4 opacity-50 mb-3 d-block text-secondary"></i>
+                    <h6 class="font-weight-bold text-dark">No Products Created</h6>
+                    <p class="small text-muted mb-0">Start listing your wholesale catalog items to receive buyer orders.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,189 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ wholesale_site_name|default:'PadosiAgent' }} — B2B Wholesale Marketplace{% endblock %}</title>
+    <link rel="icon" href="{% url 'home:favicon' %}" type="image/x-icon">
+
+    <!-- Google Fonts: Outfit & Urbanist -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Urbanist:wght@600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 4.6.2 and PadosiAgent Core Styles -->
+    <link rel="stylesheet" href="{% static 'bootstrap/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/custome.css' %}">
+    <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
+
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Wholesale System CSS -->
+    <link rel="stylesheet" href="{% static 'wholesale/css/wholesale.css' %}">
+
+    <style>
+        body {
+            font-family: 'Outfit', system-ui, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        main {
+            flex: 1 0 auto;
+        }
+        .ws-portal-header {
+            background: #ffffff;
+            border-bottom: 1.5px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 1050;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    {% block navbar %}
+    <!-- Dedicated Wholesaler / Admin Portal Navigation Header -->
+    <header class="ws-portal-header">
+        <div class="container-fluid px-lg-4 py-2">
+            <div class="d-flex align-items-center justify-content-between flex-wrap" style="min-height: 52px;">
+                <!-- Brand: Logo & Supplier Badge -->
+                <div class="d-flex align-items-center my-1">
+                    <a href="{% if is_wholesale_admin %}{% url 'wholesale:admin_dashboard' %}{% else %}{% url 'wholesale:wholesaler_dashboard' %}{% endif %}" class="d-inline-flex align-items-center text-decoration-none mr-3">
+                        <img src="{% static 'img/logo.webp' %}" alt="PadosiAgent Logo" style="height: 38px; width: auto; max-width: 170px; object-fit: contain;">
+                    </a>
+                    <span class="badge d-none d-sm-inline-flex align-items-center" style="background: #eef2ff; color: #273c8e; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; padding: 5px 10px; border-radius: 6px; border: 1px solid #c7d2fe; text-transform: uppercase;">
+                        <i class="fa-solid fa-boxes-packing mr-1"></i> {% if is_wholesale_admin %}Admin Operations{% else %}Supplier Portal{% endif %}
+                    </span>
+                </div>
+
+                <!-- Navigation Actions (Role-Specific) -->
+                <div class="d-flex align-items-center flex-wrap my-1" style="gap: 8px;">
+                    {% if current_wholesaler %}
+                        <!-- Wholesaler Authenticated Navigation -->
+                        <a href="{% url 'wholesale:wholesaler_dashboard' %}" class="btn btn-sm {% if request.resolver_match.url_name == 'wholesaler_dashboard' %}btn-primary text-white{% else %}btn-outline-secondary{% endif %} font-weight-bold" style="{% if request.resolver_match.url_name == 'wholesaler_dashboard' %}background:#273c8e; border-color:#273c8e;{% endif %}">
+                            <i class="fa-solid fa-gauge-high mr-1"></i> Dashboard
+                        </a>
+                        <a href="{% url 'wholesale:wholesaler_products' %}" class="btn btn-sm {% if request.resolver_match.url_name == 'wholesaler_products' %}btn-primary text-white{% else %}btn-outline-secondary{% endif %} font-weight-bold" style="{% if request.resolver_match.url_name == 'wholesaler_products' %}background:#273c8e; border-color:#273c8e;{% endif %}">
+                            <i class="fa-solid fa-boxes-stacked mr-1"></i> My Products
+                        </a>
+                        {% if current_wholesaler.is_verified %}
+                        <a href="{% url 'wholesale:product_create' %}" class="btn btn-sm btn-primary font-weight-bold" style="background:#059669; border-color:#059669;">
+                            <i class="fa-solid fa-plus mr-1"></i> Add Product
+                        </a>
+                        <a href="{% url 'wholesale:bulk_upload' %}" class="btn btn-sm {% if request.resolver_match.url_name == 'bulk_upload' %}btn-primary text-white{% else %}btn-outline-secondary{% endif %} font-weight-bold" style="{% if request.resolver_match.url_name == 'bulk_upload' %}background:#273c8e; border-color:#273c8e;{% endif %}">
+                            <i class="fa-solid fa-file-csv mr-1"></i> Bulk Upload
+                        </a>
+                        {% else %}
+                        <span class="badge d-inline-flex align-items-center px-2 py-1" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-size:11px;" title="Account under review by Admin before products can be added">
+                            <i class="fa-solid fa-clock-rotate-left mr-1"></i> KYC Under Review
+                        </span>
+                        {% endif %}
+                        <a href="{% url 'wholesale:wholesaler_inquiries' %}" class="btn btn-sm {% if request.resolver_match.url_name == 'wholesaler_inquiries' %}btn-primary text-white{% else %}btn-outline-secondary{% endif %} font-weight-bold" style="{% if request.resolver_match.url_name == 'wholesaler_inquiries' %}background:#273c8e; border-color:#273c8e;{% endif %}">
+                            <i class="fa-solid fa-comments mr-1"></i> RFQs &amp; Orders
+                        </a>
+
+                        <div class="d-none d-lg-flex align-items-center ml-2 pl-2 border-left" style="border-color: #e2e8f0 !important;">
+                            <span class="text-dark small font-weight-bold mr-2">
+                                <i class="fa-solid fa-building text-muted mr-1"></i>
+                                {{ current_wholesaler.business_name|truncatechars:20 }}
+                            </span>
+                        </div>
+
+                        <a href="{% url 'wholesale:wholesaler_logout' %}" class="btn btn-outline-danger btn-sm font-weight-bold ml-1" title="Sign Out">
+                            <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Logout
+                        </a>
+
+                    {% elif is_wholesale_admin %}
+                        <!-- Admin Authenticated Navigation (NO guest login/register buttons) -->
+                        <a href="/admin/dashboard/" class="btn btn-dark btn-sm font-weight-bold mr-1" title="Go to main PadosiAgent Admin Dashboard">
+                            <i class="fa-solid fa-arrow-left mr-1"></i> Main Admin Panel
+                        </a>
+                        <a href="{% url 'wholesale:admin_dashboard' %}" class="btn btn-sm {% if request.resolver_match.url_name == 'admin_dashboard' %}btn-primary text-white{% else %}btn-outline-secondary{% endif %} font-weight-bold mr-1" style="{% if request.resolver_match.url_name == 'admin_dashboard' %}background:#273c8e; border-color:#273c8e;{% endif %}">
+                            <i class="fa-solid fa-shield-halved mr-1"></i> Wholesale Operations
+                        </a>
+                        <a href="{% url 'wholesale:admin_approval_queue' %}" class="btn btn-sm {% if request.resolver_match.url_name == 'admin_approval_queue' %}btn-primary text-white{% else %}btn-outline-secondary{% endif %} font-weight-bold mr-1" style="{% if request.resolver_match.url_name == 'admin_approval_queue' %}background:#273c8e; border-color:#273c8e;{% endif %}">
+                            <i class="fa-solid fa-list-check mr-1"></i> Approval Queue
+                            {% if pending_approvals_count > 0 %}
+                            <span class="badge badge-danger ml-1">{{ pending_approvals_count }}</span>
+                            {% endif %}
+                        </a>
+                        <a href="/admin-logout/" class="btn btn-outline-danger btn-sm font-weight-bold ml-1" title="Sign Out of Admin">
+                            <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Logout
+                        </a>
+
+                    {% else %}
+                        <!-- Guest Wholesaler Navigation -->
+                        <a href="{% url 'wholesale:wholesaler_login' %}" class="btn btn-outline-primary btn-sm font-weight-bold">
+                            <i class="fa-solid fa-arrow-right-to-bracket mr-1"></i> Wholesaler Login
+                        </a>
+                        <a href="{% url 'wholesale:wholesaler_register' %}" class="btn btn-primary btn-sm font-weight-bold" style="background:#273c8e; border-color:#273c8e;">
+                            <i class="fa-solid fa-user-plus mr-1"></i> Register as Wholesaler
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+    {% endblock %}
+
+    <!-- Global Flash Messages -->
+    {% block messages %}
+    {% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show rounded shadow-sm border-0 d-flex align-items-center" role="alert">
+            {% if message.tags == 'success' %}
+                <i class="fa-solid fa-circle-check text-success mr-2 fs-5"></i>
+            {% elif message.tags == 'error' or message.tags == 'danger' %}
+                <i class="fa-solid fa-triangle-exclamation text-danger mr-2 fs-5"></i>
+            {% elif message.tags == 'warning' %}
+                <i class="fa-solid fa-circle-exclamation text-warning mr-2 fs-5"></i>
+            {% else %}
+                <i class="fa-solid fa-circle-info text-info mr-2 fs-5"></i>
+            {% endif %}
+            <div class="flex-grow-1 font-weight-bold" style="font-size: 14px;">{{ message }}</div>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endblock %}
+
+    <!-- Main Content Block -->
+    <main class="{% block main_class %}py-4{% endblock %}">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block footer %}
+    <!-- Clean Supplier & Portal Footer -->
+    <footer class="ws-footer py-3 mt-5" style="background: #ffffff; border-top: 1px solid #e2e8f0;">
+        <div class="container-fluid px-lg-4 d-flex flex-column flex-sm-row justify-content-between align-items-center small text-muted">
+            <div class="d-flex align-items-center mb-2 mb-sm-0">
+                <span class="font-weight-bold" style="color: #273c8e;">PadosiAgent</span>
+                <span class="mx-2">&bull;</span>
+                <span>Wholesaler &amp; Cross-Sell Management Portal</span>
+            </div>
+            <div class="d-flex align-items-center" style="gap: 16px;">
+                <span>&copy; {% now "Y" %} PadosiAgent. All rights reserved.</span>
+            </div>
+        </div>
+    </footer>
+    {% endblock %}
+
+    <!-- Bootstrap 4 / jQuery core JS -->
+    <script src="{% static 'js/jquery-3.7.1.min.js' %}"></script>
+    <script src="{% static 'js/popper.min.js' %}"></script>
+    <script src="{% static 'js/bootstrap.min.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

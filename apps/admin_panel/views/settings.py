@@ -319,6 +319,7 @@ def general(request):
         'contact_address': SiteSetting.get_value('contact_address', ''),
         'social_links': social_links,
         'distributor_invite_message': SiteSetting.get_value('distributor_invite_message', default_message),
+        'wholesale_marketplace_enabled': SiteSetting.get_value('wholesale_marketplace_enabled', False),
     }
 
     return render(request, 'admin/settings/general.html', context)
@@ -330,7 +331,7 @@ def general(request):
 SETTINGS_FORM_KEYS = {
     'general': {
         'site_name', 'contact_email', 'contact_phone', 'contact_address',
-        'social_links', 'distributor_invite_message',
+        'social_links', 'distributor_invite_message', 'wholesale_marketplace_enabled',
     },
     'seo': {
         'seo_meta_title', 'seo_meta_description', 'seo_keywords',
@@ -360,6 +361,11 @@ def update_settings(request):
             if key not in allowed_keys:
                 continue
             SiteSetting.set_value(key, value, group=group)
+
+        # Handle boolean checkbox for wholesale marketplace feature flag
+        if group == 'general':
+            wholesale_enabled = request.POST.get('wholesale_marketplace_enabled') in ('1', 'true', 'on')
+            SiteSetting.set_value('wholesale_marketplace_enabled', wholesale_enabled, group='general')
             
         # Handle file uploads (site_logo, site_favicon, og_default_image)
         import uuid

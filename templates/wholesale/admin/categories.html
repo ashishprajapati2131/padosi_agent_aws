@@ -1,0 +1,162 @@
+{% extends 'wholesale/base.html' %}
+
+{% block title %}Manage Categories — CrossSeal Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+
+    <!-- Top Admin Header & Breadcrumbs -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <nav aria-label="breadcrumb" class="mb-1">
+                <ol class="breadcrumb mb-0 py-0" style="background: transparent; font-size: 13px;">
+                    <li class="breadcrumb-item"><a href="/admin/dashboard/" class="text-decoration-none fw-bold text-dark"><i class="fa-solid fa-gauge-high me-1"></i> Main Admin</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'wholesale:admin_dashboard' %}" class="text-decoration-none fw-bold text-dark">Wholesale Operations</a></li>
+                    <li class="breadcrumb-item active text-primary fw-bold" aria-current="page">Taxonomy &amp; Categories</li>
+                </ol>
+            </nav>
+            <h2 class="fw-bold mb-0 text-dark">Product Category Taxonomy</h2>
+            <p class="text-secondary small mb-0 mt-1">Structure root industries and hierarchical subcategories for seamless catalog discovery</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'wholesale:admin_dashboard' %}" class="btn btn-outline-secondary fw-semibold">
+                <i class="fa-solid fa-arrow-left me-1"></i> Wholesale Operations
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column: Add Category Form (5 cols) -->
+        <div class="col-lg-5">
+            <div class="ws-card p-4">
+                <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; background: rgba(39,60,142,0.1); color: #273c8e;">
+                        <i class="fa-solid fa-folder-plus fs-6"></i>
+                    </div>
+                    <h5 class="fw-bold mb-0 text-dark">Add New Category</h5>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Category Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Electrical &amp; Power Equipment" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Parent Category</label>
+                        <select name="parent_id" class="form-select">
+                            <option value="">-- None (Root / Top-Level Category) --</option>
+                            {% for c in categories %}
+                            <option value="{{ c.id }}">{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Leave empty to create a primary root department, or choose a parent to create a subcategory.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">FontAwesome Icon Class</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light" id="iconPreview"><i class="fa-solid fa-box"></i></span>
+                            <input type="text" id="iconInput" name="icon_class" class="form-control" value="fa-solid fa-box" placeholder="fa-solid fa-box">
+                        </div>
+                        <small class="text-muted">Examples: <code>fa-solid fa-plug</code>, <code>fa-solid fa-shirt</code>, <code>fa-solid fa-seedling</code></small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Description (Optional)</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="Brief summary of wholesale products covered by this category..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn ws-btn-primary w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2">
+                        <i class="fa-solid fa-check"></i> Create Category
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Column: Category Tree (7 cols) -->
+        <div class="col-lg-7">
+            <div class="ws-card p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom gap-2">
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-folder-tree me-2 text-primary"></i> Category Hierarchy</h5>
+                        <p class="text-secondary small mb-0">Active wholesale taxonomy and child branches</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="text" id="catFilter" class="form-control form-control-sm" placeholder="Filter categories..." style="max-width: 180px;">
+                        <span class="badge bg-light text-primary border rounded-pill px-3 py-1">{{ categories|length }} Root{{ categories|length|pluralize }}</span>
+                    </div>
+                </div>
+
+                {% if categories %}
+                <div class="list-group list-group-flush" id="categoryList">
+                    {% for c in categories %}
+                    <div class="list-group-item px-0 py-3 border-bottom category-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px; background: rgba(39,60,142,0.08); color: #273c8e;">
+                                    <i class="{{ c.icon_class|default:'fa-solid fa-folder' }}"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-0 text-dark">{{ c.name }}</h6>
+                                    {% if c.description %}
+                                    <p class="text-muted small mb-0">{{ c.description|truncatewords:12 }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <span class="badge bg-light text-secondary border small">
+                                {{ c.subcategories.count }} Subcategor{{ c.subcategories.count|pluralize:"y,ies" }}
+                            </span>
+                        </div>
+
+                        {% if c.subcategories.exists %}
+                        <div class="ms-4 mt-2 ps-3 border-start">
+                            <div class="d-flex flex-wrap gap-2 pt-1">
+                                {% for sub in c.subcategories.all %}
+                                <span class="badge bg-light text-dark border px-2 py-1 small fw-normal d-inline-flex align-items-center gap-1">
+                                    <i class="fa-solid fa-angle-right text-muted" style="font-size: 10px;"></i> {{ sub.name }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-folder-open display-4 text-secondary opacity-50 mb-3 d-block"></i>
+                    <h6 class="fw-bold text-dark">No Categories Configured</h6>
+                    <p class="small text-muted mb-0">Use the form on the left to create your first root category.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const iconInput = document.getElementById('iconInput');
+    const iconPreview = document.getElementById('iconPreview');
+    if (iconInput && iconPreview) {
+        iconInput.addEventListener('input', function() {
+            iconPreview.innerHTML = `<i class="${this.value || 'fa-solid fa-box'}"></i>`;
+        });
+    }
+
+    const catFilter = document.getElementById('catFilter');
+    if (catFilter) {
+        catFilter.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            const items = document.querySelectorAll('#categoryList .category-item');
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(query) ? '' : 'none';
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

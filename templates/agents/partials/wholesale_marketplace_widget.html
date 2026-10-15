@@ -1,0 +1,772 @@
+{% load static %}
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  PADOSI AGENT CROSS-SELL & B2B WHOLESALE PRODUCTS (AGENT DASHBOARD)       -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+
+<style>
+/* ── Agent Cross-Sell Workspace Styles ── */
+.ws-agent-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    transition: all 0.25s ease;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+.ws-agent-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 30px rgba(39, 60, 142, 0.12);
+    border-color: #93c5fd;
+}
+.ws-img-wrap {
+    position: relative;
+    height: 190px;
+    background: #f8fafc;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ws-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+}
+.ws-agent-card:hover .ws-img-wrap img {
+    transform: scale(1.05);
+}
+.ws-badge-moq {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(4px);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.02em;
+}
+.ws-badge-profit {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #059669;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 9px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.35);
+}
+.ws-cat-pill {
+    font-size: 11px;
+    font-weight: 700;
+    color: #273c8e;
+    background: #eff6ff;
+    padding: 3px 10px;
+    border-radius: 20px;
+    display: inline-block;
+    border: 1px solid #dbeafe;
+}
+.ws-price-highlight {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1.1;
+}
+.ws-mrp-strikethrough {
+    font-size: 0.88rem;
+    color: #94a3b8;
+    text-decoration: line-through;
+    font-weight: 500;
+}
+.ws-tiers-preview {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 11.5px;
+    border: 1px dashed #cbd5e1;
+    margin-top: 10px;
+    margin-bottom: 12px;
+}
+.ws-hero-banner {
+    background: linear-gradient(135deg, #1e3a6e 0%, #273c8e 50%, #059669 100%);
+    color: #ffffff;
+    border-radius: 18px;
+    padding: 26px 30px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+.ws-hero-banner::after {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.ws-tab-btn-pill {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+.ws-tab-btn-pill.active, .ws-tab-btn-pill:hover {
+    background: #273c8e;
+    color: #ffffff;
+    border-color: #273c8e;
+}
+.ws-profit-box {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    color: #065f46;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+}
+</style>
+
+{% if show_overview_showcase %}
+<!-- ── Overview Tab: Quick Cross-Sell Showcase ── -->
+<div class="card premium-dashboard-card mb-4 mx-2 border-0 shadow-sm" style="border-radius: 16px; overflow: hidden;">
+    <div class="card-body p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge" style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">
+                        <i class="fa-solid fa-boxes-packing me-1"></i> Agent Exclusive Cross-Sell
+                    </span>
+                    <span class="badge" style="background: #eff6ff; color: #273c8e; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px;">
+                        Wholesale Factory Rates
+                    </span>
+                </div>
+                <h4 class="fw-bold mb-1" style="color: #1e293b; letter-spacing: -0.01em;">Approved Cross-Sell Products for Your Clients</h4>
+                <p class="text-muted small mb-0">Offer policy presentation folders, welcome hampers, engraved pens &amp; health devices directly to your insurance clients.</p>
+            </div>
+            <div>
+                <button type="button" class="btn btn-primary btn-sm rounded-pill px-4 py-2 fw-bold" onclick="var t=document.querySelector('[data-tab=marketplace]'); if(t){t.click();}" style="background: #273c8e; border-color: #273c8e;">
+                    <i class="fa-solid fa-bag-shopping me-1"></i> View All Cross-Sell Products
+                </button>
+            </div>
+        </div>
+
+        {% if wholesale_products %}
+        <div class="row g-3">
+            {% for prod in wholesale_products|slice:":4" %}
+            <div class="col-lg-3 col-md-6 col-12">
+                <div class="ws-agent-card shadow-sm">
+                    <div class="ws-img-wrap">
+                        {% if prod.images.first %}
+                            <img src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}">
+                        {% else %}
+                            <div class="text-center p-3 text-muted">
+                                <i class="fa-solid fa-box-open fa-3x" style="color: #cbd5e1;"></i>
+                            </div>
+                        {% endif %}
+                        <span class="ws-badge-moq"><i class="fa-solid fa-cubes me-1"></i>MOQ {{ prod.moq }} pcs</span>
+                        {% if prod.suggested_retail_price and prod.suggested_retail_price > prod.base_price %}
+                            <span class="ws-badge-profit">Margin ₹{{ prod.suggested_retail_price|add:"-0" }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="p-3 d-flex flex-column flex-grow-1">
+                        <div class="mb-2">
+                            <span class="ws-cat-pill">{{ prod.category.name|default:"Supplies" }}</span>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1 text-truncate" title="{{ prod.title }}">{{ prod.title }}</h6>
+                        <div class="small text-muted mb-2 text-truncate">
+                            <i class="fa-solid fa-building me-1 text-primary"></i>{{ prod.wholesaler.business_name }}
+                        </div>
+                        
+                        <div class="mt-auto pt-2 border-top">
+                            <div class="d-flex justify-content-between align-items-baseline mb-2">
+                                <div>
+                                    <span class="text-muted small" style="font-size: 11px;">Wholesale Buy Rate:</span>
+                                    <div class="ws-price-highlight">&#8377;{{ prod.base_price }} <small class="text-muted fw-normal" style="font-size: 11px;">/ pc</small></div>
+                                </div>
+                                {% if prod.suggested_retail_price and prod.suggested_retail_price > prod.base_price %}
+                                    <div class="text-end">
+                                        <span class="text-muted small" style="font-size: 11px;">Sell to Client:</span>
+                                        <div class="fw-bold text-success">&#8377;{{ prod.suggested_retail_price }}</div>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100 rounded-3 fw-bold" onclick="openProductOrderModal('{{ prod.id }}', '{{ prod.title|escapejs }}', '{{ prod.base_price }}', '{{ prod.suggested_retail_price|default:prod.base_price }}', '{{ prod.moq }}', '{{ prod.wholesaler.business_name|escapejs }}', '{{ prod.images.first.image.url|default:'' }}')" style="border-color: #273c8e; color: #273c8e;">
+                                <i class="fa-solid fa-cart-shopping me-1"></i> Order / Sell to Client
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <i class="fa-solid fa-box-open fa-2x mb-2 text-muted"></i>
+            <p class="small mb-0">No wholesale products approved yet. As soon as admin approves products from wholesalers, they will appear here!</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+
+{% if show_full_marketplace_tab %}
+<!-- ── Dedicated Tab: Complete Cross-Sell & B2B Products Workspace ── -->
+<div class="px-2 py-3">
+    <!-- Hero Banner -->
+    <div class="ws-hero-banner shadow-sm">
+        <div class="row align-items-center">
+            <div class="col-lg-8 mb-3 mb-lg-0">
+                <span class="badge bg-white text-dark fw-bold px-3 py-1 rounded-pill mb-2 shadow-sm" style="font-size: 12px;">
+                    <i class="fa-solid fa-handshake text-primary me-1"></i> Exclusive for Licensed Advisors &amp; Agents
+                </span>
+                <h2 class="fw-bold text-white mb-2" style="letter-spacing: -0.02em;">Cross-Sell Marketplace &amp; Client Supplies</h2>
+                <p class="text-white text-opacity-85 mb-3" style="max-width: 650px; font-size: 14.5px; line-height: 1.6;">
+                    Verified wholesale products approved by PadosiAgent. Buy at direct factory rates, customize with your agency branding, and sell or gift to your insurance policyholders.
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-light rounded-pill px-4 py-2 fw-bold shadow-sm" onclick="showSubTab('catalog')" style="color: #273c8e;">
+                        <i class="fa-solid fa-store me-1"></i> Browse Products ({{ wholesale_products|length }})
+                    </button>
+                    <button type="button" class="btn btn-outline-light rounded-pill px-3 py-2 fw-bold" onclick="showSubTab('inquiries')">
+                        <i class="fa-solid fa-clipboard-list me-1"></i> My Inquiries &amp; Orders ({{ agent_inquiries|length }})
+                    </button>
+                </div>
+            </div>
+            <div class="col-lg-4 text-lg-end d-none d-lg-block">
+                <div class="p-3 rounded-4" style="background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); display: inline-block; text-align: left;">
+                    <div class="d-flex align-items-center gap-2 mb-2 text-white">
+                        <i class="fa-solid fa-shield-halved text-warning"></i>
+                        <span class="small fw-bold">Admin Verified Wholesalers</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-2 text-white">
+                        <i class="fa-solid fa-tags text-success"></i>
+                        <span class="small fw-bold">Transparent Volume Discounts</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-white">
+                        <i class="fa-solid fa-truck-fast text-info"></i>
+                        <span class="small fw-bold">Factory Dispatch Across India</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Switcher Tabs -->
+    <div class="d-flex align-items-center gap-2 mb-3 border-bottom pb-2">
+        <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold ws-sub-tab-btn active" id="btnSubTabCatalog" onclick="showSubTab('catalog')">
+            <i class="fa-solid fa-boxes-stacked me-1"></i> Available Products ({{ wholesale_products|length }})
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold ws-sub-tab-btn" id="btnSubTabInquiries" onclick="showSubTab('inquiries')">
+            <i class="fa-solid fa-list-check me-1"></i> My Orders &amp; RFQs ({{ agent_inquiries|length }})
+        </button>
+    </div>
+
+    <!-- SUB-TAB 1: PRODUCT CATALOG -->
+    <div id="subTabCatalog">
+        <!-- Category Filter Bar -->
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 p-3 bg-white rounded-3 shadow-sm" style="border: 1px solid #e2e8f0;">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <span class="text-muted small fw-bold me-1"><i class="fa-solid fa-filter me-1"></i>Category:</span>
+                <button type="button" class="ws-tab-btn-pill active" onclick="filterWholesaleCategory('all', this)">All Products</button>
+                {% for cat in wholesale_categories %}
+                <button type="button" class="ws-tab-btn-pill" onclick="filterWholesaleCategory('{{ cat.slug }}', this)">{{ cat.name }}</button>
+                {% endfor %}
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <input type="text" id="wsSearchInput" class="form-control form-control-sm rounded-pill" placeholder="Search products (e.g. folder, pen)..." style="width: 250px;" onkeyup="searchWholesaleProducts(this.value)">
+            </div>
+        </div>
+
+        <!-- Products Grid -->
+        <div class="row g-4" id="wholesaleProductsGrid">
+            {% for prod in wholesale_products %}
+            <div class="col-lg-3 col-md-6 col-12 ws-product-item" data-category="{{ prod.category.slug }}" data-name="{{ prod.title|lower }}" data-desc="{{ prod.short_description|lower }}">
+                <div class="ws-agent-card shadow-sm">
+                    <div class="ws-img-wrap">
+                        {% if prod.images.first %}
+                            <img src="{{ prod.images.first.image.url }}" alt="{{ prod.title }}">
+                        {% else %}
+                            <div class="text-center p-3 text-muted">
+                                <i class="fa-solid fa-box-open fa-3x" style="color: #cbd5e1;"></i>
+                            </div>
+                        {% endif %}
+                        <span class="ws-badge-moq"><i class="fa-solid fa-cubes me-1"></i>MOQ {{ prod.moq }} pcs</span>
+                        {% if prod.suggested_retail_price and prod.suggested_retail_price > prod.base_price %}
+                            <span class="ws-badge-profit">
+                                <i class="fa-solid fa-chart-line me-1"></i>Profit ₹{{ prod.suggested_retail_price|add:"-0" }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="p-3 d-flex flex-column flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="ws-cat-pill">{{ prod.category.name|default:"Supplies" }}</span>
+                            {% if prod.wholesaler.is_verified or prod.wholesaler.verification_status == 'APPROVED' %}
+                            <span class="badge bg-success text-white" style="font-size: 10px; border-radius: 6px;">
+                                <i class="fa-solid fa-certificate me-1"></i>Verified Wholesaler
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <h6 class="fw-bold text-dark mb-1" style="font-size: 14.5px; line-height: 1.4;">{{ prod.title }}</h6>
+                        <div class="small text-muted mb-2">
+                            <i class="fa-solid fa-industry me-1 text-primary"></i>{{ prod.wholesaler.business_name }}
+                        </div>
+                        <p class="text-muted small mb-2" style="font-size: 12px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                            {{ prod.short_description|default:prod.description|truncatewords:20 }}
+                        </p>
+
+                        <!-- Price Tier Snapshot -->
+                        {% if prod.price_tiers.all %}
+                        <div class="ws-tiers-preview">
+                            <div class="d-flex justify-content-between fw-bold text-muted mb-1" style="font-size: 10.5px;">
+                                <span>Volume Tier</span>
+                                <span>Wholesale Rate</span>
+                            </div>
+                            {% for tier in prod.price_tiers.all|slice:":2" %}
+                            <div class="d-flex justify-content-between" style="font-size: 11px;">
+                                <span>{{ tier.min_quantity }}{% if tier.max_quantity %}-{{ tier.max_quantity }}{% else %}+{% endif %} pcs</span>
+                                <span class="fw-bold text-primary">&#8377;{{ tier.unit_price }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Pricing & Margin Breakdown -->
+                        <div class="mt-auto pt-2 border-top">
+                            <div class="d-flex justify-content-between align-items-baseline mb-2">
+                                <div>
+                                    <span class="text-muted small" style="font-size: 11px;">Wholesale Buy Rate:</span>
+                                    <div class="ws-price-highlight">&#8377;{{ prod.base_price }} <small class="text-muted fw-normal" style="font-size: 11px;">/ pc</small></div>
+                                </div>
+                                {% if prod.suggested_retail_price and prod.suggested_retail_price > prod.base_price %}
+                                <div class="text-end">
+                                    <span class="text-muted small" style="font-size: 11px;">Client Retail Price:</span>
+                                    <div class="fw-bold text-success" style="font-size: 1.05rem;">&#8377;{{ prod.suggested_retail_price }}</div>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Actions: Order / Sell to Client / Share on WhatsApp -->
+                            <div class="d-flex flex-column gap-2 mt-2">
+                                <button type="button" class="btn btn-sm btn-primary w-100 fw-bold rounded-3" onclick="openProductOrderModal('{{ prod.id }}', '{{ prod.title|escapejs }}', '{{ prod.base_price }}', '{{ prod.suggested_retail_price|default:prod.base_price }}', '{{ prod.moq }}', '{{ prod.wholesaler.business_name|escapejs }}', '{{ prod.images.first.image.url|default:'' }}')" style="background: #273c8e; border-color: #273c8e;">
+                                    <i class="fa-solid fa-cart-plus me-1"></i> Place Order / Inquiry
+                                </button>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-success flex-grow-1 fw-bold rounded-3" onclick="shareClientWhatsApp('{{ prod.title|escapejs }}', '{{ prod.suggested_retail_price|default:prod.base_price }}', '{{ request.user.first_name|escapejs }}')">
+                                        <i class="fa-brands fa-whatsapp me-1"></i> Pitch to Client
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary px-3 fw-bold rounded-3" onclick="openProductDetailsModal('{{ prod.id }}', '{{ prod.title|escapejs }}', '{{ prod.description|escapejs }}', '{{ prod.base_price }}', '{{ prod.suggested_retail_price|default:prod.base_price }}', '{{ prod.moq }}', '{{ prod.sku }}', '{{ prod.wholesaler.business_name|escapejs }}')">
+                                        <i class="fa-solid fa-circle-info"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5">
+                <div class="p-4 bg-white rounded-3 shadow-sm d-inline-block border">
+                    <i class="fa-solid fa-box-open fa-3x text-muted mb-3"></i>
+                    <h5 class="fw-bold text-dark mb-1">No Wholesale Products Approved Yet</h5>
+                    <p class="text-muted small mb-0">Products added by wholesalers will appear here automatically once approved by the platform admin.</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- SUB-TAB 2: MY ORDERS & INQUIRIES -->
+    <div id="subTabInquiries" style="display: none;">
+        <div class="card bg-white rounded-3 shadow-sm border p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h5 class="fw-bold text-dark mb-1">My Cross-Sell Orders &amp; RFQ Inquiries</h5>
+                    <p class="text-muted small mb-0">Track quotations, sample requests, and delivery confirmations from suppliers.</p>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold" onclick="showSubTab('catalog')">
+                    <i class="fa-solid fa-plus me-1"></i> Order Another Product
+                </button>
+            </div>
+
+            {% if agent_inquiries %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr class="small text-uppercase fw-bold text-muted">
+                            <th>RFQ #</th>
+                            <th>Product</th>
+                            <th>Supplier</th>
+                            <th>Quantity</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Supplier Response / Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inq in agent_inquiries %}
+                        <tr>
+                            <td class="fw-bold text-primary">#{{ inq.id }}</td>
+                            <td>
+                                <div class="fw-bold text-dark">{{ inq.product.title }}</div>
+                                <small class="text-muted">Target: ₹{{ inq.target_price_per_unit|default:inq.product.base_price }}/pc</small>
+                            </td>
+                            <td>
+                                <span class="fw-semibold text-secondary">{{ inq.wholesaler.business_name }}</span>
+                            </td>
+                            <td><span class="badge bg-light text-dark border px-2 py-1 fw-bold">{{ inq.requested_quantity }} pcs</span></td>
+                            <td>
+                                {% if inq.status == 'NEW' %}
+                                    <span class="badge bg-warning text-dark">Submitted</span>
+                                {% elif inq.status == 'QUOTATION_SENT' %}
+                                    <span class="badge bg-info text-white">Quotation Sent</span>
+                                {% elif inq.status == 'CONVERTED' %}
+                                    <span class="badge bg-success text-white">Confirmed Order</span>
+                                {% else %}
+                                    <span class="badge bg-secondary text-white">{{ inq.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted">{{ inq.created_at|date:"d M Y, h:i A" }}</td>
+                            <td class="small">
+                                {% if inq.seller_quotation_amount %}
+                                    <div class="fw-bold text-success">Quoted: ₹{{ inq.seller_quotation_amount }}</div>
+                                {% endif %}
+                                <div class="text-muted">{{ inq.seller_notes|default:"Waiting for wholesaler review."|truncatewords:15 }}</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fa-solid fa-clipboard-question fa-3x text-muted mb-3 opacity-50"></i>
+                <h6 class="fw-bold text-dark mb-1">No Orders or Inquiries Placed Yet</h6>
+                <p class="text-muted small mb-3">Browse available cross-sell products and submit quotation or client orders directly to verified suppliers.</p>
+                <button type="button" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold" onclick="showSubTab('catalog')">
+                    Browse Cross-Sell Products Now
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  MODAL 1: ORDER / INQUIRY SUBMISSION MODAL                                  -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="agentOrderModal" tabindex="-1" aria-labelledby="agentOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <div>
+                    <span class="badge bg-primary text-white mb-1" style="font-size: 11px;">B2B Order / RFQ</span>
+                    <h5 class="modal-title fw-bold text-dark" id="agentOrderModalLabel">Submit Order to Supplier</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="agentOrderForm" method="post" action="" onsubmit="submitAgentOrder(event)">
+                {% csrf_token %}
+                <input type="hidden" name="ajax" value="1">
+                <div class="modal-body px-4 py-3">
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="fw-bold text-dark" id="modalProductTitle">-</div>
+                        <div class="small text-muted mb-2">Supplier: <span id="modalSupplierName" class="fw-bold text-primary">-</span></div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="small text-muted">Wholesale Rate:</span>
+                                <div class="fw-bold text-dark" style="font-size: 1.1rem;">&#8377;<span id="modalBasePrice">0</span> / pc</div>
+                            </div>
+                            <div class="text-end">
+                                <span class="small text-muted">Client Resale MSRP:</span>
+                                <div class="fw-bold text-success" style="font-size: 1.1rem;">&#8377;<span id="modalRetailPrice">0</span> / pc</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-dark">Order Quantity (Units) *</label>
+                            <input type="number" name="requested_quantity" id="orderQtyInput" class="form-control form-control-sm" required min="1" oninput="calculateModalTotal()">
+                            <small class="text-muted" style="font-size: 11px;">MOQ: <span id="modalMoq">1</span> pcs</small>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-dark">Total Estimated Cost</label>
+                            <div class="form-control form-control-sm bg-light fw-bold text-primary" id="orderTotalCostDisplay">&#8377;0</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-dark">Your Name *</label>
+                            <input type="text" name="buyer_name" class="form-control form-control-sm" value="{{ request.user.get_full_name|default:request.user.username }}" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-dark">Contact Phone *</label>
+                            <input type="text" name="buyer_phone" class="form-control form-control-sm" value="{{ request.user.phone_number|default:'' }}" required placeholder="10-digit mobile">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-dark">Email Address *</label>
+                            <input type="email" name="buyer_email" class="form-control form-control-sm" value="{{ request.user.email }}" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-dark">Delivery City *</label>
+                            <input type="text" name="delivery_city" class="form-control form-control-sm" required placeholder="City name" value="{{ profile.city|default:'' }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark">Delivery Pincode *</label>
+                        <input type="text" name="delivery_pincode" class="form-control form-control-sm" required placeholder="6-digit pincode" style="max-width: 180px;">
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-dark">Client Name &amp; Custom Branding / Special Instructions</label>
+                        <textarea name="message" class="form-control form-control-sm" rows="2" placeholder="e.g. Client Ramesh Patel, print agency logo &amp; phone number on folder cover..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
+                    <button type="submit" id="submitOrderBtn" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold" style="background: #273c8e; border-color: #273c8e;">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Send Order to Supplier
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  MODAL 2: PRODUCT SPECIFICATIONS & DETAILS MODAL                            -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="agentProductDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <div>
+                    <span class="badge bg-success text-white mb-1" style="font-size: 11px;">Product Specifications</span>
+                    <h5 class="modal-title fw-bold text-dark" id="detailsModalTitle">-</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body px-4 py-3">
+                <div class="small text-muted mb-3">SKU: <span id="detailsModalSku" class="fw-bold text-dark">-</span> | Supplier: <span id="detailsModalSupplier" class="fw-bold text-primary">-</span></div>
+                <div class="p-3 bg-light rounded-3 mb-3 border">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="small text-muted">Wholesale Base Rate:</span>
+                        <span class="fw-bold text-dark">&#8377;<span id="detailsModalBasePrice">0</span></span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="small text-muted">Recommended Client MSRP:</span>
+                        <span class="fw-bold text-success">&#8377;<span id="detailsModalRetailPrice">0</span></span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="small text-muted">Minimum Order Quantity:</span>
+                        <span class="fw-bold text-dark"><span id="detailsModalMoq">0</span> units</span>
+                    </div>
+                </div>
+                <h6 class="fw-bold text-dark small text-uppercase">Description &amp; Specifications:</h6>
+                <p class="small text-secondary mb-0" id="detailsModalDescription" style="line-height: 1.6; white-space: pre-line;">-</p>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" data-bs-dismiss="modal" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentOrderBasePrice = 0;
+
+function showSubTab(tabName) {
+    const catalogTab = document.getElementById('subTabCatalog');
+    const inqTab = document.getElementById('subTabInquiries');
+    const btnCatalog = document.getElementById('btnSubTabCatalog');
+    const btnInq = document.getElementById('btnSubTabInquiries');
+
+    if (tabName === 'catalog') {
+        catalogTab.style.display = '';
+        inqTab.style.display = 'none';
+        btnCatalog.classList.add('active', 'btn-primary');
+        btnCatalog.classList.remove('btn-outline-primary');
+        btnInq.classList.remove('active', 'btn-secondary');
+        btnInq.classList.add('btn-outline-secondary');
+    } else {
+        catalogTab.style.display = 'none';
+        inqTab.style.display = '';
+        btnInq.classList.add('active', 'btn-secondary');
+        btnInq.classList.remove('btn-outline-secondary');
+        btnCatalog.classList.remove('active', 'btn-primary');
+        btnCatalog.classList.add('btn-outline-primary');
+    }
+}
+
+function filterWholesaleCategory(catSlug, btn) {
+    document.querySelectorAll('.ws-tab-btn-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    const items = document.querySelectorAll('.ws-product-item');
+    items.forEach(item => {
+        if (catSlug === 'all' || item.getAttribute('data-category') === catSlug) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function searchWholesaleProducts(query) {
+    query = (query || '').toLowerCase().trim();
+    const items = document.querySelectorAll('.ws-product-item');
+    items.forEach(item => {
+        const name = item.getAttribute('data-name') || '';
+        const desc = item.getAttribute('data-desc') || '';
+        if (!query || name.includes(query) || desc.includes(query)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function openProductOrderModal(id, title, basePrice, retailPrice, moq, supplierName, imgUrl) {
+    document.getElementById('modalProductTitle').innerText = title;
+    document.getElementById('modalSupplierName').innerText = supplierName;
+    document.getElementById('modalBasePrice').innerText = basePrice;
+    document.getElementById('modalRetailPrice').innerText = retailPrice;
+    document.getElementById('modalMoq').innerText = moq;
+
+    currentOrderBasePrice = parseFloat(basePrice) || 0;
+    const qtyInput = document.getElementById('orderQtyInput');
+    qtyInput.min = moq;
+    qtyInput.value = moq;
+    calculateModalTotal();
+
+    const form = document.getElementById('agentOrderForm');
+    form.action = '/wholesale/rfq/' + id + '/';
+
+    const modalEl = document.getElementById('agentOrderModal');
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        new bootstrap.Modal(modalEl).show();
+    } else if (typeof $ !== 'undefined') {
+        $(modalEl).modal('show');
+    }
+}
+
+function calculateModalTotal() {
+    const qty = parseInt(document.getElementById('orderQtyInput').value) || 0;
+    const total = qty * currentOrderBasePrice;
+    document.getElementById('orderTotalCostDisplay').innerText = '₹' + total.toLocaleString('en-IN');
+}
+
+function openProductDetailsModal(id, title, desc, basePrice, retailPrice, moq, sku, supplier) {
+    document.getElementById('detailsModalTitle').innerText = title;
+    document.getElementById('detailsModalSku').innerText = sku;
+    document.getElementById('detailsModalSupplier').innerText = supplier;
+    document.getElementById('detailsModalBasePrice').innerText = basePrice;
+    document.getElementById('detailsModalRetailPrice').innerText = retailPrice;
+    document.getElementById('detailsModalMoq').innerText = moq;
+    document.getElementById('detailsModalDescription').innerText = desc || 'Quality guaranteed direct factory dispatch.';
+
+    const modalEl = document.getElementById('agentProductDetailsModal');
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        new bootstrap.Modal(modalEl).show();
+    } else if (typeof $ !== 'undefined') {
+        $(modalEl).modal('show');
+    }
+}
+
+function shareClientWhatsApp(title, clientPrice, agentName) {
+    const text = "Namaste! As your trusted PadosiAgent insurance advisor, I recommend this exclusive " + title + " (Client Rate: ₹" + clientPrice + "). Contact me (" + (agentName || 'your advisor') + ") to order or get custom branding!";
+    const url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
+    window.open(url, '_blank');
+}
+
+function submitAgentOrder(e) {
+    e.preventDefault();
+    const form = document.getElementById('agentOrderForm');
+    const submitBtn = document.getElementById('submitOrderBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Submitting...';
+
+    const formData = new FormData(form);
+
+    fetch(form.action, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send Order to Supplier';
+
+        if (data.status === 'success') {
+            const modalEl = document.getElementById('agentOrderModal');
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            } else if (typeof $ !== 'undefined') {
+                $(modalEl).modal('hide');
+            }
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Order Placed!',
+                    text: data.message,
+                    confirmButtonColor: '#273c8e'
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                alert(data.message);
+                location.reload();
+            }
+        } else {
+            const err = data.message || 'Error submitting order.';
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ icon: 'error', title: 'Oops!', text: err });
+            } else {
+                alert(err);
+            }
+        }
+    })
+    .catch(err => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send Order to Supplier';
+        alert('Submission failed. Please check network and try again.');
+    });
+}
+</script>
+{% endif %}

@@ -275,6 +275,11 @@
                 <i class="fa-solid fa-bolt"></i> Lead Tracking
             </a>
 
+            <div class="menu-category">COMMERCE &amp; SUPPLIES</div>
+            <a href="{% url 'distributors:cross_sell' %}" class="menu-item {% if 'cross_sell' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="fa-solid fa-boxes-stacked"></i> Cross-Sell Products
+            </a>
+
             <div class="menu-category">ACCOUNT</div>
             <a href="{% url 'distributors:profile'  %}" class="menu-item {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
                 <i class="fa-solid fa-user"></i> My Profile

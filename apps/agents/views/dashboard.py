@@ -492,9 +492,12 @@ def agent_dashboard(request):
     # Resolve SubscriptionPlan using robust multi-tier helper
     agent_plan = _resolve_agent_plan(dashboard_plan_type, agent=agent)
 
-    favorite_ids = set(
-        FavoriteAgent.objects.filter(user=request.user).values_list('agent_id', flat=True)
-    )
+    try:
+        favorite_ids = set(
+            FavoriteAgent.objects.filter(user=request.user).values_list('agent_id', flat=True)
+        )
+    except Exception:
+        favorite_ids = set()
 
     try:
         popup_notifications = [
@@ -730,6 +733,43 @@ def agent_dashboard(request):
             else None
         ),
     }
+
+    # ── Wholesale Marketplace Showcase for Agent Dashboard ──
+    from apps.wholesale.adapters.auth_bridge import is_wholesale_enabled
+    wholesale_enabled = is_wholesale_enabled()
+
+    wholesale_products = []
+    wholesale_categories = []
+    agent_inquiries = []
+    if wholesale_enabled:
+        try:
+            from apps.wholesale.models.product import WholesaleProduct
+            from apps.wholesale.models.category import ProductCategory
+            from apps.wholesale.models.inquiry import BuyerInquiry
+            wholesale_products = list(
+                WholesaleProduct.objects.filter(
+                    approval_status='PUBLISHED',
+                    wholesaler__verification_status='APPROVED'
+                ).select_related('wholesaler', 'category')
+                 .prefetch_related('images', 'price_tiers', 'variants')
+                 .order_by('-is_featured', '-id')[:30]
+            )
+            wholesale_categories = list(
+                ProductCategory.objects.filter(is_active=True, parent__isnull=True)[:8]
+            )
+            agent_inquiries = list(
+                BuyerInquiry.objects.filter(buyer_user=request.user)
+                .select_related('product', 'wholesaler')
+                .order_by('-created_at')[:15]
+            ) if request.user.is_authenticated else []
+        except Exception as ws_err:
+            logger.warning('Failed to load wholesale products for agent dashboard: %s', ws_err)
+            agent_inquiries = []
+
+    context['wholesale_enabled'] = wholesale_enabled
+    context['wholesale_products'] = wholesale_products
+    context['wholesale_categories'] = wholesale_categories
+    context['agent_inquiries'] = agent_inquiries
 
     return render(request, 'agents/dashboard.html', context)
 

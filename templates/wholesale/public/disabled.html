@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Marketplace Inactive — PadosiAgent{% endblock %}
+
+{% block content %}
+<div class="container py-5 my-5 text-center">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            <div class="card border-0 shadow-sm p-4 p-md-5 rounded-4" style="background: #ffffff;">
+                <div class="mb-4">
+                    <div style="width: 80px; height: 80px; border-radius: 50%; background: #eff6ff; display: inline-flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-store-slash text-primary" style="font-size: 36px;"></i>
+                    </div>
+                </div>
+                <h2 class="fw-bold mb-3" style="color: #1e293b; font-family: 'Urbanist', sans-serif;">Wholesale Marketplace Inactive</h2>
+                <p class="text-muted mb-4" style="font-size: 15px; line-height: 1.6;">
+                    The B2B Wholesale & Agent Supplies marketplace is currently disabled by administrator settings or undergoing scheduled inventory catalog updates.
+                </p>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <a href="/agent/dashboard/" class="btn btn-primary px-4 py-2 rounded-3 fw-bold" style="background: #273c8e; border-color: #273c8e;">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Back to Agent Dashboard
+                    </a>
+                    <a href="/" class="btn btn-outline-secondary px-4 py-2 rounded-3 fw-semibold">
+                        Home Page
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

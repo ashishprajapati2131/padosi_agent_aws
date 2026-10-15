@@ -1,0 +1,391 @@
+{% extends 'wholesale/base.html' %}
+{% load static %}
+
+{% block title %}
+{% if product %}Edit {{ product.title }}{% else %}Add New Wholesale Product{% endif %} — CrossSeal
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                {% if product %}Edit Product Listing{% else %}Create Wholesale Product Listing{% endif %}
+            </h2>
+            <p class="text-secondary small mb-0">Complete the 8-step wizard to publish your product with volume pricing tiers</p>
+        </div>
+        <a href="{% url 'wholesale:wholesaler_products' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i> Back to Inventory
+        </a>
+    </div>
+
+    <!-- Wizard Steps Indicator -->
+    <div class="ws-card p-3 mb-4">
+        <div class="ws-wizard-steps">
+            <div class="ws-wizard-step active" data-step="1">
+                <span class="ws-step-circle">1</span>
+                <span class="ws-step-label">Basic Info</span>
+            </div>
+            <div class="ws-wizard-step" data-step="2">
+                <span class="ws-step-circle">2</span>
+                <span class="ws-step-label">Media</span>
+            </div>
+            <div class="ws-wizard-step" data-step="3">
+                <span class="ws-step-circle">3</span>
+                <span class="ws-step-label">Pricing Tiers</span>
+            </div>
+            <div class="ws-wizard-step" data-step="4">
+                <span class="ws-step-circle">4</span>
+                <span class="ws-step-label">Variants</span>
+            </div>
+            <div class="ws-wizard-step" data-step="5">
+                <span class="ws-step-circle">5</span>
+                <span class="ws-step-label">Inventory</span>
+            </div>
+            <div class="ws-wizard-step" data-step="6">
+                <span class="ws-step-circle">6</span>
+                <span class="ws-step-label">Shipping</span>
+            </div>
+            <div class="ws-wizard-step" data-step="7">
+                <span class="ws-step-circle">7</span>
+                <span class="ws-step-label">Terms</span>
+            </div>
+            <div class="ws-wizard-step" data-step="8">
+                <span class="ws-step-circle">8</span>
+                <span class="ws-step-label">Preview</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Wizard Form Container -->
+    <div class="ws-card p-4 p-md-5">
+        <form method="post" enctype="multipart/form-data" id="productWizardForm">
+            {% csrf_token %}
+            {{ form.price_tiers_json }}
+            {{ form.variants_json }}
+
+            <!-- ── STEP 1: Basic Information ─────────────────────────────────── -->
+            <div class="ws-wizard-section" id="wizardStep1">
+                <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-circle-info me-2"></i> Step 1: Basic Information</h4>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">Product Title / Heading *</label>
+                        {{ form.title }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Category *</label>
+                        {{ form.category }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Seller SKU / Code *</label>
+                        {{ form.sku }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Brand / Manufacturer</label>
+                        {{ form.brand }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Product Condition</label>
+                        {{ form.condition }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Country of Origin</label>
+                        {{ form.country_of_origin }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">Search Keywords / Tags (Comma separated)</label>
+                        {{ form.tags }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">Short Description (for catalog card view)</label>
+                        {{ form.short_description }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-muted">Detailed Specifications & Packaging Info *</label>
+                        {{ form.description }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── STEP 2: Product Images ────────────────────────────────────── -->
+            <div class="ws-wizard-section" id="wizardStep2" style="display: none;">
+                <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-images me-2"></i> Step 2: Product Images & Media</h4>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="border rounded-3 p-3 bg-light">
+                            <label class="form-label fw-bold">Primary Display Image *</label>
+                            <p class="small text-muted">This image appears as the main thumbnail on the marketplace.</p>
+                            {{ form.primary_image }}
+                            {% if product and product.primary_image %}
+                            <div class="mt-3">
+                                <span class="small text-muted d-block mb-1">Current Primary:</span>
+                                <img src="{{ product.primary_image.image.url }}" class="rounded-2 border" style="width: 100px; height: 100px; object-fit: cover;">
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded-3 p-3 bg-light">
+                            <label class="form-label fw-bold">Additional Gallery Images</label>
+                            <p class="small text-muted">Upload high-resolution photos showing product angles or packaging.</p>
+                            {{ form.additional_images }}
+                            {% if product and product.images.count > 1 %}
+                            <div class="mt-3 d-flex gap-2 flex-wrap">
+                                {% for img in product.images.all %}
+                                {% if not img.is_primary %}
+                                <img src="{{ img.image.url }}" class="rounded-2 border" style="width: 60px; height: 60px; object-fit: cover;">
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── STEP 3: Wholesale Pricing & Tiers ─────────────────────────── -->
+            <div class="ws-wizard-section" id="wizardStep3" style="display: none;">
+                <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-tags me-2"></i> Step 3: Wholesale Pricing & Quantity Tiers</h4>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Base Wholesale Price (₹) *</label>
+                        {{ form.base_price }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Minimum Order Quantity (MOQ) *</label>
+                        {{ form.moq }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Unit of Measurement *</label>
+                        {{ form.unit_of_measure }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Suggested Retail Price (MSRP)</label>
+                        {{ form.suggested_retail_price }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Applicable GST / Tax Rate (%)</label>
+                        {{ form.tax_rate_percent }}
+                    </div>
+                    <div class="col-md-4 d-flex align-items-center pt-3">
+                        <div class="form-check">
+                            {{ form.tax_included }}
+                            <label class="form-check-label fw-bold small" for="{{ form.tax_included.id_for_label }}">Price Includes GST</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Tier Builder Table -->
+                <div class="border rounded-3 p-3 bg-light">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <h6 class="fw-bold mb-0">Quantity-Based Volume Discount Tiers</h6>
+                            <span class="small text-muted">Buyers purchasing higher volumes get automatically discounted unit prices</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary" id="btnAddTier">
+                            <i class="fa-solid fa-plus me-1"></i> Add Price Tier
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered bg-white mb-0">
+                            <thead class="table-light small text-uppercase">
+                                <tr>
+                                    <th>Min Units</th>
+                                    <th>Max Units (Leave blank for "+")</th>
+                                    <th>Unit Price (₹)</th>
+                                    <th style="width: 50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tierTableBody">
+                                <!-- Dynamic rows populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── STEP 4: Product Variants ──────────────────────────────────── -->
+            <div class="ws-wizard-section" id="wizardStep4" style="display: none;">
+                <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-shapes me-2"></i> Step 4: Product Variants (Optional)</h4>
+                <p class="text-secondary small mb-3">If your product has multiple sizes, colors, or materials, configure variants below.</p>
+                <div class="border rounded-3 p-3 bg-light">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">Variant Matrix</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddVariant">
+                            <i class="fa-solid fa-plus me-1"></i> Add Variant
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered bg-white mb-0">
+                            <thead class="table-light small text-uppercase">
+                                <tr>
+                                    <th>Variant Title (e.g. Size: XL | Blue)</th>
+                                    <th>Variant SKU</th>
+                                    <th>Price Override (₹)</th>
+                                    <th>Available Stock</th>
+                                    <th style="width: 50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="variantTableBody">
+                                <!-- Dynamic rows populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── STEP 5: Inventory & Availability ─────────────────────────── -->
+            <div class="ws-wizard-section" id="wizardStep5" style="display: none;">
+                <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-warehouse me-2"></i> Step 5: Inventory & Lead Time</h4>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Ready Stock Quantity *</label>
+                        {{ form.stock_quantity }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Low Stock Alert Threshold</label>
+                        {{ form.low_stock_threshold }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-muted">Lead / Dispatch Preparation (Days)</label>
+                        {{ form.lead_time_days }}
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check">
+                            {{ form.is_made_to_order }}
+                            <label class="form-check-label fw-bold" for="{{ form.is_made_to_order.id_for_label }}">
+                                Made to Order / Manufactured on Demand
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── STEP 6: Shipping & Logistics ──────────────────────────────── -->
+            <div class="ws-wizard-section" id="wizardStep6" style="display: none;">
+                <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-truck-fast me-2"></i> Step 6: Shipping & Fulfillment</h4>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Dispatch Location (City, State) *</label>
+                        {{ form.dispatch_location }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Available Shipping Regions *</label>
+                        {{ form.shipping_regions }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Shipping Charges Policy</label>
+                        {{ form.shipping_charge_policy }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Pack Size / Master Carton Details</label>
+                        {{ form.pack_size }}
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check">
+                            {{ form.local_pickup_available }}
+                            <label class="form-check-label fw-bold" for="{{ form.local_pickup_available.id_for_label }}">
+                                Local Factory / Warehouse Pickup Available
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── STEP 7: Commercial Terms ─────────────────────────────────── -->
+            <div class="ws-wizard-section" id="wizardStep7" style="display: none;">
+                <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-handshake me-2"></i> Step 7: Commercial Terms & Policies</h4>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Return & Replacement Policy</label>
+                        {{ form.return_policy }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Warranty Details</label>
+                        {{ form.warranty_info }}
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.customization_available }}
+                            <label class="form-check-label fw-bold" for="{{ form.customization_available.id_for_label }}">
+                                OEM / Custom Branding & Packaging Available
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            {{ form.sample_available }}
+                            <label class="form-check-label fw-bold" for="{{ form.sample_available.id_for_label }}">
+                                Samples Available on Request
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── STEP 8: Live Buyer Preview & Final Submission ─────────────── -->
+            <div class="ws-wizard-section" id="wizardStep8" style="display: none;">
+                <h4 class="fw-bold text-primary mb-3"><i class="fa-solid fa-eye me-2"></i> Step 8: Live Preview & Submission</h4>
+                <p class="text-secondary small mb-4">Review how your listing appears to wholesale buyers before submitting for approval.</p>
+
+                <!-- Mockup Preview Card -->
+                <div class="ws-card p-4 bg-light mb-4 border-2">
+                    <div class="row g-4 align-items-center">
+                        <div class="col-md-4 text-center">
+                            <div class="rounded-3 bg-white p-4 border d-flex align-items-center justify-content-center" style="height: 180px;">
+                                <i class="fa-solid fa-box display-3 text-primary opacity-50"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <span class="badge bg-primary text-white mb-2" id="previewSku">SKU-001</span>
+                            <h4 class="fw-bold text-dark mb-1" id="previewTitle">Product Title</h4>
+                            <div class="fs-4 fw-extrabold text-primary mb-2" id="previewPrice">₹0.00</div>
+                            <div class="small text-muted mb-2">
+                                <span class="me-3"><strong>MOQ:</strong> <span id="previewMoq">10 Units</span></span>
+                                <span><strong>Stock:</strong> <span id="previewStock">100 Units</span></span>
+                            </div>
+                            <p class="small text-secondary mb-2 text-truncate" id="previewDesc">Description</p>
+                            <span class="badge bg-success-subtle text-success small" id="previewLocation">Dispatch: Ahmedabad</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info border-0 rounded-3 small">
+                    <i class="fa-solid fa-shield-halved me-1"></i>
+                    <strong>Approval Policy:</strong> Your product will enter the admin moderation queue upon submission. Once approved, it will be instantly published and discoverable on the marketplace.
+                </div>
+            </div>
+
+            <!-- Navigation Controls -->
+            <div class="d-flex justify-content-between align-items-center border-top pt-4 mt-4">
+                <button type="button" class="btn btn-outline-secondary" id="btnWizardPrev" style="display: none;">
+                    &laquo; Previous Step
+                </button>
+                <div class="d-flex gap-2 ms-auto">
+                    <button type="submit" name="wizard_action" value="save_draft" class="btn btn-light border" id="btnWizardSaveDraft">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> Save as Draft
+                    </button>
+                    <button type="button" class="btn ws-btn-primary" id="btnWizardNext">
+                        Next Step &raquo;
+                    </button>
+                    <button type="submit" name="wizard_action" value="submit_for_approval" class="btn ws-btn-teal fw-bold" id="btnWizardSubmit" style="display: none;">
+                        <i class="fa-solid fa-paper-plane me-1"></i> Submit for Approval
+                    </button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.EXISTING_TIERS = {{ existing_tiers_json|safe }};
+    window.EXISTING_VARIANTS = {{ existing_variants_json|safe }};
+</script>
+<script src="{% static 'wholesale/js/product_wizard.js' %}"></script>
+{% endblock %}

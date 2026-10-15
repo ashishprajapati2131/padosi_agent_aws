@@ -1,0 +1,200 @@
+{% extends 'wholesale/base.html' %}
+
+{% block title %}Bulk Product CSV Upload — PadosiAgent Wholesale{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Header Navigation & Title -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <nav aria-label="breadcrumb" class="mb-1">
+                <ol class="breadcrumb mb-0 py-0" style="background: transparent; font-size: 13px;">
+                    <li class="breadcrumb-item"><a href="{% url 'wholesale:wholesaler_dashboard' %}" class="text-decoration-none text-muted fw-bold">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'wholesale:wholesaler_products' %}" class="text-decoration-none text-muted fw-bold">Inventory</a></li>
+                    <li class="breadcrumb-item active text-primary fw-bold" aria-current="page">Bulk CSV Upload</li>
+                </ol>
+            </nav>
+            <h2 class="fw-extrabold mb-0 text-dark fs-3">Bulk Wholesale Product Import</h2>
+            <p class="text-secondary small mb-0">Import hundreds of catalog items simultaneously with volume pricing and inventory levels</p>
+        </div>
+        <a href="{% url 'wholesale:bulk_upload' %}?action=download_template" class="btn ws-btn-outline fw-semibold shadow-xs">
+            <i class="fa-solid fa-download me-1"></i> Download Sample CSV Template
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Upload Card -->
+        <div class="col-lg-6">
+            <div class="ws-card p-4 h-100 d-flex flex-column">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="ws-kpi-icon-wrap" style="background: #eff6ff; color: #273c8e; width: 40px; height: 40px; font-size: 1.1rem; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark">Upload CSV File</h5>
+                        <span class="small text-muted">Standard UTF-8 formatted CSV spreadsheet</span>
+                    </div>
+                </div>
+
+                <form method="post" enctype="multipart/form-data" class="d-flex flex-column flex-grow-1 justify-content-between">
+                    {% csrf_token %}
+                    <div class="ws-dropzone mb-3 p-4">
+                        <i class="fa-solid fa-file-csv display-3 text-primary opacity-50 mb-3 d-block"></i>
+                        <h6 class="fw-bold text-dark mb-1">Select or Drag &amp; Drop CSV File</h6>
+                        <p class="small text-muted mb-3">Maximum file size 10MB • Up to 1,000 products per batch</p>
+                        <input type="file" name="csv_file" class="form-control w-100 mx-auto" accept=".csv" required>
+                    </div>
+
+                    <div class="d-grid mt-auto">
+                        <button type="submit" class="btn ws-btn-primary py-2 fw-bold shadow-sm">
+                            <i class="fa-solid fa-upload me-1"></i> Upload and Validate Listings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Instructions & Column Mapping Card -->
+        <div class="col-lg-6">
+            <div class="ws-card p-4 h-100 bg-white">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <div class="ws-kpi-icon-wrap" style="background: #ecfdf5; color: #059669; width: 40px; height: 40px; font-size: 1.1rem; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark">CSV Specification Guide</h5>
+                        <span class="small text-muted">Mandatory headers and format validation rules</span>
+                    </div>
+                </div>
+
+                <div class="table-responsive small">
+                    <table class="table table-sm table-bordered bg-white mb-0 ws-tier-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Header</th>
+                                <th>Required?</th>
+                                <th>Sample Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>title</code></td>
+                                <td><span class="badge bg-danger">Required</span></td>
+                                <td>Executive Leather Policy Folder</td>
+                            </tr>
+                            <tr>
+                                <td><code>sku</code></td>
+                                <td><span class="badge bg-danger">Required</span></td>
+                                <td>FLD-LTHR-01</td>
+                            </tr>
+                            <tr>
+                                <td><code>base_price</code></td>
+                                <td><span class="badge bg-danger">Required</span></td>
+                                <td>185.00</td>
+                            </tr>
+                            <tr>
+                                <td><code>moq</code></td>
+                                <td><span class="badge bg-danger">Required</span></td>
+                                <td>50</td>
+                            </tr>
+                            <tr>
+                                <td><code>category_name</code></td>
+                                <td><span class="badge bg-secondary">Optional</span></td>
+                                <td>Office Stationery</td>
+                            </tr>
+                            <tr>
+                                <td><code>stock_quantity</code></td>
+                                <td><span class="badge bg-secondary">Optional</span></td>
+                                <td>1000</td>
+                            </tr>
+                            <tr>
+                                <td><code>unit_of_measure</code></td>
+                                <td><span class="badge bg-secondary">Optional</span></td>
+                                <td>Piece</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-info border-0 rounded-3 small mt-3 mb-0 d-flex align-items-center" style="background:#eff6ff; border:1px solid #bfdbfe !important;">
+                    <i class="fa-solid fa-circle-info fs-5 me-2 text-primary flex-shrink-0"></i>
+                    <div>
+                        Imported records are saved as <strong>Drafts</strong> so you can audit them and attach product photos before submitting for admin approval.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Import Jobs -->
+        <div class="col-12">
+            <div class="ws-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i> Bulk Import History
+                    </h5>
+                    {% if recent_jobs %}
+                    <span class="badge bg-light text-secondary border">{{ recent_jobs.count }} Job{{ recent_jobs.count|pluralize }} Logged</span>
+                    {% endif %}
+                </div>
+                {% if recent_jobs %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 ws-table-mobile-cards">
+                        <thead class="table-light small text-uppercase">
+                            <tr>
+                                <th>File Name</th>
+                                <th>Upload Date</th>
+                                <th>Status</th>
+                                <th>Total Rows</th>
+                                <th>Success</th>
+                                <th>Errors</th>
+                                <th>Operation Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for j in recent_jobs %}
+                            <tr>
+                                <td data-label="File Name" class="fw-bold text-dark">
+                                    <i class="fa-solid fa-file-csv me-1 text-primary"></i> {{ j.original_filename }}
+                                </td>
+                                <td data-label="Date" class="small text-muted">{{ j.created_at|date:"d M Y, H:i" }}</td>
+                                <td data-label="Status">
+                                    <span class="badge {% if j.status == 'COMPLETED' %}bg-success{% elif j.status == 'PARTIAL' %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                        {{ j.get_status_display }}
+                                    </span>
+                                </td>
+                                <td data-label="Total Rows" class="fw-bold">{{ j.total_rows }}</td>
+                                <td data-label="Success" class="text-success fw-bold">{{ j.success_count }}</td>
+                                <td data-label="Errors" class="{% if j.failed_count > 0 %}text-danger{% else %}text-muted{% endif %} fw-bold">{{ j.failed_count }}</td>
+                                <td data-label="Notes" class="small text-muted">{{ j.summary_message|default:'Batch processed' }}</td>
+                            </tr>
+                            {% if j.errors.exists %}
+                            <tr class="table-light">
+                                <td colspan="7" class="p-3">
+                                    <div class="alert alert-danger mb-0 small rounded-3">
+                                        <strong>Validation Error Details:</strong>
+                                        <ul class="mb-0 mt-1 ps-3">
+                                            {% for err in j.errors.all|slice:":5" %}
+                                            <li>Row {{ err.row_number }} (SKU: {{ err.sku|default:'N/A' }}): {{ err.error_message }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="fa-solid fa-file-excel display-4 opacity-25 mb-2 d-block"></i>
+                    <p class="mb-0 fw-semibold">No bulk upload operations recorded yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

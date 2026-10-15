@@ -1,0 +1,271 @@
+{% extends 'wholesale/base.html' %}
+{% load humanize %}
+
+{% block title %}Audit Product Listing: {{ product.title }} — PadosiAgent Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5">
+
+    <!-- Header Navigation & Action Bar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <nav aria-label="breadcrumb" class="mb-1">
+                <ol class="breadcrumb mb-0 py-0" style="background: transparent; font-size: 13px;">
+                    <li class="breadcrumb-item"><a href="/admin/dashboard/" class="text-decoration-none text-muted fw-bold">Main Admin</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'wholesale:admin_dashboard' %}" class="text-decoration-none text-muted fw-bold">Wholesale Operations</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'wholesale:admin_approval_queue' %}" class="text-decoration-none text-muted fw-bold">Approval Queue</a></li>
+                    <li class="breadcrumb-item active text-primary fw-bold text-truncate" style="max-width: 280px;" aria-current="page">Review #{{ product.id }}</li>
+                </ol>
+            </nav>
+            <h2 class="fw-extrabold mb-0 text-dark fs-3">Review Product: {{ product.title|truncatechars:45 }}</h2>
+            <p class="text-secondary small mb-0">Split-screen moderation: Audit authenticity, GST compliance, and wholesale pricing</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'wholesale:admin_approval_queue' %}" class="btn btn-outline-secondary btn-sm fw-bold shadow-xs">
+                <i class="fa-solid fa-arrow-left me-1"></i> Back to Queue
+            </a>
+        </div>
+    </div>
+
+    <!-- ── SPLIT LAYOUT ──────────────────────────────────────────────────────── -->
+    <div class="ws-split-container mb-5">
+
+        <!-- ── LEFT: High-Fidelity Buyer Preview ─────────────────────────────── -->
+        <div>
+            <div class="ws-card p-4 mb-4 shadow-sm border-0">
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                    <span class="small fw-bold text-muted text-uppercase letter-spacing-1">
+                        <i class="fa-solid fa-eye me-1 text-primary"></i> Buyer Catalog Preview
+                    </span>
+                    <span class="font-monospace small text-muted">SKU: {{ product.sku }}</span>
+                </div>
+
+                <!-- Primary Photo -->
+                <div class="rounded-3 bg-light p-3 text-center mb-3 d-flex align-items-center justify-content-center" style="min-height: 320px; max-height: 380px;">
+                    {% if product.primary_image %}
+                    <img src="{{ product.primary_image.image.url }}" alt="{{ product.title }}" class="img-fluid rounded-2 object-fit-contain" style="max-height: 320px;">
+                    {% else %}
+                    <div class="py-5 text-muted"><i class="fa-solid fa-box display-1 opacity-25"></i></div>
+                    {% endif %}
+                </div>
+
+                <!-- Additional Gallery Photos -->
+                {% if images.count > 1 %}
+                <div class="d-flex gap-2 mb-4 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
+                    {% for img in images %}
+                    <img src="{{ img.image.url }}" alt="Gallery" class="rounded-2 border object-fit-cover shadow-xs" style="width: 68px; height: 68px; flex-shrink: 0;">
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <h3 class="fw-bold mb-1 text-dark fs-4">{{ product.title }}</h3>
+                <div class="small text-secondary mb-3">
+                    Category: <strong class="text-dark">{{ product.category.name }}</strong> |
+                    Brand: <strong class="text-dark">{{ product.brand|default:'Generic / Factory Unbranded' }}</strong> |
+                    Condition: <span class="badge bg-light text-dark border">{{ product.get_condition_display }}</span>
+                </div>
+
+                <!-- Price & MOQ Box -->
+                <div class="bg-light p-3 rounded-3 mb-4 d-flex justify-content-between align-items-center border">
+                    <div>
+                        <span class="small text-muted d-block fw-bold text-uppercase letter-spacing-1">Base Wholesale Price</span>
+                        <span class="fs-3 fw-extrabold text-primary">₹{{ product.base_price|intcomma }}</span>
+                        <span class="small text-muted">/ {{ product.unit_of_measure }}</span>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-dark text-white px-3 py-2 rounded-pill shadow-xs">
+                            MOQ: {{ product.moq }} {{ product.unit_of_measure }}
+                        </span>
+                        <div class="small text-muted mt-1">
+                            {% if product.tax_included %}GST Included{% else %}+{{ product.tax_rate_percent }}% GST Extra{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Volume Pricing Tiers -->
+                {% if price_tiers %}
+                <h6 class="fw-bold small text-muted text-uppercase mb-2 letter-spacing-1">Configured Wholesale Price Tiers</h6>
+                <div class="table-responsive rounded-3 border mb-4">
+                    <table class="table table-sm ws-tier-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Min Units</th>
+                                <th>Max Units</th>
+                                <th>Price per {{ product.unit_of_measure }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tier in price_tiers %}
+                            <tr>
+                                <td class="fw-semibold">{{ tier.min_quantity }}</td>
+                                <td>{{ tier.max_quantity|default:'+' }}</td>
+                                <td class="fw-bold text-success">₹{{ tier.unit_price }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Inventory & Logistics -->
+                <div class="row g-2 mb-4 small">
+                    <div class="col-md-4">
+                        <div class="p-2 border rounded-2 bg-light">
+                            <span class="text-muted d-block small">Ready Stock:</span>
+                            <strong class="text-dark">{{ product.stock_quantity }} {{ product.unit_of_measure }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-2 border rounded-2 bg-light">
+                            <span class="text-muted d-block small">Dispatch Location:</span>
+                            <strong class="text-dark">{{ product.dispatch_location }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-2 border rounded-2 bg-light">
+                            <span class="text-muted d-block small">Lead Preparation:</span>
+                            <strong class="text-dark">{{ product.lead_time_days }} Business Days</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full Description -->
+                <h6 class="fw-bold small text-muted text-uppercase mb-2 letter-spacing-1">Product Description</h6>
+                <div class="p-3 bg-light rounded-3 small mb-3 border text-dark" style="white-space: pre-line; line-height: 1.6;">{{ product.description }}</div>
+
+                <!-- Policies -->
+                <div class="row g-2 small text-secondary">
+                    <div class="col-6"><strong>Return Policy:</strong> {{ product.return_policy }}</div>
+                    <div class="col-6"><strong>Warranty:</strong> {{ product.warranty_info|default:'None' }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── RIGHT: Moderation Decision & Wholesaler KYC Panel ─────────────── -->
+        <div>
+            <!-- Decision Box -->
+            <div class="ws-review-panel mb-4 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-gavel me-2 text-primary"></i> Moderation Action</h5>
+                    <span class="ws-badge ws-badge-{{ product.approval_status|lower }}">
+                        <span class="ws-badge-dot"></span>
+                        {{ product.get_approval_status_display }}
+                    </span>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">
+                            Notes / Feedback to Seller
+                            <span class="text-danger">* (Required if Requesting Revisions)</span>
+                        </label>
+                        <textarea name="notes_to_seller" class="form-control" rows="3" placeholder="Provide clear feedback if requesting revisions or reasons if rejecting..."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-muted text-uppercase">
+                            Internal Administrative Notes (Private)
+                        </label>
+                        <textarea name="internal_notes" class="form-control" rows="2" placeholder="Private moderation notes (only visible to admins)..."></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" name="decision" value="approve" class="btn btn-success py-2 fw-bold shadow-xs" onclick="return confirm('Approve this listing and publish it to the marketplace?');" style="background:#059669; border-color:#059669;">
+                            <i class="fa-solid fa-circle-check me-1"></i> Approve &amp; Publish Listing
+                        </button>
+
+                        <button type="submit" name="decision" value="request_changes" class="btn btn-warning py-2 fw-bold shadow-xs" onclick="return confirm('Request revisions from the seller?');" style="background:#d97706; border-color:#d97706; color:#ffffff;">
+                            <i class="fa-solid fa-pen-to-square me-1"></i> Request Changes / Revisions
+                        </button>
+
+                        <button type="submit" name="decision" value="reject" class="btn btn-outline-danger py-2 fw-bold shadow-xs" onclick="return confirm('Reject this product listing?');">
+                            <i class="fa-solid fa-circle-xmark me-1"></i> Reject Listing
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Wholesaler Verification Details -->
+            <div class="ws-card p-4 shadow-sm border-0">
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                    <h6 class="fw-bold text-uppercase small text-muted mb-0"><i class="fa-solid fa-id-card me-2 text-primary"></i> Wholesaler Profile</h6>
+                    <span class="badge {% if wholesaler.is_verified %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                        {{ wholesaler.get_verification_status_display }}
+                    </span>
+                </div>
+                <h5 class="fw-bold mb-1 text-dark fs-6">{{ wholesaler.business_name }}</h5>
+                <div class="small text-secondary mb-3">
+                    <i class="fa-solid fa-location-dot me-1 text-danger"></i> {{ wholesaler.city }}, {{ wholesaler.state }} ({{ wholesaler.contact_person }})
+                </div>
+
+                <div class="border rounded-2 p-3 bg-light small mb-3">
+                    <div><strong>GSTIN:</strong> <code>{{ wholesaler.gstin|default:'Not Provided' }}</code></div>
+                    <div><strong>PAN:</strong> <code>{{ wholesaler.pan_number|default:'Not Provided' }}</code></div>
+                    <div><strong>Business Reg:</strong> <code>{{ wholesaler.business_registration_no|default:'Not Provided' }}</code></div>
+                </div>
+
+                {% if wholesaler_docs %}
+                <h6 class="fw-bold small text-muted text-uppercase mb-2 letter-spacing-1">Attached KYC Documents</h6>
+                <ul class="list-group list-group-flush small">
+                    {% for doc in wholesaler_docs %}
+                    <li class="list-group-item px-0 d-flex justify-content-between align-items-center py-2">
+                        <div>
+                            <i class="fa-solid fa-file-pdf text-danger me-1"></i> {{ doc.get_doc_type_display }}
+                        </div>
+                        {% if doc.document_file %}
+                        <a href="{{ doc.document_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold">
+                            View File
+                        </a>
+                        {% else %}
+                        <span class="badge bg-light text-muted border">No File</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── BOTTOM: Immutable Moderation Audit Log ─────────────────────────────── -->
+    <div class="ws-card p-4 mb-5 shadow-sm border-0">
+        <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-timeline me-2 text-primary"></i> Product Moderation &amp; Audit Trail</h5>
+        {% if audit_logs %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0 small ws-table">
+                <thead class="table-light text-uppercase">
+                    <tr>
+                        <th>Date &amp; Time</th>
+                        <th>Actor</th>
+                        <th>Role</th>
+                        <th>Moderation Action</th>
+                        <th>Status Transition</th>
+                        <th>Admin Feedback / Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in audit_logs %}
+                    <tr>
+                        <td class="text-muted font-monospace">{{ log.created_at|date:"d M Y, H:i" }}</td>
+                        <td class="fw-bold text-dark">{{ log.actor_username }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ log.actor_role }}</span></td>
+                        <td><span class="fw-bold text-primary">{{ log.get_action_display }}</span></td>
+                        <td>
+                            <code>{{ log.from_status }}</code> &rarr; <code>{{ log.to_status }}</code>
+                        </td>
+                        <td>{{ log.notes_to_seller|default:log.internal_notes|default:'—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-0">No prior moderation log entries recorded for this listing.</p>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

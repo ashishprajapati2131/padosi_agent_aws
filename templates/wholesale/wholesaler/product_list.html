@@ -1,0 +1,243 @@
+{% extends 'wholesale/base.html' %}
+{% load humanize %}
+
+{% block title %}Wholesale Product Inventory — PadosiAgent B2B{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5">
+
+    <!-- Page Header & Action Toolbar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-extrabold mb-1 text-dark fs-3">Wholesale Product Inventory</h2>
+            <p class="text-secondary small mb-0">Manage listings, volume price tiers, ready warehouse inventory, and moderation status</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'wholesale:bulk_upload' %}" class="btn ws-btn-outline fw-semibold">
+                <i class="fa-solid fa-file-csv me-1"></i> Bulk Upload
+            </a>
+            {% if profile.is_verified %}
+            <a href="{% url 'wholesale:product_create' %}" class="btn ws-btn-primary fw-bold shadow-sm">
+                <i class="fa-solid fa-plus me-1"></i> Add New Product
+            </a>
+            {% else %}
+            <button class="btn btn-light border text-muted fw-semibold" disabled title="Admin KYC approval required">
+                <i class="fa-solid fa-lock me-1 text-warning"></i> Add Product (KYC Pending)
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Filter & Search Toolbar Card -->
+    <div class="ws-card p-3 mb-4 shadow-sm border-0">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <!-- Status Navigation Pills -->
+            <div class="overflow-x-auto pb-1 pb-lg-0" style="-webkit-overflow-scrolling: touch;">
+                <ul class="nav nav-pills flex-nowrap gap-1">
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_status == 'all' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?status=all{% if search_query %}&q={{ search_query }}{% endif %}">
+                            All Listings
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_status == 'published' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?status=published{% if search_query %}&q={{ search_query }}{% endif %}">
+                            Live &amp; Published
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_status == 'submitted' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?status=submitted{% if search_query %}&q={{ search_query }}{% endif %}">
+                            Under Review
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_status == 'changes_requested' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?status=changes_requested{% if search_query %}&q={{ search_query }}{% endif %}">
+                            Changes Requested
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_status == 'draft' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?status=draft{% if search_query %}&q={{ search_query }}{% endif %}">
+                            Drafts
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_status == 'paused' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?status=paused{% if search_query %}&q={{ search_query }}{% endif %}">
+                            Paused
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Keyword Search Form -->
+            <form method="get" class="d-flex align-items-center gap-2 flex-shrink-0">
+                <input type="hidden" name="status" value="{{ current_status }}">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" name="q" value="{{ search_query }}" class="form-control border-start-0" placeholder="Search by title or SKU..." style="min-width: 200px;">
+                    <button type="submit" class="btn btn-primary fw-bold" style="background:#273c8e; border-color:#273c8e;">Search</button>
+                    {% if search_query %}
+                    <a href="?status={{ current_status }}" class="btn btn-outline-secondary" title="Clear search"><i class="fa-solid fa-xmark"></i></a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inventory Data Table -->
+    <div class="ws-card overflow-hidden shadow-sm border-0 mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 ws-table ws-table-mobile-cards">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th class="ps-4">Product Details</th>
+                        <th>Category</th>
+                        <th>Wholesale Price</th>
+                        <th>MOQ</th>
+                        <th>Ready Stock</th>
+                        <th>Approval Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in page_obj %}
+                    <tr>
+                        <!-- Product Title & SKU -->
+                        <td class="ps-4 py-3 ws-table-primary-cell" data-label="Product">
+                            <div class="d-flex align-items-center gap-3">
+                                {% if product.primary_image %}
+                                <img src="{{ product.primary_image.image.url }}" alt="{{ product.title }}" class="rounded-3 object-fit-cover border flex-shrink-0" style="width: 52px; height: 52px;">
+                                {% else %}
+                                <div class="rounded-3 bg-light d-flex align-items-center justify-content-center text-muted border flex-shrink-0" style="width: 52px; height: 52px;">
+                                    <i class="fa-solid fa-box fs-5"></i>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <h6 class="fw-bold mb-0">
+                                        <a href="{% url 'wholesale:product_edit' product_id=product.id %}" class="text-dark text-decoration-none">
+                                            {{ product.title }}
+                                        </a>
+                                    </h6>
+                                    <span class="small text-muted font-monospace">SKU: {{ product.sku }}</span>
+                                    {% if product.admin_feedback %}
+                                    <div class="small text-danger fw-bold mt-1">
+                                        <i class="fa-solid fa-comment-dots me-1"></i> Admin Note: {{ product.admin_feedback|truncatewords:10 }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Category -->
+                        <td data-label="Category">
+                            <span class="badge bg-light text-dark border">{{ product.category.name }}</span>
+                        </td>
+
+                        <!-- Base Price -->
+                        <td data-label="Price">
+                            <div class="fw-extrabold text-primary fs-6">₹{{ product.base_price|intcomma }}</div>
+                            <span class="small text-muted">/ {{ product.unit_of_measure }}</span>
+                        </td>
+
+                        <!-- MOQ -->
+                        <td data-label="MOQ" class="fw-bold text-dark">
+                            {{ product.moq }} <span class="small text-muted fw-normal">{{ product.unit_of_measure }}</span>
+                        </td>
+
+                        <!-- Inventory Stock -->
+                        <td data-label="Stock">
+                            {% if product.stock_quantity <= 10 %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger fw-bold">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ product.stock_quantity }} Low Stock
+                            </span>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success border border-success fw-bold">
+                                <i class="fa-solid fa-circle-check me-1"></i> {{ product.stock_quantity }} Available
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Status -->
+                        <td data-label="Status">
+                            <span class="ws-badge ws-badge-{{ product.approval_status|lower }}">
+                                <span class="ws-badge-dot"></span>
+                                {{ product.get_approval_status_display }}
+                            </span>
+                        </td>
+
+                        <!-- Row Actions -->
+                        <td class="text-end pe-4 ws-table-actions-cell" data-label="Actions">
+                            <div class="btn-group btn-group-sm shadow-xs">
+                                <a href="{% url 'wholesale:product_edit' product_id=product.id %}" class="btn btn-outline-primary fw-bold" title="Edit Product">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i> Edit
+                                </a>
+                                {% if product.is_live %}
+                                <a href="{% url 'wholesale:product_detail' slug=product.slug %}" target="_blank" class="btn btn-outline-secondary" title="View Public Page">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                </a>
+                                <a href="{% url 'wholesale:product_toggle' product_id=product.id %}" class="btn btn-outline-warning" title="Pause Listing" onclick="return confirm('Pause this listing from the public marketplace?');">
+                                    <i class="fa-solid fa-pause"></i>
+                                </a>
+                                {% elif product.approval_status == 'PAUSED' %}
+                                <a href="{% url 'wholesale:product_toggle' product_id=product.id %}" class="btn btn-outline-success" title="Resume Listing">
+                                    <i class="fa-solid fa-play"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-box-open display-4 opacity-25 mb-3 d-block"></i>
+                            <h5 class="fw-bold text-dark">No products found</h5>
+                            <p class="small text-muted mb-3">No products matched the current status filter or search query.</p>
+                            {% if profile.is_verified %}
+                            <a href="{% url 'wholesale:product_create' %}" class="btn ws-btn-primary btn-sm fw-bold">
+                                <i class="fa-solid fa-plus me-1"></i> Create First Listing
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-white py-3 border-top d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+            <span class="small text-muted">
+                Showing page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong> ({{ total_count }} total items)
+            </span>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ current_status }}{% if search_query %}&q={{ search_query }}{% endif %}">&laquo; Previous</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">&laquo; Previous</span></li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link" style="background:#273c8e; border-color:#273c8e;">{{ num }}</span></li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}&status={{ current_status }}{% if search_query %}&q={{ search_query }}{% endif %}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ current_status }}{% if search_query %}&q={{ search_query }}{% endif %}">Next &raquo;</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

@@ -61,6 +61,7 @@ urlpatterns = [
     path('chatbot-api/', include('apps.chatbot.urls')),
     path('', include('apps.distributors.urls')),
     path('insurance/', include('apps.insurance.urls')),
+    path('wholesale/', include('apps.wholesale.urls')),
     path('', include('apps.home.urls')),
 ]
 

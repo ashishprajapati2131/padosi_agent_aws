@@ -4,6 +4,7 @@ from .views.dashboard import dashboard, save_invite_message
 from .views.leads import leads
 from .views.profile import profile_edit, profile_update
 from .views.agents import agents_index, agents_create, agents_show, agents_resume_payment
+from .views.cross_sell import cross_sell_index, cross_sell_order
 from .views.sub_distributors import (
     sub_distributors_index,
     sub_distributor_create,
@@ -35,6 +36,10 @@ urlpatterns = [
     path('distributor/agents/create/', agents_create, name='agents_create'),
     path('distributor/agents/<int:pk>/', agents_show, name='agents_show'),
     path('distributor/agents/<int:pk>/resume-payment/', agents_resume_payment, name='agents_resume_payment'),
+
+    # Cross-Sell & Wholesale B2B Products (Distributor Portal)
+    path('distributor/cross-sell/', cross_sell_index, name='cross_sell'),
+    path('distributor/cross-sell/order/<int:product_id>/', cross_sell_order, name='cross_sell_order'),
 
     # Sub-Distributors management (Distributor Portal)
     path('distributor/sub-distributors/', sub_distributors_index, name='sub_distributors_index'),

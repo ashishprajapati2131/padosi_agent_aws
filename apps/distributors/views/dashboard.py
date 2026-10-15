@@ -175,7 +175,21 @@ def dashboard(request):
         'directAgentsCount': direct_agents_count,
         'subInviteUrl': sub_invite_url,
         'topSubDistributors': top_sub_dists,
+        'cross_sell_products': [],
     }
+
+    try:
+        from apps.wholesale.models.product import WholesaleProduct
+        context['cross_sell_products'] = list(
+            WholesaleProduct.objects.filter(
+                approval_status__in=['APPROVED', 'PUBLISHED']
+            ).select_related('wholesaler', 'category')
+             .prefetch_related('images')
+             .order_by('-is_featured', '-id')[:4]
+        )
+    except Exception:
+        pass
+
     return render(request, 'distributors/dashboard.html', context)
 
 @login_required(login_url='distributors:login')

@@ -1,0 +1,137 @@
+{% extends 'wholesale/base.html' %}
+
+{% block title %}Cross-Sell &amp; Recommendation Curator — CrossSeal Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+
+    <!-- Top Admin Header & Breadcrumbs -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <nav aria-label="breadcrumb" class="mb-1">
+                <ol class="breadcrumb mb-0 py-0" style="background: transparent; font-size: 13px;">
+                    <li class="breadcrumb-item"><a href="/admin/dashboard/" class="text-decoration-none fw-bold text-dark"><i class="fa-solid fa-gauge-high me-1"></i> Main Admin</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'wholesale:admin_dashboard' %}" class="text-decoration-none fw-bold text-dark">Wholesale Operations</a></li>
+                    <li class="breadcrumb-item active text-primary fw-bold" aria-current="page">Cross-Sell Curator</li>
+                </ol>
+            </nav>
+            <h2 class="fw-bold mb-0 text-dark">Cross-Sell &amp; Recommendation Curator</h2>
+            <p class="text-secondary small mb-0 mt-1">Associate complementary wholesale products to drive bundle sales across distributor &amp; agent channels</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'wholesale:admin_dashboard' %}" class="btn btn-outline-secondary fw-semibold">
+                <i class="fa-solid fa-arrow-left me-1"></i> Wholesale Operations
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column: Create Relationship Form (5 cols) -->
+        <div class="col-lg-5">
+            <div class="ws-card p-4">
+                <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; background: rgba(39,60,142,0.1); color: #273c8e;">
+                        <i class="fa-solid fa-link fs-6"></i>
+                    </div>
+                    <h5 class="fw-bold mb-0 text-dark">Link Complementary Pair</h5>
+                </div>
+
+                <div class="p-3 mb-3 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <div class="small text-muted">
+                        <i class="fa-solid fa-circle-info text-primary me-1"></i> When a buyer views the <strong>Source Product</strong>, the <strong>Target Product</strong> will be highlighted as a recommended wholesale bundle.
+                    </div>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Source Product (Buyer Views This) <span class="text-danger">*</span></label>
+                        <select name="source_product_id" class="form-select" required>
+                            <option value="">-- Choose Source Product --</option>
+                            {% for p in live_products %}
+                            <option value="{{ p.id }}">{{ p.title }} (SKU: {{ p.sku }}) — ₹{{ p.base_price }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Target Complementary Product (Recommended) <span class="text-danger">*</span></label>
+                        <select name="target_product_id" class="form-select" required>
+                            <option value="">-- Choose Complementary Product --</option>
+                            {% for p in live_products %}
+                            <option value="{{ p.id }}">{{ p.title }} (SKU: {{ p.sku }}) — ₹{{ p.base_price }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Display Priority Order</label>
+                        <input type="number" name="display_order" class="form-control" value="0" min="0">
+                        <small class="text-muted">Lower numbers appear first in the recommendation carousels (0 is highest priority).</small>
+                    </div>
+
+                    <button type="submit" class="btn ws-btn-primary w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Create Recommendation Link
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Column: Active Relationships List (7 cols) -->
+        <div class="col-lg-7">
+            <div class="ws-card p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-2 border-bottom gap-2">
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-diagram-project me-2 text-primary"></i> Active Cross-Sell Pairings</h5>
+                        <p class="text-secondary small mb-0">Live complementary product associations</p>
+                    </div>
+                    <span class="badge bg-light text-primary border rounded-pill px-3 py-1">{{ relationships|length }} Configured</span>
+                </div>
+
+                {% if relationships %}
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0 ws-table-mobile-cards">
+                        <thead class="table-light small text-uppercase">
+                            <tr>
+                                <th>Source Product</th>
+                                <th class="text-center" style="width: 50px;"></th>
+                                <th>Recommended Target</th>
+                                <th class="text-end">Priority</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rel in relationships %}
+                            <tr>
+                                <td data-label="Source Product">
+                                    <div class="fw-bold text-dark text-truncate" style="max-width: 200px;">{{ rel.source_product.title }}</div>
+                                    <div class="text-muted small"><i class="fa-solid fa-building me-1"></i> {{ rel.source_product.wholesaler.business_name }}</div>
+                                </td>
+                                <td data-label="" class="text-center d-none d-md-table-cell">
+                                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 28px; height: 28px; background: #e0e7ff; color: #4338ca;">
+                                        <i class="fa-solid fa-arrow-right" style="font-size: 11px;"></i>
+                                    </div>
+                                </td>
+                                <td data-label="Recommended Target">
+                                    <div class="fw-bold text-primary text-truncate" style="max-width: 200px;">{{ rel.target_product.title }}</div>
+                                    <div class="text-muted small"><i class="fa-solid fa-building me-1"></i> {{ rel.target_product.wholesaler.business_name }}</div>
+                                </td>
+                                <td data-label="Priority" class="text-end">
+                                    <span class="badge bg-light text-dark border font-monospace">Priority #{{ rel.display_order }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fa-solid fa-diagram-project display-4 text-secondary opacity-50 mb-3 d-block"></i>
+                    <h6 class="fw-bold text-dark">No Cross-Sell Pairs Configured Yet</h6>
+                    <p class="small text-muted mb-0">The marketplace will automatically fall back to same-category recommendations until custom pairings are added.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

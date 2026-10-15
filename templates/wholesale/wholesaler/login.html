@@ -1,0 +1,397 @@
+{% extends 'wholesale/base.html' %}
+{% load static %}
+
+{% block title %}Wholesaler Sign In — PadosiAgent B2B Wholesale{% endblock %}
+
+{% block navbar %}{% endblock %}
+{% block messages %}{% endblock %}
+{% block footer %}{% endblock %}
+{% block main_class %}p-0{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background: radial-gradient(circle at 10% 20%, rgb(240, 247, 255) 0%, rgb(255, 255, 255) 90%);
+        min-height: 100vh;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    main {
+        flex: 1 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ws-auth-wrapper {
+        min-height: 100vh;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+    }
+
+    .ws-auth-card {
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 24px;
+        box-shadow: 0 20px 45px -15px rgba(39, 60, 142, 0.08), 0 0 0 1px rgba(226, 232, 240, 0.5);
+        width: 100%;
+        max-width: 440px;
+        padding: 40px 36px;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .ws-auth-card:hover {
+        box-shadow: 0 25px 50px -12px rgba(39, 60, 142, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.7);
+    }
+
+    .ws-auth-header {
+        text-align: center;
+        margin-bottom: 28px;
+    }
+
+    .ws-auth-logo-link {
+        display: inline-block;
+        margin-bottom: 16px;
+        transition: transform 0.2s ease;
+    }
+
+    .ws-auth-logo-link:hover {
+        transform: scale(1.03);
+    }
+
+    .ws-auth-logo {
+        height: 52px;
+        width: auto;
+        max-width: 210px;
+        object-fit: contain;
+    }
+
+    .ws-auth-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #eef2ff;
+        color: #273c8e;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.8px;
+        padding: 5px 14px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        border: 1px solid #c7d2fe;
+        margin-bottom: 14px;
+    }
+
+    .ws-auth-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 6px;
+        letter-spacing: -0.3px;
+    }
+
+    .ws-auth-subtitle {
+        font-size: 14px;
+        color: #64748b;
+        margin-bottom: 0;
+        line-height: 1.5;
+    }
+
+    .ws-form-group {
+        margin-bottom: 20px;
+    }
+
+    .ws-form-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: #334155;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .ws-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .ws-input-icon {
+        position: absolute;
+        left: 16px;
+        color: #94a3b8;
+        font-size: 15px;
+        pointer-events: none;
+        transition: color 0.2s ease;
+    }
+
+    .ws-input-control {
+        width: 100%;
+        padding: 13px 16px 13px 44px;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 12px;
+        font-size: 15px;
+        color: #1e293b;
+        background: #f8fafc;
+        outline: none;
+        transition: all 0.25s ease;
+        font-family: inherit;
+    }
+
+    .ws-input-control.has-toggle {
+        padding-right: 44px;
+    }
+
+    .ws-input-control:focus {
+        border-color: #273c8e;
+        background: #ffffff;
+        box-shadow: 0 0 0 4px rgba(39, 60, 142, 0.12);
+    }
+
+    .ws-input-wrapper:focus-within .ws-input-icon {
+        color: #273c8e;
+    }
+
+    .ws-password-toggle {
+        position: absolute;
+        right: 16px;
+        color: #94a3b8;
+        cursor: pointer;
+        font-size: 15px;
+        padding: 4px;
+        transition: color 0.2s ease;
+    }
+
+    .ws-password-toggle:hover {
+        color: #273c8e;
+    }
+
+    .ws-btn-submit {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #273c8e 0%, #1e2e6d 100%);
+        color: #ffffff;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 10px 20px -5px rgba(39, 60, 142, 0.35);
+        transition: all 0.25s ease;
+        margin-top: 6px;
+    }
+
+    .ws-btn-submit:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 24px -5px rgba(39, 60, 142, 0.45);
+        color: #ffffff;
+    }
+
+    .ws-btn-submit:active {
+        transform: translateY(0);
+    }
+
+    .ws-btn-submit:disabled {
+        opacity: 0.75;
+        cursor: not-allowed;
+    }
+
+    .ws-auth-footer {
+        text-align: center;
+        margin-top: 26px;
+        padding-top: 22px;
+        border-top: 1px solid #f1f5f9;
+        font-size: 13.5px;
+        color: #64748b;
+        line-height: 1.6;
+    }
+
+    .ws-auth-footer a {
+        color: #273c8e;
+        font-weight: 700;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .ws-auth-footer a:hover {
+        color: #1e2e6d;
+        text-decoration: underline;
+    }
+
+    .ws-back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 18px;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #94a3b8;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .ws-back-link:hover {
+        color: #273c8e;
+        text-decoration: none;
+    }
+
+    .ws-card-alert {
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        line-height: 1.45;
+        border: 1px solid transparent;
+    }
+
+    .ws-alert-danger {
+        background: #fef2f2;
+        color: #991b1b;
+        border-color: #fecaca;
+    }
+
+    .ws-alert-success {
+        background: #ecfdf5;
+        color: #065f46;
+        border-color: #a7f3d0;
+    }
+
+    .ws-alert-info {
+        background: #eff6ff;
+        color: #1e40af;
+        border-color: #bfdbfe;
+    }
+
+    .ws-alert-warning {
+        background: #fffbeb;
+        color: #92400e;
+        border-color: #fde68a;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ws-auth-wrapper">
+    <div class="ws-auth-card">
+        <div class="ws-auth-header">
+            <a href="/" class="ws-auth-logo-link" title="PadosiAgent">
+                <img src="{% static 'img/logo.webp' %}" class="ws-auth-logo" alt="PadosiAgent Logo">
+            </a>
+            <div>
+                <span class="ws-auth-badge">
+                    <i class="fa-solid fa-boxes-packing"></i> Wholesale
+                </span>
+            </div>
+            <h1 class="ws-auth-title">Seller Portal Login</h1>
+            <p class="ws-auth-subtitle">Manage products, pricing tiers, and client buyer inquiries</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+            <div class="ws-card-alert {% if message.tags == 'success' %}ws-alert-success{% elif message.tags == 'error' or message.tags == 'danger' %}ws-alert-danger{% elif message.tags == 'warning' %}ws-alert-warning{% else %}ws-alert-info{% endif %}">
+                {% if message.tags == 'success' %}
+                    <i class="fa-solid fa-circle-check mt-1"></i>
+                {% elif message.tags == 'error' or message.tags == 'danger' %}
+                    <i class="fa-solid fa-triangle-exclamation mt-1"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="fa-solid fa-circle-exclamation mt-1"></i>
+                {% else %}
+                    <i class="fa-solid fa-circle-info mt-1"></i>
+                {% endif %}
+                <div class="flex-grow-1">{{ message }}</div>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" action="{% url 'wholesale:wholesaler_login' %}" id="ws-login-form" autocomplete="on">
+            {% csrf_token %}
+
+            <div class="ws-form-group">
+                <label for="email" class="ws-form-label">Business Email</label>
+                <div class="ws-input-wrapper">
+                    <i class="fa-solid fa-envelope ws-input-icon"></i>
+                    <input type="email" id="email" name="email" class="ws-input-control" placeholder="business@company.com" required autofocus autocomplete="username">
+                </div>
+            </div>
+
+            <div class="ws-form-group">
+                <label for="password" class="ws-form-label">Password</label>
+                <div class="ws-input-wrapper">
+                    <i class="fa-solid fa-lock ws-input-icon"></i>
+                    <input type="password" id="password" name="password" class="ws-input-control has-toggle" placeholder="••••••••" required autocomplete="current-password">
+                    <i class="fa-solid fa-eye ws-password-toggle" id="togglePassword" title="Show/Hide Password"></i>
+                </div>
+            </div>
+
+            <button type="submit" class="ws-btn-submit" id="submit-btn">
+                <span id="btn-text">Sign In to Seller Dashboard</span>
+                <i class="fa-solid fa-arrow-right" id="btn-icon"></i>
+                <i class="fa-solid fa-spinner fa-spin" id="btn-spinner" style="display: none;"></i>
+            </button>
+        </form>
+
+        <div class="ws-auth-footer">
+            Don't have a wholesaler account?<br>
+            <a href="{% url 'wholesale:wholesaler_register' %}">
+                Register your business here &raquo;
+            </a>
+            <div>
+                <a href="/" class="ws-back-link">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Homepage
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Password visibility toggle
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordField = document.getElementById('password');
+
+        if (togglePassword && passwordField) {
+            togglePassword.addEventListener('click', function () {
+                const isPassword = passwordField.getAttribute('type') === 'password';
+                passwordField.setAttribute('type', isPassword ? 'text' : 'password');
+                this.classList.toggle('fa-eye', !isPassword);
+                this.classList.toggle('fa-eye-slash', isPassword);
+            });
+        }
+
+        // Submit button loading animation
+        const loginForm = document.getElementById('ws-login-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnIcon = document.getElementById('btn-icon');
+        const btnSpinner = document.getElementById('btn-spinner');
+
+        if (loginForm && submitBtn) {
+            loginForm.addEventListener('submit', function () {
+                submitBtn.disabled = true;
+                if (btnIcon) btnIcon.style.display = 'none';
+                if (btnSpinner) btnSpinner.style.display = 'inline-block';
+                if (btnText) btnText.textContent = 'Signing in...';
+            });
+        }
+    });
+</script>
+{% endblock %}

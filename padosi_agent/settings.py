@@ -76,8 +76,6 @@ else:
 
 _csrf_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
 _PRODUCTION_CSRF_ORIGINS = [
-    'https://aciaindia.org',
-    'https://www.aciaindia.org',
     'https://padosiagent.com',
     'https://www.padosiagent.com',
 ]
@@ -97,8 +95,6 @@ else:
         'http://localhost:1234',
         'http://127.0.0.1:7070',
         'http://localhost:7070',
-        'https://aciaindia.org',
-        'https://www.aciaindia.org',
         'https://padosiagent.com',
         'https://www.padosiagent.com',
     ]
@@ -125,6 +121,7 @@ INSTALLED_APPS = [
     'apps.chatbot',
     'apps.referral_championship',
     'apps.event_referral',
+    'apps.wholesale',
     'rest_framework',
     'django.contrib.humanize',
 ]
@@ -174,6 +171,7 @@ TEMPLATES = [
                 'apps.home.context_processors.footer_settings',
                 'apps.home.context_processors.seo_context',
                 'apps.home.context_processors.calculator_nav',
+                'apps.wholesale.context_processors.wholesale_context',
             ],
         },
     },

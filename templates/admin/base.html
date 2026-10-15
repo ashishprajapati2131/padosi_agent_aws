@@ -899,6 +899,22 @@
             </a>
             {% endif %}
 
+            <!-- B2B Wholesale Marketplace -->
+            {% if is_super_admin or 'wholesale' in admin_permissions %}
+            <div class="menu-label">B2B Wholesale</div>
+
+            <a href="/wholesale/admin/approvals/" class="menu-item {% if '/wholesale/admin/approvals/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-boxes-packing" style="color:#059669;"></i> Product Approvals
+                {% if pending_approvals_count > 0 %}
+                <span class="badge bg-warning text-dark ms-auto">{{ pending_approvals_count }}</span>
+                {% endif %}
+            </a>
+
+            <a href="/wholesale/admin/dashboard/" class="menu-item {% if '/wholesale/admin/' in request.path and '/wholesale/admin/approvals/' not in request.path %}active{% endif %}">
+                <i class="fa-solid fa-truck-ramp-box" style="color:#2563eb;"></i> Wholesalers &amp; Metrics
+            </a>
+            {% endif %}
+
             <!-- System -->
             {% if is_super_admin or 'site_settings' in admin_permissions or 'email_templates' in admin_permissions or 'server_health' in admin_permissions or 'logs' in admin_permissions or 'api_logs' in admin_permissions or 'backups' in admin_permissions %}
             <div class="menu-label">System</div>

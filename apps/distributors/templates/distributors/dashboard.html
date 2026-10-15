@@ -221,6 +221,40 @@
             {% endif %}
         </div>
     </div>
+    {% if cross_sell_products %}
+    <div class="card p-4 mt-4 shadow-sm border" style="border-radius: 16px;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <span class="badge bg-success text-white px-2 py-1 mb-1" style="font-size: 11px;">Network Commerce</span>
+                <h5 class="fw-bold mb-0 text-dark">Approved Cross-Sell Supplies for Your Agency Network</h5>
+            </div>
+            <a href="{% url 'distributors:cross_sell' %}" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" style="border-color: #1d7d5d; color: #1d7d5d;">
+                Browse &amp; Bulk Order &rarr;
+            </a>
+        </div>
+        <div class="row g-3">
+            {% for p in cross_sell_products %}
+            <div class="col-md-3 col-6">
+                <div class="p-3 border rounded-3 bg-white h-100 d-flex flex-column shadow-xs">
+                    <div style="height: 120px; background: #f8fafc; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                        {% if p.images.first %}
+                            <img src="{{ p.images.first.image.url }}" alt="{{ p.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                            <i class="fa-solid fa-box-open fa-2x text-muted"></i>
+                        {% endif %}
+                    </div>
+                    <div class="small fw-bold text-dark text-truncate mb-1" title="{{ p.title }}">{{ p.title }}</div>
+                    <div class="small text-muted mb-2 text-truncate">{{ p.wholesaler.business_name }}</div>
+                    <div class="mt-auto pt-2 border-top d-flex justify-content-between align-items-center">
+                        <span class="fw-bold text-dark">&#8377;{{ p.base_price }}</span>
+                        <a href="{% url 'distributors:cross_sell' %}" class="btn btn-sm btn-primary py-1 px-3 fw-bold" style="font-size: 11px;">Order</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <style>

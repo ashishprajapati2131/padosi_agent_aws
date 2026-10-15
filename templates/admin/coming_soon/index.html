@@ -263,6 +263,17 @@
                                     </span>
                                 </div>
                                 <p class="text-muted small mb-0" style="line-height: 1.5;">{{ feature.description }}</p>
+                                {% if feature.title == 'Cross Sell Products' %}
+                                <div class="mt-2 pt-2 border-top d-flex flex-wrap gap-2 align-items-center">
+                                    <span class="badge bg-success text-white px-2 py-1" style="font-size: 10px;"><i class="fa-solid fa-circle-check me-1"></i> System Live</span>
+                                    <a href="/wholesale/admin/approvals/" class="btn btn-sm btn-outline-primary px-2 py-1" style="font-size: 11px; border-radius: 6px;">
+                                        <i class="fa-solid fa-stamp me-1"></i> Moderation Queue
+                                    </a>
+                                    <a href="/wholesale/admin/dashboard/" class="btn btn-sm btn-outline-info px-2 py-1" style="font-size: 11px; border-radius: 6px;">
+                                        <i class="fa-solid fa-chart-line me-1"></i> Wholesaler Admin
+                                    </a>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
 

@@ -1,0 +1,193 @@
+{% extends 'wholesale/base.html' %}
+{% load humanize %}
+
+{% block title %}Product Approval Moderation Queue — PadosiAgent Wholesale Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5">
+
+    <!-- Header Navigation & Title -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <nav aria-label="breadcrumb" class="mb-1">
+                <ol class="breadcrumb mb-0 py-0" style="background: transparent; font-size: 13px;">
+                    <li class="breadcrumb-item"><a href="/admin/dashboard/" class="text-decoration-none text-muted fw-bold">Main Admin</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'wholesale:admin_dashboard' %}" class="text-decoration-none text-muted fw-bold">Wholesale Operations</a></li>
+                    <li class="breadcrumb-item active text-primary fw-bold" aria-current="page">Product Approval Queue</li>
+                </ol>
+            </nav>
+            <h2 class="fw-extrabold mb-0 text-dark fs-3">Product Listing Approval Queue</h2>
+            <p class="text-secondary small mb-0">Audit product content, GST compliance, pricing tiers, and authorize catalog publication</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'wholesale:admin_dashboard' %}" class="btn btn-outline-secondary btn-sm fw-bold shadow-xs">
+                <i class="fa-solid fa-arrow-left me-1"></i> Wholesale Operations
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Tabs & Filter Card -->
+    <div class="ws-card p-3 mb-4 shadow-sm border-0">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+            <div class="overflow-x-auto pb-1 pb-lg-0" style="-webkit-overflow-scrolling: touch;">
+                <ul class="nav nav-pills flex-nowrap gap-1">
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_tab == 'pending' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?tab=pending{% if search_query %}&q={{ search_query }}{% endif %}">
+                            Pending Review <span class="badge {% if current_tab == 'pending' %}bg-white text-primary{% else %}bg-light text-dark border{% endif %} ms-1">{{ counts.pending }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_tab == 'changes_requested' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?tab=changes_requested{% if search_query %}&q={{ search_query }}{% endif %}">
+                            Changes Requested <span class="badge {% if current_tab == 'changes_requested' %}bg-white text-primary{% else %}bg-warning text-dark{% endif %} ms-1">{{ counts.changes_requested }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_tab == 'approved' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?tab=approved{% if search_query %}&q={{ search_query }}{% endif %}">
+                            Approved <span class="badge {% if current_tab == 'approved' %}bg-white text-primary{% else %}bg-success text-white{% endif %} ms-1">{{ counts.approved }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_tab == 'published' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?tab=published{% if search_query %}&q={{ search_query }}{% endif %}">
+                            Live &amp; Published <span class="badge {% if current_tab == 'published' %}bg-white text-primary{% else %}bg-info text-dark{% endif %} ms-1">{{ counts.published }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_tab == 'rejected' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?tab=rejected{% if search_query %}&q={{ search_query }}{% endif %}">
+                            Rejected <span class="badge {% if current_tab == 'rejected' %}bg-white text-primary{% else %}bg-danger text-white{% endif %} ms-1">{{ counts.rejected }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link py-2 px-3 fw-bold small text-nowrap {% if current_tab == 'all' %}active bg-primary text-white{% else %}text-muted{% endif %}" href="?tab=all{% if search_query %}&q={{ search_query }}{% endif %}">
+                            All ({{ counts.all }})
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Search Form -->
+            <form method="get" class="d-flex align-items-center gap-2 flex-shrink-0">
+                <input type="hidden" name="tab" value="{{ current_tab }}">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" name="q" value="{{ search_query }}" class="form-control border-start-0" placeholder="Title, SKU, supplier..." style="min-width: 200px;">
+                    <button type="submit" class="btn btn-primary fw-bold" style="background:#273c8e; border-color:#273c8e;">Filter</button>
+                    {% if search_query %}
+                    <a href="?tab={{ current_tab }}" class="btn btn-outline-secondary" title="Clear search"><i class="fa-solid fa-xmark"></i></a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Product Queue Table -->
+    <div class="ws-card overflow-hidden shadow-sm border-0 mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 ws-table ws-table-mobile-cards">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th class="ps-4">Product Details</th>
+                        <th>Wholesaler Profile</th>
+                        <th>Category</th>
+                        <th>Wholesale Price</th>
+                        <th>MOQ</th>
+                        <th>Ready Stock</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in page_obj %}
+                    <tr>
+                        <td class="ps-4 py-3 ws-table-primary-cell" data-label="Product">
+                            <div class="d-flex align-items-center gap-3">
+                                {% if p.primary_image %}
+                                <img src="{{ p.primary_image.image.url }}" alt="{{ p.title }}" class="rounded-3 object-fit-cover border flex-shrink-0" style="width: 52px; height: 52px;">
+                                {% else %}
+                                <div class="rounded-3 bg-light d-flex align-items-center justify-content-center text-muted border flex-shrink-0" style="width: 52px; height: 52px;">
+                                    <i class="fa-solid fa-box text-secondary fs-5"></i>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <h6 class="fw-bold mb-0 text-dark">{{ p.title }}</h6>
+                                    <span class="small text-muted font-monospace">SKU: {{ p.sku }}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td data-label="Wholesaler">
+                            <strong class="d-block small text-dark">{{ p.wholesaler.business_name }}</strong>
+                            <span class="small text-muted">{{ p.wholesaler.city }}, {{ p.wholesaler.state }}</span>
+                            {% if p.wholesaler.is_verified %}
+                            <span class="ws-verified-badge mt-1" style="font-size: 10px;">
+                                <i class="fa-solid fa-certificate"></i> Verified
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Category">
+                            <span class="badge bg-light text-dark border">{{ p.category.name }}</span>
+                        </td>
+                        <td data-label="Price">
+                            <div class="fw-extrabold text-primary fs-6">₹{{ p.base_price|intcomma }}</div>
+                            <span class="small text-muted">/ {{ p.unit_of_measure }}</span>
+                        </td>
+                        <td data-label="MOQ" class="fw-bold text-dark">
+                            {{ p.moq }} {{ p.unit_of_measure }}
+                        </td>
+                        <td data-label="Stock">
+                            {{ p.stock_quantity }}
+                        </td>
+                        <td data-label="Status">
+                            <span class="ws-badge ws-badge-{{ p.approval_status|lower }}">
+                                <span class="ws-badge-dot"></span>
+                                {{ p.get_approval_status_display }}
+                            </span>
+                        </td>
+                        <td class="text-end pe-4 ws-table-actions-cell" data-label="Action">
+                            <a href="{% url 'wholesale:admin_review_product' product_id=p.id %}" class="btn btn-sm ws-btn-primary fw-bold shadow-xs">
+                                <i class="fa-solid fa-magnifying-glass-check me-1"></i> Review Listing
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="fa-solid fa-inbox display-4 opacity-25 mb-3 d-block"></i>
+                            <h5 class="fw-bold text-dark">No products in this queue</h5>
+                            <p class="small text-muted mb-0">Submissions requiring moderation will appear here.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-white py-3 border-top d-flex flex-column flex-sm-row justify-content-between align-items-center gap-2">
+            <span class="small text-muted">
+                Showing page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong>
+            </span>
+            <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}&tab={{ current_tab }}{% if search_query %}&q={{ search_query }}{% endif %}">&laquo; Previous</a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}&tab={{ current_tab }}{% if search_query %}&q={{ search_query }}{% endif %}">{{ num }}</a>
+                </li>
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}&tab={{ current_tab }}{% if search_query %}&q={{ search_query }}{% endif %}">Next &raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
