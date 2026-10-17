@@ -42,10 +42,11 @@ class BackgroundJobsTests(TestCase):
     @override_settings(TESTING=False, BACKGROUND_JOBS_ENABLED=True)
     def test_each_job_starts_once_per_interval(self):
         with patch.object(background_jobs.threading, 'Thread', _FakeThread):
-            self.assertEqual(maybe_run_due_jobs(), ['invoice-retry', 'paldi-expirations'])
+            expected = [j[0] for j in background_jobs.JOBS]
+            self.assertEqual(maybe_run_due_jobs(), expected)
             self.assertEqual(maybe_run_due_jobs(), [])
             self.client.get('/')                       # middleware path: nothing due yet
-        self.assertEqual(_FakeThread.started, ['invoice-retry', 'paldi-expirations'])
+        self.assertEqual(_FakeThread.started, expected)
 
     @override_settings(TESTING=False, BACKGROUND_JOBS_ENABLED=False)
     def test_switch_off_in_settings(self):
@@ -56,7 +57,8 @@ class BackgroundJobsTests(TestCase):
     def test_a_request_triggers_due_jobs(self):
         with patch.object(background_jobs.threading, 'Thread', _FakeThread):
             self.client.get('/')
-        self.assertEqual(_FakeThread.started, ['invoice-retry', 'paldi-expirations'])
+        expected = [j[0] for j in background_jobs.JOBS]
+        self.assertEqual(_FakeThread.started, expected)
 
     def test_invoice_job_fulfils_the_missing_invoice(self):
         with patch(FULFIL, return_value=MagicMock(invoice_number='PA/BG/1')) as fulfil:
