@@ -35,6 +35,11 @@ class Command(BaseCommand):
             default=MANDATORY_CC_EMAIL,
             help="CC email recipient (default: parth.ramanujj@gmail.com).",
         )
+        parser.add_argument(
+            "--preview",
+            action="store_true",
+            help="Render and save the emergency alert HTML email locally and open it in browser.",
+        )
 
     def handle(self, *args, **options):
         threshold = options["threshold"]
@@ -42,6 +47,26 @@ class Command(BaseCommand):
         daemon = options["daemon"]
         interval = options["interval"]
         cc_email = options["cc"]
+        preview = options.get("preview")
+
+        if preview:
+            from pathlib import Path
+            import webbrowser
+            metrics = SystemMonitorService.get_metrics()
+            html = SystemMonitorService._build_emergency_email_html(
+                metrics,
+                reasons=[
+                    f"SIMULATED: CPU Load reached {max(metrics['cpu_percent'], 96.5)}% (Threshold: {threshold}%)",
+                    f"SIMULATED: RAM Memory reached {max(metrics['ram_percent'], 97.2)}% (Threshold: {threshold}%)",
+                ],
+                highest=97.2,
+                threshold=threshold,
+            )
+            preview_file = Path("alert_email_preview.html").resolve()
+            preview_file.write_text(html, encoding="utf-8")
+            self.stdout.write(self.style.SUCCESS(f"[PREVIEW] Alert email saved to: {preview_file}"))
+            webbrowser.open(preview_file.as_uri())
+            return
 
         self.stdout.write(f"[Monitor] Starting system load inspection (Threshold: {threshold}%, CC: {cc_email})...")
 

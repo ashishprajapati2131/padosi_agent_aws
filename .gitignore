@@ -31,3 +31,4 @@ backups/
 *.sqlite3.gz
 *.gz
 *.zip
+alert_email_preview.html
