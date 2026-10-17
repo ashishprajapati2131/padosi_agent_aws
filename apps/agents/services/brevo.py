@@ -156,6 +156,15 @@ class BrevoEmailService:
         Send email via Django SMTP backend (fallback channel) with optional attachment and CC support.
         Uses EMAIL_HOST / EMAIL_PORT / EMAIL_HOST_USER / EMAIL_HOST_PASSWORD from settings.
         """
+        host_user = getattr(settings, 'EMAIL_HOST_USER', '')
+        host_pwd = getattr(settings, 'EMAIL_HOST_PASSWORD', '')
+        if not host_user and not host_pwd:
+            logger.warning(
+                "[SMTP Fallback] MAIL_USERNAME and MAIL_PASSWORD are not configured in .env. "
+                "Skipping unauthenticated SMTP attempt."
+            )
+            return False
+
         try:
             from_addr = f"{cfg['from_name']} <{cfg['from_email']}>"
             text_content = strip_tags(html_content)
