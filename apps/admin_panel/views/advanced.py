@@ -226,10 +226,30 @@ def activity_logs(request):
     for log in page_obj:
         log.admin_obj = admins.get(log.admin_id)
         
+        # Details serialization helper & structured extraction
+        details_data = log.details
+        if isinstance(details_data, str):
+            try:
+                details_data = json.loads(details_data)
+            except Exception:
+                details_data = {}
+        if not isinstance(details_data, dict):
+            details_data = {}
+
+        # Extract severity, snapshot, admin email, etc.
+        log.severity = details_data.get('severity', 'INFO') if isinstance(details_data, dict) else 'INFO'
+        log.snapshot = details_data.get('snapshot') if isinstance(details_data, dict) else None
+        log.admin_email = details_data.get('admin_email') if isinstance(details_data, dict) else None
+        log.user_agent = details_data.get('user_agent') if isinstance(details_data, dict) else None
+        log.snapshot_json = json.dumps(log.snapshot, indent=2, default=str) if log.snapshot else None
+        log.details_json = json.dumps(details_data, indent=2, default=str) if details_data else None
+
         # Categorize for template badges/icons
         act = (log.action or '').lower()
         if any(w in act for w in ['login', 'logout', 'auth']):
             log.badge_class, log.badge_icon = 'type-auth', 'fa-key'
+        elif any(w in act for w in ['delete', 'destroy', 'remove']):
+            log.badge_class, log.badge_icon = 'type-content', 'fa-trash-can'
         elif any(w in act for w in ['agent', 'approv', 'suspend']):
             log.badge_class, log.badge_icon = 'type-agent', 'fa-user-gear'
         elif any(w in act for w in ['plan', 'pricing', 'subscri']):
@@ -247,8 +267,9 @@ def activity_logs(request):
         else:
             log.badge_class, log.badge_icon = 'type-default', 'fa-circle-dot'
 
-        # Details serialization helper
-        log.details_display = json.dumps(log.details) if isinstance(log.details, (dict, list)) else str(log.details or '')
+        # Details display helper
+        display_dict = {k: v for k, v in details_data.items() if k not in ['snapshot', 'user_agent', 'path', 'method', 'timestamp', 'admin_name', 'admin_email', 'severity']}
+        log.details_display = json.dumps(display_dict) if display_dict else (json.dumps(log.details) if isinstance(log.details, (dict, list)) else str(log.details or ''))
 
     context = {
         'logs': page_obj,

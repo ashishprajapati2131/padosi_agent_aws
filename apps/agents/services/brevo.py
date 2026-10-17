@@ -67,9 +67,9 @@ class BrevoEmailService:
             "debug": debug,
         }
 
-    def _send_via_brevo_api(self, cfg: dict, to_email: str, to_name: str, subject: str, html_content: str, attachment_path: str = None) -> bool:
+    def _send_via_brevo_api(self, cfg: dict, to_email: str, to_name: str, subject: str, html_content: str, attachment_path: str = None, cc_emails: list = None) -> bool:
         """
-        Send email via Brevo HTTP API with retry logic and optional attachment support.
+        Send email via Brevo HTTP API with retry logic, optional attachment and CC support.
         Returns True on success, False if all retries fail.
         """
         if not cfg["api_key"]:
@@ -82,6 +82,9 @@ class BrevoEmailService:
             "subject": subject,
             "htmlContent": html_content,
         }
+
+        if cc_emails:
+            payload["cc"] = [{"email": e.strip(), "name": e.strip().split('@')[0]} for e in cc_emails if e and str(e).strip()]
 
         # Handle attachment for Brevo API
         if attachment_path and os.path.exists(attachment_path):
@@ -148,16 +151,17 @@ class BrevoEmailService:
         logger.error(f"[BrevoAPI] All {MAX_RETRIES} attempts failed for to={to_email!r}")
         return False
 
-    def _send_via_smtp(self, cfg: dict, to_email: str, to_name: str, subject: str, html_content: str, attachment_path: str = None) -> bool:
+    def _send_via_smtp(self, cfg: dict, to_email: str, to_name: str, subject: str, html_content: str, attachment_path: str = None, cc_emails: list = None) -> bool:
         """
-        Send email via Django SMTP backend (fallback channel) with optional attachment.
+        Send email via Django SMTP backend (fallback channel) with optional attachment and CC support.
         Uses EMAIL_HOST / EMAIL_PORT / EMAIL_HOST_USER / EMAIL_HOST_PASSWORD from settings.
         """
         try:
             from_addr = f"{cfg['from_name']} <{cfg['from_email']}>"
             text_content = strip_tags(html_content)
 
-            msg = EmailMultiAlternatives(subject, text_content, from_addr, [to_email])
+            cc_clean = [str(e).strip() for e in (cc_emails or []) if e and str(e).strip()]
+            msg = EmailMultiAlternatives(subject, text_content, from_addr, [to_email], cc=cc_clean or None)
             msg.attach_alternative(html_content, "text/html")
             
             # Handle attachment for SMTP
@@ -166,7 +170,7 @@ class BrevoEmailService:
 
             msg.send(fail_silently=False)
 
-            logger.info(f"[SMTP Fallback] Email sent to {to_email!r} — {subject!r}")
+            logger.info(f"[SMTP Fallback] Email sent to {to_email!r} (cc={cc_clean}) — {subject!r}")
             return True
 
         except Exception as exc:
@@ -175,9 +179,9 @@ class BrevoEmailService:
 
     # ─── Public API ──────────────────────────────────────────────────────────
 
-    def send_generic(self, to_email: str, to_name: str, subject: str, html_content: str, attachment_path: str = None) -> bool:
+    def send_generic(self, to_email: str, to_name: str, subject: str, html_content: str, attachment_path: str = None, cc_emails: list = None) -> bool:
         """
-        Send any transactional email with automatic fallback chain and optional attachment.
+        Send any transactional email with automatic fallback chain, optional attachment and CC recipients.
 
         Returns:
             True  — email was delivered via Brevo API or SMTP
@@ -186,12 +190,12 @@ class BrevoEmailService:
         cfg = self._get_config()
 
         # 1. Try Brevo HTTP API
-        if self._send_via_brevo_api(cfg, to_email, to_name, subject, html_content, attachment_path):
+        if self._send_via_brevo_api(cfg, to_email, to_name, subject, html_content, attachment_path, cc_emails=cc_emails):
             return True
 
         # 2. Fallback to Django SMTP
         logger.warning(f"[EmailService] Brevo API failed. Attempting SMTP fallback for {to_email!r}.")
-        if self._send_via_smtp(cfg, to_email, to_name, subject, html_content, attachment_path):
+        if self._send_via_smtp(cfg, to_email, to_name, subject, html_content, attachment_path, cc_emails=cc_emails):
             return True
 
         # 3. Both channels failed

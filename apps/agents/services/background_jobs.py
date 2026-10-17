@@ -102,11 +102,17 @@ def _paldi_expiry_job():
     from django.core.management import call_command
     out = StringIO()
     call_command('process_event_referral_expirations', stdout=out)
-    logger.info('[bgjobs] paldi expirations: %s', out.getvalue().strip())
+def _system_load_monitor_job():
+    try:
+        from apps.admin_panel.services.system_monitor import SystemMonitorService
+        SystemMonitorService.check_and_alert(threshold=95.0)
+    except Exception as e:
+        logger.warning(f"[bgjobs] system-load-monitor check failed: {e}")
 
 
 # (name, interval in seconds, function)
 JOBS = (
+    ('system-load-monitor', 60, _system_load_monitor_job),
     ('invoice-retry', 60 * 60, _invoice_job),
     ('paldi-expirations', 30 * 60, _paldi_expiry_job),
 )
