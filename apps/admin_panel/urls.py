@@ -108,6 +108,14 @@ from .views.find_agent_locator import (
 )
 from .views import settings, subscriptions, pincode_heatmap
 from .views.delete import admin_delete
+from .views.account_deletion import (
+    deletion_requests_list,
+    terminate_agent_account,
+    activate_agent_account,
+    reject_deletion_request,
+)
+
+
 from .views.distributors import (
     distributor_list,
     distributor_create,
@@ -624,4 +632,12 @@ urlpatterns = [
     # Module #15 — Session & Device Management
     path("admin/sessions/", sessions_index, name="admin_sessions_index"),
     path("admin/sessions/revoke/", sessions_revoke, name="admin_sessions_revoke"),
+
+    # Account Deletion & DPDP Compliance
+    path("admin/account-deletion-requests/", deletion_requests_list, name="admin_deletion_requests"),
+    path("admin/account-deletion/terminate/", terminate_agent_account, name="admin_terminate_account"),
+    path("admin/account-deletion/activate/", activate_agent_account, name="admin_activate_account"),
+    path("admin/account-deletion/reject/", reject_deletion_request, name="admin_reject_deletion_request"),
 ]
+
+

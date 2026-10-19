@@ -240,11 +240,11 @@ interactions.{% endblock %}
                     placeholder="your.email@example.com" required autofocus autocomplete="username">
             </div>
 
-            <div class="form-group">
+            <div class="form-group" data-clarity-mask="true">
                 <label for="password">Password</label>
-                <div class="password-input-wrapper">
+                <div class="password-input-wrapper" data-clarity-mask="true">
                     <input type="password" id="password" name="password" class="form-control-input"
-                        placeholder="••••••••" required autocomplete="current-password">
+                        placeholder="••••••••" required autocomplete="current-password" data-clarity-mask="true">
                     <i class="fas fa-eye password-toggle" id="togglePassword"></i>
                 </div>
             </div>

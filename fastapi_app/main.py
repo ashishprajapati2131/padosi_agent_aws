@@ -17,7 +17,7 @@ from fastapi_app.routers import (
     auth, dashboard, profile, public_profile,
     pincode, leads, notifications, analytics,
     qr, referral, find_agents, championship,
-    plans, app_version
+    plans, app_version, account_deletion
 )
 import fastapi_app.models
 
@@ -65,6 +65,8 @@ app.include_router(find_agents.router)
 app.include_router(championship.router)
 app.include_router(plans.router)
 app.include_router(app_version.router)
+app.include_router(account_deletion.router)
+
 
 class RestrictedStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):

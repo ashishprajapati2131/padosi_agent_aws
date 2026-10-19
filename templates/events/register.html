@@ -416,12 +416,12 @@
 
             Swal.fire({
                 html: `
-                <div style="text-align:center; padding: 10px 0 5px;">
+                <div style="text-align:center; padding: 10px 0 5px;" data-clarity-mask="true">
                     <i class="fas fa-envelope-open-text" style="font-size:40px; color:var(--primary); margin-bottom:12px;"></i>
                     <h3 style="font-size:18px; font-weight:700; color:#1a1a1a; margin-bottom:6px;">Verify With OTP</h3>
                     <p style="font-size:13px; color:#64748b; margin-bottom:16px;">${email}</p>
 
-                    <input id="swal-otp-input" type="text" inputmode="numeric" maxlength="6"
+                    <input id="swal-otp-input" type="text" inputmode="numeric" maxlength="6" data-clarity-mask="true"
                         placeholder="● ● ● ● ● ●"
                         style="width: 220px; font-size: 30px; font-weight: 700; letter-spacing: 10px; text-align: center; border: none; border-bottom: 3px solid var(--primary); outline: none; padding: 8px 0; color: #1a1a1a; background: transparent; display: block; margin: 0 auto 20px;"
                         oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length===6) document.getElementById('swal-otp-verify-btn').click();" />

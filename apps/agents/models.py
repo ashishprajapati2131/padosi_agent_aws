@@ -1784,3 +1784,99 @@ class AgentPlanOffer(models.Model):
 
     def __str__(self):
         return f"AgentPlanOffer(agent={self.agent_id})"
+
+
+class AccountDeletionRequest(models.Model):
+    """
+    Public and agent-initiated account deletion requests.
+    Supports OTP email verification, DPDP compliance review,
+    and administrative termination audit trail.
+    """
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('PROCESSING', 'Processing'),
+        ('COMPLETED', 'Completed'),
+        ('REJECTED', 'Rejected'),
+    ]
+    VERIFICATION_METHOD_CHOICES = [
+        ('otp_email', 'Email OTP'),
+        ('otp_sms', 'SMS OTP'),
+        ('auth_token', 'Authenticated Token / Session'),
+    ]
+
+    reference_id = models.CharField(max_length=50, unique=True, db_index=True)
+    identifier = models.CharField(max_length=255, db_index=True)
+    email = models.EmailField(max_length=254, blank=True, default='')
+    mobile = models.CharField(max_length=20, blank=True, default='')
+    account_type = models.CharField(max_length=50, default='agent')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, db_index=True, default='PENDING')
+    verification_method = models.CharField(max_length=30, choices=VERIFICATION_METHOD_CHOICES, default='otp_email')
+    is_verified = models.BooleanField(default=False)
+    reason = models.TextField(blank=True, default='')
+    rejection_reason = models.TextField(blank=True, default='')
+    scheduled_purge_date = models.DateField(null=True, blank=True)
+    admin_notes = models.TextField(blank=True, default='')
+    processed_by_admin_name = models.CharField(max_length=150, blank=True, default='')
+    processed_at = models.DateTimeField(null=True, blank=True)
+    data_retention_summary = models.JSONField(default=dict, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='deletion_requests',
+        db_constraint=False,
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='account_deletion_requests',
+        db_constraint=False,
+    )
+    processed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='processed_account_deletions',
+        db_constraint=False,
+    )
+
+    class Meta:
+        db_table = 'account_deletion_requests'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"AccountDeletionRequest({self.reference_id}, {self.email}, status={self.status})"
+
+    def to_dict(self):
+        summary = self.data_retention_summary or {}
+        return {
+            'id': self.id,
+            'reference_id': self.reference_id,
+            'fullname': summary.get('fullname') or (self.agent.fullname if self.agent else self.identifier),
+            'email': self.email,
+            'mobile': self.mobile,
+            'pan_number': summary.get('pan_number') or self.identifier,
+            'reason_category': summary.get('reason_category', ''),
+            'reason_details': summary.get('reason_details', '') or self.reason,
+            'status': self.status,
+            'is_verified': self.is_verified,
+            'rejection_reason': self.rejection_reason or '',
+            'admin_notes': self.admin_notes or '',
+            'processed_by': self.processed_by_admin_name or '',
+            'created_at': self.created_at.strftime('%d %b %Y, %I:%M %p') if self.created_at else '',
+            'processed_at': self.processed_at.strftime('%d %b %Y, %I:%M %p') if self.processed_at else '',
+            'ip_address': self.ip_address or '',
+            'agent_id': self.agent_id or (self.agent.id if self.agent else None),
+            'agent_status': self.agent.status if self.agent else '',
+        }
+
+

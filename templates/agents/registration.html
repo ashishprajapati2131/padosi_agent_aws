@@ -704,8 +704,8 @@
                                                 <div x-show="!editPan && isPanValid"
                                                     class="group flex min-w-0 items-center gap-1 mt-0.5">
                                                     <span
-                                                        class="inline-flex min-w-0 items-center gap-1 text-sm font-extrabold tracking-wider text-foreground">
-                                                        <span class="truncate" x-text="pan.slice(0,5) + '•••••'"></span>
+                                                        class="inline-flex min-w-0 items-center gap-1 text-sm font-extrabold tracking-wider text-foreground" data-clarity-mask="true">
+                                                        <span class="truncate" x-text="pan.slice(0,5) + '•••••'" data-clarity-mask="true"></span>
                                                         <i data-lucide="check-circle-2"
                                                             class="h-3 w-3 shrink-0 text-green-600"></i>
                                                     </span>
@@ -715,8 +715,8 @@
                                                         <i data-lucide="pencil" class="h-3 w-3"></i>
                                                     </button>
                                                 </div>
-                                                <div x-show="editPan || !isPanValid" class="mt-1">
-                                                    <input x-ref="panInput" type="text" x-model="pan" maxlength="10"
+                                                <div x-show="editPan || !isPanValid" class="mt-1" data-clarity-mask="true">
+                                                    <input x-ref="panInput" type="text" x-model="pan" maxlength="10" data-clarity-mask="true"
                                                         autocomplete="off" spellcheck="false" autocapitalize="characters"
                                                         enterkeyhint="next"
                                                         :inputmode="panInputMode"

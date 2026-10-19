@@ -1,6 +1,8 @@
 from django.urls import path
 from django.views.generic import RedirectView
 from .views import pages, seo, calculators
+from apps.agents.views.account_deletion import account_deletion_view
+
 
 app_name = 'home'
 
@@ -30,6 +32,8 @@ urlpatterns = [
     path('lic-agent/', pages.lic_event, name='lic_event'),
     path('cancellation-refund-policy/', pages.cancellation_refund_policy, name='cancellation_refund'),
     path('blacklisted-agents/', pages.blacklisted_agents, name='blacklisted_agents'),
+    path('delete-account/', account_deletion_view, name='delete_account'),
+    path('account-deletion/', account_deletion_view, name='account_deletion'),
     path('api/quick-lead-capture/', pages.quick_lead_capture, name='quick_lead_capture'),
     path('<slug:slug>/',     pages.custom_page,    name='custom_page'),
 ]

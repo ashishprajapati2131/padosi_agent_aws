@@ -1,0 +1,89 @@
+<!-- Microsoft Clarity – behaviour tracking -->
+<script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "wci0ru475p");
+</script>
+<script type="text/javascript">
+    /**
+     * Privacy Guard for Microsoft Clarity
+     * Automatically applies data-clarity-mask="true" to all sensitive data inputs
+     * (passwords, OTPs, PAN, card/payment details, bank details) in both static HTML
+     * and dynamic dialogs/modals (SweetAlert, AJAX popups) before recordings are captured.
+     */
+    (function() {
+        var SENSITIVE_SELECTOR = [
+            'input[type="password"]',
+            'input[autocomplete*="one-time-code"]',
+            'input[autocomplete*="current-password"]',
+            'input[autocomplete*="new-password"]',
+            'input[autocomplete*="cc-"]',
+            'input[name*="password" i]',
+            'input[name*="otp" i]',
+            'input[name*="pin" i]',
+            'input[name*="cvv" i]',
+            'input[name*="cvc" i]',
+            'input[name*="card" i]',
+            'input[name*="pan" i]',
+            'input[name*="aadhaar" i]',
+            'input[name*="account_no" i]',
+            'input[name*="account_number" i]',
+            'input[id*="password" i]',
+            'input[id*="otp" i]',
+            'input[id*="pin" i]',
+            'input[id*="cvv" i]',
+            'input[id*="pan" i]',
+            '.otp-digit',
+            '.otp-inputs',
+            '#swal-otp-input',
+            '#otpModal',
+            '.otp-modal-card',
+            '[data-sensitive="true"]'
+        ].join(',');
+
+        function maskSensitive(root) {
+            try {
+                var scope = root || document;
+                if (scope.nodeType !== 1 && scope !== document) return;
+                if (scope.matches && scope.matches(SENSITIVE_SELECTOR)) {
+                    if (!scope.hasAttribute('data-clarity-mask')) {
+                        scope.setAttribute('data-clarity-mask', 'true');
+                    }
+                }
+                var elements = scope.querySelectorAll ? scope.querySelectorAll(SENSITIVE_SELECTOR) : [];
+                for (var i = 0; i < elements.length; i++) {
+                    if (!elements[i].hasAttribute('data-clarity-mask')) {
+                        elements[i].setAttribute('data-clarity-mask', 'true');
+                    }
+                }
+            } catch (e) {
+                // Safeguard against older browser selector quirks
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() { maskSensitive(); });
+        } else {
+            maskSensitive();
+        }
+
+        if (typeof window.MutationObserver !== 'undefined') {
+            var observer = new MutationObserver(function(mutations) {
+                for (var i = 0; i < mutations.length; i++) {
+                    var m = mutations[i];
+                    if (m.addedNodes && m.addedNodes.length) {
+                        for (var j = 0; j < m.addedNodes.length; j++) {
+                            var node = m.addedNodes[j];
+                            if (node.nodeType === 1) {
+                                maskSensitive(node);
+                            }
+                        }
+                    }
+                }
+            });
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+        }
+    })();
+</script>

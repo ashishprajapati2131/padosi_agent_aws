@@ -571,7 +571,12 @@
                 class="menu-item {% if request.path == '/admin/blacklisted-agents/' %}active{% endif %}">
                 <i class="fa-solid fa-user-slash"></i> Blacklisted Agents
             </a>
+            <a href="{% url 'admin_deletion_requests' %}"
+                class="menu-item {% if '/admin/account-deletion-requests/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-user-xmark" style="color:#dc2626;"></i> Deletion Requests
+            </a>
             {% endif %}
+
 
             {% if is_super_admin or 'insurance' in admin_permissions %}
             <a href="{% url 'admin_insurance_index' %}"
