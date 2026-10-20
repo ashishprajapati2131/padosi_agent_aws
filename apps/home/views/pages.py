@@ -35,6 +35,7 @@ from apps.home.services.distance import (
 from apps.home.services.geocoding import GeocodingService
 from apps.home.services.ai_picks import AIPicksService
 from apps.home.services.matching import assign_match_percents
+from apps.home.services.avatar_thumbs import small_avatar_url
 from django.db.models import Avg, Q
 from django.db.models.expressions import RawSQL
 from django.core.paginator import Paginator
@@ -228,7 +229,7 @@ def home(request):
                     pass
 
             from urllib.parse import quote as _urlquote
-            avatar_url = agent_photo if (agent_photo and 'avatar-icon.jpg' not in agent_photo) else f"https://ui-avatars.com/api/?name={_urlquote(rev.reviewer_name or 'User')}&background=0d9488&color=fff&bold=true"
+            avatar_url = small_avatar_url(agent_photo) if (agent_photo and 'avatar-icon.jpg' not in agent_photo) else f"https://ui-avatars.com/api/?name={_urlquote(rev.reviewer_name or 'User')}&background=0d9488&color=fff&bold=true"
 
             reviews.append({
                 'name': rev.reviewer_name or 'User',

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -102,8 +103,13 @@ else:
 
 # Application definition
 
+# The 'daphne' app only swaps `manage.py runserver` to ASGI. Importing it pulls in
+# twisted/autobahn (~1-2.5s), which every Passenger worker would pay on cold start,
+# so it is loaded for runserver only. Running the daphne CLI does not need it here.
+_DAPHNE_APPS = ['daphne'] if sys.argv[1:2] == ['runserver'] else []
+
 INSTALLED_APPS = [
-    'daphne',
+    *_DAPHNE_APPS,
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

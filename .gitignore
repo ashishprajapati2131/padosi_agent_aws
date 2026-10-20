@@ -32,3 +32,10 @@ backups/
 *.gz
 *.zip
 alert_email_preview.html
+
+# Local promo-video tooling (brag videos) — never deploy
+.brag-work/
+brag-output*/
+brag*.mp4
+setup_60s.py
+scratch_test_voice.mp3

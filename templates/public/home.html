@@ -5,11 +5,21 @@
 {% block meta_description %}Connect with verified &amp; licensed insurance agents near you for Health, Life, Motor &amp; SME Insurance. Compare trusted local advisors with customer ratings, fast claim assistance &amp; doorstep service on PadosiAgent.{% endblock %}
 {% block meta_keywords %}insurance agent, insurance agent near me, best insurance agent, licensed insurance agent, health insurance agent, life insurance agent, motor insurance agent, PadosiAgent{% endblock %}
 
+{% block jquery_attrs %}defer{% endblock %}
+
+{# Home only uses this file for the guest sign-up popup, so it must not block first paint #}
+{% block agent_profile_view_css %}
+<link rel="stylesheet" href="{% static 'css/agent-profile-view.css' %}?v=20260916-1" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="{% static 'css/agent-profile-view.css' %}?v=20260916-1"></noscript>
+{% endblock %}
+
+{% block extra_head %}
+{# LCP: first hero slide (same file for desktop and mobile hero) #}
+<link rel="preload" as="image" href="{% static 'img/hero-chatbot-vs-agent-doodle.webp' %}" type="image/webp" fetchpriority="high">
+{% endblock %}
+
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/owl.carousel.min.css' %}">
-<link rel="stylesheet" href="{% static 'css/owl.theme.default.min.css' %}">
-<link rel="stylesheet" href="{% static 'css/magnific-popup.css' %}">
-<link rel="stylesheet" href="{% static 'css/aos.css' %}">
+{# owl / magnific / aos CSS already come from base.html #}
 <style>
     .header {
         background: transparent !important;
@@ -340,9 +350,9 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/owl.carousel.js' %}"></script>
-<script src="{% static 'js/aos.js' %}"></script>
-<script src="{% static 'js/animation.js' %}"></script>
+{# owl.carousel.js is loaded (deferred) by base.html #}
+<script src="{% static 'js/aos.js' %}" defer></script>
+<script src="{% static 'js/animation.js' %}" defer></script>
 <script>
     var slideColorClasses = ['slide-new-policy', 'slide-claim', 'slide-review'];
 
@@ -465,14 +475,12 @@
         }
     });
 
-    $(document).ready(function () {
+    // jQuery and plugins are deferred; they have all run by DOMContentLoaded.
+    document.addEventListener('DOMContentLoaded', function () {
         initHomeSliders();
         initTooltips();
         initNewHomepageFeatures();
     });
-    initHomeSliders();
-    initTooltips();
-    initNewHomepageFeatures();
 
     if (typeof window.homeHtmxListenersAdded === 'undefined') {
         document.addEventListener('htmx:afterSettle', function () {
@@ -677,7 +685,7 @@
             htmlContent += '<div class="review-card-wrapper">' +
                 '<div class="review-card">' +
                 '<div class="review-user-row">' +
-                '<img src="' + review.image + '" alt="' + review.name + '" class="review-avatar" />' +
+                '<img src="' + review.image + '" alt="' + review.name + '" class="review-avatar" width="40" height="40" loading="lazy" decoding="async" />' +
                 '<div class="flex-1 min-w-0" style="margin-left: 12px;">' +
                 '<h4 class="review-name">' + review.name + '</h4>' +
                 '<p class="review-service">' + serviceHtml + '</p>' +

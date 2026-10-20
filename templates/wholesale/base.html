@@ -7,10 +7,10 @@
     <title>{% block title %}{{ wholesale_site_name|default:'PadosiAgent' }} — B2B Wholesale Marketplace{% endblock %}</title>
     <link rel="icon" href="{% url 'home:favicon' %}" type="image/x-icon">
 
-    <!-- Google Fonts: Outfit & Urbanist -->
+    <!-- Google Fonts: Outfit, Jost & Urbanist (one request; style.css no longer @imports fonts) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Urbanist:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Jost:ital,wght@0,100..900;1,100..900&family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
     <!-- Bootstrap 4.6.2 and PadosiAgent Core Styles -->
     <link rel="stylesheet" href="{% static 'bootstrap/bootstrap.min.css' %}">
