@@ -185,8 +185,9 @@
     <!-- Outfit Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
+    {# One request for all three families (style.css used to @import Jost/Urbanist serially) #}
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Jost:ital,wght@0,100..900;1,100..900&family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
     <!-- Bootstrap and styles -->
     <link rel="stylesheet" href="{% static 'bootstrap/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
@@ -194,14 +195,22 @@
     <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
     <link rel="stylesheet" href="{% static 'css/owl.carousel.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/owl.theme.default.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/magnific-popup.css' %}">
     <link rel="stylesheet" href="{% static 'css/aos.css' %}">
+    {% block agent_profile_view_css %}
     <link rel="stylesheet" href="{% static 'css/agent-profile-view.css' %}?v=20260916-1">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+    {% endblock %}
+    {# Not needed for first paint (popups / icon font): load without blocking render #}
+    <link rel="stylesheet" href="{% static 'css/magnific-popup.css' %}" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" media="print" onload="this.media='all'">
+    <noscript>
+        <link rel="stylesheet" href="{% static 'css/magnific-popup.css' %}">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+    </noscript>
     
     <!-- Core framework scripts -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
-    <script src="{% static 'js/jquery-3.7.1.min.js' %}"></script>
+    {# Pages whose inline scripts wait for DOMContentLoaded can override this block with "defer" #}
+    <script src="{% static 'js/jquery-3.7.1.min.js' %}" {% block jquery_attrs %}{% endblock %}></script>
     <script src="{% static 'js/popper.min.js' %}" defer></script>
     <script src="{% static 'js/bootstrap.min.js' %}" defer></script>
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
@@ -259,7 +268,8 @@
 </head>
 <body>
     <a href="#app-content" class="skip-link">Skip to main content</a>
-    <div class="loader-mask" aria-hidden="true"><div class="spinner"></div></div>
+    {# Hidden on first paint so it never blocks LCP; scripts may still fadeIn/fadeOut it #}
+    <div class="loader-mask" aria-hidden="true" style="display:none"><div class="spinner"></div></div>
     <div id="app-content">
         {% include 'partials/announcement_bar.html' %}
         {% if not hide_header or request.path == '/' or '/find-agents/' in request.path %}
@@ -451,8 +461,9 @@
             return response;
         };
 
-        // 3. Configure jQuery.ajax defaults if jQuery is loaded
-        if (typeof jQuery !== 'undefined') {
+        // 3. Configure jQuery.ajax defaults (jQuery may be deferred, so retry on DOMContentLoaded)
+        function setupJqueryCsrf() {
+            if (typeof jQuery === 'undefined') return false;
             jQuery.ajaxSetup({
                 beforeSend: function (xhr, settings) {
                     if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
@@ -460,6 +471,10 @@
                     }
                 }
             });
+            return true;
+        }
+        if (!setupJqueryCsrf()) {
+            document.addEventListener('DOMContentLoaded', setupJqueryCsrf);
         }
     })();
     </script>

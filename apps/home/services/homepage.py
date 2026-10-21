@@ -5,6 +5,7 @@ from apps.home.models.homepage import (
     HeroSlide, DidYouKnowSlide, QuickPickItem, WhyChooseCard, HowItWorksStep,
 )
 from apps.home.models.site_setting import SiteSetting
+from apps.home.services.avatar_thumbs import small_avatar_url
 from django.core.cache import cache
 
 
@@ -352,7 +353,7 @@ def map_custom_testimonials(custom_list):
             rating = float(item.get('rating') or 5)
         except (TypeError, ValueError):
             rating = 5.0
-        image = item.get('image') or (
+        image = small_avatar_url(item.get('image')) or (
             f"https://ui-avatars.com/api/?name={name.replace(' ', '+')}&background=0d9488&color=fff&bold=true"
         )
         reviews.append({
@@ -455,5 +456,6 @@ def build_homepage_cms_context():
         'custom_reviews': custom_reviews,
         'hero_heading': settings.hero_heading,
     }
-    cache.set('homepage_cms_context', context, timeout=300)
+    # post_save/post_delete signals and SiteSetting.set_value() clear this key on every CMS edit.
+    cache.set('homepage_cms_context', context, timeout=3600)
     return context

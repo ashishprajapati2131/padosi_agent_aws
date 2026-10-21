@@ -78,4 +78,48 @@
     </div>
 </div>
 
-<script src="{% static 'chatbot/js/widget.js' %}?v=1.1"></script>
+{# Lazy-load the widget: not needed for first paint, and its init calls /chatbot-api/. #}
+{# Loads when the browser is idle after page load, or at once if the button is clicked first. #}
+<script>
+(function () {
+    var src = "{% static 'chatbot/js/widget.js' %}?v=1.2";
+    var trigger = document.getElementById('chatbot-trigger');
+    var state = 'idle'; // idle -> loading -> ready
+    var openAfterLoad = false;
+
+    function load() {
+        if (state !== 'idle') return;
+        state = 'loading';
+        var s = document.createElement('script');
+        s.src = src;
+        s.onload = function () {
+            state = 'ready';
+            if (openAfterLoad && trigger) trigger.click();
+        };
+        s.onerror = function () { state = 'idle'; };
+        document.body.appendChild(s);
+    }
+
+    if (trigger) {
+        trigger.addEventListener('click', function onFirstClick(e) {
+            if (state === 'ready') return;
+            e.stopImmediatePropagation();
+            openAfterLoad = true;
+            load();
+        }, true);
+    }
+
+    function loadWhenIdle() {
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(load, { timeout: 4000 });
+        } else {
+            setTimeout(load, 2000);
+        }
+    }
+    if (document.readyState === 'complete') {
+        loadWhenIdle();
+    } else {
+        window.addEventListener('load', loadWhenIdle);
+    }
+})();
+</script>

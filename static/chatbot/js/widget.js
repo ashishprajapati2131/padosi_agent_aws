@@ -1,4 +1,14 @@
-document.addEventListener('DOMContentLoaded', () => {
+// widget.html loads this file lazily (after page load or on first click), when
+// DOMContentLoaded may already have fired, so run init right away in that case.
+function chatbotOnReady(init) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+}
+
+chatbotOnReady(() => {
     const triggerBtn = document.getElementById('chatbot-trigger');
     const closeBtn = document.getElementById('chatbot-close');
     const panel = document.getElementById('chatbot-panel');
