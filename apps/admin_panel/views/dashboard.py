@@ -350,18 +350,13 @@ def admin_login(request):
 def admin_logout(request):
     """
     Handle admin logout.
-
-    Laravel source: AdminAuthController@logout  →  GET /admin/logout
-    Django route:   GET /admin/logout/           →  name='admin_logout'
-
-    Flow:
-      1. Read session_token cookie.
-      2. Look up matching user_sessions row.
-      3. Delete related user_session_data rows.
-      4. Delete the user_sessions row.
-      5. Delete the cookie from the browser.
-      6. Redirect to login.
+    Ignores cross-site GET requests (e.g. <img src="/admin/logout/">) to prevent
+    forced session termination.
     """
+    from apps.agents.views.auth import _is_cross_site_get
+    if _is_cross_site_get(request):
+        return redirect("admin_dashboard")
+
     django_logout(request)
     from apps.home.services.portal_messages import PORTAL_ADMIN, portal_success
     portal_success(request, "You have been logged out successfully.", PORTAL_ADMIN)

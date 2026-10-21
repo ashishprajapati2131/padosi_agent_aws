@@ -70,6 +70,9 @@ def wholesaler_login_view(request):
 
 def wholesaler_logout_view(request):
     """Logout view for wholesalers: cleanly clears session and returns to login."""
+    from apps.agents.views.auth import _is_cross_site_get
+    if _is_cross_site_get(request):
+        return redirect('wholesale:wholesaler_dashboard')
     logout(request)
     messages.info(request, "You have been logged out.")
     return redirect('wholesale:wholesaler_login')

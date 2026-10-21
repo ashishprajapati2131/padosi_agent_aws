@@ -73,3 +73,31 @@ class DocumentUploadForm(forms.Form):
     pan_card = forms.FileField(required=False, widget=forms.FileInput(attrs={
         'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'
     }))
+
+    def _validate_uploaded_file(self, field_name, label):
+        file = self.cleaned_data.get(field_name)
+        if not file:
+            return file
+        
+        # Max file size limit: 5 MB
+        max_bytes = 5 * 1024 * 1024
+        if file.size > max_bytes:
+            raise forms.ValidationError(f"{label} must be under 5MB.")
+
+        from apps.agents.utils.file_validation import validate_magic_bytes
+        content = file.read()
+        file.seek(0)
+        is_valid, err_msg = validate_magic_bytes(content, file.name)
+        if not is_valid:
+            raise forms.ValidationError(f"{label}: {err_msg}")
+        return file
+
+    def clean_gst_certificate(self):
+        return self._validate_uploaded_file('gst_certificate', 'GST Registration Certificate')
+
+    def clean_business_registration(self):
+        return self._validate_uploaded_file('business_registration', 'Business Registration Document')
+
+    def clean_pan_card(self):
+        return self._validate_uploaded_file('pan_card', 'PAN Card')
+

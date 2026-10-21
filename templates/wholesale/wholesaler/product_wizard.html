@@ -1,5 +1,6 @@
 {% extends 'wholesale/base.html' %}
 {% load static %}
+{% load json_tags %}
 
 {% block title %}
 {% if product %}Edit {{ product.title }}{% else %}Add New Wholesale Product{% endif %} — CrossSeal
@@ -384,8 +385,8 @@
 
 {% block extra_js %}
 <script>
-    window.EXISTING_TIERS = {{ existing_tiers_json|safe }};
-    window.EXISTING_VARIANTS = {{ existing_variants_json|safe }};
+    window.EXISTING_TIERS = {{ existing_tiers_json|safe_json }};
+    window.EXISTING_VARIANTS = {{ existing_variants_json|safe_json }};
 </script>
 <script src="{% static 'wholesale/js/product_wizard.js' %}"></script>
 {% endblock %}

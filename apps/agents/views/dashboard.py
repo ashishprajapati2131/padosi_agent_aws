@@ -2905,6 +2905,16 @@ def serve_private_file(request, file_path):
     # 2. Access checks on the normalised path
     admin_id = _get_admin_from_session(request)
     is_admin = admin_id is not None
+    if not is_admin and request.user.is_authenticated:
+        if getattr(request.user, 'is_staff', False) or getattr(request.user, 'is_superuser', False):
+            is_admin = True
+        else:
+            try:
+                from apps.wholesale.adapters.auth_bridge import is_wholesale_admin
+                if is_wholesale_admin(request):
+                    is_admin = True
+            except Exception:
+                pass
 
     is_owner = False
     if request.user.is_authenticated:
@@ -2917,6 +2927,34 @@ def serve_private_file(request, file_path):
                 is_owner = True
             elif normalized_path.startswith(f"agents/{agent.id}/") or normalized_path.startswith(f"agent_{agent.id}/"):
                 is_owner = True
+
+        # Check wholesale documents ownership
+        if not is_owner and normalized_path.startswith("wholesale/documents/"):
+            try:
+                from apps.wholesale.models.profile import BusinessVerificationDocument
+                doc_file_match = f"app/private/{normalized_path}"
+                if BusinessVerificationDocument.objects.filter(
+                    wholesaler__user=request.user,
+                    document_file__in=[doc_file_match, normalized_path]
+                ).exists():
+                    is_owner = True
+            except Exception:
+                pass
+
+        # Check wholesale RFQ attachment ownership
+        if not is_owner and normalized_path.startswith("wholesale/rfq_attachments/"):
+            try:
+                from django.db.models import Q
+                from apps.wholesale.models.inquiry import InquiryMessage
+                doc_file_match = f"app/private/{normalized_path}"
+                if InquiryMessage.objects.filter(
+                    attachment__in=[doc_file_match, normalized_path]
+                ).filter(
+                    Q(inquiry__buyer_user=request.user) | Q(inquiry__wholesaler__user=request.user)
+                ).exists():
+                    is_owner = True
+            except Exception:
+                pass
 
     if not is_admin and not is_owner:
         return HttpResponseForbidden("Access Denied: You do not have permission to access this file.")

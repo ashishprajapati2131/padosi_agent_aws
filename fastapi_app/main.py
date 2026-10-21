@@ -70,9 +70,16 @@ app.include_router(account_deletion.router)
 
 class RestrictedStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
-        # Disallow direct unauthenticated access to private documents / invoices
+        # Disallow direct unauthenticated access to private documents / invoices / KYC
         normalized = path.replace("\\", "/").strip("/")
-        if normalized.startswith("app/private") or "/app/private/" in f"/{normalized}/":
+        if (
+            normalized.startswith("app/private")
+            or "/app/private/" in f"/{normalized}/"
+            or normalized.startswith("wholesale/documents")
+            or "/wholesale/documents/" in f"/{normalized}/"
+            or normalized.startswith("wholesale/rfq_attachments")
+            or "/wholesale/rfq_attachments/" in f"/{normalized}/"
+        ):
             return Response("Access Denied: Private media files must be accessed through authenticated Django routes.", status_code=403)
         return await super().get_response(path, scope)
 

@@ -89,16 +89,20 @@ class BulkImportService:
                 row_num += 1
                 row_errors = []
 
-                title = (row.get('title') or '').strip()
-                sku = (row.get('sku') or '').strip()
+                from apps.admin_panel.services.spreadsheet_safety import safe_cell
+
+                title = safe_cell((row.get('title') or '').strip())
+                sku = safe_cell((row.get('sku') or '').strip())
                 cat_name = (row.get('category_name') or '').strip()
                 base_price_str = (row.get('base_price') or '').strip()
                 moq_str = (row.get('moq') or '1').strip()
                 unit = (row.get('unit_of_measure') or 'Piece').strip()
                 stock_str = (row.get('stock_quantity') or '0').strip()
-                brand = (row.get('brand') or '').strip()
-                short_desc = (row.get('short_description') or title)[:490].strip()
-                desc = (row.get('description') or title).strip()
+                brand = safe_cell((row.get('brand') or '').strip())
+                raw_short = (row.get('short_description') or title)[:490].strip()
+                short_desc = safe_cell(raw_short)
+                raw_desc = (row.get('description') or title).strip()
+                desc = safe_cell(raw_desc)
 
                 if not title:
                     row_errors.append("Title cannot be empty.")

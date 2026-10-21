@@ -109,7 +109,10 @@ class Settings(BaseSettings):
 
     # Security Config
     SECURITY_ALERT_EMAIL: str = "ashisprajapati2131@gmail.com"
-    WAF_AUTO_BAN_ENABLED: bool = False  # Temporarily disabled for testing (do not lock agent after 3 attempts)
+    WAF_AUTO_BAN_ENABLED: bool = os.environ.get(
+        "WAF_AUTO_BAN_ENABLED",
+        "False" if os.environ.get("DEBUG", "False").strip().lower() in ("true", "1", "yes") else "True"
+    ).strip().lower() in ("true", "1", "yes")
     ALLOWED_CORS_ORIGINS: list[str] = ["http://localhost:3000"]
     ADMIN_WHITELIST_IPS: list[str] = []
 
@@ -155,17 +158,11 @@ def _ensure_valid_secret(cfg: Settings) -> None:
     if debug:
         return
 
-    # 5. Production fallback: generate deterministic deployment secret instead of crashing
-    fallback_seed = f"padosi-fallback-{cfg.DB_NAME}-{cfg.DB_USER}-{cfg.DB_HOST}"
-    derived_secret = hashlib.sha256(fallback_seed.encode("utf-8")).hexdigest()
-    cfg.SECRET_KEY = derived_secret
-    if cfg.JWT_SECRET_KEY == _COMMITTED_DEFAULT_SECRET:
-        cfg.JWT_SECRET_KEY = derived_secret
-    logger.warning(
-        "FastAPI SECRET_KEY was missing or committed default; generated deterministic fallback key. "
-        "Set a strong SECRET_KEY in your .env file."
+    # 5. In production, fail closed: never generate deterministic or forgeable secrets
+    raise RuntimeError(
+        "FATAL: SECRET_KEY and JWT_SECRET_KEY must be explicitly set in the production environment. "
+        "Committed default or deterministic keys are strictly prohibited for JWT security."
     )
-    os.environ.setdefault("SECRET_KEY", derived_secret)
 
 
 _ensure_valid_secret(settings)

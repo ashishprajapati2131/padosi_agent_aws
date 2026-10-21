@@ -100,7 +100,7 @@ class InquiryMessage(models.Model):
     sender_name = models.CharField(max_length=150)
     sender_role = models.CharField(max_length=20, choices=SENDER_ROLE_CHOICES, default='BUYER')
     message = models.TextField()
-    attachment = models.FileField(upload_to='wholesale/rfq_attachments/%Y/%m/', blank=True, null=True)
+    attachment = models.FileField(upload_to='app/private/wholesale/rfq_attachments/%Y/%m/', blank=True, null=True)
     created_at = models.DateTimeField(default=datetime.now)
 
     class Meta:

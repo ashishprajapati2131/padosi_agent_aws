@@ -79,7 +79,14 @@ def serve_public_media(request, path, document_root=None):
     the authenticated private route above yet was served from app/private.
     """
     normalized = posixpath.normpath(path.replace('\\', '/')).lstrip('/')
-    if normalized == 'app/private' or normalized.startswith('app/private/'):
+    if (
+        normalized == 'app/private'
+        or normalized.startswith('app/private/')
+        or normalized == 'wholesale/documents'
+        or normalized.startswith('wholesale/documents/')
+        or normalized == 'wholesale/rfq_attachments'
+        or normalized.startswith('wholesale/rfq_attachments/')
+    ):
         raise Http404("File not found")
     response = serve(request, path, document_root=document_root)
     # User uploads must never execute as same-origin documents (HTML/SVG

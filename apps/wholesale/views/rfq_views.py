@@ -17,6 +17,24 @@ def submit_rfq_view(request, product_id):
     next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or '/agent/dashboard/?tab=marketplace'
 
     if request.method == 'POST':
+        import time
+        from django.core.cache import cache
+        from apps.admin_panel.middleware import ThreatMonitorMiddleware
+
+        client_ip = ThreatMonitorMiddleware.get_client_ip(request)
+        rl_key = f"rl_rfq_{client_ip}"
+        now_ts = time.time()
+        ts_list = [t for t in cache.get(rl_key, []) if t > now_ts - 60]
+        if len(ts_list) >= 10:
+            err_msg = "Too many inquiry requests. Please wait a minute before submitting again."
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': err_msg}, status=429)
+            messages.error(request, err_msg)
+            return redirect(next_url)
+
+        ts_list.append(now_ts)
+        cache.set(rl_key, ts_list, timeout=60)
+
         form = BuyerInquiryForm(request.POST)
         if form.is_valid():
             try:

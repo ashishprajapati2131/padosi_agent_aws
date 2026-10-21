@@ -108,7 +108,7 @@ class BusinessVerificationDocument(models.Model):
         related_name='documents'
     )
     document_type = models.CharField(max_length=30, choices=DOC_TYPE_CHOICES)
-    document_file = models.FileField(upload_to='wholesale/documents/%Y/%m/')
+    document_file = models.FileField(upload_to='app/private/wholesale/documents/%Y/%m/')
     document_number = models.CharField(max_length=100, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     rejection_notes = models.TextField(blank=True, null=True)

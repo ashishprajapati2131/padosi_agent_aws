@@ -77,9 +77,15 @@ class PublicCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'slug'
 
 
+from rest_framework.throttling import AnonRateThrottle
+
+class InquiryAnonThrottle(AnonRateThrottle):
+    rate = '10/minute'
+
 class BuyerInquiryCreateViewSet(viewsets.GenericViewSet):
     """Allows buyers to submit quotations."""
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [InquiryAnonThrottle]
     serializer_class = BuyerInquirySerializer
 
     def create(self, request, *args, **kwargs):
