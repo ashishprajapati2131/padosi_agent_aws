@@ -20,6 +20,7 @@ from .admin_broadcast import AdminBroadcast
 from .error_log import ErrorLog
 from .api_log import ApiLog
 from .app_version import AppVersion
+from .registration_lead import RegistrationLead
 
 __all__ = [
     'Agent',
@@ -45,5 +46,6 @@ __all__ = [
     'ErrorLog',
     'ApiLog',
     'AppVersion',
+    'RegistrationLead',
 ]
 

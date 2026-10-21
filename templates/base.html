@@ -283,6 +283,9 @@
     {% endblock %}
     {% block modals %}
         {% include 'partials/exit_intent_popup.html' %}
+        {% if not hide_site_nav and '/agent/' not in request.path and '/chooseplan' not in request.path and '/upgrade-plan' not in request.path and '/payment' not in request.path %}
+            {% include 'partials/eligibility_popup.html' %}
+        {% endif %}
     {% endblock %}
     {% block extra_js %}{% endblock %}
     <script>

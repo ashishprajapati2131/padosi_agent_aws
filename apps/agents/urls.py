@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 from django.views.decorators.csrf import csrf_exempt
-from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites, participants, career_timeline as career_timeline_views, qr as qr_views, analytics as analytics_views, renewal as renewal_views, account_deletion
+from .views import registration, auth, dashboard, gbp as gbp_views, bio_generator, favorites, participants, career_timeline as career_timeline_views, qr as qr_views, analytics as analytics_views, renewal as renewal_views, account_deletion, quick_registration
 
 
 app_name = 'agents'
@@ -8,6 +8,7 @@ app_name = 'agents'
 urlpatterns = [
     path('agent-registration/join/<str:ref_code>/', registration.agent_registration_referral, name='agent_registration_referral'),
     path('agent-registration/', registration.agent_registration, name='agent_registration'),
+    path('quick-registration/', quick_registration.quick_registration, name='quick_registration'),
     path('register/',           registration.agent_registration, name='register_alias'),
     path('agent-register-step1/', registration.register_step1,   name='agent_register_step1'),
     path('agent-register-step2/', registration.register_step2,   name='agent_register_step2'),

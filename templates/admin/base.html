@@ -641,6 +641,9 @@
                 <span class="badge bg-warning text-dark ms-auto">{{ new_leads_count }}</span>
                 {% endif %}
             </a>
+            <a href="{% url 'admin_quick_registration_leads' %}" class="menu-item {% if '/admin/quick-registration-leads/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-user-plus"></i> Quick Registration Leads
+            </a>
             {% endif %}
 
             {% if is_super_admin or 'contacts' in admin_permissions %}

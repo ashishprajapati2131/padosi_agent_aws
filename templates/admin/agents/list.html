@@ -29,14 +29,118 @@
 {% block content %}
 
 <!-- Page Header -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="m-0">Agent Ecosystem</h4>
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+        <h4 class="m-0">Agent Ecosystem</h4>
+        <select class="form-select" style="width: 220px;" aria-label="Registration type" onchange="switchRegistration(this.value)">
+            <option value="full" {% if registration != 'quick' %}selected{% endif %}>Full registration</option>
+            <option value="quick" {% if registration == 'quick' %}selected{% endif %}>Quick registration</option>
+        </select>
+    </div>
     <div class="btn-group shadow-sm">
+        {% if registration == 'quick' %}
+        <a class="btn btn-light border" href="{% url 'admin_agents' %}?registration=quick&export=csv{% if filter_query %}&{{ filter_query }}{% endif %}">
+            <i class="fa-solid fa-file-csv me-1"></i> Export CSV
+        </a>
+        <a class="btn btn-light border" href="{% url 'admin_agents' %}?registration=quick&export=xlsx{% if filter_query %}&{{ filter_query }}{% endif %}">
+            <i class="fa-solid fa-file-excel me-1"></i> Export Excel
+        </a>
+        {% else %}
         <button class="btn btn-light border" onclick="exportAgentsToCSV()">
             <i class="fa-solid fa-file-csv me-1"></i> Export Data
         </button>
+        {% endif %}
     </div>
 </div>
+
+{% if registration == 'quick' %}
+<div class="card mb-4 border-0 shadow-sm" style="border-radius: 12px;">
+    <div class="card-body p-4">
+        <form method="GET" action="{% url 'admin_agents' %}" class="row g-3">
+            <input type="hidden" name="registration" value="quick">
+            <div class="col-xl-3 col-md-6">
+                <input type="text" name="search" class="form-control" placeholder="Search name or phone" value="{{ search }}">
+            </div>
+            <div class="col-xl-2 col-md-6">
+                <select name="status" class="form-select">
+                    <option value="all" {% if status_filter == "all" %}selected{% endif %}>All status</option>
+                    <option value="Started" {% if status_filter == "Started" %}selected{% endif %}>Started</option>
+                    <option value="Completed" {% if status_filter == "Completed" %}selected{% endif %}>Completed</option>
+                    <option value="Abandoned" {% if status_filter == "Abandoned" %}selected{% endif %}>Abandoned</option>
+                </select>
+            </div>
+            <div class="col-xl-2 col-md-4">
+                <input type="date" name="date_from" class="form-control" value="{{ date_from }}" aria-label="From date">
+            </div>
+            <div class="col-xl-2 col-md-4">
+                <input type="date" name="date_to" class="form-control" value="{{ date_to }}" aria-label="To date">
+            </div>
+            <div class="col-xl-3 col-md-4">
+                <button type="submit" class="btn btn-primary w-100">Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm" style="border-radius: 12px;">
+    <div class="card-header bg-white py-3">
+        <h6 class="m-0 fw-bold">Quick registration ({{ total_rows }})</h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th class="ps-4">Name</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Ref</th>
+                    <th>Source</th>
+                    <th class="pe-4">Registered</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lead in leads %}
+                <tr>
+                    <td class="ps-4 fw-bold">{{ lead.name }}</td>
+                    <td><a href="tel:{{ lead.phone }}">{{ lead.phone }}</a></td>
+                    <td>
+                        {% if lead.status == 'Completed' %}
+                            <span class="badge bg-success">Completed</span>
+                        {% elif lead.status == 'Abandoned' %}
+                            <span class="badge bg-danger">Abandoned</span>
+                        {% else %}
+                            <span class="badge bg-primary">Started</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ lead.ref_code|default:"—" }}</td>
+                    <td style="max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ lead.source_url|default:"—" }}</td>
+                    <td class="pe-4" style="white-space: nowrap;">{{ lead.created_at|date:"d M Y, h:i A" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">No quick registration records found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+        <div class="text-muted small">
+            Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} quick registrations
+        </div>
+        <ul class="pagination pagination-sm mb-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?registration=quick&page={{ page_obj.previous_page_number }}{% if filter_query %}&{{ filter_query }}{% endif %}">Previous</a></li>
+            {% endif %}
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?registration=quick&page={{ page_obj.next_page_number }}{% if filter_query %}&{{ filter_query }}{% endif %}">Next</a></li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% else %}
 
 <!-- Filters Section -->
 <div class="card mb-4 border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
@@ -56,7 +160,7 @@
                 <div class="col-12 mb-2">
                     <span class="badge bg-info text-dark p-2">
                         <i class="fa-solid fa-ticket-alt me-1"></i> Filtered by Promo: <strong>{{ promo_code }}</strong>
-                        <a href="{% url 'admin_agents' %}?search={{ search }}&plan={{ plan_filter }}&status={{ status_filter }}&city={{ city_filter }}" class="text-dark ms-2 text-decoration-none"><i class="fa-solid fa-xmark"></i></a>
+                        <a href="{% url 'admin_agents' %}?search={{ search }}&plan={{ plan_filter }}&status={{ status_filter }}&city={{ city_filter }}&registration=full" class="text-dark ms-2 text-decoration-none"><i class="fa-solid fa-xmark"></i></a>
                     </span>
                 </div>
             {% endif %}
@@ -90,6 +194,7 @@
             <div class="col-xl-3 col-lg-8 col-md-6 col-sm-12">
                 <input type="text" name="city" class="form-control" placeholder="Filter by city..." value="{{ city_filter }}">
             </div>
+            <input type="hidden" name="registration" value="full">
 
             <!-- Submit -->
             <div class="col-xl-2 col-lg-4 col-md-12 col-sm-12">
@@ -262,7 +367,7 @@
             <nav aria-label="Page navigation">
                 <ul class="pagination pagination-sm mb-0">
                     {% if page_obj.has_previous %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}&plan={{ plan_filter }}&status={{ status_filter }}&city={{ city_filter }}&promo_code={{ promo_code }}">Previous</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}&plan={{ plan_filter }}&status={{ status_filter }}&city={{ city_filter }}&promo_code={{ promo_code }}&registration=full">Previous</a></li>
                     {% else %}
                         <li class="page-item disabled"><span class="page-link">Previous</span></li>
                     {% endif %}
@@ -271,12 +376,12 @@
                         {% if page_obj.number == i %}
                             <li class="page-item active"><span class="page-link">{{ i }}</span></li>
                         {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
-                            <li class="page-item"><a class="page-link" href="?page={{ i }}&search={{ search }}&plan={{ plan_filter }}&status={{ status_filter }}&city={{ city_filter }}&promo_code={{ promo_code }}">{{ i }}</a></li>
+                            <li class="page-item"><a class="page-link" href="?page={{ i }}&search={{ search }}&plan={{ plan_filter }}&status={{ status_filter }}&city={{ city_filter }}&promo_code={{ promo_code }}&registration=full">{{ i }}</a></li>
                         {% endif %}
                     {% endfor %}
 
                     {% if page_obj.has_next %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&plan={{ plan_filter }}&status={{ status_filter }}&city={{ city_filter }}&promo_code={{ promo_code }}">Next</a></li>
+                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&plan={{ plan_filter }}&status={{ status_filter }}&city={{ city_filter }}&promo_code={{ promo_code }}&registration=full">Next</a></li>
                     {% else %}
                         <li class="page-item disabled"><span class="page-link">Next</span></li>
                     {% endif %}
@@ -287,6 +392,8 @@
 
     </form>
 </div>
+{% endif %}
+
 
 <script>
 function toggleAgentStatus(id, isActive) {
@@ -451,16 +558,27 @@ function toggleBlacklist(agentId, action) {
     }
 }
 
+function switchRegistration(mode) {
+    if (mode === 'quick') {
+        window.location.href = "{% url 'admin_agents' %}?registration=quick";
+        return;
+    }
+    window.location.href = "{% url 'admin_agents' %}?status=active&registration=full";
+}
+
 function exportAgentsToCSV() {
     const statusVal = document.querySelector('select[name="status"]').value;
     window.location.href = "{% url 'export_agents' %}?status=" + encodeURIComponent(statusVal);
 }
 
-document.getElementById('selectAll').addEventListener('change', function() {
-    document.querySelectorAll('.row-chk').forEach(chk => {
-        chk.checked = this.checked;
+var selectAll = document.getElementById('selectAll');
+if (selectAll) {
+    selectAll.addEventListener('change', function() {
+        document.querySelectorAll('.row-chk').forEach(chk => {
+            chk.checked = this.checked;
+        });
     });
-});
+}
 
 // Dynamic overflow styling to ensure no ancestor clips the dropdown
 $(document).ready(function() {

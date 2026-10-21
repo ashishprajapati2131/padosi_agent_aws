@@ -1909,7 +1909,7 @@
                 },
 
                 // Form fields
-                name: '{{ draft.fullname|default:""|escapejs }}',
+                name: '{% if event_referral_mode %}{{ draft.fullname|default:""|escapejs }}{% else %}{{ draft.fullname|default:prefilled_name|default:""|escapejs }}{% endif %}',
                 slug: '',
                 slugManuallyEdited: false,
                 slugStatus: 'checking',
@@ -1917,7 +1917,7 @@
                 emailStatus: '',
                 emailCheckMessage: '',
                 emailLoginUrl: '{% url "agents:agent_login" %}',
-                phone: '{{ draft.mobile|default:""|escapejs }}',
+                phone: '{% if event_referral_mode %}{{ draft.mobile|default:""|escapejs }}{% else %}{{ draft.mobile|default:prefilled_phone|default:""|escapejs }}{% endif %}',
                 whatsapp: '{{ draft.whatsapp|default:""|escapejs }}',
                 pincode: '{{ draft.agent_pincode|default:""|escapejs }}',
                 city: '{{ prefilledState|default:""|escapejs }}',

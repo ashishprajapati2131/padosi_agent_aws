@@ -966,6 +966,13 @@ def _get_registration_context(request):
     except Exception as e:
         logger.warning(f"Error resolving promo code in registration context: {e}")
 
+    quick_name = (session.get('quick_reg_name') or '').strip()
+    quick_phone = (session.get('quick_reg_phone') or '').strip()
+    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9 ._\-]{1,69}', quick_name):
+        quick_name = ''
+    if not re.fullmatch(r'[6-9]\d{9}', quick_phone):
+        quick_phone = ''
+
     swipe = {}
     try:
         from apps.admin_panel.views.content import get_registration_swipe_config
@@ -995,6 +1002,8 @@ def _get_registration_context(request):
         'agent_languages': getattr(draft, 'languages', []) if draft else [],
         'active_investment_types': active_investment_types,
         'prefilledPromo': prefilled_promo,
+        'prefilled_name': quick_name,
+        'prefilled_phone': quick_phone,
         'registration_swipe_enabled': bool(swipe.get('enabled')) and bool(swipe.get('slides')),
         'registration_swipe_slides': swipe.get('slides') or [],
         'preview_auto_advance_ms': int(swipe.get('preview_auto_advance_seconds') or 2) * 1000,
@@ -1082,7 +1091,9 @@ def agent_registration(request):
     """Render the registration page. Shows OTP, Step 1, or Step 2 based on session."""
     try:
         request.session.pop('event_referral_registration', None)
-        if request.user.is_authenticated:
+        # A just-finished quick registration opens this form, even for a signed-in visitor.
+        from_quick_registration = bool(request.session.pop('quick_reg_continue', False))
+        if request.user.is_authenticated and not from_quick_registration:
             from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
             if request.user.is_staff or request.user.is_superuser:
                 return redirect('agents:agent_dashboard')

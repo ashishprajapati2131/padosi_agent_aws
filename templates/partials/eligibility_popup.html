@@ -1,0 +1,252 @@
+<div id="eligibilityPopup" class="elig-popup" hidden>
+    <div class="elig-popup__backdrop" data-elig-close></div>
+    <div class="elig-popup__dialog" role="dialog" aria-modal="true" aria-labelledby="eligibilityPopupTitle">
+        <button type="button" class="elig-popup__close" data-elig-close aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        <h2 id="eligibilityPopupTitle" class="elig-popup__title">Check your eligibility<br>as an agent<br>for a free digital presence</h2>
+        <form id="eligibilityPopupForm" class="elig-popup__form" novalidate>
+            {% csrf_token %}
+            <div class="elig-popup__honey" aria-hidden="true">
+                <label for="eligibility-website">Website</label>
+                <input type="text" name="website" id="eligibility-website" tabindex="-1" autocomplete="off">
+            </div>
+            {% if request.GET.ref %}
+            <input type="hidden" name="ref" value="{{ request.GET.ref }}">
+            {% elif request.GET.refCode %}
+            <input type="hidden" name="ref" value="{{ request.GET.refCode }}">
+            {% endif %}
+            <input type="hidden" name="page" value="{{ request.path }}">
+            <label class="elig-popup__label" for="eligibility-name">Name</label>
+            <input class="elig-popup__input" id="eligibility-name" name="name" type="text" maxlength="70" autocomplete="name" placeholder="Your full name" required>
+            <p class="elig-popup__error" id="eligibility-name-error" hidden></p>
+            <label class="elig-popup__label" for="eligibility-phone">Mobile number</label>
+            <input class="elig-popup__input" id="eligibility-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10-digit mobile number" required>
+            <p class="elig-popup__error" id="eligibility-phone-error" hidden></p>
+            <p class="elig-popup__error" id="eligibility-form-error" hidden></p>
+            <button type="submit" class="elig-popup__submit">Check eligibility</button>
+        </form>
+    </div>
+</div>
+<style>
+.elig-popup[hidden] { display: none !important; }
+.elig-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 10040;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.elig-popup__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(6px);
+}
+.elig-popup__dialog {
+    position: relative;
+    width: min(440px, 100%);
+    background: #fff;
+    border-radius: 24px;
+    padding: 28px 24px 22px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+    border: 1px solid #e2e8f0;
+    font-family: 'Outfit', system-ui, sans-serif;
+    text-align: center;
+    animation: eligRise 0.35s ease;
+}
+.elig-popup__dialog::before {
+    content: "";
+    position: absolute;
+    left: 24px;
+    right: 24px;
+    top: 0;
+    height: 4px;
+    border-radius: 0 0 8px 8px;
+    background: linear-gradient(90deg, #059669, #0284c7);
+}
+.elig-popup__close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+.elig-popup__close:hover { background: #e2e8f0; }
+.elig-popup__title {
+    margin: 4px 36px 0;
+    color: #0f172a;
+    font-size: 22px;
+    line-height: 1.35;
+    font-weight: 800;
+}
+.elig-popup__form { margin-top: 18px; text-align: left; }
+.elig-popup__honey {
+    position: absolute;
+    left: -9999px;
+    height: 0;
+    overflow: hidden;
+}
+.elig-popup__label {
+    display: block;
+    margin: 12px 0 6px;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 700;
+}
+.elig-popup__input {
+    width: 100%;
+    height: 48px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 0 14px;
+    font-size: 16px;
+    color: #0f172a;
+}
+.elig-popup__input:focus {
+    outline: none;
+    border-color: #059669;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.15);
+}
+.elig-popup__error {
+    margin: 6px 0 0;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 600;
+}
+.elig-popup__submit {
+    width: 100%;
+    height: 50px;
+    margin-top: 16px;
+    border: 0;
+    border-radius: 14px;
+    background: linear-gradient(90deg, #059669, #047857);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(5, 150, 105, 0.28);
+}
+.elig-popup__submit:hover { filter: brightness(1.05); }
+.elig-popup__submit:disabled { opacity: 0.7; cursor: wait; }
+@keyframes eligRise {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+}
+@media (max-width: 480px) {
+    .elig-popup__dialog { padding: 24px 16px 18px; border-radius: 20px; }
+    .elig-popup__title { font-size: 21px; }
+}
+</style>
+<script>
+(function () {
+    var root = document.getElementById('eligibilityPopup');
+    if (!root) return;
+    var storageKey = 'padosi_eligibility_popup';
+    try {
+        if (sessionStorage.getItem(storageKey)) return;
+    } catch (err) {}
+
+    var form = document.getElementById('eligibilityPopupForm');
+    var nameInput = document.getElementById('eligibility-name');
+    var phoneInput = document.getElementById('eligibility-phone');
+    var opened = false;
+    var waits = 0;
+
+    function showError(id, message) {
+        var node = document.getElementById(id);
+        if (!node) return;
+        if (message) {
+            node.hidden = false;
+            node.textContent = message;
+        } else {
+            node.hidden = true;
+            node.textContent = '';
+        }
+    }
+
+    function openPopup() {
+        if (opened) return;
+        var exitPopup = document.getElementById('padosiExitPopupModal');
+        var blocked = (exitPopup && exitPopup.style.display === 'flex') || document.querySelector('.swal2-container');
+        if (blocked && waits < 6) {
+            waits += 1;
+            window.setTimeout(openPopup, 2000);
+            return;
+        }
+        if (blocked) return;
+        opened = true;
+        try { sessionStorage.setItem(storageKey, 'shown'); } catch (err) {}
+        root.hidden = false;
+        document.body.style.overflow = 'hidden';
+        if (nameInput) nameInput.focus();
+    }
+
+    function closePopup() {
+        root.hidden = true;
+        document.body.style.overflow = '';
+        try { sessionStorage.setItem(storageKey, 'dismissed'); } catch (err) {}
+    }
+
+    root.querySelectorAll('[data-elig-close]').forEach(function (node) {
+        node.addEventListener('click', closePopup);
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !root.hidden) closePopup();
+    });
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function () {
+            phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(0, 10);
+        });
+    }
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        showError('eligibility-name-error', '');
+        showError('eligibility-phone-error', '');
+        showError('eligibility-form-error', '');
+        var button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        button.textContent = 'Checking...';
+        var data = new FormData(form);
+        fetch("{% url 'agents:quick_registration' %}", {
+            method: 'POST',
+            body: data,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        }).then(function (response) {
+            return response.json().then(function (payload) {
+                return { ok: response.ok, payload: payload };
+            });
+        }).then(function (result) {
+            if (result.ok && result.payload.redirect) {
+                try { sessionStorage.setItem(storageKey, 'submitted'); } catch (err) {}
+                window.location.href = result.payload.redirect;
+                return;
+            }
+            var errors = (result.payload && result.payload.errors) || {};
+            showError('eligibility-name-error', errors.name || '');
+            showError('eligibility-phone-error', errors.phone || '');
+            showError('eligibility-form-error', errors.form || (errors.name || errors.phone ? '' : 'Please try again.'));
+            button.disabled = false;
+            button.textContent = 'Check eligibility';
+        }).catch(function () {
+            showError('eligibility-form-error', 'Please try again.');
+            button.disabled = false;
+            button.textContent = 'Check eligibility';
+        });
+    });
+
+    window.setTimeout(openPopup, 3500);
+})();
+</script>
