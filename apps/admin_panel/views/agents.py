@@ -153,45 +153,6 @@ class _RawAgentPage:
             return []
 
 
-def _registration_mode(request):
-    mode = (request.GET.get('registration') or 'full').strip().lower()
-    if mode in ('quick', 'full'):
-        return mode
-    return 'full'
-
-
-def _quick_registration_response(request):
-    """Quick-registration list on the agents page, including its CSV and Excel export."""
-    from apps.admin_panel.views.quick_registration_leads import (
-        _filter_query,
-        _filtered_queryset,
-        _filters,
-        quick_registration_leads_export_csv,
-        quick_registration_leads_export_xlsx,
-    )
-
-    export_fmt = (request.GET.get('export') or '').strip().lower()
-    if export_fmt == 'csv':
-        return quick_registration_leads_export_csv(request)
-    if export_fmt == 'xlsx':
-        return quick_registration_leads_export_xlsx(request)
-
-    filters = _filters(request)
-    paginator = Paginator(_filtered_queryset(filters), 25)
-    page_obj = paginator.get_page(request.GET.get('page'))
-    return render(request, 'admin/agents/list.html', {
-        'registration': 'quick',
-        'leads': page_obj.object_list,
-        'page_obj': page_obj,
-        'search': filters['search'],
-        'status_filter': filters['status'],
-        'date_from': filters['date_from'],
-        'date_to': filters['date_to'],
-        'filter_query': _filter_query(filters),
-        'total_rows': paginator.count,
-    })
-
-
 def agent_list(request):
     """
     Phase 3B: Active Agents Listing View
@@ -199,9 +160,6 @@ def agent_list(request):
     admin_id = _get_admin_from_session(request)
     if not admin_id:
         return redirect('admin_login')
-
-    if _registration_mode(request) == 'quick':
-        return _quick_registration_response(request)
 
     search = request.GET.get('search', '')
     plan_filter = request.GET.get('plan', 'All Plans')
@@ -216,7 +174,6 @@ def agent_list(request):
     page_obj = paginator.get_page(page_number)
 
     context = {
-        'registration': 'full',
         'agents': page_obj.object_list,
         'search': search,
         'plan_filter': plan_filter,

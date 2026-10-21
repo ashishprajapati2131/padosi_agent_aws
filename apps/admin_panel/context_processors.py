@@ -16,6 +16,7 @@ def admin_badge_counts(request):
         incomplete_agents_count – Registration Pending (bg-dark)
         expiring_soon_count     – Renewal Tracker    (bg-danger)
         new_leads_count         – Agent Leads        (bg-warning text-dark)
+        quick_registration_leads_count – Quick Registration Leads (bg-warning text-dark)
         pending_contacts_count  – Contact Inbox      (bg-primary)
         pending_reviews_count   – Review Moderation  (bg-warning text-dark)
         unsynced_invoice_count  – Invoices           (#4f46e5)
@@ -33,6 +34,7 @@ def admin_badge_counts(request):
         'incomplete_agents_count': 0,
         'expiring_soon_count':     0,
         'new_leads_count':         0,
+        'quick_registration_leads_count': 0,
         'pending_contacts_count':  0,
         'pending_reviews_count':   0,
         'unsynced_invoice_count':  0,
@@ -52,7 +54,7 @@ def admin_badge_counts(request):
     }
 
     # 1. Check if aggregate badge counts are already cached
-    badge_cache_key = 'admin_sidebar_counts'
+    badge_cache_key = 'admin_sidebar_counts_v2'
     cached_counts = cache.get(badge_cache_key)
     if cached_counts and isinstance(cached_counts, dict):
         counts.update(cached_counts)
@@ -122,6 +124,15 @@ def admin_badge_counts(request):
                     counts['new_leads_count'] = cursor.fetchone()[0]
                 except Exception:
                     counts['new_leads_count'] = 0
+
+                # 4b. Quick Registration Leads still waiting (status = Started)
+                try:
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM registration_leads WHERE status = 'Started'"
+                    )
+                    counts['quick_registration_leads_count'] = cursor.fetchone()[0]
+                except Exception:
+                    counts['quick_registration_leads_count'] = 0
 
                 # 5. Contact Inbox ── contact_submissions.status = 'pending'
                 try:
@@ -214,6 +225,7 @@ def admin_badge_counts(request):
             badge_keys = [
                 'pending_agents_count', 'incomplete_agents_count',
                 'expiring_soon_count', 'new_leads_count',
+                'quick_registration_leads_count',
                 'pending_contacts_count', 'pending_reviews_count',
                 'unsynced_invoice_count', 'active_trial_count',
                 'unclaimed_rewards_count', 'geo_missing_count',
