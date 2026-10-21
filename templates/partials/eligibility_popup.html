@@ -1,11 +1,19 @@
+{% load static %}
 <div id="eligibilityPopup" class="elig-popup" hidden>
     <div class="elig-popup__backdrop" data-elig-close></div>
     <div class="elig-popup__dialog" role="dialog" aria-modal="true" aria-labelledby="eligibilityPopupTitle">
         <button type="button" class="elig-popup__close" data-elig-close aria-label="Close">
             <span aria-hidden="true">&times;</span>
         </button>
-        <h2 id="eligibilityPopupTitle" class="elig-popup__title">Check your eligibility<br>as an agent<br>for a free digital presence</h2>
-        <form id="eligibilityPopupForm" class="elig-popup__form" novalidate>
+        <img class="elig-popup__logo" src="{% static 'img/logo.webp' %}" alt="PadosiAgent" width="168" height="56">
+        <div id="eligibilityAsk" class="elig-popup__ask">
+            <h2 id="eligibilityPopupTitle" class="elig-popup__title">Are you an insurance agent?</h2>
+            <div class="elig-popup__choices">
+                <button type="button" id="eligibilityYes" class="elig-popup__choice elig-popup__choice--yes">Yes</button>
+                <button type="button" id="eligibilityNo" class="elig-popup__choice elig-popup__choice--no">No</button>
+            </div>
+        </div>
+        <form id="eligibilityPopupForm" class="elig-popup__form" novalidate hidden>
             {% csrf_token %}
             <div class="elig-popup__honey" aria-hidden="true">
                 <label for="eligibility-website">Website</label>
@@ -17,14 +25,24 @@
             <input type="hidden" name="ref" value="{{ request.GET.refCode }}">
             {% endif %}
             <input type="hidden" name="page" value="{{ request.path }}">
-            <label class="elig-popup__label" for="eligibility-name">Name</label>
-            <input class="elig-popup__input" id="eligibility-name" name="name" type="text" maxlength="70" autocomplete="name" placeholder="Your full name" required>
+            <h2 id="eligibilityFormTitle" class="elig-popup__form-title">Check your eligibility for a free digital presence</h2>
+            <label class="elig-popup__label" for="eligibility-name">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z"/></svg>
+                Name <span class="elig-popup__req">*</span>
+            </label>
+            <input class="elig-popup__input" id="eligibility-name" name="name" type="text" maxlength="70" autocomplete="name" placeholder="Enter your full name" required>
             <p class="elig-popup__error" id="eligibility-name-error" hidden></p>
-            <label class="elig-popup__label" for="eligibility-phone">Mobile number</label>
-            <input class="elig-popup__input" id="eligibility-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10-digit mobile number" required>
+            <label class="elig-popup__label" for="eligibility-phone">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.8c.4-.4 1-.5 1.5-.3l2.2.9c.5.2.8.7.8 1.2l-.2 2.4c0 .4-.2.8-.6 1l-1.3.7a12.6 12.6 0 0 0 5.9 5.9l.7-1.3c.2-.4.6-.6 1-.6l2.4-.2c.5 0 1 .3 1.2.8l.9 2.2c.2.5.1 1.1-.3 1.5l-1.6 1.6c-.4.4-1 .6-1.6.5C10.2 19.4 4.6 13.8 4 7c-.1-.6.1-1.2.5-1.6l2.1-1.6z"/></svg>
+                Mobile Number <span class="elig-popup__req">*</span>
+            </label>
+            <div class="elig-popup__phone">
+                <span class="elig-popup__cc" aria-hidden="true">+91</span>
+                <input class="elig-popup__input elig-popup__input--phone" id="eligibility-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="98765 43210" required>
+            </div>
             <p class="elig-popup__error" id="eligibility-phone-error" hidden></p>
             <p class="elig-popup__error" id="eligibility-form-error" hidden></p>
-            <button type="submit" class="elig-popup__submit">Check eligibility</button>
+            <button type="submit" class="elig-popup__submit">Get Started</button>
         </form>
     </div>
 </div>
@@ -49,47 +67,85 @@
     position: relative;
     width: min(440px, 100%);
     background: #fff;
-    border-radius: 24px;
-    padding: 28px 24px 22px;
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
-    border: 1px solid #e2e8f0;
+    border-radius: 28px;
+    padding: 28px 26px 26px;
+    box-shadow: 0 18px 50px rgba(37, 99, 235, 0.16), 0 8px 24px rgba(15, 23, 42, 0.08);
     font-family: 'Outfit', system-ui, sans-serif;
     text-align: center;
     animation: eligRise 0.35s ease;
 }
-.elig-popup__dialog::before {
-    content: "";
-    position: absolute;
-    left: 24px;
-    right: 24px;
-    top: 0;
-    height: 4px;
-    border-radius: 0 0 8px 8px;
-    background: linear-gradient(90deg, #059669, #0284c7);
-}
 .elig-popup__close {
     position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 36px;
-    height: 36px;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
     border: 0;
     border-radius: 999px;
-    background: #f1f5f9;
-    color: #334155;
-    font-size: 22px;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 24px;
     line-height: 1;
     cursor: pointer;
 }
-.elig-popup__close:hover { background: #e2e8f0; }
+.elig-popup__close:hover { background: #f1f5f9; color: #334155; }
+.elig-popup__logo {
+    display: block;
+    height: 52px;
+    width: auto;
+    max-width: 180px;
+    margin: 2px auto 16px;
+    object-fit: contain;
+}
 .elig-popup__title {
-    margin: 4px 36px 0;
-    color: #0f172a;
+    margin: 0 8px;
+    color: #1d4ed8;
+    font-size: 28px;
+    line-height: 1.25;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+.elig-popup__ask { margin-top: 4px; }
+.elig-popup__ask[hidden] { display: none !important; }
+.elig-popup__choices {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+}
+.elig-popup__choice {
+    flex: 1;
+    height: 52px;
+    border-radius: 16px;
+    font-size: 17px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+}
+.elig-popup__choice--yes {
+    border: 0;
+    color: #fff;
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.28);
+}
+.elig-popup__choice--yes:hover { filter: brightness(1.05); }
+.elig-popup__choice--no {
+    border: 1.5px solid #e5e7eb;
+    background: #fff;
+    color: #374151;
+}
+.elig-popup__choice--no:hover { background: #f8fafc; border-color: #d1d5db; }
+.elig-popup__form { margin-top: 6px; text-align: left; }
+.elig-popup__form[hidden] { display: none !important; }
+.elig-popup__form-title {
+    margin: 0 6px 2px;
+    text-align: center;
+    color: #1d4ed8;
     font-size: 22px;
     line-height: 1.35;
     font-weight: 800;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
 }
-.elig-popup__form { margin-top: 18px; text-align: left; }
 .elig-popup__honey {
     position: absolute;
     left: -9999px;
@@ -97,28 +153,73 @@
     overflow: hidden;
 }
 .elig-popup__label {
-    display: block;
-    margin: 12px 0 6px;
-    color: #0f172a;
-    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0 8px;
+    color: #1f2937;
+    font-size: 15px;
     font-weight: 700;
 }
+.elig-popup__label svg {
+    width: 18px;
+    height: 18px;
+    fill: #6b7280;
+    flex: 0 0 auto;
+}
+.elig-popup__req { color: #1f2937; }
 .elig-popup__input {
     width: 100%;
-    height: 48px;
-    border: 1.5px solid #e2e8f0;
+    height: 52px;
+    border: 1.5px solid #e5e7eb;
     border-radius: 12px;
-    background: #f8fafc;
+    background: #fff;
     padding: 0 14px;
     font-size: 16px;
-    color: #0f172a;
+    color: #111827;
 }
+.elig-popup__input::placeholder { color: #9ca3af; }
 .elig-popup__input:focus {
     outline: none;
-    border-color: #059669;
-    background: #fff;
-    box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.15);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
 }
+.elig-popup__phone {
+    display: flex;
+    align-items: center;
+    height: 52px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+}
+.elig-popup__phone:focus-within {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+}
+.elig-popup__cc {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    width: 64px;
+    background: #f3f4f6;
+    color: #6b7280;
+    font-size: 15px;
+    font-weight: 600;
+    border-right: 1.5px solid #e5e7eb;
+}
+.elig-popup__input--phone {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.elig-popup__input--phone:focus { box-shadow: none; }
 .elig-popup__error {
     margin: 6px 0 0;
     color: #dc2626;
@@ -127,16 +228,17 @@
 }
 .elig-popup__submit {
     width: 100%;
-    height: 50px;
-    margin-top: 16px;
+    height: 54px;
+    margin-top: 22px;
     border: 0;
-    border-radius: 14px;
-    background: linear-gradient(90deg, #059669, #047857);
+    border-radius: 16px;
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
     color: #fff;
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 800;
+    letter-spacing: 0.01em;
     cursor: pointer;
-    box-shadow: 0 10px 24px rgba(5, 150, 105, 0.28);
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.32);
 }
 .elig-popup__submit:hover { filter: brightness(1.05); }
 .elig-popup__submit:disabled { opacity: 0.7; cursor: wait; }
@@ -145,8 +247,10 @@
     to { opacity: 1; transform: none; }
 }
 @media (max-width: 480px) {
-    .elig-popup__dialog { padding: 24px 16px 18px; border-radius: 20px; }
-    .elig-popup__title { font-size: 21px; }
+    .elig-popup__dialog { padding: 26px 16px 18px; border-radius: 22px; }
+    .elig-popup__title { font-size: 24px; }
+    .elig-popup__form-title { font-size: 20px; }
+    .elig-popup__logo { height: 46px; }
 }
 </style>
 <script>
@@ -190,6 +294,13 @@
         try { sessionStorage.setItem(storageKey, 'shown'); } catch (err) {}
         root.hidden = false;
         document.body.style.overflow = 'hidden';
+    }
+
+    function showForm() {
+        var ask = document.getElementById('eligibilityAsk');
+        if (ask) ask.hidden = true;
+        form.hidden = false;
+        root.querySelector('.elig-popup__dialog').setAttribute('aria-labelledby', 'eligibilityFormTitle');
         if (nameInput) nameInput.focus();
     }
 
@@ -199,6 +310,8 @@
         try { sessionStorage.setItem(storageKey, 'dismissed'); } catch (err) {}
     }
 
+    document.getElementById('eligibilityYes').addEventListener('click', showForm);
+    document.getElementById('eligibilityNo').addEventListener('click', closePopup);
     root.querySelectorAll('[data-elig-close]').forEach(function (node) {
         node.addEventListener('click', closePopup);
     });
@@ -239,11 +352,11 @@
             showError('eligibility-phone-error', errors.phone || '');
             showError('eligibility-form-error', errors.form || (errors.name || errors.phone ? '' : 'Please try again.'));
             button.disabled = false;
-            button.textContent = 'Check eligibility';
+            button.textContent = 'Get Started';
         }).catch(function () {
             showError('eligibility-form-error', 'Please try again.');
             button.disabled = false;
-            button.textContent = 'Check eligibility';
+            button.textContent = 'Get Started';
         });
     });
 
