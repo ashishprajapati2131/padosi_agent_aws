@@ -600,6 +600,7 @@ class AdminPermissionMiddleware:
             'admin_leads_index':                        'leads',
             'admin_leads_update_status':                'leads',
             'admin_quick_registration_leads':           'leads',
+            'admin_quick_registration_lead_delete':     'leads',
             'admin_quick_registration_leads_export_csv': 'leads',
             'admin_quick_registration_leads_export_xlsx': 'leads',
             # ── Contacts ──────────────────────────────────────────────────

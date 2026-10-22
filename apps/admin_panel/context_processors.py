@@ -54,7 +54,7 @@ def admin_badge_counts(request):
     }
 
     # 1. Check if aggregate badge counts are already cached
-    badge_cache_key = 'admin_sidebar_counts_v2'
+    badge_cache_key = 'admin_sidebar_counts_v4'
     cached_counts = cache.get(badge_cache_key)
     if cached_counts and isinstance(cached_counts, dict):
         counts.update(cached_counts)
@@ -125,10 +125,11 @@ def admin_badge_counts(request):
                 except Exception:
                     counts['new_leads_count'] = 0
 
-                # 4b. Quick Registration Leads still waiting (status = Started)
+                # 4b. Open quick-registration leads still worth a follow-up
                 try:
                     cursor.execute(
-                        "SELECT COUNT(*) FROM registration_leads WHERE status = 'Started'"
+                        "SELECT COUNT(*) FROM registration_leads "
+                        "WHERE status NOT IN ('converted', 'abandoned')"
                     )
                     counts['quick_registration_leads_count'] = cursor.fetchone()[0]
                 except Exception:

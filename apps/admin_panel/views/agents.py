@@ -40,9 +40,9 @@ def _build_agent_list_query(search, plan_filter, status_filter, city_filter, pro
     params = []
 
     if search:
-        query += " AND (a.fullname LIKE %s OR a.email LIKE %s OR ap.display_name LIKE %s)"
+        query += " AND (a.fullname LIKE %s OR a.email LIKE %s OR a.mobile LIKE %s OR ap.display_name LIKE %s)"
         search_param = f"%{search}%"
-        params.extend([search_param, search_param, search_param])
+        params.extend([search_param, search_param, search_param, search_param])
         
     if plan_filter and plan_filter != 'All Plans':
         if plan_filter == PLAN_LABELS['professional']:
@@ -371,6 +371,15 @@ def toggle_status(request):
         logger.error(f"Error updating agent status: {e}")
         return JsonResponse({'success': False, 'message': 'Database error'})
 
+    try:
+        from apps.agents.models import Agent
+        from apps.agents.services.registration_leads import sync_lead_for_agent
+        agent_row = Agent.objects.filter(pk=agent_id).first()
+        if agent_row:
+            sync_lead_for_agent(agent_row)
+    except Exception:
+        logger.exception('Quick-registration lead sync failed after status change')
+
     # Log boundary change
     if new_status in ['active', 'suspended', 'rejected']:
         step_label = 'Status Changed by Admin'
@@ -443,6 +452,13 @@ def bulk_action_agents(request):
 
                 # Update statuses
                 cursor.execute(f"UPDATE agents SET status = 'active' WHERE id IN ({format_strings})", agent_ids)
+                try:
+                    from apps.agents.models import Agent
+                    from apps.agents.services.registration_leads import sync_lead_for_agent
+                    for approved in Agent.objects.filter(pk__in=agent_ids):
+                        sync_lead_for_agent(approved)
+                except Exception:
+                    logger.exception('Quick-registration lead sync failed after bulk approve')
 
                 from apps.admin_panel.models import AdminActivityLog
                 for aid in agent_ids:

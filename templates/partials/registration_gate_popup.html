@@ -1,0 +1,551 @@
+{% load static %}
+<div id="registrationGate" class="elig-popup" {% if not require_quick_reg_gate %}hidden style="display:none;"{% endif %}>
+    <div class="elig-popup__backdrop"></div>
+    <div class="elig-popup__dialog" role="dialog" aria-modal="true" aria-labelledby="registrationGateTitle">
+        <div class="elig-popup__badge">
+            <svg class="elig-popup__badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Quick Registration</span>
+        </div>
+        <img class="elig-popup__logo" src="{% static 'img/logo.webp' %}" alt="PadosiAgent" width="160" height="50">
+        <h2 id="registrationGateTitle" class="elig-popup__title">Are you an insurance agent?</h2>
+        <p class="elig-popup__subtitle">Enter your details to create your digital profile card and start getting verified leads in your area.</p>
+
+        <form id="registrationGateForm" class="elig-popup__form" novalidate autocomplete="off">
+            {% csrf_token %}
+            <div class="elig-popup__honey" aria-hidden="true">
+                <label for="registration-gate-website">Website</label>
+                <input type="text" name="website" id="registration-gate-website" tabindex="-1" autocomplete="off">
+            </div>
+            {% if request.GET.ref %}
+            <input type="hidden" name="ref" value="{{ request.GET.ref }}">
+            {% elif request.GET.refCode %}
+            <input type="hidden" name="ref" value="{{ request.GET.refCode }}">
+            {% endif %}
+            <input type="hidden" name="page" value="{{ request.path }}">
+
+            <div class="elig-popup__field">
+                <label class="elig-popup__label" for="registration-gate-name">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span>Full Name <span class="elig-popup__req">*</span></span>
+                </label>
+                <input class="elig-popup__input" id="registration-gate-name" name="name" type="text" maxlength="70" autocomplete="name" placeholder="Enter your full name" required>
+                <p class="elig-popup__error" id="registration-gate-name-error" hidden></p>
+            </div>
+
+            <div class="elig-popup__field">
+                <label class="elig-popup__label" for="registration-gate-phone">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    <span>Mobile / WhatsApp Number <span class="elig-popup__req">*</span></span>
+                </label>
+                <div class="elig-popup__phone">
+                    <span class="elig-popup__cc" aria-hidden="true">
+                        <span class="elig-popup__flag">🇮🇳</span> +91
+                    </span>
+                    <input class="elig-popup__input elig-popup__input--phone" id="registration-gate-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="98765 43210" required>
+                </div>
+                <p class="elig-popup__hint">We will automatically prefill this for your calling and WhatsApp numbers.</p>
+                <p class="elig-popup__error" id="registration-gate-phone-error" hidden></p>
+            </div>
+
+            <div class="elig-popup__alert" id="registration-gate-form-error" hidden></div>
+
+            <button type="submit" class="elig-popup__submit" id="registrationGateSubmitBtn">
+                <span>Continue to Registration</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="elig-popup__submit-arrow"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+
+            <div class="elig-popup__trust">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="elig-popup__lock-icon"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>Your information is completely safe &amp; secure</span>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.elig-popup[hidden] { display: none !important; }
+.elig-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 100050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+}
+.elig-popup__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+.elig-popup__dialog {
+    position: relative;
+    width: min(450px, 100%);
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 24px;
+    padding: 28px 24px 24px;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+    text-align: center;
+    box-sizing: border-box;
+    animation: eligPopupScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes eligPopupScaleIn {
+    from { opacity: 0; transform: scale(0.94) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.elig-popup__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+}
+.elig-popup__badge-icon {
+    width: 13px;
+    height: 13px;
+}
+.elig-popup__logo {
+    display: block;
+    height: 44px;
+    width: auto;
+    max-width: 170px;
+    margin: 0 auto 12px;
+    object-fit: contain;
+}
+.elig-popup__title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 22px;
+    line-height: 1.25;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+.elig-popup__subtitle {
+    margin: 8px auto 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.45;
+    max-width: 360px;
+}
+.elig-popup__form {
+    margin-top: 18px;
+    text-align: left;
+}
+.elig-popup__field {
+    margin-bottom: 14px;
+}
+.elig-popup__honey {
+    position: absolute;
+    left: -9999px;
+    height: 0;
+    overflow: hidden;
+}
+.elig-popup__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 700;
+}
+.elig-popup__label svg {
+    width: 15px;
+    height: 15px;
+    color: #64748b;
+}
+.elig-popup__req {
+    color: #ef4444;
+}
+.elig-popup__input {
+    width: 100%;
+    height: 48px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 0 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #0f172a;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+}
+.elig-popup__input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+.elig-popup__phone {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #ffffff;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+}
+.elig-popup__phone:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+.elig-popup__cc {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    align-self: stretch;
+    padding: 0 12px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 14px;
+    font-weight: 700;
+    border-right: 1.5px solid #cbd5e1;
+    user-select: none;
+}
+.elig-popup__flag {
+    font-size: 15px;
+}
+.elig-popup__input--phone {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none !important;
+}
+.elig-popup__hint {
+    margin: 5px 0 0;
+    color: #94a3b8;
+    font-size: 11px;
+    line-height: 1.35;
+}
+.elig-popup__error {
+    margin: 5px 0 0;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 600;
+}
+.elig-popup__alert {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin: 12px 0 6px;
+    color: #991b1b;
+    font-size: 12.5px;
+    line-height: 1.4;
+    font-weight: 600;
+}
+.elig-popup__submit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 50px;
+    margin-top: 14px;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    transition: all 0.15s ease;
+}
+.elig-popup__submit:hover:not(:disabled) {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+    transform: translateY(-1px);
+}
+.elig-popup__submit:active:not(:disabled) {
+    transform: translateY(0);
+}
+.elig-popup__submit:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+.elig-popup__submit-arrow {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.15s ease;
+}
+.elig-popup__submit:hover .elig-popup__submit-arrow {
+    transform: translateX(3px);
+}
+.elig-popup__trust {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 14px;
+    color: #94a3b8;
+    font-size: 11.5px;
+    font-weight: 500;
+}
+.elig-popup__lock-icon {
+    width: 13px;
+    height: 13px;
+    color: #10b981;
+}
+
+/* Mandatory modal lock styles */
+body.reg-gate-open {
+    overflow: hidden !important;
+}
+body.reg-gate-open #registrationMainWrapper {
+    pointer-events: none !important;
+    user-select: none !important;
+}
+body.reg-gate-open #registrationGate,
+body.reg-gate-open #registrationGate * {
+    pointer-events: auto !important;
+}
+
+/* Ensure registration form is NEVER blurred */
+#registrationMainWrapper,
+.reg-gate-blurred,
+body.reg-gate-unlocked #registrationMainWrapper,
+body:not(.reg-gate-open) #registrationMainWrapper {
+    filter: none !important;
+    -webkit-filter: none !important;
+    pointer-events: auto !important;
+    user-select: auto !important;
+}
+</style>
+
+<script>
+(function () {
+    var root = document.getElementById('registrationGate');
+    if (!root) return;
+
+    var isHidden = root.hasAttribute('hidden') || root.style.display === 'none';
+    if (isHidden) return;
+
+    document.body.classList.add('reg-gate-open');
+    var initialWrapper = document.getElementById('registrationMainWrapper');
+    if (initialWrapper) {
+        initialWrapper.setAttribute('inert', '');
+    }
+
+    var form = document.getElementById('registrationGateForm');
+    var phoneInput = document.getElementById('registration-gate-phone');
+    var nameInput = document.getElementById('registration-gate-name');
+    var button = document.getElementById('registrationGateSubmitBtn');
+
+    function showError(id, message) {
+        var node = document.getElementById(id);
+        if (!node) return;
+        node.hidden = !message;
+        node.textContent = message || '';
+    }
+
+    // Auto focus name input
+    if (nameInput) {
+        setTimeout(function () {
+            nameInput.focus();
+        }, 150);
+    }
+
+    // Enforce focus trap within modal
+    document.addEventListener('focusin', function (event) {
+        if (!document.body.classList.contains('reg-gate-open')) return;
+        if (root.contains(event.target)) return;
+        if (nameInput) nameInput.focus();
+    });
+
+    // Block ESC and modal dismissal
+    document.addEventListener('keydown', function (event) {
+        if (!document.body.classList.contains('reg-gate-open')) return;
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, true);
+
+    // Clean phone input on typing
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function () {
+            phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(0, 10);
+            showError('registration-gate-phone-error', '');
+        });
+    }
+
+    if (nameInput) {
+        nameInput.addEventListener('input', function () {
+            showError('registration-gate-name-error', '');
+        });
+    }
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        showError('registration-gate-name-error', '');
+        showError('registration-gate-phone-error', '');
+        var alertBox = document.getElementById('registration-gate-form-error');
+        if (alertBox) {
+            alertBox.hidden = true;
+            alertBox.innerHTML = '';
+        }
+
+        var nameVal = (nameInput.value || '').trim();
+        var phoneVal = (phoneInput.value || '').replace(/\D/g, '').slice(0, 10);
+        var hasClientError = false;
+
+        if (nameVal.length < 2) {
+            showError('registration-gate-name-error', 'Please enter your full name (at least 2 letters).');
+            hasClientError = true;
+        }
+        if (!/^[6-9]\d{9}$/.test(phoneVal)) {
+            showError('registration-gate-phone-error', 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.');
+            hasClientError = true;
+        }
+        if (hasClientError) return;
+
+        button.disabled = true;
+        button.innerHTML = '<span>Saving...</span>';
+
+        fetch("{% url 'agents:quick_registration' %}", {
+            method: 'POST',
+            body: new FormData(form),
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        }).then(function (response) {
+            return response.json().then(function (payload) {
+                return { ok: response.ok, payload: payload };
+            });
+        }).then(function (result) {
+            if (result.ok && result.payload && result.payload.ok) {
+                var phone = result.payload.phone || phoneVal;
+                var name = result.payload.name || nameVal;
+
+                // 1. Instantly unlock page and clear ALL blur, inert, and open styles
+                document.body.classList.remove('reg-gate-open');
+                document.body.classList.add('reg-gate-unlocked');
+
+                var currentWrapper = document.getElementById('registrationMainWrapper');
+                if (currentWrapper) {
+                    currentWrapper.removeAttribute('inert');
+                    currentWrapper.classList.remove('reg-gate-blurred');
+                    currentWrapper.style.filter = 'none';
+                    currentWrapper.style.pointerEvents = 'auto';
+                    currentWrapper.style.userSelect = 'auto';
+                }
+
+                // Remove modal DOM node so it never obscures or blurs the form
+                if (root && root.parentNode) {
+                    root.remove();
+                } else if (root) {
+                    root.setAttribute('hidden', '');
+                    root.style.display = 'none';
+                }
+
+                // 2. Sync with Alpine component
+                var alpineRoot = currentWrapper || document.querySelector('[x-data="agentRegistration()"]');
+                if (alpineRoot) {
+                    try {
+                        var comp = (window.Alpine && typeof window.Alpine.$data === 'function')
+                            ? window.Alpine.$data(alpineRoot)
+                            : (alpineRoot._x_dataStack ? alpineRoot._x_dataStack[0] : null);
+                        if (comp) {
+                            if (name) comp.name = name;
+                            if (phone) {
+                                comp.phone = phone;
+                                comp.whatsapp = phone;
+                            }
+                            if (typeof comp.onNameInput === 'function') comp.onNameInput();
+                            if (typeof comp.handlePhoneInput === 'function') comp.handlePhoneInput();
+                            if (typeof comp.handleWhatsappInput === 'function') comp.handleWhatsappInput();
+                        }
+                    } catch (e) {
+                        console.warn('Alpine sync error', e);
+                    }
+                }
+
+                // 3. Set native input values so form is immediately filled and active
+                var nativeName = document.querySelector('input[x-model="name"]') || document.getElementById('fullname') || document.querySelector('input[name="fullname"]');
+                if (nativeName) {
+                    nativeName.value = name;
+                    nativeName.dispatchEvent(new Event('input', { bubbles: true }));
+                    nativeName.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                var nativePhone = document.querySelector('input[x-model="phone"]') || document.getElementById('mobile') || document.querySelector('input[name="mobile"]');
+                if (nativePhone) {
+                    nativePhone.value = phone;
+                    nativePhone.dispatchEvent(new Event('input', { bubbles: true }));
+                    nativePhone.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                var nativeWa = document.querySelector('input[x-model="whatsapp"]') || document.getElementById('whatsapp') || document.querySelector('input[name="whatsapp"]');
+                if (nativeWa) {
+                    nativeWa.value = phone;
+                    nativeWa.dispatchEvent(new Event('input', { bubbles: true }));
+                    nativeWa.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+
+                // 4. Trigger registration progress
+                if (typeof window.markRegistrationFormStarted === 'function') {
+                    window.markRegistrationFormStarted();
+                }
+
+                // 5. Focus next input
+                var nextInput = document.querySelector('input[x-model="email"]') || document.querySelector('input[x-ref="pinInput"]') || document.querySelector('input[type="email"]');
+                if (nextInput) {
+                    nextInput.focus();
+                }
+                return;
+            }
+
+
+            var errors = (result.payload && result.payload.errors) || {};
+            showError('registration-gate-name-error', errors.name || '');
+            showError('registration-gate-phone-error', errors.phone || '');
+
+            if (errors.login) {
+                var loginUrl = (result.payload && result.payload.redirect) || "{% url 'agents:agent_login' %}";
+                if (alertBox) {
+                    alertBox.hidden = false;
+                    alertBox.innerHTML = '<strong>Account already exists:</strong> ' +
+                        (errors.phone || 'This mobile number is already registered.') +
+                        '<br><a href="' + loginUrl + '" style="display:inline-block; margin-top:8px; font-weight:700; color:#2563eb; text-decoration:underline;">Click here to Login &rarr;</a>';
+                }
+                button.disabled = false;
+                button.innerHTML = '<span>Continue to Registration</span>';
+                return;
+            }
+
+            if (alertBox) {
+                var genericMsg = errors.form || (errors.name || errors.phone ? '' : 'Please verify your details and try again.');
+                if (genericMsg) {
+                    alertBox.hidden = false;
+                    alertBox.textContent = genericMsg;
+                }
+            }
+
+            button.disabled = false;
+            button.innerHTML = '<span>Continue to Registration</span>';
+        }).catch(function () {
+            if (alertBox) {
+                alertBox.hidden = false;
+                alertBox.textContent = 'A connection error occurred. Please try again.';
+            }
+            button.disabled = false;
+            button.innerHTML = '<span>Continue to Registration</span>';
+        });
+    });
+})();
+</script>

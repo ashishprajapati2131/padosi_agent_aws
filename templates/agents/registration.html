@@ -462,8 +462,14 @@
 {% endblock %}
 
 {% block content %}
-    <div hx-history="false" hx-boost="false"
-        class="glass-bg flex flex-col px-2 sm:px-6 lg:px-8{% if event_referral_mode %} event-paldi-reg{% else %} min-h-screen pt-4 sm:pt-6 pb-12{% endif %}" x-data="agentRegistration()">
+    {% if not event_referral_mode and require_quick_reg_gate %}
+        {% include 'partials/registration_gate_popup.html' %}
+    {% endif %}
+
+    <div id="registrationMainWrapper" hx-history="false" hx-boost="false"
+        class="glass-bg flex flex-col px-2 sm:px-6 lg:px-8{% if event_referral_mode %} event-paldi-reg{% else %} min-h-screen pt-4 sm:pt-6 pb-12{% endif %}"
+        {% if require_quick_reg_gate and not event_referral_mode %}inert{% endif %}
+        x-data="agentRegistration()">
         <div class="max-w-3xl w-full mx-auto flex flex-col items-center justify-center{% if event_referral_mode %} event-paldi-shell{% else %} gap-4 lg:gap-7 pt-2 sm:pt-4{% endif %}">
 
             {% if referring_agent %}
@@ -1909,17 +1915,17 @@
                 },
 
                 // Form fields
-                name: '{% if event_referral_mode %}{{ draft.fullname|default:""|escapejs }}{% else %}{{ draft.fullname|default:prefilled_name|default:""|escapejs }}{% endif %}',
+                name: '{% if event_referral_mode %}{% if draft %}{{ draft.fullname|default:""|escapejs }}{% endif %}{% else %}{% if prefilled_name %}{{ prefilled_name|escapejs }}{% elif draft %}{{ draft.fullname|default:""|escapejs }}{% endif %}{% endif %}',
                 slug: '',
                 slugManuallyEdited: false,
                 slugStatus: 'checking',
-                email: '{{ draft.email|default:""|escapejs }}',
+                email: '{% if draft %}{{ draft.email|default:""|escapejs }}{% endif %}',
                 emailStatus: '',
                 emailCheckMessage: '',
                 emailLoginUrl: '{% url "agents:agent_login" %}',
-                phone: '{% if event_referral_mode %}{{ draft.mobile|default:""|escapejs }}{% else %}{{ draft.mobile|default:prefilled_phone|default:""|escapejs }}{% endif %}',
-                whatsapp: '{{ draft.whatsapp|default:""|escapejs }}',
-                pincode: '{{ draft.agent_pincode|default:""|escapejs }}',
+                phone: '{% if event_referral_mode %}{% if draft %}{{ draft.mobile|default:""|escapejs }}{% endif %}{% else %}{% if prefilled_phone %}{{ prefilled_phone|escapejs }}{% elif draft %}{{ draft.mobile|default:""|escapejs }}{% endif %}{% endif %}',
+                whatsapp: '{% if event_referral_mode %}{% if draft %}{{ draft.whatsapp|default:""|escapejs }}{% endif %}{% else %}{% if prefilled_phone %}{{ prefilled_phone|escapejs }}{% elif draft %}{{ draft.whatsapp|default:""|escapejs }}{% endif %}{% endif %}',
+                pincode: '{% if draft %}{{ draft.agent_pincode|default:""|escapejs }}{% endif %}',
                 city: '{{ prefilledState|default:""|escapejs }}',
                 state: '{{ prefilledState|default:""|escapejs }}',
                 pan: '',
@@ -2935,4 +2941,55 @@
         });
     </script>
     <script src="{% static 'js/registration-celebration.js' %}"></script>
+    {% if not event_referral_mode %}
+    <script>
+    (function () {
+        var progressSent = false;
+        function getCsrfToken() {
+            var names = ['padosi_csrf_token', 'csrftoken'];
+            var cookie = document.cookie || '';
+            for (var n = 0; n < names.length; n++) {
+                var parts = cookie.split(';');
+                for (var i = 0; i < parts.length; i++) {
+                    var part = parts[i].trim();
+                    if (part.indexOf(names[n] + '=') === 0) {
+                        return decodeURIComponent(part.substring(names[n].length + 1));
+                    }
+                }
+            }
+            var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            return input ? input.value : '';
+        }
+
+        window.markRegistrationFormStarted = function () {
+            if (progressSent) return;
+            progressSent = true;
+            var body = new FormData();
+            var token = getCsrfToken();
+            if (token) body.append('csrfmiddlewaretoken', token);
+            fetch("{% url 'agents:agent_registration_progress' %}", {
+                method: 'POST',
+                body: body,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).catch(function () {
+                progressSent = false;
+            });
+        };
+
+        // Listen on any input or change event in the registration form
+        document.addEventListener('input', function (e) {
+            if (!document.body.classList.contains('reg-gate-open')) {
+                window.markRegistrationFormStarted();
+            }
+        }, true);
+
+        document.addEventListener('change', function (e) {
+            if (!document.body.classList.contains('reg-gate-open')) {
+                window.markRegistrationFormStarted();
+            }
+        }, true);
+    })();
+    </script>
+    {% endif %}
 {% endblock %}

@@ -130,6 +130,7 @@ from .views.events import event_list, event_show, event_export
 from .views.leads import lead_list, update_lead_status
 from .views.quick_registration_leads import (
     quick_registration_leads_list,
+    quick_registration_lead_delete,
     quick_registration_leads_export_csv,
     quick_registration_leads_export_xlsx,
 )
@@ -414,6 +415,7 @@ urlpatterns = [
     path("admin/leads/", lead_list, name="admin_leads_index"),
     path("admin/leads/update-status/", update_lead_status, name="admin_leads_update_status"),
     path("admin/quick-registration-leads/", quick_registration_leads_list, name="admin_quick_registration_leads"),
+    path("admin/quick-registration-leads/<int:lead_id>/delete/", quick_registration_lead_delete, name="admin_quick_registration_lead_delete"),
     path("admin/quick-registration-leads/export/csv/", quick_registration_leads_export_csv, name="admin_quick_registration_leads_export_csv"),
     path("admin/quick-registration-leads/export/xlsx/", quick_registration_leads_export_xlsx, name="admin_quick_registration_leads_export_xlsx"),
 

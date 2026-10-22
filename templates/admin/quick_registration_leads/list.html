@@ -1,127 +1,298 @@
 {% extends 'admin/base.html' %}
 
 {% block title %}Quick Registration Leads — PadosiAgent Admin{% endblock %}
-{% block breadcrumb_title %}Leads & Inquiries › Quick Registration Leads{% endblock %}
+{% block breadcrumb_title %}Leads &amp; Inquiries › Quick Registration Leads{% endblock %}
 
 {% block content %}
-<div class="stats-grid" style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 1.5rem;">
-    <div class="stat-card" style="background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+<div class="stats-grid" style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-bottom: 1.5rem;">
+    <div class="stat-card" style="background: white; padding: 1.15rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
         <div class="d-flex align-items-center gap-3">
-            <div style="width: 44px; height: 44px; background: #ecfdf5; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <i class="fa-solid fa-user-plus" style="color: #059669; font-size: 18px;"></i>
+            <div style="width: 42px; height: 42px; background: #ecfdf5; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-user-plus" style="color: #059669; font-size: 17px;"></i>
             </div>
             <div>
-                <div style="font-size: 20px; font-weight: 700; color: #1e293b; line-height: 1;">{{ stats.total }}</div>
-                <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Total Leads</div>
+                <div style="font-size: 22px; font-weight: 800; color: #1e293b; line-height: 1;">{{ stats.total }}</div>
+                <div style="font-size: 12.5px; color: #64748b; margin-top: 4px; font-weight: 500;">Open Leads</div>
             </div>
         </div>
     </div>
-    <div class="stat-card" style="background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <div class="stat-card" style="background: white; padding: 1.15rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
         <div class="d-flex align-items-center gap-3">
-            <div style="width: 44px; height: 44px; background: #fef3c7; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <i class="fa-solid fa-bolt" style="color: #d97706; font-size: 18px;"></i>
+            <div style="width: 42px; height: 42px; background: #fef3c7; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-bolt" style="color: #d97706; font-size: 17px;"></i>
             </div>
             <div>
-                <div style="font-size: 20px; font-weight: 700; color: #1e293b; line-height: 1;">{{ stats.today }}</div>
-                <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Today</div>
+                <div style="font-size: 22px; font-weight: 800; color: #1e293b; line-height: 1;">{{ stats.today }}</div>
+                <div style="font-size: 12.5px; color: #64748b; margin-top: 4px; font-weight: 500;">Today's Leads</div>
             </div>
         </div>
     </div>
-    <div class="stat-card" style="background: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <div class="stat-card" style="background: white; padding: 1.15rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
         <div class="d-flex align-items-center gap-3">
-            <div style="width: 44px; height: 44px; background: #dbeafe; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <i class="fa-solid fa-hourglass-start" style="color: #2563eb; font-size: 16px;"></i>
+            <div style="width: 42px; height: 42px; background: #e0f2fe; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-address-card" style="color: #0284c7; font-size: 17px;"></i>
             </div>
             <div>
-                <div style="font-size: 20px; font-weight: 700; color: #1e293b; line-height: 1;">{{ stats.started }}</div>
-                <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Started</div>
+                <div style="font-size: 22px; font-weight: 800; color: #1e293b; line-height: 1;">{{ stats.started }}</div>
+                <div style="font-size: 12.5px; color: #64748b; margin-top: 4px; font-weight: 500;">Quick Registered</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card" style="background: white; padding: 1.15rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width: 42px; height: 42px; background: #ffedd5; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-pen-to-square" style="color: #c2410c; font-size: 17px;"></i>
+            </div>
+            <div>
+                <div style="font-size: 22px; font-weight: 800; color: #1e293b; line-height: 1;">{{ stats.form_started }}</div>
+                <div style="font-size: 12.5px; color: #64748b; margin-top: 4px; font-weight: 500;">Form Started</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card" style="background: white; padding: 1.15rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width: 42px; height: 42px; background: #ede9fe; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-clipboard-check" style="color: #7c3aed; font-size: 17px;"></i>
+            </div>
+            <div>
+                <div style="font-size: 22px; font-weight: 800; color: #1e293b; line-height: 1;">{{ stats.form_completed }}</div>
+                <div style="font-size: 12.5px; color: #64748b; margin-top: 4px; font-weight: 500;">Form Completed</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card" style="background: white; padding: 1.15rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width: 42px; height: 42px; background: #dcfce7; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid fa-award" style="color: #16a34a; font-size: 18px;"></i>
+            </div>
+            <div>
+                <div style="font-size: 22px; font-weight: 800; color: #1e293b; line-height: 1;">{{ stats.converted }}</div>
+                <div style="font-size: 12.5px; color: #64748b; margin-top: 4px; font-weight: 500;">Converted Agents</div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="card mb-4 border-0 shadow-sm">
+<div class="card mb-4 border-0 shadow-sm" style="border-radius: 12px;">
     <div class="card-body py-3">
         <form method="GET" action="{% url 'admin_quick_registration_leads' %}" class="row g-2 align-items-end">
-            <div class="col-md-4">
-                <label class="form-label text-muted" style="font-size: 12px;">Search</label>
-                <input type="text" class="form-control form-control-sm" name="search" value="{{ search }}" placeholder="Name or phone">
+            <div class="col-lg-3 col-md-6">
+                <label class="form-label text-muted fw-semibold" style="font-size: 12px;">Search Lead</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" class="form-control" name="search" value="{{ search }}" placeholder="Search name or mobile...">
+                </div>
             </div>
-            <div class="col-md-2">
-                <label class="form-label text-muted" style="font-size: 12px;">Status</label>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label text-muted fw-semibold" style="font-size: 12px;">Status Filter</label>
                 <select name="status" class="form-select form-select-sm">
-                    <option value="all" {% if statusFilter == 'all' %}selected{% endif %}>All Status</option>
-                    <option value="Started" {% if statusFilter == 'Started' %}selected{% endif %}>Started</option>
-                    <option value="Completed" {% if statusFilter == 'Completed' %}selected{% endif %}>Completed</option>
-                    <option value="Abandoned" {% if statusFilter == 'Abandoned' %}selected{% endif %}>Abandoned</option>
+                    <option value="open" {% if statusFilter == 'open' %}selected{% endif %}>Open (Not Converted)</option>
+                    <option value="all" {% if statusFilter == 'all' %}selected{% endif %}>All Statuses</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if statusFilter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="form-label text-muted" style="font-size: 12px;">From</label>
+            <div class="col-lg-2 col-md-4">
+                <label class="form-label text-muted fw-semibold" style="font-size: 12px;">Form Status</label>
+                <select name="form" class="form-select form-select-sm">
+                    <option value="all" {% if formFilter == 'all' %}selected{% endif %}>All Forms</option>
+                    <option value="filled" {% if formFilter == 'filled' %}selected{% endif %}>Filled</option>
+                    <option value="not_filled" {% if formFilter == 'not_filled' %}selected{% endif %}>Not Filled</option>
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-4">
+                <label class="form-label text-muted fw-semibold" style="font-size: 12px;">Payment Status</label>
+                <select name="payment" class="form-select form-select-sm">
+                    <option value="all" {% if paymentFilter == 'all' %}selected{% endif %}>All Payments</option>
+                    <option value="none" {% if paymentFilter == 'none' %}selected{% endif %}>Not Started</option>
+                    <option value="pending" {% if paymentFilter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="completed" {% if paymentFilter == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="failed" {% if paymentFilter == 'failed' %}selected{% endif %}>Failed</option>
+                </select>
+            </div>
+            <div class="col-lg-1 col-md-4">
+                <label class="form-label text-muted fw-semibold" style="font-size: 12px;">From Date</label>
                 <input type="date" class="form-control form-control-sm" name="date_from" value="{{ dateFrom }}">
             </div>
-            <div class="col-md-2">
-                <label class="form-label text-muted" style="font-size: 12px;">To</label>
+            <div class="col-lg-1 col-md-4">
+                <label class="form-label text-muted fw-semibold" style="font-size: 12px;">To Date</label>
                 <input type="date" class="form-control form-control-sm" name="date_to" value="{{ dateTo }}">
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fa-solid fa-filter me-1"></i> Filter</button>
+            <div class="col-lg-1 col-md-4 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm flex-grow-1" title="Apply Filters">
+                    <i class="fa-solid fa-filter me-1"></i> Filter
+                </button>
+                {% if search or statusFilter != 'open' or formFilter != 'all' or paymentFilter != 'all' or dateFrom or dateTo %}
+                <a href="{% url 'admin_quick_registration_leads' %}" class="btn btn-outline-secondary btn-sm" title="Clear Filters">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
+                {% endif %}
             </div>
         </form>
     </div>
 </div>
 
-<div class="card border-0 shadow-sm">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h6 class="m-0 fw-bold">Quick Registration Leads ({{ total_rows }})</h6>
+<div class="card border-0 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom">
+        <div class="d-flex align-items-center gap-2">
+            <h6 class="m-0 fw-bold text-dark">Quick Registration Leads</h6>
+            <span class="badge bg-light text-secondary border px-2.5 py-1">{{ total_rows }} total</span>
+            {% if statusFilter == 'open' %}
+            <span class="badge bg-success-subtle text-success border border-success-subtle">Active Pipeline</span>
+            {% endif %}
+        </div>
         <div class="d-flex gap-2">
-            <a href="{% url 'admin_quick_registration_leads_export_csv' %}{% if filter_query %}?{{ filter_query }}{% endif %}" class="btn btn-sm btn-outline-secondary">
+            <a href="{% url 'admin_quick_registration_leads_export_csv' %}{% if filter_query %}?{{ filter_query }}{% endif %}" class="btn btn-sm btn-outline-secondary" title="Export to CSV">
                 <i class="fa-solid fa-file-csv me-1"></i> CSV
             </a>
-            <a href="{% url 'admin_quick_registration_leads_export_xlsx' %}{% if filter_query %}?{{ filter_query }}{% endif %}" class="btn btn-sm btn-outline-success">
+            <a href="{% url 'admin_quick_registration_leads_export_xlsx' %}{% if filter_query %}?{{ filter_query }}{% endif %}" class="btn btn-sm btn-outline-success" title="Export to Excel">
                 <i class="fa-solid fa-file-excel me-1"></i> Excel
             </a>
         </div>
     </div>
     <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead>
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light text-muted" style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;">
                 <tr>
-                    <th>Name</th>
-                    <th>Phone</th>
-                    <th>Status</th>
-                    <th>Ref</th>
-                    <th>Source</th>
-                    <th>Date</th>
+                    <th class="ps-4">Lead Name</th>
+                    <th>Phone Number</th>
+                    <th>Registered</th>
+                    <th>Pipeline Status</th>
+                    <th>Form Status</th>
+                    <th>Payment Status</th>
+                    <th class="text-end pe-4">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for lead in leads %}
                 <tr>
-                    <td style="font-weight: 600; font-size: 13px;">{{ lead.name }}</td>
-                    <td style="font-size: 13px;">
-                        <a href="tel:{{ lead.phone }}">{{ lead.phone }}</a>
+                    <td class="ps-4">
+                        <div class="d-flex align-items-center gap-2.5">
+                            <div style="width: 34px; height: 34px; background: #f1f5f9; color: #475569; font-weight: 700; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px;">
+                                {{ lead.name|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 13.5px; color: #0f172a;">{{ lead.name }}</div>
+                                {% if lead.ref_code %}
+                                <div style="font-size: 11px; color: #64748b;">Ref: <span class="badge bg-light text-dark border">{{ lead.ref_code }}</span></div>
+                                {% endif %}
+                            </div>
+                        </div>
                     </td>
                     <td>
-                        {% if lead.status == 'Completed' %}
-                            <span class="badge" style="background: #dcfce7; color: #16a34a;">Completed</span>
-                        {% elif lead.status == 'Abandoned' %}
-                            <span class="badge" style="background: #fee2e2; color: #dc2626;">Abandoned</span>
+                        <div class="d-flex align-items-center gap-1.5">
+                            <a href="tel:{{ lead.phone }}" class="fw-semibold text-primary" style="font-size: 13.5px; text-decoration: none;">
+                                {{ lead.phone }}
+                            </a>
+                            <button type="button" class="btn btn-link btn-sm p-0 text-muted copy-phone-btn" data-phone="{{ lead.phone }}" title="Copy Phone" style="font-size: 12px;">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td style="font-size: 12px; color: #64748b; white-space: nowrap;">
+                        <span class="fw-semibold text-dark">{{ lead.created_at|date:"d M Y" }}</span>
+                        <br>
+                        <span class="text-muted" style="font-size: 11px;">{{ lead.created_at|date:"h:i A" }}</span>
+                    </td>
+                    <td>
+                        {% if lead.status == 'converted' %}
+                            <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-weight: 700; font-size: 12px;">
+                                <i class="fa-solid fa-circle-check me-1"></i> Converted
+                            </span>
+                        {% elif lead.status == 'payment_completed' %}
+                            <span class="badge" style="background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 700; font-size: 12px;">
+                                <i class="fa-solid fa-credit-card me-1"></i> Payment Completed
+                            </span>
+                        {% elif lead.status == 'form_completed' %}
+                            <span class="badge" style="background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; font-weight: 700; font-size: 12px;">
+                                <i class="fa-solid fa-clipboard-check me-1"></i> Form Completed
+                            </span>
+                        {% elif lead.status == 'form_started' %}
+                            <span class="badge" style="background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; font-weight: 700; font-size: 12px;">
+                                <i class="fa-solid fa-pen-to-square me-1"></i> Form Started
+                            </span>
+                        {% elif lead.status == 'abandoned' %}
+                            <span class="badge" style="background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 700; font-size: 12px;">
+                                <i class="fa-solid fa-clock-rotate-left me-1"></i> Abandoned
+                            </span>
                         {% else %}
-                            <span class="badge" style="background: #dbeafe; color: #2563eb;">Started</span>
+                            <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-weight: 700; font-size: 12px;">
+                                <i class="fa-solid fa-user-plus me-1"></i> Quick Registered
+                            </span>
                         {% endif %}
                     </td>
-                    <td style="font-size: 12px; color: #64748b;">{{ lead.ref_code|default:"—" }}</td>
-                    <td style="font-size: 11px; color: #64748b; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ lead.source_url|default:"—" }}</td>
-                    <td style="font-size: 12px; color: #64748b; white-space: nowrap;">
-                        {{ lead.created_at|date:"d M Y" }}
-                        <br>{{ lead.created_at|date:"h:i A" }}
+                    <td>
+                        {% if lead.form_filled %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-weight: 600;">
+                                <i class="fa-solid fa-check me-1"></i> Filled
+                            </span>
+                        {% else %}
+                            <span class="badge bg-light text-secondary border" style="font-weight: 500;">
+                                Not filled
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if lead.payment_status == 'completed' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-weight: 600;">
+                                <i class="fa-solid fa-circle-check me-1"></i> Completed
+                            </span>
+                        {% elif lead.payment_status == 'failed' %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-weight: 600;">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i> Failed
+                            </span>
+                        {% elif lead.payment_status == 'pending' %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-weight: 600;">
+                                <i class="fa-solid fa-clock me-1"></i> Pending
+                            </span>
+                        {% else %}
+                            <span class="badge bg-light text-secondary border" style="font-weight: 500;">
+                                Not started
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end pe-4" style="white-space: nowrap;">
+                        <div class="d-inline-flex gap-1.5 align-items-center">
+                            <!-- Direct Call Button -->
+                            <a class="btn btn-sm btn-outline-primary" href="tel:{{ lead.phone }}" title="Call Lead">
+                                <i class="fa-solid fa-phone"></i>
+                            </a>
+                            <!-- WhatsApp Button with Template Message -->
+                            <a class="btn btn-sm btn-outline-success"
+                               href="https://wa.me/91{{ lead.phone }}?text=Hello%20{{ lead.name|urlencode }}%2C%20we%20noticed%20you%20started%20registering%20on%20PadosiAgent.%20Would%20you%20like%20any%20assistance%20completing%20your%20profile%3F"
+                               target="_blank" rel="noopener" title="Chat on WhatsApp">
+                                <i class="fa-brands fa-whatsapp"></i>
+                            </a>
+                            <!-- If converted or linked to agent: View Active Agent -->
+                            {% if lead.status == 'converted' or lead.agent_id %}
+                            <a class="btn btn-sm btn-success text-white" href="{% url 'admin_agents' %}?status=active&amp;search={{ lead.phone }}" title="View Active Agent">
+                                <i class="fa-solid fa-user-check me-1"></i> Agent
+                            </a>
+                            {% elif lead.draft_id %}
+                            <a class="btn btn-sm btn-outline-info" href="{% url 'admin_agents_pending' %}?search={{ lead.phone }}" title="View Incomplete Draft">
+                                <i class="fa-solid fa-file-pen me-1"></i> Draft
+                            </a>
+                            {% endif %}
+
+                            <!-- Delete Lead Button -->
+                            <form method="POST" action="{% url 'admin_quick_registration_lead_delete' lead.id %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete lead {{ lead.name|escapejs }} ({{ lead.phone }})?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Lead">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center py-5 text-muted">
-                        <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i> No quick registration leads found.
+                    <td colspan="7" class="text-center py-5 text-muted">
+                        <div class="py-4">
+                            <i class="fa-solid fa-inbox fa-3x mb-3 text-secondary" style="opacity: 0.4;"></i>
+                            <h6 class="fw-bold text-dark">No quick registration leads found</h6>
+                            <p class="text-muted small mb-0">Try adjusting your search criteria, status filter, or date range.</p>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -131,17 +302,41 @@
     {% if page_obj.paginator.num_pages > 1 %}
     <div class="card-footer bg-white d-flex justify-content-between align-items-center p-3 border-top">
         <div class="text-muted small">
-            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} leads
         </div>
         <ul class="pagination pagination-sm m-0">
             <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
-                <a class="page-link" href="?page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% else %}1{% endif %}{% if filter_query %}&{{ filter_query }}{% endif %}">&lsaquo;</a>
+                <a class="page-link" href="?page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% else %}1{% endif %}{% if filter_query %}&{{ filter_query }}{% endif %}">&lsaquo; Prev</a>
+            </li>
+            <li class="page-item active">
+                <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
             </li>
             <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
-                <a class="page-link" href="?page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% else %}{{ page_obj.number }}{% endif %}{% if filter_query %}&{{ filter_query }}{% endif %}">&rsaquo;</a>
+                <a class="page-link" href="?page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% else %}{{ page_obj.number }}{% endif %}{% if filter_query %}&{{ filter_query }}{% endif %}">Next &rsaquo;</a>
             </li>
         </ul>
     </div>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.copy-phone-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var phone = this.getAttribute('data-phone');
+            if (!phone) return;
+            navigator.clipboard.writeText(phone).then(function() {
+                var icon = btn.querySelector('i');
+                if (icon) {
+                    icon.className = 'fa-solid fa-check text-success';
+                    setTimeout(function() {
+                        icon.className = 'fa-regular fa-copy';
+                    }, 1500);
+                }
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

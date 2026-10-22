@@ -147,6 +147,11 @@ def insurance_approvals_approve_onboarding(request, id):
                 # 1. Activate Agent status
                 agent.status = 'active'
                 agent.save()
+                try:
+                    from apps.agents.services.registration_leads import sync_lead_for_agent
+                    sync_lead_for_agent(agent)
+                except Exception:
+                    pass
 
                 # 2. Activate User account
                 # By email: agent.user_id is the Django auth_user id, not users.id.

@@ -966,12 +966,22 @@ def _get_registration_context(request):
     except Exception as e:
         logger.warning(f"Error resolving promo code in registration context: {e}")
 
-    quick_name = (session.get('quick_reg_name') or '').strip()
-    quick_phone = (session.get('quick_reg_phone') or '').strip()
+    lead = None
+    try:
+        from apps.agents.services.registration_leads import session_lead
+        lead = session_lead(request)
+    except Exception:
+        lead = None
+    quick_name = ((lead.name if lead else '') or session.get('quick_reg_name') or '').strip()
+    quick_phone = ((lead.phone if lead else '') or session.get('quick_reg_phone') or '').strip()
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9 ._\-]{1,69}', quick_name):
         quick_name = ''
     if not re.fullmatch(r'[6-9]\d{9}', quick_phone):
         quick_phone = ''
+    draft_phone = (getattr(draft, 'mobile', '') or '').strip()
+    require_quick_reg_gate = not bool(
+        lead or quick_phone or re.fullmatch(r'[6-9]\d{9}', draft_phone)
+    )
 
     swipe = {}
     try:
@@ -1002,8 +1012,10 @@ def _get_registration_context(request):
         'agent_languages': getattr(draft, 'languages', []) if draft else [],
         'active_investment_types': active_investment_types,
         'prefilledPromo': prefilled_promo,
-        'prefilled_name': quick_name,
-        'prefilled_phone': quick_phone,
+        'prefilled_name': quick_name or getattr(draft, 'fullname', '') or '',
+        'prefilled_phone': quick_phone or draft_phone,
+        'prefilled_whatsapp': quick_phone or getattr(draft, 'whatsapp', '') or draft_phone,
+        'require_quick_reg_gate': require_quick_reg_gate,
         'registration_swipe_enabled': bool(swipe.get('enabled')) and bool(swipe.get('slides')),
         'registration_swipe_slides': swipe.get('slides') or [],
         'preview_auto_advance_ms': int(swipe.get('preview_auto_advance_seconds') or 2) * 1000,
@@ -1156,6 +1168,27 @@ def agent_registration(request):
         if referring_agent_data:
             context['referring_agent'] = referring_agent_data
 
+        if not context.get('event_referral_mode'):
+            try:
+                from apps.agents.services.registration_leads import (
+                    capture_quick_lead,
+                    session_lead,
+                )
+                lead = session_lead(request)
+                draft = context.get('draft')
+                if lead is None and draft and re.fullmatch(r'[6-9]\d{9}', (draft.mobile or '').strip() or ''):
+                    lead, _blocked = capture_quick_lead(
+                        request,
+                        name=draft.fullname or '',
+                        phone=draft.mobile,
+                        ref_code=request.session.get('ref_code') or '',
+                        source_url=request.build_absolute_uri()[:500],
+                    )
+                if lead:
+                    context['require_quick_reg_gate'] = False
+            except Exception:
+                logger.exception('Quick-registration gate status update failed')
+
         if ref_param:
             from apps.agents.services.og_urls import build_og_absolute_url
 
@@ -1179,6 +1212,36 @@ def agent_registration(request):
         logger.exception(f"Error in agent_registration view: {e}")
         context = _get_registration_context(request)
         return render(request, 'agents/registration.html', context)
+
+
+@require_POST
+@csrf_protect
+def agent_registration_progress(request):
+    """Mark the open lead as form started once the visitor types into the form."""
+    if request.session.get('event_referral_registration'):
+        return JsonResponse({'ok': True})
+    from apps.admin_panel.models import RegistrationLead
+    from apps.agents.services.registration_leads import mark_form_started, session_lead, normalize_phone, bind_session
+    lead = session_lead(request)
+    if lead is None:
+        phone = ''
+        if request.content_type == 'application/json' and request.body:
+            try:
+                import json
+                payload = json.loads(request.body.decode('utf-8'))
+                phone = normalize_phone(payload.get('phone'))
+            except Exception:
+                pass
+        if not phone:
+            phone = normalize_phone(request.POST.get('phone'))
+        if phone:
+            lead = RegistrationLead.objects.filter(phone=phone).first()
+            if lead:
+                bind_session(request, lead)
+    if lead is None:
+        return JsonResponse({'ok': False}, status=403)
+    mark_form_started(request, lead)
+    return JsonResponse({'ok': True})
 
 
 def _bump_clicks(obj):
@@ -1691,6 +1754,46 @@ def register_step1(request):
             payload['errors'] = field_errors
         return JsonResponse(payload, status=400)
 
+    # The registration page stays behind the name+phone gate. Event signup
+    # does not use that gate and must keep its own path.
+    if not request.session.get('event_referral_registration'):
+        from apps.agents.services.registration_leads import session_lead, capture_quick_lead
+        from apps.admin_panel.models import RegistrationLead
+        gate_lead = session_lead(request)
+        if gate_lead is None and re.match(r'^[6-9]\d{9}$', mobile):
+            gate_lead, blocked_msg = capture_quick_lead(
+                request,
+                name=fullname,
+                phone=mobile,
+                source_url=request.build_absolute_uri()[:500],
+            )
+            if blocked_msg:
+                return JsonResponse({
+                    'success': False,
+                    'message': blocked_msg,
+                    'errors': {'mobile': [blocked_msg]},
+                }, status=422)
+        if gate_lead is None:
+            return JsonResponse({
+                'success': False,
+                'message': 'Please share your name and mobile number to start registration.',
+            }, status=403)
+        other_lead = (
+            RegistrationLead.objects.filter(phone=mobile)
+            .exclude(pk=gate_lead.pk)
+            .first()
+        )
+        if other_lead is not None:
+            msg = (
+                'This mobile number is already registered. '
+                'Please continue with your original number or login with that account.'
+            )
+            return JsonResponse({
+                'success': False,
+                'message': msg,
+                'errors': {'mobile': [msg]},
+            }, status=422)
+
     raw_photo = request.FILES.get('photo')
     if raw_photo and _validated_photo_upload(raw_photo) is None:
         return JsonResponse({
@@ -1854,6 +1957,9 @@ def register_step1(request):
             from apps.event_referral.services.registration_service import finalize_event_referral_registration
             return finalize_event_referral_registration(request, draft)
 
+        from apps.agents.services.registration_leads import mark_form_completed
+        mark_form_completed(request, draft=draft, agent=existing_agent)
+
         return JsonResponse({
             'success': True,
             'message': 'Basic information updated!',
@@ -1942,6 +2048,9 @@ def register_step1(request):
     if request.session.get('event_referral_registration'):
         from apps.event_referral.services.registration_service import finalize_event_referral_registration
         return finalize_event_referral_registration(request, draft)
+
+    from apps.agents.services.registration_leads import mark_form_completed
+    mark_form_completed(request, draft=draft)
 
     return JsonResponse({
         'success': True,
@@ -3005,7 +3114,15 @@ def _activate_paid_subscription(agent, subscription, payment, log_label='[activa
                       lambda: queue_invoice_and_welcome(agent.id, subscription.id))
 
         logger.info('%s Activated agent %s, subscription #%s.', log_label, agent.email, subscription.pk)
-        return subscription, True
+
+    try:
+        from apps.agents.services.registration_leads import mark_payment_completed, sync_lead_for_agent
+        mark_payment_completed(agent)
+        if agent.status == 'active':
+            sync_lead_for_agent(agent)
+    except Exception:
+        logger.exception('%s Quick-registration lead sync failed for agent %s', log_label, getattr(agent, 'id', None))
+    return subscription, True
 
 
 def verify_and_activate_pending_payment(agent, include_paid_agents=False):
@@ -3496,6 +3613,12 @@ def _agent_register_complete_impl(request):
         request.session.pop('pending_checkout', None)
         request.session['auto_show_invite_studio'] = True
 
+        try:
+            from apps.agents.services.registration_leads import mark_payment_completed
+            mark_payment_completed(agent)
+        except Exception:
+            logger.exception('Quick-registration lead sync failed after free checkout for agent %s', getattr(agent, 'id', None))
+
         return JsonResponse(_activation_success_payload(
             request,
             agent,
@@ -3509,6 +3632,12 @@ def _agent_register_complete_impl(request):
         'plan_name': plan_name,
     }
     request.session.modified = True
+
+    try:
+        from apps.agents.services.registration_leads import mark_payment_pending
+        mark_payment_pending(agent)
+    except Exception:
+        logger.exception('Quick-registration payment pending sync failed for agent %s', getattr(agent, 'id', None))
 
     return JsonResponse(checkout_payload(
         razorpay_order_id,
@@ -4292,6 +4421,11 @@ def payment_failure(request):
         if agent and agent.status in ('incomplete', 'pending_payment', 'pending_accounts_payment', 'inactive'):
             agent.status = 'pending_payment'
             agent.save(update_fields=['status'])
+        try:
+            from apps.agents.services.registration_leads import mark_payment_failed
+            mark_payment_failed(agent)
+        except Exception:
+            logger.exception('Quick-registration lead payment-fail sync failed')
 
         request.session.pop('pending_checkout', None)
 

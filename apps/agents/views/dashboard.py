@@ -336,6 +336,11 @@ def agent_dashboard(request):
                 agent.registration_step = 2
                 agent.save()
                 agent.refresh_from_db()
+                try:
+                    from apps.agents.services.registration_leads import sync_lead_for_agent
+                    sync_lead_for_agent(agent)
+                except Exception:
+                    logger.exception('Quick-registration lead sync failed during dashboard self-heal for agent #%s', agent.id)
                 logger.info(f"AgentDashboard self-heal: agent #{agent.id} promoted to {agent.status}.")
 
     if not is_admin and (not agent or not agent_can_access_dashboard(agent)):
@@ -2407,6 +2412,11 @@ def agent_upgrade_plan(request):
             agent.plan_type = plan_type
             agent.save()
             _deactivate_superseded_subscriptions(agent, subscription.pk)
+            try:
+                from apps.agents.services.registration_leads import sync_lead_for_agent
+                sync_lead_for_agent(agent)
+            except Exception:
+                logger.exception('Quick-registration lead sync failed during zero-amount upgrade for agent #%s', agent.id)
 
             # Credit referral
             if agent.referred_by_code:
@@ -2457,6 +2467,12 @@ def agent_upgrade_plan(request):
             'plan_name': plan_name,
         }
         request.session.modified = True
+
+        try:
+            from apps.agents.services.registration_leads import mark_payment_pending
+            mark_payment_pending(agent)
+        except Exception:
+            logger.exception('Quick-registration payment pending sync failed during upgrade for agent #%s', agent.id)
 
         return JsonResponse(checkout_payload(
             razorpay_order_id,
