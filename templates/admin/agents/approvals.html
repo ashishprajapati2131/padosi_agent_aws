@@ -966,7 +966,7 @@ function buildLogsHTML(logs) {
             </div>
 
             {# change rows #}
-            <div style="display:none;">
+            <div style="display:block;">
                 ${hasStatus ? `
                 <div style="display:grid;grid-template-columns:150px 1fr 1fr;border-top:1px solid #f1f5f9;">
                     <div style="padding:9px 14px;background:#fafafa;font-size:11px;font-weight:700;color:#475569;border-right:1px solid #f1f5f9;display:flex;align-items:center;">🔄 Status</div>
@@ -979,11 +979,13 @@ function buildLogsHTML(logs) {
                 </div>` : ''}
 
                 ${(log.changes || []).map((ch, i) => {
-                    const oldV = ch.old_value == null || ch.old_value === '' ? '<em style="color:#94a3b8">empty</em>' : String(ch.old_value).substring(0, 100);
-                    const newV = ch.new_value == null || ch.new_value === '' ? '<em style="color:#94a3b8">empty</em>' : String(ch.new_value).substring(0, 100);
+                    // Values arrive HTML-escaped from get_edit_logs; shown in full (bios, timelines, portfolios).
+                    const oldV = ch.old_value == null || ch.old_value === '' ? '<em style="color:#94a3b8">empty</em>' : String(ch.old_value);
+                    const newV = ch.new_value == null || ch.new_value === '' ? '<em style="color:#94a3b8">empty</em>' : String(ch.new_value);
                     return `
                     <div style="display:grid;grid-template-columns:150px 1fr 1fr;border-top:1px solid #f1f5f9;">
-                        <div style="padding:9px 14px;background:#fafafa;font-size:11px;font-weight:700;color:#475569;border-right:1px solid #f1f5f9;display:flex;align-items:center;">
+                        <div style="padding:9px 14px;background:#fafafa;font-size:11px;font-weight:700;color:#475569;border-right:1px solid #f1f5f9;display:flex;flex-direction:column;justify-content:center;">
+                            ${ch.section ? `<span style="font-size:9px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.03em;">${ch.section}</span>` : ''}
                             ${ch.label || ch.field}
                         </div>
                         <div style="padding:9px 14px;background:#fff5f5;font-size:12px;color:#9f1239;border-right:1px solid #f1f5f9;word-break:break-all;">

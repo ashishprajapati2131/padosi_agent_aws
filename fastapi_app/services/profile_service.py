@@ -80,6 +80,10 @@ from fastapi_app.models.agent_career_timeline import AgentCareerTimeline
 from fastapi_app.models.agent_lead_preference import AgentLeadPreference
 from fastapi_app.models.agent_profile_edit_log import AgentProfileEditLog
 from sqlalchemy import inspect as sa_inspect
+from apps.agents.services.profile_edit_log import (
+    FIELDS as EDIT_LOG_FIELDS, snapshot_value as edit_log_value,
+    child_snapshot as edit_log_child_snapshot, build_changes as edit_log_changes,
+)
 
 class ProfileService:
     def __init__(self, agent_repo: AgentRepository):
@@ -693,25 +697,19 @@ class ProfileService:
         if agent.status not in ('suspended', 'blacklisted', 'rejected'):
             agent.status = 'pending_approval'
 
-    _EDIT_LOG_SKIP = {'id', 'agent_id', 'created_at', 'updated_at', 'last_login_at', 'remember_token'}
-
     @classmethod
     def _edit_snapshot(cls, agent, db=None) -> dict:
-        """Flat {field: value} of Agent + AgentProfile columns, for the admin edit-history diff."""
-        snap = {}
-        for prefix, obj in (('', agent), ('profile.', getattr(agent, 'profile', None))):
-            state = sa_inspect(obj, raiseerr=False) if obj is not None else None
-            if state is None or not hasattr(state, 'mapper'):
-                continue
-            for attr in state.mapper.column_attrs:
-                name = attr.key
-                if name in cls._EDIT_LOG_SKIP or 'password' in name or 'token' in name:
-                    continue
-                value = getattr(obj, name)
-                if isinstance(value, (dict, list)):
-                    value = json.dumps(value, sort_keys=True)
-                snap[prefix + name] = '' if value is None else str(value)
-        if db is not None and snap:
+        """Readable {field: value} for the admin edit-history diff; keys match the web snapshot."""
+        state = sa_inspect(agent, raiseerr=False)
+        if state is None or not hasattr(state, 'mapper'):
+            return {}
+        snap = {'status': agent.status}
+        profile = agent.profile
+        for key in EDIT_LOG_FIELDS:
+            obj, name = (profile, key[8:]) if key.startswith('profile.') else (agent, key)
+            if obj is not None and name in sa_inspect(type(obj)).column_attrs.keys():
+                snap[key] = edit_log_value(getattr(obj, name))
+        if db is not None:
             try:
                 snap.update(cls._child_table_snapshot(agent, db))
             except Exception:  # the edit log must never block a profile save
@@ -721,30 +719,36 @@ class ProfileService:
     @staticmethod
     def _child_table_snapshot(agent, db) -> dict:
         # Child tables are replaced via bulk delete + add, so query them rather than
-        # reading possibly stale relationship collections. Same keys as the web snapshot.
-        joined = lambda rows: ', '.join(sorted(str(r) for r in rows))
+        # reading possibly stale relationship collections. Row columns follow CHILD_FORMATS.
         q = lambda *cols: db.query(*cols).filter(cols[0].class_.agent_id == agent.id).all()
-        return {
-            'insurance_segments': joined(s for (s,) in q(AgentInsuranceSegment.segment_type)),
-            'serviceable_cities': joined(
-                n for (n,) in db.query(City.name).join(AgentServiceableCity, AgentServiceableCity.city_id == City.id)
-                .filter(AgentServiceableCity.agent_id == agent.id).all()),
-            'product_expertise': joined(f'{s}/{p}: {l}' for s, p, l in q(
-                AgentProductExpertise.segment_type, AgentProductExpertise.product_name, AgentProductExpertise.expertise_level)),
-            'family_licenses': joined(f'{n} ({r})' for n, r in q(
-                AgentFamilyLicense.full_name, AgentFamilyLicense.relationship)),
-            'portfolios': joined(f'{s}: {c}' for s, c in q(
-                AgentPortfolio.segment_type, AgentPortfolio.primary_companies)),
-        }
+        return edit_log_child_snapshot({
+            'insurance_segments': q(AgentInsuranceSegment.segment_type),
+            'serviceable_cities': db.query(City.name)
+                .join(AgentServiceableCity, AgentServiceableCity.city_id == City.id)
+                .filter(AgentServiceableCity.agent_id == agent.id).all(),
+            'service_areas': q(AgentServicePincode.service_pincode, AgentServicePincode.city_name,
+                               AgentServicePincode.selected_areas_json),
+            'product_expertise': q(AgentProductExpertise.segment_type, AgentProductExpertise.product_name,
+                                   AgentProductExpertise.expertise_level),
+            'family_licenses': q(AgentFamilyLicense.full_name, AgentFamilyLicense.relationship,
+                                 AgentFamilyLicense.license_number),
+            'portfolios': q(AgentPortfolio.segment_type, AgentPortfolio.primary_companies,
+                            AgentPortfolio.secondary_companies),
+            'performance_stats': q(AgentPerformanceStat.claims_processed, AgentPerformanceStat.claims_settled,
+                                   AgentPerformanceStat.claims_amount, AgentPerformanceStat.response_time),
+            'lead_preferences': q(AgentLeadPreference.leads_new_business, AgentLeadPreference.leads_portfolio_analysis,
+                                  AgentLeadPreference.portfolio_charging, AgentLeadPreference.portfolio_fee,
+                                  AgentLeadPreference.leads_claims_support, AgentLeadPreference.claims_charging,
+                                  AgentLeadPreference.claims_fee_amount, AgentLeadPreference.claims_percent),
+            'achievement_photos': q(AgentAchievementPhoto.photo_path),
+            'career_timeline': q(AgentCareerTimeline.month, AgentCareerTimeline.year,
+                                 AgentCareerTimeline.event_type, AgentCareerTimeline.event_text),
+        })
 
     def _log_profile_edit(self, db, agent, before: dict, step: int, step_label: str):
         """Same row shape as apps/agents/views/dashboard.py _log_profile_edit (web saves)."""
         after = self._edit_snapshot(agent, db)
-        changes = [
-            {'field': k, 'label': k.split('.')[-1].replace('_', ' ').title(),
-             'old_value': before.get(k, ''), 'new_value': v}
-            for k, v in after.items() if before.get(k, '') != v and k != 'status'
-        ]
+        changes = edit_log_changes(before, after)
         if not after or (not changes and before.get('status') == after.get('status')):
             return
         try:
@@ -1062,7 +1066,7 @@ class ProfileService:
                 ))
 
             self._mark_pending_approval(agent)
-            self._log_profile_edit(db, agent, before, 4, 'Portfolios')
+            self._log_profile_edit(db, agent, before, 4, 'Portfolio & Segments')
             db.commit()
         except HTTPException:
             db.rollback()

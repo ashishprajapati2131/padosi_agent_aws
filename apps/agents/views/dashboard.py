@@ -1522,43 +1522,49 @@ def _collect_license_uploads(request):
     return payloads, None
 
 
+# Backend current_step -> edit-profile section (the page posts visual steps 1-5 as 1, 2, 4, 5, 7).
 _EDIT_LOG_STEP_LABELS = {
-    1: 'Basic Info', 2: 'Professional Details', 3: 'Insurance Segments', 4: 'Portfolios',
+    1: 'Basic Info', 2: 'Professional Details', 3: 'Portfolio & Segments', 4: 'Portfolio & Segments',
     5: 'Additional Info', 6: 'Lead Preferences', 7: 'Final Submission',
 }
-_EDIT_LOG_SKIP = {'id', 'agent', 'created_at', 'updated_at', 'last_login_at', 'remember_token'}
 
 
 def _profile_edit_snapshot(agent, profile):
-    """Flat {field: value} of the Agent + AgentProfile columns, for the admin edit-history diff."""
-    snap = {}
-    for prefix, obj in (('', agent), ('profile.', profile)):
-        for f in obj._meta.concrete_fields:
-            if f.name in _EDIT_LOG_SKIP or 'password' in f.name or 'token' in f.name:
-                continue
-            value = getattr(obj, f.attname)
-            snap[prefix + f.name] = '' if value is None else str(value)
-    # Child tables (segments etc.) are replaced wholesale on save; compare them as sorted text.
-    joined = lambda rows: ', '.join(sorted(str(r) for r in rows))
-    snap['insurance_segments'] = joined(agent.insuranceSegments.values_list('segment_type', flat=True))
-    snap['serviceable_cities'] = joined(agent.serviceableCities.values_list('name', flat=True))
-    snap['product_expertise'] = joined(
-        f'{s}/{p}: {l}' for s, p, l in agent.productExpertise.values_list('segment_type', 'product_name', 'expertise_level'))
-    snap['family_licenses'] = joined(
-        f'{n} ({r})' for n, r in agent.familyLicenses.values_list('full_name', 'relationship'))
-    snap['portfolios'] = joined(
-        f'{s}: {c}' for s, c in agent.portfolios.values_list('segment_type', 'primary_companies'))
+    """Readable {field: value} of everything the edit-profile sections save, for the admin diff."""
+    from apps.agents.models import AgentPerformanceStat, AgentLeadPreference
+    from apps.agents.services.profile_edit_log import FIELDS, snapshot_value, child_snapshot
+    snap = {'status': agent.status}
+    columns = {'': (agent, {f.name for f in agent._meta.concrete_fields}),
+               'profile.': (profile, {f.name for f in profile._meta.concrete_fields})}
+    for key in FIELDS:
+        prefix, name = ('profile.', key[8:]) if key.startswith('profile.') else ('', key)
+        obj, names = columns[prefix]
+        if name in names:
+            snap[key] = snapshot_value(getattr(obj, name))
+    # Child tables are replaced wholesale on save; row columns follow CHILD_FORMATS.
+    snap.update(child_snapshot({
+        'insurance_segments': agent.insuranceSegments.values_list('segment_type'),
+        'serviceable_cities': agent.serviceableCities.values_list('name'),
+        'service_areas': agent.servicePincodes.values_list('service_pincode', 'city_name', 'selected_areas_json'),
+        'product_expertise': agent.productExpertise.values_list('segment_type', 'product_name', 'expertise_level'),
+        'family_licenses': agent.familyLicenses.values_list('full_name', 'relationship', 'license_number'),
+        'portfolios': agent.portfolios.values_list('segment_type', 'primary_companies', 'secondary_companies'),
+        'performance_stats': AgentPerformanceStat.objects.filter(agent=agent).values_list(
+            'claims_processed', 'claims_settled', 'claims_amount', 'response_time'),
+        'lead_preferences': AgentLeadPreference.objects.filter(agent=agent).values_list(
+            'leads_new_business', 'leads_portfolio_analysis', 'portfolio_charging', 'portfolio_fee',
+            'leads_claims_support', 'claims_charging', 'claims_fee_amount', 'claims_percent'),
+        'achievement_photos': agent.achievementPhotos.values_list('photo_path'),
+        'career_timeline': agent.careerTimelines.values_list('month', 'year', 'event_type', 'event_text'),
+    }))
     return snap
 
 
 def _log_profile_edit(request, agent, before, after, current_step, is_admin_edit):
     from apps.agents.models import AgentProfileEditLog
     from apps.admin_panel.middleware import ThreatMonitorMiddleware
-    changes = [
-        {'field': k, 'label': k.split('.')[-1].replace('_', ' ').title(),
-         'old_value': before.get(k, ''), 'new_value': v}
-        for k, v in after.items() if before.get(k, '') != v and k != 'status'
-    ]
+    from apps.agents.services.profile_edit_log import build_changes
+    changes = build_changes(before, after)
     status_before, status_after = before.get('status'), after.get('status')
     if not changes and status_before == status_after:
         return

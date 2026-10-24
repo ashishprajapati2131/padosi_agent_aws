@@ -1,4 +1,5 @@
 """Agent profile saves are recorded so the admin approval drawer can show what changed."""
+import html
 import json
 from unittest.mock import MagicMock, patch
 
@@ -73,11 +74,15 @@ class WebEditToAdminDrawerTests(TestCase):
         self.assertEqual(r1.status_code, 200, r1.content)
         r2 = self.client.post(url, {'experience_years': '8', 'client_base': '100',
                                     'service_pincode': '380001', 'serviceable_cities[]': ['Ahmedabad'],
-                                    'current_step': 2})
+                                    'claims_processed': '10', 'claims_settled': '9', 'current_step': 2})
         self.assertEqual(r2.status_code, 200, r2.content)
         # Web visual step 3 posts backend step 4, which saves segments.
         r3 = self.client.post(url, {'segments[]': ['life', 'health'], 'current_step': 4})
         self.assertEqual(r3.status_code, 200, r3.content)
+        r5 = self.client.post(url, {'career_highlights': 'MDRT 2025', 'linkedin_url': 'https://linkedin.com/in/x',
+                                    'career_timelines[0][event_text]': 'Joined LIC',
+                                    'career_timelines[0][year]': '2015', 'current_step': 5})
+        self.assertEqual(r5.status_code, 200, r5.content)
         r4 = self.client.post(url, {'current_step': 7})
         self.assertEqual(r4.status_code, 200, r4.content)
 
@@ -90,6 +95,22 @@ class WebEditToAdminDrawerTests(TestCase):
         seg = next(c for log in data['logs'] for c in log['changes'] if c['field'] == 'insurance_segments')
         self.assertEqual((seg['old_value'], seg['new_value']), ('life', 'health, life'))
         self.assertTrue(any(l['status_after'] == 'pending_approval' for l in data['logs']), data)
+
+        # All four edit-profile sections show up, each change labelled with its section.
+        by_field = {c['field']: c for log in data['logs'] for c in log['changes']}
+        self.assertEqual({html.unescape(c['section']) for c in by_field.values()},
+                         {'Basic Info', 'Professional Details', 'Portfolio & Segments', 'Additional Info'})
+        self.assertEqual(by_field['experience_range']['label'], 'Years of Experience')
+        self.assertIn('Processed 10, Settled 9', by_field['performance_stats']['new_value'])
+        self.assertEqual(by_field['profile.career_highlights']['new_value'], 'MDRT 2025')
+        self.assertIn('linkedin: https://linkedin.com/in/x', by_field['profile.social_links']['new_value'])
+        self.assertIn('2015', by_field['career_timeline']['new_value'])
+        self.assertIn('Joined LIC', by_field['career_timeline']['new_value'])
+        self.assertEqual({l['step_label'] for l in data['logs']},
+                         {'Basic Info', 'Professional Details', 'Portfolio & Segments', 'Additional Info',
+                          'Final Submission'})
+        # Internal columns never appear as agent edits.
+        self.assertFalse({'updated_at', 'registration_step', 'profile.slug'} & set(by_field))
 
 
 class AppProfileEditLogTests(SimpleTestCase):
