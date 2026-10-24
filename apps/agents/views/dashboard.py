@@ -1538,6 +1538,16 @@ def _profile_edit_snapshot(agent, profile):
                 continue
             value = getattr(obj, f.attname)
             snap[prefix + f.name] = '' if value is None else str(value)
+    # Child tables (segments etc.) are replaced wholesale on save; compare them as sorted text.
+    joined = lambda rows: ', '.join(sorted(str(r) for r in rows))
+    snap['insurance_segments'] = joined(agent.insuranceSegments.values_list('segment_type', flat=True))
+    snap['serviceable_cities'] = joined(agent.serviceableCities.values_list('name', flat=True))
+    snap['product_expertise'] = joined(
+        f'{s}/{p}: {l}' for s, p, l in agent.productExpertise.values_list('segment_type', 'product_name', 'expertise_level'))
+    snap['family_licenses'] = joined(
+        f'{n} ({r})' for n, r in agent.familyLicenses.values_list('full_name', 'relationship'))
+    snap['portfolios'] = joined(
+        f'{s}: {c}' for s, c in agent.portfolios.values_list('segment_type', 'primary_companies'))
     return snap
 
 

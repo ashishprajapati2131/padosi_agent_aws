@@ -6,7 +6,7 @@ class AgentProfileEditLog(Base):
     """Mirror of Django apps.agents.AgentProfileEditLog (Django owns the table)."""
     __tablename__ = "agent_profile_edit_logs"
 
-    id = Column(BigInteger, primary_key=True, index=True)
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, index=True)
     agent_id = Column(Integer, nullable=False, index=True)
     edited_by = Column(String(50), nullable=False)
     edited_by_id = Column(Integer, nullable=True)

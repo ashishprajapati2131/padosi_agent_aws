@@ -406,7 +406,7 @@ class ProfileService:
         if new_claims and not existing_claims:
             lock_service.require_feature_unlocked(agent, "edit_profile_claim_support")
 
-        before = self._edit_snapshot(agent)
+        before = self._edit_snapshot(agent, db)
         try:
             # Step 1: Basic Info
             # Email is the login id. Agents cannot change it from the app.
@@ -696,7 +696,7 @@ class ProfileService:
     _EDIT_LOG_SKIP = {'id', 'agent_id', 'created_at', 'updated_at', 'last_login_at', 'remember_token'}
 
     @classmethod
-    def _edit_snapshot(cls, agent) -> dict:
+    def _edit_snapshot(cls, agent, db=None) -> dict:
         """Flat {field: value} of Agent + AgentProfile columns, for the admin edit-history diff."""
         snap = {}
         for prefix, obj in (('', agent), ('profile.', getattr(agent, 'profile', None))):
@@ -711,11 +711,35 @@ class ProfileService:
                 if isinstance(value, (dict, list)):
                     value = json.dumps(value, sort_keys=True)
                 snap[prefix + name] = '' if value is None else str(value)
+        if db is not None and snap:
+            try:
+                snap.update(cls._child_table_snapshot(agent, db))
+            except Exception:  # the edit log must never block a profile save
+                logger.exception("Edit-log child snapshot failed for agent_id=%s", agent.id)
         return snap
+
+    @staticmethod
+    def _child_table_snapshot(agent, db) -> dict:
+        # Child tables are replaced via bulk delete + add, so query them rather than
+        # reading possibly stale relationship collections. Same keys as the web snapshot.
+        joined = lambda rows: ', '.join(sorted(str(r) for r in rows))
+        q = lambda *cols: db.query(*cols).filter(cols[0].class_.agent_id == agent.id).all()
+        return {
+            'insurance_segments': joined(s for (s,) in q(AgentInsuranceSegment.segment_type)),
+            'serviceable_cities': joined(
+                n for (n,) in db.query(City.name).join(AgentServiceableCity, AgentServiceableCity.city_id == City.id)
+                .filter(AgentServiceableCity.agent_id == agent.id).all()),
+            'product_expertise': joined(f'{s}/{p}: {l}' for s, p, l in q(
+                AgentProductExpertise.segment_type, AgentProductExpertise.product_name, AgentProductExpertise.expertise_level)),
+            'family_licenses': joined(f'{n} ({r})' for n, r in q(
+                AgentFamilyLicense.full_name, AgentFamilyLicense.relationship)),
+            'portfolios': joined(f'{s}: {c}' for s, c in q(
+                AgentPortfolio.segment_type, AgentPortfolio.primary_companies)),
+        }
 
     def _log_profile_edit(self, db, agent, before: dict, step: int, step_label: str):
         """Same row shape as apps/agents/views/dashboard.py _log_profile_edit (web saves)."""
-        after = self._edit_snapshot(agent)
+        after = self._edit_snapshot(agent, db)
         changes = [
             {'field': k, 'label': k.split('.')[-1].replace('_', ' ').title(),
              'old_value': before.get(k, ''), 'new_value': v}
@@ -880,7 +904,7 @@ class ProfileService:
         lock_service.require_feature_unlocked(agent, "edit_profile_basic")
         self._reject_email_change(agent.email, payload.agent.email)
 
-        before = self._edit_snapshot(agent)
+        before = self._edit_snapshot(agent, db)
         try:
             # Email is the login id. Agents cannot change it from the app.
             previous_email = agent.email
@@ -921,7 +945,7 @@ class ProfileService:
         if payload.agent.leadPreferences is not None:
             lock_service.require_feature_unlocked(agent, "lead_preferences")
 
-        before = self._edit_snapshot(agent)
+        before = self._edit_snapshot(agent, db)
         try:
             profile = self._ensure_profile(db, agent)
             profile.pan_number = payload.profile.pan_number
@@ -995,7 +1019,7 @@ class ProfileService:
             if has_companies:
                 lock_service.require_feature_unlocked(agent, "edit_profile_companies")
 
-        before = self._edit_snapshot(agent)
+        before = self._edit_snapshot(agent, db)
         try:
             profile = self._ensure_profile(db, agent)
             if payload.profile is not None:
@@ -1071,7 +1095,7 @@ class ProfileService:
         if new_website.strip() != existing_website.strip() or new_socials != existing_socials:
             lock_service.require_feature_unlocked(agent, "edit_profile_social_media")
 
-        before = self._edit_snapshot(agent)
+        before = self._edit_snapshot(agent, db)
         try:
             profile = self._ensure_profile(db, agent)
             profile.website_url = payload.profile.website
@@ -1098,7 +1122,7 @@ class ProfileService:
             if not profile:
                 raise HTTPException(status_code=404, detail="Agent profile not found.")
             agent = db.query(Agent).filter(Agent.id == agent_id).first()
-            before = self._edit_snapshot(agent) if agent else {}
+            before = self._edit_snapshot(agent, db) if agent else {}
             profile.profile_photo_path = secure_url
             if agent:
                 self._mark_pending_approval(agent)
