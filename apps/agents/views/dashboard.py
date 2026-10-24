@@ -1522,6 +1522,51 @@ def _collect_license_uploads(request):
     return payloads, None
 
 
+_EDIT_LOG_STEP_LABELS = {
+    1: 'Basic Info', 2: 'Professional Details', 3: 'Insurance Segments', 4: 'Portfolios',
+    5: 'Additional Info', 6: 'Lead Preferences', 7: 'Final Submission',
+}
+_EDIT_LOG_SKIP = {'id', 'agent', 'created_at', 'updated_at', 'last_login_at', 'remember_token'}
+
+
+def _profile_edit_snapshot(agent, profile):
+    """Flat {field: value} of the Agent + AgentProfile columns, for the admin edit-history diff."""
+    snap = {}
+    for prefix, obj in (('', agent), ('profile.', profile)):
+        for f in obj._meta.concrete_fields:
+            if f.name in _EDIT_LOG_SKIP or 'password' in f.name or 'token' in f.name:
+                continue
+            value = getattr(obj, f.attname)
+            snap[prefix + f.name] = '' if value is None else str(value)
+    return snap
+
+
+def _log_profile_edit(request, agent, before, after, current_step, is_admin_edit):
+    from apps.agents.models import AgentProfileEditLog
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware
+    changes = [
+        {'field': k, 'label': k.split('.')[-1].replace('_', ' ').title(),
+         'old_value': before.get(k, ''), 'new_value': v}
+        for k, v in after.items() if before.get(k, '') != v and k != 'status'
+    ]
+    status_before, status_after = before.get('status'), after.get('status')
+    if not changes and status_before == status_after:
+        return
+    step = int(current_step) if str(current_step or '').isdigit() else None
+    AgentProfileEditLog.objects.create(
+        agent_id=agent.id,
+        edited_by='admin' if is_admin_edit else 'agent',
+        edited_by_id=request.session.get('admin_id') if is_admin_edit else agent.id,
+        # step must be set: get_edit_logs treats admin rows with step=None as approval boundaries
+        step=step or 7,
+        step_label=_EDIT_LOG_STEP_LABELS.get(step, 'Profile Edit'),
+        changes=changes,
+        ip_address=ThreatMonitorMiddleware.get_client_ip(request),
+        status_before=status_before,
+        status_after=status_after,
+    )
+
+
 def apply_profile_update(request, agent, is_admin_edit=False):
     from django.http import JsonResponse
     from django.db import transaction
@@ -1536,6 +1581,7 @@ def apply_profile_update(request, agent, is_admin_edit=False):
     import time
     import uuid
     profile, _ = AgentProfile.objects.get_or_create(agent=agent)
+    edit_snapshot_before = _profile_edit_snapshot(agent, profile)
     current_step = request.POST.get('current_step')
     license_payloads, license_error = _collect_license_uploads(request)
     if license_error:
@@ -2126,6 +2172,13 @@ def apply_profile_update(request, agent, is_admin_edit=False):
             from django.core.cache import cache
             from apps.agents.models import og_image_cache_key
             cache.delete(og_image_cache_key(agent.id))
+
+            try:
+                with transaction.atomic():  # savepoint: a logging error must not roll back the profile save
+                    _log_profile_edit(request, agent, edit_snapshot_before,
+                                      _profile_edit_snapshot(agent, profile), current_step, is_admin_edit)
+            except Exception:
+                logger.exception("Profile edit log failed for agent_id=%s", agent.id)
 
             def _doc_url(field_file):
                 name = str(field_file or '').strip()

@@ -19,6 +19,7 @@ from fastapi_app.models.agent_performance_stat import AgentPerformanceStat
 from fastapi_app.models.agent_portfolio import AgentPortfolio
 from fastapi_app.models.agent_product_expertise import AgentProductExpertise
 from fastapi_app.models.agent_profile_view import AgentProfileView
+from fastapi_app.models.agent_profile_edit_log import AgentProfileEditLog
 from fastapi_app.models.agent_review import AgentReview
 from fastapi_app.models.agent_service_pincode import AgentServicePincode
 from fastapi_app.models.agent_serviceable_city import AgentServiceableCity

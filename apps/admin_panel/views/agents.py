@@ -913,6 +913,7 @@ def get_agent_json(request, id):
 
 
 from django.utils.timesince import timesince
+from django.utils.html import escape
 from django.db.models import Q
 
 def get_edit_logs(request, id):
@@ -956,6 +957,12 @@ def get_edit_logs(request, id):
                         changes = json.loads(log.changes)
                     except (json.JSONDecodeError, TypeError):
                         pass
+            # The drawer renders these via innerHTML and the values are agent-typed.
+            if isinstance(changes, list):
+                changes = [
+                    {k: escape(v) if isinstance(v, str) else v for k, v in ch.items()}
+                    for ch in changes if isinstance(ch, dict)
+                ]
 
             diff_for_humans = timesince(log.created_at) + " ago" if log.created_at else ""
             created_at_str = log.created_at.strftime('%d %b %Y, %I:%M %p') if log.created_at else ""

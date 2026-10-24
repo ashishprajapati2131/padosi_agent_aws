@@ -78,6 +78,8 @@ from fastapi_app.models.agent_portfolio import AgentPortfolio
 from fastapi_app.models.agent_achievement_photo import AgentAchievementPhoto
 from fastapi_app.models.agent_career_timeline import AgentCareerTimeline
 from fastapi_app.models.agent_lead_preference import AgentLeadPreference
+from fastapi_app.models.agent_profile_edit_log import AgentProfileEditLog
+from sqlalchemy import inspect as sa_inspect
 
 class ProfileService:
     def __init__(self, agent_repo: AgentRepository):
@@ -404,6 +406,7 @@ class ProfileService:
         if new_claims and not existing_claims:
             lock_service.require_feature_unlocked(agent, "edit_profile_claim_support")
 
+        before = self._edit_snapshot(agent)
         try:
             # Step 1: Basic Info
             # Email is the login id. Agents cannot change it from the app.
@@ -660,6 +663,7 @@ class ProfileService:
             if agent.status not in ('suspended', 'blacklisted', 'rejected'):
                 agent.status = 'pending_approval'
 
+            self._log_profile_edit(db, agent, before, 7, 'Final Submission')
             db.commit()
 
         except HTTPException:
@@ -688,6 +692,46 @@ class ProfileService:
     def _mark_pending_approval(self, agent):
         if agent.status not in ('suspended', 'blacklisted', 'rejected'):
             agent.status = 'pending_approval'
+
+    _EDIT_LOG_SKIP = {'id', 'agent_id', 'created_at', 'updated_at', 'last_login_at', 'remember_token'}
+
+    @classmethod
+    def _edit_snapshot(cls, agent) -> dict:
+        """Flat {field: value} of Agent + AgentProfile columns, for the admin edit-history diff."""
+        snap = {}
+        for prefix, obj in (('', agent), ('profile.', getattr(agent, 'profile', None))):
+            state = sa_inspect(obj, raiseerr=False) if obj is not None else None
+            if state is None or not hasattr(state, 'mapper'):
+                continue
+            for attr in state.mapper.column_attrs:
+                name = attr.key
+                if name in cls._EDIT_LOG_SKIP or 'password' in name or 'token' in name:
+                    continue
+                value = getattr(obj, name)
+                if isinstance(value, (dict, list)):
+                    value = json.dumps(value, sort_keys=True)
+                snap[prefix + name] = '' if value is None else str(value)
+        return snap
+
+    def _log_profile_edit(self, db, agent, before: dict, step: int, step_label: str):
+        """Same row shape as apps/agents/views/dashboard.py _log_profile_edit (web saves)."""
+        after = self._edit_snapshot(agent)
+        changes = [
+            {'field': k, 'label': k.split('.')[-1].replace('_', ' ').title(),
+             'old_value': before.get(k, ''), 'new_value': v}
+            for k, v in after.items() if before.get(k, '') != v and k != 'status'
+        ]
+        if not after or (not changes and before.get('status') == after.get('status')):
+            return
+        try:
+            with db.begin_nested():  # savepoint: a logging error must not roll back the profile save
+                db.add(AgentProfileEditLog(
+                    agent_id=agent.id, edited_by='agent', edited_by_id=agent.id,
+                    step=step, step_label=f'{step_label} (App)', changes=changes,
+                    status_before=before.get('status'), status_after=after.get('status'),
+                ))
+        except Exception:
+            logger.exception("Profile edit log failed for agent_id=%s", agent.id)
 
     @staticmethod
     def _socials_as_dict(social_links) -> dict:
@@ -836,6 +880,7 @@ class ProfileService:
         lock_service.require_feature_unlocked(agent, "edit_profile_basic")
         self._reject_email_change(agent.email, payload.agent.email)
 
+        before = self._edit_snapshot(agent)
         try:
             # Email is the login id. Agents cannot change it from the app.
             previous_email = agent.email
@@ -851,6 +896,7 @@ class ProfileService:
             profile.date_of_birth = payload.profile.date_of_birth or None
 
             self._mark_pending_approval(agent)
+            self._log_profile_edit(db, agent, before, 1, 'Basic Info')
             db.commit()
         except HTTPException:
             db.rollback()
@@ -875,6 +921,7 @@ class ProfileService:
         if payload.agent.leadPreferences is not None:
             lock_service.require_feature_unlocked(agent, "lead_preferences")
 
+        before = self._edit_snapshot(agent)
         try:
             profile = self._ensure_profile(db, agent)
             profile.pan_number = payload.profile.pan_number
@@ -921,6 +968,7 @@ class ProfileService:
                 )
 
             self._mark_pending_approval(agent)
+            self._log_profile_edit(db, agent, before, 2, 'Professional Details')
             db.commit()
         except HTTPException:
             db.rollback()
@@ -947,6 +995,7 @@ class ProfileService:
             if has_companies:
                 lock_service.require_feature_unlocked(agent, "edit_profile_companies")
 
+        before = self._edit_snapshot(agent)
         try:
             profile = self._ensure_profile(db, agent)
             if payload.profile is not None:
@@ -989,6 +1038,7 @@ class ProfileService:
                 ))
 
             self._mark_pending_approval(agent)
+            self._log_profile_edit(db, agent, before, 4, 'Portfolios')
             db.commit()
         except HTTPException:
             db.rollback()
@@ -1021,6 +1071,7 @@ class ProfileService:
         if new_website.strip() != existing_website.strip() or new_socials != existing_socials:
             lock_service.require_feature_unlocked(agent, "edit_profile_social_media")
 
+        before = self._edit_snapshot(agent)
         try:
             profile = self._ensure_profile(db, agent)
             profile.website_url = payload.profile.website
@@ -1028,6 +1079,7 @@ class ProfileService:
             profile.social_links = new_socials
 
             self._mark_pending_approval(agent)
+            self._log_profile_edit(db, agent, before, 5, 'Additional Info')
             db.commit()
         except HTTPException:
             db.rollback()
@@ -1045,10 +1097,12 @@ class ProfileService:
             profile = db.query(AgentProfile).filter(AgentProfile.agent_id == agent_id).first()
             if not profile:
                 raise HTTPException(status_code=404, detail="Agent profile not found.")
-            profile.profile_photo_path = secure_url
             agent = db.query(Agent).filter(Agent.id == agent_id).first()
+            before = self._edit_snapshot(agent) if agent else {}
+            profile.profile_photo_path = secure_url
             if agent:
                 self._mark_pending_approval(agent)
+                self._log_profile_edit(db, agent, before, 1, 'Profile Photo')
             db.commit()
             response_url = f"/media/{secure_url}" if not secure_url.startswith("http") else secure_url
             return {"success": True, "profile_photo_url": response_url}
