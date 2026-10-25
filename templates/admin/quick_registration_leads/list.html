@@ -270,7 +270,7 @@
                                 <i class="fa-solid fa-user-check me-1"></i> Agent
                             </a>
                             {% elif lead.draft_id %}
-                            <a class="btn btn-sm btn-outline-info" href="{% url 'admin_agents_pending' %}?search={{ lead.phone }}" title="View Incomplete Draft">
+                            <a class="btn btn-sm btn-outline-info" href="{% url 'admin_agents_pending_registrations' %}?search={{ lead.phone }}" title="View Incomplete Draft">
                                 <i class="fa-solid fa-file-pen me-1"></i> Draft
                             </a>
                             {% endif %}

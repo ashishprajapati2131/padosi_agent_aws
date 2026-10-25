@@ -108,3 +108,47 @@ class AdminHomepageSettingsTests(TestCase):
         # Verify activity log creation
         logs = AdminActivityLog.objects.filter(action='Update homepage content')
         self.assertEqual(logs.count(), 1)
+
+
+class AdminProfileBannersTests(TestCase):
+    def setUp(self):
+        authenticate_client(self.client)
+        from apps.agents.models import ProfileBannerPreset
+        self.preset = ProfileBannerPreset.objects.create(
+            title='Admin Test Preset',
+            category='General',
+            image_path='banners/presets/preset_1_executive_navy.svg',
+            display_order=1,
+            is_active=True
+        )
+
+    def test_admin_profile_banners_index(self):
+        response = self.client.get(reverse('admin_profile_banners_index'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Agent Profile Banners')
+        self.assertContains(response, 'Admin Test Preset')
+        self.assertContains(response, 'Enable Profile Banners')
+
+    def test_admin_profile_banner_toggle(self):
+        response = self.client.post(reverse('admin_profile_banner_toggle', kwargs={'banner_id': self.preset.id}))
+        self.preset.refresh_from_db()
+        self.assertFalse(self.preset.is_active)
+
+        # Toggle back
+        self.client.post(reverse('admin_profile_banner_toggle', kwargs={'banner_id': self.preset.id}))
+        self.preset.refresh_from_db()
+        self.assertTrue(self.preset.is_active)
+
+    def test_admin_profile_banner_settings_save(self):
+        response = self.client.post(reverse('admin_profile_banner_settings_save'), {
+            'profile_banner_enabled': '1',
+            'profile_banner_allow_custom_upload': '0',
+        })
+        self.assertEqual(SiteSetting.get_value('profile_banner_enabled'), '1')
+        self.assertEqual(SiteSetting.get_value('profile_banner_allow_custom_upload'), '0')
+
+    def test_admin_profile_banner_delete(self):
+        preset_id = self.preset.id
+        response = self.client.post(reverse('admin_profile_banner_delete', kwargs={'banner_id': preset_id}))
+        from apps.agents.models import ProfileBannerPreset
+        self.assertFalse(ProfileBannerPreset.objects.filter(id=preset_id).exists())

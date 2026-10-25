@@ -172,6 +172,7 @@ from .views.free_trial import (
 )
 from .views import finance
 from .views import content
+from .views import wa_bot_admin
 from .views.calculators import (
     index as content_calculators_index,
     edit as content_calculators_edit,
@@ -526,6 +527,11 @@ urlpatterns = [
     path("admin/settings/templates/",       settings.templates,           name="admin_settings_templates"),
     path("admin/settings/templates/update/",settings.update_templates,    name="admin_settings_templates_update"),
     path("admin/settings/update/",          settings.update_settings,     name="admin_settings_update"),
+    path("admin/settings/wa-bot/toggle/",   settings.toggle_wa_bot_service, name="admin_toggle_wa_bot_service"),
+    path("admin/wa_agent_bot/wabotsession/", wa_bot_admin.wa_bot_sessions_list, name="admin_wa_bot_sessions"),
+    path("admin/wa-bot/sessions/",           wa_bot_admin.wa_bot_sessions_list, name="admin_wa_bot_sessions_alt"),
+    path("admin/wa_agent_bot/wabotmessagelog/", wa_bot_admin.wa_bot_logs_list, name="admin_wa_bot_logs"),
+    path("admin/wa-bot/logs/",               wa_bot_admin.wa_bot_logs_list, name="admin_wa_bot_logs_alt"),
     path("admin/settings/homepage/",        settings.homepage,            name="admin_settings_homepage"),
     path("admin/settings/homepage/update/", settings.update_homepage,     name="admin_settings_homepage_update"),
     path("admin/settings/hero-section/",    settings.hero_section,        name="admin_settings_hero_section"),

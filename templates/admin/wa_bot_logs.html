@@ -1,0 +1,150 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}WhatsApp Message Logs — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}System &rsaquo; WhatsApp Agent Bot &rsaquo; Message Logs{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-1">
+            <i class="fa-solid fa-clock-rotate-left text-primary me-2"></i> WhatsApp Message Logs
+        </h5>
+        <p class="text-muted mb-0" style="font-size: 13px;">
+            Full audit log of incoming user messages and automated WhatsApp bot replies with states and timestamps.
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/admin/wa_agent_bot/wabotsession/" class="btn btn-sm btn-outline-success">
+            <i class="fa-brands fa-whatsapp me-1"></i> Bot Sessions
+        </a>
+        <a href="{% url 'admin_settings_general' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-sliders me-1"></i> Bot Settings
+        </a>
+        <a href="/wa-bot/simulator/" target="_blank" class="btn btn-sm btn-success">
+            <i class="fa-solid fa-comments me-1"></i> Live Web Simulator
+        </a>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-grid mb-4" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#eef2ff;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-comments" style="color:#4f46e5;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.total }}</div>
+                <div class="stat-label">Total Messages Logged</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#ecfdf5;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-arrow-down-left" style="color:#059669;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.in }}</div>
+                <div class="stat-label">Incoming (From Agents)</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#f0f9ff;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-arrow-up-right" style="color:#0284c7;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.out }}</div>
+                <div class="stat-label">Outgoing (Bot Replies)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table Card -->
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h6 class="m-0 fw-bold">Message Audit Trail</h6>
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            <input type="text" name="phone" value="{{ phone_filter }}" placeholder="Filter by phone..." class="form-control form-control-sm" style="width: 170px;">
+            <select name="direction" class="form-select form-select-sm" style="width: 140px;">
+                <option value="">All Directions</option>
+                <option value="in" {% if dir_filter == 'in' %}selected{% endif %}>📥 Incoming</option>
+                <option value="out" {% if dir_filter == 'out' %}selected{% endif %}>📤 Outgoing</option>
+            </select>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search message text..." class="form-control form-control-sm" style="width: 180px;">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Filter</button>
+            {% if phone_filter or dir_filter or search_query %}
+                <a href="?" class="btn btn-sm btn-outline-secondary">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="font-size: 12px; width: 170px;">DATE &amp; TIME</th>
+                    <th style="font-size: 12px; width: 150px;">PHONE NUMBER</th>
+                    <th style="font-size: 12px; width: 110px;">DIRECTION</th>
+                    <th style="font-size: 12px; width: 150px;">STATE</th>
+                    <th style="font-size: 12px;">MESSAGE CONTENT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj %}
+                <tr>
+                    <td class="text-muted small">
+                        {{ log.created_at|date:"d M Y, h:i:s A" }}
+                    </td>
+                    <td>
+                        <a href="?phone={{ log.session.phone_number }}" class="text-decoration-none fw-bold text-dark">
+                            +{{ log.session.phone_number }}
+                        </a>
+                    </td>
+                    <td>
+                        {% if log.direction == 'in' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="fa-solid fa-arrow-down-left me-1"></i> IN (User)
+                            </span>
+                        {% else %}
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                <i class="fa-solid fa-arrow-up-right me-1"></i> OUT (Bot)
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-muted border small">{{ log.state_at_time }}</span>
+                    </td>
+                    <td style="max-width: 500px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13.5px; white-space: pre-wrap; word-break: break-word;">{{ log.content }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="fa-regular fa-comment-dots fa-2x mb-3 text-secondary d-block"></i>
+                        No WhatsApp message logs found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white py-3 d-flex justify-content-between align-items-center">
+        <span class="text-muted small">Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} entries</span>
+        <ul class="pagination pagination-sm mb-0">
+            {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if phone_filter %}&phone={{ phone_filter }}{% endif %}{% if dir_filter %}&direction={{ dir_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">&laquo;</a></li>
+            {% endif %}
+            <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+            {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if phone_filter %}&phone={{ phone_filter }}{% endif %}{% if dir_filter %}&direction={{ dir_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">&raquo;</a></li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

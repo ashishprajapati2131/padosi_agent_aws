@@ -125,6 +125,7 @@ INSTALLED_APPS = [
     'apps.insurance',
     'apps.distributors',
     'apps.chatbot',
+    'apps.wa_agent_bot',
     'apps.referral_championship',
     'apps.event_referral',
     'apps.wholesale',

@@ -2,6 +2,8 @@ import re
 import os
 import json
 from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.conf import settings
 from django.core.cache import cache
@@ -320,6 +322,7 @@ def general(request):
         'social_links': social_links,
         'distributor_invite_message': SiteSetting.get_value('distributor_invite_message', default_message),
         'wholesale_marketplace_enabled': SiteSetting.get_value('wholesale_marketplace_enabled', False),
+        'wa_agent_bot_enabled': SiteSetting.get_value('wa_agent_bot_enabled', True),
     }
 
     return render(request, 'admin/settings/general.html', context)
@@ -332,6 +335,7 @@ SETTINGS_FORM_KEYS = {
     'general': {
         'site_name', 'contact_email', 'contact_phone', 'contact_address',
         'social_links', 'distributor_invite_message', 'wholesale_marketplace_enabled',
+        'wa_agent_bot_enabled',
     },
     'seo': {
         'seo_meta_title', 'seo_meta_description', 'seo_keywords',
@@ -339,6 +343,25 @@ SETTINGS_FORM_KEYS = {
     },
     'security': {'rate_limit_clicks', 'rate_limit_timeframe', 'subscription_expiry_enforced'},
 }
+
+
+@require_POST
+def toggle_wa_bot_service(request):
+    """Quick AJAX ON/OFF toggle for the WhatsApp Agent Bot automation service."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+
+    current = bool(SiteSetting.get_value('wa_agent_bot_enabled', True))
+    new_val = not current
+    SiteSetting.set_value('wa_agent_bot_enabled', new_val, group='general')
+    AdminActivityLog.log(f"Toggled WhatsApp Bot to {'Enabled' if new_val else 'Disabled'}", 'SiteSetting', request=request)
+    status_str = 'Enabled' if new_val else 'Disabled'
+    return JsonResponse({
+        'success': True,
+        'enabled': new_val,
+        'message': f'WhatsApp Agent Automation is now {status_str}.'
+    })
 
 
 def update_settings(request):
@@ -366,6 +389,9 @@ def update_settings(request):
         if group == 'general':
             wholesale_enabled = request.POST.get('wholesale_marketplace_enabled') in ('1', 'true', 'on')
             SiteSetting.set_value('wholesale_marketplace_enabled', wholesale_enabled, group='general')
+
+            wa_bot_enabled = request.POST.get('wa_agent_bot_enabled') in ('1', 'true', 'on')
+            SiteSetting.set_value('wa_agent_bot_enabled', wa_bot_enabled, group='general')
             
         # Handle file uploads (site_logo, site_favicon, og_default_image)
         import uuid

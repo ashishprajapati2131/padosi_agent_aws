@@ -139,29 +139,63 @@ def _ensure_valid_secret(cfg: Settings) -> None:
     if key and key != _COMMITTED_DEFAULT_SECRET:
         return
 
-    # 2. Check environment or Django settings for an explicit SECRET_KEY or DJANGO_SECRET_KEY
+    # 2. Check Django settings for an explicit production SECRET_KEY
+    try:
+        from django.conf import settings as dj_settings
+        dj_secret = (getattr(dj_settings, "SECRET_KEY", "") or "").strip()
+        if dj_secret and dj_secret != _COMMITTED_DEFAULT_SECRET and not dj_secret.startswith("django-insecure"):
+            cfg.SECRET_KEY = dj_secret
+            if cfg.JWT_SECRET_KEY == _COMMITTED_DEFAULT_SECRET:
+                cfg.JWT_SECRET_KEY = dj_secret
+            os.environ.setdefault("SECRET_KEY", dj_secret)
+            return
+    except Exception:
+        pass
+
+    # 3. Check environment for an explicit SECRET_KEY or DJANGO_SECRET_KEY
     env_django_secret = (os.environ.get("DJANGO_SECRET_KEY") or os.environ.get("SECRET_KEY") or "").strip()
-    if env_django_secret and env_django_secret != _COMMITTED_DEFAULT_SECRET:
+    if env_django_secret and env_django_secret != _COMMITTED_DEFAULT_SECRET and not env_django_secret.startswith("django-insecure"):
         cfg.SECRET_KEY = env_django_secret
         if cfg.JWT_SECRET_KEY == _COMMITTED_DEFAULT_SECRET:
             cfg.JWT_SECRET_KEY = env_django_secret
         return
 
-    # 3. Check if JWT_SECRET_KEY is explicitly set to a custom value
+    # 4. Check if JWT_SECRET_KEY is explicitly set to a custom value
     env_jwt_secret = (getattr(cfg, "JWT_SECRET_KEY", None) or os.environ.get("JWT_SECRET_KEY") or "").strip()
     if env_jwt_secret and env_jwt_secret != _COMMITTED_DEFAULT_SECRET:
         cfg.SECRET_KEY = env_jwt_secret
         return
 
-    # 4. In debug mode, committed default is acceptable for local testing
+    # 5. In debug mode, committed default is acceptable for local testing
     debug = bool(cfg.DEBUG) or os.environ.get("DEBUG", "False").strip().lower() in ("true", "1", "yes")
     if debug:
         return
 
-    # 5. In production, fail closed: never generate deterministic or forgeable secrets
-    raise RuntimeError(
-        "FATAL: SECRET_KEY and JWT_SECRET_KEY must be explicitly set in the production environment. "
-        "Committed default or deterministic keys are strictly prohibited for JWT security."
+    # 6. In production without explicit secret in .env:
+    # Generate and persist a server-specific deployment key so FastAPI does not crash ASGI,
+    # tokens remain valid across restarts, and forgeable default keys are never used.
+    import secrets
+    secret_file = _PROJECT_ROOT / ".jwt_secret"
+    derived_secret = ""
+    try:
+        if secret_file.exists():
+            derived_secret = secret_file.read_text(encoding="utf-8").strip()
+        if not derived_secret:
+            derived_secret = secrets.token_urlsafe(48)
+            try:
+                secret_file.write_text(derived_secret, encoding="utf-8")
+            except Exception:
+                pass
+    except Exception:
+        derived_secret = secrets.token_urlsafe(48)
+
+    cfg.SECRET_KEY = derived_secret
+    if cfg.JWT_SECRET_KEY == _COMMITTED_DEFAULT_SECRET:
+        cfg.JWT_SECRET_KEY = derived_secret
+    os.environ.setdefault("SECRET_KEY", derived_secret)
+    logger.warning(
+        "FastAPI SECRET_KEY was missing or committed default; generated and persisted "
+        "a deployment-specific secret. To override, set SECRET_KEY in your .env file."
     )
 
 

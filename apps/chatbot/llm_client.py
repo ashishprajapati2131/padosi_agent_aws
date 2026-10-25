@@ -426,11 +426,16 @@ def generate_suggestion_chips():
         if content.endswith("```"):
             content = content[:-3]
             
-        chips = json.loads(content.strip())
-        if isinstance(chips, list) and len(chips) == 3:
-            return chips
+        content_clean = content.strip()
+        match = re.search(r'\[.*\]', content_clean, re.DOTALL)
+        if match:
+            content_clean = match.group(0)
+            
+        chips = json.loads(content_clean)
+        if isinstance(chips, list) and len(chips) >= 3:
+            return [str(c).strip() for c in chips[:3]]
     except Exception as e:
-        logger.error(f"Error generating chips: {e}")
+        logger.warning(f"Could not parse LLM suggestion chips, using fallback: {e}")
         
     # Fallback
     return [

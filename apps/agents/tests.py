@@ -175,6 +175,64 @@ class AgentPublicProfileTests(TestCase):
             ).exists()
         )
 
+    def test_guest_review_post_with_optional_email_omitted(self):
+        """Guest review without email should succeed and store reviewer_email as None."""
+        response = self.client.post(
+            reverse('agents:agent_store_review', kwargs={'slug': 'ravi-kumar'}),
+            {
+                'rating': '4',
+                'review': 'Great consultation and timely advice.',
+                'fullname': 'No Email Reviewer',
+                'email': '',
+                'mobile': '9876543222',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json().get('status'), 'success')
+        review = AgentReview.objects.filter(
+            agent=self.agent,
+            reviewer_mobile='9876543222',
+            is_approved=True,
+        ).first()
+        self.assertIsNotNone(review)
+        self.assertIsNone(review.reviewer_email)
+        self.assertEqual(review.reviewer_name, 'No Email Reviewer')
+
+    def test_guest_review_duplicate_mobile_rejected(self):
+        """Duplicate review from the same mobile number for the same agent should be rejected with 422."""
+        AgentReview.objects.create(
+            agent=self.agent,
+            reviewer_name='Prior Reviewer',
+            reviewer_mobile='9876543333',
+            rating=5,
+            review='First review from this number.',
+            is_approved=True,
+        )
+        response = self.client.post(
+            reverse('agents:agent_store_review', kwargs={'slug': 'ravi-kumar'}),
+            {
+                'rating': '5',
+                'review': 'Second review attempt with same mobile.',
+                'fullname': 'Another Person',
+                'email': 'different@example.com',
+                'mobile': '9876543333',
+            },
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertIn('mobile', response.json().get('errors', {}))
+
+    def test_public_review_page_renders_form_with_popup(self):
+        """GET /review/<slug>/ renders clean review form and guest popup details fields."""
+        response = self.client.get(
+            reverse('agents:agent_public_review', kwargs={'slug': 'ravi-kumar'})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="paRating"')
+        self.assertContains(response, 'id="paReviewText"')
+        self.assertContains(response, 'swal-fullname')
+        self.assertContains(response, 'swal-email')
+        self.assertContains(response, 'swal-mobile')
+
 
 class AchievementPhotoUrlTests(SimpleTestCase):
     def test_laravel_path_resolves_to_uploaded_django_folder(self):
@@ -330,6 +388,124 @@ class ClientQuickRegisterTests(TestCase):
         self.assertIsNotNone(lead)
         self.assertEqual(lead.customer_mobile, '9876543288')
         self.assertEqual(lead.customer_name, 'Happy Client')
+
+
+class ProfileBannerFeatureTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='banneragent',
+            email='banner@test.com',
+            password='password123'
+        )
+        self.agent = Agent.objects.create(
+            user=self.user,
+            fullname='Banner Hero',
+            email='banner@test.com',
+            mobile='9876543210',
+            status='active'
+        )
+        self.profile = AgentProfile.objects.create(
+            agent=self.agent,
+            slug='banner-hero',
+            display_name='Banner Hero',
+            languages='English, Gujarati',
+            address='123 Ashram Road'
+        )
+        from apps.home.models.site_setting import SiteSetting
+        SiteSetting.set_value('profile_banner_enabled', '1')
+        SiteSetting.set_value('profile_banner_allow_custom_upload', '1')
+
+        from apps.agents.models import ProfileBannerPreset
+        self.preset = ProfileBannerPreset.objects.create(
+            title='Executive Shield Test',
+            category='Corporate',
+            image_path='banners/presets/preset_1_executive_navy.svg',
+            display_order=1,
+            is_active=True
+        )
+
+    def test_preset_model_and_image_url(self):
+        self.assertEqual(self.preset.title, 'Executive Shield Test')
+        self.assertTrue(self.preset.image_url.startswith('/media/'))
+        self.assertIn('preset_1_executive_navy.svg', self.preset.image_url)
+
+    def test_banner_image_url_with_preset(self):
+        self.profile.banner_preset = self.preset
+        self.profile.custom_banner_path = None
+        self.profile.save()
+
+        self.assertEqual(self.profile.banner_image_url, self.preset.image_url)
+
+    def test_banner_image_url_with_custom_banner(self):
+        self.profile.banner_preset = self.preset
+        self.profile.custom_banner_path = 'banners/custom/my_custom_banner.png'
+        self.profile.save()
+
+        # Custom banner overrides preset when allowed
+        self.assertEqual(self.profile.banner_image_url, '/media/banners/custom/my_custom_banner.png')
+
+    def test_feature_flag_master_disable(self):
+        from apps.home.models.site_setting import SiteSetting
+        self.profile.banner_preset = self.preset
+        self.profile.save()
+
+        SiteSetting.set_value('profile_banner_enabled', '0')
+        self.assertIsNone(self.profile.banner_image_url)
+
+    def test_apply_profile_update_preset_selection(self):
+        from apps.agents.views.dashboard import apply_profile_update
+        from django.test.client import RequestFactory
+
+        factory = RequestFactory()
+        request = factory.post('/agent/update-profile/', {
+            'current_step': '1',
+            'full_name': 'Banner Hero Updated',
+            'mobile': '9876543210',
+            'languages': 'English',
+            'address': 'New Address 456',
+            'banner_preset_id': str(self.preset.id),
+        })
+        request.user = self.user
+
+        response = apply_profile_update(request, self.agent, is_admin_edit=False)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.banner_preset_id, self.preset.id)
+        self.assertIsNone(self.profile.custom_banner_path)
+
+    def test_apply_profile_update_remove_banner(self):
+        from apps.agents.views.dashboard import apply_profile_update
+        from django.test.client import RequestFactory
+
+        self.profile.banner_preset = self.preset
+        self.profile.custom_banner_path = 'banners/custom/old.jpg'
+        self.profile.save()
+
+        factory = RequestFactory()
+        request = factory.post('/agent/update-profile/', {
+            'current_step': '1',
+            'full_name': 'Banner Hero',
+            'mobile': '9876543210',
+            'languages': 'English',
+            'address': 'New Address 456',
+            'remove_banner': '1',
+        })
+        request.user = self.user
+
+        apply_profile_update(request, self.agent, is_admin_edit=False)
+        self.profile.refresh_from_db()
+        self.assertIsNone(self.profile.banner_preset)
+        self.assertIsNone(self.profile.custom_banner_path)
+
+    def test_public_profile_renders_banner_image(self):
+        self.profile.banner_preset = self.preset
+        self.profile.save()
+
+        response = self.client.get(
+            reverse('agents:agent_public_profile', kwargs={'slug': 'banner-hero'})
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'has-custom-banner')
+        self.assertContains(response, self.preset.image_url)
 
 
 

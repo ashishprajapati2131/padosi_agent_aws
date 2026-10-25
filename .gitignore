@@ -39,3 +39,18 @@ brag-output*/
 brag*.mp4
 setup_60s.py
 scratch_test_voice.mp3
+
+# Scratch audio & experimentation
+*.mp3
+*.wav
+*_output.txt
+*_out.txt
+.jwt_secret
+*nikhil*.py
+find_breaks.py
+find_precise_cuts.py
+verify_cuts*
+generate_sarvam_audio.py
+check_elevenlabs.py
+test_elevenlabs*.py
+inspect_new_audio.py

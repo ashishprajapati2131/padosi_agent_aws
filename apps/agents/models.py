@@ -716,10 +716,54 @@ class AgentSubscription(models.Model):
         return f"Subscription({self.selected_plan}, status={self.status})"
 
 
+class ProfileBannerPreset(models.Model):
+    title = models.CharField(max_length=255)
+    image_path = models.CharField(max_length=255)
+    category = models.CharField(max_length=100, default='General', blank=True)
+    is_active = models.BooleanField(default=True)
+    display_order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'profile_banner_presets'
+        ordering = ['display_order', '-created_at']
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def image_url(self):
+        path = (self.image_path or '').strip()
+        if not path:
+            return ''
+        import re
+        path_clean = re.sub(r'[\'\"<>\(\)\s;]', '', path)
+        if not path_clean:
+            return ''
+        if path_clean.startswith(('http://', 'https://')):
+            return path_clean
+        path_norm = path_clean.replace('\\', '/').lstrip('/')
+        if path_norm.startswith('static/'):
+            return f"/{path_norm}"
+        if path_norm.startswith('media/'):
+            return f"/{path_norm}"
+        return f"/media/{path_norm}"
+
+
 class AgentProfile(models.Model):
     agent = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='profile', db_constraint=False)
     slug = models.CharField(max_length=255, unique=True, blank=True)
     profile_photo_path = models.CharField(max_length=255, blank=True, null=True)
+    banner_preset = models.ForeignKey(
+        'ProfileBannerPreset',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='agent_profiles',
+        db_constraint=False
+    )
+    custom_banner_path = models.CharField(max_length=255, blank=True, null=True)
     display_name = models.CharField(max_length=255, blank=True, null=True)
     whatsapp = models.CharField(max_length=20, blank=True, null=True)
     languages = models.CharField(max_length=255, blank=True, null=True)
@@ -916,6 +960,36 @@ class AgentProfile(models.Model):
             return "English, Hindi"
         langs = [l.strip().capitalize() for l in self.languages.split(',') if l.strip()]
         return ", ".join(langs)
+
+    @property
+    def banner_image_url(self):
+        from apps.home.models.site_setting import SiteSetting
+        enabled_val = SiteSetting.get_value('profile_banner_enabled', '1')
+        if str(enabled_val).lower() not in ('1', 'true', 'yes'):
+            return None
+
+        allow_custom_val = SiteSetting.get_value('profile_banner_allow_custom_upload', '1')
+        allow_custom = str(allow_custom_val).lower() in ('1', 'true', 'yes')
+
+        if allow_custom and self.custom_banner_path:
+            path = (self.custom_banner_path or '').strip()
+            import re
+            path_clean = re.sub(r'[\'\"<>\(\)\s;]', '', path)
+            if not path_clean:
+                return None
+            if path_clean.startswith(('http://', 'https://')):
+                return path_clean
+            path_norm = path_clean.replace('\\', '/').lstrip('/')
+            if path_norm.startswith('static/'):
+                return f"/{path_norm}"
+            if path_norm.startswith('media/'):
+                return f"/{path_norm}"
+            return f"/media/{path_norm}"
+
+        if self.banner_preset and self.banner_preset.is_active:
+            return self.banner_preset.image_url
+
+        return None
 
 
 

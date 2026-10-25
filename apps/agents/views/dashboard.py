@@ -1160,16 +1160,15 @@ def store_review(request, slug, state_code=None):
         errors['review'] = ['The review may not be greater than 500 characters.']
         
     if not request.user.is_authenticated:
-        fullname = request.POST.get('fullname')
-        email = request.POST.get('email')
-        mobile = request.POST.get('mobile')
+        fullname = (request.POST.get('fullname') or '').strip()
+        email = (request.POST.get('email') or '').strip()
+        mobile = (request.POST.get('mobile') or '').strip()
         
         if not fullname:
             errors['fullname'] = ['The fullname field is required.']
-        if not email:
-            errors['email'] = ['The email field is required.']
-        elif '@' not in email or '.' not in email:
-            errors['email'] = ['The email must be a valid email address.']
+        if email:
+            if '@' not in email or '.' not in email:
+                errors['email'] = ['The email must be a valid email address.']
         if not mobile:
             errors['mobile'] = ['The mobile field is required.']
         else:
@@ -1178,7 +1177,7 @@ def store_review(request, slug, state_code=None):
                 errors['mobile'] = ['The mobile format is invalid. Must be 10 digits.']
     else:
         fullname = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.username
-        email = request.user.email
+        email = (request.user.email or '').strip()
         # Try to find user's agent mobile
         user_agent = Agent.objects.filter(user=request.user).first()
         mobile = user_agent.mobile if user_agent else ""
@@ -1195,7 +1194,7 @@ def store_review(request, slug, state_code=None):
     )
     previous_review_count = agent_review_count(agent)
         
-    reviewer_email = email.lower()
+    reviewer_email = email.lower() if email else None
     
     if request.user.is_authenticated:
         review_obj, created = AgentReview.objects.update_or_create(
@@ -1212,14 +1211,19 @@ def store_review(request, slug, state_code=None):
         )
     else:
         mobile_digits = re.sub(r'[^0-9]', '', mobile)
-        # The email is unverified, so an anonymous submission may create a review
-        # but never overwrite one: update_or_create let anyone who knew (or
-        # guessed) a reviewer's email rewrite that review's text and rating.
-        if AgentReview.objects.filter(agent=agent, reviewer_email=reviewer_email).exists():
+        # The email/mobile is unverified, so an anonymous submission may create a review
+        # but never overwrite one.
+        if reviewer_email and AgentReview.objects.filter(agent=agent, reviewer_email=reviewer_email).exists():
             return JsonResponse({
                 'status': 'error',
                 'message': 'A review from this email already exists for this agent.',
                 'errors': {'email': ['A review from this email already exists for this agent.']},
+            }, status=422)
+        if mobile_digits and AgentReview.objects.filter(agent=agent, reviewer_mobile=mobile_digits).exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'A review from this mobile number already exists for this agent.',
+                'errors': {'mobile': ['A review from this mobile number already exists for this agent.']},
             }, status=422)
         review_obj = AgentReview.objects.create(
             agent=agent,
@@ -1405,7 +1409,17 @@ def render_edit_profile(request, agent, is_admin_view=False):
         prof_name = prof_desc = ''
         prof_base = prof_full = 0
 
+    from apps.agents.models import ProfileBannerPreset
+    banner_presets = ProfileBannerPreset.objects.filter(is_active=True).order_by('display_order', '-created_at')
+    banner_enabled_val = SiteSetting.get_value('profile_banner_enabled', '1')
+    banner_feature_enabled = str(banner_enabled_val).lower() in ('1', 'true', 'yes')
+    allow_custom_val = SiteSetting.get_value('profile_banner_allow_custom_upload', '1')
+    banner_allow_custom_upload = str(allow_custom_val).lower() in ('1', 'true', 'yes')
+
     context = {
+        'banner_presets': banner_presets,
+        'banner_feature_enabled': banner_feature_enabled,
+        'banner_allow_custom_upload': banner_allow_custom_upload,
         'agent_plan': agent_plan,
         'agent': agent,
         'profile': profile,
@@ -1737,6 +1751,66 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                             'message': 'Validation failed',
                             'errors': {'profile_photo': [photo_error]}
                         }, status=422)
+
+                # Banner handling: presets, custom upload, or reset
+                remove_banner = request.POST.get('remove_banner') == '1'
+                banner_preset_id = request.POST.get('banner_preset_id')
+                custom_banner = request.FILES.get('custom_banner')
+
+                from apps.home.models.site_setting import SiteSetting
+                from apps.agents.models import ProfileBannerPreset
+                banner_enabled_val = SiteSetting.get_value('profile_banner_enabled', '1')
+                banner_feature_enabled = str(banner_enabled_val).lower() in ('1', 'true', 'yes')
+                allow_custom_val = SiteSetting.get_value('profile_banner_allow_custom_upload', '1')
+                banner_allow_custom_upload = str(allow_custom_val).lower() in ('1', 'true', 'yes')
+
+                if banner_feature_enabled:
+                    def _cleanup_old_custom_banner():
+                        if profile.custom_banner_path:
+                            try:
+                                if default_storage.exists(profile.custom_banner_path):
+                                    default_storage.delete(profile.custom_banner_path)
+                            except Exception:
+                                pass
+
+                    if remove_banner:
+                        _cleanup_old_custom_banner()
+                        profile.banner_preset = None
+                        profile.custom_banner_path = None
+                    elif custom_banner:
+                        if not banner_allow_custom_upload:
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Custom banner uploads are currently disabled by administrator.',
+                                'errors': {'custom_banner': ['Custom banner uploads are currently disabled.']}
+                            }, status=403)
+
+                        from apps.agents.utils.file_validation import validate_profile_photo
+                        from django.core.files.base import ContentFile
+                        banner_bytes = b''.join(custom_banner.chunks())
+                        ok, banner_err, safe_ext = validate_profile_photo(banner_bytes, custom_banner.name)
+                        if ok:
+                            _cleanup_old_custom_banner()
+                            banner_name = f"banners/custom/agent_{agent.id}_{int(time.time())}{safe_ext}"
+                            saved_banner_path = default_storage.save(banner_name, ContentFile(banner_bytes))
+                            profile.custom_banner_path = saved_banner_path
+                            profile.banner_preset = None
+                        elif banner_err:
+                            return JsonResponse({
+                                'status': 'error',
+                                'message': 'Validation failed',
+                                'errors': {'custom_banner': [banner_err]}
+                            }, status=422)
+                    elif banner_preset_id:
+                        try:
+                            if str(banner_preset_id).isdigit():
+                                preset_obj = ProfileBannerPreset.objects.filter(id=int(banner_preset_id), is_active=True).first()
+                                if preset_obj:
+                                    _cleanup_old_custom_banner()
+                                    profile.banner_preset = preset_obj
+                                    profile.custom_banner_path = None
+                        except Exception:
+                            pass
                     
                 profile.save()
                 
@@ -3120,6 +3194,8 @@ def save_google_review_settings(request):
         return JsonResponse({'success': False, 'message': 'Could not initialize Google review config.'}, status=500)
 
     url = request.POST.get('google_review_url', '').strip()
+    if url and not (url.startswith('http://') or url.startswith('https://')):
+        return JsonResponse({'success': False, 'message': 'Google review URL must start with http:// or https://.'}, status=400)
     is_enabled = request.POST.get('is_enabled') in ('1', 'true', 'on', True)
     rating_raw = request.POST.get('google_rating', '').strip()
     count_raw = request.POST.get('google_review_count', '').strip()

@@ -303,6 +303,131 @@ Overview
     background: #0369a1;
     transform: translateY(-1px);
 }
+
+/* ── LinkedIn-Style Cover Banner & Avatar ── */
+.profile-header-card {
+    position: relative;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+}
+.linkedin-banner-preview {
+    height: 180px;
+    border-radius: 18px 18px 0 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s ease;
+}
+.linkedin-banner-preview::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.35) 0%, rgba(15, 23, 42, 0.05) 60%, rgba(15, 23, 42, 0.5) 100%);
+    pointer-events: none;
+}
+.banner-edit-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(6px);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    z-index: 10;
+}
+.banner-edit-badge:hover {
+    background: #ffffff;
+    color: #0f172a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.banner-overlay-hint {
+    position: absolute;
+    bottom: 8px;
+    right: 14px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(0, 0, 0, 0.35);
+    padding: 2px 8px;
+    border-radius: 4px;
+    z-index: 5;
+}
+.banner-avatar-overlap {
+    position: relative;
+    margin-top: -65px;
+    padding-bottom: 20px;
+}
+.banner-avatar-overlap .photo-circle {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    border: 5px solid #ffffff !important;
+}
+.preset-banner-item {
+    flex: 0 0 170px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 6px;
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+.preset-banner-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.preset-banner-item.active {
+    border-color: #0d9488;
+    background: #f0fdfa;
+    box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+}
+.preset-thumb-wrap {
+    height: 75px;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    background: #0f172a;
+}
+.preset-thumb-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.preset-check-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #0d9488;
+    color: #ffffff;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.preset-banner-item.active .preset-check-badge {
+    display: flex;
+}
+.preset-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 6px;
+}
+.preset-category {
+    font-size: 10px;
+}
 </style>
 {% endblock %}
 
@@ -382,28 +507,99 @@ Overview
                             </div>
                         </div>
 
-                        <!-- Profile Photo Upload -->
-                        <div class="text-center mb-5">
-                            <div class="profile-photo-upload">
-                                <label for="profile-photo"
-                                    class="photo-circle mb-0 {% if profile.profile_photo_path %}has-image{% endif %}"
-                                    style="{% if profile.profile_photo_path %}border-style: solid; background-color: white;{% endif %}">
-                                    {% if profile.profile_photo_path %}
-                                    <img src="{{ profile.profile_photo_url }}" alt="Profile Photo"
-                                        onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.webp' %}';">
-                                    {% else %}
-                                    <i class="fas fa-camera fa-2x"></i>
-                                    {% endif %}
-                                    <input type="file" id="profile-photo" name="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" hidden>
-                                </label>
-                                <label for="profile-photo" class="upload-btn mt-3 d-block">
-                                    <i class="fas fa-upload mr-2"></i>Upload professional photo
-                                </label>
-                                <small class="text-muted d-block mt-1">Max 5MB, all image formats</small>
-                                <small class="text-muted d-block mt-1">Tip: drag photo to reframe, scroll to zoom,
-                                    double-click to reset</small>
+                        <!-- LinkedIn-Style Profile Header Card (Banner + Avatar) -->
+                        <div class="profile-header-card mb-4">
+                            <div class="linkedin-banner-preview" id="linkedinBannerPreview"
+                                 style="{% if profile.banner_image_url %}background-image: url('{{ profile.banner_image_url }}');{% else %}background: linear-gradient(135deg, #0f3a66 0%, #0f766e 50%, #047857 100%);{% endif %}">
+                                {% if banner_feature_enabled %}
+                                <div class="banner-edit-badge" onclick="toggleBannerCustomizer()" title="Change Profile Banner">
+                                    <i class="fas fa-camera mr-1"></i>
+                                    <span>Cover Banner</span>
+                                </div>
+                                {% endif %}
+                                <div class="banner-overlay-hint">
+                                    <i class="fas fa-panorama mr-1"></i> Profile Banner
+                                </div>
+                            </div>
+
+                            <!-- Overlapping Avatar Circle -->
+                            <div class="banner-avatar-overlap text-center">
+                                <div class="profile-photo-upload">
+                                    <label for="profile-photo"
+                                        class="photo-circle mb-0 {% if profile.profile_photo_path %}has-image{% endif %}"
+                                        style="{% if profile.profile_photo_path %}border-style: solid; background-color: white;{% endif %}">
+                                        {% if profile.profile_photo_path %}
+                                        <img src="{{ profile.profile_photo_url }}" alt="Profile Photo"
+                                            onerror="this.onerror=null;this.src='{% static 'img/avatar-icon.webp' %}';">
+                                        {% else %}
+                                        <i class="fas fa-camera fa-2x"></i>
+                                        {% endif %}
+                                        <input type="file" id="profile-photo" name="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" hidden>
+                                    </label>
+                                    <label for="profile-photo" class="upload-btn mt-2 d-inline-block">
+                                        <i class="fas fa-upload mr-1"></i> Change Photo
+                                    </label>
+                                    <small class="text-muted d-block mt-1">Tip: drag photo to reframe, scroll to zoom, double-click to reset</small>
+                                </div>
                             </div>
                         </div>
+
+                        {% if banner_feature_enabled %}
+                        <!-- Banner Customizer Box -->
+                        <div class="banner-customizer-box mb-5 p-4" id="bannerCustomizerBox" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px;">
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+                                <div>
+                                    <h6 class="font-weight-bold text-dark mb-1">
+                                        <i class="fas fa-panorama text-teal mr-2" style="color: #0d9488;"></i> Choose Profile Banner
+                                    </h6>
+                                    <small class="text-muted">Select an admin-designed preset below or upload your custom branded banner</small>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    {% if banner_allow_custom_upload %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('custom_banner_input').click();" style="border-radius: 8px; border-color: #0d9488; color: #0d9488; font-weight: 600;">
+                                        <i class="fas fa-cloud-upload-alt mr-1"></i> Custom Banner
+                                    </button>
+                                    {% endif %}
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetBannerToDefault()" style="border-radius: 8px;">
+                                        <i class="fas fa-undo mr-1"></i> Default Gradient
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Preset Banners List -->
+                            <div class="banner-presets-scroll py-2">
+                                <div class="d-flex gap-3" style="overflow-x: auto; padding-bottom: 8px;">
+                                    {% for preset in banner_presets %}
+                                    <div class="preset-banner-item {% if profile.banner_preset_id == preset.id and not profile.custom_banner_path %}active{% endif %}"
+                                         data-preset-id="{{ preset.id }}"
+                                         data-preset-url="{{ preset.image_url }}"
+                                         onclick="selectBannerPreset('{{ preset.id }}', '{{ preset.image_url|escapejs }}')"
+                                         title="{{ preset.title }}">
+                                        <div class="preset-thumb-wrap">
+                                            <img src="{{ preset.image_url }}" alt="{{ preset.title }}" loading="lazy">
+                                            <div class="preset-check-badge">
+                                                <i class="fas fa-check"></i>
+                                            </div>
+                                        </div>
+                                        <div class="preset-title text-truncate">{{ preset.title }}</div>
+                                        <div class="preset-category small text-muted text-truncate">{{ preset.category|default:"General" }}</div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="text-muted small py-2">No preset banners available currently.</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Hidden Form Inputs for Submission -->
+                            <input type="hidden" name="banner_preset_id" id="banner_preset_id_input" value="{{ profile.banner_preset_id|default:'' }}">
+                            <input type="hidden" name="remove_banner" id="remove_banner_input" value="0">
+                            <input type="file" name="custom_banner" id="custom_banner_input" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" style="display: none;" onchange="handleCustomBannerSelect(this)">
+
+                            <div id="customBannerNotice" class="mt-2 text-success small font-weight-semibold {% if not profile.custom_banner_path %}d-none{% endif %}">
+                                <i class="fas fa-check-circle mr-1"></i> <span id="customBannerNoticeText">Custom banner active. Click "Default Gradient" or select any preset to change.</span>
+                            </div>
+                        </div>
+                        {% endif %}
 
                         <div class="row">
                             <div class="col-md-6 mb-4">
@@ -5228,6 +5424,76 @@ Overview
     }
     {% endif %}
 
+    // ── Profile Banner Management ──
+    window.selectBannerPreset = function(presetId, imageUrl) {
+        $('#banner_preset_id_input').val(presetId);
+        $('#remove_banner_input').val('0');
+        $('#custom_banner_input').val('');
+        
+        $('#linkedinBannerPreview').css({
+            'background-image': "url('" + imageUrl + "')",
+            'background-size': 'cover',
+            'background-position': 'center'
+        });
+
+        $('.preset-banner-item').removeClass('active');
+        $('.preset-banner-item[data-preset-id="' + presetId + '"]').addClass('active');
+        $('#customBannerNotice').addClass('d-none');
+    };
+
+    window.handleCustomBannerSelect = function(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Banner image file must be under 5MB.');
+                input.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                $('#linkedinBannerPreview').css({
+                    'background-image': "url('" + e.target.result + "')",
+                    'background-size': 'cover',
+                    'background-position': 'center'
+                });
+            };
+            reader.readAsDataURL(file);
+
+            $('#banner_preset_id_input').val('');
+            $('#remove_banner_input').val('0');
+            $('.preset-banner-item').removeClass('active');
+
+            $('#customBannerNoticeText').text('Selected custom banner: ' + file.name + ' (will save on submitting Step 1)');
+            $('#customBannerNotice').removeClass('d-none');
+        }
+    };
+
+    window.resetBannerToDefault = function() {
+        $('#banner_preset_id_input').val('');
+        $('#remove_banner_input').val('1');
+        $('#custom_banner_input').val('');
+
+        $('#linkedinBannerPreview').css({
+            'background-image': 'none',
+            'background': 'linear-gradient(135deg, #0f3a66 0%, #0f766e 50%, #047857 100%)'
+        });
+
+        $('.preset-banner-item').removeClass('active');
+        $('#customBannerNotice').addClass('d-none');
+    };
+
+    window.toggleBannerCustomizer = function() {
+        const box = $('#bannerCustomizerBox');
+        if (box.length) {
+            $('html, body').animate({
+                scrollTop: box.offset().top - 100
+            }, 400);
+            box.css('border-color', '#0d9488');
+            setTimeout(() => {
+                box.css('border-color', '#e2e8f0');
+            }, 1200);
+        }
+    };
 </script>
 
 <!-- IRDAI CAPTCHA Modal -->

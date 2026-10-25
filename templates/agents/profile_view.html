@@ -95,7 +95,8 @@
 
 {% block content %}
 <div class="profile_view_outer profile-view-wrapper" id="profile-container">
-    <div class="profile-banner">
+    <div class="profile-banner {% if agent.profile.banner_image_url %}has-custom-banner{% endif %}"
+         style="{% if agent.profile.banner_image_url %}background-image: url('{{ agent.profile.banner_image_url }}'); background-size: cover; background-position: center; background-repeat: no-repeat;{% endif %}">
         {% if isOwnerView %}
             <a href="{% url 'agents:agent_dashboard' %}" class="back-btn" onclick="window.location.href='{% url 'agents:agent_dashboard' %}'; return false;">
                 <i class="fas fa-arrow-left"></i> Back to Dashboard

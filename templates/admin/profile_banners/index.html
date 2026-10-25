@@ -1,0 +1,337 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block breadcrumb_title %}Profile Banners{% endblock %}
+
+{% block extra_css %}
+<style>
+.banner-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #ffffff;
+    transition: all 0.25s ease;
+}
+.banner-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+    border-color: #cbd5e1;
+}
+.banner-card-img-wrap {
+    height: 140px;
+    background: #0f172a;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.banner-card-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+.banner-card:hover .banner-card-img-wrap img {
+    transform: scale(1.03);
+}
+.banner-badge-order {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(4px);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+.banner-badge-status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+.feature-flag-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+}
+.dropzone-box {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.dropzone-box:hover, .dropzone-box.dragover {
+    border-color: #0d9488;
+    background: #f0fdfa;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Header Section -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h4 class="mb-1 text-dark font-weight-bold">
+                <i class="fa-solid fa-panorama text-teal mr-2" style="color: #0d9488;"></i> Agent Profile Banners
+            </h4>
+            <p class="text-muted small mb-0">
+                Manage LinkedIn-style profile cover banners. Preset banners appear directly in the Agent Dashboard for agents to select, or allow them to upload custom designs.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary shadow-sm d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#uploadBannerModal" style="background-color: #0d9488; border-color: #0d9488; border-radius: 10px; font-weight: 600;">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Upload New Banner
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm" style="border-left: 4px solid #0d9488 !important; border-radius: 12px;">
+                <div class="card-body py-3 d-flex align-items-center">
+                    <div class="p-3 rounded-3 me-3" style="background: #ccfbf1; color: #0f766e;">
+                        <i class="fa-solid fa-images fa-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small font-weight-semibold">Total Presets</div>
+                        <h4 class="mb-0 font-weight-bold text-dark">{{ total_presets }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm" style="border-left: 4px solid #10b981 !important; border-radius: 12px;">
+                <div class="card-body py-3 d-flex align-items-center">
+                    <div class="p-3 rounded-3 me-3" style="background: #d1fae5; color: #047857;">
+                        <i class="fa-solid fa-circle-check fa-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small font-weight-semibold">Active Presets</div>
+                        <h4 class="mb-0 font-weight-bold text-dark">{{ active_presets }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm" style="border-left: 4px solid #3b82f6 !important; border-radius: 12px;">
+                <div class="card-body py-3 d-flex align-items-center">
+                    <div class="p-3 rounded-3 me-3" style="background: #dbeafe; color: #1d4ed8;">
+                        <i class="fa-solid fa-user-shield fa-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small font-weight-semibold">Agents Using Banner</div>
+                        <h4 class="mb-0 font-weight-bold text-dark">{{ agents_with_banner_count }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm" style="border-left: 4px solid {% if banner_enabled %}#10b981{% else %}#ef4444{% endif %} !important; border-radius: 12px;">
+                <div class="card-body py-3 d-flex align-items-center">
+                    <div class="p-3 rounded-3 me-3" style="background: {% if banner_enabled %}#ecfdf5; color: #059669;{% else %}#fef2f2; color: #dc2626;{% endif %}">
+                        <i class="fa-solid fa-toggle-on fa-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-muted small font-weight-semibold">Feature Status</div>
+                        <h5 class="mb-0 font-weight-bold {% if banner_enabled %}text-success{% else %}text-danger{% endif %}">
+                            {% if banner_enabled %}ACTIVE{% else %}DISABLED{% endif %}
+                        </h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Flags & Global Controls -->
+    <div class="card border-0 shadow-sm mb-4 feature-flag-card">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div>
+                    <h5 class="font-weight-bold text-dark mb-1">
+                        <i class="fa-solid fa-sliders text-teal mr-2" style="color: #0d9488;"></i> Banner Feature Configuration
+                    </h5>
+                    <p class="text-muted small mb-0">Control the profile banner feature visibility and agent custom upload permissions.</p>
+                </div>
+                <form id="bannerSettingsForm" action="{% url 'admin_profile_banner_settings_save' %}" method="POST" class="d-flex flex-wrap align-items-center gap-4">
+                    {% csrf_token %}
+                    <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
+                        <input class="form-check-input" type="checkbox" role="switch" id="profile_banner_enabled" name="profile_banner_enabled" value="1" {% if banner_enabled %}checked{% endif %} style="cursor: pointer; width: 44px; height: 22px;">
+                        <label class="form-check-label font-weight-semibold text-dark mb-0" for="profile_banner_enabled" style="cursor: pointer;">
+                            Enable Profile Banners
+                        </label>
+                    </div>
+
+                    <div class="form-check form-switch d-flex align-items-center gap-2 mb-0">
+                        <input class="form-check-input" type="checkbox" role="switch" id="profile_banner_allow_custom_upload" name="profile_banner_allow_custom_upload" value="1" {% if allow_custom %}checked{% endif %} style="cursor: pointer; width: 44px; height: 22px;">
+                        <label class="form-check-label font-weight-semibold text-dark mb-0" for="profile_banner_allow_custom_upload" style="cursor: pointer;">
+                            Allow Custom Upload by Agents
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-sm btn-dark px-3 py-2" style="border-radius: 8px;">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> Save Flags
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Banner Presets Grid -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="font-weight-bold text-dark mb-0">Preset Banners ({{ presets|length }})</h5>
+        <span class="text-muted small">These banners appear in the Agent Dashboard for quick selection</span>
+    </div>
+
+    <div class="row g-4 mb-5">
+        {% for preset in presets %}
+        <div class="col-lg-4 col-md-6" id="preset-card-{{ preset.id }}">
+            <div class="banner-card shadow-sm h-100 d-flex flex-column">
+                <div class="banner-card-img-wrap">
+                    <img src="{{ preset.image_url }}" alt="{{ preset.title }}" loading="lazy" onerror="this.onerror=null;this.src='{% static 'img/about-us-banner.webp' %}';">
+                    <span class="banner-badge-order">#{{ preset.display_order }}</span>
+                    <span class="banner-badge-status">
+                        {% if preset.is_active %}
+                        <span class="badge bg-success shadow-sm">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary shadow-sm">Inactive</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="p-3 d-flex flex-column flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="font-weight-bold text-dark mb-1">{{ preset.title }}</h6>
+                            <span class="badge bg-light text-muted border">{{ preset.category|default:"General" }}</span>
+                        </div>
+                        <span class="badge bg-info-subtle text-info border border-info-subtle small" title="Number of agents using this preset">
+                            <i class="fa-solid fa-users me-1"></i> {{ preset.agents_count }} Agents
+                        </span>
+                    </div>
+
+                    <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                        <form action="{% url 'admin_profile_banner_toggle' preset.id %}" method="POST" class="mb-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if preset.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}" style="border-radius: 6px;">
+                                <i class="fa-solid {% if preset.is_active %}fa-pause{% else %}fa-play{% endif %} me-1"></i>
+                                {% if preset.is_active %}Deactivate{% else %}Activate{% endif %}
+                            </button>
+                        </form>
+
+                        <div class="d-flex gap-2">
+                            <a href="{{ preset.image_url }}" target="_blank" class="btn btn-sm btn-outline-secondary" style="border-radius: 6px;" title="Preview full size">
+                                <i class="fa-solid fa-eye"></i>
+                            </a>
+                            <form action="{% url 'admin_profile_banner_delete' preset.id %}" method="POST" class="mb-0" onsubmit="return confirm('Are you sure you want to delete this preset banner?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius: 6px;" title="Delete banner preset">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5 bg-light rounded-3">
+                <i class="fa-solid fa-panorama fa-3x text-muted mb-3"></i>
+                <h5 class="text-dark font-weight-bold">No banner presets found</h5>
+                <p class="text-muted">Click "Upload New Banner" above to add your first preset banner.</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- Upload Banner Modal -->
+<div class="modal fade" id="uploadBannerModal" tabindex="-1" aria-labelledby="uploadBannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow" style="border-radius: 16px;">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <div>
+                    <h5 class="modal-title font-weight-bold text-dark" id="uploadBannerModalLabel">
+                        <i class="fa-solid fa-cloud-arrow-up text-teal mr-2" style="color: #0d9488;"></i> Upload New Profile Banner Preset
+                    </h5>
+                    <p class="text-muted small mb-0">This banner will immediately be available in the Agent Dashboard for agents to select.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'admin_profile_banner_upload' %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <label class="form-label font-weight-semibold text-dark">Banner Title <span class="text-danger">*</span></label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g. Executive Corporate Shield" required style="border-radius: 8px;">
+                            <small class="text-muted">Descriptive title shown to agents in their dashboard</small>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label font-weight-semibold text-dark">Category</label>
+                            <input type="text" name="category" class="form-control" placeholder="e.g. Life Insurance, Wealth, General" value="General" style="border-radius: 8px;">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label font-weight-semibold text-dark">Display Order</label>
+                            <input type="number" name="display_order" class="form-control" value="0" min="0" style="border-radius: 8px;">
+                            <small class="text-muted">Lower numbers show first</small>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label font-weight-semibold text-dark">Banner Image File <span class="text-danger">*</span></label>
+                            <div class="dropzone-box" onclick="document.getElementById('bannerImageInput').click();">
+                                <i class="fa-solid fa-image fa-2x text-muted mb-2"></i>
+                                <div class="font-weight-semibold text-dark mb-1">Click to select banner image or drag & drop</div>
+                                <small class="text-muted d-block">Recommended resolution: 1200x300 or 16:9 ratio. Supported: JPG, PNG, WEBP, SVG (Max 10MB)</small>
+                                <input type="file" id="bannerImageInput" name="banner_image" accept="image/jpeg,image/png,image/webp,image/svg+xml,.jpg,.jpeg,.png,.webp,.svg" class="d-none" required onchange="previewSelectedBanner(this)">
+                            </div>
+                            <div id="imagePreviewContainer" class="mt-3 text-center d-none">
+                                <div class="p-2 border rounded-3 bg-light d-inline-block position-relative" style="max-width: 100%;">
+                                    <img id="imagePreview" src="" alt="Preview" style="max-height: 160px; max-width: 100%; border-radius: 8px; object-fit: cover;">
+                                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 rounded-circle" onclick="clearSelectedBanner()" style="width: 28px; height: 28px; padding: 0;">
+                                        <i class="fa-solid fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4" style="background-color: #0d9488; border-color: #0d9488; border-radius: 8px; font-weight: 600;">
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload &amp; Publish
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function previewSelectedBanner(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('imagePreview').src = e.target.result;
+            document.getElementById('imagePreviewContainer').classList.remove('d-none');
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function clearSelectedBanner() {
+    var input = document.getElementById('bannerImageInput');
+    input.value = '';
+    document.getElementById('imagePreview').src = '';
+    document.getElementById('imagePreviewContainer').classList.add('d-none');
+}
+</script>
+{% endblock %}

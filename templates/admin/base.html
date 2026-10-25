@@ -718,6 +718,11 @@
                 <i class="fa-solid fa-images"></i> Banner Slides
             </a>
 
+            <a href="{% url 'admin_profile_banners_index' %}"
+                class="menu-item {% if '/admin/profile-banners/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-panorama"></i> Profile Banners
+            </a>
+
             <a href="{% url 'admin_content_registration_cards' %}"
                 class="menu-item {% if '/admin/content/registration-cards/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-id-card"></i> Registration Cards
