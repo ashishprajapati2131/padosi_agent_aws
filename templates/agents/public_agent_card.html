@@ -85,46 +85,24 @@
     .advisor-card-viewport {
         min-height: 100vh;
         background: #F1F5F9;
-        padding: 32px 16px 110px;
+        padding: 24px 16px 110px;
         display: flex;
         justify-content: center;
         align-items: flex-start;
     }
 
-    /* Main Card Container */
-    .advisor-card-container {
+    /* Shell: Mobile single column, Desktop 2-column container */
+    .advisor-card-shell {
         width: 100%;
         max-width: 540px;
-        background: var(--pa-surface);
-        border: 1px solid var(--pa-border);
-        border-radius: var(--pa-radius-xl);
-        box-shadow: var(--pa-shadow-lg);
-        overflow: hidden;
-        position: relative;
     }
 
-    @media (max-width: 576px) {
+    @media (min-width: 960px) {
         .advisor-card-viewport {
-            padding: 0 0 100px 0;
-            background: #FFFFFF;
+            padding: 36px 24px 80px;
         }
-        .advisor-card-container {
-            border-radius: 0;
-            border: none;
-            box-shadow: none;
-            max-width: 100%;
-        }
-        .advisor-hero-body {
-            padding: 0 16px 20px !important;
-        }
-        .card-section {
-            padding: 0 16px !important;
-        }
-        .card-divider {
-            margin: 18px 16px !important;
-        }
-        .lead-form-box {
-            padding: 16px 14px !important;
+        .advisor-card-shell {
+            max-width: 1080px;
         }
     }
 
@@ -136,6 +114,16 @@
         align-items: center;
         justify-content: space-between;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--pa-radius-xl) var(--pa-radius-xl) 0 0;
+    }
+
+    @media (min-width: 960px) {
+        .advisor-brand-bar {
+            border-radius: var(--pa-radius-lg);
+            margin-bottom: 24px;
+            box-shadow: var(--pa-shadow-sm);
+            border-bottom: none;
+        }
     }
 
     .advisor-brand-logo-wrap {
@@ -171,6 +159,178 @@
         font-weight: 700;
         padding: 3px 10px;
         border-radius: 999px;
+    }
+
+    /* Main Layout Grid: Mobile single-card column, Desktop 2-column grid */
+    .advisor-main-layout {
+        display: flex;
+        flex-direction: column;
+        background: var(--pa-surface);
+        border: 1px solid var(--pa-border);
+        border-top: none;
+        border-radius: 0 0 var(--pa-radius-xl) var(--pa-radius-xl);
+        overflow: hidden;
+        box-shadow: var(--pa-shadow-lg);
+    }
+
+    .advisor-left-col {
+        width: 100%;
+    }
+
+    .advisor-profile-card {
+        background: transparent;
+        overflow: hidden;
+    }
+
+    .advisor-right-col {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .advisor-content-card {
+        padding: 20px 24px;
+        border-top: 1px solid var(--pa-border);
+    }
+
+    /* Desktop Viewport Adaptations (PassKard 2-column layout) */
+    @media (min-width: 960px) {
+        .advisor-main-layout {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 24px;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            border-radius: 0;
+            overflow: visible;
+            align-items: start;
+        }
+
+        .advisor-left-col {
+            position: sticky;
+            top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .advisor-profile-card {
+            background: #FFFFFF;
+            border: 1px solid var(--pa-border);
+            border-radius: var(--pa-radius-xl);
+            box-shadow: var(--pa-shadow-card);
+        }
+
+        .advisor-right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 0;
+        }
+
+        .advisor-content-card {
+            background: #FFFFFF;
+            border: 1px solid var(--pa-border);
+            border-radius: var(--pa-radius-xl);
+            padding: 26px 28px;
+            box-shadow: var(--pa-shadow-card);
+            border-top: 1px solid var(--pa-border);
+        }
+
+        .card-divider {
+            display: none !important;
+        }
+
+        .lead-form-box {
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+        }
+
+        .advisor-footer {
+            background: #FFFFFF;
+            border: 1px solid var(--pa-border);
+            border-radius: var(--pa-radius-xl);
+            box-shadow: var(--pa-shadow-card);
+            margin-top: 4px;
+        }
+    }
+
+    /* Mobile specific adjustments (<= 576px) */
+    @media (max-width: 576px) {
+        .advisor-card-viewport {
+            padding: 0 0 100px 0;
+            background: #FFFFFF;
+        }
+        .advisor-brand-bar {
+            border-radius: 0;
+        }
+        .advisor-main-layout {
+            border-radius: 0;
+            border: none;
+            box-shadow: none;
+        }
+        .advisor-hero-body {
+            padding: 0 16px 20px !important;
+        }
+        .advisor-content-card {
+            padding: 18px 16px !important;
+        }
+        .lead-form-box {
+            padding: 16px 14px !important;
+        }
+    }
+
+    /* Desktop QR Widget (PassKard style) */
+    .desktop-qr-card {
+        display: none;
+    }
+
+    @media (min-width: 960px) {
+        .desktop-qr-card {
+            display: block;
+            background: #FFFFFF;
+            border: 1px solid var(--pa-border);
+            border-radius: var(--pa-radius-xl);
+            padding: 18px 16px;
+            text-align: center;
+            box-shadow: var(--pa-shadow-card);
+        }
+
+        .desktop-qr-header {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 13.5px;
+            color: var(--pa-navy);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .desktop-qr-header i {
+            color: var(--pa-corporate-blue);
+        }
+
+        .desktop-qr-img {
+            width: 140px;
+            height: 140px;
+            border-radius: var(--pa-radius-md);
+            border: 1px solid var(--pa-border);
+            margin: 0 auto 8px;
+            display: block;
+            background: #FFFFFF;
+        }
+
+        .desktop-qr-hint {
+            font-size: 11.5px;
+            color: var(--pa-text-muted);
+            line-height: 1.45;
+            margin: 0;
+        }
     }
 
     /* Card Banner */
@@ -441,11 +601,6 @@
         margin: 20px 24px;
     }
 
-    /* Content Section Formatting */
-    .card-section {
-        padding: 0 24px;
-    }
-
     .section-title {
         font-family: 'Outfit', sans-serif;
         font-size: 16px;
@@ -468,20 +623,6 @@
         font-size: 15px;
     }
 
-    .badge-verified-tag {
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 10.5px;
-        font-weight: 700;
-        background: var(--pa-emerald-light);
-        color: var(--pa-emerald-dark);
-        border: 1px solid #A7F3D0;
-        padding: 2px 7px;
-        border-radius: 999px;
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-    }
-
     /* Verified Trust & Performance Metrics Strip */
     .trust-metrics-grid {
         display: grid;
@@ -496,21 +637,29 @@
         border-radius: var(--pa-radius-md);
         padding: 10px 8px;
         text-align: center;
+        min-width: 0;
+        overflow: hidden;
     }
 
     .metric-value {
         font-family: 'Outfit', sans-serif;
-        font-size: 16px;
+        font-size: clamp(14px, 3.5vw, 16px);
         font-weight: 800;
         color: var(--pa-navy);
         line-height: 1.2;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
     }
 
     .metric-label {
-        font-size: 11px;
+        font-size: clamp(10px, 2.4vw, 11px);
         font-weight: 600;
         color: var(--pa-text-muted);
         margin-top: 3px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
     }
 
     /* Insurance Specialties Chips */
@@ -622,41 +771,35 @@
         font-size: 15px;
         background: #FFFFFF;
         border: 1px solid var(--pa-border);
-        color: var(--pa-navy);
     }
 
-    .connect-link-item:hover .connect-link-icon-box {
-        background: var(--pa-corporate-blue);
-        color: #FFFFFF;
-        border-color: var(--pa-corporate-blue);
-    }
-
-    /* Section 7 — Direct Contact & Lead Generation Form */
+    /* Direct Contact Banner */
     .direct-call-card {
-        background: var(--pa-emerald-light);
+        background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%);
         border: 1.5px solid #A7F3D0;
         border-radius: var(--pa-radius-lg);
-        padding: 16px;
-        margin-bottom: 14px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
     }
 
     .direct-call-header {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         margin-bottom: 10px;
     }
 
     .direct-call-icon {
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         background: var(--pa-emerald);
         color: #FFFFFF;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: 18px;
+        flex-shrink: 0;
     }
 
     .direct-call-sub {
@@ -712,7 +855,7 @@
         opacity: 0.92;
     }
 
-    /* Lead Form Card */
+    /* Lead Form Box */
     .lead-form-box {
         background: #FFFFFF;
         border: 1px solid var(--pa-border);
@@ -742,6 +885,7 @@
         position: relative;
         display: flex;
         align-items: center;
+        width: 100%;
     }
 
     .input-icon-prefix {
@@ -754,6 +898,7 @@
 
     .form-input-control {
         width: 100%;
+        max-width: 100%;
         background: var(--pa-bg);
         border: 1.5px solid var(--pa-border);
         border-radius: var(--pa-radius-md);
@@ -900,6 +1045,7 @@
         background: rgba(255, 255, 255, 0.98);
         border-top: 1px solid var(--pa-border);
         padding: 10px 14px;
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
         z-index: 9999;
         box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
     }
@@ -1027,7 +1173,7 @@
 
 {% block content %}
 <main class="advisor-card-viewport">
-    <article class="advisor-card-container">
+    <div class="advisor-card-shell">
         
         <!-- Brand Header Bar -->
         <header class="advisor-brand-bar">
@@ -1040,473 +1186,485 @@
             </span>
         </header>
 
-        <!-- Cover Banner -->
-        <div class="advisor-cover-banner" aria-hidden="true"></div>
-
-        <!-- Hero Profile Identity Section -->
-        <section class="advisor-hero-body" aria-labelledby="advisorNameTitle">
-            <div class="advisor-avatar-wrapper">
-                <img src="{{ profile.profile_photo_url }}" alt="{{ agentDisplayName }}" class="advisor-avatar-image" onerror="this.src='/static/img/avatar-icon.jpg';">
-                <div class="advisor-avatar-status" title="Verified Active Advisor" aria-label="Verified Active Advisor">
-                    <i class="fas fa-check" aria-hidden="true"></i>
-                </div>
-            </div>
-
-            <h1 class="advisor-name" id="advisorNameTitle">{{ agentDisplayName }}</h1>
+        <!-- Main Layout (PassKard responsive: 1 col on mobile, 2 cols on desktop) -->
+        <div class="advisor-main-layout">
             
-            {% if profile.agency_name %}
-            <div class="advisor-agency-title">{{ profile.agency_name }}</div>
-            {% endif %}
+            <!-- Left Column: Identity & Contact Card -->
+            <aside class="advisor-left-col">
+                <div class="advisor-profile-card">
+                    <!-- Cover Banner -->
+                    <div class="advisor-cover-banner" aria-hidden="true"></div>
 
-            <div class="advisor-profession">{{ profession }}</div>
+                    <!-- Hero Profile Identity Section -->
+                    <section class="advisor-hero-body" aria-labelledby="advisorNameTitle">
+                        <div class="advisor-avatar-wrapper">
+                            <img src="{{ profile.profile_photo_url }}" alt="{{ agentDisplayName }}" class="advisor-avatar-image" onerror="this.src='/static/img/avatar-icon.jpg';">
+                            <div class="advisor-avatar-status" title="Verified Active Advisor" aria-label="Verified Active Advisor">
+                                <i class="fas fa-check" aria-hidden="true"></i>
+                            </div>
+                        </div>
 
-            <!-- Credentials & Location Chips -->
-            <div class="advisor-meta-chips">
-                {% if experience_years %}
-                <span class="meta-chip">
-                    <i class="fas fa-briefcase" style="color: var(--pa-corporate-blue);" aria-hidden="true"></i> {{ experience_years }}+ Yrs Experience
-                </span>
-                {% endif %}
+                        <h1 class="advisor-name" id="advisorNameTitle">{{ agentDisplayName }}</h1>
+                        
+                        {% if profile.agency_name %}
+                        <div class="advisor-agency-title">{{ profile.agency_name }}</div>
+                        {% endif %}
 
-                {% if profile.license_number %}
-                <span class="meta-chip" title="IRDAI Registration Number">
-                    <i class="fas fa-id-badge" style="color: var(--pa-emerald);" aria-hidden="true"></i> IRDAI: {{ profile.license_number }}
-                </span>
-                {% endif %}
+                        <div class="advisor-profession">{{ profession }}</div>
 
-                {% if state or pincode %}
-                <span class="meta-chip">
-                    <i class="fas fa-map-marker-alt" style="color: #DC2626;" aria-hidden="true"></i> {{ state }}{% if pincode %} ({{ pincode }}){% endif %}
-                </span>
-                {% endif %}
-            </div>
-
-            <!-- Rating & Review Count (Only when backed by data) -->
-            {% if has_reviews %}
-            <div style="margin-bottom: 6px;">
-                <a href="{{ review_url }}" class="advisor-rating-pill" title="View client reviews">
-                    <i class="fas fa-star" aria-hidden="true"></i>
-                    <span><strong>{{ average_rating|floatformat:1 }}</strong> · {{ reviews_count }} Verified Review{{ reviews_count|pluralize }}</span>
-                    <i class="fas fa-chevron-right" style="font-size: 10px; opacity: 0.7; margin-left: 2px;" aria-hidden="true"></i>
-                </a>
-            </div>
-            {% endif %}
-
-            <!-- Primary Actions (1-Tap Save Contact, QR, Share) -->
-            <div class="advisor-action-strip">
-                <a href="{{ vcard_url }}" class="btn-action-primary" id="saveContactHeaderBtn" aria-label="Save {{ agentDisplayName }}'s Contact to your Phone">
-                    <i class="fas fa-address-card" aria-hidden="true"></i>
-                    <span>Save Contact Details</span>
-                </a>
-                <button type="button" class="btn-action-secondary" onclick="openQrModal()" aria-label="Show QR Code">
-                    <i class="fas fa-qrcode" aria-hidden="true"></i>
-                    <span>Show QR</span>
-                </button>
-                <button type="button" class="btn-action-secondary" onclick="shareVisitingCard()" aria-label="Share Digital Visiting Card">
-                    <i class="fas fa-share-alt" aria-hidden="true"></i>
-                    <span>Share</span>
-                </button>
-            </div>
-
-            <!-- Direct Contact Quick Action Tiles -->
-            <div class="advisor-quick-tiles-grid" aria-label="Direct Quick Contact Options">
-                {% if call_url %}
-                <a href="{{ call_url }}" class="quick-contact-tile tile-phone" aria-label="Call {{ agentDisplayName }}">
-                    <div class="quick-contact-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-                        </svg>
-                    </div>
-                    <span class="quick-contact-label">Call</span>
-                </a>
-                {% endif %}
-
-                {% if whatsapp_url %}
-                <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="quick-contact-tile tile-whatsapp" aria-label="Chat with {{ agentDisplayName }} on WhatsApp">
-                    <div class="quick-contact-icon"><i class="fab fa-whatsapp" aria-hidden="true"></i></div>
-                    <span class="quick-contact-label">WhatsApp</span>
-                </a>
-                {% endif %}
-
-                {% if agent.email %}
-                <a href="mailto:{{ agent.email }}?subject=Insurance%20Consultation%20Inquiry" class="quick-contact-tile tile-email" aria-label="Email {{ agentDisplayName }}">
-                    <div class="quick-contact-icon"><i class="fas fa-envelope" aria-hidden="true"></i></div>
-                    <span class="quick-contact-label">Email</span>
-                </a>
-                {% endif %}
-
-                {% if google_maps_url %}
-                <a href="{{ google_maps_url }}" target="_blank" rel="noopener" class="quick-contact-tile tile-location" aria-label="View office location on Google Maps">
-                    <div class="quick-contact-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-                            <path fill="#EA4335" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-                            <circle cx="12" cy="9" r="3.2" fill="#FFFFFF"/>
-                            <circle cx="12" cy="9" r="2.2" fill="#1A73E8"/>
-                        </svg>
-                    </div>
-                    <span class="quick-contact-label">Google Maps</span>
-                </a>
-                {% endif %}
-            </div>
-        </section>
-
-        <div class="card-divider" aria-hidden="true"></div>
-
-        <!-- Trust & Verified Expertise Section -->
-        <section class="card-section" aria-labelledby="trustHeading">
-            <h2 class="section-title" id="trustHeading">
-                <span class="section-title-left">
-                    <i class="fas fa-shield-halved" aria-hidden="true"></i> Verified Credentials &amp; Trust
-                </span>
-            </h2>
-
-            <div class="trust-metrics-grid">
-                {% if experience_years %}
-                <div class="trust-metric-box">
-                    <div class="metric-value">{{ experience_years }}+ Yrs</div>
-                    <div class="metric-label">Industry Exp</div>
-                </div>
-                {% endif %}
-
-                {% if has_verified_claims %}
-                <div class="trust-metric-box">
-                    <div class="metric-value">{{ claims_settled }} Settled</div>
-                    <div class="metric-label">{{ claims_rate }}% Success</div>
-                </div>
-                {% elif perf.claims_processed %}
-                <div class="trust-metric-box">
-                    <div class="metric-value">{{ perf.claims_processed }}</div>
-                    <div class="metric-label">Claims Assisted</div>
-                </div>
-                {% else %}
-                <div class="trust-metric-box">
-                    <div class="metric-value">100%</div>
-                    <div class="metric-label">Claim Support</div>
-                </div>
-                {% endif %}
-
-                <div class="trust-metric-box">
-                    <div class="metric-value">IRDAI</div>
-                    <div class="metric-label">Registered</div>
-                </div>
-            </div>
-
-            <!-- Insurance Specialties -->
-            <div style="margin-top: 14px;">
-                <div style="font-size: 12.5px; font-weight: 700; color: var(--pa-text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.3px;">
-                    Insurance Specialties
-                </div>
-                <div class="specialties-chip-list">
-                    {% if specialties %}
-                        {% for spec in specialties %}
-                        <span class="specialty-chip">
-                            {% if spec == 'health' %}<i class="fas fa-heartbeat" aria-hidden="true"></i> Health Insurance
-                            {% elif spec == 'life' %}<i class="fas fa-user-shield" aria-hidden="true"></i> Life &amp; Term Plan
-                            {% elif spec == 'motor' %}<i class="fas fa-car" aria-hidden="true"></i> Motor &amp; Vehicle
-                            {% elif spec == 'sme' %}<i class="fas fa-building" aria-hidden="true"></i> SME &amp; Commercial
-                            {% elif spec == 'investment' %}<i class="fas fa-chart-line" aria-hidden="true"></i> Mutual Funds &amp; SIP
-                            {% else %}<i class="fas fa-check" aria-hidden="true"></i> {{ spec|title }}
+                        <!-- Credentials & Location Chips -->
+                        <div class="advisor-meta-chips">
+                            {% if experience_years %}
+                            <span class="meta-chip">
+                                <i class="fas fa-briefcase" style="color: var(--pa-corporate-blue);" aria-hidden="true"></i> {{ experience_years }}+ Yrs Experience
+                            </span>
                             {% endif %}
-                        </span>
-                        {% endfor %}
-                    {% else %}
-                        <span class="specialty-chip"><i class="fas fa-heartbeat" aria-hidden="true"></i> Health Insurance</span>
-                        <span class="specialty-chip"><i class="fas fa-user-shield" aria-hidden="true"></i> Life &amp; Term Plan</span>
-                        <span class="specialty-chip"><i class="fas fa-car" aria-hidden="true"></i> Motor Insurance</span>
-                        <span class="specialty-chip"><i class="fas fa-building" aria-hidden="true"></i> Business &amp; SME</span>
-                    {% endif %}
+
+                            {% if profile.license_number %}
+                            <span class="meta-chip" title="IRDAI Registration Number">
+                                <i class="fas fa-id-badge" style="color: var(--pa-emerald);" aria-hidden="true"></i> IRDAI: {{ profile.license_number }}
+                            </span>
+                            {% endif %}
+
+                            {% if state or pincode %}
+                            <span class="meta-chip">
+                                <i class="fas fa-map-marker-alt" style="color: #DC2626;" aria-hidden="true"></i> {{ state }}{% if pincode %} ({{ pincode }}){% endif %}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Rating & Review Count (Only when backed by data) -->
+                        {% if has_reviews %}
+                        <div style="margin-bottom: 6px;">
+                            <a href="{{ review_url }}" class="advisor-rating-pill" title="View client reviews">
+                                <i class="fas fa-star" aria-hidden="true"></i>
+                                <span><strong>{{ average_rating|floatformat:1 }}</strong> · {{ reviews_count }} Verified Review{{ reviews_count|pluralize }}</span>
+                                <i class="fas fa-chevron-right" style="font-size: 10px; opacity: 0.7; margin-left: 2px;" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        <!-- Primary Actions (1-Tap Save Contact, QR, Share) -->
+                        <div class="advisor-action-strip">
+                            <a href="{{ vcard_url }}" class="btn-action-primary" id="saveContactHeaderBtn" aria-label="Save {{ agentDisplayName }}'s Contact to your Phone">
+                                <i class="fas fa-address-card" aria-hidden="true"></i>
+                                <span>Save Contact Details</span>
+                            </a>
+                            <button type="button" class="btn-action-secondary" onclick="openQrModal()" aria-label="Show QR Code">
+                                <i class="fas fa-qrcode" aria-hidden="true"></i>
+                                <span>Show QR</span>
+                            </button>
+                            <button type="button" class="btn-action-secondary" onclick="shareVisitingCard()" aria-label="Share Digital Visiting Card">
+                                <i class="fas fa-share-alt" aria-hidden="true"></i>
+                                <span>Share</span>
+                            </button>
+                        </div>
+
+                        <!-- Direct Contact Quick Action Tiles -->
+                        <div class="advisor-quick-tiles-grid" aria-label="Direct Quick Contact Options">
+                            {% if call_url %}
+                            <a href="{{ call_url }}" class="quick-contact-tile tile-phone" aria-label="Call {{ agentDisplayName }}">
+                                <div class="quick-contact-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                    </svg>
+                                </div>
+                                <span class="quick-contact-label">Call</span>
+                            </a>
+                            {% endif %}
+
+                            {% if whatsapp_url %}
+                            <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="quick-contact-tile tile-whatsapp" aria-label="Chat with {{ agentDisplayName }} on WhatsApp">
+                                <div class="quick-contact-icon"><i class="fab fa-whatsapp" aria-hidden="true"></i></div>
+                                <span class="quick-contact-label">WhatsApp</span>
+                            </a>
+                            {% endif %}
+
+                            {% if agent.email %}
+                            <a href="mailto:{{ agent.email }}?subject=Insurance%20Consultation%20Inquiry" class="quick-contact-tile tile-email" aria-label="Email {{ agentDisplayName }}">
+                                <div class="quick-contact-icon"><i class="fas fa-envelope" aria-hidden="true"></i></div>
+                                <span class="quick-contact-label">Email</span>
+                            </a>
+                            {% endif %}
+
+                            {% if google_maps_url %}
+                            <a href="{{ google_maps_url }}" target="_blank" rel="noopener" class="quick-contact-tile tile-location" aria-label="View office location on Google Maps">
+                                <div class="quick-contact-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path fill="#EA4335" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                                        <circle cx="12" cy="9" r="3.2" fill="#FFFFFF"/>
+                                        <circle cx="12" cy="9" r="2.2" fill="#1A73E8"/>
+                                    </svg>
+                                </div>
+                                <span class="quick-contact-label">Google Maps</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </section>
                 </div>
-            </div>
-        </section>
 
-        <div class="card-divider" aria-hidden="true"></div>
+                <!-- Desktop Dedicated QR Card (PassKard style) -->
+                <div class="desktop-qr-card">
+                    <div class="desktop-qr-header">
+                        <i class="fas fa-qrcode" aria-hidden="true"></i>
+                        <span>Scan with Phone</span>
+                    </div>
+                    <img src="{{ card_qr_url }}" alt="{{ agentDisplayName }} Visiting Card QR Code" class="desktop-qr-img">
+                    <p class="desktop-qr-hint">Scan with your smartphone camera to save {{ agentDisplayName }}'s contact details instantly.</p>
+                </div>
+            </aside>
 
-        <!-- About Section -->
-        <section class="card-section" aria-labelledby="aboutHeading">
-            <h2 class="section-title" id="aboutHeading">
-                <span class="section-title-left">
-                    <i class="fas fa-user-tie" aria-hidden="true"></i> About {{ agentDisplayName }}
-                </span>
-            </h2>
+            <!-- Right Column: Sections, Credentials, About, Bio-links & Lead Form -->
+            <section class="advisor-right-col">
+                
+                <!-- Card 1: Trust & Verified Expertise Section -->
+                <div class="advisor-content-card" aria-labelledby="trustHeading">
+                    <h2 class="section-title" id="trustHeading">
+                        <span class="section-title-left">
+                            <i class="fas fa-shield-halved" aria-hidden="true"></i> Verified Credentials &amp; Trust
+                        </span>
+                    </h2>
 
-            <p class="about-bio-text">
-                {{ profile.about|default:profile.career_highlights|default:"Professional IRDAI certified insurance advisor dedicated to finding optimal policy coverage, prompt renewal management, and reliable claim settlement assistance for individuals, families, and businesses." }}
-            </p>
+                    <div class="trust-metrics-grid">
+                        {% if experience_years %}
+                        <div class="trust-metric-box">
+                            <div class="metric-value">{{ experience_years }}+ Yrs</div>
+                            <div class="metric-label">Industry Exp</div>
+                        </div>
+                        {% endif %}
 
-            <div class="structured-info-card">
-                {% if office_address %}
-                <div class="info-row">
-                    <i class="fas fa-map-pin info-row-icon" aria-hidden="true"></i>
-                    <div class="info-row-content">
-                        <strong>Office Address:</strong><br>
-                        {{ office_address }}
-                        {% if google_maps_url %}
-                        <br><a href="{{ google_maps_url }}" target="_blank" rel="noopener" style="color: var(--pa-corporate-blue); font-weight: 600; text-decoration: none; font-size: 11.5px;">View on Google Maps &rarr;</a>
+                        {% if has_verified_claims %}
+                        <div class="trust-metric-box">
+                            <div class="metric-value">{{ claims_settled }} Settled</div>
+                            <div class="metric-label">{{ claims_rate }}% Success</div>
+                        </div>
+                        {% elif perf.claims_processed %}
+                        <div class="trust-metric-box">
+                            <div class="metric-value">{{ perf.claims_processed }}</div>
+                            <div class="metric-label">Claims Assisted</div>
+                        </div>
+                        {% else %}
+                        <div class="trust-metric-box">
+                            <div class="metric-value">100%</div>
+                            <div class="metric-label">Claim Support</div>
+                        </div>
+                        {% endif %}
+
+                        <div class="trust-metric-box">
+                            <div class="metric-value">IRDAI</div>
+                            <div class="metric-label">Registered</div>
+                        </div>
+                    </div>
+
+                    <!-- Insurance Specialties -->
+                    <div style="margin-top: 14px;">
+                        <div style="font-size: 12.5px; font-weight: 700; color: var(--pa-text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.3px;">
+                            Insurance Specialties
+                        </div>
+                        <div class="specialties-chip-list">
+                            {% if specialties %}
+                                {% for spec in specialties %}
+                                <span class="specialty-chip">
+                                    {% if spec == 'health' %}<i class="fas fa-heartbeat" aria-hidden="true"></i> Health Insurance
+                                    {% elif spec == 'life' %}<i class="fas fa-user-shield" aria-hidden="true"></i> Life &amp; Term Plan
+                                    {% elif spec == 'motor' %}<i class="fas fa-car" aria-hidden="true"></i> Motor &amp; Vehicle
+                                    {% elif spec == 'sme' %}<i class="fas fa-building" aria-hidden="true"></i> SME &amp; Commercial
+                                    {% elif spec == 'investment' %}<i class="fas fa-chart-line" aria-hidden="true"></i> Mutual Funds &amp; SIP
+                                    {% else %}<i class="fas fa-check" aria-hidden="true"></i> {{ spec|title }}
+                                    {% endif %}
+                                </span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="specialty-chip"><i class="fas fa-heartbeat" aria-hidden="true"></i> Health Insurance</span>
+                                <span class="specialty-chip"><i class="fas fa-user-shield" aria-hidden="true"></i> Life &amp; Term Plan</span>
+                                <span class="specialty-chip"><i class="fas fa-car" aria-hidden="true"></i> Motor Insurance</span>
+                                <span class="specialty-chip"><i class="fas fa-building" aria-hidden="true"></i> Business &amp; SME</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: About Section -->
+                <div class="advisor-content-card" aria-labelledby="aboutHeading">
+                    <h2 class="section-title" id="aboutHeading">
+                        <span class="section-title-left">
+                            <i class="fas fa-user-tie" aria-hidden="true"></i> About {{ agentDisplayName }}
+                        </span>
+                    </h2>
+
+                    <p class="about-bio-text">
+                        {{ profile.about|default:profile.career_highlights|default:"Professional IRDAI certified insurance advisor dedicated to finding optimal policy coverage, prompt renewal management, and reliable claim settlement assistance for individuals, families, and businesses." }}
+                    </p>
+
+                    <div class="structured-info-card">
+                        {% if office_address %}
+                        <div class="info-row">
+                            <i class="fas fa-map-pin info-row-icon" aria-hidden="true"></i>
+                            <div class="info-row-content">
+                                <strong>Office Address:</strong><br>
+                                {{ office_address }}
+                                {% if google_maps_url %}
+                                <br><a href="{{ google_maps_url }}" target="_blank" rel="noopener" style="color: var(--pa-corporate-blue); font-weight: 600; text-decoration: none; font-size: 11.5px;">View on Google Maps &rarr;</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if languages_list %}
+                        <div class="info-row">
+                            <i class="fas fa-language info-row-icon" aria-hidden="true"></i>
+                            <div class="info-row-content">
+                                <strong>Languages Spoken:</strong><br>
+                                {{ languages_list|join:" · " }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if pincode or state %}
+                        <div class="info-row">
+                            <i class="fas fa-map-location-dot info-row-icon" aria-hidden="true"></i>
+                            <div class="info-row-content">
+                                <strong>Primary Service Area:</strong><br>
+                                {{ state }}{% if pincode %} (PIN: {{ pincode }}){% endif %}
+                            </div>
+                        </div>
                         {% endif %}
                     </div>
                 </div>
-                {% endif %}
 
-                {% if languages_list %}
-                <div class="info-row">
-                    <i class="fas fa-language info-row-icon" aria-hidden="true"></i>
-                    <div class="info-row-content">
-                        <strong>Languages Known:</strong> {{ languages_list|join:" · " }}
+                <!-- Card 3: Connect & Bio-Links Section -->
+                <div class="advisor-content-card" aria-labelledby="connectHeading">
+                    <h2 class="section-title" id="connectHeading">
+                        <span class="section-title-left">
+                            <i class="fas fa-link" aria-hidden="true"></i> Connect &amp; Bio-Links
+                        </span>
+                    </h2>
+
+                    <div class="connect-links-stack">
+                        <!-- PadosiAgent Verified Profile Link -->
+                        <a href="{{ full_profile_url }}" class="connect-link-item">
+                            <div class="connect-link-left">
+                                <div class="connect-link-icon-box" style="color: var(--pa-navy);"><i class="fas fa-shield-alt" aria-hidden="true"></i></div>
+                                <div>PadosiAgent Verified Profile</div>
+                            </div>
+                            <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
+                        </a>
+
+                        <!-- Client Reviews Link -->
+                        <a href="{{ review_url }}" class="connect-link-item">
+                            <div class="connect-link-left">
+                                <div class="connect-link-icon-box" style="color: var(--pa-amber);"><i class="fas fa-star" aria-hidden="true"></i></div>
+                                <div>Verified Client Reviews &amp; Ratings</div>
+                            </div>
+                            <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
+                        </a>
+
+                        <!-- Social Links (Only displayed when configured) -->
+                        {% if social_links.linkedin %}
+                        <a href="{{ social_links.linkedin }}" target="_blank" rel="noopener" class="connect-link-item">
+                            <div class="connect-link-left">
+                                <div class="connect-link-icon-box" style="color: #0A66C2;"><i class="fab fa-linkedin" aria-hidden="true"></i></div>
+                                <div>LinkedIn Profile</div>
+                            </div>
+                            <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
+                        </a>
+                        {% endif %}
+
+                        {% if social_links.instagram %}
+                        <a href="{{ social_links.instagram }}" target="_blank" rel="noopener" class="connect-link-item">
+                            <div class="connect-link-left">
+                                <div class="connect-link-icon-box" style="color: #E4405F;"><i class="fab fa-instagram" aria-hidden="true"></i></div>
+                                <div>Instagram</div>
+                            </div>
+                            <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
+                        </a>
+                        {% endif %}
+
+                        {% if social_links.facebook %}
+                        <a href="{{ social_links.facebook }}" target="_blank" rel="noopener" class="connect-link-item">
+                            <div class="connect-link-left">
+                                <div class="connect-link-icon-box" style="color: #1877F2;"><i class="fab fa-facebook" aria-hidden="true"></i></div>
+                                <div>Facebook Page</div>
+                            </div>
+                            <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
+                        </a>
+                        {% endif %}
+
+                        {% if social_links.youtube %}
+                        <a href="{{ social_links.youtube }}" target="_blank" rel="noopener" class="connect-link-item">
+                            <div class="connect-link-left">
+                                <div class="connect-link-icon-box" style="color: #FF0000;"><i class="fab fa-youtube" aria-hidden="true"></i></div>
+                                <div>YouTube Channel</div>
+                            </div>
+                            <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
+                        </a>
+                        {% endif %}
+
+                        {% if social_links.website %}
+                        <a href="{{ social_links.website }}" target="_blank" rel="noopener" class="connect-link-item">
+                            <div class="connect-link-left">
+                                <div class="connect-link-icon-box" style="color: var(--pa-corporate-blue);"><i class="fas fa-globe" aria-hidden="true"></i></div>
+                                <div>Official Website</div>
+                            </div>
+                            <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
-                {% endif %}
 
-                {% if pincode or state %}
-                <div class="info-row">
-                    <i class="fas fa-location-dot info-row-icon" aria-hidden="true"></i>
-                    <div class="info-row-content">
-                        <strong>Service Area:</strong> {% if pincode %}PIN {{ pincode }} · {% endif %}{{ state }}, India
+                <!-- Card 4: Section 7 — Direct Contact & Lead Generation Form -->
+                <div class="advisor-content-card" id="enquirySection" aria-labelledby="enquirySectionHeading">
+                    <h2 class="section-title" id="enquirySectionHeading">
+                        <span class="section-title-left">
+                            <i class="fas fa-paper-plane" aria-hidden="true"></i> Get in Touch · સીધો સંપર્ક
+                        </span>
+                    </h2>
+
+                    <!-- Direct Advisor Phone Box -->
+                    <div class="direct-call-card">
+                        <div class="direct-call-header">
+                            <div class="direct-call-icon" aria-hidden="true"><i class="fas fa-phone-volume"></i></div>
+                            <div>
+                                <div class="direct-call-sub">Direct Advisor Contact</div>
+                                <div class="direct-call-phone">
+                                    {% if mobile_number %}+91 {{ mobile_number }}{% else %}Online Consultation{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="direct-call-btn-row">
+                            {% if call_url %}
+                            <a href="{{ call_url }}" class="btn-direct-contact btn-direct-call" aria-label="Call {{ agentDisplayName }} now">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="display:inline-block;vertical-align:middle;margin-right:2px;">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                </svg> Call Now
+                            </a>
+                            {% endif %}
+                            {% if whatsapp_url %}
+                            <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="btn-direct-contact btn-direct-wa" aria-label="Chat with {{ agentDisplayName }} on WhatsApp">
+                                <i class="fab fa-whatsapp" aria-hidden="true"></i> Chat on WhatsApp
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Direct Lead Enquiry Form -->
+                    <div class="lead-form-box">
+                        <form id="advisorLeadEnquiryForm" novalidate>
+                            {% csrf_token %}
+                            
+                            <!-- Full Name -->
+                            <div class="form-group-item">
+                                <label class="form-label-text" for="leadCustomerName">
+                                    Full Name · પૂરું નામ <span class="required-mark">*</span>
+                                </label>
+                                <div class="input-field-wrap">
+                                    <i class="fas fa-user input-icon-prefix" aria-hidden="true"></i>
+                                    <input type="text" id="leadCustomerName" name="customer_name" class="form-input-control" placeholder="તમારું પૂરું નામ દાખલ કરો" required autocomplete="name">
+                                </div>
+                            </div>
+
+                            <!-- Contact / Mobile Number -->
+                            <div class="form-group-item">
+                                <label class="form-label-text" for="leadCustomerMobile">
+                                    Mobile Number · મોબાઈલ નંબર <span class="required-mark">*</span>
+                                </label>
+                                <div class="input-field-wrap">
+                                    <i class="fas fa-phone input-icon-prefix" aria-hidden="true"></i>
+                                    <span class="phone-prefix-addon">+91</span>
+                                    <input type="tel" id="leadCustomerMobile" name="customer_mobile" class="form-input-control form-input-phone" placeholder="10 અંકનો મોબાઈલ નંબર" maxlength="10" pattern="[0-9]{10}" required autocomplete="tel-national">
+                                </div>
+                            </div>
+
+                            <!-- Pincode -->
+                            <div class="form-group-item">
+                                <label class="form-label-text" for="leadCustomerPincode">
+                                    Pincode · પિનકોડ <span class="required-mark">*</span>
+                                </label>
+                                <div class="input-field-wrap">
+                                    <i class="fas fa-location-dot input-icon-prefix" aria-hidden="true"></i>
+                                    <input type="text" id="leadCustomerPincode" name="customer_pincode" class="form-input-control" placeholder="6-digit PIN code (પિનકોડ)" maxlength="6" pattern="[0-9]{6}" required autocomplete="postal-code">
+                                </div>
+                            </div>
+
+                            <!-- Insurance Type -->
+                            <div class="form-group-item">
+                                <label class="form-label-text" for="leadInsuranceType">
+                                    Insurance Type · વીમા પ્રકાર <span class="required-mark">*</span>
+                                </label>
+                                <div class="input-field-wrap">
+                                    <i class="fas fa-shield-alt input-icon-prefix" aria-hidden="true"></i>
+                                    <select id="leadInsuranceType" name="insurance_type" class="form-input-control" required>
+                                        <option value="" disabled selected>વીમા પ્રકાર પસંદ કરો</option>
+                                        <option value="Health Insurance">Health Insurance (સ્વાસ્થ્ય વીમો)</option>
+                                        <option value="Life & Term Insurance">Life &amp; Term Insurance (જીવન / ટર્મ પ્લાન)</option>
+                                        <option value="Motor & Vehicle Insurance">Motor &amp; Vehicle Insurance (વાહન વીમો)</option>
+                                        <option value="Business & SME Insurance">Business &amp; SME Commercial (વ્યાપારી વીમો)</option>
+                                        <option value="Investment, Mutual Funds & Pension">Investment, Savings &amp; Pension (બચત / પેન્શન)</option>
+                                        <option value="Travel Insurance">Travel Insurance (પ્રવાસ વીમો)</option>
+                                        <option value="Other">Other Insurance Consultation (અન્ય વીમા સેવા)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Requirement / Service Type -->
+                            <div class="form-group-item">
+                                <label class="form-label-text" for="leadServiceType">
+                                    Requirement · તમારી જરૂરિયાત <span class="required-mark">*</span>
+                                </label>
+                                <div class="input-field-wrap">
+                                    <i class="fas fa-list-check input-icon-prefix" aria-hidden="true"></i>
+                                    <select id="leadServiceType" name="service_type" class="form-input-control" required>
+                                        <option value="" disabled selected>જરૂરિયાત પસંદ કરો</option>
+                                        <option value="New Policy Purchase">Buy New Policy (નવી પોલીસી લેવી છે)</option>
+                                        <option value="Policy Renewal">Policy Renewal (રીન્યુઅલ કરાવવું છે)</option>
+                                        <option value="Claim Settlement Assistance">Claim Assistance (ક્લેઈમ સેટલમેન્ટ મદદ)</option>
+                                        <option value="Policy Comparison & Quotes">Compare Quotes (કોટ અને સરખામણી)</option>
+                                        <option value="Portfolio Review">Policy Audit (પોલીસી હેલ્થ ચેકઅપ)</option>
+                                        <option value="General Consultation">General Query (સામાન્ય પૂછપરછ)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Message (Optional) -->
+                            <div class="form-group-item">
+                                <label class="form-label-text" for="leadMessage">
+                                    Message · સંદેશો / વિગત (મરજિયાત)
+                                </label>
+                                <textarea id="leadMessage" name="message" class="form-input-control form-textarea-control" placeholder="તમારી જરૂરિયાત અથવા પ્રશ્ન જણાવો... (Optional)"></textarea>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" class="btn-submit-enquiry" id="leadSubmitBtn" aria-label="Send Consultation Request">
+                                <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                                <span>Send Message · વિનામૂલ્યે સલાહ મેળવો</span>
+                            </button>
+                        </form>
+
+                        <!-- Feedback & Success Box -->
+                        <div class="form-success-card" id="leadSuccessCard" role="alert" aria-live="polite">
+                            <i class="fas fa-check-circle" aria-hidden="true"></i>
+                            <h4>ઇન્ક્વાયરી સફળતાપૂર્વક મોકલાઈ ગઈ!</h4>
+                            <p id="leadSuccessDetails">આભાર! તમારી વિગતો {{ agentDisplayName }} સુધી પહોંચી ગઈ છે. તેઓ ટૂંક સમયમાં તમારો સંપર્ક કરશે.</p>
+                        </div>
                     </div>
                 </div>
-                {% endif %}
-            </div>
-        </section>
 
-        <div class="card-divider" aria-hidden="true"></div>
-
-        <!-- Social & Verified External Links (PassKard style) -->
-        <section class="card-section" aria-labelledby="linksHeading">
-            <h2 class="section-title" id="linksHeading">
-                <span class="section-title-left">
-                    <i class="fas fa-link" aria-hidden="true"></i> Connect &amp; Verified Links
-                </span>
-            </h2>
-
-            <div class="connect-links-stack">
-                <a href="{{ full_profile_url }}" class="connect-link-item">
-                    <div class="connect-link-left">
-                        <div class="connect-link-icon-box"><i class="fas fa-id-card-clip" aria-hidden="true"></i></div>
-                        <div>
-                            <div>PadosiAgent Verified Profile</div>
-                            <small style="color: var(--pa-text-muted); font-size: 11px; font-weight: 500;">padosiagent.com official profile</small>
-                        </div>
+                <!-- Minimal Trustworthy Footer -->
+                <footer class="advisor-footer">
+                    <img src="{{ brand_logo_url }}" alt="PadosiAgent" class="advisor-footer-logo" onerror="this.style.display='none';">
+                    <p class="advisor-footer-text">
+                        Powered by <strong>PadosiAgent</strong> · India's Trusted Insurance Agent Network
+                    </p>
+                    <div class="advisor-footer-links">
+                        <a href="/">About PadosiAgent</a> ·
+                        <a href="/privacy-policy/">Privacy Policy</a> ·
+                        <a href="/terms/">Terms of Service</a>
                     </div>
-                    <i class="fas fa-arrow-right" style="color: var(--pa-border); font-size: 12px;" aria-hidden="true"></i>
-                </a>
+                </footer>
+            </section>
+        </div>
 
-                {% if has_reviews %}
-                <a href="{{ review_url }}" class="connect-link-item">
-                    <div class="connect-link-left">
-                        <div class="connect-link-icon-box" style="color: var(--pa-amber);"><i class="fas fa-star" aria-hidden="true"></i></div>
-                        <div>
-                            <div>Client Reviews &amp; Ratings</div>
-                            <small style="color: var(--pa-text-muted); font-size: 11px; font-weight: 500;">{{ reviews_count }} verified client testimonial{{ reviews_count|pluralize }}</small>
-                        </div>
-                    </div>
-                    <i class="fas fa-arrow-right" style="color: var(--pa-border); font-size: 12px;" aria-hidden="true"></i>
-                </a>
-                {% endif %}
-
-                {% if social_links.linkedin %}
-                <a href="{{ social_links.linkedin }}" target="_blank" rel="noopener" class="connect-link-item">
-                    <div class="connect-link-left">
-                        <div class="connect-link-icon-box" style="color: #0A66C2;"><i class="fab fa-linkedin-in" aria-hidden="true"></i></div>
-                        <div>Connect on LinkedIn</div>
-                    </div>
-                    <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
-                </a>
-                {% endif %}
-
-                {% if social_links.instagram %}
-                <a href="{{ social_links.instagram }}" target="_blank" rel="noopener" class="connect-link-item">
-                    <div class="connect-link-left">
-                        <div class="connect-link-icon-box" style="color: #E1306C;"><i class="fab fa-instagram" aria-hidden="true"></i></div>
-                        <div>Follow on Instagram</div>
-                    </div>
-                    <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
-                </a>
-                {% endif %}
-
-                {% if social_links.facebook %}
-                <a href="{{ social_links.facebook }}" target="_blank" rel="noopener" class="connect-link-item">
-                    <div class="connect-link-left">
-                        <div class="connect-link-icon-box" style="color: #1877F2;"><i class="fab fa-facebook-f" aria-hidden="true"></i></div>
-                        <div>Facebook Page</div>
-                    </div>
-                    <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
-                </a>
-                {% endif %}
-
-                {% if social_links.youtube %}
-                <a href="{{ social_links.youtube }}" target="_blank" rel="noopener" class="connect-link-item">
-                    <div class="connect-link-left">
-                        <div class="connect-link-icon-box" style="color: #FF0000;"><i class="fab fa-youtube" aria-hidden="true"></i></div>
-                        <div>Subscribe on YouTube</div>
-                    </div>
-                    <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
-                </a>
-                {% endif %}
-
-                {% if profile.website_url %}
-                <a href="{{ profile.website_url }}" target="_blank" rel="noopener" class="connect-link-item">
-                    <div class="connect-link-left">
-                        <div class="connect-link-icon-box" style="color: var(--pa-corporate-blue);"><i class="fas fa-globe" aria-hidden="true"></i></div>
-                        <div>Official Website</div>
-                    </div>
-                    <i class="fas fa-arrow-up-right-from-square" style="color: var(--pa-text-muted); font-size: 11px;" aria-hidden="true"></i>
-                </a>
-                {% endif %}
-            </div>
-        </section>
-
-        <div class="card-divider" aria-hidden="true"></div>
-
-        <!-- Section 7 — Direct Contact & Lead Generation Form -->
-        <section class="card-section" id="enquirySection" aria-labelledby="enquirySectionHeading">
-            <h2 class="section-title" id="enquirySectionHeading">
-                <span class="section-title-left">
-                    <i class="fas fa-paper-plane" aria-hidden="true"></i> Get in Touch · સીધો સંપર્ક
-                </span>
-            </h2>
-
-            <!-- Direct Advisor Phone Box ("and number rakh" feature) -->
-            <div class="direct-call-card">
-                <div class="direct-call-header">
-                    <div class="direct-call-icon" aria-hidden="true"><i class="fas fa-phone-volume"></i></div>
-                    <div>
-                        <div class="direct-call-sub">Direct Advisor Contact</div>
-                        <div class="direct-call-phone">
-                            {% if mobile_number %}+91 {{ mobile_number }}{% else %}Online Consultation{% endif %}
-                        </div>
-                    </div>
-                </div>
-                <div class="direct-call-btn-row">
-                    {% if call_url %}
-                    <a href="{{ call_url }}" class="btn-direct-contact btn-direct-call" aria-label="Call {{ agentDisplayName }} now">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="display:inline-block;vertical-align:middle;margin-right:2px;">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-                        </svg> Call Now
-                    </a>
-                    {% endif %}
-                    {% if whatsapp_url %}
-                    <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="btn-direct-contact btn-direct-wa" aria-label="Chat with {{ agentDisplayName }} on WhatsApp">
-                        <i class="fab fa-whatsapp" aria-hidden="true"></i> Chat on WhatsApp
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Direct Lead Enquiry Form -->
-            <div class="lead-form-box">
-                <form id="advisorLeadEnquiryForm" novalidate>
-                    {% csrf_token %}
-                    
-                    <!-- Full Name -->
-                    <div class="form-group-item">
-                        <label class="form-label-text" for="leadCustomerName">
-                            Full Name · પૂરું નામ <span class="required-mark">*</span>
-                        </label>
-                        <div class="input-field-wrap">
-                            <i class="fas fa-user input-icon-prefix" aria-hidden="true"></i>
-                            <input type="text" id="leadCustomerName" name="customer_name" class="form-input-control" placeholder="તમારું પૂરું નામ દાખલ કરો" required autocomplete="name">
-                        </div>
-                    </div>
-
-                    <!-- Contact / Mobile Number -->
-                    <div class="form-group-item">
-                        <label class="form-label-text" for="leadCustomerMobile">
-                            Mobile Number · મોબાઈલ નંબર <span class="required-mark">*</span>
-                        </label>
-                        <div class="input-field-wrap">
-                            <i class="fas fa-phone input-icon-prefix" aria-hidden="true"></i>
-                            <span class="phone-prefix-addon">+91</span>
-                            <input type="tel" id="leadCustomerMobile" name="customer_mobile" class="form-input-control form-input-phone" placeholder="10 અંકનો મોબાઈલ નંબર" maxlength="10" pattern="[0-9]{10}" required autocomplete="tel-national">
-                        </div>
-                    </div>
-
-                    <!-- Pincode -->
-                    <div class="form-group-item">
-                        <label class="form-label-text" for="leadCustomerPincode">
-                            Pincode · પિનકોડ <span class="required-mark">*</span>
-                        </label>
-                        <div class="input-field-wrap">
-                            <i class="fas fa-location-dot input-icon-prefix" aria-hidden="true"></i>
-                            <input type="text" id="leadCustomerPincode" name="customer_pincode" class="form-input-control" placeholder="6-digit PIN code (પિનકોડ)" maxlength="6" pattern="[0-9]{6}" required autocomplete="postal-code">
-                        </div>
-                    </div>
-
-                    <!-- Insurance Type -->
-                    <div class="form-group-item">
-                        <label class="form-label-text" for="leadInsuranceType">
-                            Insurance Type · વીમા પ્રકાર <span class="required-mark">*</span>
-                        </label>
-                        <div class="input-field-wrap">
-                            <i class="fas fa-shield-alt input-icon-prefix" aria-hidden="true"></i>
-                            <select id="leadInsuranceType" name="insurance_type" class="form-input-control" required>
-                                <option value="" disabled selected>વીમા પ્રકાર પસંદ કરો</option>
-                                <option value="Health Insurance">Health Insurance (સ્વાસ્થ્ય વીમો)</option>
-                                <option value="Life & Term Insurance">Life &amp; Term Insurance (જીવન / ટર્મ પ્લાન)</option>
-                                <option value="Motor & Vehicle Insurance">Motor &amp; Vehicle Insurance (વાહન વીમો)</option>
-                                <option value="Business & SME Insurance">Business &amp; SME Commercial (વ્યાપારી વીમો)</option>
-                                <option value="Investment, Mutual Funds & Pension">Investment, Savings &amp; Pension (બચત / પેન્શન)</option>
-                                <option value="Travel Insurance">Travel Insurance (પ્રવાસ વીમો)</option>
-                                <option value="Other">Other Insurance Consultation (અન્ય વીમા સેવા)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Requirement / Service Type -->
-                    <div class="form-group-item">
-                        <label class="form-label-text" for="leadServiceType">
-                            Requirement · તમારી જરૂરિયાત <span class="required-mark">*</span>
-                        </label>
-                        <div class="input-field-wrap">
-                            <i class="fas fa-list-check input-icon-prefix" aria-hidden="true"></i>
-                            <select id="leadServiceType" name="service_type" class="form-input-control" required>
-                                <option value="" disabled selected>જરૂરિયાત પસંદ કરો</option>
-                                <option value="New Policy Purchase">Buy New Policy (નવી પોલીસી લેવી છે)</option>
-                                <option value="Policy Renewal">Policy Renewal (રીન્યુઅલ કરાવવું છે)</option>
-                                <option value="Claim Settlement Assistance">Claim Assistance (ક્લેઈમ સેટલમેન્ટ મદદ)</option>
-                                <option value="Policy Comparison & Quotes">Compare Quotes (કોટ અને સરખામણી)</option>
-                                <option value="Portfolio Review">Policy Audit (પોલીસી હેલ્થ ચેકઅપ)</option>
-                                <option value="General Consultation">General Query (સામાન્ય પૂછપરછ)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Message (Optional) -->
-                    <div class="form-group-item">
-                        <label class="form-label-text" for="leadMessage">
-                            Message · સંદેશો / વિગત (મરજિયાત)
-                        </label>
-                        <textarea id="leadMessage" name="message" class="form-input-control form-textarea-control" placeholder="તમારી જરૂરિયાત અથવા પ્રશ્ન જણાવો... (Optional)"></textarea>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <button type="submit" class="btn-submit-enquiry" id="leadSubmitBtn" aria-label="Send Consultation Request">
-                        <i class="fas fa-paper-plane" aria-hidden="true"></i>
-                        <span>Send Message · વિનામૂલ્યે સલાહ મેળવો</span>
-                    </button>
-                </form>
-
-                <!-- Feedback & Success Box -->
-                <div class="form-success-card" id="leadSuccessCard" role="alert" aria-live="polite">
-                    <i class="fas fa-check-circle" aria-hidden="true"></i>
-                    <h4>ઇન્ક્વાયરી સફળતાપૂર્વક મોકલાઈ ગઈ!</h4>
-                    <p id="leadSuccessDetails">આભાર! તમારી વિગતો {{ agentDisplayName }} સુધી પહોંચી ગઈ છે. તેઓ ટૂંક સમયમાં તમારો સંપર્ક કરશે.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Minimal Trustworthy Footer -->
-        <footer class="advisor-footer">
-            <img src="{{ brand_logo_url }}" alt="PadosiAgent" class="advisor-footer-logo" onerror="this.style.display='none';">
-            <p class="advisor-footer-text">
-                Powered by <strong>PadosiAgent</strong> · India's Trusted Insurance Agent Network
-            </p>
-            <div class="advisor-footer-links">
-                <a href="/">About PadosiAgent</a> ·
-                <a href="/privacy-policy/">Privacy Policy</a> ·
-                <a href="/terms/">Terms of Service</a>
-            </div>
-        </footer>
-
-    </article>
+    </div>
 </main>
 
 <!-- Floating Bottom Sticky Bar for Mobile Touch Targets -->
