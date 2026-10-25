@@ -365,6 +365,11 @@ def update_settings(request):
                 continue
             if key not in allowed_keys:
                 continue
+            if key == 'google_site_verification' and isinstance(value, str):
+                m = re.search(r'content=["\']([^"\']+)["\']', value)
+                if m:
+                    value = m.group(1)
+                value = value.strip().strip('"\'')
             SiteSetting.set_value(key, value, group=group)
 
         # Handle boolean checkbox for wholesale marketplace feature flag
