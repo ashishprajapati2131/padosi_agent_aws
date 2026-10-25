@@ -2,6 +2,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-D8QP39S7H2"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-D8QP39S7H2');
+    </script>
+
     <title>{% block title %}{{ default_meta_title }}{% endblock %}</title>
     <link rel="icon" href="{% url 'home:favicon' %}" type="image/x-icon">
     <meta name="description" content="{% block meta_description %}{{ default_meta_description }}{% endblock %}">
