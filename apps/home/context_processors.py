@@ -99,7 +99,7 @@ def seo_context(request):
         'public_site_base': get_public_site_base(request),
         'site_banner': get_banner_config(request),
         'site_popup': get_exit_popup_config(request),
-        'google_site_verification': SiteSetting.get_value('google_site_verification', ''),
+        'google_site_verification': SiteSetting.get_value('google_site_verification', 'ENL03u6IVR0JHhWiCH_XQUiRQIw8K-TPbxwRIL8w-1U') or 'ENL03u6IVR0JHhWiCH_XQUiRQIw8K-TPbxwRIL8w-1U',
     }
 
 

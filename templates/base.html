@@ -23,11 +23,7 @@
       };
     </script>
 
-    {% if google_site_verification %}
-    <meta name="google-site-verification" content="{{ google_site_verification }}">
-    {% else %}
-    <meta name="google-site-verification" content="{% block google_site_verification %}{% endblock %}">
-    {% endif %}
+    <meta name="google-site-verification" content="{% if google_site_verification %}{{ google_site_verification }}{% else %}ENL03u6IVR0JHhWiCH_XQUiRQIw8K-TPbxwRIL8w-1U{% endif %}">
 
     <title>{% block title %}{{ default_meta_title }}{% endblock %}</title>
     <link rel="icon" href="{% url 'home:favicon' %}" type="image/x-icon">
