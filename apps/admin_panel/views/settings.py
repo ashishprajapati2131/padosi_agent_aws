@@ -311,6 +311,17 @@ def general(request):
         "Register using my exclusive link below to get special benefits:\n\n{LINK}\n\n"
         "Let me know if you have any questions!"
     )
+    wm_val = SiteSetting.get_value('wholesale_marketplace_enabled', False)
+    if isinstance(wm_val, str):
+        wm_enabled = wm_val.lower() in ('1', 'true', 'yes', 'on')
+    else:
+        wm_enabled = bool(wm_val)
+
+    card_val = SiteSetting.get_value('agent_digital_card_enabled', True)
+    if isinstance(card_val, str):
+        card_enabled = card_val.lower() in ('1', 'true', 'yes', 'on')
+    else:
+        card_enabled = bool(card_val) if card_val is not None else True
 
     context = {
         'site_name': SiteSetting.get_value('site_name', 'PadosiAgent'),
@@ -321,7 +332,8 @@ def general(request):
         'contact_address': SiteSetting.get_value('contact_address', ''),
         'social_links': social_links,
         'distributor_invite_message': SiteSetting.get_value('distributor_invite_message', default_message),
-        'wholesale_marketplace_enabled': SiteSetting.get_value('wholesale_marketplace_enabled', False),
+        'wholesale_marketplace_enabled': wm_enabled,
+        'agent_digital_card_enabled': card_enabled,
         'google_site_verification': SiteSetting.get_value('google_site_verification', ''),
     }
 
@@ -335,7 +347,7 @@ SETTINGS_FORM_KEYS = {
     'general': {
         'site_name', 'contact_email', 'contact_phone', 'contact_address',
         'social_links', 'distributor_invite_message', 'wholesale_marketplace_enabled',
-        'google_site_verification',
+        'agent_digital_card_enabled', 'google_site_verification',
     },
     'seo': {
         'seo_meta_title', 'seo_meta_description', 'seo_keywords',
@@ -372,10 +384,13 @@ def update_settings(request):
                 value = value.strip().strip('"\'')
             SiteSetting.set_value(key, value, group=group)
 
-        # Handle boolean checkbox for wholesale marketplace feature flag
+        # Handle boolean checkboxes for feature flags
         if group == 'general':
             wholesale_enabled = request.POST.get('wholesale_marketplace_enabled') in ('1', 'true', 'on')
             SiteSetting.set_value('wholesale_marketplace_enabled', wholesale_enabled, group='general')
+
+            card_enabled = request.POST.get('agent_digital_card_enabled') in ('1', 'true', 'on')
+            SiteSetting.set_value('agent_digital_card_enabled', card_enabled, group='general')
             
         # Handle file uploads (site_logo, site_favicon, og_default_image)
         import uuid

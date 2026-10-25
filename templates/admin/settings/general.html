@@ -174,6 +174,34 @@
                             </div>
                         </div>
                     </div>
+            </div>
+
+            <!-- Agent Smart Digital Visiting Card (PassKard style) Feature Flag & Controls -->
+            <div class="card mb-4 border-success border-opacity-25 shadow-sm">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-dark">
+                        <i class="fa-solid fa-address-card text-success me-2"></i> Agent Smart Digital Visiting Card (Personal Bio-Link)
+                    </h6>
+                    {% if agent_digital_card_enabled %}
+                        <span class="badge bg-success text-white px-2 py-1"><i class="fa-solid fa-circle-check me-1"></i> Active</span>
+                    {% else %}
+                        <span class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-circle-xmark me-1"></i> Disabled</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-start gap-3 p-3 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                        <div class="form-check form-switch fs-4 mt-1">
+                            <input class="form-check-input" type="checkbox" role="switch" name="agent_digital_card_enabled" id="agentDigitalCardSwitch" value="1" {% if agent_digital_card_enabled %}checked{% endif %}>
+                        </div>
+                        <div class="flex-grow-1">
+                            <label class="form-check-label fw-bold text-dark fs-6 d-block cursor-pointer" for="agentDigitalCardSwitch">
+                                Enable Agent Smart Digital Visiting Cards
+                            </label>
+                            <p class="text-muted small mb-0">
+                                Master on/off toggle for Agent Personal Digital Cards (PassKard style mobile link-in-bio). When enabled, each agent gets a personal digital visiting card link with 1-tap contact saving (vCard), quick call/WhatsApp, interactive links, and enquiry form.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
