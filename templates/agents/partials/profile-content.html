@@ -31,20 +31,71 @@
         }
 
         #reviews-section .reviews-body {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 24px;
-            align-items: start;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
             margin-top: 20px;
         }
 
         #reviews-section .write-review-box {
             border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
-            background: #f8fafc;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            height: fit-content;
+            border-radius: 14px;
+            padding: 24px;
+            background: #ffffff;
+            box-shadow: 0 4px 14px rgba(15, 118, 110, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        #reviews-section .write-review-box:hover {
+            border-color: #0f766e;
+            box-shadow: 0 6px 18px rgba(15, 118, 110, 0.1);
+        }
+
+        .review-item.review-item-hidden {
+            display: none !important;
+        }
+
+        .btn-load-more-reviews {
+            background: #ffffff;
+            border: 2px solid #0f766e;
+            color: #0f766e;
+            padding: 10px 28px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(15, 118, 110, 0.08);
+        }
+
+        .btn-load-more-reviews:hover {
+            background: #0f766e;
+            color: #ffffff !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(15, 118, 110, 0.22);
+        }
+
+        .btn-load-more-reviews:active {
+            transform: translateY(0);
+        }
+
+        @keyframes reviewFadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .review-fade-in {
+            animation: reviewFadeSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         #reviews-section .write-review-title {
@@ -211,15 +262,7 @@
 
         @media (max-width: 991.98px) {
             #reviews-section .reviews-body {
-                grid-template-columns: 1fr;
-            }
-
-            #reviews-section .write-review-box {
-                order: 2;
-            }
-
-            #reviews-section .reviews-list {
-                order: 1;
+                gap: 20px;
             }
         }
 
@@ -767,39 +810,11 @@
                 </div>
 
                 <div class="reviews-body">
-                    <div class="reviews-list">
-                        {% for review in reviews %}
-                            <div class="review-item">
-                                <div class="review-top">
-                                    <div class="reviewer-info">
-                                        <div class="reviewer-avatar">
-                                            {{ review.author_display|slice:":1"|upper }}
-                                        </div>
-                                        <div class="reviewer-name">
-                                            {{ review.author_display }}
-                                        </div>
-                                    </div>
-                                    <div class="stars">
-                                        {% for i in "12345" %}
-                                            {% if review.rating >= forloop.counter %}
-                                                <i class="fas fa-star"></i>
-                                            {% else %}
-                                                <i class="far fa-star"></i>
-                                            {% endif %}
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                <p class="review-text">{{ review.review|striptags }}</p>
-                                <div class="review-date">{{ review.created_at|date:"M d, Y"|default:"N/A" }}</div>
-                            </div>
-                        {% empty %}
-                            <div class="review-empty">No website reviews yet. Be the first to review!</div>
-                        {% endfor %}
-                    </div>
-
                     {% if not isOwnerView %}
                     <div class="write-review-box">
-                        <h3 class="write-review-title">Write a Review</h3>
+                        <h3 class="write-review-title d-flex align-items-center gap-2">
+                            <i class="fas fa-pen-to-square text-primary"></i> Write a Review
+                        </h3>
                         <form id="submit-review-form" data-is-guest="{% if request.user.is_authenticated %}false{% else %}true{% endif %}">
                             {% csrf_token %}
                             <input type="hidden" name="rating" id="review-rating-input" value="{% if existingReview %}{{ existingReview.rating }}{% else %}0{% endif %}">
@@ -828,6 +843,59 @@
                         </form>
                     </div>
                     {% endif %}
+
+                    <div class="reviews-list-wrapper">
+                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                            <h4 class="h6 mb-0 font-weight-bold text-dark d-flex align-items-center gap-2">
+                                <i class="fas fa-comments text-primary"></i> Client Feedback &amp; Reviews
+                            </h4>
+                            {% if reviews %}
+                            <span class="text-muted small font-weight-semibold">
+                                Showing <span id="reviewsCountShowing">{% if reviews|length > 5 %}5{% else %}{{ reviews|length }}{% endif %}</span> of <span id="reviewsCountTotal">{{ reviews|length }}</span> reviews
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <div class="reviews-list" id="clientReviewsList">
+                            {% for review in reviews %}
+                                <div class="review-item {% if forloop.counter > 5 %}review-item-hidden d-none{% endif %}" data-review-index="{{ forloop.counter }}">
+                                    <div class="review-top">
+                                        <div class="reviewer-info">
+                                            <div class="reviewer-avatar">
+                                                {{ review.author_display|slice:":1"|upper }}
+                                            </div>
+                                            <div>
+                                                <div class="reviewer-name">
+                                                    {{ review.author_display }}
+                                                </div>
+                                                <div class="review-date">{{ review.created_at|date:"M d, Y"|default:"N/A" }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="stars">
+                                            {% for i in "12345" %}
+                                                {% if review.rating >= forloop.counter %}
+                                                    <i class="fas fa-star"></i>
+                                                {% else %}
+                                                    <i class="far fa-star"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <p class="review-text">{{ review.review|striptags }}</p>
+                                </div>
+                            {% empty %}
+                                <div class="review-empty">No website reviews yet. Be the first to review!</div>
+                            {% endfor %}
+                        </div>
+
+                        {% if reviews|length > 5 %}
+                        <div class="load-more-reviews-container text-center mt-3 pt-2" id="loadMoreReviewsContainer">
+                            <button type="button" class="btn-load-more-reviews" id="btnLoadMoreReviews" onclick="loadMoreReviews()">
+                                <i class="fas fa-circle-chevron-down mr-1"></i> View More Reviews (<span id="loadMoreRemainingCount">{% if reviews|length|add:"-5" > 10 %}10{% else %}{{ reviews|length|add:"-5" }}{% endif %}</span> more)
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             {% endif %}
@@ -883,8 +951,51 @@ function switchReviewTab(mode) {
         }
         if (btnBoth) btnBoth.classList.add('active');
     }
-}
 window.switchReviewTab = switchReviewTab;
+
+function loadMoreReviews() {
+    var container = document.getElementById('clientReviewsList');
+    if (!container) return;
+
+    var hiddenReviews = container.querySelectorAll('.review-item.review-item-hidden');
+    var batchSize = 10;
+    var toShow = Array.prototype.slice.call(hiddenReviews, 0, batchSize);
+
+    toShow.forEach(function(item, idx) {
+        item.classList.remove('d-none');
+        item.classList.remove('review-item-hidden');
+        item.classList.add('review-fade-in');
+        item.style.animationDelay = (idx * 0.04) + 's';
+    });
+
+    var totalReviews = container.querySelectorAll('.review-item').length;
+    var remainingHidden = container.querySelectorAll('.review-item.review-item-hidden').length;
+    var currentShowing = totalReviews - remainingHidden;
+
+    var countShowingEl = document.getElementById('reviewsCountShowing');
+    if (countShowingEl) countShowingEl.textContent = currentShowing;
+
+    var loadMoreBtnContainer = document.getElementById('loadMoreReviewsContainer');
+    var remainingCountEl = document.getElementById('loadMoreRemainingCount');
+
+    if (remainingHidden <= 0) {
+        if (loadMoreBtnContainer) {
+            loadMoreBtnContainer.innerHTML = '<div class="text-muted small py-2 d-inline-flex align-items-center gap-1 font-weight-semibold" style="color: #0f766e !important;"><i class="fas fa-circle-check"></i> All reviews displayed</div>';
+        }
+    } else {
+        if (remainingCountEl) {
+            remainingCountEl.textContent = Math.min(remainingHidden, batchSize);
+        }
+    }
+
+    if (typeof window.trackGaEvent === 'function') {
+        window.trackGaEvent('view_more_reviews_clicked', {
+            showing: currentShowing,
+            total: totalReviews
+        });
+    }
+}
+window.loadMoreReviews = loadMoreReviews;
 
 function trackGoogleClick(agentId, source) {
     if (!agentId) return;
