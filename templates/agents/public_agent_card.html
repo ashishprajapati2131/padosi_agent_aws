@@ -91,17 +91,10 @@
         align-items: flex-start;
     }
 
-    @media (max-width: 576px) {
-        .advisor-card-viewport {
-            padding: 0 0 96px 0;
-            background: #FFFFFF;
-        }
-    }
-
     /* Main Card Container */
     .advisor-card-container {
         width: 100%;
-        max-width: 560px;
+        max-width: 540px;
         background: var(--pa-surface);
         border: 1px solid var(--pa-border);
         border-radius: var(--pa-radius-xl);
@@ -111,11 +104,27 @@
     }
 
     @media (max-width: 576px) {
+        .advisor-card-viewport {
+            padding: 0 0 100px 0;
+            background: #FFFFFF;
+        }
         .advisor-card-container {
             border-radius: 0;
             border: none;
             box-shadow: none;
             max-width: 100%;
+        }
+        .advisor-hero-body {
+            padding: 0 16px 20px !important;
+        }
+        .card-section {
+            padding: 0 16px !important;
+        }
+        .card-divider {
+            margin: 18px 16px !important;
+        }
+        .lead-form-box {
+            padding: 16px 14px !important;
         }
     }
 
@@ -299,7 +308,7 @@
         margin-top: 16px;
     }
 
-    @media (min-width: 480px) {
+    @media (min-width: 520px) {
         .advisor-action-strip {
             grid-template-columns: 2fr 1fr 1fr;
         }
@@ -325,7 +334,7 @@
         transition: background 0.15s ease, transform 0.15s ease;
     }
 
-    @media (min-width: 480px) {
+    @media (min-width: 520px) {
         .btn-action-primary {
             grid-column: auto;
         }
@@ -366,7 +375,7 @@
     .advisor-quick-tiles-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 10px;
+        gap: clamp(6px, 1.8vw, 10px);
         margin-top: 16px;
     }
 
@@ -376,11 +385,13 @@
         align-items: center;
         justify-content: center;
         text-decoration: none !important;
-        padding: 12px 6px;
+        padding: 10px 4px;
         border-radius: var(--pa-radius-lg);
         background: var(--pa-bg);
         border: 1px solid var(--pa-border);
-        min-height: 78px;
+        min-height: 74px;
+        min-width: 0;
+        overflow: hidden;
         transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
@@ -398,19 +409,29 @@
         align-items: center;
         justify-content: center;
         font-size: 16px;
-        margin-bottom: 6px;
+        margin-bottom: 5px;
         color: #FFFFFF;
+        flex-shrink: 0;
     }
 
     .tile-phone .quick-contact-icon { background: var(--pa-navy); }
     .tile-whatsapp .quick-contact-icon { background: #25D366; }
     .tile-email .quick-contact-icon { background: var(--pa-corporate-blue); }
-    .tile-location .quick-contact-icon { background: #475569; }
+    .tile-location .quick-contact-icon { 
+        background: #FFFFFF !important; 
+        border: 1.5px solid #E2E8F0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
 
     .quick-contact-label {
-        font-size: 11.5px;
+        font-size: clamp(10px, 2.4vw, 11.5px);
         font-weight: 700;
         color: var(--pa-text-secondary);
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        max-width: 100%;
+        text-align: center;
     }
 
     /* Section Separation */
@@ -1091,7 +1112,11 @@
             <div class="advisor-quick-tiles-grid" aria-label="Direct Quick Contact Options">
                 {% if call_url %}
                 <a href="{{ call_url }}" class="quick-contact-tile tile-phone" aria-label="Call {{ agentDisplayName }}">
-                    <div class="quick-contact-icon"><i class="fas fa-phone-alt" aria-hidden="true"></i></div>
+                    <div class="quick-contact-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                    </div>
                     <span class="quick-contact-label">Call</span>
                 </a>
                 {% endif %}
@@ -1111,9 +1136,15 @@
                 {% endif %}
 
                 {% if google_maps_url %}
-                <a href="{{ google_maps_url }}" target="_blank" rel="noopener" class="quick-contact-tile tile-location" aria-label="View office address on Google Maps">
-                    <div class="quick-contact-icon"><i class="fas fa-location-arrow" aria-hidden="true"></i></div>
-                    <span class="quick-contact-label">Directions</span>
+                <a href="{{ google_maps_url }}" target="_blank" rel="noopener" class="quick-contact-tile tile-location" aria-label="View office location on Google Maps">
+                    <div class="quick-contact-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="#EA4335" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                            <circle cx="12" cy="9" r="3.2" fill="#FFFFFF"/>
+                            <circle cx="12" cy="9" r="2.2" fill="#1A73E8"/>
+                        </svg>
+                    </div>
+                    <span class="quick-contact-label">Google Maps</span>
                 </a>
                 {% endif %}
             </div>
@@ -1126,9 +1157,6 @@
             <h2 class="section-title" id="trustHeading">
                 <span class="section-title-left">
                     <i class="fas fa-shield-halved" aria-hidden="true"></i> Verified Credentials &amp; Trust
-                </span>
-                <span class="badge-verified-tag">
-                    <i class="fas fa-check-circle" aria-hidden="true"></i> Verified
                 </span>
             </h2>
 
@@ -1350,7 +1378,9 @@
                 <div class="direct-call-btn-row">
                     {% if call_url %}
                     <a href="{{ call_url }}" class="btn-direct-contact btn-direct-call" aria-label="Call {{ agentDisplayName }} now">
-                        <i class="fas fa-phone" aria-hidden="true"></i> Call Now
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="display:inline-block;vertical-align:middle;margin-right:2px;">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg> Call Now
                     </a>
                     {% endif %}
                     {% if whatsapp_url %}
@@ -1487,7 +1517,9 @@
     </a>
     {% if call_url %}
     <a href="{{ call_url }}" class="sm-btn-icon-touch sm-call-bg" aria-label="Call {{ agentDisplayName }}">
-        <i class="fas fa-phone" aria-hidden="true"></i>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+        </svg>
     </a>
     {% endif %}
     {% if whatsapp_url %}
