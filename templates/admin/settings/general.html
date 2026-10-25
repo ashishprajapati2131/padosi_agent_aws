@@ -159,47 +159,6 @@
                         </div>
                     </div>
                 </div>
-            <!-- WhatsApp Agent Bot Feature Flag & Controls -->
-            <div class="card mb-4 border-success border-opacity-25 shadow-sm">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-dark">
-                        <i class="fa-brands fa-whatsapp text-success me-2" style="font-size: 1.25rem;"></i> WhatsApp Agent Automation & Registration Bot
-                    </h6>
-                    {% if wa_agent_bot_enabled %}
-                        <span id="waBotStatusBadge" class="badge bg-success text-white px-2 py-1"><i class="fa-solid fa-circle-check me-1"></i> Active</span>
-                    {% else %}
-                        <span id="waBotStatusBadge" class="badge bg-danger text-white px-2 py-1"><i class="fa-solid fa-circle-xmark me-1"></i> Disabled</span>
-                    {% endif %}
-                </div>
-                <div class="card-body">
-                    <div class="d-flex align-items-start gap-3 p-3 rounded-3 mb-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                        <div class="form-check form-switch fs-4 mt-1">
-                            <input class="form-check-input" type="checkbox" role="switch" name="wa_agent_bot_enabled" id="waBotSwitch" value="1" {% if wa_agent_bot_enabled %}checked{% endif %}>
-                        </div>
-                        <div class="flex-grow-1">
-                            <label class="form-check-label fw-bold text-dark fs-6 d-block cursor-pointer" for="waBotSwitch">
-                                WhatsApp Agent Bot Master Switch (ON / OFF)
-                            </label>
-                            <p class="text-muted small mb-2">
-                                Controls the automated WhatsApp journey: self-service agent registration, plan selection, automated Razorpay payment links, credential generation, and post-login bot assistance. Turning this <strong>OFF</strong> pauses the WhatsApp bot service.
-                            </p>
-                            <div class="d-flex flex-wrap gap-2 pt-2 border-top">
-                                <a href="/admin/wa_agent_bot/wabotsession/" target="_blank" class="btn btn-sm btn-outline-success">
-                                    <i class="fa-solid fa-comments me-1"></i> Bot Sessions
-                                </a>
-                                <a href="/admin/wa_agent_bot/wabotmessagelog/" target="_blank" class="btn btn-sm btn-outline-secondary">
-                                    <i class="fa-solid fa-clock-rotate-left me-1"></i> Message Logs
-                                </a>
-                                <a href="/wa-bot/health/" target="_blank" class="btn btn-sm btn-outline-info">
-                                    <i class="fa-solid fa-heart-pulse me-1"></i> Bot Health Status
-                                </a>
-                                <a href="/wa-bot/simulator/" target="_blank" class="btn btn-sm btn-success">
-                                    <i class="fa-solid fa-comment-dots me-1"></i> Live Web Simulator
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <div class="text-end mb-5">
@@ -230,42 +189,4 @@
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const waSwitch = document.getElementById('waBotSwitch');
-    const badge = document.getElementById('waBotStatusBadge');
-    if (!waSwitch || !badge) return;
-
-    waSwitch.addEventListener('change', function() {
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        fetch("{% url 'admin_toggle_wa_bot_service' %}", {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken,
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                if (data.enabled) {
-                    badge.className = 'badge bg-success text-white px-2 py-1';
-                    badge.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> Active';
-                } else {
-                    badge.className = 'badge bg-danger text-white px-2 py-1';
-                    badge.innerHTML = '<i class="fa-solid fa-circle-xmark me-1"></i> Disabled';
-                }
-            } else {
-                alert(data.message || 'Failed to toggle status');
-                waSwitch.checked = !waSwitch.checked;
-            }
-        })
-        .catch(err => {
-            console.error('Toggle error:', err);
-            waSwitch.checked = !waSwitch.checked;
-        });
-    });
-});
-</script>
 {% endblock %}

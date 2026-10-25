@@ -59,7 +59,6 @@ urlpatterns = [
     path('events/', include('apps.agents.urls_events')),
     path('api/google-review/track-click/', track_google_review_click_view, name='agent_google_review_track_click'),
     path('chatbot-api/', include('apps.chatbot.urls')),
-    path('wa-bot/', include('apps.wa_agent_bot.urls')),
     path('', include('apps.distributors.urls')),
     path('insurance/', include('apps.insurance.urls')),
     path('wholesale/', include('apps.wholesale.urls')),
