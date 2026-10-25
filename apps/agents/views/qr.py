@@ -138,18 +138,35 @@ def public_agent_card(request, slug):
 
     # Office address & Google Maps direction link
     office_address = (getattr(profile, 'office_address', '') or getattr(profile, 'address', '') or '').strip()
-    city_name = getattr(agent, 'city', '') or ''
-    state_name = getattr(agent, 'state', '') or ''
-    maps_query = office_address or f"{city_name} {state_name}".strip()
+    state_name = getattr(profile, 'state', None) or getattr(agent, 'state', None) or 'Gujarat'
+    pincode = getattr(agent, 'agent_pincode', '') or getattr(profile, 'pincode', '') or ''
+    maps_query = office_address or f"{state_name} {pincode}".strip()
     google_maps_url = f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(maps_query)}" if maps_query else ""
 
-    # Social links parsing
-    social_links = profile.social_links or {}
-    if isinstance(social_links, str):
+    # Experience & Profession
+    exp_years = profile.experience_years or getattr(agent, 'experience_range', '') or ''
+    profession = getattr(agent, 'profession', '') or 'Certified Insurance & Financial Advisor'
+
+    # Languages
+    raw_langs = getattr(profile, 'languages', '') or ''
+    if isinstance(raw_langs, str):
+        languages_list = [l.strip().title() for l in raw_langs.split(',') if l.strip()]
+    elif isinstance(raw_langs, (list, tuple)):
+        languages_list = [str(l).strip().title() for l in raw_langs if str(l).strip()]
+    else:
+        languages_list = []
+
+    # Social links parsing (only retain non-empty valid URLs)
+    social_links_raw = profile.social_links or {}
+    if isinstance(social_links_raw, str):
         try:
-            social_links = json.loads(social_links)
+            social_links_raw = json.loads(social_links_raw)
         except Exception:
-            social_links = {}
+            social_links_raw = {}
+    social_links = {}
+    for k, v in (social_links_raw or {}).items():
+        if v and str(v).strip() and str(v).strip() != '#' and str(v).strip().lower() != 'none':
+            social_links[k] = str(v).strip()
 
     # Specialties / Insurance segments
     specialties = []
@@ -160,16 +177,38 @@ def public_agent_card(request, slug):
 
     # Rating & Reviews
     try:
-        avg_rating = round(float(agent.average_rating or 4.9), 1)
+        avg_rating = round(float(agent.average_rating or 5.0), 1)
     except Exception:
-        avg_rating = 4.9
+        avg_rating = 5.0
     try:
         reviews_count = int(agent.review_count or agent.reviews.filter(is_approved=True).count())
     except Exception:
         reviews_count = 0
 
-    # Performance Stats
+    # Verified Performance Stats
     perf = getattr(agent, 'performanceStats', None)
+    claims_settled_raw = getattr(perf, 'claims_settled', None) if perf else None
+    claims_settled_val = None
+    if claims_settled_raw is not None:
+        try:
+            parsed_claims = int(str(claims_settled_raw).strip())
+            if parsed_claims > 0:
+                claims_settled_val = parsed_claims
+        except (ValueError, TypeError):
+            claims_settled_val = None
+
+    has_verified_claims = bool(claims_settled_val and claims_settled_val > 0)
+    claims_settled = claims_settled_val
+
+    claims_rate_raw = getattr(perf, 'success_rate', None) if perf else None
+    claims_rate = 100
+    if claims_rate_raw is not None:
+        try:
+            claims_rate = int(float(str(claims_rate_raw).replace('%', '').strip()))
+        except (ValueError, TypeError):
+            claims_rate = 100
+
+    response_time_val = getattr(perf, 'response_time', None) if perf else None
 
     state_code = getattr(profile, 'state_code', 'gj')
     try:
@@ -194,13 +233,21 @@ def public_agent_card(request, slug):
         'whatsapp_url': whatsapp_url,
         'google_maps_url': google_maps_url,
         'office_address': office_address,
-        'city': city_name,
         'state': state_name,
+        'pincode': pincode,
+        'experience_years': exp_years,
+        'profession': profession,
+        'languages_list': languages_list,
         'social_links': social_links,
         'specialties': specialties,
         'average_rating': avg_rating,
         'reviews_count': reviews_count,
+        'has_reviews': (reviews_count > 0),
         'performance': perf,
+        'has_verified_claims': has_verified_claims,
+        'claims_settled': claims_settled,
+        'claims_rate': claims_rate,
+        'response_time_val': response_time_val,
         'brand_logo_url': _brand_logo_url(),
         'vcard_url': reverse('agents:agent_card_vcf', kwargs={'slug': agent_slug}),
         'lead_submit_url': reverse('agents:agent_card_lead_submit', kwargs={'slug': agent_slug}),
@@ -208,7 +255,7 @@ def public_agent_card(request, slug):
         'full_profile_url': full_profile_url,
         'review_url': reverse('agents:agent_public_review', kwargs={'slug': agent_slug}),
         'card_share_url': card_url,
-        'card_share_title': f"{display_name} — Insurance Advisor | PadosiAgent Digital Visiting Card",
+        'card_share_title': f"{display_name} — Certified Insurance Advisor | PadosiAgent",
         'card_share_text': f"Connect with {display_name}, Certified Insurance Advisor on PadosiAgent: {card_url}",
         'hide_header': True,
         'hide_footer': True,

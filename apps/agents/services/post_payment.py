@@ -58,14 +58,18 @@ def fulfill_invoice_and_welcome(agent, subscription):
     if is_test_subscription(subscription):
         return None
 
-    invoice = invoice_service.generate_from_subscription(
-        agent,
-        subscription,
-        sync_sheet=False,
-    )
+    invoice = None
     pdf_path = None
-    if invoice and invoice.pdf_path:
-        pdf_path = os.path.join(settings.MEDIA_ROOT, 'app', 'private', invoice.pdf_path)
+    try:
+        invoice = invoice_service.generate_from_subscription(
+            agent,
+            subscription,
+            sync_sheet=False,
+        )
+        if invoice and invoice.pdf_path:
+            pdf_path = os.path.join(settings.MEDIA_ROOT, 'app', 'private', invoice.pdf_path)
+    except Exception:
+        logger.exception('Invoice generation failed for subscription %s', getattr(subscription, 'id', None))
 
     try:
         from apps.agents.services.account_auth import default_agent_temp_password
