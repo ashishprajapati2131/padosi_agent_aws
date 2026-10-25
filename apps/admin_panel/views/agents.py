@@ -408,6 +408,21 @@ def toggle_status(request):
             # a change that had happened.
             logger.error("AUDIT LOG ERROR: %r", e)
 
+    # Notify agent on WhatsApp if approved or rejected from pending_approval
+    if old_status == 'pending_approval':
+        if new_status == 'active':
+            try:
+                from apps.wa_agent_bot.services.notification_service import notify_agent_approved_whatsapp
+                notify_agent_approved_whatsapp(agent_id)
+            except Exception as notify_err:
+                logger.warning(f"Failed to notify agent #{agent_id} approval on WhatsApp: {notify_err}")
+        elif new_status in ('suspended', 'rejected'):
+            try:
+                from apps.wa_agent_bot.services.notification_service import notify_agent_rejected_whatsapp
+                notify_agent_rejected_whatsapp(agent_id)
+            except Exception as notify_err:
+                logger.warning(f"Failed to notify agent #{agent_id} rejection on WhatsApp: {notify_err}")
+
     from apps.admin_panel.models import AdminActivityLog
     AdminActivityLog.log(
         f'Agent status {old_status} -> {new_status}', 'Agent', int(agent_id),
@@ -464,6 +479,11 @@ def bulk_action_agents(request):
                 for aid in agent_ids:
                     AdminActivityLog.log('Agent status pending_approval -> active (bulk)', 'Agent', int(aid),
                                          details=_payment_note(aid), request=request)
+                    try:
+                        from apps.wa_agent_bot.services.notification_service import notify_agent_approved_whatsapp
+                        notify_agent_approved_whatsapp(aid)
+                    except Exception as notify_err:
+                        logger.warning(f"Failed to notify agent #{aid} approval on WhatsApp: {notify_err}")
 
                 for aid in agent_ids:
                     aid_int = int(aid)

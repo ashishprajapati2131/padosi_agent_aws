@@ -1,47 +1,1521 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}{{ agentDisplayName }} | Agent Card | PadosiAgent{% endblock %}
-{% block og_title %}{{ og_share_title|default:"PadosiAgent" }}{% endblock %}
-{% block og_description %}{{ og_share_description|default:"Find trusted insurance advisors on PadosiAgent." }}{% endblock %}
-{% block og_url %}{{ og_page_absolute_url|default:request.build_absolute_uri }}{% endblock %}
+{% block title %}{{ agentDisplayName }} | Smart Digital Visiting Card | PadosiAgent{% endblock %}
+{% block meta_description %}Official Smart Digital Visiting Card of {{ agentDisplayName }}, Certified Insurance Advisor on PadosiAgent. Save contact, explore services, and get in touch.{% endblock %}
+{% block og_title %}{{ card_share_title }}{% endblock %}
+{% block og_description %}{{ og_share_description|default:card_share_text }}{% endblock %}
+{% block og_url %}{{ card_share_url }}{% endblock %}
 {% block og_image %}{{ og_image_absolute_url }}{% endblock %}
-{% block og_type %}website{% endblock %}
+{% block og_type %}profile{% endblock %}
 {% block og_image_width %}1200{% endblock %}
 {% block og_image_height %}630{% endblock %}
 {% block twitter_card %}summary_large_image{% endblock %}
-{% block twitter_title %}{{ og_share_title|default:"PadosiAgent" }}{% endblock %}
-{% block twitter_description %}{{ og_share_description|default:"Find trusted insurance advisors on PadosiAgent." }}{% endblock %}
+{% block twitter_title %}{{ card_share_title }}{% endblock %}
+{% block twitter_description %}{{ og_share_description|default:card_share_text }}{% endblock %}
 {% block twitter_image %}{{ og_image_absolute_url }}{% endblock %}
 
 {% block extra_head %}
     <meta property="og:image:secure_url" content="{{ og_image_absolute_url }}">
     <meta property="og:image:type" content="image/jpeg">
     <meta property="og:image:alt" content="{{ agentDisplayName }} — Digital Visiting Card">
+    <meta name="theme-color" content="#0b1f4d">
 {% endblock %}
 
+{% block chatbot_widget %}{% endblock %}
+{% block modals %}{% endblock %}
+
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/agent-card-shared.css' %}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
 <style>
-    .public-card-page { background: #f1f5f9; min-height: 100vh; padding: 32px 16px 64px; }
-    .public-card-brand { text-align: center; margin-bottom: 20px; color: #1e3a8a; font-weight: 800; }
-    .public-card-wrap { max-width: 720px; margin: 0 auto; }
-    .public-card-cta { text-align: center; margin-top: 24px; }
-    .public-card-cta a {
-        display: inline-block; background: #1d7d5d; color: #fff; font-weight: 700;
-        border-radius: 10px; padding: 12px 22px; text-decoration: none;
+    :root {
+        --pa-primary: #0b1f4d;
+        --pa-primary-dark: #071536;
+        --pa-teal: #0d9488;
+        --pa-emerald: #10b981;
+        --pa-emerald-dark: #059669;
+        --pa-gold: #f59e0b;
+        --pa-accent: #2563eb;
+        --pa-bg: #0b1329;
+        --pa-card-bg: #ffffff;
+        --pa-surface: #f8fafc;
+        --pa-border: #e2e8f0;
+        --pa-text-main: #0f172a;
+        --pa-text-muted: #64748b;
+    }
+
+    body {
+        background: var(--pa-bg) !important;
+        margin: 0;
+        padding: 0;
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: var(--pa-text-main);
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+    }
+
+    /* Ambient background backdrop */
+    .smart-card-viewport {
+        min-height: 100vh;
+        background: radial-gradient(circle at 50% 0%, rgba(13, 148, 136, 0.28), transparent 45%),
+                    radial-gradient(circle at 80% 80%, rgba(37, 99, 235, 0.18), transparent 50%),
+                    #0b1329;
+        padding: 30px 14px 100px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+    }
+
+    @media (max-width: 576px) {
+        .smart-card-viewport {
+            padding: 0 0 90px 0;
+            background: #ffffff;
+        }
+    }
+
+    /* Main Container (PassKard Phone Frame Style) */
+    .smart-card-app {
+        width: 100%;
+        max-width: 500px;
+        background: #ffffff;
+        border-radius: 28px;
+        overflow: hidden;
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        position: relative;
+    }
+
+    @media (max-width: 576px) {
+        .smart-card-app {
+            border-radius: 0;
+            box-shadow: none;
+            max-width: 100%;
+        }
+    }
+
+    /* Top Brand Strip */
+    .card-brand-bar {
+        background: linear-gradient(135deg, #071536 0%, #0b1f4d 100%);
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .card-brand-left {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        color: #ffffff;
+    }
+
+    .card-brand-logo {
+        height: 24px;
+        width: auto;
+        object-fit: contain;
+    }
+
+    .card-brand-name {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 800;
+        font-size: 15px;
+        letter-spacing: -0.3px;
+        color: #ffffff;
+    }
+
+    .card-brand-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: rgba(16, 185, 129, 0.16);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        color: #34d399;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 999px;
+    }
+
+    /* Cover / Banner */
+    .card-cover {
+        position: relative;
+        height: 140px;
+        background: linear-gradient(135deg, #0b1f4d 0%, #0f356d 50%, #0d9488 100%);
+        overflow: hidden;
+    }
+
+    .card-cover::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+        background-size: 16px 16px;
+        opacity: 0.6;
+    }
+
+    .card-cover-pattern {
+        position: absolute;
+        top: -40px;
+        right: -30px;
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(251, 191, 36, 0.25) 0%, transparent 70%);
+        filter: blur(20px);
+    }
+
+    /* Profile Header & Identity */
+    .card-header-body {
+        position: relative;
+        padding: 0 22px 20px;
+        text-align: center;
+    }
+
+    .card-avatar-wrap {
+        position: relative;
+        margin: -60px auto 14px;
+        width: 112px;
+        height: 112px;
+        display: inline-block;
+    }
+
+    .card-avatar-img {
+        width: 112px;
+        height: 112px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #ffffff;
+        border: 4px solid #ffffff;
+        box-shadow: 0 10px 25px rgba(11, 31, 77, 0.25);
+        display: block;
+    }
+
+    .card-avatar-badge {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        width: 28px;
+        height: 28px;
+        background: #10b981;
+        color: #ffffff;
+        border-radius: 50%;
+        border: 2.5px solid #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+    }
+
+    .card-advisor-name {
+        font-family: 'Outfit', sans-serif;
+        font-size: 23px;
+        font-weight: 800;
+        color: var(--pa-primary);
+        margin: 0 0 4px;
+        line-height: 1.25;
+        letter-spacing: -0.3px;
+    }
+
+    .card-advisor-agency {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--pa-teal);
+        margin: 0 0 6px;
+    }
+
+    .card-advisor-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .card-meta-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: var(--pa-surface);
+        border: 1px solid var(--pa-border);
+        color: var(--pa-text-muted);
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 999px;
+    }
+
+    .card-rating-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #92400e;
+        font-size: 12.5px;
+        font-weight: 700;
+        padding: 5px 12px;
+        border-radius: 999px;
+        text-decoration: none;
+        transition: transform 0.15s ease;
+    }
+
+    .card-rating-pill:hover {
+        transform: scale(1.02);
+        color: #78350f;
+    }
+
+    .card-rating-pill i {
+        color: #f59e0b;
+    }
+
+    /* Primary Actions (PassKard 1-Tap Save / Show QR / Share) */
+    .card-primary-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    .btn-save-contact {
+        flex: 2;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #ffffff !important;
+        font-weight: 800;
+        font-size: 14px;
+        padding: 13px 16px;
+        border-radius: 14px;
+        text-decoration: none !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
+        transition: all 0.2s ease;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-save-contact:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 10px 24px rgba(16, 185, 129, 0.45);
+        color: #ffffff !important;
+    }
+
+    .btn-icon-action {
+        flex: 1;
+        background: #ffffff;
+        color: var(--pa-primary) !important;
+        border: 1.5px solid var(--pa-border);
+        font-weight: 700;
+        font-size: 13px;
+        padding: 12px 10px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none !important;
+    }
+
+    .btn-icon-action:hover {
+        background: var(--pa-surface);
+        border-color: var(--pa-primary);
+        color: var(--pa-primary) !important;
+        transform: translateY(-1px);
+    }
+
+    /* Quick Action Round Tiles Row (Call, WhatsApp, Email, Maps) */
+    .card-quick-tiles {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin: 18px 0 6px;
+    }
+
+    .quick-tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none !important;
+        padding: 12px 6px;
+        border-radius: 16px;
+        background: var(--pa-surface);
+        border: 1px solid var(--pa-border);
+        transition: all 0.2s ease;
+    }
+
+    .quick-tile:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(11, 31, 77, 0.08);
+    }
+
+    .quick-tile-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        margin-bottom: 6px;
+        color: #ffffff;
+        transition: transform 0.2s ease;
+    }
+
+    .quick-tile:hover .quick-tile-icon {
+        transform: scale(1.08);
+    }
+
+    .quick-tile-label {
+        font-size: 11.5px;
+        font-weight: 700;
+        color: var(--pa-text-main);
+    }
+
+    .tile-call .quick-tile-icon { background: linear-gradient(135deg, #0b1f4d 0%, #1e3a8a 100%); }
+    .tile-wa .quick-tile-icon { background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3); }
+    .tile-email .quick-tile-icon { background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); }
+    .tile-maps .quick-tile-icon { background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); }
+
+    /* Divider */
+    .card-section-divider {
+        height: 8px;
+        background: #f1f5f9;
+        border-top: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+        margin: 18px 0;
+    }
+
+    /* Content Card Sections */
+    .card-content-section {
+        padding: 0 22px 18px;
+    }
+
+    .card-sec-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--pa-primary);
+        margin: 0 0 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .card-sec-title i {
+        color: var(--pa-teal);
+        margin-right: 8px;
+    }
+
+    /* Advisor Direct Number Card ("and number rakh" feature) */
+    .advisor-direct-contact-card {
+        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+        border: 1.5px solid #a7f3d0;
+        border-radius: 16px;
+        padding: 16px;
+        margin-bottom: 16px;
+        position: relative;
+    }
+
+    .adc-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .adc-icon-wrap {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: #10b981;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .adc-title {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #065f46;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin: 0;
+    }
+
+    .adc-number {
+        font-family: 'Outfit', sans-serif;
+        font-size: 18px;
+        font-weight: 800;
+        color: #064e3b;
+        margin: 2px 0 0;
+        letter-spacing: 0.3px;
+    }
+
+    .adc-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .adc-btn {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 12.5px;
+        font-weight: 700;
+        padding: 9px 12px;
+        border-radius: 10px;
+        text-decoration: none !important;
+        transition: all 0.15s ease;
+    }
+
+    .adc-btn-call {
+        background: #0b1f4d;
+        color: #ffffff !important;
+    }
+
+    .adc-btn-wa {
+        background: #25D366;
+        color: #ffffff !important;
+    }
+
+    .adc-btn:hover {
+        opacity: 0.95;
+        transform: translateY(-1px);
+    }
+
+    /* Specialties / Tags */
+    .specialties-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+    }
+
+    .spec-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e40af;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 6px 12px;
+        border-radius: 999px;
+    }
+
+    .spec-badge i {
+        color: #3b82f6;
+        font-size: 11px;
+    }
+
+    /* Key Highlights Strip */
+    .advisor-highlights-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .highlight-box {
+        background: var(--pa-surface);
+        border: 1px solid var(--pa-border);
+        border-radius: 14px;
+        padding: 10px 8px;
+        text-align: center;
+    }
+
+    .highlight-val {
+        font-family: 'Outfit', sans-serif;
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--pa-primary);
+        line-height: 1.2;
+    }
+
+    .highlight-lbl {
+        font-size: 10.5px;
+        font-weight: 600;
+        color: var(--pa-text-muted);
+        margin-top: 3px;
+    }
+
+    /* Custom Links / Social Connect Tiles (PassKard style) */
+    .custom-links-list {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+    }
+
+    .custom-link-tile {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: var(--pa-surface);
+        border: 1px solid var(--pa-border);
+        border-radius: 14px;
+        text-decoration: none !important;
+        color: var(--pa-text-main) !important;
+        font-weight: 700;
+        font-size: 13.5px;
+        transition: all 0.2s ease;
+    }
+
+    .custom-link-tile:hover {
+        background: #ffffff;
+        border-color: var(--pa-teal);
+        transform: translateX(3px);
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.12);
+        color: var(--pa-teal) !important;
+    }
+
+    .custom-link-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .custom-link-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        background: #ffffff;
+        border: 1px solid var(--pa-border);
+        color: var(--pa-primary);
+    }
+
+    .custom-link-tile:hover .custom-link-icon {
+        background: var(--pa-teal);
+        color: #ffffff;
+        border-color: var(--pa-teal);
+    }
+
+    /* Form Section 7️⃣ - Direct Lead Enquiry Form */
+    .lead-enquiry-card {
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(11, 31, 77, 0.05);
+    }
+
+    .lead-form-group {
+        margin-bottom: 13px;
+        text-align: left;
+    }
+
+    .lead-form-label {
+        display: block;
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #334155;
+        margin-bottom: 5px;
+    }
+
+    .lead-form-label .required-star {
+        color: #ef4444;
+    }
+
+    .lead-input-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .lead-input-icon {
+        position: absolute;
+        left: 14px;
+        color: #94a3b8;
+        font-size: 14px;
+        pointer-events: none;
+    }
+
+    .lead-input, .lead-select, .lead-textarea {
+        width: 100%;
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 10px 14px 10px 38px;
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #1e293b;
+        transition: all 0.2s ease;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+
+    .lead-input:focus, .lead-select:focus, .lead-textarea:focus {
+        background: #ffffff;
+        border-color: var(--pa-teal) !important;
+        box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
+        outline: none !important;
+    }
+
+    .lead-mobile-prefix {
+        position: absolute;
+        left: 36px;
+        font-weight: 700;
+        font-size: 13.5px;
+        color: #64748b;
+        pointer-events: none;
+    }
+
+    .lead-input-mobile {
+        padding-left: 72px !important;
+    }
+
+    .lead-textarea {
+        padding: 10px 14px;
+        min-height: 80px;
+        resize: vertical;
+    }
+
+    .btn-submit-lead {
+        width: 100%;
+        background: linear-gradient(135deg, #0b1f4d 0%, #1e3a8a 100%);
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 15px;
+        padding: 13px 20px;
+        border-radius: 12px;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 8px 20px rgba(11, 31, 77, 0.25);
+        transition: all 0.2s ease;
+    }
+
+    .btn-submit-lead:hover {
+        background: linear-gradient(135deg, #071536 0%, #172554 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 10px 24px rgba(11, 31, 77, 0.35);
+    }
+
+    .btn-submit-lead:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
+
+    .lead-success-msg {
+        display: none;
+        background: #ecfdf5;
+        border: 1.5px solid #a7f3d0;
+        border-radius: 14px;
+        padding: 16px;
+        text-align: center;
+        margin-top: 14px;
+    }
+
+    .lead-success-msg i {
+        font-size: 32px;
+        color: #10b981;
+        margin-bottom: 8px;
+    }
+
+    .lead-success-msg h5 {
+        font-size: 16px;
+        font-weight: 800;
+        color: #065f46;
+        margin: 0 0 4px;
+    }
+
+    .lead-success-msg p {
+        font-size: 13px;
+        color: #047857;
+        margin: 0;
+    }
+
+    /* Footer */
+    .card-footer-branding {
+        padding: 24px 20px 30px;
+        text-align: center;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .card-footer-logo {
+        height: 22px;
+        opacity: 0.8;
+        margin-bottom: 8px;
+    }
+
+    .card-footer-text {
+        font-size: 12px;
+        color: #94a3b8;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    /* Floating Bottom Action Bar on Mobile */
+    .card-sticky-mobile-bar {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(12px);
+        border-top: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        z-index: 9999;
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    @media (max-width: 576px) {
+        .card-sticky-mobile-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    }
+
+    .sm-btn-save {
+        flex: 2;
+        background: #10b981;
+        color: #ffffff !important;
+        font-weight: 800;
+        font-size: 13.5px;
+        padding: 11px 12px;
+        border-radius: 12px;
+        text-decoration: none !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: none;
+    }
+
+    .sm-btn-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff !important;
+        font-size: 18px;
+        text-decoration: none !important;
+        border: none;
+    }
+
+    .sm-btn-call { background: #0b1f4d; }
+    .sm-btn-wa { background: #25D366; }
+
+    /* Modal for QR Code */
+    .card-modal-backdrop {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(11, 19, 41, 0.85);
+        backdrop-filter: blur(8px);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
+
+    .card-modal-backdrop.active {
+        display: flex;
+    }
+
+    .card-modal-box {
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 28px 24px;
+        width: 100%;
+        max-width: 380px;
+        text-align: center;
+        position: relative;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+        animation: cardPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes cardPopIn {
+        from { transform: scale(0.92); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+
+    .card-modal-close {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        border: none;
+        color: #64748b;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .card-qr-img {
+        width: 200px;
+        height: 200px;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        margin: 16px auto;
+        display: block;
+        background: #ffffff;
+    }
+
+    .card-modal-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--pa-primary);
+        margin: 0 0 4px;
+    }
+
+    .card-modal-sub {
+        font-size: 12.5px;
+        color: var(--pa-text-muted);
+        margin: 0;
+    }
+
+    .card-modal-btn-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 18px;
+    }
+
+    .card-modal-btn-row .btn {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 10px 12px;
+        border-radius: 10px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="public-card-page">
-    <div class="public-card-wrap">
-        <div class="public-card-brand">PadosiAgent</div>
-        {% include 'partials/agent-card.html' %}
-        <div class="public-card-cta">
-            <a href="/{{ agent.state_code|default:'gj' }}/{{ agent.agent_slug }}/">View full profile</a>
+<div class="smart-card-viewport">
+    <div class="smart-card-app">
+        <!-- Top Brand Bar -->
+        <div class="card-brand-bar">
+            <a href="/" class="card-brand-left">
+                <img src="{{ brand_logo_url }}" alt="PadosiAgent" class="card-brand-logo" onerror="this.style.display='none';">
+                <span class="card-brand-name">PadosiAgent</span>
+            </a>
+            <span class="card-brand-badge">
+                <i class="fas fa-shield-alt"></i> IRDAI Verified
+            </span>
+        </div>
+
+        <!-- Cover Header Banner -->
+        <div class="card-cover">
+            <div class="card-cover-pattern"></div>
+        </div>
+
+        <!-- Identity & Profile Header -->
+        <div class="card-header-body">
+            <div class="card-avatar-wrap">
+                <img src="{{ profile.profile_photo_url }}" alt="{{ agentDisplayName }}" class="card-avatar-img" onerror="this.src='/static/img/avatar-icon.jpg';">
+                <div class="card-avatar-badge" title="Certified Advisor">
+                    <i class="fas fa-check"></i>
+                </div>
+            </div>
+
+            <h1 class="card-advisor-name">{{ agentDisplayName }}</h1>
+            
+            {% if profile.agency_name %}
+            <div class="card-advisor-agency">{{ profile.agency_name }}</div>
+            {% else %}
+            <div class="card-advisor-agency">Certified Insurance &amp; Financial Advisor</div>
+            {% endif %}
+
+            <div class="card-advisor-meta">
+                {% if profile.experience_years %}
+                <span class="card-meta-pill">
+                    <i class="fas fa-award" style="color: #f59e0b;"></i> {{ profile.experience_years }}+ Years Exp
+                </span>
+                {% endif %}
+                
+                {% if city or state %}
+                <span class="card-meta-pill">
+                    <i class="fas fa-map-marker-alt" style="color: #ef4444;"></i> {{ city }}{% if city and state %}, {% endif %}{{ state }}
+                </span>
+                {% endif %}
+
+                {% if profile.license_number %}
+                <span class="card-meta-pill" title="IRDAI Registration Number">
+                    <i class="fas fa-id-card" style="color: #0d9488;"></i> IRDAI: {{ profile.license_number|truncatechars:14 }}
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Star Rating Badge -->
+            <div>
+                <a href="{{ review_url }}" class="card-rating-pill" title="View or write a review">
+                    <i class="fas fa-star"></i>
+                    <span><strong>{{ average_rating|floatformat:1 }}</strong> ({{ reviews_count }} Review{{ reviews_count|pluralize }})</span>
+                    <i class="fas fa-chevron-right" style="font-size: 10px; color: #b45309; margin-left: 2px;"></i>
+                </a>
+            </div>
+
+            <!-- Primary 3-Button Action Strip (PassKard style) -->
+            <div class="card-primary-actions">
+                <a href="{{ vcard_url }}" class="btn-save-contact" id="saveContactBtn">
+                    <i class="fas fa-address-card"></i> Save Contact
+                </a>
+                <button type="button" class="btn-icon-action" onclick="openCardQrModal()">
+                    <i class="fas fa-qrcode"></i> Show QR
+                </button>
+                <button type="button" class="btn-icon-action" onclick="shareDigitalCard()">
+                    <i class="fas fa-share-alt"></i> Share
+                </button>
+            </div>
+
+            <!-- Quick Action Round Tiles (Call, WhatsApp, Email, Directions) -->
+            <div class="card-quick-tiles">
+                {% if call_url %}
+                <a href="{{ call_url }}" class="quick-tile tile-call" title="Call Advisor">
+                    <div class="quick-tile-icon"><i class="fas fa-phone-alt"></i></div>
+                    <span class="quick-tile-label">Call</span>
+                </a>
+                {% else %}
+                <div class="quick-tile tile-call" style="opacity: 0.5;">
+                    <div class="quick-tile-icon"><i class="fas fa-phone-alt"></i></div>
+                    <span class="quick-tile-label">Call</span>
+                </div>
+                {% endif %}
+
+                {% if whatsapp_url %}
+                <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="quick-tile tile-wa" title="WhatsApp Chat">
+                    <div class="quick-tile-icon"><i class="fab fa-whatsapp"></i></div>
+                    <span class="quick-tile-label">WhatsApp</span>
+                </a>
+                {% endif %}
+
+                {% if agent.email %}
+                <a href="mailto:{{ agent.email }}?subject=Insurance%20Consultation%20Inquiry" class="quick-tile tile-email" title="Email Advisor">
+                    <div class="quick-tile-icon"><i class="fas fa-envelope"></i></div>
+                    <span class="quick-tile-label">Email</span>
+                </a>
+                {% endif %}
+
+                {% if google_maps_url %}
+                <a href="{{ google_maps_url }}" target="_blank" rel="noopener" class="quick-tile tile-maps" title="Office Location">
+                    <div class="quick-tile-icon"><i class="fas fa-directions"></i></div>
+                    <span class="quick-tile-label">Location</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card-section-divider"></div>
+
+        <!-- Key Highlights / Performance -->
+        <div class="card-content-section">
+            <div class="advisor-highlights-grid">
+                <div class="highlight-box">
+                    <div class="highlight-val">{{ performance.success_rate|default:"98.6" }}%</div>
+                    <div class="highlight-lbl">Claims Settled</div>
+                </div>
+                <div class="highlight-box">
+                    <div class="highlight-val">&lt; 15m</div>
+                    <div class="highlight-lbl">Response Time</div>
+                </div>
+                <div class="highlight-box">
+                    <div class="highlight-val">{{ profile.experience_years|default:"5" }}+ Yrs</div>
+                    <div class="highlight-lbl">Industry Trust</div>
+                </div>
+            </div>
+
+            <!-- Insurance Specialties Badges -->
+            <div class="card-sec-title">
+                <span><i class="fas fa-shield-heart"></i> Insurance Specialties</span>
+            </div>
+            <div class="specialties-grid">
+                {% if specialties %}
+                    {% for spec in specialties %}
+                    <span class="spec-badge">
+                        {% if spec == 'health' %}<i class="fas fa-heartbeat"></i> Health Insurance
+                        {% elif spec == 'life' %}<i class="fas fa-user-shield"></i> Life &amp; Term Plan
+                        {% elif spec == 'motor' %}<i class="fas fa-car"></i> Motor &amp; Vehicle
+                        {% elif spec == 'sme' %}<i class="fas fa-briefcase"></i> SME &amp; Business
+                        {% elif spec == 'investment' %}<i class="fas fa-chart-line"></i> Mutual Funds &amp; SIP
+                        {% else %}<i class="fas fa-check-circle"></i> {{ spec|title }}
+                        {% endif %}
+                    </span>
+                    {% endfor %}
+                {% else %}
+                    <span class="spec-badge"><i class="fas fa-heartbeat"></i> Health Insurance</span>
+                    <span class="spec-badge"><i class="fas fa-user-shield"></i> Life &amp; Term Plan</span>
+                    <span class="spec-badge"><i class="fas fa-car"></i> Motor Insurance</span>
+                    <span class="spec-badge"><i class="fas fa-briefcase"></i> Business / SME</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card-section-divider"></div>
+
+        <!-- About Advisor & Office Address -->
+        <div class="card-content-section">
+            <div class="card-sec-title">
+                <span><i class="fas fa-user-tie"></i> About {{ agentDisplayName }}</span>
+            </div>
+            
+            <p style="font-size: 13.5px; line-height: 1.6; color: #475569; margin: 0 0 12px;">
+                {{ profile.about|default:profile.career_highlights|default:"Professional IRDAI certified insurance advisor dedicated to finding the most comprehensive coverage, policy renewals, and hassle-free claim settlement assistance for individuals, families, and businesses." }}
+            </p>
+
+            {% if office_address %}
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; display: flex; align-items: flex-start; gap: 10px; margin-top: 10px;">
+                <i class="fas fa-map-pin" style="color: #0d9488; margin-top: 3px;"></i>
+                <div style="font-size: 12.5px; color: #334155; line-height: 1.4;">
+                    <strong>Office Address:</strong><br>
+                    {{ office_address }}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if profile.languages %}
+            <div style="margin-top: 10px; font-size: 12.5px; color: #64748b;">
+                <strong style="color: #334155;"><i class="fas fa-language" style="color: #2563eb;"></i> Languages Known:</strong> {{ profile.languages }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-section-divider"></div>
+
+        <!-- Custom Links / Bio Links (PassKard style) -->
+        <div class="card-content-section">
+            <div class="card-sec-title">
+                <span><i class="fas fa-link"></i> Connect &amp; Explore</span>
+            </div>
+            <div class="custom-links-list">
+                <a href="{{ full_profile_url }}" class="custom-link-tile">
+                    <div class="custom-link-left">
+                        <div class="custom-link-icon"><i class="fas fa-id-badge"></i></div>
+                        <div>
+                            <div>View Full Verified Profile</div>
+                            <small style="color: #94a3b8; font-size: 11px; font-weight: 500;">padosiagent.com verified page</small>
+                        </div>
+                    </div>
+                    <i class="fas fa-arrow-right" style="color: #cbd5e1; font-size: 12px;"></i>
+                </a>
+
+                <a href="{{ review_url }}" class="custom-link-tile">
+                    <div class="custom-link-left">
+                        <div class="custom-link-icon" style="color: #f59e0b;"><i class="fas fa-star"></i></div>
+                        <div>
+                            <div>Rate &amp; Write a Review</div>
+                            <small style="color: #94a3b8; font-size: 11px; font-weight: 500;">Share your client experience</small>
+                        </div>
+                    </div>
+                    <i class="fas fa-arrow-right" style="color: #cbd5e1; font-size: 12px;"></i>
+                </a>
+
+                {% if social_links.linkedin %}
+                <a href="{{ social_links.linkedin }}" target="_blank" rel="noopener" class="custom-link-tile">
+                    <div class="custom-link-left">
+                        <div class="custom-link-icon" style="color: #0077b5;"><i class="fab fa-linkedin-in"></i></div>
+                        <div>Connect on LinkedIn</div>
+                    </div>
+                    <i class="fas fa-external-link-alt" style="color: #cbd5e1; font-size: 11px;"></i>
+                </a>
+                {% endif %}
+
+                {% if social_links.instagram %}
+                <a href="{{ social_links.instagram }}" target="_blank" rel="noopener" class="custom-link-tile">
+                    <div class="custom-link-left">
+                        <div class="custom-link-icon" style="color: #e1306c;"><i class="fab fa-instagram"></i></div>
+                        <div>Follow on Instagram</div>
+                    </div>
+                    <i class="fas fa-external-link-alt" style="color: #cbd5e1; font-size: 11px;"></i>
+                </a>
+                {% endif %}
+
+                {% if social_links.facebook %}
+                <a href="{{ social_links.facebook }}" target="_blank" rel="noopener" class="custom-link-tile">
+                    <div class="custom-link-left">
+                        <div class="custom-link-icon" style="color: #1877f2;"><i class="fab fa-facebook-f"></i></div>
+                        <div>Facebook Page</div>
+                    </div>
+                    <i class="fas fa-external-link-alt" style="color: #cbd5e1; font-size: 11px;"></i>
+                </a>
+                {% endif %}
+
+                {% if profile.website_url %}
+                <a href="{{ profile.website_url }}" target="_blank" rel="noopener" class="custom-link-tile">
+                    <div class="custom-link-left">
+                        <div class="custom-link-icon" style="color: #0d9488;"><i class="fas fa-globe"></i></div>
+                        <div>Official Website</div>
+                    </div>
+                    <i class="fas fa-external-link-alt" style="color: #cbd5e1; font-size: 11px;"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card-section-divider"></div>
+
+        <!-- 7️⃣ Direct Lead Enquiry Form (ઇન્ક્વાયરી ફોર્મ) -->
+        <div class="card-content-section" id="enquirySection">
+            <div class="card-sec-title">
+                <span><i class="fas fa-paper-plane"></i> Get in Touch · સીધો સંપર્ક</span>
+            </div>
+
+            <!-- "and number rakh" Advisor Direct Contact Banner -->
+            <div class="advisor-direct-contact-card">
+                <div class="adc-header">
+                    <div class="adc-icon-wrap"><i class="fas fa-phone-volume"></i></div>
+                    <div>
+                        <div class="adc-title">Direct Advisor Contact</div>
+                        <div class="adc-number">
+                            {% if mobile_number %}+91 {{ mobile_number }}{% else %}Contact via Form Below{% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="adc-actions">
+                    {% if call_url %}
+                    <a href="{{ call_url }}" class="adc-btn adc-btn-call">
+                        <i class="fas fa-phone"></i> Call Now
+                    </a>
+                    {% endif %}
+                    {% if whatsapp_url %}
+                    <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="adc-btn adc-btn-wa">
+                        <i class="fab fa-whatsapp"></i> Chat on WhatsApp
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Lead Capture Form matching PadosiAgent Lead Fields -->
+            <div class="lead-enquiry-card">
+                <form id="digitalCardLeadForm">
+                    {% csrf_token %}
+                    
+                    <!-- Name -->
+                    <div class="lead-form-group">
+                        <label class="lead-form-label" for="customerName">Full Name <span class="required-star">*</span></label>
+                        <div class="lead-input-wrap">
+                            <i class="fas fa-user lead-input-icon"></i>
+                            <input type="text" id="customerName" name="customer_name" class="lead-input" placeholder="તમારું પૂરું નામ દાખલ કરો" required>
+                        </div>
+                    </div>
+
+                    <!-- Contact / Mobile Number -->
+                    <div class="lead-form-group">
+                        <label class="lead-form-label" for="customerMobile">Mobile Number <span class="required-star">*</span></label>
+                        <div class="lead-input-wrap">
+                            <i class="fas fa-phone lead-input-icon"></i>
+                            <span class="lead-mobile-prefix">+91</span>
+                            <input type="tel" id="customerMobile" name="customer_mobile" class="lead-input lead-input-mobile" placeholder="10 અંકનો મોબાઈલ નંબર" maxlength="10" pattern="[0-9]{10}" required>
+                        </div>
+                    </div>
+
+                    <!-- Pincode -->
+                    <div class="lead-form-group">
+                        <label class="lead-form-label" for="customerPincode">Pincode <span class="required-star">*</span></label>
+                        <div class="lead-input-wrap">
+                            <i class="fas fa-location-dot lead-input-icon"></i>
+                            <input type="text" id="customerPincode" name="customer_pincode" class="lead-input" placeholder="6-digit PIN code (પિનકોડ)" maxlength="6" pattern="[0-9]{6}">
+                        </div>
+                    </div>
+
+                    <!-- Insurance Type -->
+                    <div class="lead-form-group">
+                        <label class="lead-form-label" for="insuranceType">Insurance Type <span class="required-star">*</span></label>
+                        <div class="lead-input-wrap">
+                            <i class="fas fa-shield-alt lead-input-icon"></i>
+                            <select id="insuranceType" name="insurance_type" class="lead-select" required>
+                                <option value="" disabled selected>વીમા પ્રકાર પસંદ કરો</option>
+                                <option value="Health Insurance">Health Insurance (સ્વાસ્થ્ય વીમો)</option>
+                                <option value="Life & Term Insurance">Life &amp; Term Insurance (જીવન / ટર્મ પ્લાન)</option>
+                                <option value="Motor & Vehicle Insurance">Motor &amp; Vehicle Insurance (વાહન વીમો)</option>
+                                <option value="Business & SME Insurance">Business &amp; SME Commercial (વ્યાપારી વીમો)</option>
+                                <option value="Investment, Mutual Funds & Pension">Investment, Savings &amp; Pension (બચત / પેન્શન)</option>
+                                <option value="Travel Insurance">Travel Insurance (પ્રવાસ વીમો)</option>
+                                <option value="Other">Other Insurance Consultation (અન્ય વીમા સેવા)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Requirement / Service Type -->
+                    <div class="lead-form-group">
+                        <label class="lead-form-label" for="serviceType">Requirement <span class="required-star">*</span></label>
+                        <div class="lead-input-wrap">
+                            <i class="fas fa-list-check lead-input-icon"></i>
+                            <select id="serviceType" name="service_type" class="lead-select" required>
+                                <option value="" disabled selected>જરૂરિયાત પસંદ કરો</option>
+                                <option value="New Policy Purchase">Buy New Policy (નવી પોલીસી લેવી છે)</option>
+                                <option value="Policy Renewal">Policy Renewal (રીન્યુઅલ કરાવવું છે)</option>
+                                <option value="Claim Settlement Assistance">Claim Assistance (ક્લેઈમ સેટલમેન્ટ મદદ)</option>
+                                <option value="Policy Comparison & Quotes">Compare Quotes (કોટ અને સરખામણી)</option>
+                                <option value="Portfolio Review">Policy Audit (પોલીસી હેલ્થ ચેકઅપ)</option>
+                                <option value="General Consultation">General Query (સામાન્ય પૂછપરછ)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Message (સંદેશો) -->
+                    <div class="lead-form-group">
+                        <label class="lead-form-label" for="enquiryMessage">Message (સંદેશો / પ્રશ્ન)</label>
+                        <textarea id="enquiryMessage" name="message" class="lead-textarea" placeholder="તમારી જરૂરિયાત અથવા પ્રશ્ન જણાવો... (Optional)"></textarea>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn-submit-lead" id="btnSubmitLead">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>Send Message · વિનામૂલ્યે સલાહ મેળવો</span>
+                    </button>
+                </form>
+
+                <!-- Success Alert -->
+                <div class="lead-success-msg" id="leadSuccessMsg">
+                    <i class="fas fa-check-circle"></i>
+                    <h5>ઇન્ક્વાયરી સફળતાપૂર્વક મોકલાઈ ગઈ!</h5>
+                    <p id="leadSuccessFeedback">આભાર! તમારી વિગતો {{ agentDisplayName }} સુધી પહોંચી ગઈ છે. તેઓ ટૂંક સમયમાં તમારો સંપર્ક કરશે.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="card-footer-branding">
+            <img src="{{ brand_logo_url }}" alt="PadosiAgent" class="card-footer-logo" onerror="this.style.display='none';">
+            <p class="card-footer-text">
+                Powered by <strong>PadosiAgent</strong> · India's Trusted Insurance Agent Network
+            </p>
         </div>
     </div>
 </div>
+
+<!-- Floating Bottom Bar for Mobile -->
+<div class="card-sticky-mobile-bar">
+    <a href="{{ vcard_url }}" class="sm-btn-save">
+        <i class="fas fa-address-card"></i> Save Contact
+    </a>
+    {% if call_url %}
+    <a href="{{ call_url }}" class="sm-btn-icon sm-btn-call" title="Call">
+        <i class="fas fa-phone"></i>
+    </a>
+    {% endif %}
+    {% if whatsapp_url %}
+    <a href="{{ whatsapp_url }}" target="_blank" rel="noopener" class="sm-btn-icon sm-btn-wa" title="WhatsApp">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+    {% endif %}
+</div>
+
+<!-- Modal: Interactive QR Code -->
+<div class="card-modal-backdrop" id="cardQrModal" onclick="if(event.target===this) closeCardQrModal();">
+    <div class="card-modal-box">
+        <button type="button" class="card-modal-close" onclick="closeCardQrModal()" aria-label="Close">
+            <i class="fas fa-times"></i>
+        </button>
+        <h4 class="card-modal-title">Scan to View Visiting Card</h4>
+        <p class="card-modal-sub">Scan using camera to save {{ agentDisplayName }}'s contact</p>
+        
+        <img src="{{ card_qr_url }}" alt="Visiting Card QR Code" class="card-qr-img" id="cardModalQrImage">
+
+        <div class="card-modal-btn-row">
+            <a href="{{ card_qr_url }}" download="PadosiAgent-{{ agent_slug }}-card.png" class="btn btn-primary" style="background: #0b1f4d; border-color: #0b1f4d;">
+                <i class="fas fa-download"></i> Download QR
+            </a>
+            <button type="button" class="btn btn-outline-secondary" onclick="copyCardLink()">
+                <i class="fas fa-copy"></i> Copy Link
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    // 1. QR Code Modal Controls
+    window.openCardQrModal = function() {
+        var modal = document.getElementById('cardQrModal');
+        if (modal) modal.classList.add('active');
+    };
+
+    window.closeCardQrModal = function() {
+        var modal = document.getElementById('cardQrModal');
+        if (modal) modal.classList.remove('active');
+    };
+
+    // 2. Share Digital Card (Native Web Share with Fallback to Clipboard)
+    window.shareDigitalCard = function() {
+        var shareData = {
+            title: "{{ card_share_title|escapejs }}",
+            text: "{{ card_share_text|escapejs }}",
+            url: "{{ card_share_url|escapejs }}"
+        };
+
+        if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+            navigator.share(shareData).catch(function(err) {
+                if (err.name !== 'AbortError') {
+                    copyCardLink();
+                }
+            });
+        } else {
+            copyCardLink();
+        }
+    };
+
+    // 3. Copy Card Link
+    window.copyCardLink = function() {
+        var url = "{{ card_share_url|escapejs }}";
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function() {
+                showToast('Card link copied to clipboard! 📋');
+            }).catch(function() {
+                fallbackCopy(url);
+            });
+        } else {
+            fallbackCopy(url);
+        }
+    };
+
+    function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Card link copied to clipboard! 📋');
+    }
+
+    function showToast(msg) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2500,
+                icon: 'success',
+                title: msg
+            });
+        } else {
+            alert(msg);
+        }
+    }
+
+    // 4. Direct Lead Enquiry Form Submission (AJAX)
+    var leadForm = document.getElementById('digitalCardLeadForm');
+    var btnSubmit = document.getElementById('btnSubmitLead');
+    var successBox = document.getElementById('leadSuccessMsg');
+    var successFeedback = document.getElementById('leadSuccessFeedback');
+
+    if (leadForm) {
+        leadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var nameInput = document.getElementById('customerName');
+            var mobileInput = document.getElementById('customerMobile');
+            var pincodeInput = document.getElementById('customerPincode');
+            var insTypeInput = document.getElementById('insuranceType');
+            var reqInput = document.getElementById('serviceType');
+            var msgInput = document.getElementById('enquiryMessage');
+
+            var name = (nameInput.value || '').trim();
+            var mobile = (mobileInput.value || '').trim().replace(/[^0-9]/g, '');
+
+            if (!name) {
+                alert('Please enter your full name.');
+                nameInput.focus();
+                return;
+            }
+
+            if (mobile.length !== 10) {
+                alert('Please enter a valid 10-digit mobile number.');
+                mobileInput.focus();
+                return;
+            }
+
+            // Disable button & show spinner
+            btnSubmit.disabled = true;
+            var originalBtnHtml = btnSubmit.innerHTML;
+            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending message...';
+
+            var formData = new FormData();
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            formData.append('customer_name', name);
+            formData.append('customer_mobile', mobile);
+            formData.append('customer_pincode', (pincodeInput.value || '').trim());
+            formData.append('insurance_type', (insTypeInput.value || ''));
+            formData.append('service_type', (reqInput.value || ''));
+            formData.append('message', (msgInput.value || '').trim());
+
+            fetch("{{ lead_submit_url }}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(function(res) {
+                return res.json();
+            })
+            .then(function(data) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = originalBtnHtml;
+
+                if (data && data.success) {
+                    leadForm.style.display = 'none';
+                    if (successFeedback && data.message) {
+                        successFeedback.textContent = data.message;
+                    }
+                    if (successBox) {
+                        successBox.style.display = 'block';
+                    }
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'ઇન્ક્વાયરી સફળતાપૂર્વક મોકલાઈ!',
+                            text: data.message,
+                            confirmButtonColor: '#0b1f4d'
+                        });
+                    }
+                } else {
+                    var errorMsg = (data && data.message) ? data.message : 'Something went wrong. Please try again.';
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'warning', title: 'Notice', text: errorMsg });
+                    } else {
+                        alert(errorMsg);
+                    }
+                }
+            })
+            .catch(function(err) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = originalBtnHtml;
+                alert('Network error. Please check your connection and try again.');
+            });
+        });
+    }
+})();
+</script>
 {% endblock %}

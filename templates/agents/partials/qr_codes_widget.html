@@ -10,15 +10,14 @@
             .pa-qr-header-actions {
                 display: flex !important;
                 flex-direction: row !important;
-                flex-wrap: nowrap !important;
+                flex-wrap: wrap !important;
                 align-items: center !important;
                 gap: 8px !important;
                 margin-top: 10px !important;
                 width: 100% !important;
-                max-width: 480px !important;
+                max-width: 620px !important;
             }
             .pa-qr-btn-pill {
-                flex: 1 1 0 !important;
                 display: inline-flex !important;
                 align-items: center !important;
                 justify-content: center !important;
@@ -26,14 +25,25 @@
                 white-space: nowrap !important;
                 border-radius: 999px !important;
                 font-weight: 700 !important;
-                font-size: clamp(10.5px, 2.8vw, 13px) !important;
-                padding: 8px 12px !important;
+                font-size: clamp(11px, 2.8vw, 13px) !important;
+                padding: 8px 14px !important;
                 text-decoration: none !important;
                 box-sizing: border-box !important;
                 line-height: 1.2 !important;
                 min-height: 36px !important;
                 cursor: pointer !important;
                 transition: all 0.15s ease !important;
+            }
+            .pa-qr-btn-digital-card {
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+                color: #ffffff !important;
+                border: none !important;
+                box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+            }
+            .pa-qr-btn-digital-card:hover {
+                background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+                color: #ffffff !important;
+                transform: translateY(-1px) !important;
             }
             .pa-qr-btn-card {
                 background: #0b1f4d !important;
@@ -61,7 +71,7 @@
                     gap: 6px !important;
                 }
                 .pa-qr-btn-pill {
-                    padding: 7px 8px !important;
+                    padding: 7px 10px !important;
                     font-size: 11px !important;
                     min-height: 34px !important;
                 }
@@ -69,6 +79,12 @@
         </style>
         <div class="pa-qr-header-actions">
             {% if agent.agent_slug %}
+            <a class="btn btn-sm pa-qr-btn-pill pa-qr-btn-digital-card" href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank">
+                <i class="fas fa-id-card mr-1" style="color: #ffffff; margin-right: 5px;"></i> Digital Visiting Card
+            </a>
+            <button type="button" class="btn btn-sm pa-qr-btn-pill" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;" onclick="copyAgentCardLink('{% url 'agents:agent_public_card' slug=agent.agent_slug %}')">
+                <i class="fas fa-copy mr-1" style="color: #2563eb; margin-right: 4px;"></i> Copy Link
+            </button>
             <a class="btn btn-sm pa-qr-btn-pill pa-qr-btn-card" href="{% url 'agents:agent_review_card' slug=agent.agent_slug %}">
                 Open Review Card
             </a>
@@ -94,6 +110,11 @@
                         <i class="fas fa-download"></i>
                     </a>
                     {% endif %}
+                    {% if item.type == 'card' %}
+                    <a class="pa-qr-chip" href="{{ item.target_url }}" target="_blank" title="Open Digital Visiting Card" aria-label="Open Digital Visiting Card">
+                        <i class="fas fa-external-link-alt"></i>
+                    </a>
+                    {% endif %}
                     <button type="button" class="pa-qr-chip pa-qr-share-btn" title="Share &amp; Invite Studio" aria-label="Share {{ item.label }} QR"
                         data-type="{{ item.type }}" data-url="{{ item.target_url }}" data-label="{{ item.label }}">
                         <i class="fas fa-share-alt"></i>
@@ -101,13 +122,18 @@
                 </div>
             </div>
             <div class="pa-qr-mini-foot">
-                <span class="pa-qr-mini-label">{{ item.label }}</span>
+                <span class="pa-qr-mini-label">
+                    {{ item.label }}
+                    {% if item.type == 'card' %}
+                    <span style="display: block; font-size: 10px; color: #10b981; font-weight: 700; text-transform: uppercase;">Smart Card</span>
+                    {% endif %}
+                </span>
                 <div class="pa-qr-mini-social">
                     <a class="pa-fab pa-fab-wa" href="{{ item.whatsapp_url }}" target="_blank" rel="noopener" title="Share on WhatsApp" aria-label="Share {{ item.label }} on WhatsApp">
                         <i class="fab fa-whatsapp"></i>
                     </a>
-                    <button type="button" class="pa-fab pa-fab-ig pa-ig-copy" data-copy="{{ item.target_url }}" title="Copy link for Instagram" aria-label="Copy {{ item.label }} link for Instagram">
-                        <i class="fab fa-instagram"></i>
+                    <button type="button" class="pa-fab pa-fab-ig pa-ig-copy" data-copy="{{ item.target_url }}" title="Copy link" aria-label="Copy {{ item.label }} link">
+                        <i class="fas fa-link"></i>
                     </button>
                     <a class="pa-fab pa-fab-fb" href="{{ item.facebook_url }}" target="_blank" rel="noopener" title="Share on Facebook" aria-label="Share {{ item.label }} on Facebook">
                         <i class="fab fa-facebook-f"></i>
@@ -117,6 +143,32 @@
         </div>
         {% endfor %}
     </div>
+
+    <!-- Smart Digital Visiting Card Banner Showcase inside QR section -->
+    {% if agent.agent_slug %}
+    <div class="pa-digital-card-showcase mt-3 mx-2" style="background: linear-gradient(135deg, #0b1f4d 0%, #1e3a8a 100%); border-radius: 18px; padding: 22px 24px; color: #ffffff; box-shadow: 0 10px 30px rgba(11, 31, 77, 0.2); position: relative; overflow: hidden;">
+        <div style="position: absolute; right: -20px; top: -20px; width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%);"></div>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3" style="position: relative; z-index: 2;">
+            <div style="max-width: 600px;">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge" style="background: #10b981; color: #ffffff; font-size: 10.5px; font-weight: 800; padding: 4px 8px; border-radius: 6px; letter-spacing: 0.3px;">NEW FEATURE</span>
+                    <h5 class="mb-0 text-white font-weight-bold" style="font-size: 18px; letter-spacing: -0.2px;">Your Personal Smart Digital Visiting Card (Link-in-Bio)</h5>
+                </div>
+                <p class="mb-0 text-white-50" style="font-size: 13.5px; line-height: 1.55;">
+                    Share your professional visiting card link with clients! They can <strong>Save your contact details directly to their phone</strong> in 1-tap via vCard (.vcf), connect instantly via Call/WhatsApp, and submit direct enquiries that land straight in your Leads table.
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <a href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank" class="btn btn-sm" style="background: #10b981; color: #ffffff; font-weight: 800; font-size: 13px; padding: 10px 18px; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-external-link-alt"></i> Open Digital Card
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-light" style="font-weight: 700; font-size: 13px; padding: 10px 14px; border-radius: 10px;" onclick="copyAgentCardLink('{% url 'agents:agent_public_card' slug=agent.agent_slug %}')">
+                    <i class="fas fa-copy" style="margin-right: 4px;"></i> Copy Link
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <div class="modal fade pa-qr-preview-modal" id="qrPreviewModal" tabindex="-1" aria-hidden="true">
@@ -212,6 +264,16 @@
             openStudioFromQR(mode);
         });
     });
+
+    // Copy Digital Visiting Card link
+    window.copyAgentCardLink = function(cardPath) {
+        var fullUrl = (cardPath.indexOf('http') === 0) ? cardPath : (window.location.origin + cardPath);
+        copyText(fullUrl).then(function() {
+            toast('Digital Visiting Card link copied! 📋');
+        }).catch(function() {
+            toast('Digital Visiting Card link copied! 📋');
+        });
+    };
 })();
 </script>
 {% endif %}
