@@ -393,6 +393,13 @@
             allowOutsideClick: false
         }).then(function(result) {
             if (result.isConfirmed) {
+                if (window.trackGaEvent) {
+                    window.trackGaEvent('google_review_clicked', {
+                        event_category: 'conversion',
+                        agent_id: '{{ agent.id }}',
+                        agent_slug: '{{ agent.profile.slug|default:"" }}'
+                    });
+                }
                 window.open(safeUrl, '_blank', 'noopener,noreferrer');
             }
         });
@@ -418,6 +425,14 @@
             submitBtn.innerHTML = originalText;
 
             if (result.body && result.body.status === 'success') {
+                if (window.trackGaEvent) {
+                    window.trackGaEvent('review_submitted', {
+                        event_category: 'engagement',
+                        rating: parseInt(ratingInput.value || 0, 10),
+                        agent_id: '{{ agent.id }}',
+                        agent_slug: '{{ agent.profile.slug|default:"" }}'
+                    });
+                }
                 var nudge = result.body.google_nudge;
                 if (nudge && nudge.enabled && nudge.google_review_url) {
                     showGoogleNudgePopup(nudge);

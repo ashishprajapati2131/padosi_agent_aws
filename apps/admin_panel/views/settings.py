@@ -322,6 +322,7 @@ def general(request):
         'social_links': social_links,
         'distributor_invite_message': SiteSetting.get_value('distributor_invite_message', default_message),
         'wholesale_marketplace_enabled': SiteSetting.get_value('wholesale_marketplace_enabled', False),
+        'google_site_verification': SiteSetting.get_value('google_site_verification', ''),
     }
 
     return render(request, 'admin/settings/general.html', context)
@@ -334,10 +335,12 @@ SETTINGS_FORM_KEYS = {
     'general': {
         'site_name', 'contact_email', 'contact_phone', 'contact_address',
         'social_links', 'distributor_invite_message', 'wholesale_marketplace_enabled',
+        'google_site_verification',
     },
     'seo': {
         'seo_meta_title', 'seo_meta_description', 'seo_keywords',
         'seo_og_title', 'seo_og_description', 'og_default_image',
+        'google_site_verification',
     },
     'security': {'rate_limit_clicks', 'rate_limit_timeframe', 'subscription_expiry_enforced'},
 }
@@ -429,6 +432,7 @@ def seo(request):
         'seo_og_title': SiteSetting.get_value('seo_og_title', ''),
         'seo_og_description': SiteSetting.get_value('seo_og_description', ''),
         'og_default_image': SiteSetting.get_value('og_default_image', ''),
+        'google_site_verification': SiteSetting.get_value('google_site_verification', ''),
         'link_rules': LinkOgSetting.objects.all().order_by('-updated_at'),
     }
     return render(request, 'admin/settings/seo.html', context)

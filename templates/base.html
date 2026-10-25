@@ -10,7 +10,24 @@
       gtag('js', new Date());
 
       gtag('config', 'G-D8QP39S7H2');
+
+      // Safe global helper for GA4 conversion & custom event tracking
+      window.trackGaEvent = function(eventName, eventParams) {
+        try {
+          if (typeof window.gtag === 'function') {
+            window.gtag('event', eventName, eventParams || {});
+          }
+        } catch (e) {
+          console.debug('GA tracking error:', e);
+        }
+      };
     </script>
+
+    {% if google_site_verification %}
+    <meta name="google-site-verification" content="{{ google_site_verification }}">
+    {% else %}
+    <meta name="google-site-verification" content="{% block google_site_verification %}{% endblock %}">
+    {% endif %}
 
     <title>{% block title %}{{ default_meta_title }}{% endblock %}</title>
     <link rel="icon" href="{% url 'home:favicon' %}" type="image/x-icon">
@@ -486,6 +503,57 @@
         if (!setupJqueryCsrf()) {
             document.addEventListener('DOMContentLoaded', setupJqueryCsrf);
         }
+    })();
+    </script>
+
+    <!-- GA4 Conversion Event Tracking (Call, WhatsApp, Registration) -->
+    <script>
+    (function() {
+        document.addEventListener('click', function(e) {
+            var link = e.target.closest('a');
+            if (!link) return;
+            var href = (link.getAttribute('href') || '').trim();
+
+            // 1. Click to Call Agent
+            if (href.indexOf('tel:') === 0) {
+                var tel = href.replace('tel:', '').trim();
+                var card = link.closest('[data-agent-id], .agent-card, .profile-card, .advisor-card');
+                var agentId = card ? (card.getAttribute('data-agent-id') || '') : '';
+                if (window.trackGaEvent) {
+                    window.trackGaEvent('click_to_call', {
+                        event_category: 'lead_action',
+                        event_label: tel,
+                        agent_id: agentId,
+                        page_path: window.location.pathname
+                    });
+                }
+            }
+
+            // 2. Click to WhatsApp Agent
+            if (href.indexOf('wa.me') !== -1 || href.indexOf('whatsapp.com') !== -1) {
+                var card = link.closest('[data-agent-id], .agent-card, .profile-card, .advisor-card');
+                var agentId = card ? (card.getAttribute('data-agent-id') || '') : '';
+                if (window.trackGaEvent) {
+                    window.trackGaEvent('click_to_whatsapp', {
+                        event_category: 'lead_action',
+                        event_label: href,
+                        agent_id: agentId,
+                        page_path: window.location.pathname
+                    });
+                }
+            }
+
+            // 3. Agent Registration CTA Click
+            if (href.indexOf('/agent-registration') !== -1 || href.indexOf('/register') !== -1) {
+                if (window.trackGaEvent) {
+                    window.trackGaEvent('agent_registration_click', {
+                        event_category: 'onboarding',
+                        event_label: link.innerText ? link.innerText.trim().slice(0, 50) : '',
+                        page_path: window.location.pathname
+                    });
+                }
+            }
+        }, { passive: true });
     })();
     </script>
 </body>
