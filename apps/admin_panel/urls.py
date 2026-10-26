@@ -363,6 +363,7 @@ urlpatterns = [
     # Phase 4D: Queues
     path("admin/approvals/", agent_approvals, name="admin_agents_approvals"),
     path("admin/pending-registrations/", agent_pending_registrations, name="admin_agents_pending_registrations"),
+    path("admin/agents/pending/", agent_pending_registrations, name="admin_agents_pending"),
     path("admin/agents/verify-pending-payment/", admin_verify_pending_payment, name="admin_agents_verify_pending_payment"),
 
     # Phase 5: Finance & Accounts

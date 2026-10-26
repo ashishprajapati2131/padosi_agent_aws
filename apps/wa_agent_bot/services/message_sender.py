@@ -14,13 +14,12 @@ from requests.exceptions import RequestException
 logger = logging.getLogger(__name__)
 
 
+from apps.wa_agent_bot.services.openwa_admin_service import get_openwa_config
+
+
 def _get_config():
-    """Read OpenWA connection settings from environment."""
-    return {
-        'base_url': os.environ.get('WA_BOT_OPENWA_BASE_URL', 'http://localhost:2785').rstrip('/'),
-        'session_id': os.environ.get('WA_BOT_OPENWA_SESSION_ID', '1d3fe475-ff1e-4076-8c04-6f82862f255e'),
-        'api_key': os.environ.get('WA_BOT_OPENWA_API_KEY', 'owa_k1_4c2f0f60c48635718f6828aef51e565e38182714f039a1f8f1fb789cb96f470e'),
-    }
+    """Read OpenWA connection settings from DB SiteSetting or environment."""
+    return get_openwa_config()
 
 
 def _build_headers(api_key):
