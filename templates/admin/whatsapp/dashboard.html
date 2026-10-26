@@ -411,7 +411,7 @@
                             <td>
                                 <div class="fw-bold text-dark" style="font-size: 13px;">+{{ s.phone_number }}</div>
                                 <div class="text-muted small">
-                                    {{ s.agent.fullname|default:s.registration_data.fullname|default:"New Visitor" }}
+                                    {% firstof s.agent.fullname s.registration_data.fullname "New Visitor" %}
                                 </div>
                             </td>
                             <td>

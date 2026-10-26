@@ -86,6 +86,17 @@ class WaBotAdminTests(TestCase):
             resp = wa_bot_dashboard(req)
             self.assertEqual(resp.status_code, 200)
 
+    @patch('apps.wa_agent_bot.services.openwa_admin_service.get_openwa_session_status', return_value={'online': False})
+    @patch('apps.wa_agent_bot.services.openwa_admin_service.get_openwa_qr_code', return_value={'success': False})
+    def test_dashboard_renders_visitor_without_registration_data(self, _mock_qr, _mock_status):
+        """A brand-new visitor (no agent, empty registration_data) must not 500 the dashboard."""
+        WaBotSession.objects.create(phone_number='919800000001', registration_data={})
+        req = self._auth_request(self.factory.get('/admin/whatsapp/'))
+        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+            resp = wa_bot_dashboard(req)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('New Visitor', resp.content.decode('utf-8'))
+
     def test_dashboard_redirects_unauthenticated(self):
         req = self.factory.get('/admin/whatsapp/')
         req.session = {}
