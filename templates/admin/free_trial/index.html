@@ -35,7 +35,7 @@
     {% for msg in messages %}
       <div class="alert alert-{% if msg.tags == 'error' %}danger{% else %}{{ msg.tags }}{% endif %} alert-dismissible fade show">
         <i class="fas fa-{% if msg.tags == 'error' %}exclamation-circle{% else %}check-circle{% endif %} mr-2"></i>
-        {{ msg|safe }}
+        {{ msg }}
         <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
       </div>
     {% endfor %}
@@ -399,7 +399,7 @@
                       <button class="btn btn-link p-0 ml-1 btn-xs" onclick="copyText('{{ p.code }}',this)"><i class="fas fa-copy fa-xs text-muted"></i></button>
                       {% if p.notes %}<br><small class="text-muted font-italic">{{ p.notes|truncatechars:40 }}</small>{% endif %}
                     </td>
-                    <td><small>{{ p.trial_plan_name|default:"<span class='text-muted'>Default</span>"|safe }}</small></td>
+                    <td><small>{% if p.trial_plan_name %}{{ p.trial_plan_name }}{% else %}<span class='text-muted'>Default</span>{% endif %}</small></td>
                     <td>
                       {% if p.trial_duration_days %}<span class="badge badge-info text-dark">{{ p.trial_duration_days }}d</span>
                       {% else %}<span class="text-muted small">Default</span>{% endif %}

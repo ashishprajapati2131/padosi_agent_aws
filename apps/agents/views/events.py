@@ -15,7 +15,7 @@ Flow:
 """
 
 import logging
-import random
+import secrets
 import string
 import time
 
@@ -715,7 +715,7 @@ def payment_success(request):
         logger.error(f"EVENT REGISTRATION PAYMENT SUCCESS - verification failed: {exc}")
         return JsonResponse({'success': False, 'message': 'Payment verification failed. Please contact support.'}, status=400)
 
-    generated_password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+    generated_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
 
     try:
         with transaction.atomic():

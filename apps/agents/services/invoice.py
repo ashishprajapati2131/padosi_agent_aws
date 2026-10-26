@@ -503,6 +503,8 @@ class InvoiceService:
             pdf_url = f"{settings.MEDIA_URL}app/private/{pdf_path}" if pdf_path else ''
 
             payload = {
+                # Shared secret checked by doPost in google_apps_script/Code.gs
+                'sync_token': os.environ.get('INVOICE_SHEET_SYNC_TOKEN', ''),
                 # Snake-case keys
                 'invoice_number': invoice_number,
                 'date': formatted_date,

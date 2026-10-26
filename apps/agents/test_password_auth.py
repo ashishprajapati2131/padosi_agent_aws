@@ -151,14 +151,40 @@ class AgentLoginViewTests(SimpleTestCase):
 
 
 class ForgotPasswordMessageTests(TestCase):
-    def test_unknown_email_says_account_was_not_found(self):
+    GENERIC = 'If an account exists for this email, a password reset link has been sent.'
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+
+    @patch('apps.agents.views.auth.email_service.send_password_reset', return_value=True)
+    def test_unknown_email_gets_generic_message_and_no_mail(self, send_reset):
         response = self.client.post(reverse('agents:forgot_password'), {
             'email': 'nobody-reset@example.com',
             'login_type': 'agent',
         })
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Your account was not found.')
-        self.assertNotContains(response, 'Email sent successfully.')
+        self.assertContains(response, self.GENERIC)
+        self.assertNotContains(response, 'not found')
+        send_reset.assert_not_called()
+
+    @patch('apps.agents.views.auth.email_service.send_password_reset', return_value=True)
+    def test_non_agent_user_gets_generic_message_and_no_mail(self, send_reset):
+        User.objects.create_user('dist-reset@example.com', 'dist-reset@example.com', None)
+        response = self.client.post(reverse('agents:forgot_password'), {
+            'email': 'dist-reset@example.com',
+            'login_type': 'agent',
+        })
+        self.assertContains(response, self.GENERIC)
+        self.assertNotContains(response, 'Distributor account')
+        send_reset.assert_not_called()
+
+    @patch('apps.agents.views.auth.email_service.send_password_reset', return_value=True)
+    def test_requests_are_throttled_per_email(self, send_reset):
+        for _ in range(3):
+            self.client.post(reverse('agents:forgot_password'), {'email': 'spam-reset@example.com', 'login_type': 'agent'})
+        response = self.client.post(reverse('agents:forgot_password'), {'email': 'spam-reset@example.com', 'login_type': 'agent'})
+        self.assertContains(response, 'Too many password reset requests')
 
     @patch('apps.agents.views.auth.email_service.send_password_reset', return_value=True)
     def test_existing_agent_sends_mail_and_shows_success(self, send_reset):
@@ -173,7 +199,7 @@ class ForgotPasswordMessageTests(TestCase):
             'login_type': 'agent',
         })
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Email sent successfully.')
+        self.assertContains(response, self.GENERIC)
         send_reset.assert_called_once()
 
     @patch('apps.agents.views.auth.email_service.send_password_reset', return_value=False)
@@ -189,5 +215,5 @@ class ForgotPasswordMessageTests(TestCase):
             'login_type': 'agent',
         })
         self.assertContains(response, 'Unable to send reset email.')
-        self.assertNotContains(response, 'Email sent successfully.')
+        self.assertNotContains(response, self.GENERIC)
         send_reset.assert_called_once()

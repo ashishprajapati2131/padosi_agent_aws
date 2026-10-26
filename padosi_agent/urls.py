@@ -22,8 +22,8 @@ from django.conf.urls.static import static
 
 from apps.agents.views.dashboard import serve_private_file, track_google_review_click_view
 from apps.agents.views import pwa as pwa_views
+from apps.insurance.views.dashboard import InsuranceLoginView
 
-from django.contrib.auth import views as auth_views
 from django.contrib.sitemaps.views import sitemap
 from padosi_agent.sitemaps import sitemaps
 from padosi_agent.views import csrf_refresh_api, health_check_view
@@ -40,7 +40,7 @@ urlpatterns = [
     path('sw.js',                pwa_views.service_worker, name='pwa.sw'),
     path('offline.html',         pwa_views.offline,        name='pwa.offline'),
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
-    path('insurance-login/', auth_views.LoginView.as_view(template_name='insurance/login.html', redirect_authenticated_user=True), name='insurance_login'),
+    path('insurance-login/', InsuranceLoginView.as_view(), name='insurance_login'),
     # Removed overriding logout view, now handled by apps.agents.urls
     path('media/app/private/<path:file_path>', serve_private_file, name='serve_private_file'),
     path('django-admin/', admin.site.urls),
@@ -70,6 +70,7 @@ import posixpath
 
 from django.http import Http404
 from django.views.static import serve
+from apps.agents.utils.file_validation import UPLOAD_SANDBOX_CSP
 from django.urls import re_path
 
 
@@ -87,6 +88,8 @@ def serve_public_media(request, path, document_root=None):
         or normalized.startswith('wholesale/documents/')
         or normalized == 'wholesale/rfq_attachments'
         or normalized.startswith('wholesale/rfq_attachments/')
+        or normalized == 'wholesale/imports'
+        or normalized.startswith('wholesale/imports/')
     ):
         raise Http404("File not found")
     response = serve(request, path, document_root=document_root)
@@ -95,7 +98,7 @@ def serve_public_media(request, path, document_root=None):
     # PDFs are exempt so license documents still open in the browser viewer.
     response['X-Content-Type-Options'] = 'nosniff'
     if not normalized.lower().endswith('.pdf'):
-        response['Content-Security-Policy'] = "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'"
+        response['Content-Security-Policy'] = UPLOAD_SANDBOX_CSP
     return response
 
 

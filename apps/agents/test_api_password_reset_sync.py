@@ -9,19 +9,20 @@ from password_hashing import check_password_hash, hash_password
 
 
 class ApiPasswordResetSyncTests(SimpleTestCase):
-    def _reset(self, current_agent=None, token=None):
+    def _reset(self, current_agent=None, token=None, current_password=None):
         from fastapi_app.schemas.auth import ResetPasswordRequest
         from fastapi_app.services.password_reset_service import PasswordResetService
 
         own = MagicMock(email='me@example.com', password=hash_password('Old@Pass123'), id=7)
         db = MagicMock()
+        db.execute.return_value.first.return_value = None  # no auth_user row
         service = PasswordResetService(db)
         service.user_repo = MagicMock()
         service.user_repo.get_by_email.side_effect = lambda e: own if (e or '').lower() == 'me@example.com' else None
         service.token_repo = MagicMock()
         service.token_repo.get_valid_token_record.return_value = MagicMock(token=hash_password('tok123'))
         resp = service.reset_password(
-            ResetPasswordRequest(token=token, email='me@example.com',
+            ResetPasswordRequest(token=token, email='me@example.com', current_password=current_password,
                                  password='New@Pass1234', password_confirmation='New@Pass1234'),
             None, current_agent=current_agent,
         )
@@ -40,11 +41,20 @@ class ApiPasswordResetSyncTests(SimpleTestCase):
         db.commit.assert_called_once()
 
     def test_in_app_change_also_updates_auth_user(self):
-        resp, own, db = self._reset(current_agent=MagicMock(email='me@example.com'))
+        resp, own, db = self._reset(current_agent=MagicMock(email='me@example.com'), current_password='Old@Pass123')
         self.assertEqual(resp.status_code, 200, resp.body)
         updates = self._auth_user_updates(db)
         self.assertEqual(len(updates), 1)
         self.assertEqual(updates[0].args[1]['password'], own.password)
+
+    def test_in_app_change_without_current_password_is_rejected(self):
+        for current_password in (None, 'Wrong@Pass1'):
+            resp, own, db = self._reset(current_agent=MagicMock(email='me@example.com'),
+                                        current_password=current_password)
+            self.assertEqual(resp.status_code, 400)
+            self.assertEqual(self._auth_user_updates(db), [])
+            self.assertTrue(check_password_hash('Old@Pass123', own.password))
+            db.commit.assert_not_called()
 
     def test_bad_token_changes_nothing(self):
         resp, own, db = self._reset(token='wrong')

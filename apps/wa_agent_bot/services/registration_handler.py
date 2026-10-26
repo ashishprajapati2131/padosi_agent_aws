@@ -18,6 +18,7 @@ import string
 
 from django.contrib.auth.models import User
 from django.db import IntegrityError
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,17 @@ def create_agent_from_wa_data(registration_data):
             'error': f"An agent with mobile *{mobile}* is already registered. Please use a different number or contact support.",
         }
 
+    # An existing login (staff, portal user, or any auth_user) with this email must never be
+    # re-used or have its password reset from WhatsApp — that would be an account takeover.
+    from apps.agents.services.account_auth import email_owned_by_non_agent_account
+    if email_owned_by_non_agent_account(email) or User.objects.filter(
+        Q(username__iexact=email) | Q(email__iexact=email)
+    ).exists():
+        return {
+            'success': False,
+            'error': "This email is already linked to an account. Please sign in on the website or use a different email.",
+        }
+
     # ── Password is agent's 10-digit mobile number ───────────────────
     mobile_digits = ''.join(c for c in mobile if c.isdigit())
     password = mobile_digits[-10:] if len(mobile_digits) >= 10 else mobile_digits
@@ -132,16 +144,11 @@ def create_agent_from_wa_data(registration_data):
             last_name=' '.join(fullname.split()[1:]) if len(fullname.split()) > 1 else '',
         )
     except IntegrityError:
-        # Username (email) already taken in auth_user
-        try:
-            user = User.objects.get(username=email)
-            user.set_password(password)
-            user.save()
-        except User.DoesNotExist:
-            return {
-                'success': False,
-                'error': "Unable to create account. The email may already be in use. Please contact support.",
-            }
+        # Race with the check above: never take over the existing account.
+        return {
+            'success': False,
+            'error': "This email is already linked to an account. Please sign in on the website or use a different email.",
+        }
 
     # ── Create Agent record ─────────────────────────────────────────
     try:

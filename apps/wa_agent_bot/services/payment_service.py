@@ -406,6 +406,12 @@ def activate_agent_subscription_after_payment(subscription_id, payment_id=None, 
         plan_slug = normalize_plan_slug(agent.plan_type or subscription.selected_plan)
         duration_days = 30 if plan_slug == 'free_trial' else 365
 
+        # A bot-registered agent must never be linked to a staff/portal login (checked before any write).
+        from apps.agents.services.account_auth import is_non_agent_portal_user
+        if not agent.user and is_non_agent_portal_user(User.objects.filter(username=agent.email).first()):
+            logger.error(f"[WA-Bot] Refusing to activate agent #{agent.id}: email belongs to a staff/portal login")
+            return False, "Email belongs to a staff or portal account"
+
         # 1. Activate subscription
         subscription.payment_status = 'completed'
         subscription.status = 'active'
@@ -429,6 +435,8 @@ def activate_agent_subscription_after_payment(subscription_id, payment_id=None, 
         mobile_digits = ''.join(c for c in (agent.mobile or '') if c.isdigit())
         password = mobile_digits[-10:] if len(mobile_digits) >= 10 else (mobile_digits or '1234567890')
 
+        # Only a login created here gets the mobile password; an existing one is never overwritten.
+        new_user = False
         if not agent.user:
             user = User.objects.filter(username=agent.email).first()
             if not user:
@@ -438,11 +446,13 @@ def activate_agent_subscription_after_payment(subscription_id, payment_id=None, 
                     first_name=agent.fullname.split()[0] if agent.fullname else '',
                     last_name=' '.join(agent.fullname.split()[1:]) if len(agent.fullname.split()) > 1 else '',
                 )
+                new_user = True
             agent.user = user
             agent.save()
 
-        agent.user.set_password(password)
-        agent.user.save()
+        if new_user or not agent.user.has_usable_password():
+            agent.user.set_password(password)
+            agent.user.save()
 
         # 4. Locate or create WhatsApp Session
         session = WaBotSession.objects.filter(agent=agent).first()

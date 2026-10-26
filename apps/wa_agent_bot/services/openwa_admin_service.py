@@ -9,6 +9,8 @@ and dispatch administrator test messages directly from the Admin Panel.
 import logging
 import os
 import time
+from urllib.parse import urlencode
+
 import requests
 from requests.exceptions import RequestException
 
@@ -46,6 +48,10 @@ def sync_openwa_webhook(target_webhook_url):
         base = f"{base}/api"
     url = f"{base}/sessions/{session_id}/webhooks"
 
+    # OpenWA can't sign requests, so the shared secret rides in the URL; messages below show the URL without it.
+    secret = os.environ.get('WA_BOT_WEBHOOK_SECRET', '')
+    delivery_url = f"{target_webhook_url}{'&' if '?' in target_webhook_url else '?'}{urlencode({'token': secret})}" if secret else target_webhook_url
+
     headers = _get_headers()
     try:
         # 1. Check existing webhooks
@@ -53,16 +59,16 @@ def sync_openwa_webhook(target_webhook_url):
         if res.status_code == 200:
             existing = res.json()
             for wh in existing:
-                if wh.get('url') == target_webhook_url and wh.get('active'):
+                if wh.get('url') == delivery_url and wh.get('active'):
                     return True, f"Webhook already active and delivering to: {target_webhook_url}"
                 wh_id = wh.get('id')
                 if wh_id:
-                    up = requests.patch(f"{url}/{wh_id}", json={'url': target_webhook_url, 'active': True, 'events': ['*']}, headers=headers, timeout=8)
+                    up = requests.patch(f"{url}/{wh_id}", json={'url': delivery_url, 'active': True, 'events': ['*']}, headers=headers, timeout=8)
                     if up.status_code in (200, 204):
                         return True, f"Updated existing OpenWA webhook to: {target_webhook_url}"
 
         # 2. Register new webhook
-        create_res = requests.post(url, json={'url': target_webhook_url, 'events': ['*']}, headers=headers, timeout=8)
+        create_res = requests.post(url, json={'url': delivery_url, 'events': ['*']}, headers=headers, timeout=8)
         if create_res.status_code in (200, 201):
             return True, f"Successfully registered new webhook pointing to: {target_webhook_url}"
         return False, f"Failed to register webhook on OpenWA: HTTP {create_res.status_code}"
@@ -269,12 +275,36 @@ def send_admin_test_whatsapp(phone, text):
     return False, res.get('error', 'Failed to send message via OpenWA')
 
 
+def _override_url_allowed(url, configured_url):
+    """
+    An admin-typed OpenWA URL may point at the already-configured host, or at a host that
+    resolves only to public addresses — never at internal services or cloud metadata (SSRF).
+    """
+    import ipaddress
+    import socket
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    host = (parsed.hostname or '').lower()
+    if parsed.scheme not in ('http', 'https') or not host:
+        return False
+    if host == (urlparse(configured_url or '').hostname or '').lower():
+        return True
+    try:
+        infos = socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == 'https' else 80))
+    except (socket.gaierror, ValueError):
+        return False
+    return all(ipaddress.ip_address(info[4][0]).is_global for info in infos)
+
+
 def list_openwa_sessions(override_base_url=None, override_api_key=None):
     """
     List all sessions configured on the OpenWA server.
     Allows administrators to auto-detect and select the active session ID directly from the UI.
     """
     cfg = get_openwa_config()
+    if override_base_url and not _override_url_allowed(override_base_url, cfg['base_url']):
+        return False, [], "This OpenWA URL is not allowed (internal or unresolvable host). Save it as the server URL first."
     base = (override_base_url or cfg['base_url']).rstrip('/')
     if not base.endswith('/api'):
         base = f"{base}/api"
@@ -289,10 +319,12 @@ def list_openwa_sessions(override_base_url=None, override_api_key=None):
         headers['X-API-Key'] = api_key
 
     try:
-        resp = requests.get(url, headers=headers, timeout=6)
+        # shortcut: DNS is resolved again by requests (rebinding window); pin the IP if this endpoint is ever exposed beyond admins.
+        resp = requests.get(url, headers=headers, timeout=6, allow_redirects=False)
         if resp.status_code == 200:
             return True, resp.json(), None
-        return False, [], f"HTTP {resp.status_code}: {resp.text[:150]}"
+        # Don't echo bodies from arbitrary hosts back to the browser.
+        return False, [], f"HTTP {resp.status_code}"
     except Exception as e:
         return False, [], str(e)
 

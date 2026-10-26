@@ -8,7 +8,7 @@ from django.db.models import Q, Count
 from django.http import JsonResponse
 from datetime import datetime
 from apps.home.models.site_setting import SiteSetting
-from apps.wholesale.adapters.auth_bridge import wholesale_admin_required, is_wholesale_enabled
+from apps.wholesale.adapters.auth_bridge import wholesale_admin_required, is_wholesale_enabled, safe_next_url
 from apps.wholesale.models.product import WholesaleProduct
 from apps.wholesale.models.profile import WholesalerProfile, BusinessVerificationDocument
 from apps.wholesale.models.category import ProductCategory
@@ -276,7 +276,9 @@ def admin_toggle_feature_flag_view(request):
             })
 
         messages.success(request, f"Wholesale Marketplace is now {'ENABLED' if new_state else 'DISABLED'}.")
-        next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or 'wholesale:admin_dashboard'
+        next_url = safe_next_url(
+            request, request.POST.get('next') or request.META.get('HTTP_REFERER'), 'wholesale:admin_dashboard'
+        )
         return redirect(next_url)
 
     # GET returns current status

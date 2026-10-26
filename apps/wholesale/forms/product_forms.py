@@ -74,6 +74,28 @@ class ProductWizardForm(forms.ModelForm):
             'sample_available': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
+    def _check_image(self, file):
+        from apps.agents.utils.file_validation import validate_magic_bytes
+        content = file.read()
+        file.seek(0)
+        is_valid, err_msg = validate_magic_bytes(content, file.name)
+        if is_valid and file.name.lower().endswith('.pdf'):
+            is_valid, err_msg = False, 'Only JPG, PNG and WEBP images are allowed.'
+        if not is_valid:
+            raise forms.ValidationError(f"{file.name}: {err_msg}")
+
+    def clean_primary_image(self):
+        image = self.cleaned_data.get('primary_image')
+        if image:
+            self._check_image(image)
+        return image
+
+    def clean_additional_images(self):
+        # The view saves every file in the list, not just cleaned_data's last one.
+        for file in self.files.getlist('additional_images'):
+            self._check_image(file)
+        return self.cleaned_data.get('additional_images')
+
     def clean_base_price(self):
         price = self.cleaned_data.get('base_price')
         if price is not None and price <= 0:

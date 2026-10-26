@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 from django.utils import timezone as django_timezone
 
 from django.contrib import messages
+from django.utils.html import format_html
 from django.core.paginator import Paginator
 from django.db import connection
 from django.http import JsonResponse
@@ -574,7 +575,7 @@ def ft_generate_promo(request):
         new_id = cursor.lastrowid
 
     _log_activity(admin, f'Generate Trial Promo Code: {code}', 'PromoCode', new_id)
-    messages.success(request, f'Promo code <strong>{code}</strong> created! Share this with agents.')
+    messages.success(request, format_html('Promo code <strong>{}</strong> created! Share this with agents.', code))
     return redirect('admin_free_trial')
 
 
@@ -643,7 +644,7 @@ def ft_update_promo(request, promo_id):
         )
 
     _log_activity(admin, f'Updated Trial Promo Code: {code_str}', 'PromoCode', promo_id)
-    messages.success(request, f'Promo code <strong>{code_str}</strong> updated successfully!')
+    messages.success(request, format_html('Promo code <strong>{}</strong> updated successfully!', code_str))
     return redirect('admin_free_trial')
 
 

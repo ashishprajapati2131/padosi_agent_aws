@@ -3058,7 +3058,6 @@ def serve_private_file(request, file_path):
     """
     from django.http import FileResponse, HttpResponseForbidden, Http404
     from django.conf import settings
-    from apps.admin_panel.views.dashboard import _get_admin_from_session
 
     import posixpath
 
@@ -3076,18 +3075,15 @@ def serve_private_file(request, file_path):
         return HttpResponseForbidden("Access Denied: Invalid path traversal attempt.")
 
     # 2. Access checks on the normalised path
-    admin_id = _get_admin_from_session(request)
-    is_admin = admin_id is not None
+    # Admin panel staff need the module permission for the file (Super Admin: all).
+    from apps.wholesale.adapters.auth_bridge import admin_session_has_permission
+    if normalized_path.startswith('wholesale/'):
+        is_admin = admin_session_has_permission(request, 'wholesale')
+    else:
+        is_admin = admin_session_has_permission(request, 'agents', 'subscriptions')
     if not is_admin and request.user.is_authenticated:
         if getattr(request.user, 'is_staff', False) or getattr(request.user, 'is_superuser', False):
             is_admin = True
-        else:
-            try:
-                from apps.wholesale.adapters.auth_bridge import is_wholesale_admin
-                if is_wholesale_admin(request):
-                    is_admin = True
-            except Exception:
-                pass
 
     is_owner = False
     if request.user.is_authenticated:
@@ -3135,7 +3131,18 @@ def serve_private_file(request, file_path):
     if not os.path.exists(normalized_full_path):
         raise Http404("File not found")
 
-    return FileResponse(open(normalized_full_path, 'rb'))
+    from apps.agents.utils.file_validation import UPLOAD_SANDBOX_CSP
+    ext = os.path.splitext(normalized_path.lower())[1]
+    inline = ext in ('.pdf', '.png', '.jpg', '.jpeg', '.webp')
+    response = FileResponse(
+        open(normalized_full_path, 'rb'),
+        as_attachment=not inline,
+        filename=os.path.basename(normalized_path),
+    )
+    response['X-Content-Type-Options'] = 'nosniff'
+    if ext != '.pdf':  # same PDF exemption as the public media route (browser viewer)
+        response['Content-Security-Policy'] = UPLOAD_SANDBOX_CSP
+    return response
 
 @login_required
 @require_POST

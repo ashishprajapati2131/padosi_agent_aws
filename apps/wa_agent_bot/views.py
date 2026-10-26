@@ -7,6 +7,7 @@ processes them through the state machine, and sends replies.
 
 import hashlib
 import hmac
+import html
 import json
 import logging
 import os
@@ -15,6 +16,7 @@ import time
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
+from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 
@@ -46,27 +48,28 @@ def _check_rate_limit(phone_number):
 
 def _verify_webhook_signature(request):
     """
-    Verify the HMAC signature of the incoming webhook.
-    Returns True if valid or if verification is disabled.
+    Verify an incoming webhook via HMAC header or the shared token in the URL.
+    Fails closed in production when WA_BOT_WEBHOOK_SECRET is not configured.
     """
     secret = os.environ.get('WA_BOT_WEBHOOK_SECRET', '')
     if not secret:
-        # No secret configured — skip verification (dev mode)
-        return True
-
-    signature = request.headers.get('X-Webhook-Signature', '')
-    if not signature:
-        logger.warning("[WA-Bot] Missing webhook signature header")
+        if settings.DEBUG:
+            return True
+        logger.error("[WA-Bot] WA_BOT_WEBHOOK_SECRET not set — rejecting inbound webhook")
         return False
 
-    body = request.body
-    expected = hmac.new(
-        secret.encode('utf-8'),
-        body,
-        hashlib.sha256,
-    ).hexdigest()
+    signature = request.headers.get('X-Webhook-Signature', '')
+    if signature:
+        expected = hmac.new(secret.encode('utf-8'), request.body, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(signature, expected)
 
-    return hmac.compare_digest(signature, expected)
+    # OpenWA cannot sign requests; sync_openwa_webhook() registers the URL with ?token=<secret>.
+    token = request.GET.get('token', '')
+    if token:
+        return hmac.compare_digest(token, secret)
+
+    logger.warning("[WA-Bot] Missing webhook signature/token")
+    return False
 
 
 def _extract_message_data(payload):
@@ -292,22 +295,20 @@ def razorpay_webhook(request):
       - payment.captured
     """
     from apps.agents.models import AgentSubscription
-    from apps.agents.services.razorpay_checkout import razorpay_client, razorpay_webhook_secret
+    from apps.agents.services.razorpay_checkout import razorpay_webhook_secret
     from .services.payment_service import activate_agent_subscription_after_payment
 
     raw_body = request.body.decode('utf-8')
     signature = request.headers.get('X-Razorpay-Signature', '')
     secret = razorpay_webhook_secret()
 
-    # Verify signature if secret configured
-    if secret and signature:
-        client = razorpay_client()
-        if client:
-            try:
-                client.utility.verify_webhook_signature(raw_body, signature, secret)
-            except Exception as e:
-                logger.error(f"[WA-Bot-Razorpay] Webhook signature verification failed: {e}")
-                return JsonResponse({'status': 'error', 'message': 'Invalid signature'}, status=400)
+    if not secret or not signature:
+        logger.error("[WA-Bot-Razorpay] Webhook rejected: secret not configured or signature missing")
+        return JsonResponse({'status': 'error', 'message': 'Invalid signature'}, status=400)
+    expected = hmac.new(secret.encode('utf-8'), request.body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature):
+        logger.error("[WA-Bot-Razorpay] Webhook signature verification failed")
+        return JsonResponse({'status': 'error', 'message': 'Invalid signature'}, status=400)
 
     try:
         data = json.loads(raw_body)
@@ -377,18 +378,15 @@ def payment_callback(request):
         else:
             from apps.agents.services.razorpay_checkout import razorpay_client
             client = razorpay_client()
-            if client and payment_id and not payment_id.startswith(('pay_test', 'pay_local')):
+            # Query params prove nothing: ask Razorpay whether this subscription's own link was paid.
+            if client and link_id and link_id == sub.razorpay_order_id:
                 try:
-                    pay_obj = client.payment.fetch(payment_id)
-                    if pay_obj and pay_obj.get('status') in ('captured', 'authorized'):
-                        is_verified = True
-                    else:
-                        logger.warning(f"[WA-Bot-Security] Payment {payment_id} not captured: {pay_obj.get('status') if pay_obj else None}")
+                    plink = client.payment_link.fetch(link_id)
+                    is_verified = (plink or {}).get('status') == 'paid'
+                    if not is_verified:
+                        logger.warning(f"[WA-Bot-Security] Payment link {link_id} not paid: {(plink or {}).get('status')}")
                 except Exception as e:
-                    logger.error(f"[WA-Bot-Security] Razorpay verification error for {payment_id}: {e}")
-            elif link_status == 'paid' or payment_id:
-                # Valid in test/dev environments or when webhook already verified
-                is_verified = True
+                    logger.error(f"[WA-Bot-Security] Razorpay verification error for {link_id}: {e}")
 
         if is_verified:
             activate_agent_subscription_after_payment(sub.id, payment_id=payment_id, signature=signature)
@@ -396,13 +394,15 @@ def payment_callback(request):
         else:
             logger.warning(f"[WA-Bot-Security] Rejected unverified activation attempt for sub #{sub.id}")
 
-    agent = sub.agent if sub else None
-    fullname = (agent.fullname if agent and agent.fullname else 'Agent')
-    email = (agent.email if agent and agent.email else '')
+    # Anyone can open this URL with a link id, so only reveal account details once payment is confirmed.
+    agent = sub.agent if sub and sub.payment_status == 'completed' else None
+    fullname = html.escape(agent.fullname if agent and agent.fullname else 'Agent')
+    raw_email = (agent.email if agent and agent.email else '')
+    email = html.escape(raw_email)
     mobile_clean = ''.join(c for c in (agent.mobile or '') if c.isdigit()) if agent else ''
     masked_mobile = f"+91 {mobile_clean[:2]}•••••{mobile_clean[-3:]}" if len(mobile_clean) == 10 else (f"+{mobile_clean}" if mobile_clean else 'Registered Number')
-    plan_name = (sub.selected_plan if sub and sub.selected_plan else 'Membership Plan')
-    copy_email_btn = f'<button type="button" class="copy-btn" onclick="copyText(\'{email}\', this)">Copy</button>' if email else ''
+    plan_name = html.escape(sub.selected_plan if sub and sub.selected_plan else 'Membership Plan')
+    copy_email_btn = f'<button type="button" class="copy-btn" onclick="copyText({html.escape(json.dumps(raw_email))}, this)">Copy</button>' if email else ''
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">

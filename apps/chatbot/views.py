@@ -12,11 +12,27 @@ import uuid
 logger = logging.getLogger(__name__)
 
 MAX_CHAT_MESSAGE_CHARS = 2000
+# Chat ids are issued by the server and remembered in the visitor's Django
+# session; history is only served for ids this browser was issued.
+CHAT_IDS_SESSION_KEY = 'chatbot_session_ids'
+MAX_CHAT_IDS_PER_SESSION = 20
+
+
+def _issued_chat_ids(request):
+    return request.session.get(CHAT_IDS_SESSION_KEY, [])
+
+
+def _issue_chat_id(request):
+    chat_id = uuid.uuid4().hex
+    request.session[CHAT_IDS_SESSION_KEY] = (_issued_chat_ids(request) + [chat_id])[-MAX_CHAT_IDS_PER_SESSION:]
+    return chat_id
 
 @require_GET
 def get_history(request, session_id):
     if not session_id or not re.match(r'^[a-zA-Z0-9_\-]+$', session_id) or len(session_id) > 100:
         return JsonResponse({"success": False, "error": "Invalid session identifier.", "data": []}, status=400)
+    if session_id not in _issued_chat_ids(request):
+        return JsonResponse({"success": False, "error": "Chat not found.", "data": []}, status=404)
 
     messages = ChatMessage.objects.filter(
         session__session_id=session_id,
@@ -101,11 +117,10 @@ def send_message(request):
 
         if session_id and (len(session_id) > 100 or not re.match(r'^[a-zA-Z0-9_\-]+$', session_id)):
             return JsonResponse({"success": False, "error": "Invalid session identifier."}, status=400)
-        if not session_id:
-            # Random chat id. This used to fall back to the Django session key,
-            # which is returned to the page and works as a bearer id for chat
-            # history — exposing the HttpOnly session secret to JavaScript.
-            session_id = uuid.uuid4().hex
+        if session_id not in _issued_chat_ids(request):
+            # Unknown or client-made id: start a fresh server-issued chat rather
+            # than appending to (and later reading) someone else's transcript.
+            session_id = _issue_chat_id(request)
 
         if not user_message:
             return JsonResponse({"success": False, "error": "Message is required."}, status=400)

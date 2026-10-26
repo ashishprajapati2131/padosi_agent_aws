@@ -110,6 +110,23 @@ class PasswordResetService:
                 }
             )
 
+    def _current_password_ok(self, user, password: str) -> bool:
+        """Same stores API login accepts: `users.password`, then Django `auth_user`."""
+        try:
+            if user.password and verify_password(password, user.password):
+                return True
+        except Exception:
+            pass
+        from sqlalchemy import text
+        row = self.db.execute(
+            text("SELECT password FROM auth_user WHERE LOWER(email) = LOWER(:email)"),
+            {"email": user.email},
+        ).first()
+        try:
+            return bool(row and row[0] and verify_password(password, row[0]))
+        except Exception:
+            return False
+
     def reset_password(self, request: ResetPasswordRequest, req: Optional[Request] = None, current_agent: Optional[Any] = None) -> JSONResponse:
         authenticated_user = None
 
@@ -145,9 +162,18 @@ class PasswordResetService:
             except Exception:
                 pass
 
-        # If authenticated, bypass email reset token checks
+        # Authenticated change: no emailed token, so the current password is
+        # required (a stolen bearer token alone must not take over the account).
         if authenticated_user:
             user = authenticated_user
+            if not request.current_password or not self._current_password_ok(user, request.current_password):
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "message": "Your current password is incorrect."
+                    }
+                )
         else:
             # 1. Fetch User by email
             user = self.user_repo.get_by_email(request.email)

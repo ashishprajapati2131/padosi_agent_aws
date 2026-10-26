@@ -6,6 +6,27 @@ from apps.agents.models import Agent, AgentLead
 from django.contrib.auth.models import User
 from django.db.models import Count, F
 from apps.admin_panel.models.insurance_approval import AgentApprovalRequest
+from django.contrib.auth.views import LoginView
+from apps.home.services.portal_messages import PORTAL_INSURANCE, portal_error
+
+
+class InsuranceLoginView(LoginView):
+    """Django LoginView with the agent login's per-IP / per-account brute-force limits."""
+    template_name = 'insurance/login.html'
+    redirect_authenticated_user = True
+
+    def post(self, request, *args, **kwargs):
+        from apps.agents.views.auth import check_email_login_throttle, check_login_throttle, get_client_ip
+        if not check_login_throttle(get_client_ip(request)) or not check_email_login_throttle(request.POST.get('username', '')):
+            portal_error(request, "Too many login attempts. Please try again later.", PORTAL_INSURANCE)
+            return self.render_to_response(self.get_context_data(form=self.form_class(request)), status=429)
+        return super().post(request, *args, **kwargs)
+
+    def form_invalid(self, form):
+        from apps.agents.views.auth import get_client_ip, record_email_login_failure, record_login_attempt
+        record_login_attempt(get_client_ip(self.request))
+        record_email_login_failure(self.request.POST.get('username', ''))
+        return super().form_invalid(form)
 
 @login_required
 def dashboard(request):

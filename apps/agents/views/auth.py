@@ -111,6 +111,34 @@ def clear_login_throttle(ip):
     cache.delete(key)
 
 
+# Forgot-password throttle: counts every request (known or unknown email) so the
+# limit itself reveals nothing about which accounts exist.
+FORGOT_PASSWORD_MAX_PER_IP = 10
+FORGOT_PASSWORD_MAX_PER_EMAIL = 3
+FORGOT_PASSWORD_WINDOW_SECONDS = 60 * 60
+FORGOT_PASSWORD_GENERIC_MESSAGE = (
+    "If an account exists for this email, a password reset link has been sent. "
+    "Please check your inbox."
+)
+
+
+def allow_forgot_password_request(ip, email):
+    """Count this request and return False once the IP or the email is over its limit."""
+    allowed = True
+    for key, limit in (
+        (f"forgot_pw_ip_{ip}", FORGOT_PASSWORD_MAX_PER_IP),
+        (f"forgot_pw_email_{email}", FORGOT_PASSWORD_MAX_PER_EMAIL),
+    ):
+        try:
+            if (cache.get(key, 0) or 0) >= limit:
+                allowed = False
+            elif not cache.add(key, 1, timeout=FORGOT_PASSWORD_WINDOW_SECONDS):
+                cache.incr(key)
+        except Exception:
+            pass
+    return allowed
+
+
 def _clear_admin_session_on(response, request):
     from apps.admin_panel.views.dashboard import clear_admin_session
     return clear_admin_session(request, response)
@@ -704,18 +732,22 @@ def forgot_password(request):
             portal_error(request, "Please enter a valid email address.", PORTAL_AGENT)
             return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
+        if not allow_forgot_password_request(get_client_ip(request), email):
+            portal_error(request, "Too many password reset requests. Please try again later.", PORTAL_AGENT)
+            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+
+        # One answer for unknown / distributor / staff / sent, so the form cannot
+        # be used to discover which emails have accounts.
+        def generic_response():
+            portal_success(request, FORGOT_PASSWORD_GENERIC_MESSAGE, PORTAL_AGENT)
+            return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+
         agent = find_agent(email)
-        laravel_user = find_laravel_user(email)
         user = User.objects.filter(email__iexact=email).first()
-        account_missing = "Your account was not found. Please check the email address and try again."
-        laravel_role = (laravel_user.role or '').lower() if laravel_user else ''
 
         if login_type == 'agent' and not agent:
-            if laravel_role and laravel_role != 'agent':
-                portal_error(request, "This email belongs to a Distributor account. Please use the Distributor login page.", PORTAL_AGENT)
-            else:
-                portal_error(request, account_missing, PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+            logger.info("Password reset requested for non-agent email via agent flow; no email sent.")
+            return generic_response()
 
         if login_type == 'agent' and agent and not user:
             try:
@@ -726,23 +758,17 @@ def forgot_password(request):
                 return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
         if not user:
-            portal_error(request, account_missing, PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+            return generic_response()
 
         if user.is_staff or user.is_superuser:
             # Don't mail a reset link for a staff login through the agent form.
             logger.warning("Password reset requested for staff account %s via agent flow; ignored.", email)
-            portal_error(request, account_missing, PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+            return generic_response()
 
         # Check if user role matches login_type
         is_agent = bool(agent) or Agent.objects.filter(user=user).exists()
         if login_type == 'agent' and not is_agent:
-            portal_error(request, "This email belongs to a Distributor account. Please use the Distributor login page.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
-        if login_type == 'agent' and laravel_role and laravel_role != 'agent' and not is_agent:
-            portal_error(request, "This email belongs to a Distributor account. Please use the Distributor login page.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+            return generic_response()
 
         try:
             token = default_token_generator.make_token(user)
@@ -761,8 +787,7 @@ def forgot_password(request):
                 portal_error(request, "Unable to send reset email. Please try again later.", PORTAL_AGENT)
                 return render(request, 'agents/forgot_password.html', {'email': email, 'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
 
-            portal_success(request, "Email sent successfully. Please check your inbox for the password reset link.", PORTAL_AGENT)
-            return render(request, 'agents/forgot_password.html', {'type': login_type, 'hide_site_nav': True, 'hide_footer': True, 'hide_chatbot': True})
+            return generic_response()
         except Exception as e:
             logger.error(f"Error sending password reset email: {e}")
             portal_error(request, "Unable to send reset email. Please try again later.", PORTAL_AGENT)

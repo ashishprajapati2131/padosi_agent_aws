@@ -28,7 +28,8 @@ class MobilePasswordChangeTargetsOwnRowTests(TestCase):
         agent = MagicMock(email='me@example.com', user=stranger)  # relation points at users.id == auth_user.id
 
         resp = service.reset_password(
-            ResetPasswordRequest(password='New@Pass1234', password_confirmation='New@Pass1234'),
+            ResetPasswordRequest(current_password='Old@Pass123',
+                                 password='New@Pass1234', password_confirmation='New@Pass1234'),
             None, current_agent=agent,
         )
         self.assertEqual(resp.status_code, 200, resp.body)

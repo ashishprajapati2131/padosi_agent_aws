@@ -173,7 +173,7 @@ class PaymentToApprovalFlowTests(TestCase):
                 '/razorpay-webhook/',
                 data=webhook_payload,
                 content_type='application/json',
-                HTTP_X_RAZORPAY_SIGNATURE='test_signature_skip_verification',
+                HTTP_X_RAZORPAY_SIGNATURE='mocked_webhook_signature',
             )
         self.assertEqual(resp.status_code, 200, resp.content)
 
@@ -217,7 +217,7 @@ class PaymentToApprovalFlowTests(TestCase):
                 '/razorpay-webhook/',
                 data=webhook_payload,
                 content_type='application/json',
-                HTTP_X_RAZORPAY_SIGNATURE='test_signature_skip_verification',
+                HTTP_X_RAZORPAY_SIGNATURE='mocked_webhook_signature',
             )
         self.assertEqual(resp.status_code, 200, resp.content)
 
@@ -246,7 +246,7 @@ class PaymentToApprovalFlowTests(TestCase):
                 '/razorpay-webhook/',
                 data=webhook_payload,
                 content_type='application/json',
-                HTTP_X_RAZORPAY_SIGNATURE='test_signature_skip_verification',
+                HTTP_X_RAZORPAY_SIGNATURE='mocked_webhook_signature',
             )
         self.assertEqual(resp.status_code, 503, "Should return 503 to signal Razorpay to retry")
 
@@ -291,7 +291,7 @@ class PaymentToApprovalFlowTests(TestCase):
                 '/razorpay-webhook/',
                 data=webhook_payload,
                 content_type='application/json',
-                HTTP_X_RAZORPAY_SIGNATURE='test_signature_skip_verification',
+                HTTP_X_RAZORPAY_SIGNATURE='mocked_webhook_signature',
             )
         self.assertEqual(r2.status_code, 200)
         self.assertIn(b'already completed', r2.content)

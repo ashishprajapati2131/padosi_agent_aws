@@ -4,7 +4,6 @@ import json
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.conf import settings
 from django.core.cache import cache
@@ -366,7 +365,6 @@ SETTINGS_FORM_KEYS = {
 }
 
 
-@csrf_exempt
 @require_POST
 def toggle_wa_bot_service(request):
     """Quick AJAX ON/OFF toggle for the WhatsApp Agent Bot automation service."""

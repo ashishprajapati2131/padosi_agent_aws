@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static json_tags %}
 
 {% block title %}Admin Activity Logs — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Advanced &rsaquo; Activity Logs{% endblock %}
@@ -238,7 +238,7 @@
                                     data-time="{{ log.created_at|date:'d M Y, h:i:s A' }}">
                                     <i class="fa-solid fa-database me-1"></i>View Deleted Data
                                 </button>
-                                <script type="application/json" id="snapshot-data-{{ log.id }}">{{ log.snapshot_json|safe }}</script>
+                                <script type="application/json" id="snapshot-data-{{ log.id }}">{{ log.snapshot_json|safe_json }}</script>
                                 {% endif %}
                             </div>
 

@@ -71,7 +71,7 @@
     {% for msg in messages %}
       <div class="alert alert-{% if msg.tags == 'error' %}danger{% else %}{{ msg.tags }}{% endif %} alert-dismissible fade show shadow-sm rounded-3 mb-3">
         <i class="fas fa-{% if msg.tags == 'error' %}exclamation-circle{% else %}check-circle{% endif %} me-2"></i>
-        {{ msg|safe }}
+        {{ msg }}
         <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
       </div>
     {% endfor %}

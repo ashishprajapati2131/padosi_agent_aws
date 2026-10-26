@@ -18,7 +18,7 @@ import uuid
 import requests as http_requests
 from django.conf import settings
 from django.core.files.storage import default_storage
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST
 
@@ -189,9 +189,10 @@ def participant_share(request, shareable_id):
 
 @require_GET
 def participant_show(request, participant_id):
-    """GET /participants/{participant} — ParticipantController@show (model-bound by id)."""
-    participant = get_object_or_404(Participant, id=participant_id)
-    return render(request, 'participants/share.html', {'participant': participant})
+    """GET /participants/{participant} — retired: sequential ids let anyone walk
+    every participant's details. Participants are public only via their
+    unguessable /participants/share/<shareable_id>/ link (nothing links here)."""
+    raise Http404
 
 
 @require_POST

@@ -52,6 +52,7 @@ This integration automatically synchronizes invoice records to Google Sheets and
    - **Description**: `Invoice Sync Web App`
    - **Execute as**: `Me` (your Google account)
    - **Who has access**: **`Anyone`** (⚠️ Important: Do NOT select "Only myself", it must be "Anyone").
+   - **Security:** in Apps Script go to *Project Settings > Script Properties* and add `SYNC_TOKEN` (a long random string). Put the same value in the backend `.env` as `INVOICE_SHEET_SYNC_TOKEN`. Requests without it are rejected. Uploaded PDFs are private to the script owner.
 4. Click **Deploy**.
 5. If prompted, authorize Google permissions (Click "Advanced" > "Go to ... (unsafe)" > "Allow").
 6. Copy the **Web App URL** (e.g. `https://script.google.com/macros/s/.../exec`).

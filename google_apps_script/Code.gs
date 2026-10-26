@@ -164,6 +164,16 @@ function doPost(e) {
     }
 
     var data = JSON.parse(e.postData.contents);
+
+    // Reject callers without the shared token (Project Settings > Script Properties > SYNC_TOKEN,
+    // same value as INVOICE_SHEET_SYNC_TOKEN in the backend .env). The web app is reachable by anyone.
+    var expectedToken = PropertiesService.getScriptProperties().getProperty("SYNC_TOKEN");
+    if (!expectedToken || data.sync_token !== expectedToken) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error",
+        message: "Unauthorized"
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
     var ss = SpreadsheetApp.getActiveSpreadsheet();
 
     // Reliably target "Invoices" tab or the first sheet tab (never random tab)
@@ -207,8 +217,7 @@ function doPost(e) {
         }
 
         var file = targetFolder.createFile(blob);
-        // Set sharing permissions so link can be viewed by anyone with link
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        // Invoices hold customer PII: keep the file private (owner + explicitly shared users only).
         pdfDriveUrl = file.getUrl();
       } catch (driveErr) {
         pdfDriveUrl = data.pdf_url || ("Drive Error: " + driveErr.toString());

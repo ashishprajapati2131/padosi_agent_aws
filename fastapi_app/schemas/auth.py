@@ -33,6 +33,8 @@ class ForgotPasswordResponse(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: Optional[str] = None
     email: Optional[EmailStr] = None
+    # Required when changing the password with a login token (no emailed reset token).
+    current_password: Optional[str] = None
     password: str
     password_confirmation: str
     login_type: Optional[Literal["agent", "distributor"]] = "agent"

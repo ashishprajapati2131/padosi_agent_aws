@@ -5,8 +5,10 @@ Provides a live WhatsApp Web mockup in the browser for testing.
 
 import json
 import logging
+from functools import wraps
+from django.conf import settings
 from django.http import JsonResponse, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.middleware.csrf import get_token
 from django.views.decorators.http import require_POST, require_GET
 from apps.home.models.site_setting import SiteSetting
 from .models import WaBotSession, WaBotMessageLog
@@ -19,9 +21,22 @@ logger = logging.getLogger(__name__)
 SIMULATOR_PHONE = "919876543210"
 
 
+def _admin_required(view):
+    """Simulator is an admin-only tool: require a valid admin session."""
+    @wraps(view)
+    def wrapper(request, *args, **kwargs):
+        from apps.admin_panel.views.dashboard import _get_admin_from_session
+        if not _get_admin_from_session(request):
+            return JsonResponse({'error': 'Admin login required'}, status=403)
+        return view(request, *args, **kwargs)
+    return wrapper
+
+
+@_admin_required
 @require_GET
 def simulator_page(request):
     """Renders the WhatsApp Web Simulator page."""
+    csrf_token = get_token(request)
     enabled = is_wa_bot_enabled()
     session = WaBotSession.objects.filter(phone_number=SIMULATOR_PHONE).first()
     
@@ -556,7 +571,7 @@ def simulator_page(request):
 
             fetch('/wa-bot/simulator/send/', {{
                 method: 'POST',
-                headers: {{ 'Content-Type': 'application/json' }},
+                headers: {{ 'Content-Type': 'application/json', 'X-CSRFToken': '{csrf_token}' }},
                 body: JSON.stringify({{ message: text, phone: '{SIMULATOR_PHONE}' }})
             }})
             .then(res => res.json())
@@ -583,7 +598,7 @@ def simulator_page(request):
             if (!confirm('Are you sure you want to reset this chat session and start fresh?')) return;
             fetch('/wa-bot/simulator/reset/', {{
                 method: 'POST',
-                headers: {{ 'Content-Type': 'application/json' }},
+                headers: {{ 'Content-Type': 'application/json', 'X-CSRFToken': '{csrf_token}' }},
                 body: JSON.stringify({{ phone: '{SIMULATOR_PHONE}' }})
             }})
             .then(res => res.json())
@@ -597,7 +612,7 @@ def simulator_page(request):
         function simulatePaymentSuccess() {{
             fetch('/wa-bot/simulator/simulate-payment/', {{
                 method: 'POST',
-                headers: {{ 'Content-Type': 'application/json' }},
+                headers: {{ 'Content-Type': 'application/json', 'X-CSRFToken': '{csrf_token}' }},
                 body: JSON.stringify({{ phone: '{SIMULATOR_PHONE}' }})
             }})
             .then(res => res.json())
@@ -622,7 +637,7 @@ def simulator_page(request):
         toggleBtn.addEventListener('click', function() {{
             fetch('/wa-bot/simulator/toggle/', {{
                 method: 'POST',
-                headers: {{ 'Content-Type': 'application/json' }}
+                headers: {{ 'Content-Type': 'application/json', 'X-CSRFToken': '{csrf_token}' }}
             }})
             .then(res => res.json())
             .then(data => {{
@@ -644,7 +659,7 @@ def simulator_page(request):
     return HttpResponse(html, content_type='text/html')
 
 
-@csrf_exempt
+@_admin_required
 @require_POST
 def simulator_send(request):
     """Processes a simulated user message from the browser UI."""
@@ -654,7 +669,7 @@ def simulator_send(request):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
     text = body.get('message', '').strip()
-    phone = body.get('phone', SIMULATOR_PHONE)
+    phone = SIMULATOR_PHONE
 
     if not is_wa_bot_enabled():
         return JsonResponse({'status': 'disabled', 'message': 'WhatsApp Bot is paused via Admin Panel'})
@@ -701,29 +716,24 @@ def simulator_send(request):
     })
 
 
-@csrf_exempt
+@_admin_required
 @require_POST
 def simulator_reset(request):
     """Clears the session for the simulator phone."""
-    try:
-        body = json.loads(request.body.decode('utf-8'))
-        phone = body.get('phone', SIMULATOR_PHONE)
-    except Exception:
-        phone = SIMULATOR_PHONE
+    phone = SIMULATOR_PHONE
 
     WaBotSession.objects.filter(phone_number=phone).delete()
     return JsonResponse({'success': True, 'message': 'Session reset'})
 
 
-@csrf_exempt
+@_admin_required
 @require_POST
 def simulator_payment(request):
     """Simulates payment completion for the current session."""
-    try:
-        body = json.loads(request.body.decode('utf-8'))
-        phone = body.get('phone', SIMULATOR_PHONE)
-    except Exception:
-        phone = SIMULATOR_PHONE
+    if not settings.DEBUG:
+        # Activating a subscription without payment must never be reachable in production.
+        return JsonResponse({'success': False, 'message': 'Payment simulation is disabled in production'}, status=403)
+    phone = SIMULATOR_PHONE
 
     session = WaBotSession.objects.filter(phone_number=phone).first()
     if not session:
@@ -746,7 +756,7 @@ def simulator_payment(request):
     })
 
 
-@csrf_exempt
+@_admin_required
 @require_POST
 def simulator_toggle(request):
     """Toggles the Master Switch ON/OFF."""
@@ -760,7 +770,7 @@ def simulator_toggle(request):
     return JsonResponse({'success': True, 'enabled': new_val})
 
 
-@csrf_exempt
+@_admin_required
 @require_GET
 def simulator_poll(request):
     """
@@ -768,7 +778,7 @@ def simulator_poll(request):
     Allows real-time display of asynchronous credentials, webhook confirmations,
     or admin approval messages without needing manual reload.
     """
-    phone = request.GET.get('phone', SIMULATOR_PHONE)
+    phone = SIMULATOR_PHONE
     try:
         last_id = int(request.GET.get('last_id', 0) or 0)
     except (TypeError, ValueError):

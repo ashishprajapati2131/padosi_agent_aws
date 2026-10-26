@@ -543,9 +543,28 @@ def _cover_crop(img, w, h):
     return img.crop((left, top, left + w, top + h))
 
 
-def _load_photo(agent, profile):
-    import requests
+# Remote photos are only ever stored on Cloudinary (see fastapi profile_service
+# _is_own_photo_url); anything else is not fetched server-side.
+_REMOTE_PHOTO_HOSTS = {'res.cloudinary.com'}
 
+
+def _fetch_remote_photo(url):
+    import requests
+    from urllib.parse import urlparse
+
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme != 'https' or (parsed.hostname or '').lower() not in _REMOTE_PHOTO_HOSTS:
+            return None
+        res = requests.get(url, timeout=5, allow_redirects=False)
+        if res.status_code == 200:
+            return Image.open(io.BytesIO(res.content))
+    except Exception:
+        pass
+    return None
+
+
+def _load_photo(agent, profile):
     if not profile:
         return None
 
@@ -566,12 +585,9 @@ def _load_photo(agent, profile):
                 except Exception:
                     pass
         elif url.startswith(('http://', 'https://')):
-            try:
-                res = requests.get(url, timeout=5, verify=False)
-                if res.status_code == 200:
-                    return Image.open(io.BytesIO(res.content))
-            except Exception:
-                pass
+            photo = _fetch_remote_photo(url)
+            if photo is not None:
+                return photo
 
     raw_path = (profile.profile_photo_path or '').strip()
     if not raw_path:
@@ -580,12 +596,7 @@ def _load_photo(agent, profile):
         raw_path = raw_path.split('?')[0]
 
     if raw_path.startswith(('http://', 'https://')):
-        try:
-            res = requests.get(raw_path, timeout=5, verify=False)
-            if res.status_code == 200:
-                return Image.open(io.BytesIO(res.content))
-        except Exception:
-            return None
+        return _fetch_remote_photo(raw_path)
 
     normalized_path = raw_path.replace('\\', '/').lstrip('/')
     filename = os.path.basename(normalized_path)

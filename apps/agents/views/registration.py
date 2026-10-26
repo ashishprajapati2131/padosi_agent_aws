@@ -4538,24 +4538,21 @@ def razorpay_webhook(request):
         logger.error("[Razorpay Webhook] RAZORPAY_WEBHOOK_SECRET is not configured.")
         return HttpResponse('Webhook secret not configured', status=400)
 
-    # Verify signature
-    if received_signature == 'test_signature_skip_verification' and settings.DEBUG:
-        logger.info("[Razorpay Webhook] Skipping signature verification for local test simulation.")
-    else:
-        try:
-            client = razorpay_client()
-            if client is None:
-                logger.error("[Razorpay Webhook] Razorpay keys not configured.")
-                return HttpResponse('Unable to process webhook.', status=400)
-            # verify_webhook_signature takes payload string, signature, secret
-            client.utility.verify_webhook_signature(
-                payload.decode('utf-8') if isinstance(payload, bytes) else payload,
-                received_signature,
-                webhook_secret
-            )
-        except Exception as sig_err:
-            logger.error(f"[Razorpay Webhook] Signature verification failed: {sig_err}")
-            return HttpResponse('Invalid signature', status=400)
+    # Verify signature (always; no DEBUG bypass)
+    try:
+        client = razorpay_client()
+        if client is None:
+            logger.error("[Razorpay Webhook] Razorpay keys not configured.")
+            return HttpResponse('Unable to process webhook.', status=400)
+        # verify_webhook_signature takes payload string, signature, secret
+        client.utility.verify_webhook_signature(
+            payload.decode('utf-8') if isinstance(payload, bytes) else payload,
+            received_signature,
+            webhook_secret
+        )
+    except Exception as sig_err:
+        logger.error(f"[Razorpay Webhook] Signature verification failed: {sig_err}")
+        return HttpResponse('Invalid signature', status=400)
 
     try:
         data = json.loads(payload)

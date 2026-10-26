@@ -19,6 +19,9 @@ EXTENSION_KIND = {
     '.pdf': 'pdf',
 }
 
+# Sent with user-uploaded files so HTML/SVG never runs as a same-origin page.
+UPLOAD_SANDBOX_CSP = "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'"
+
 DISGUISED_NAME_MESSAGE = (
     'This file name is not allowed. Use a single extension such as certificate.pdf. '
     'Renamed files like name.js.jpg cannot be uploaded.'

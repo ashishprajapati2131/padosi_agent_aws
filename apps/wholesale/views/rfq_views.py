@@ -3,18 +3,25 @@ Buyer RFQ Submission and Messaging Views.
 """
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.http import JsonResponse
 from apps.wholesale.models.product import WholesaleProduct
 from apps.wholesale.models.inquiry import BuyerInquiry
 from apps.wholesale.forms.rfq_forms import BuyerInquiryForm
 from apps.wholesale.services.rfq_service import RFQService
-from apps.wholesale.adapters.auth_bridge import wholesaler_required, get_wholesaler_profile, wholesale_feature_gate
+from apps.wholesale.adapters.auth_bridge import wholesaler_required, get_wholesaler_profile, wholesale_feature_gate, safe_next_url
+from apps.agents.utils.file_validation import validate_magic_bytes
+
+DEFAULT_RFQ_NEXT = '/agent/dashboard/?tab=marketplace'
+
 
 @wholesale_feature_gate
 def submit_rfq_view(request, product_id):
     """Handles Buyer Request for Quote / Order Inquiry form submission."""
     product = get_object_or_404(WholesaleProduct, id=product_id)
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == '1'
-    next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or '/agent/dashboard/?tab=marketplace'
+    next_url = safe_next_url(
+        request, request.POST.get('next') or request.META.get('HTTP_REFERER'), DEFAULT_RFQ_NEXT
+    )
 
     if request.method == 'POST':
         import time
@@ -93,12 +100,20 @@ def rfq_reply_view(request, inquiry_id):
             except Exception as e:
                 messages.error(request, str(e))
         elif message_text:
+            attachment = request.FILES.get('attachment')
+            if attachment:
+                content = attachment.read()
+                attachment.seek(0)
+                is_valid, err_msg = validate_magic_bytes(content, attachment.name)
+                if not is_valid:
+                    messages.error(request, f"Attachment rejected: {err_msg}")
+                    return redirect('wholesale:wholesaler_inquiries')
             RFQService.add_message(
                 inquiry=inquiry,
                 sender_name=profile.business_name,
                 sender_role='SELLER',
                 message=message_text,
-                attachment=request.FILES.get('attachment')
+                attachment=attachment
             )
             messages.success(request, "Reply sent to buyer.")
 

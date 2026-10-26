@@ -10,10 +10,12 @@ Tests cover:
 6. Webhook request handling (OpenWA & Razorpay) and payment callbacks
 """
 
+import hashlib
+import hmac
 import json
 import unittest
 from unittest.mock import MagicMock, patch
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 
 from apps.wa_agent_bot.models import WaBotSession
 from apps.wa_agent_bot.services import validators
@@ -409,9 +411,10 @@ class WebhookAndPaymentViewTests(unittest.TestCase):
         self.assertIn("Payment Received", content)
         self.assertIn("WhatsApp & Email", content)
 
+    @patch('apps.agents.services.razorpay_checkout.razorpay_webhook_secret', return_value='whsec_test')
     @patch('apps.agents.models.AgentSubscription.objects')
     @patch('apps.wa_agent_bot.services.payment_service.activate_agent_subscription_after_payment')
-    def test_razorpay_webhook_processing(self, mock_activate, mock_sub_objects):
+    def test_razorpay_webhook_processing(self, mock_activate, mock_sub_objects, _mock_secret):
         mock_sub = MagicMock()
         mock_sub.id = 99
         mock_sub_objects.filter.return_value.first.return_value = mock_sub
@@ -428,10 +431,12 @@ class WebhookAndPaymentViewTests(unittest.TestCase):
                 }
             }
         }
+        body = json.dumps(payload)
         request = self.factory.post(
             '/wa-bot/razorpay-webhook/',
-            data=json.dumps(payload),
+            data=body,
             content_type='application/json',
+            HTTP_X_RAZORPAY_SIGNATURE=hmac.new(b'whsec_test', body.encode(), hashlib.sha256).hexdigest(),
         )
         response = views.razorpay_webhook(request)
         self.assertEqual(response.status_code, 200)
@@ -544,3 +549,95 @@ class WebhookAndPaymentViewTests(unittest.TestCase):
             self.assertIn("/profile/88/", called_text)
             self.assertIn("/card/88/", called_text)
 
+
+class BotSecurityTests(unittest.TestCase):
+    """Regression tests for the 2026-10-26 security fixes (C3, C4, C5, H1)."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    @patch('apps.agents.services.razorpay_checkout.razorpay_webhook_secret', return_value='whsec_test')
+    @patch('apps.wa_agent_bot.services.payment_service.activate_agent_subscription_after_payment')
+    def test_razorpay_webhook_rejects_unsigned(self, mock_activate, _mock_secret):
+        body = json.dumps({'payload': {'payment': {'entity': {'notes': {'subscription_id': 1}}}}})
+        request = self.factory.post('/wa-bot/razorpay-webhook/', data=body, content_type='application/json')
+        response = views.razorpay_webhook(request)
+        self.assertEqual(response.status_code, 400)
+        mock_activate.assert_not_called()
+
+    @patch('apps.agents.services.razorpay_checkout.razorpay_client')
+    @patch('apps.agents.models.AgentSubscription.objects')
+    @patch('apps.wa_agent_bot.services.payment_service.activate_agent_subscription_after_payment')
+    def test_payment_callback_test_prefix_does_not_activate(self, mock_activate, mock_sub_objects, mock_client):
+        sub = MagicMock(payment_status='pending', razorpay_order_id='plink_X', selected_plan='starter')
+        sub.agent.email = 'victim@example.com'
+        mock_sub_objects.filter.return_value.first.return_value = sub
+        mock_client.return_value.payment_link.fetch.return_value = {'status': 'created'}
+        request = self.factory.get('/wa-bot/payment-callback/?razorpay_payment_link_id=plink_X&razorpay_payment_id=pay_test_1')
+        response = views.payment_callback(request)
+        mock_activate.assert_not_called()
+        self.assertNotIn('victim@example.com', response.content.decode('utf-8'))
+
+    @override_settings(DEBUG=False)
+    def test_inbound_webhook_fails_closed_without_secret(self):
+        request = self.factory.post('/wa-bot/webhook/', data='{}', content_type='application/json')
+        with patch.dict('os.environ', {'WA_BOT_WEBHOOK_SECRET': ''}):
+            self.assertFalse(views._verify_webhook_signature(request))
+
+    def test_inbound_webhook_token(self):
+        with patch.dict('os.environ', {'WA_BOT_WEBHOOK_SECRET': 's3cret'}):
+            ok = self.factory.post('/wa-bot/webhook/?token=s3cret', data='{}', content_type='application/json')
+            bad = self.factory.post('/wa-bot/webhook/?token=nope', data='{}', content_type='application/json')
+            self.assertTrue(views._verify_webhook_signature(ok))
+            self.assertFalse(views._verify_webhook_signature(bad))
+
+    @patch('apps.admin_panel.views.dashboard._get_admin_from_session', return_value=None)
+    def test_simulator_requires_admin(self, _mock_admin):
+        from apps.wa_agent_bot import simulator_views
+        request = self.factory.post('/wa-bot/simulator/simulate-payment/', data='{}', content_type='application/json')
+        request._dont_enforce_csrf_checks = True
+        self.assertEqual(simulator_views.simulator_payment(request).status_code, 403)
+
+    @patch('apps.agents.services.account_auth.email_owned_by_non_agent_account', return_value=False)
+    @patch('apps.wa_agent_bot.services.registration_handler.User')
+    @patch('apps.agents.models.Agent.objects')
+    def test_registration_never_takes_over_existing_login(self, mock_agents, mock_user, _mock_owned):
+        """Finding #1: an email that already has an auth_user must be rejected, not have its password reset."""
+        from apps.wa_agent_bot.services.registration_handler import create_agent_from_wa_data
+        mock_agents.filter.return_value.exists.return_value = False
+        mock_user.objects.filter.return_value.exists.return_value = True
+        result = create_agent_from_wa_data({'email': 'admin@example.com', 'fullname': 'X Y', 'mobile': '9800000000'})
+        self.assertFalse(result['success'])
+        mock_user.objects.create_user.assert_not_called()
+        mock_user.objects.get.assert_not_called()
+
+    def test_openwa_override_url_blocks_internal_hosts(self):
+        """Finding #8: admin-typed OpenWA URL can't reach metadata/internal hosts."""
+        from apps.wa_agent_bot.services.openwa_admin_service import _override_url_allowed
+        configured = 'http://localhost:2785'
+        self.assertFalse(_override_url_allowed('http://169.254.169.254/latest/meta-data', configured))
+        self.assertFalse(_override_url_allowed('http://10.0.0.5:8080', configured))
+        self.assertFalse(_override_url_allowed('file:///etc/passwd', configured))
+        self.assertTrue(_override_url_allowed('http://localhost:2785/api', configured))
+
+    @patch('apps.agents.services.account_auth.email_owned_by_non_agent_account', return_value=False)
+    @patch('apps.wa_agent_bot.services.registration_handler.User')
+    @patch('apps.agents.models.Agent.objects')
+    def test_registration_never_takes_over_existing_login(self, mock_agents, mock_user, _mock_owned):
+        """Finding #1: an email that already has an auth_user must be rejected, not have its password reset."""
+        from apps.wa_agent_bot.services.registration_handler import create_agent_from_wa_data
+        mock_agents.filter.return_value.exists.return_value = False
+        mock_user.objects.filter.return_value.exists.return_value = True
+        result = create_agent_from_wa_data({'email': 'admin@example.com', 'fullname': 'X Y', 'mobile': '9800000000'})
+        self.assertFalse(result['success'])
+        mock_user.objects.create_user.assert_not_called()
+        mock_user.objects.get.assert_not_called()
+
+    def test_openwa_override_url_blocks_internal_hosts(self):
+        """Finding #8: admin-typed OpenWA URL can't reach metadata/internal hosts."""
+        from apps.wa_agent_bot.services.openwa_admin_service import _override_url_allowed
+        configured = 'http://localhost:2785'
+        self.assertFalse(_override_url_allowed('http://169.254.169.254/latest/meta-data', configured))
+        self.assertFalse(_override_url_allowed('http://10.0.0.5:8080', configured))
+        self.assertFalse(_override_url_allowed('file:///etc/passwd', configured))
+        self.assertTrue(_override_url_allowed('http://localhost:2785/api', configured))

@@ -21,7 +21,7 @@ class BulkImportJob(models.Model):
         on_delete=models.CASCADE,
         related_name='import_jobs'
     )
-    file = models.FileField(upload_to='wholesale/imports/%Y/%m/')
+    file = models.FileField(upload_to='app/private/wholesale/imports/%Y/%m/')
     original_filename = models.CharField(max_length=255)
     
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='PENDING')

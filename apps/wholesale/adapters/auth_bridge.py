@@ -10,6 +10,7 @@ from functools import wraps
 from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from apps.home.models.site_setting import SiteSetting
 
 def is_wholesale_enabled():
@@ -56,22 +57,47 @@ def is_wholesaler(request):
     """Returns True if the current user is an authenticated wholesaler."""
     return get_wholesaler_profile(request) is not None
 
-def is_wholesale_admin(request):
+def safe_next_url(request, candidate, default):
+    """Return candidate only when it points back at this site (no open redirect)."""
+    if candidate and url_has_allowed_host_and_scheme(
+        candidate, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return candidate
+    return default
+
+def admin_session_has_permission(request, *permissions):
     """
-    Returns True if user is a Wholesale Administrator.
-    Checks PadosiAgent admin session tokens, standard staff/superuser flags.
+    True when the request carries a PadosiAgent admin session whose admin is a
+    Super Admin or holds any of `permissions` (same rules as AdminPermissionMiddleware).
     """
-    # 1. PadosiAgent custom session cookie
+    admin_id = None
     try:
         from apps.admin_panel.views.dashboard import _get_admin_from_session
         admin_id = _get_admin_from_session(request)
-        if admin_id:
-            return True
     except Exception:
         pass
+    if not admin_id and hasattr(request, 'session'):
+        admin_id = request.session.get('admin_id')
+    if not admin_id:
+        return False
+    try:
+        from apps.admin_panel.models.admin_auth import Admin
+        admin = Admin.objects.filter(pk=admin_id).only('role', 'permissions').first()
+    except Exception:
+        return False
+    if not admin:
+        return False
+    if admin.role == 'super':
+        return True
+    perms = admin.permissions if isinstance(admin.permissions, list) else []
+    return any(p in perms for p in permissions)
 
-    # 2. Django session admin_id
-    if hasattr(request, 'session') and request.session.get('admin_id'):
+def is_wholesale_admin(request):
+    """
+    Returns True if user is a Wholesale Administrator: a Super Admin or a staff
+    admin with the 'wholesale' permission, or a Django staff/superuser.
+    """
+    if admin_session_has_permission(request, 'wholesale'):
         return True
 
     # 3. Standard Django superuser / staff

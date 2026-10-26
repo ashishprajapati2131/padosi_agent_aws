@@ -10,7 +10,7 @@ from apps.wholesale.forms.registration_forms import (
     WholesalerAccountForm, WholesalerBusinessForm, DocumentUploadForm
 )
 from apps.wholesale.models.profile import WholesalerProfile, BusinessVerificationDocument
-from apps.wholesale.adapters.auth_bridge import is_wholesale_admin
+from apps.wholesale.adapters.auth_bridge import is_wholesale_admin, safe_next_url
 
 def wholesaler_login_view(request):
     """
@@ -36,7 +36,16 @@ def wholesaler_login_view(request):
     if request.method == 'POST':
         email = request.POST.get('email', '').strip().lower()
         password = request.POST.get('password', '')
-        
+        from apps.agents.views.auth import (
+            check_email_login_throttle, check_login_throttle, get_client_ip,
+            record_email_login_failure, record_login_attempt,
+        )
+        ip = get_client_ip(request)
+        # Same brute-force limits as the agent login (per IP and per account).
+        if not check_login_throttle(ip) or not check_email_login_throttle(email):
+            messages.error(request, "Too many login attempts. Please try again later.")
+            return render(request, 'wholesale/wholesaler/login.html', status=429)
+
         user = User.objects.filter(email=email).first()
         if user:
             user = authenticate(request, username=user.username, password=password)
@@ -46,8 +55,7 @@ def wholesaler_login_view(request):
             if hasattr(user, 'wholesaler_profile'):
                 login(request, user)
                 messages.success(request, f"Welcome back, {user.wholesaler_profile.business_name}!")
-                next_url = request.GET.get('next') or 'wholesale:wholesaler_dashboard'
-                return redirect(next_url)
+                return redirect(safe_next_url(request, request.GET.get('next'), 'wholesale:wholesaler_dashboard'))
             elif is_wholesale_admin(request) or user.is_staff or user.is_superuser:
                 login(request, user)
                 messages.success(request, f"Welcome back, Admin {user.username}!")
@@ -63,6 +71,8 @@ def wholesaler_login_view(request):
             else:
                 messages.error(request, "This account does not have an active Wholesaler profile. Please register below as a supplier.")
         else:
+            record_login_attempt(ip)
+            record_email_login_failure(email)
             messages.error(request, "Invalid business email or password.")
 
     return render(request, 'wholesale/wholesaler/login.html')

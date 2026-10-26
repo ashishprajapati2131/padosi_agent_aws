@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static json_tags %}
 
 {% block title %}Pincode Demand vs. Supply Heatmap (BI) — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Tools &rsaquo; Pincode Heatmap (BI){% endblock %}
@@ -329,7 +329,15 @@
 // Global variables
 var map;
 var markerLayerGroup;
-var clusters = {{ clusters_json|safe }};
+// name/district/state can carry agent-entered city names; escape once since they go into HTML popups.
+function escHtml(v) {
+    return String(v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function cleanCluster(c) {
+    ['name', 'district', 'state'].forEach(function(k) { if (c[k]) c[k] = escHtml(c[k]); });
+    return c;
+}
+var clusters = ({{ clusters_json|safe_json:"[]" }}).map(cleanCluster);
 var activeFilter = 'all';
 var clusterMarkersMap = {}; // pincode -> marker object
 
@@ -545,7 +553,7 @@ function locateAndHighlight(pincode) {
             if (res.success && res.data) {
                 var d = res.data;
                 // Add to clusters list
-                clusters.push(d);
+                clusters.push(cleanCluster(d));
 
                 // Render marker
                 renderClusters(activeFilter);
