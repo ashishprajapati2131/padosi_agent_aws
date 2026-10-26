@@ -22,12 +22,12 @@ def get_openwa_config():
     try:
         from apps.home.models.site_setting import SiteSetting
         base_url = SiteSetting.get_value('wa_bot_openwa_base_url') or os.environ.get('WA_BOT_OPENWA_BASE_URL', 'http://localhost:2785')
-        session_id = SiteSetting.get_value('wa_bot_openwa_session_id') or os.environ.get('WA_BOT_OPENWA_SESSION_ID', '1d3fe475-ff1e-4076-8c04-6f82862f255e')
-        api_key = SiteSetting.get_value('wa_bot_openwa_api_key') or os.environ.get('WA_BOT_OPENWA_API_KEY', 'owa_k1_4c2f0f60c48635718f6828aef51e565e38182714f039a1f8f1fb789cb96f470e')
+        session_id = SiteSetting.get_value('wa_bot_openwa_session_id') or os.environ.get('WA_BOT_OPENWA_SESSION_ID', '')
+        api_key = SiteSetting.get_value('wa_bot_openwa_api_key') or os.environ.get('WA_BOT_OPENWA_API_KEY', '')
     except Exception:
         base_url = os.environ.get('WA_BOT_OPENWA_BASE_URL', 'http://localhost:2785')
-        session_id = os.environ.get('WA_BOT_OPENWA_SESSION_ID', '1d3fe475-ff1e-4076-8c04-6f82862f255e')
-        api_key = os.environ.get('WA_BOT_OPENWA_API_KEY', 'owa_k1_4c2f0f60c48635718f6828aef51e565e38182714f039a1f8f1fb789cb96f470e')
+        session_id = os.environ.get('WA_BOT_OPENWA_SESSION_ID', '')
+        api_key = os.environ.get('WA_BOT_OPENWA_API_KEY', '')
 
     return {
         'base_url': str(base_url or '').strip().rstrip('/'),
