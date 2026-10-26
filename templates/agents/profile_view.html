@@ -67,7 +67,7 @@
       "name": "{{ agentDisplayName|default:agent.fullname|escapejs }}",
       "description": "{% if profile.license_number %}Licensed {% endif %}Insurance and Financial Advisor on PadosiAgent",
       "url": "{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:'gj' }}/{{ profile.slug }}/",
-      {% if profile.profile_photo_url %}"image": "{{ profile.profile_photo_url }}",{% endif %}
+      {% if profile.profile_photo_url %}"image": "{% if profile.profile_photo_url|slice:':1' == '/' %}{{ public_site_base }}{% endif %}{{ profile.profile_photo_url|escapejs }}",{% endif %}
       {% if agent.mobile %}"telephone": "+91{{ agent.mobile }}",{% endif %}
       "address": {
         "@type": "PostalAddress",

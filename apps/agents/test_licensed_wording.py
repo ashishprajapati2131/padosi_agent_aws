@@ -29,3 +29,13 @@ class LicensedWordingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Test Agent, a Licensed Insurance &amp; Financial Advisor')
         self.assertContains(response, '"description": "Licensed Insurance and Financial Advisor on PadosiAgent"')
+
+
+class ProfileSchemaImageTests(TestCase):
+    def test_schema_image_is_absolute(self):
+        cache.clear()
+        agent = Agent.objects.create(fullname='Img Agent', email='img@example.com', mobile='9876501234', status='active')
+        AgentProfile.objects.create(agent=agent, slug='img-agent', display_name='Img Agent', is_profile_visible=True)
+        response = self.client.get(reverse('agents:agent_public_profile', args=['img-agent']))
+        self.assertEqual(response.status_code, 200)
+        self.assertRegex(response.content.decode(), r'"image": "https?://[^"/]+/static/')
