@@ -981,6 +981,13 @@
                 <li class="nav-item">
                     <a class="nav-link" href="#qrcodes" data-tab="qrcodes" data-feature="qr_codes"><i class="fas fa-qrcode mr-2"></i>QR Codes</a>
                 </li>
+                {% if agent_digital_card_enabled %}
+                <li class="nav-item">
+                    <a class="nav-link" href="#digitalcard" data-tab="digitalcard" style="color: #059669; font-weight: 700;">
+                        <i class="fas fa-id-card mr-2 text-success"></i>Digital Visiting Card <span class="badge bg-success text-white ms-1" style="font-size: 9px; padding: 2px 6px;">New</span>
+                    </a>
+                </li>
+                {% endif %}
                 {% if wholesale_enabled %}
                 <li class="nav-item">
                     <a class="nav-link" href="#marketplace" data-tab="marketplace" style="color: #059669; font-weight: 700;">
@@ -1342,6 +1349,12 @@
             </div>
             {% endif %}
         </div>
+
+        {% if agent_digital_card_enabled %}
+        <div id="digitalcard-content" class="tab-panel" style="display: none;">
+            {% include 'agents/partials/digital_card_customizer.html' %}
+        </div>
+        {% endif %}
 
         {% if google_review_system_enabled %}
         <!-- Google Reviews Manager Section -->
@@ -2013,6 +2026,7 @@
                 profile: document.getElementById('profile-content'),
                 leads: document.getElementById('leads-content'),
                 qrcodes: document.getElementById('qr-content'),
+                digitalcard: document.getElementById('digitalcard-content') || null,
                 comingsoon: document.getElementById('comingsoon-content') || null,
                 googlereviews: document.getElementById('googlereviews-content') || null,
                 analytics: document.getElementById('analytics-content') || null

@@ -1,0 +1,1105 @@
+{% load static %}
+<div class="pa-card-studio-shell">
+    <style>
+        .pa-card-studio-shell {
+            padding: 10px 4px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .pa-studio-hero {
+            background: linear-gradient(135deg, #0B1F3A 0%, #173868 60%, #0d9488 100%);
+            border-radius: 20px;
+            padding: 26px 28px;
+            color: #ffffff;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(11, 31, 58, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .pa-studio-hero::after {
+            content: '';
+            position: absolute;
+            right: -30px;
+            top: -30px;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .pa-studio-badge {
+            background: #10B981;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 999px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .pa-studio-title {
+            font-size: 22px;
+            font-weight: 800;
+            margin: 10px 0 6px;
+            color: #ffffff;
+            letter-spacing: -0.3px;
+        }
+        .pa-studio-sub {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.85);
+            max-width: 650px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+        .pa-studio-btn-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .pa-studio-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 9px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-decoration: none !important;
+            border: 1px solid transparent;
+        }
+        .pa-studio-btn-primary {
+            background: #10B981;
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        .pa-studio-btn-primary:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+        .pa-studio-btn-light {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff !important;
+            border-color: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(4px);
+        }
+        .pa-studio-btn-light:hover {
+            background: rgba(255, 255, 255, 0.25);
+            color: #ffffff !important;
+        }
+
+        /* Studio Card Container */
+        .pa-studio-card {
+            background: #ffffff;
+            border: 1px solid #E2E8F0;
+            border-radius: 16px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+            transition: border-color 0.15s;
+        }
+        .pa-studio-card:hover {
+            border-color: #CBD5E1;
+        }
+        .pa-studio-card-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #F1F5F9;
+        }
+        .pa-studio-card-head i {
+            font-size: 16px;
+            color: #0B1F3A;
+            background: #F1F5F9;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pa-studio-card-head h5 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: #0F172A;
+        }
+        .pa-studio-card-head span {
+            font-size: 12.5px;
+            color: #64748B;
+            display: block;
+        }
+
+        /* Swatches */
+        .pa-color-swatches {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .pa-color-swatch {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.15s ease;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+        }
+        .pa-color-swatch:hover {
+            transform: scale(1.1);
+        }
+        .pa-color-swatch.active {
+            border-color: #0F172A;
+            box-shadow: 0 0 0 2px #38BDF8;
+        }
+        .pa-color-swatch.active::after {
+            content: '✓';
+            font-weight: 900;
+            font-size: 14px;
+        }
+
+        /* Banner Style Grid */
+        .pa-banner-options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .pa-banner-option-item {
+            border: 2px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            background: #ffffff;
+            text-align: center;
+        }
+        .pa-banner-option-item:hover {
+            border-color: #94A3B8;
+        }
+        .pa-banner-option-item.active {
+            border-color: #0B1F3A;
+            box-shadow: 0 0 0 2px rgba(11, 31, 58, 0.2);
+            background: #F8FAFC;
+        }
+        .pa-banner-preview-strip {
+            height: 44px;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            width: 100%;
+        }
+        .pa-banner-option-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #334155;
+            display: block;
+        }
+
+        /* Switches */
+        .pa-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #F1F5F9;
+        }
+        .pa-toggle-row:last-child {
+            border-bottom: none;
+        }
+        .pa-toggle-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .pa-toggle-label {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #1E293B;
+            margin: 0;
+        }
+        .pa-toggle-hint {
+            font-size: 12px;
+            color: #64748B;
+        }
+        .pa-ios-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .pa-ios-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .pa-ios-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #CBD5E1;
+            transition: .2s;
+            border-radius: 24px;
+        }
+        .pa-ios-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+        .pa-ios-switch input:checked + .pa-ios-slider {
+            background-color: #10B981;
+        }
+        .pa-ios-switch input:checked + .pa-ios-slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Phone Mockup Frame */
+        .pa-phone-wrap {
+            position: sticky;
+            top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .pa-phone-device {
+            width: 100%;
+            max-width: 360px;
+            height: 680px;
+            background: #ffffff;
+            border: 12px solid #0F172A;
+            border-radius: 44px;
+            box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.35);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .pa-phone-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 130px;
+            height: 20px;
+            background: #0F172A;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+            z-index: 10;
+        }
+        .pa-phone-screen {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: #F8FAFC;
+            font-size: 12px;
+            padding-bottom: 24px;
+        }
+        .pa-phone-screen::-webkit-scrollbar {
+            width: 4px;
+        }
+        .pa-phone-screen::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.15);
+            border-radius: 4px;
+        }
+
+        /* Mockup Header & Banner */
+        .pa-mock-header {
+            padding: 24px 14px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #ffffff;
+            border-bottom: 1px solid #F1F5F9;
+        }
+        .pa-mock-agency-logo {
+            max-height: 22px;
+            max-width: 90px;
+            object-fit: contain;
+        }
+        .pa-mock-agency-title {
+            font-weight: 800;
+            font-size: 11px;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .pa-mock-banner {
+            height: 85px;
+            width: 100%;
+            background: linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%);
+            transition: all 0.2s ease;
+        }
+        .pa-mock-avatar-row {
+            margin-top: -36px;
+            padding: 0 16px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+        .pa-mock-avatar {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            border: 3.5px solid #ffffff;
+            object-fit: cover;
+            background: #E2E8F0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .pa-mock-body {
+            padding: 10px 16px;
+        }
+        .pa-mock-name {
+            font-size: 16px;
+            font-weight: 800;
+            color: #0F172A;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .pa-mock-tagline {
+            font-size: 11.5px;
+            color: #0D9488;
+            font-weight: 700;
+            margin-top: 3px;
+            line-height: 1.35;
+        }
+        .pa-mock-profession {
+            font-size: 10.5px;
+            color: #64748B;
+            margin-top: 2px;
+        }
+        .pa-mock-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        .pa-mock-btn-primary {
+            background: var(--mock-theme, #0B1F3A);
+            color: #ffffff;
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 7px 10px;
+            border-radius: 8px;
+            text-align: center;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .pa-mock-btn-secondary {
+            background: #F1F5F9;
+            color: #334155;
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 7px 10px;
+            border-radius: 8px;
+            text-align: center;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .pa-mock-tiles {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .pa-mock-tile {
+            background: #ffffff;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 9px;
+            font-weight: 700;
+            color: #334155;
+        }
+        .pa-mock-tile i {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 3px;
+        }
+        .pa-mock-box {
+            background: #ffffff;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .pa-mock-box-title {
+            font-size: 10.5px;
+            font-weight: 800;
+            color: #0F172A;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .pa-mock-footer {
+            margin-top: 14px;
+            padding: 10px;
+            text-align: center;
+            font-size: 9.5px;
+            color: #94A3B8;
+            border-top: 1px solid #E2E8F0;
+        }
+        .pa-mock-footer strong {
+            color: #475569;
+        }
+    </style>
+
+    <!-- Studio Hero -->
+    <div class="pa-studio-hero">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="pa-studio-badge"><i class="fas fa-sparkles"></i> Link-In-Bio Studio</span>
+            <span class="badge" style="background: rgba(255,255,255,0.2); font-size: 11px;">PassKard Style</span>
+        </div>
+        <h2 class="pa-studio-title">Personal Digital Visiting Card Studio</h2>
+        <p class="pa-studio-sub">
+            Customize your professional digital card! Showcase your own agency branding, custom banner, logo, colors, and direct WhatsApp / call buttons without 3rd-party marketing.
+        </p>
+        <div class="pa-studio-btn-row">
+            <a href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank" class="pa-studio-btn pa-studio-btn-primary">
+                <i class="fas fa-external-link-alt"></i> Open Live Card
+            </a>
+            <button type="button" class="pa-studio-btn pa-studio-btn-light" onclick="copyAgentCardLink('{% url 'agents:agent_public_card' slug=agent.agent_slug %}')">
+                <i class="fas fa-copy"></i> Copy Card Link
+            </button>
+            <a href="{{ card_qr_download_url }}" class="pa-studio-btn pa-studio-btn-light" download="QR-{{ agent.agent_slug }}-card.png">
+                <i class="fas fa-qrcode"></i> Download QR
+            </a>
+            <button type="button" class="pa-studio-btn" style="background: #ffffff; color: #0B1F3A; font-weight: 800; margin-left: auto;" id="topSaveBtn" onclick="submitCardCustomizationForm()">
+                <i class="fas fa-save" style="color: #10B981;"></i> Save Changes
+            </button>
+        </div>
+    </div>
+
+    <!-- 2-Column Customization Studio -->
+    <div class="row g-4">
+        <!-- Left: Customization Form -->
+        <div class="col-xl-7 col-lg-7 col-md-12">
+            <form id="cardCustomizationForm" enctype="multipart/form-data" onsubmit="event.preventDefault(); submitCardCustomizationForm();">
+                {% csrf_token %}
+                <input type="hidden" name="remove_agency_logo" id="removeAgencyLogoInput" value="0">
+                <input type="hidden" name="remove_card_banner" id="removeCardBannerInput" value="0">
+
+                <!-- 1. Agency & Personal Branding -->
+                <div class="pa-studio-card">
+                    <div class="pa-studio-card-head">
+                        <i class="fas fa-building"></i>
+                        <div>
+                            <h5>Agency &amp; Personal Branding</h5>
+                            <span>Your business identity, logo, and core card headline</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Agency / Firm Name</label>
+                        <input type="text" name="agency_name" id="inputAgencyName" class="form-control" style="font-size: 13.5px; border-radius: 10px;" placeholder="e.g. Patel Wealth &amp; Insurance Advisory" value="{{ card_config.agency_name|default:profile.agency_name|default:'' }}" oninput="updateLivePreview()">
+                        <small class="text-muted">Displays at the top of your digital card as your official brand header.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Agency Logo</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <div id="agencyLogoPreviewBox" style="width: 58px; height: 58px; border-radius: 12px; border: 1.5px dashed #CBD5E1; display: flex; align-items: center; justify-content: center; background: #F8FAFC; overflow: hidden; flex-shrink: 0;">
+                                {% if profile.agency_logo_url %}
+                                    <img src="{{ profile.agency_logo_url }}" id="agencyLogoImgPreview" style="width: 100%; height: 100%; object-fit: contain;">
+                                {% else %}
+                                    <i class="fas fa-image text-muted" id="agencyLogoIconPlaceholder" style="font-size: 20px;"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <input type="file" name="agency_logo" id="inputAgencyLogo" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="previewAgencyLogo(this)">
+                                <div class="d-flex align-items-center gap-2 mt-1">
+                                    <small class="text-muted">PNG or WebP with transparent background recommended.</small>
+                                    {% if profile.agency_logo_url %}
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0 font-weight-bold" onclick="removeAgencyLogo()" style="font-size: 11.5px; text-decoration: none;">
+                                        <i class="fas fa-trash-alt mr-1"></i> Remove Logo
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Card Headline / Tagline</label>
+                        <input type="text" name="card_tagline" id="inputCardTagline" class="form-control" style="font-size: 13.5px; border-radius: 10px;" placeholder="e.g. Protecting 1,500+ families with trusted health &amp; life advice" value="{{ card_config.tagline|default:profile.card_tagline|default:'' }}" oninput="updateLivePreview()">
+                        <small class="text-muted">Featured prominently right under your name on your digital visiting card.</small>
+                    </div>
+
+                    <div>
+                        <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Personal About / Welcome Bio</label>
+                        <textarea name="card_bio" id="inputCardBio" class="form-control" rows="3" style="font-size: 13px; border-radius: 10px;" placeholder="Brief personal message introducing yourself and your advisory approach..." oninput="updateLivePreview()">{{ card_config.bio|default:'' }}</textarea>
+                        <small class="text-muted">Shown in the "About &amp; Overview" section of your card.</small>
+                    </div>
+                </div>
+
+                <!-- 2. Visual Theme & Cover Banner -->
+                <div class="pa-studio-card">
+                    <div class="pa-studio-card-head">
+                        <i class="fas fa-palette"></i>
+                        <div>
+                            <h5>Visual Theme &amp; Cover Banner</h5>
+                            <span>Select your brand's primary color theme and card header banner</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label font-weight-bold d-flex align-items-center justify-content-between" style="font-size: 13px; color: #1E293B;">
+                            <span>Brand Theme Color</span>
+                            <span class="text-muted font-weight-normal" id="selectedColorHexLabel">{{ card_config.theme_color|default:'#0B1F3A' }}</span>
+                        </label>
+                        <input type="hidden" name="theme_color" id="themeColorInput" value="{{ card_config.theme_color|default:'#0B1F3A' }}">
+                        <div class="pa-color-swatches">
+                            <span class="pa-color-swatch {% if card_config.theme_color == '#0B1F3A' or not card_config.theme_color %}active{% endif %}" style="background: #0B1F3A;" data-color="#0B1F3A" title="Classic Navy" onclick="selectThemeColor('#0B1F3A', this)"></span>
+                            <span class="pa-color-swatch {% if card_config.theme_color == '#059669' %}active{% endif %}" style="background: #059669;" data-color="#059669" title="Royal Emerald" onclick="selectThemeColor('#059669', this)"></span>
+                            <span class="pa-color-swatch {% if card_config.theme_color == '#4338CA' %}active{% endif %}" style="background: #4338CA;" data-color="#4338CA" title="Royal Indigo" onclick="selectThemeColor('#4338CA', this)"></span>
+                            <span class="pa-color-swatch {% if card_config.theme_color == '#0D9488' %}active{% endif %}" style="background: #0D9488;" data-color="#0D9488" title="Modern Teal" onclick="selectThemeColor('#0D9488', this)"></span>
+                            <span class="pa-color-swatch {% if card_config.theme_color == '#991B1B' %}active{% endif %}" style="background: #991B1B;" data-color="#991B1B" title="Ruby Maroon" onclick="selectThemeColor('#991B1B', this)"></span>
+                            <span class="pa-color-swatch {% if card_config.theme_color == '#7C3AED' %}active{% endif %}" style="background: #7C3AED;" data-color="#7C3AED" title="Deep Purple" onclick="selectThemeColor('#7C3AED', this)"></span>
+                            <span class="pa-color-swatch {% if card_config.theme_color == '#1E293B' %}active{% endif %}" style="background: #1E293B;" data-color="#1E293B" title="Slate Dark" onclick="selectThemeColor('#1E293B', this)"></span>
+                            
+                            <label class="d-inline-flex align-items-center gap-1 mb-0 ms-2" style="cursor: pointer;" title="Custom Color Picker">
+                                <input type="color" id="nativeColorPicker" value="{{ card_config.theme_color|default:'#0B1F3A' }}" style="width: 32px; height: 32px; border: none; border-radius: 8px; cursor: pointer;" onchange="selectThemeColor(this.value, null)">
+                                <span style="font-size: 11.5px; font-weight: 700; color: #64748B;">Custom</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Cover Banner Style</label>
+                        <input type="hidden" name="banner_style" id="bannerStyleInput" value="{{ card_config.banner_style|default:'profile' }}">
+                        <div class="pa-banner-options-grid">
+                            <div class="pa-banner-option-item {% if card_config.banner_style == 'profile' or not card_config.banner_style %}active{% endif %}" onclick="selectBannerStyle('profile', this)">
+                                <div class="pa-banner-preview-strip" style="{% if profile.banner_url %}background: url('{{ profile.banner_url }}') center/cover;{% else %}background: linear-gradient(135deg, #0B1F3A, #1E3A8A);{% endif %}"></div>
+                                <span class="pa-banner-option-label">Profile Banner</span>
+                            </div>
+
+                            <div class="pa-banner-option-item {% if card_config.banner_style == 'gradient_navy' %}active{% endif %}" onclick="selectBannerStyle('gradient_navy', this)">
+                                <div class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%);"></div>
+                                <span class="pa-banner-option-label">Ocean Twilight</span>
+                            </div>
+
+                            <div class="pa-banner-option-item {% if card_config.banner_style == 'gradient_emerald' %}active{% endif %}" onclick="selectBannerStyle('gradient_emerald', this)">
+                                <div class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #064E3B 0%, #059669 50%, #10B981 100%);"></div>
+                                <span class="pa-banner-option-label">Emerald Glow</span>
+                            </div>
+
+                            <div class="pa-banner-option-item {% if card_config.banner_style == 'gradient_indigo' %}active{% endif %}" onclick="selectBannerStyle('gradient_indigo', this)">
+                                <div class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6366F1 100%);"></div>
+                                <span class="pa-banner-option-label">Royal Indigo</span>
+                            </div>
+
+                            <div class="pa-banner-option-item {% if card_config.banner_style == 'gradient_sunset' %}active{% endif %}" onclick="selectBannerStyle('gradient_sunset', this)">
+                                <div class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #7C2D12 0%, #C2410C 50%, #F59E0B 100%);"></div>
+                                <span class="pa-banner-option-label">Sunset Flare</span>
+                            </div>
+
+                            <div class="pa-banner-option-item {% if card_config.banner_style == 'gradient_purple' %}active{% endif %}" onclick="selectBannerStyle('gradient_purple', this)">
+                                <div class="pa-banner-preview-strip" style="background: linear-gradient(135deg, #4C1D95 0%, #7C3AED 50%, #A855F7 100%);"></div>
+                                <span class="pa-banner-option-label">Amethyst Glow</span>
+                            </div>
+
+                            <div class="pa-banner-option-item {% if card_config.banner_style == 'custom' %}active{% endif %}" onclick="selectBannerStyle('custom', this)">
+                                <div class="pa-banner-preview-strip" id="customBannerThumbStrip" style="background: #F1F5F9; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-upload text-muted"></i>
+                                </div>
+                                <span class="pa-banner-option-label">Upload Custom</span>
+                            </div>
+                        </div>
+
+                        <!-- Custom banner file uploader -->
+                        <div id="customBannerUploadBox" class="mt-3 p-3 bg-light rounded" style="display: {% if card_config.banner_style == 'custom' %}block{% else %}none{% endif %}; border: 1px dashed #CBD5E1;">
+                            <label class="form-label font-weight-bold small mb-1">Upload Card Banner Image (1200x400 Recommended)</label>
+                            <input type="file" name="custom_banner" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp" onchange="previewCardBanner(this)">
+                            {% if card_config.custom_banner_path %}
+                            <div class="mt-2 d-flex align-items-center justify-content-between">
+                                <span class="small text-success"><i class="fas fa-check-circle"></i> Custom banner uploaded</span>
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeCardBanner()">Remove</button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Direct Contact & WhatsApp Customization -->
+                <div class="pa-studio-card">
+                    <div class="pa-studio-card-head">
+                        <i class="fab fa-whatsapp" style="color: #059669; background: #ECFDF5;"></i>
+                        <div>
+                            <h5>Contact Actions &amp; WhatsApp Pre-fill</h5>
+                            <span>Configure pre-filled WhatsApp message and touch action buttons</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold" style="font-size: 13px; color: #1E293B;">Pre-filled WhatsApp Message</label>
+                        <textarea name="whatsapp_msg" id="inputWhatsAppMsg" class="form-control" rows="2" style="font-size: 13px; border-radius: 10px;" placeholder="Hello, I viewed your Digital Visiting Card and would like consultation..." oninput="updateLivePreview()">{{ card_config.whatsapp_msg|default:'' }}</textarea>
+                        <small class="text-muted">When a client clicks WhatsApp on your card, this message opens ready for them to send.</small>
+                    </div>
+
+                    <div class="pt-2">
+                        <label class="form-label font-weight-bold mb-2" style="font-size: 13px; color: #1E293B;">Visible Contact Buttons</label>
+                        
+                        <div class="pa-toggle-row">
+                            <div class="pa-toggle-info">
+                                <span class="pa-toggle-label"><i class="fas fa-phone-alt mr-1 text-primary"></i> Direct Call Button</span>
+                                <span class="pa-toggle-hint">Calls your registered mobile number: {{ agent.mobile }}</span>
+                            </div>
+                            <label class="pa-ios-switch">
+                                <input type="checkbox" name="show_call" id="toggleShowCall" value="1" {% if card_config.show_call %}checked{% endif %} onchange="updateLivePreview()">
+                                <span class="pa-ios-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="pa-toggle-row">
+                            <div class="pa-toggle-info">
+                                <span class="pa-toggle-label"><i class="fab fa-whatsapp mr-1 text-success"></i> WhatsApp Chat Button</span>
+                                <span class="pa-toggle-hint">Instant 1-tap WhatsApp consultation link</span>
+                            </div>
+                            <label class="pa-ios-switch">
+                                <input type="checkbox" name="show_whatsapp" id="toggleShowWhatsapp" value="1" {% if card_config.show_whatsapp %}checked{% endif %} onchange="updateLivePreview()">
+                                <span class="pa-ios-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="pa-toggle-row">
+                            <div class="pa-toggle-info">
+                                <span class="pa-toggle-label"><i class="fas fa-envelope mr-1 text-danger"></i> Email Button</span>
+                                <span class="pa-toggle-hint">Opens email composer to {{ agent.email }}</span>
+                            </div>
+                            <label class="pa-ios-switch">
+                                <input type="checkbox" name="show_email" id="toggleShowEmail" value="1" {% if card_config.show_email %}checked{% endif %} onchange="updateLivePreview()">
+                                <span class="pa-ios-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="pa-toggle-row">
+                            <div class="pa-toggle-info">
+                                <span class="pa-toggle-label"><i class="fas fa-map-marker-alt mr-1 text-danger"></i> Office Navigation (Google Maps)</span>
+                                <span class="pa-toggle-hint">Direct Google Maps link for your office location</span>
+                            </div>
+                            <label class="pa-ios-switch">
+                                <input type="checkbox" name="show_address" id="toggleShowAddress" value="1" {% if card_config.show_address %}checked{% endif %} onchange="updateLivePreview()">
+                                <span class="pa-ios-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="pa-toggle-row">
+                            <div class="pa-toggle-info">
+                                <span class="pa-toggle-label"><i class="fas fa-address-card mr-1 text-secondary"></i> Save Contact (vCard 3.0)</span>
+                                <span class="pa-toggle-hint">Clients save your name, number, &amp; agency directly to phone contacts</span>
+                            </div>
+                            <label class="pa-ios-switch">
+                                <input type="checkbox" name="show_save_contact" id="toggleShowSaveContact" value="1" {% if card_config.show_save_contact %}checked{% endif %} onchange="updateLivePreview()">
+                                <span class="pa-ios-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Content Sections & Lead Capture -->
+                <div class="pa-studio-card">
+                    <div class="pa-studio-card-head">
+                        <i class="fas fa-layer-group"></i>
+                        <div>
+                            <h5>Card Sections &amp; Lead Capture</h5>
+                            <span>Choose which blocks to display on your digital visiting card</span>
+                        </div>
+                    </div>
+
+                    <div class="pa-toggle-row">
+                        <div class="pa-toggle-info">
+                            <span class="pa-toggle-label"><i class="fas fa-file-invoice mr-1 text-primary"></i> Direct Lead Enquiry Form</span>
+                            <span class="pa-toggle-hint">Allows clients to request consultation; enquiries appear in your Leads dashboard</span>
+                        </div>
+                        <label class="pa-ios-switch">
+                            <input type="checkbox" name="show_lead_form" id="toggleShowLeadForm" value="1" {% if card_config.show_lead_form %}checked{% endif %} onchange="updateLivePreview()">
+                            <span class="pa-ios-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="pa-toggle-row">
+                        <div class="pa-toggle-info">
+                            <span class="pa-toggle-label"><i class="fas fa-shield-alt mr-1 text-info"></i> Insurance Specialties Chips</span>
+                            <span class="pa-toggle-hint">Highlights Health, Term Life, Motor, and SME insurance services</span>
+                        </div>
+                        <label class="pa-ios-switch">
+                            <input type="checkbox" name="show_services" id="toggleShowServices" value="1" {% if card_config.show_services %}checked{% endif %} onchange="updateLivePreview()">
+                            <span class="pa-ios-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="pa-toggle-row">
+                        <div class="pa-toggle-info">
+                            <span class="pa-toggle-label"><i class="fas fa-star mr-1 text-warning"></i> Client Reviews &amp; Rating Badge</span>
+                            <span class="pa-toggle-hint">Displays verified client star rating and review link</span>
+                        </div>
+                        <label class="pa-ios-switch">
+                            <input type="checkbox" name="show_reviews" id="toggleShowReviews" value="1" {% if card_config.show_reviews %}checked{% endif %} onchange="updateLivePreview()">
+                            <span class="pa-ios-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="pa-toggle-row">
+                        <div class="pa-toggle-info">
+                            <span class="pa-toggle-label"><i class="fas fa-qrcode mr-1 text-dark"></i> Desktop "Scan with Phone" QR Box</span>
+                            <span class="pa-toggle-hint">Dedicated scan card shown to desktop visitors</span>
+                        </div>
+                        <label class="pa-ios-switch">
+                            <input type="checkbox" name="show_qr_card" id="toggleShowQrCard" value="1" {% if card_config.show_qr_card %}checked{% endif %} onchange="updateLivePreview()">
+                            <span class="pa-ios-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 5. Custom Action Button / External Link -->
+                <div class="pa-studio-card">
+                    <div class="pa-studio-card-head">
+                        <i class="fas fa-link"></i>
+                        <div>
+                            <h5>Custom Action Button / Link</h5>
+                            <span>Optional featured link on your card (e.g. Schedule Calendly, Download Brochure, Website)</span>
+                        </div>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <label class="form-label font-weight-bold" style="font-size: 12.5px; color: #1E293B;">Button Title</label>
+                            <input type="text" name="custom_button_label" id="inputCustomBtnLabel" class="form-control" style="font-size: 13px; border-radius: 10px;" placeholder="e.g. Book 15-min Call" value="{{ card_config.custom_button_label|default:'' }}" oninput="updateLivePreview()">
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label font-weight-bold" style="font-size: 12.5px; color: #1E293B;">Target URL</label>
+                            <input type="url" name="custom_button_url" id="inputCustomBtnUrl" class="form-control" style="font-size: 13px; border-radius: 10px;" placeholder="https://calendly.com/your-name" value="{{ card_config.custom_button_url|default:'' }}" oninput="updateLivePreview()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <button type="submit" class="btn btn-lg pa-studio-btn-primary px-4 py-2" id="bottomSaveBtn">
+                        <i class="fas fa-save mr-1"></i> Save Customizations
+                    </button>
+                    <a href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank" class="btn btn-outline-secondary font-weight-bold px-3 py-2" style="border-radius: 10px; font-size: 13px;">
+                        <i class="fas fa-eye mr-1"></i> View Live Card
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Right: Real-Time Interactive Smartphone Preview -->
+        <div class="col-xl-5 col-lg-5 col-md-12">
+            <div class="pa-phone-wrap">
+                <div class="d-flex align-items-center justify-content-between w-100 mb-2 px-3" style="max-width: 360px;">
+                    <span class="badge" style="background: #0F172A; color: #ffffff; font-size: 11px; padding: 4px 8px; border-radius: 6px;">
+                        <i class="fas fa-mobile-alt mr-1"></i> LIVE PREVIEW
+                    </span>
+                    <a href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank" class="small font-weight-bold text-primary" style="text-decoration: none;">
+                        Open full <i class="fas fa-external-link-alt"></i>
+                    </a>
+                </div>
+
+                <div class="pa-phone-device" id="phoneMockupFrame" style="--mock-theme: {{ card_config.theme_color|default:'#0B1F3A' }};">
+                    <div class="pa-phone-notch"></div>
+                    <div class="pa-phone-screen">
+                        
+                        <!-- Header -->
+                        <div class="pa-mock-header">
+                            <div class="d-flex align-items-center gap-1.5" id="mockHeaderBrandWrap">
+                                {% if profile.agency_logo_url %}
+                                    <img src="{{ profile.agency_logo_url }}" id="mockHeaderLogo" class="pa-mock-agency-logo">
+                                {% else %}
+                                    <span class="pa-mock-agency-title" id="mockHeaderAgencyTitle">
+                                        <i class="fas fa-shield-alt text-primary"></i> 
+                                        <span>{{ card_config.agency_name|default:profile.agency_name|default:'Insurance Advisor' }}</span>
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <span class="badge" style="background: #F1F5F9; color: #0F172A; font-size: 9px; font-weight: 700; border-radius: 999px; padding: 3px 6px;">
+                                <i class="fas fa-certificate text-success"></i> Verified
+                            </span>
+                        </div>
+
+                        <!-- Banner -->
+                        <div class="pa-mock-banner" id="mockBannerStrip" style="{{ profile.card_banner_css }}"></div>
+
+                        <!-- Avatar Row -->
+                        <div class="pa-mock-avatar-row">
+                            <img src="{{ profile.profile_photo_url }}" class="pa-mock-avatar" onerror="this.src='/static/img/avatar-icon.jpg';">
+                            <span class="badge" style="background: #10B981; color: #ffffff; font-size: 9px; font-weight: 800; border-radius: 999px; padding: 4px 8px;">
+                                <i class="fas fa-check"></i> ACTIVE
+                            </span>
+                        </div>
+
+                        <!-- Body -->
+                        <div class="pa-mock-body">
+                            <h3 class="pa-mock-name">{{ display_name|default:agent.fullname }}</h3>
+                            {% if profile.profession and profile.profession|lower != 'lic agent' %}
+                            <div class="pa-mock-profession">{{ profile.profession }} · {{ agent.state|default:'Gujarat' }}</div>
+                            {% endif %}
+
+                            <!-- Actions Row -->
+                            <div class="pa-mock-actions">
+                                <button type="button" class="pa-mock-btn-primary" id="mockSaveContactBtn" style="display: {% if card_config.show_save_contact %}inline-flex{% else %}none{% endif %};">
+                                    <i class="fas fa-address-card"></i> Save Contact
+                                </button>
+                                <button type="button" class="pa-mock-btn-secondary">
+                                    <i class="fas fa-share-alt"></i> Share
+                                </button>
+                            </div>
+
+                            <!-- Quick Tiles -->
+                            <div class="pa-mock-tiles">
+                                <div class="pa-mock-tile" id="mockTileCall" style="display: {% if card_config.show_call %}block{% else %}none{% endif %};">
+                                    <i class="fas fa-phone-alt text-primary"></i> Call
+                                </div>
+                                <div class="pa-mock-tile" id="mockTileWhatsapp" style="display: {% if card_config.show_whatsapp %}block{% else %}none{% endif %};">
+                                    <i class="fab fa-whatsapp text-success"></i> WhatsApp
+                                </div>
+                                <div class="pa-mock-tile" id="mockTileEmail" style="display: {% if card_config.show_email %}block{% else %}none{% endif %};">
+                                    <i class="fas fa-envelope text-danger"></i> Email
+                                </div>
+                                <div class="pa-mock-tile" id="mockTileAddress" style="display: {% if card_config.show_address %}block{% else %}none{% endif %};">
+                                    <i class="fas fa-map-marker-alt text-danger"></i> Maps
+                                </div>
+                            </div>
+
+                            <!-- Custom Button Mock -->
+                            <div id="mockCustomBtnWrap" style="margin-top: 10px; display: {% if card_config.custom_button_label %}block{% else %}none{% endif %};">
+                                <button type="button" class="btn w-100 btn-sm text-white font-weight-bold" id="mockCustomBtnElement" style="background: var(--mock-theme, #0B1F3A); border-radius: 8px; font-size: 11px; padding: 7px;">
+                                    <i class="fas fa-calendar-check mr-1"></i> <span id="mockCustomBtnText">{{ card_config.custom_button_label }}</span>
+                                </button>
+                            </div>
+
+                            <!-- Trust Metrics -->
+                            <div class="pa-mock-box" id="mockServicesBox" style="display: {% if card_config.show_services %}block{% else %}none{% endif %};">
+                                <div class="pa-mock-box-title"><i class="fas fa-shield-alt text-success"></i> Insurance Specialties</div>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <span class="badge" style="background: #F1F5F9; color: #334155; font-size: 8.5px;">Health</span>
+                                    <span class="badge" style="background: #F1F5F9; color: #334155; font-size: 8.5px;">Term Life</span>
+                                    <span class="badge" style="background: #F1F5F9; color: #334155; font-size: 8.5px;">Motor</span>
+                                </div>
+                            </div>
+
+                            <!-- Lead Form Mock -->
+                            <div class="pa-mock-box" id="mockLeadFormBox" style="display: {% if card_config.show_lead_form %}block{% else %}none{% endif %};">
+                                <div class="pa-mock-box-title"><i class="fas fa-envelope-open-text text-primary"></i> Request Consultation</div>
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 6px 8px; font-size: 9.5px; color: #94A3B8;">
+                                    Direct enquiry form active
+                                </div>
+                            </div>
+
+                            <!-- Footer Mock -->
+                            <div class="pa-mock-footer">
+                                Powered by <strong>PadosiAgent</strong> · Trusted Network
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Live theme color selector
+    function selectThemeColor(hex, el) {
+        document.getElementById('themeColorInput').value = hex;
+        document.getElementById('selectedColorHexLabel').textContent = hex;
+        document.getElementById('nativeColorPicker').value = hex;
+        document.getElementById('phoneMockupFrame').style.setProperty('--mock-theme', hex);
+        
+        document.querySelectorAll('.pa-color-swatch').forEach(s => s.classList.remove('active'));
+        if (el) el.classList.add('active');
+        updateLivePreview();
+    }
+
+    // Banner style selector
+    const bannerGradients = {
+        gradient_navy: 'linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)',
+        gradient_emerald: 'linear-gradient(135deg, #064E3B 0%, #059669 50%, #10B981 100%)',
+        gradient_indigo: 'linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6366F1 100%)',
+        gradient_sunset: 'linear-gradient(135deg, #7C2D12 0%, #C2410C 50%, #F59E0B 100%)',
+        gradient_purple: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 50%, #A855F7 100%)',
+    };
+
+    function selectBannerStyle(style, el) {
+        document.getElementById('bannerStyleInput').value = style;
+        document.querySelectorAll('.pa-banner-option-item').forEach(b => b.classList.remove('active'));
+        if (el) el.classList.add('active');
+
+        const uploadBox = document.getElementById('customBannerUploadBox');
+        if (uploadBox) uploadBox.style.display = (style === 'custom') ? 'block' : 'none';
+
+        const mockBanner = document.getElementById('mockBannerStrip');
+        if (style in bannerGradients) {
+            mockBanner.style.background = bannerGradients[style];
+        } else if (style === 'profile') {
+            {% if profile.banner_url %}
+            mockBanner.style.background = "url('{{ profile.banner_url }}') center/cover no-repeat";
+            {% else %}
+            mockBanner.style.background = bannerGradients.gradient_navy;
+            {% endif %}
+        }
+    }
+
+    // Agency Logo Preview
+    function previewAgencyLogo(input) {
+        if (input.files && input.files[0]) {
+            document.getElementById('removeAgencyLogoInput').value = '0';
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewBox = document.getElementById('agencyLogoPreviewBox');
+                previewBox.innerHTML = '<img src="' + e.target.result + '" style="width: 100%; height: 100%; object-fit: contain;">';
+                
+                const mockWrap = document.getElementById('mockHeaderBrandWrap');
+                mockWrap.innerHTML = '<img src="' + e.target.result + '" class="pa-mock-agency-logo">';
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function removeAgencyLogo() {
+        document.getElementById('removeAgencyLogoInput').value = '1';
+        document.getElementById('agencyLogoPreviewBox').innerHTML = '<i class="fas fa-image text-muted" style="font-size: 20px;"></i>';
+        const mockWrap = document.getElementById('mockHeaderBrandWrap');
+        const agencyName = document.getElementById('inputAgencyName').value || 'Insurance Advisor';
+        mockWrap.innerHTML = '<span class="pa-mock-agency-title"><i class="fas fa-shield-alt text-primary"></i> <span>' + agencyName + '</span></span>';
+    }
+
+    function previewCardBanner(input) {
+        if (input.files && input.files[0]) {
+            document.getElementById('removeCardBannerInput').value = '0';
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('mockBannerStrip').style.background = "url('" + e.target.result + "') center/cover no-repeat";
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function removeCardBanner() {
+        document.getElementById('removeCardBannerInput').value = '1';
+        selectBannerStyle('profile', document.querySelector('.pa-banner-option-item'));
+    }
+
+    // Dynamic Live Preview updates
+    function updateLivePreview() {
+        // Tagline
+        const tagline = document.getElementById('inputCardTagline').value.trim();
+        document.getElementById('mockTaglinePreview').textContent = tagline || 'Certified Insurance Advisor';
+
+        // Agency title in header if no logo
+        const agencyName = document.getElementById('inputAgencyName').value.trim();
+        const headerTitleEl = document.getElementById('mockHeaderAgencyTitle');
+        if (headerTitleEl) {
+            headerTitleEl.querySelector('span').textContent = agencyName || 'Insurance Advisor';
+        }
+
+        // Toggles
+        document.getElementById('mockTileCall').style.display = document.getElementById('toggleShowCall').checked ? 'block' : 'none';
+        document.getElementById('mockTileWhatsapp').style.display = document.getElementById('toggleShowWhatsapp').checked ? 'block' : 'none';
+        document.getElementById('mockTileEmail').style.display = document.getElementById('toggleShowEmail').checked ? 'block' : 'none';
+        document.getElementById('mockTileAddress').style.display = document.getElementById('toggleShowAddress').checked ? 'block' : 'none';
+        document.getElementById('mockSaveContactBtn').style.display = document.getElementById('toggleShowSaveContact').checked ? 'inline-flex' : 'none';
+        document.getElementById('mockLeadFormBox').style.display = document.getElementById('toggleShowLeadForm').checked ? 'block' : 'none';
+        document.getElementById('mockServicesBox').style.display = document.getElementById('toggleShowServices').checked ? 'block' : 'none';
+
+        // Custom button
+        const btnLabel = document.getElementById('inputCustomBtnLabel').value.trim();
+        const customBtnWrap = document.getElementById('mockCustomBtnWrap');
+        if (btnLabel) {
+            customBtnWrap.style.display = 'block';
+            document.getElementById('mockCustomBtnText').textContent = btnLabel;
+        } else {
+            customBtnWrap.style.display = 'none';
+        }
+    }
+
+    // AJAX Form Submission
+    function submitCardCustomizationForm() {
+        const form = document.getElementById('cardCustomizationForm');
+        const formData = new FormData(form);
+
+        const saveBtn1 = document.getElementById('topSaveBtn');
+        const saveBtn2 = document.getElementById('bottomSaveBtn');
+        const originalText1 = saveBtn1 ? saveBtn1.innerHTML : '';
+        const originalText2 = saveBtn2 ? saveBtn2.innerHTML : '';
+
+        if (saveBtn1) { saveBtn1.disabled = true; saveBtn1.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...'; }
+        if (saveBtn2) { saveBtn2.disabled = true; saveBtn2.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...'; }
+
+        fetch('{% url "agents:agent_save_card_customization" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (saveBtn1) { saveBtn1.disabled = false; saveBtn1.innerHTML = originalText1; }
+            if (saveBtn2) { saveBtn2.disabled = false; saveBtn2.innerHTML = originalText2; }
+
+            if (data.status === 'success') {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Card Updated!',
+                        text: data.message || 'Your Digital Visiting Card customizations have been saved successfully.',
+                        confirmButtonColor: '#0B1F3A',
+                        timer: 2500
+                    });
+                } else {
+                    alert(data.message || 'Customizations saved successfully!');
+                }
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Failed to save customizations.',
+                        confirmButtonColor: '#0B1F3A'
+                    });
+                } else {
+                    alert(data.message || 'Failed to save customizations.');
+                }
+            }
+        })
+        .catch(err => {
+            if (saveBtn1) { saveBtn1.disabled = false; saveBtn1.innerHTML = originalText1; }
+            if (saveBtn2) { saveBtn2.disabled = false; saveBtn2.innerHTML = originalText2; }
+            console.error('Save card error:', err);
+            alert('Network error while saving card customizations.');
+        });
+    }
+</script>

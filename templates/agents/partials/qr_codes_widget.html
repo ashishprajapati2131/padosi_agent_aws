@@ -3,7 +3,7 @@
     <div class="pa-qr-dock-intro">
         <span class="pa-qr-dock-badge"><i class="fas fa-qrcode"></i> Share QR</span>
         <strong>Your QR Codes</strong>
-        <span>Profile, visiting card, and reviews — scan, download, or share</span>
+        <span>Profile{% if agent_digital_card_enabled %}, visiting card,{% endif %} and reviews — scan, download, or share</span>
 
         <!-- Side-by-Side Action Buttons on Mobile and Desktop -->
         <style>
@@ -78,13 +78,18 @@
             }
         </style>
         <div class="pa-qr-header-actions">
-            {% if agent.agent_slug %}
+            {% if agent.agent_slug and agent_digital_card_enabled %}
             <a class="btn btn-sm pa-qr-btn-pill pa-qr-btn-digital-card" href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank">
                 <i class="fas fa-id-card mr-1" style="color: #ffffff; margin-right: 5px;"></i> Digital Visiting Card
             </a>
+            <button type="button" class="btn btn-sm pa-qr-btn-pill" style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;" onclick="var t=document.querySelector('[data-tab=digitalcard]'); if(t){t.click();} else {location.hash='#digitalcard';}">
+                <i class="fas fa-sliders-h mr-1" style="color: #16a34a; margin-right: 4px;"></i> Customize Card
+            </button>
             <button type="button" class="btn btn-sm pa-qr-btn-pill" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;" onclick="copyAgentCardLink('{% url 'agents:agent_public_card' slug=agent.agent_slug %}')">
                 <i class="fas fa-copy mr-1" style="color: #2563eb; margin-right: 4px;"></i> Copy Link
             </button>
+            {% endif %}
+            {% if agent.agent_slug %}
             <a class="btn btn-sm pa-qr-btn-pill pa-qr-btn-card" href="{% url 'agents:agent_review_card' slug=agent.agent_slug %}">
                 Open Review Card
             </a>
@@ -145,7 +150,7 @@
     </div>
 
     <!-- Smart Digital Visiting Card Banner Showcase inside QR section -->
-    {% if agent.agent_slug %}
+    {% if agent.agent_slug and agent_digital_card_enabled %}
     <div class="pa-digital-card-showcase mt-3 mx-2" style="background: linear-gradient(135deg, #0b1f4d 0%, #1e3a8a 100%); border-radius: 18px; padding: 22px 24px; color: #ffffff; box-shadow: 0 10px 30px rgba(11, 31, 77, 0.2); position: relative; overflow: hidden;">
         <div style="position: absolute; right: -20px; top: -20px; width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle, rgba(16, 185, 129, 0.2) 0%, transparent 70%);"></div>
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3" style="position: relative; z-index: 2;">
@@ -162,6 +167,9 @@
                 <a href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank" class="btn btn-sm" style="background: #10b981; color: #ffffff; font-weight: 800; font-size: 13px; padding: 10px 18px; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
                     <i class="fas fa-external-link-alt"></i> Open Digital Card
                 </a>
+                <button type="button" class="btn btn-sm btn-outline-light" style="font-weight: 700; font-size: 13px; padding: 10px 14px; border-radius: 10px;" onclick="var t=document.querySelector('[data-tab=digitalcard]'); if(t){t.click();} else {location.hash='#digitalcard';}">
+                    <i class="fas fa-sliders-h" style="margin-right: 4px;"></i> Customize Card
+                </button>
                 <button type="button" class="btn btn-sm btn-outline-light" style="font-weight: 700; font-size: 13px; padding: 10px 14px; border-radius: 10px;" onclick="copyAgentCardLink('{% url 'agents:agent_public_card' slug=agent.agent_slug %}')">
                     <i class="fas fa-copy" style="margin-right: 4px;"></i> Copy Link
                 </button>

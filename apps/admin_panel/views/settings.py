@@ -317,11 +317,11 @@ def general(request):
     else:
         wm_enabled = bool(wm_val)
 
-    card_val = SiteSetting.get_value('agent_digital_card_enabled', True)
+    card_val = SiteSetting.get_value('agent_digital_card_enabled', False)
     if isinstance(card_val, str):
         card_enabled = card_val.lower() in ('1', 'true', 'yes', 'on')
     else:
-        card_enabled = bool(card_val) if card_val is not None else True
+        card_enabled = bool(card_val) if card_val is not None else False
 
     context = {
         'site_name': SiteSetting.get_value('site_name', 'PadosiAgent'),

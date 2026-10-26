@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 
 from apps.agents.models import Agent
 from apps.agents.services.qr_branded import get_or_create_qr_png
@@ -97,8 +97,8 @@ def public_agent_card(request, slug):
     import urllib.parse
 
     # Master Admin ON/OFF Feature Flag
-    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', True)
-    card_feature_enabled = str(raw_flag).strip().lower() not in ('0', 'false', 'no', 'off', '')
+    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', False)
+    card_feature_enabled = str(raw_flag).strip().lower() in ('1', 'true', 'yes', 'on')
     if not card_feature_enabled:
         return render(request, 'agents/profile_unavailable.html', status=404)
 
@@ -129,10 +129,21 @@ def public_agent_card(request, slug):
     if len(whatsapp_digits) == 10:
         whatsapp_digits = '91' + whatsapp_digits
 
+    card_cfg = profile.get_card_config() if profile else {}
+    agency_name = (card_cfg.get('agency_name') or getattr(profile, 'agency_name', '') or '').strip()
+    card_tagline = (card_cfg.get('tagline') or getattr(profile, 'card_tagline', '') or '').strip()
+    card_bio = (card_cfg.get('bio') or getattr(profile, 'career_highlights', '') or '').strip()
+    theme_color = (card_cfg.get('theme_color') or '#0B1F3A').strip()
+    if not re.match(r'^#[A-Fa-f0-9]{6}$', theme_color):
+        theme_color = '#0B1F3A'
+    theme_color_rgb = f"{int(theme_color[1:3], 16)}, {int(theme_color[3:5], 16)}, {int(theme_color[5:7], 16)}"
+    card_banner_css = profile.card_banner_css if profile else 'linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)'
+
     # Pre-filled WhatsApp message
-    wa_greeting = urllib.parse.quote(
-        f"Hello {display_name},\nI found your Digital Visiting Card on PadosiAgent and would like to connect for insurance advice."
-    )
+    custom_wa_msg = card_cfg.get('whatsapp_msg')
+    if not custom_wa_msg:
+        custom_wa_msg = f"Hello {display_name},\nI viewed your Digital Visiting Card and would like consultation regarding insurance plans."
+    wa_greeting = urllib.parse.quote(custom_wa_msg)
     whatsapp_url = f"https://api.whatsapp.com/send?phone={whatsapp_digits}&text={wa_greeting}" if whatsapp_digits else ""
     call_url = f"tel:+91{mobile_digits[-10:]}" if len(mobile_digits) >= 10 else (f"tel:{mobile_digits}" if mobile_digits else "")
 
@@ -145,7 +156,11 @@ def public_agent_card(request, slug):
 
     # Experience & Profession
     exp_years = profile.experience_years or getattr(agent, 'experience_range', '') or ''
-    profession = getattr(agent, 'profession', '') or 'Certified Insurance & Financial Advisor'
+    raw_prof = (getattr(agent, 'profession', '') or '').strip()
+    if raw_prof.lower() in ('lic agent', 'lic', 'agent', 'lic advisor'):
+        profession = ''
+    else:
+        profession = raw_prof
 
     # Languages
     raw_langs = getattr(profile, 'languages', '') or ''
@@ -226,6 +241,29 @@ def public_agent_card(request, slug):
         'agent_plan': agent_plan,
         'agentDisplayName': display_name,
         'agent_slug': agent_slug,
+        'card_config': card_cfg,
+        'agency_name': agency_name,
+        'agency_logo_url': profile.agency_logo_url if profile else None,
+        'card_tagline': card_tagline,
+        'card_bio': card_bio,
+        'card_theme_color': theme_color,
+        'card_theme_color_rgb': theme_color_rgb,
+        'card_banner_css': card_banner_css,
+        'show_call': bool(card_cfg.get('show_call', True)),
+        'show_whatsapp': bool(card_cfg.get('show_whatsapp', True)),
+        'show_email': bool(card_cfg.get('show_email', True)),
+        'show_address': bool(card_cfg.get('show_address', True)),
+        'show_save_contact': bool(card_cfg.get('show_save_contact', True)),
+        'show_lead_form': bool(card_cfg.get('show_lead_form', True)),
+        'show_services': bool(card_cfg.get('show_services', True)),
+        'show_reviews': bool(card_cfg.get('show_reviews', True)),
+        'show_qr_card': bool(card_cfg.get('show_qr_card', True)),
+        'custom_button_label': (card_cfg.get('custom_button_label') or '').strip(),
+        'custom_button_url': (
+            (card_cfg.get('custom_button_url') or '').strip()
+            if not (card_cfg.get('custom_button_url') or '').strip().lower().startswith(('javascript:', 'data:', 'vbscript:'))
+            else ''
+        ),
         'qr_type_label': QR_TYPE_LABELS['card'],
         'mobile_number': mobile_raw,
         'whatsapp_number': whatsapp_raw,
@@ -251,12 +289,13 @@ def public_agent_card(request, slug):
         'brand_logo_url': _brand_logo_url(),
         'vcard_url': reverse('agents:agent_card_vcf', kwargs={'slug': agent_slug}),
         'lead_submit_url': reverse('agents:agent_card_lead_submit', kwargs={'slug': agent_slug}),
-        'card_qr_url': reverse('agents:agent_public_qr_image', kwargs={'slug': agent_slug, 'qr_type': 'card'}),
+        'card_qr_url': reverse('agents:agent_card_pure_qr', kwargs={'slug': agent_slug}),
+        'card_qr_download_url': reverse('agents:agent_card_pure_qr', kwargs={'slug': agent_slug}) + '?download=1',
         'full_profile_url': full_profile_url,
         'review_url': reverse('agents:agent_public_review', kwargs={'slug': agent_slug}),
         'card_share_url': card_url,
-        'card_share_title': f"{display_name} — Certified Insurance Advisor | PadosiAgent",
-        'card_share_text': f"Connect with {display_name}, Certified Insurance Advisor on PadosiAgent: {card_url}",
+        'card_share_title': f"{display_name} — Digital Visiting Card",
+        'card_share_text': f"Connect with {display_name} ({agency_name or 'Insurance Advisor'}): {card_url}",
         'hide_header': True,
         'hide_footer': True,
         'hide_chatbot': True,
@@ -269,8 +308,8 @@ def public_agent_card(request, slug):
 def agent_card_vcf_download(request, slug):
     """Download RFC 2426 vCard 3.0 file for 1-Tap Save to Phone Contacts."""
     from apps.home.models import SiteSetting
-    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', True)
-    if str(raw_flag).strip().lower() in ('0', 'false', 'no', 'off', ''):
+    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', False)
+    if str(raw_flag).strip().lower() not in ('1', 'true', 'yes', 'on'):
         raise Http404('Digital Card is disabled')
 
     agent = _resolve_agent_by_slug(slug)
@@ -345,8 +384,8 @@ def agent_card_lead_submit(request, slug):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
 
-    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', True)
-    if str(raw_flag).strip().lower() in ('0', 'false', 'no', 'off', ''):
+    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', False)
+    if str(raw_flag).strip().lower() not in ('1', 'true', 'yes', 'on'):
         return JsonResponse({'success': False, 'message': 'Digital Card enquiry is currently disabled.'}, status=403)
 
     agent = _resolve_agent_by_slug(slug)
@@ -465,6 +504,214 @@ def agent_card_lead_submit(request, slug):
         'success': True,
         'message': f'Thank you {customer_name}! Your enquiry has been received. {advisor_name} will get in touch with you shortly.',
         'lead_id': lead.id
+    })
+
+
+@require_GET
+def agent_card_pure_qr_image(request, slug):
+    """Generate pure, clean QR code for digital business card (no poster, no branding borders)."""
+    import io
+    import qrcode
+    from apps.home.models import SiteSetting
+    from django.core.cache import cache
+
+    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', False)
+    if str(raw_flag).strip().lower() not in ('1', 'true', 'yes', 'on'):
+        raise Http404('Digital Card is disabled')
+
+    agent = _resolve_agent_by_slug(slug)
+    if not agent:
+        raise Http404('Agent not found')
+
+    profile = agent.get_primary_profile()
+    agent_slug = (getattr(profile, 'slug', None) if profile else None) or getattr(agent, 'agent_slug', None) or str(slug)
+
+    download = request.GET.get('download') in ('1', 'true', 'yes')
+
+    cache_key = f'pure_card_qr:{agent_slug}:v2'
+    png_bytes = cache.get(cache_key)
+    if not png_bytes:
+        card_url = request.build_absolute_uri(
+            reverse('agents:agent_public_card', kwargs={'slug': agent_slug})
+        )
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=12,
+            border=2,
+        )
+        qr.add_data(card_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color=(0, 0, 0), back_color=(255, 255, 255)).convert('RGB')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        png_bytes = buf.getvalue()
+        cache.set(cache_key, png_bytes, 86400)
+
+    filename = f'QR-{agent_slug}-card.png'
+    return _png_response(png_bytes, filename, download=download)
+
+
+@require_POST
+def agent_save_card_customization(request):
+    """Save agent's personal customizations for their Smart Digital Visiting Card."""
+    from django.http import JsonResponse
+    from apps.home.models import SiteSetting
+    from django.core.files.storage import default_storage
+    from django.core.files.base import ContentFile
+    import time
+
+    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', False)
+    if str(raw_flag).strip().lower() not in ('1', 'true', 'yes', 'on'):
+        return JsonResponse({'status': 'error', 'message': 'Digital Visiting Card feature is currently disabled by administrator.'}, status=403)
+
+    if not request.user.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'Authentication required.'}, status=401)
+
+    agent = _logged_in_agent(request)
+    if not agent:
+        return JsonResponse({'status': 'error', 'message': 'Agent account not found.'}, status=404)
+
+    profile = agent.get_primary_profile()
+    if not profile:
+        from apps.agents.models import AgentProfile
+        profile, _ = AgentProfile.objects.get_or_create(agent=agent)
+
+    cfg = profile.get_card_config()
+
+    # 1. Agency name, Tagline, & Bio
+    agency_name = (request.POST.get('agency_name') or '').strip()
+    tagline = (request.POST.get('card_tagline') or '').strip()
+    bio = (request.POST.get('card_bio') or '').strip()
+
+    if len(agency_name) > 255: agency_name = agency_name[:255]
+    if len(tagline) > 255: tagline = tagline[:255]
+    if len(bio) > 1000: bio = bio[:1000]
+
+    profile.agency_name = agency_name
+    profile.card_tagline = tagline
+    cfg['agency_name'] = agency_name
+    cfg['tagline'] = tagline
+    cfg['bio'] = bio
+
+    # 2. Theme color
+    theme_color = (request.POST.get('theme_color') or '').strip()
+    if re.match(r'^#[A-Fa-f0-9]{6}$', theme_color):
+        cfg['theme_color'] = theme_color
+
+    # 3. Banner style
+    allowed_banner_styles = {
+        'profile', 'gradient_navy', 'gradient_emerald', 'gradient_indigo',
+        'gradient_sunset', 'gradient_purple', 'custom'
+    }
+    banner_style = request.POST.get('banner_style', '').strip()
+    if banner_style in allowed_banner_styles:
+        cfg['banner_style'] = banner_style
+
+    # 4. WhatsApp message
+    whatsapp_msg = (request.POST.get('whatsapp_msg') or '').strip()
+    if len(whatsapp_msg) > 500: whatsapp_msg = whatsapp_msg[:500]
+    cfg['whatsapp_msg'] = whatsapp_msg
+
+    # 5. Toggles
+    def parse_bool(key, default=True):
+        val = request.POST.get(key)
+        if val is None:
+            return default
+        return str(val).strip().lower() in ('1', 'true', 'on', 'yes')
+
+    cfg['show_call'] = parse_bool('show_call', True)
+    cfg['show_whatsapp'] = parse_bool('show_whatsapp', True)
+    cfg['show_email'] = parse_bool('show_email', True)
+    cfg['show_address'] = parse_bool('show_address', True)
+    cfg['show_save_contact'] = parse_bool('show_save_contact', True)
+    cfg['show_lead_form'] = parse_bool('show_lead_form', True)
+    cfg['show_services'] = parse_bool('show_services', True)
+    cfg['show_reviews'] = parse_bool('show_reviews', True)
+    cfg['show_qr_card'] = parse_bool('show_qr_card', True)
+
+    # 6. Custom action button
+    custom_label = (request.POST.get('custom_button_label') or '').strip()
+    custom_url = (request.POST.get('custom_button_url') or '').strip()
+    if len(custom_label) > 100: custom_label = custom_label[:100]
+    if len(custom_url) > 500: custom_url = custom_url[:500]
+    if custom_url:
+        lower_url = custom_url.lower()
+        if lower_url.startswith(('javascript:', 'data:', 'vbscript:')):
+            custom_url = ''
+        elif not lower_url.startswith(('http://', 'https://')):
+            custom_url = f"https://{custom_url.lstrip('/')}"
+    cfg['custom_button_label'] = custom_label
+    cfg['custom_button_url'] = custom_url
+
+    # 7. File Uploads: Agency Logo
+    from apps.agents.utils.file_validation import validate_profile_photo
+    if request.POST.get('remove_agency_logo') == '1':
+        if profile.agency_logo_path:
+            try:
+                if default_storage.exists(profile.agency_logo_path):
+                    default_storage.delete(profile.agency_logo_path)
+            except Exception:
+                pass
+        profile.agency_logo_path = None
+    elif 'agency_logo' in request.FILES:
+        logo_file = request.FILES['agency_logo']
+        logo_bytes = b''.join(logo_file.chunks())
+        ok, err, safe_ext = validate_profile_photo(logo_bytes, logo_file.name)
+        if not ok:
+            return JsonResponse({'status': 'error', 'message': f'Invalid agency logo: {err}'}, status=400)
+        if profile.agency_logo_path:
+            try:
+                if default_storage.exists(profile.agency_logo_path):
+                    default_storage.delete(profile.agency_logo_path)
+            except Exception:
+                pass
+        logo_filename = f"app/public/agency_logos/agent_{agent.id}_{int(time.time())}{safe_ext}"
+        saved_logo_path = default_storage.save(logo_filename, ContentFile(logo_bytes))
+        profile.agency_logo_path = saved_logo_path
+
+    # 8. File Uploads: Custom Card Banner
+    if request.POST.get('remove_card_banner') == '1':
+        old_banner = cfg.get('custom_banner_path')
+        if old_banner:
+            try:
+                if default_storage.exists(old_banner):
+                    default_storage.delete(old_banner)
+            except Exception:
+                pass
+        cfg['custom_banner_path'] = ''
+        if cfg.get('banner_style') == 'custom':
+            cfg['banner_style'] = 'profile'
+    elif 'custom_banner' in request.FILES:
+        banner_file = request.FILES['custom_banner']
+        banner_bytes = b''.join(banner_file.chunks())
+        ok, err, safe_ext = validate_profile_photo(banner_bytes, banner_file.name)
+        if not ok:
+            return JsonResponse({'status': 'error', 'message': f'Invalid banner: {err}'}, status=400)
+        old_banner = cfg.get('custom_banner_path')
+        if old_banner:
+            try:
+                if default_storage.exists(old_banner):
+                    default_storage.delete(old_banner)
+            except Exception:
+                pass
+        banner_filename = f"app/public/card_banners/agent_{agent.id}_{int(time.time())}{safe_ext}"
+        saved_banner_path = default_storage.save(banner_filename, ContentFile(banner_bytes))
+        cfg['custom_banner_path'] = saved_banner_path
+        cfg['banner_style'] = 'custom'
+
+    profile.card_config = cfg
+    profile.save()
+
+    return JsonResponse({
+        'status': 'success',
+        'success': True,
+        'message': 'Digital Visiting Card customizations saved successfully!',
+        'config': profile.get_card_config(),
+        'agency_logo_url': profile.agency_logo_url or '',
+        'card_banner_css': profile.card_banner_css,
+        'agency_name': profile.agency_name or '',
+        'card_tagline': profile.card_tagline or '',
     })
 
 

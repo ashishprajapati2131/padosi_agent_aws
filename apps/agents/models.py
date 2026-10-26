@@ -301,7 +301,7 @@ class Agent(models.Model):
     is_approved = models.BooleanField(default=False)
     approved_at = models.DateTimeField(null=True, blank=True)
     achievement_photo_limit = models.PositiveSmallIntegerField(null=True, blank=True)
-    profession = models.CharField(max_length=255, null=True, blank=True, default='LIC Agent')
+    profession = models.CharField(max_length=255, null=True, blank=True, default='')
 
     serviceableCities = models.ManyToManyField('City', db_table='agent_serviceable_cities', blank=True, related_name='agents')
 
@@ -764,6 +764,9 @@ class AgentProfile(models.Model):
         db_constraint=False
     )
     custom_banner_path = models.CharField(max_length=255, blank=True, null=True)
+    agency_logo_path = models.CharField(max_length=255, blank=True, null=True)
+    card_tagline = models.CharField(max_length=255, blank=True, null=True)
+    card_config = models.JSONField(default=dict, blank=True)
     display_name = models.CharField(max_length=255, blank=True, null=True)
     whatsapp = models.CharField(max_length=20, blank=True, null=True)
     languages = models.CharField(max_length=255, blank=True, null=True)
@@ -990,6 +993,88 @@ class AgentProfile(models.Model):
             return self.banner_preset.image_url
 
         return None
+
+    @property
+    def agency_logo_url(self):
+        path = (self.agency_logo_path or '').strip()
+        if not path:
+            return None
+        import re
+        path_clean = re.sub(r'[\'\"<>\(\)\s;]', '', path)
+        if not path_clean:
+            return None
+        if path_clean.startswith(('http://', 'https://')):
+            return path_clean
+        path_norm = path_clean.replace('\\', '/').lstrip('/')
+        if path_norm.startswith('static/'):
+            return f"/{path_norm}"
+        if path_norm.startswith('media/'):
+            return f"/{path_norm}"
+        return f"/media/{path_norm}"
+
+    def get_card_config(self):
+        cfg = dict(self.card_config) if isinstance(self.card_config, dict) else {}
+        agent_name = (self.display_name or (self.agent.fullname if self.agent else 'Advisor')).strip()
+        defaults = {
+            'agency_name': (self.agency_name or '').strip(),
+            'tagline': (self.card_tagline or '').strip(),
+            'bio': '',
+            'theme_color': '#0B1F3A',
+            'banner_style': 'profile',
+            'custom_banner_path': '',
+            'whatsapp_msg': f"Hello {agent_name}, I viewed your Digital Visiting Card and would like consultation regarding insurance plans.",
+            'show_call': True,
+            'show_whatsapp': True,
+            'show_email': True,
+            'show_address': True,
+            'show_save_contact': True,
+            'show_lead_form': True,
+            'show_services': True,
+            'show_reviews': True,
+            'show_qr_card': True,
+            'custom_button_label': '',
+            'custom_button_url': '',
+        }
+        for k, v in defaults.items():
+            if k not in cfg:
+                cfg[k] = v
+        if self.card_tagline and not cfg.get('tagline'):
+            cfg['tagline'] = self.card_tagline
+        if self.agency_name and not cfg.get('agency_name'):
+            cfg['agency_name'] = self.agency_name
+        return cfg
+
+    @property
+    def card_banner_css(self):
+        cfg = self.get_card_config()
+        style = cfg.get('banner_style', 'profile')
+        gradients = {
+            'gradient_navy': 'linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)',
+            'gradient_emerald': 'linear-gradient(135deg, #064E3B 0%, #059669 50%, #10B981 100%)',
+            'gradient_indigo': 'linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6366F1 100%)',
+            'gradient_sunset': 'linear-gradient(135deg, #7C2D12 0%, #C2410C 50%, #F59E0B 100%)',
+            'gradient_purple': 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 50%, #A855F7 100%)',
+        }
+        if style in gradients:
+            return gradients[style]
+        if style == 'custom' and cfg.get('custom_banner_path'):
+            path = (cfg.get('custom_banner_path') or '').strip()
+            import re
+            path_clean = re.sub(r'[\'\"<>\(\)\s;]', '', path)
+            if path_clean:
+                url = f"/media/{path_clean.lstrip('/')}" if not path_clean.startswith(('http://', 'https://', '/')) else path_clean
+                return f"url('{url}') center/cover no-repeat"
+        if self.banner_image_url:
+            return f"url('{self.banner_image_url}') center/cover no-repeat"
+        return gradients['gradient_navy']
+
+    @property
+    def banner_url(self):
+        return self.banner_image_url
+
+    @property
+    def about(self):
+        return self.career_highlights or ""
 
 
 

@@ -557,9 +557,18 @@ def agent_dashboard(request):
         f"I'm now on PadosiAgent — India's trusted insurance agent network. "
         f"View my profile and leave a review: {profile_url}"
     )
+    # ── Digital Visiting Card feature flag ──
+    card_flag_val = SiteSetting.get_value('agent_digital_card_enabled', False)
+    if isinstance(card_flag_val, str):
+        agent_digital_card_enabled = card_flag_val.strip().lower() in ('1', 'true', 'yes', 'on')
+    else:
+        agent_digital_card_enabled = bool(card_flag_val) if card_flag_val is not None else False
+
     qr_items = []
     if qr_access_for_plan(agent_plan) and slug:
         for qr_type in QR_TYPES:
+            if qr_type == 'card' and not agent_digital_card_enabled:
+                continue
             target = build_qr_target_url(request, agent, qr_type)
             qr_items.append({
                 'type': qr_type,
@@ -680,6 +689,11 @@ def agent_dashboard(request):
         'qr_service_enabled': qr_access_for_plan(agent_plan),
         'qr_allow_download': qr_access_for_plan(agent_plan, download=True),
         'qr_items': qr_items,
+        'agent_digital_card_enabled': agent_digital_card_enabled,
+        'card_config': profile.get_card_config() if profile else {},
+        'card_public_url': reverse('agents:agent_public_card', kwargs={'slug': slug}) if slug else '',
+        'card_qr_url': reverse('agents:agent_card_pure_qr', kwargs={'slug': slug}) if slug else '',
+        'card_qr_download_url': (reverse('agents:agent_card_pure_qr', kwargs={'slug': slug}) + '?download=1') if slug else '',
         'show_review_share_popup': (
             should_show_popup(agent)
             and not suppress_review_share
