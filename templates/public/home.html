@@ -16,6 +16,8 @@
 {% block extra_head %}
 {# LCP: first hero slide (same file for desktop and mobile hero) #}
 <link rel="preload" as="image" href="{% static 'img/hero-chatbot-vs-agent-doodle.webp' %}" type="image/webp" fetchpriority="high">
+{% load json_tags %}
+<script type="application/ld+json">{{ org_schema|safe_json }}</script>
 {% endblock %}
 
 {% block extra_css %}
@@ -329,7 +331,7 @@
 {% endif %}
 
 <!-- Testimonials Section -->
-{% if settings.show_testimonials %}
+{% if settings.show_testimonials and has_reviews %}
 <section class="testimonials-slider-section py-5 bg-transparent overflow-hidden">
     <div class="container">
         <div class="text-center mb-5">

@@ -73,3 +73,13 @@ class HomePageTests(TestCase):
         self.assertContains(response, 'Health Insurance')
         self.assertContains(response, 'Mediclaim')
         self.assertContains(response, 'Find verified agents')
+
+    def test_home_has_no_placeholder_reviews_and_has_org_schema(self):
+        from django.core.cache import cache
+        cache.delete('homepage_reviews')
+        response = self.client.get(reverse('home:home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Rahul Verma')
+        self.assertNotContains(response, 'id="review-slider"')
+        self.assertContains(response, '"@type": "Organization"')
+        self.assertContains(response, '"@type": "WebSite"')

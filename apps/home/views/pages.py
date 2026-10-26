@@ -177,6 +177,41 @@ def _reviews_json_for_script(reviews):
     return json.dumps(safe_reviews).replace('</', '<\\/')
 
 
+def _organization_schema(request):
+    """Organization + WebSite JSON-LD for the homepage. Only verifiable fields:
+    the footer phone/address defaults are placeholders, so they are left out."""
+    from apps.agents.services.og_urls import get_public_site_base
+    from apps.home.context_processors import footer_settings
+
+    base = get_public_site_base(request)
+    footer = footer_settings(request)['footer_settings']
+    name = footer.get('site_name') or 'PadosiAgent'
+    org = {
+        '@type': 'Organization',
+        '@id': f'{base}/#organization',
+        'name': name,
+        'url': f'{base}/',
+        'logo': base + staticfiles_storage.url('img/padosi-agent-logo-new.png'),
+        'description': 'Hyperlocal platform to find verified insurance agents near you in India.',
+    }
+    same_as = [u for u in footer.get('social_links', {}).values() if str(u).startswith('https://')]
+    if same_as:
+        org['sameAs'] = same_as
+    return {
+        '@context': 'https://schema.org',
+        '@graph': [
+            org,
+            {
+                '@type': 'WebSite',
+                '@id': f'{base}/#website',
+                'url': f'{base}/',
+                'name': name,
+                'publisher': {'@id': f'{base}/#organization'},
+            },
+        ],
+    }
+
+
 def home(request):
     cms = build_homepage_cms_context()
     settings = cms['settings']
@@ -240,13 +275,8 @@ def home(request):
                 'image': avatar_url
             })
 
-        if not reviews:
-            reviews = [
-                {'name': 'Sneha Patel', 'service': 'Client of Rajesh Kumar', 'agent_url': None, 'rating': 5.0, 'comment': 'Found my perfect health insurance through my PadosiAgent. They were professional and explained everything clearly.', 'image': 'https://ui-avatars.com/api/?name=Sneha+Patel&background=0d9488&color=fff&bold=true'},
-                {'name': 'Rahul Verma', 'service': 'Client of Vikram Singh', 'agent_url': None, 'rating': 4.5, 'comment': 'My claim was rejected initially, but my PadosiAgent helped me get it approved. Highly recommended!', 'image': 'https://ui-avatars.com/api/?name=Rahul+Verma&background=0d9488&color=fff&bold=true'},
-                {'name': 'Anjali Desai', 'service': 'Client of Priya Sharma', 'agent_url': None, 'rating': 4.0, 'comment': 'Got my policy reviewed and discovered I was overpaying. Saved ₹15,000 annually. Thank you!', 'image': 'https://ui-avatars.com/api/?name=Anjali+Desai&background=0d9488&color=fff&bold=true'},
-            ]
-
+        # No placeholder testimonials: unverifiable claims are a YMYL risk.
+        # With zero approved reviews the template hides the section.
         if not cms.get('custom_reviews'):
             cache.set('homepage_reviews', reviews, 1800)
 
@@ -274,6 +304,8 @@ def home(request):
         'settings': settings,
         'why_cards_zipped': cms['why_cards_zipped'],
         'reviews_json': _reviews_json_for_script(reviews),
+        'has_reviews': bool(reviews),
+        'org_schema': _organization_schema(request),
         'hide_header': True,
         'trust_badges': cms['trust_badges'],
         'stats_data': cms['stats_data'],
