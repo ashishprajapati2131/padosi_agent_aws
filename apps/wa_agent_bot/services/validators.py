@@ -90,6 +90,84 @@ def validate_mobile(text):
     return True, mobile
 
 
+def extract_clean_phone(phone_str):
+    """
+    Extract a valid 10-digit Indian phone number from any string,
+    cleaning out country code (+91, 91), leading zero, and punctuation.
+    Returns 10-digit string or None.
+    """
+    if not phone_str:
+        return None
+    digits = re.sub(r'\D', '', str(phone_str))
+    if digits.startswith('91') and len(digits) == 12:
+        digits = digits[2:]
+    elif digits.startswith('0') and len(digits) == 11:
+        digits = digits[1:]
+    if len(digits) == 10 and digits[0] in '6789':
+        return digits
+    return None
+
+
+def parse_contact_input(text):
+    """
+    Intelligently parse user input that may contain an email, a mobile number,
+    or BOTH concatenated or separated by spaces/symbols.
+    
+    Examples supported:
+      - '6352701899parthsadhu0309@gmail.com' -> mobile + email
+      - 'parthsadhu0309@gmail.com6352701899' -> email + mobile
+      - '6352701899 parthsadhu0309@gmail.com' -> mobile + email
+      - '+91 6352701899 / rajesh@gmail.com'   -> mobile + email
+      - 'parthsadhu0309@gmail.com'            -> email only
+      - '6352701899'                          -> mobile only
+    
+    Returns:
+      dict: {'email': email_str or None, 'mobile': mobile_str or None}
+    """
+    if not text:
+        return {'email': None, 'mobile': None}
+
+    cleaned = text.strip()
+
+    # 1. Check direct concatenated mobile+email or email+mobile
+    # E.g. '6352701899parthsadhu0309@gmail.com'
+    concat_m_e = re.match(
+        r'^(?:\+?91|0)?([6-9]\d{9})\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$',
+        cleaned,
+        re.IGNORECASE
+    )
+    if concat_m_e:
+        return {'mobile': concat_m_e.group(1), 'email': concat_m_e.group(2).lower()}
+
+    # E.g. 'parthsadhu0309@gmail.com6352701899'
+    concat_e_m = re.match(
+        r'^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\s*(?:\+?91|0)?([6-9]\d{9})$',
+        cleaned,
+        re.IGNORECASE
+    )
+    if concat_e_m:
+        return {'email': concat_e_m.group(1).lower(), 'mobile': concat_e_m.group(2)}
+
+    # 2. General search for email in the text
+    email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', cleaned)
+    found_email = email_match.group(0).lower() if email_match else None
+
+    # 3. For mobile, remove the matched email from text first to avoid digit collisions
+    remaining = cleaned
+    if email_match:
+        remaining = cleaned[:email_match.start()] + ' ' + cleaned[email_match.end():]
+
+    # Check if remaining text has a 10-digit mobile number
+    mob_match = re.search(r'(?:(?<=\D)|^)(?:\+?91|0)?([6-9]\d{9})(?:(?=\D)|$)', remaining)
+    found_mobile = mob_match.group(1) if mob_match else None
+
+    # Fallback: check if entire remaining string cleans down to a valid mobile
+    if not found_mobile:
+        found_mobile = extract_clean_phone(remaining)
+
+    return {'email': found_email, 'mobile': found_mobile}
+
+
 def validate_state_selection(text, states_list=None):
     """
     Validate state selection (by number or name).

@@ -57,6 +57,32 @@ class ValidatorTests(unittest.TestCase):
         valid, err = validators.validate_mobile("12345")
         self.assertFalse(valid)
 
+    def test_parse_contact_input(self):
+        # Combined mobile + email
+        res = validators.parse_contact_input("6352701899parthsadhu0309@gmail.com")
+        self.assertEqual(res['mobile'], "6352701899")
+        self.assertEqual(res['email'], "parthsadhu0309@gmail.com")
+
+        # Reverse concatenated email + mobile
+        res = validators.parse_contact_input("parthsadhu0309@gmail.com6352701899")
+        self.assertEqual(res['mobile'], "6352701899")
+        self.assertEqual(res['email'], "parthsadhu0309@gmail.com")
+
+        # Separated with space
+        res = validators.parse_contact_input("6352701899 parthsadhu0309@gmail.com")
+        self.assertEqual(res['mobile'], "6352701899")
+        self.assertEqual(res['email'], "parthsadhu0309@gmail.com")
+
+        # Only mobile
+        res = validators.parse_contact_input("6352701899")
+        self.assertEqual(res['mobile'], "6352701899")
+        self.assertIsNone(res['email'])
+
+        # Only email
+        res = validators.parse_contact_input("parthsadhu0309@gmail.com")
+        self.assertIsNone(res['mobile'])
+        self.assertEqual(res['email'], "parthsadhu0309@gmail.com")
+
     def test_validate_state(self):
         valid, val = validators.validate_state_selection("1")
         self.assertTrue(valid)
@@ -200,6 +226,51 @@ class StateMachineFlowTests(unittest.TestCase):
         self.session.state = WaBotSession.STATE_ASK_PLAN
         reply = process_message(self.session, "back")
         self.assertEqual(self.session.state, WaBotSession.STATE_CONFIRM_DETAILS)
+
+    @patch('apps.agents.models.Agent.objects')
+    def test_registration_with_combined_email_and_mobile(self, mock_agent_objects):
+        mock_agent_objects.filter.return_value.exists.return_value = False
+        self.session.state = WaBotSession.STATE_ASK_EMAIL
+        self.session.registration_data = {'fullname': 'Parth Sadhu'}
+
+        reply = process_message(self.session, "6352701899parthsadhu0309@gmail.com")
+        self.assertEqual(self.session.state, WaBotSession.STATE_ASK_STATE)
+        self.assertEqual(self.session.registration_data.get('email'), "parthsadhu0309@gmail.com")
+        self.assertEqual(self.session.registration_data.get('mobile'), "6352701899")
+        self.assertIn("Email & Mobile Saved", reply)
+        self.assertIn("Step 4 of 7", reply)
+
+    @patch('apps.agents.models.Agent.objects')
+    def test_registration_mobile_entered_at_email_step(self, mock_agent_objects):
+        mock_agent_objects.filter.return_value.exists.return_value = False
+        self.session.state = WaBotSession.STATE_ASK_EMAIL
+        self.session.registration_data = {'fullname': 'Parth Sadhu'}
+
+        # 1. User accidentally enters mobile number at email step
+        reply = process_message(self.session, "6352701899")
+        self.assertEqual(self.session.state, WaBotSession.STATE_ASK_EMAIL)
+        self.assertEqual(self.session.registration_data.get('mobile'), "6352701899")
+        self.assertIn("Got your mobile number", reply)
+
+        # 2. User then enters email address
+        reply2 = process_message(self.session, "parthsadhu0309@gmail.com")
+        # Should skip asking for mobile again and jump straight to state selection
+        self.assertEqual(self.session.state, WaBotSession.STATE_ASK_STATE)
+        self.assertEqual(self.session.registration_data.get('email'), "parthsadhu0309@gmail.com")
+        self.assertEqual(self.session.registration_data.get('mobile'), "6352701899")
+        self.assertIn("Step 4 of 7", reply2)
+
+    @patch('apps.agents.models.Agent.objects')
+    def test_registration_quick_whatsapp_number(self, mock_agent_objects):
+        mock_agent_objects.filter.return_value.exists.return_value = False
+        self.session.phone_number = "916352701839"
+        self.session.state = WaBotSession.STATE_ASK_MOBILE
+        self.session.registration_data = {'fullname': 'Parth Sadhu', 'email': 'parthsadhu0309@gmail.com'}
+
+        reply = process_message(self.session, "yes")
+        self.assertEqual(self.session.state, WaBotSession.STATE_ASK_STATE)
+        self.assertEqual(self.session.registration_data.get('mobile'), "6352701839")
+        self.assertIn("Step 4 of 7", reply)
 
 
 class PostLoginHandlerTests(unittest.TestCase):

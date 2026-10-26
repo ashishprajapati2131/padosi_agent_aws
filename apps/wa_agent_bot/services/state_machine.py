@@ -19,6 +19,8 @@ from .validators import (
     validate_fullname,
     validate_email,
     validate_mobile,
+    extract_clean_phone,
+    parse_contact_input,
     validate_state_selection,
     validate_pincode,
     validate_experience_selection,
@@ -83,12 +85,19 @@ def _build_ask_email_message():
     )
 
 
-def _build_ask_mobile_message():
+def _build_ask_mobile_message(whatsapp_phone=None):
     """Message prompting for mobile number."""
+    quick_opt = ""
+    if whatsapp_phone:
+        quick_opt = (
+            f"💡 *Quick Option:* Reply *yes* or *1* to use your WhatsApp number (*{whatsapp_phone}*).\n"
+            "Or enter a different 10-digit mobile number.\n\n"
+        )
     return (
         "📱 *Step 3 of 7 — Mobile Number*\n"
         "━━━━━━━━━━━━━━━━━━━━━\n\n"
         "Please enter your *10-digit mobile number*.\n\n"
+        f"{quick_opt}"
         "_Example: 9876543210_\n\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "_Type *cancel* to stop or *back* to go to the previous step._"
@@ -370,51 +379,164 @@ def _handle_ask_fullname(session, text):
 
 
 def _handle_ask_email(session, text):
-    """Handle email input with uniqueness check."""
+    """
+    Handle email input with uniqueness check.
+    Supports:
+    - Standard email input (e.g. rajesh@gmail.com)
+    - Combined email + mobile in any order (e.g. 6352701899parthsadhu0309@gmail.com)
+    - Mobile entered by mistake at email step (saves mobile and re-prompts for email)
+    """
     from apps.agents.models import Agent
 
-    is_valid, result = validate_email(text)
-    if not is_valid:
-        return f"❌ {result}\n\n" + _build_ask_email_message()
+    parsed = parse_contact_input(text)
+    email = parsed.get('email')
+    mobile = parsed.get('mobile')
 
-    # Check uniqueness
-    if Agent.objects.filter(email=result).exists():
-        site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+    reg_data = session.registration_data or {}
+
+    # Case 1: Both email and mobile provided at the same time
+    if email and mobile:
+        if Agent.objects.filter(email=email).exists():
+            return (
+                f"⚠️ An account with email *{email}* already exists.\n\n"
+                f"If this is your account, please login at:\n🔗 {site_url}/agent-login/\n\n"
+                "Otherwise, please enter a *different email address*:"
+            )
+        if Agent.objects.filter(mobile=mobile).exists():
+            return (
+                f"⚠️ An account with mobile *{mobile}* already exists.\n\n"
+                "Please enter a *different mobile number*:"
+            )
+        reg_data['email'] = email
+        reg_data['mobile'] = mobile
+        session.registration_data = reg_data
+        session.state = WaBotSession.STATE_ASK_STATE
+        session.save()
         return (
-            f"⚠️ An account with email *{result}* already exists.\n\n"
-            f"If this is your account, please login at:\n🔗 {site_url}/agent-login/\n\n"
-            "Otherwise, please enter a *different email address*:"
+            f"✅ *Email & Mobile Saved!*\n"
+            f"📧 Email: *{email}*\n"
+            f"📱 Mobile: *{mobile}*\n\n"
+            + _build_ask_state_message()
         )
 
-    reg_data = session.registration_data or {}
-    reg_data['email'] = result
-    session.registration_data = reg_data
-    session.state = WaBotSession.STATE_ASK_MOBILE
-    session.save()
-    return _build_ask_mobile_message()
+    # Case 2: Only mobile number provided at email step
+    if not email and mobile:
+        if Agent.objects.filter(mobile=mobile).exists():
+            return (
+                f"⚠️ An account with mobile *{mobile}* already exists.\n\n"
+                "Please enter a *different mobile number* or enter your *email address*:"
+            )
+        reg_data['mobile'] = mobile
+        session.registration_data = reg_data
+        session.save()
+        return (
+            f"📱 Got your mobile number: *{mobile}*.\n\n"
+            "Now please enter your *email address* (e.g., rajesh@gmail.com):\n"
+            "_This will be your login ID._"
+        )
+
+    # Case 3: Only email provided
+    if email:
+        if Agent.objects.filter(email=email).exists():
+            return (
+                f"⚠️ An account with email *{email}* already exists.\n\n"
+                f"If this is your account, please login at:\n🔗 {site_url}/agent-login/\n\n"
+                "Otherwise, please enter a *different email address*:"
+            )
+        reg_data['email'] = email
+        session.registration_data = reg_data
+
+        # If mobile was already saved earlier, skip Step 3 and advance directly to Step 4!
+        if reg_data.get('mobile'):
+            session.state = WaBotSession.STATE_ASK_STATE
+            session.save()
+            return (
+                f"✅ *Email Saved:* *{email}*\n\n"
+                + _build_ask_state_message()
+            )
+
+        session.state = WaBotSession.STATE_ASK_MOBILE
+        session.save()
+        clean_wa = extract_clean_phone(session.phone_number)
+        return _build_ask_mobile_message(whatsapp_phone=clean_wa)
+
+    # Case 4: Neither valid email nor valid mobile
+    return (
+        "❌ That doesn't look like a valid email. Please enter a valid email address (e.g., name@example.com).\n\n"
+        + _build_ask_email_message()
+    )
 
 
 def _handle_ask_mobile(session, text):
-    """Handle mobile number input with uniqueness check."""
+    """
+    Handle mobile number input with uniqueness check.
+    Supports:
+    - Standard 10-digit mobile number
+    - Quick shortcut ('yes', '1', 'ha', 'same') to use session WhatsApp phone
+    - Combined email + mobile or email input
+    """
     from apps.agents.models import Agent
 
-    is_valid, result = validate_mobile(text)
-    if not is_valid:
-        return f"❌ {result}\n\n" + _build_ask_mobile_message()
+    clean_wa = extract_clean_phone(session.phone_number)
+    text_lower = text.strip().lower()
+    reg_data = session.registration_data or {}
+    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
 
-    # Check uniqueness
-    if Agent.objects.filter(mobile=result).exists():
+    # Quick acceptance of WhatsApp number
+    if text_lower in {'yes', 'y', '1', 'ha', 'haa', 'same', 'ok', 'sure'} and clean_wa:
+        if Agent.objects.filter(mobile=clean_wa).exists():
+            return (
+                f"⚠️ An account with mobile *{clean_wa}* already exists.\n\n"
+                "Please enter a *different 10-digit mobile number*:"
+            )
+        reg_data['mobile'] = clean_wa
+        session.registration_data = reg_data
+        session.state = WaBotSession.STATE_ASK_STATE
+        session.save()
+        return _build_ask_state_message()
+
+    parsed = parse_contact_input(text)
+    email = parsed.get('email')
+    mobile = parsed.get('mobile')
+
+    # If email provided, check uniqueness and update email
+    if email:
+        if Agent.objects.filter(email=email).exists():
+            return (
+                f"⚠️ An account with email *{email}* already exists.\n\n"
+                f"If this is your account, please login at:\n🔗 {site_url}/agent-login/\n\n"
+                "Otherwise, please enter a *different email address*:"
+            )
+        reg_data['email'] = email
+
+    # If mobile is provided
+    if mobile:
+        if Agent.objects.filter(mobile=mobile).exists():
+            return (
+                f"⚠️ An account with mobile *{mobile}* already exists.\n\n"
+                "Please enter a *different mobile number*:"
+            )
+        reg_data['mobile'] = mobile
+        session.registration_data = reg_data
+        session.state = WaBotSession.STATE_ASK_STATE
+        session.save()
+        return _build_ask_state_message()
+
+    # If only email was provided but no mobile yet
+    if email and not mobile and not reg_data.get('mobile'):
+        session.registration_data = reg_data
+        session.save()
         return (
-            f"⚠️ An account with mobile *{result}* already exists.\n\n"
-            "Please enter a *different mobile number*:"
+            f"📧 Email updated to *{email}*.\n\n"
+            + _build_ask_mobile_message(whatsapp_phone=clean_wa)
         )
 
-    reg_data = session.registration_data or {}
-    reg_data['mobile'] = result
-    session.registration_data = reg_data
-    session.state = WaBotSession.STATE_ASK_STATE
-    session.save()
-    return _build_ask_state_message()
+    # Invalid input
+    return (
+        "❌ Please enter a valid 10-digit mobile number.\n\n"
+        + _build_ask_mobile_message(whatsapp_phone=clean_wa)
+    )
 
 
 def _handle_ask_state(session, text):
