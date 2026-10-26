@@ -9,11 +9,11 @@
                             <div class="logo-content">
                                 <a href="/" class="footer-logo">
                                     <figure class="mb-0">
-                                        <img src="{% if footer_settings.site_logo %}{% if footer_settings.site_logo|slice:':4' == 'http' or footer_settings.site_logo|slice:':1' == '/' %}{{ footer_settings.site_logo }}{% else %}{% static footer_settings.site_logo %}{% endif %}{% else %}{% static 'img/logo.webp' %}{% endif %}"
+                                        <img src="{% if footer_settings.site_logo %}{% if footer_settings.site_logo|slice:':4' == 'http' or footer_settings.site_logo|slice:':1' == '/' %}{{ footer_settings.site_logo }}{% else %}{% static footer_settings.site_logo %}{% endif %}{% else %}{% static 'img/logo-400.webp' %}{% endif %}"
                                             alt="{{ footer_settings.site_name|default:'PadosiAgent' }} Logo"
-                                            style="max-height: 50px;"
-                                            width="150" height="50" loading="lazy" decoding="async"
-                                            onerror="this.onerror=null; this.src='{% static 'img/logo.webp' %}';">
+                                            style="max-height: 50px; height: auto; object-fit: contain;"
+                                            width="156" height="47" loading="lazy" decoding="async"
+                                            onerror="this.onerror=null; this.src='{% static 'img/logo-400.webp' %}';">
                                     </figure>
                                 </a>
                                 <p class="text-size-14 mb-0">Connecting clients with the right insurance agents in their

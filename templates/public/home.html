@@ -15,7 +15,7 @@
 
 {% block extra_head %}
 {# LCP: first hero slide (same file for desktop and mobile hero) #}
-<link rel="preload" as="image" href="{% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %}" imagesrcset="{% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %} 768w, {% static 'img/hero-chatbot-vs-agent-doodle.webp' %} 1536w" imagesizes="(max-width: 640px) 92vw, 580px" type="image/webp" fetchpriority="high">
+<link rel="preload" as="image" href="{% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %}" imagesrcset="{% static 'img/hero-chatbot-vs-agent-doodle-480.webp' %} 480w, {% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %} 768w, {% static 'img/hero-chatbot-vs-agent-doodle.webp' %} 1536w" imagesizes="(max-width: 640px) 92vw, 580px" type="image/webp" fetchpriority="high">
 {% load json_tags %}
 <script type="application/ld+json">{{ org_schema|safe_json }}</script>
 {% endblock %}
@@ -745,8 +745,16 @@
             pos = slider.scrollLeft;
         }
 
+        // Only animate while the slider is on screen: it sits far below the
+        // fold, and scrolling it during page load cost layout time for nothing.
+        var visible = !('IntersectionObserver' in window);
+        var io = visible ? null : new IntersectionObserver(function (entries) {
+            visible = entries[0].isIntersecting;
+        });
+        if (io) io.observe(slider);
+
         function scrollAnimate() {
-            if (!isPaused) {
+            if (!isPaused && visible) {
                 if (step === null) measure();
                 pos += speed;
                 if (pos >= half) {
@@ -782,6 +790,7 @@
 
         slider._reviewDestroy = function () {
             cancelAnimationFrame(raf);
+            if (io) io.disconnect();
             dotsWrap.innerHTML = '';
             slider.innerHTML = '';
             slider._reviewDestroy = null;
