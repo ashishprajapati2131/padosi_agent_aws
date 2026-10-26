@@ -23,11 +23,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          # Reuse downloaded wheels between runs; refreshed whenever requirements.txt changes.
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          # tblib lets parallel test workers report failure tracebacks (CI only, not a production dependency).
+          pip install --disable-pip-version-check -r requirements.txt tblib
 
       - name: Django system check
         env:
@@ -57,7 +60,8 @@ jobs:
           DB_HOST: 127.0.0.1
           DB_PORT: "3306"
         run: |
-          python manage.py test apps fastapi_app --noinput
+          # One worker per runner CPU; each worker gets its own in-memory SQLite database.
+          python manage.py test apps fastapi_app --noinput --parallel auto
 
       - name: Deploy to GoDaddy via SSH
         env:

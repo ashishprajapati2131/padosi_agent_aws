@@ -174,6 +174,10 @@ class StateMachineFlowTests(unittest.TestCase):
         self.session.is_logged_in = False
         self.session.agent = None
         self.session.save = MagicMock()
+        # Built-in defaults only: settings cached by another test in the same (parallel) worker must not leak in.
+        settings_patch = patch('apps.home.models.site_setting.SiteSetting.get_value', side_effect=lambda key, default=None: default)
+        settings_patch.start()
+        self.addCleanup(settings_patch.stop)
 
     @patch('apps.agents.models.Agent.objects')
     def test_full_registration_and_plan_flow(self, mock_agent_objects):
