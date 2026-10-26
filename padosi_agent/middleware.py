@@ -67,6 +67,10 @@ class SEOMiddleware(MiddlewareMixin):
             r'^/insurance-login/',
             r'^/media/app/private/',
             r'^/api/',
+            # Public but not useful search results: placeholder page and the
+            # JS-loaded AI picks fragment (no title/content of its own).
+            r'^/coming-soon/',
+            r'^/find-agents/ai-picks/',
         ]
         self.compiled_paths = [re.compile(path) for path in self.private_paths]
 

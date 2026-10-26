@@ -82,3 +82,22 @@ class LegalPageMetaTests(TestCase):
             self.assertEqual(body.count('<meta name="description"'), 1, path)
             # Host comes from APP_URL (get_public_site_base), so only check shape.
             self.assertRegex(body, r'<link rel="canonical" href="https?://[^/"]+' + path + '">')
+
+
+class NoindexPathTests(TestCase):
+    # Middleware tested directly: /find-agents/ views use MySQL-only SQL that
+    # the SQLite test database cannot run.
+    def _robots_header(self, path):
+        from django.http import HttpResponse
+        from django.test import RequestFactory
+        from padosi_agent.middleware import SEOMiddleware
+        mw = SEOMiddleware(lambda request: HttpResponse('ok'))
+        return mw(RequestFactory().get(path)).get('X-Robots-Tag')
+
+    def test_placeholder_pages_send_noindex_header(self):
+        for path in ('/coming-soon/', '/find-agents/ai-picks/', '/agent-login/'):
+            self.assertEqual(self._robots_header(path), 'noindex, nofollow', path)
+
+    def test_public_pages_stay_indexable(self):
+        for path in ('/', '/find-agents/', '/about/', '/insurance-agents/surat/'):
+            self.assertIsNone(self._robots_header(path), path)
