@@ -101,3 +101,13 @@ class NoindexPathTests(TestCase):
     def test_public_pages_stay_indexable(self):
         for path in ('/', '/find-agents/', '/about/', '/insurance-agents/surat/'):
             self.assertIsNone(self._robots_header(path), path)
+
+
+@override_settings(ALLOWED_HOSTS=['*'])
+class BlacklistedPageTests(TestCase):
+    def test_has_one_h1_and_own_description(self):
+        response = self.client.get('/blacklisted-agents/')
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode()
+        self.assertEqual(body.count('<h1'), 1)
+        self.assertIn('<meta name="description" content="Check whether an insurance agent has been blacklisted', body)
