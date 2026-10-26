@@ -91,13 +91,15 @@ SLIDE_ICON_SHADOWS = [
     '0 10px 15px -3px hsla(160, 84%, 39%, 0.2), 0 4px 6px -4px hsla(160, 84%, 39%, 0.2)',
     '0 10px 15px -3px hsla(262, 83%, 58%, 0.2), 0 4px 6px -4px hsla(262, 83%, 58%, 0.2)',
 ]
+# 'color' is for borders/icons; 'text' is a darker shade of the same hue with
+# >= 4.5:1 contrast on white (WCAG AA) for the card titles.
 CARD_ACCENTS = [
-    {'color': '#0065ff', 'class': 'pb-accent-blue'},
-    {'color': '#10b981', 'class': 'pb-accent-green'},
-    {'color': '#0ea5e9', 'class': 'pb-accent-sky'},
-    {'color': '#d97706', 'class': 'pb-accent-orange'},
-    {'color': '#7c3aed', 'class': 'pb-accent-purple'},
-    {'color': '#14b8a6', 'class': 'pb-accent-teal'},
+    {'color': '#0065ff', 'text': '#0065ff', 'class': 'pb-accent-blue'},
+    {'color': '#10b981', 'text': '#047857', 'class': 'pb-accent-green'},
+    {'color': '#0ea5e9', 'text': '#0369a1', 'class': 'pb-accent-sky'},
+    {'color': '#d97706', 'text': '#b45309', 'class': 'pb-accent-orange'},
+    {'color': '#7c3aed', 'text': '#7c3aed', 'class': 'pb-accent-purple'},
+    {'color': '#14b8a6', 'text': '#0f766e', 'class': 'pb-accent-teal'},
 ]
 
 

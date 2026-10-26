@@ -15,7 +15,7 @@
 
 {% block extra_head %}
 {# LCP: first hero slide (same file for desktop and mobile hero) #}
-<link rel="preload" as="image" href="{% static 'img/hero-chatbot-vs-agent-doodle.webp' %}" type="image/webp" fetchpriority="high">
+<link rel="preload" as="image" href="{% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %}" imagesrcset="{% static 'img/hero-chatbot-vs-agent-doodle-768.webp' %} 768w, {% static 'img/hero-chatbot-vs-agent-doodle.webp' %} 1536w" imagesizes="(max-width: 640px) 92vw, 580px" type="image/webp" fetchpriority="high">
 {% load json_tags %}
 <script type="application/ld+json">{{ org_schema|safe_json }}</script>
 {% endblock %}
@@ -187,7 +187,7 @@
                                     {% include 'components/hero-icon.html' with name=item.card.icon|default:'shield-check' sw='2.2' %}
                                 </div>
                             </div>
-                            <h3 class="pb-card-title" style="color: {{ item.accent.color }} !important;">
+                            <h3 class="pb-card-title" style="color: {{ item.accent.text }} !important;">
                                 {{ item.card.stat_text }} {{ item.card.caption }}
                             </h3>
                             <h4 class="pb-card-subtitle">{{ item.card.title }}</h4>
@@ -203,7 +203,7 @@
             <div class="why-choose-scroll-mobile no-scrollbar">
                 <div class="why-mobile-header-card">
                     <p class="section-subtitle-small mb-2"
-                        style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#0d9488; margin:0;">
+                        style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#0f766e; margin:0;">
                         Why PadosiAgent</p>
                     <h2
                         style="font-size:16px!important; font-weight:800!important; color:#1e3a8a!important; line-height:1.35!important; font-family:'Urbanist', sans-serif!important; margin:0!important;">
@@ -215,7 +215,7 @@
                 <div class="why-card-mobile pb-why-card-mobile"
                     style="border-left: 4px solid {{ item.accent.color }} !important;">
                     <div class="why-mobile-stat-row">
-                        <div class="pb-mobile-title" style="color: {{ item.accent.color }} !important;">
+                        <div class="pb-mobile-title" style="color: {{ item.accent.text }} !important;">
                             {{ item.card.stat_text }} {{ item.card.caption }}
                         </div>
                         <div class="pb-mobile-icon"
@@ -672,7 +672,7 @@
             for (var i = 0; i < empty; i++) {
                 html += '<svg style="width:16px;height:16px;fill:#e2e8f0;color:#cbd5e1;display:inline-block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
             }
-            html += '<span style="margin-left:6px;font-weight:700;font-size:13px;color:#d97706;">' + r.toFixed(1) + ' ★</span>';
+            html += '<span style="margin-left:6px;font-weight:700;font-size:13px;color:#b45309;">' + r.toFixed(1) + ' ★</span>';
             html += '</div>';
             return html;
         }
@@ -689,10 +689,10 @@
                 '<div class="review-user-row">' +
                 '<img src="' + review.image + '" alt="' + review.name + '" class="review-avatar" width="40" height="40" loading="lazy" decoding="async" />' +
                 '<div class="flex-1 min-w-0" style="margin-left: 12px;">' +
-                '<h4 class="review-name">' + review.name + '</h4>' +
+                '<h3 class="review-name">' + review.name + '</h3>' +
                 '<p class="review-service">' + serviceHtml + '</p>' +
                 '</div>' +
-                '<span class="review-quote-icon">“</span>' +
+                '<span class="review-quote-icon" aria-hidden="true"></span>' +
                 '</div>' +
                 renderStars(review.rating) +
                 '<p class="review-comment">"' + review.comment + '"</p>' +
@@ -734,16 +734,26 @@
             updateDots(index);
         }
 
+        // Sizes are measured once (and again on resize), and the position is
+        // tracked in JS: reading offsetWidth/scrollLeft after writing scrollLeft
+        // every frame forced a layout per frame (~390 ms of forced reflow).
+        var step = null, half = 0, pos = 0;
+        function measure() {
+            var cardWrapper = slider.querySelector('.review-card-wrapper');
+            step = (cardWrapper ? cardWrapper.offsetWidth : 320) + 16;
+            half = slider.scrollWidth / 2;
+            pos = slider.scrollLeft;
+        }
+
         function scrollAnimate() {
             if (!isPaused) {
-                slider.scrollLeft += speed;
-                if (slider.scrollLeft >= slider.scrollWidth / 2) {
-                    slider.scrollLeft = 0;
+                if (step === null) measure();
+                pos += speed;
+                if (pos >= half) {
+                    pos = 0;
                 }
-                var cardWrapper = slider.querySelector('.review-card-wrapper');
-                var cardWidth = cardWrapper ? cardWrapper.offsetWidth : 320;
-                var gap = 16;
-                var idx = Math.round(slider.scrollLeft / (cardWidth + gap)) % total;
+                slider.scrollLeft = pos;
+                var idx = Math.round(pos / step) % total;
                 if (idx !== activeIndex) {
                     updateDots(idx);
                 }
@@ -751,10 +761,13 @@
             raf = requestAnimationFrame(scrollAnimate);
         }
 
+        // After a user scroll or dot click, resume from where the slider now is.
+        function resume() { isPaused = false; step = null; }
         slider.addEventListener('mouseenter', function () { isPaused = true; });
-        slider.addEventListener('mouseleave', function () { isPaused = false; });
+        slider.addEventListener('mouseleave', resume);
         slider.addEventListener('touchstart', function () { isPaused = true; }, { passive: true });
-        slider.addEventListener('touchend', function () { isPaused = false; });
+        slider.addEventListener('touchend', resume);
+        dotsWrap.addEventListener('click', function () { step = null; });
 
         raf = requestAnimationFrame(scrollAnimate);
 
@@ -763,6 +776,7 @@
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function () {
                 scrollToIndex(activeIndex);
+                step = null;
             }, 200);
         });
 

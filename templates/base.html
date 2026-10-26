@@ -209,7 +209,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     {# One request for all three families (style.css used to @import Jost/Urbanist serially) #}
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Jost:ital,wght@0,100..900;1,100..900&family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    {# Non-blocking: text paints in the fallback font, then swaps (display=swap) #}
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Jost:ital,wght@0,100..900;1,100..900&family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Jost:ital,wght@0,100..900;1,100..900&family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet"></noscript>
 
     <!-- Bootstrap and styles -->
     <link rel="stylesheet" href="{% static 'bootstrap/bootstrap.min.css' %}">
@@ -299,8 +301,11 @@
             {% include 'partials/header.html' %}
         {% endif %}
         
+        {# Main landmark; display:contents so it adds no box (#app-content is a flex column on some pages) #}
+        <main id="main-content" style="display:contents">
         {% block content %}{% endblock %}
-        
+        </main>
+
         {% if not hide_footer %}
         {% include 'partials/footer.html' %}
         {% endif %}
