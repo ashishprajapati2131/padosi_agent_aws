@@ -106,6 +106,35 @@ class CitySitemap(Sitemap):
         slug = obj.slug or slugify(obj.name)
         return reverse('home:city_agents_directory', kwargs={'city_slug': slug})
 
+class CityCategorySitemap(Sitemap):
+    priority = 0.8
+    changefreq = 'daily'
+
+    def items(self):
+        from django.db.models import Count
+        from apps.agents.models import City
+        from apps.home.services.agent_filters import listed_agents_queryset
+        from apps.home.views.pages import CITY_CATEGORIES, MIN_INDEXABLE_CITY_AGENTS
+        from django.utils.text import slugify
+        listed_ids = listed_agents_queryset().values('id')
+        items = []
+        for category_slug, category in CITY_CATEGORIES.items():
+            # Same filter() call so the segment and the listing apply to the same agent.
+            cities = (City.objects.filter(is_active=True, agents__in=listed_ids,
+                                          agents__insuranceSegments__segment_type=category['segment'])
+                      .annotate(n=Count('agents', distinct=True))
+                      .filter(n__gte=MIN_INDEXABLE_CITY_AGENTS).order_by('name'))
+            for c in cities:
+                slug = c.slug or slugify(c.name)
+                if _PROFILE_SLUG_RE.fullmatch(slug):
+                    items.append((slug, category_slug))
+        return items
+
+    def location(self, item):
+        city_slug, category_slug = item
+        return reverse('home:city_category_agents_directory',
+                       kwargs={'city_slug': city_slug, 'category_slug': category_slug})
+
 
 sitemaps = {
     'static': StaticViewSitemap,
@@ -113,6 +142,7 @@ sitemaps = {
     'calculators': CalculatorSitemap,
     'calculator_categories': CalculatorCategorySitemap,
     'cities': CitySitemap,
+    'city_categories': CityCategorySitemap,
     'agents': AgentSitemap,
 }
 

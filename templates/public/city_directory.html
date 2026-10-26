@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static json_tags %}
 
 {% block title %}{{ meta_title }}{% endblock %}
 {% block meta_description %}{{ meta_description }}{% endblock %}
@@ -17,7 +17,7 @@
 {
   "@context": "https://schema.org",
   "@type": "ItemList",
-  "name": "Verified Insurance Agents in {{ city_name }}",
+  "name": "Verified {% if category %}{{ category.label }}{% else %}Insurance{% endif %} Agents in {{ city_name }}",
   "description": "{{ meta_description|escapejs }}",
   "numberOfItems": {{ agent_count }},
   "itemListElement": [
@@ -49,6 +49,10 @@
   ]
 }
 </script>
+{% if category %}
+<script type="application/ld+json">{{ faq_schema|safe_json }}</script>
+<script type="application/ld+json">{{ breadcrumb_schema|safe_json }}</script>
+{% endif %}
 {% endblock %}
 
 {% block extra_css %}
@@ -169,7 +173,12 @@
     <ol class="breadcrumb mb-0" style="font-size: 13px; background: transparent; padding: 0;">
       <li class="breadcrumb-item"><a href="{% url 'home:home' %}" style="color: #273c8e; text-decoration: none; font-weight: 600;">Home</a></li>
       <li class="breadcrumb-item"><a href="{% url 'home:find_agents' %}" style="color: #273c8e; text-decoration: none; font-weight: 600;">Insurance Agents</a></li>
+      {% if category %}
+      <li class="breadcrumb-item"><a href="{% url 'home:city_agents_directory' city_slug=city_slug %}" style="color: #273c8e; text-decoration: none; font-weight: 600;">{{ city_name }}</a></li>
+      <li class="breadcrumb-item active text-muted" aria-current="page">{{ category.label }}</li>
+      {% else %}
       <li class="breadcrumb-item active text-muted" aria-current="page">{{ city_name }}</li>
+      {% endif %}
     </ol>
   </div>
 </nav>
@@ -180,10 +189,15 @@
     <div class="city-badge">
       <i class="fas fa-location-dot"></i> {{ city_name }}, {{ state_name }}
     </div>
+    {% if category %}
+    <h1 class="city-title">Top-Rated {{ category.label }} Agents in {{ city_name }}, {{ state_name }}</h1>
+    <p class="city-desc mb-0">{{ category_intro }}</p>
+    {% else %}
     <h1 class="city-title">Verified Insurance Agents in {{ city_name }}</h1>
     <p class="city-desc mb-0">
       Looking for a trusted, licensed insurance agent in {{ city_name }}? Browse verified local advisors for Health, Life, Motor, and SME insurance. Compare client reviews, ratings, claim settlement track records, and connect directly for doorstep assistance.
     </p>
+    {% endif %}
   </div>
 
   <!-- Agent Listings Grid -->
@@ -192,9 +206,9 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin: 0;">
           {% if paginator.num_pages > 1 %}
-            Verified Insurance Advisors in {{ city_name }} &mdash; Page {{ page_obj.number }}
+            Verified {% if category %}{{ category.label }}{% else %}Insurance{% endif %} Advisors in {{ city_name }} &mdash; Page {{ page_obj.number }}
           {% else %}
-            Verified Insurance Advisors in {{ city_name }}
+            Verified {% if category %}{{ category.label }}{% else %}Insurance{% endif %} Advisors in {{ city_name }}
           {% endif %}
         </h2>
         <a href="{% url 'home:find_agents' %}" class="btn btn-sm btn-outline-primary" style="font-size: 12px; font-weight: 600; border-radius: 6px;">
@@ -252,6 +266,18 @@
           </div>
         </div>
       {% endif %}
+
+      {% if faqs %}
+      <section class="card border-0 shadow-sm rounded-4 p-4 mt-4" style="background: #ffffff; border: 1px solid #e2e8f0;">
+        <h2 style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 14px;">{{ category.label }} in {{ city_name }}: FAQs</h2>
+        {% for q, a in faqs %}
+        <details class="mb-2"{% if forloop.first %} open{% endif %}>
+          <summary style="font-size: 14.5px; font-weight: 600; color: #0f172a; cursor: pointer;">{{ q }}</summary>
+          <p class="mt-2 mb-0" style="font-size: 13.5px; color: #475569; line-height: 1.6;">{{ a }}</p>
+        </details>
+        {% endfor %}
+      </section>
+      {% endif %}
     </div>
 
     <!-- Sidebar: Advisor Onboarding CTA & Local Trust Signals -->
@@ -278,6 +304,21 @@
           <li class="mb-2"><i class="fas fa-check text-success me-2"></i><strong>IRDAI Licensed:</strong> Every advisor is verified for regulatory compliance.</li>
           <li><i class="fas fa-check text-success me-2"></i><strong>Local Insight:</strong> In-depth knowledge of local hospital networks in {{ city_name }}.</li>
         </ul>
+      </div>
+
+      <!-- Insurance Type Links -->
+      <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background: #ffffff; border: 1px solid #e2e8f0;">
+        <h4 style="font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 12px;">
+          <i class="fas fa-layer-group me-2 text-primary"></i> Agents by Insurance Type in {{ city_name }}
+        </h4>
+        <div class="d-flex flex-wrap gap-2">
+          {% if category %}
+            <a href="{% url 'home:city_agents_directory' city_slug=city_slug %}" class="city-pill-link">All Insurance Agents</a>
+          {% endif %}
+          {% for slug, label in city_categories %}
+            <a href="{% url 'home:city_category_agents_directory' city_slug=city_slug category_slug=slug %}" class="city-pill-link">{{ label }}</a>
+          {% endfor %}
+        </div>
       </div>
 
       <!-- Other Cities Links -->

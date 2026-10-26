@@ -1996,7 +1996,100 @@ def _resolve_area_to_pincodes(area_name_lower):
     return []
 
 
-def city_agents_directory(request, city_slug):
+# /insurance-agents/<city>/<category>/ pages: slug → segment_type in insuranceSegments.
+CITY_CATEGORIES = {
+    'health-insurance': {
+        'label': 'Health Insurance',
+        'segment': 'health',
+        'keywords': 'health insurance agent in {city}, mediclaim agent in {city}, health insurance advisor near me {city}, family floater health insurance {city}',
+        'intro': (
+            'Find verified health insurance and mediclaim agents in {city}. A local advisor helps you compare '
+            'family floater, senior citizen and top-up plans, checks which network hospitals in {city} offer '
+            'cashless treatment, and stays by your side when you file a claim.'
+        ),
+        'faqs': [
+            ('Does buying health insurance through an agent in {city} cost more?',
+             'No. The premium is fixed by the insurance company and is the same whether you buy online or through '
+             'an agent. The agent is paid by the insurer, not by you.'),
+            ('Can a local agent help with a cashless claim at a hospital in {city}?',
+             'Yes. An agent can tell you which hospitals are in your insurer\'s cashless network, help with the '
+             'pre-authorisation form and follow up with the insurer or TPA. Final approval is given by the insurer.'),
+            ('What should I check before choosing a health insurance plan?',
+             'Check the sum insured, waiting periods for pre-existing diseases, room rent limits, co-payment, '
+             'the insurer\'s network hospitals near you and its claim settlement record.'),
+            ('How do I contact a health insurance agent on PadosiAgent?',
+             'Open any agent profile on this page and call or WhatsApp them directly. There is no fee for using PadosiAgent.'),
+        ],
+    },
+    'life-insurance': {
+        'label': 'Life Insurance',
+        'segment': 'life',
+        'keywords': 'life insurance agent in {city}, LIC agent in {city}, LIC agent near me {city}, term insurance advisor {city}',
+        'intro': (
+            'Find verified life insurance, term insurance and LIC agents in {city}. A local advisor helps you '
+            'work out the cover your family needs, compare term, endowment and retirement plans, and supports '
+            'your nominee when it is time to claim.'
+        ),
+        'faqs': [
+            ('How do I find a trusted LIC or life insurance agent in {city}?',
+             'Compare the verified agents on this page by experience, reviews and the companies they represent, '
+             'then call or WhatsApp them directly from their profile.'),
+            ('Is term insurance better than an endowment or money-back plan?',
+             'Term insurance gives the highest cover for the lowest premium but pays only on death. Endowment and '
+             'money-back plans add savings but cost more for the same cover. An agent can help you choose based on your goals.'),
+            ('How much life cover should I take?',
+             'A common rule of thumb is 10 to 15 times your yearly income, plus any loans. Your agent can work out '
+             'a figure based on your family\'s expenses and goals.'),
+            ('Does a life insurance agent help my family with the claim?',
+             'Yes. A local agent helps the nominee collect documents, fill the claim form and follow up with the insurer.'),
+        ],
+    },
+    'motor-insurance': {
+        'label': 'Car & Bike Insurance',
+        'segment': 'motor',
+        'keywords': 'car insurance agent in {city}, bike insurance agent in {city}, motor insurance renewal {city}, two wheeler insurance agent near me {city}',
+        'intro': (
+            'Find verified car and bike insurance agents in {city}. A local advisor helps you renew on time, '
+            'pick the right add-ons like zero depreciation, transfer your no-claim bonus and handle the survey '
+            'and garage paperwork after an accident.'
+        ),
+        'faqs': [
+            ('Can an agent in {city} renew my expired car or bike insurance?',
+             'Yes. If the policy has lapsed the insurer may ask for a vehicle inspection before renewal. A local agent can arrange it.'),
+            ('Is third-party insurance enough for my vehicle?',
+             'Third-party cover is the legal minimum, but it does not pay for damage to your own vehicle. A '
+             'comprehensive policy covers both.'),
+            ('What documents do I need for a car insurance claim after an accident?',
+             'Usually the policy copy, RC, driving licence, claim form, repair estimate and, for theft or major '
+             'accidents, an FIR. Your agent will confirm what your insurer needs.'),
+            ('Will I lose my no-claim bonus if I switch insurers?',
+             'No. The no-claim bonus belongs to you, not the insurer, and can be transferred when you renew with another company.'),
+        ],
+    },
+    'business-insurance': {
+        'label': 'Business Insurance',
+        'segment': 'sme',
+        'keywords': 'business insurance agent in {city}, SME insurance advisor {city}, shop insurance {city}, group health insurance for employees {city}, fire insurance agent {city}',
+        'intro': (
+            'Find verified business and SME insurance advisors in {city}. A local advisor helps shops, factories '
+            'and offices choose fire, property, liability, cyber and employee group health cover that fits the business.'
+        ),
+        'faqs': [
+            ('What insurance does a small business in {city} need?',
+             'Most businesses start with fire and property cover for the premises and stock, plus group health '
+             'cover for employees. Liability and cyber cover depend on the type of business.'),
+            ('Can an agent arrange group health insurance for my employees?',
+             'Yes. Group health (GMC) and group personal accident (GPA) policies can be arranged for teams of any size.'),
+            ('Does a business insurance agent help with claims?',
+             'Yes. The agent helps with the claim intimation, surveyor visit and documents, and follows up with the insurer.'),
+            ('How do I contact a business insurance advisor on PadosiAgent?',
+             'Open any advisor profile on this page and call or WhatsApp them directly. There is no fee for using PadosiAgent.'),
+        ],
+    },
+}
+
+
+def city_agents_directory(request, city_slug, category_slug=None):
     """
     Programmatic Local SEO Hub: /insurance-agents/<city_slug>/
     Targeting 'insurance agent in <city>', 'best insurance agent in <city>'.
@@ -2009,6 +2102,14 @@ def city_agents_directory(request, city_slug):
     """
     from apps.agents.models import City
     from django.db.models import Q
+
+    category = None
+    if category_slug is not None:
+        category = CITY_CATEGORIES.get(str(category_slug).lower())
+        if not category:
+            from django.http import Http404
+            raise Http404("Category not found")
+        category_slug = str(category_slug).lower()
 
     raw_slug = str(city_slug).strip().lower()
     city_query_name = raw_slug.replace('-', ' ')
@@ -2108,6 +2209,9 @@ def city_agents_directory(request, city_slug):
                 if parent_city_obj:
                     agents_qs = base_qs.filter(serviceableCities=parent_city_obj).distinct()
 
+    if category:
+        agents_qs = agents_qs.filter(insuranceSegments__segment_type=category['segment']).distinct()
+
     agents_list = list(
         agents_qs
         .order_by('-created_at')[:200]   # cap to avoid full-table scans
@@ -2147,7 +2251,47 @@ def city_agents_directory(request, city_slug):
     meta_desc = f"Looking for trusted insurance agents in {city_display}? Find verified local advisors for Health, Life, Car & Bike insurance with ratings & doorstep assistance on PadosiAgent."
     meta_kw = f"insurance agent in {city_display}, best insurance agent in {city_display}, insurance agent near me {city_display}, licensed insurance agent {city_display}, health insurance agent {city_display}, life insurance agent {city_display}, PadosiAgent"
 
+    category_context = {}
+    if category:
+        label = category['label']
+        canonical_url = canonical_url.replace(f"/insurance-agents/{raw_slug}/", f"/insurance-agents/{raw_slug}/{category_slug}/", 1)
+        meta_title = f"{label} Agents in {city_display} - Verified Local Advisors | PadosiAgent"
+        count_text = f"{paginator.count}+ " if paginator.count else ''
+        meta_desc = (f"Looking for a trusted {label.lower()} agent in {city_display}? Compare {count_text}verified local "
+                     f"advisors with ratings and reviews. Connect directly on call or WhatsApp for free claim guidance.")
+        meta_kw = category['keywords'].format(city=city_display) + ', PadosiAgent'
+        faqs = [(q.format(city=city_display), a.format(city=city_display)) for q, a in category['faqs']]
+        category_context = {
+            'category': category,
+            'category_slug': category_slug,
+            'category_intro': category['intro'].format(city=city_display),
+            'faqs': faqs,
+            'faq_schema': {
+                '@context': 'https://schema.org',
+                '@type': 'FAQPage',
+                'mainEntity': [
+                    {'@type': 'Question', 'name': q, 'acceptedAnswer': {'@type': 'Answer', 'text': a}}
+                    for q, a in faqs
+                ],
+            },
+            'breadcrumb_schema': {
+                '@context': 'https://schema.org',
+                '@type': 'BreadcrumbList',
+                'itemListElement': [
+                    {'@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': request.build_absolute_uri('/')},
+                    {'@type': 'ListItem', 'position': 2, 'name': 'Insurance Agents',
+                     'item': request.build_absolute_uri('/find-agents/')},
+                    {'@type': 'ListItem', 'position': 3, 'name': city_display,
+                     'item': request.build_absolute_uri(f"/insurance-agents/{raw_slug}/")},
+                    {'@type': 'ListItem', 'position': 4, 'name': f"{label} Agents",
+                     'item': request.build_absolute_uri(f"/insurance-agents/{raw_slug}/{category_slug}/")},
+                ],
+            },
+        }
+
     context = {
+        **category_context,
+        'city_categories': [(slug, c['label']) for slug, c in CITY_CATEGORIES.items() if slug != category_slug],
         'city_name': city_display,
         'state_name': state_display,
         'city_slug': raw_slug,

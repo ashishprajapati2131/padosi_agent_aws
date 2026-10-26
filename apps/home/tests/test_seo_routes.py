@@ -51,6 +51,52 @@ class CityDirectorySeoTests(TestCase):
 
 
 @override_settings(ALLOWED_HOSTS=['*'])
+class CityCategoryDirectoryTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        from apps.agents.models import AgentInsuranceSegment
+        self.city = City.objects.create(name='Ahmedabad', slug='ahmedabad', state='Gujarat')
+        health = _listed_agent('Health Agent', 'health-agent', self.city)
+        AgentInsuranceSegment.objects.create(agent=health, segment_type='health')
+        motor = _listed_agent('Motor Agent', 'motor-agent', self.city)
+        AgentInsuranceSegment.objects.create(agent=motor, segment_type='motor')
+
+    def test_category_page_filters_by_segment(self):
+        response = self.client.get('/insurance-agents/ahmedabad/health-insurance/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Top-Rated Health Insurance Agents in Ahmedabad, Gujarat')
+        self.assertContains(response, 'health-agent')
+        self.assertNotContains(response, 'motor-agent')
+        self.assertContains(response, '"@type": "FAQPage"')
+        self.assertContains(response, '<meta name="robots" content="index, follow">')
+        self.assertRegex(response.content.decode(),
+                         r'<link rel="canonical" href="https?://[^"]+/insurance-agents/ahmedabad/health-insurance/">')
+
+    def test_empty_category_is_noindex(self):
+        response = self.client.get('/insurance-agents/ahmedabad/business-insurance/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<meta name="robots" content="noindex, follow">')
+
+    def test_unknown_category_and_unknown_city_are_404(self):
+        self.assertEqual(self.client.get('/insurance-agents/ahmedabad/pet-insurance/').status_code, 404)
+        self.assertEqual(self.client.get('/insurance-agents/xyzabc/health-insurance/').status_code, 404)
+
+    def test_city_page_still_lists_all_and_links_categories(self):
+        response = self.client.get('/insurance-agents/ahmedabad/')
+        self.assertContains(response, 'Verified Insurance Agents in Ahmedabad</h1>')
+        self.assertContains(response, 'health-agent')
+        self.assertContains(response, 'motor-agent')
+        self.assertContains(response, 'href="/insurance-agents/ahmedabad/health-insurance/"')
+        self.assertNotContains(response, 'FAQPage')
+
+    def test_sitemap_lists_only_categories_with_agents(self):
+        body = self.client.get('/sitemap.xml').content.decode()
+        self.assertIn('/insurance-agents/ahmedabad/health-insurance/', body)
+        self.assertIn('/insurance-agents/ahmedabad/motor-insurance/', body)
+        self.assertNotIn('/insurance-agents/ahmedabad/business-insurance/', body)
+
+
+@override_settings(ALLOWED_HOSTS=['*'])
 class SeoRedirectTests(TestCase):
     def test_insurance_agents_hub_redirects_to_find_agents(self):
         response = self.client.get('/insurance-agents/?location=surat')

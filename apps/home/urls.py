@@ -19,6 +19,7 @@ urlpatterns = [
     path('find-agents/',     pages.find_agents,     name='find_agents'),
     path('insurance-agents/', RedirectView.as_view(pattern_name='home:find_agents', permanent=True, query_string=True), name='insurance_agents_hub'),
     path('insurance-agents/<slug:city_slug>/', pages.city_agents_directory, name='city_agents_directory'),
+    path('insurance-agents/<slug:city_slug>/<slug:category_slug>/', pages.city_agents_directory, name='city_category_agents_directory'),
     path('find-agents/ai-picks/', pages.ai_picks_comparison, name='ai_picks_comparison'),
     path('terms/',          pages.terms,          name='terms'),
     path('privacy/',        pages.privacy,        name='privacy'),
