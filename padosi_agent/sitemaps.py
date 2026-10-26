@@ -116,7 +116,7 @@ class CityCategorySitemap(Sitemap):
         from apps.agents.models import City
         from apps.home.services.agent_filters import listed_agents_queryset
         from apps.home.views.pages import (CITY_CATEGORIES, MIN_INDEXABLE_CITY_AGENTS, SERVICE_PAGES,
-                                           STATE_HUBS, filter_agents_for_category)
+                                           STATE_HUBS, filter_agents_for_category, state_hub_agents)
         from django.utils.text import slugify
         listed = listed_agents_queryset()
         pages = {**CITY_CATEGORIES, **SERVICE_PAGES}
@@ -130,8 +130,8 @@ class CityCategorySitemap(Sitemap):
                 slug = c.slug or slugify(c.name)
                 if _PROFILE_SLUG_RE.fullmatch(slug) and slug not in STATE_HUBS:
                     items.append((slug, key))
-        for state_slug, state in STATE_HUBS.items():
-            in_state = listed.filter(serviceableCities__state__iexact=state).distinct()
+        for state_slug, hub in STATE_HUBS.items():
+            in_state = state_hub_agents(listed, hub)
             for key in [None, *pages]:
                 qs = filter_agents_for_category(in_state, pages[key]) if key else in_state
                 if qs.count() >= MIN_INDEXABLE_CITY_AGENTS:

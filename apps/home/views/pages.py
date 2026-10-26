@@ -2163,7 +2163,34 @@ SERVICE_PAGES = {
 }
 
 # /insurance-agents/<state>/ hubs: every listed agent serving a city in that state.
-STATE_HUBS = {'gujarat': 'Gujarat'}
+# Live cities mostly have an empty `state`, so a hub also matches known city names and the agent's pincode.
+STATE_HUBS = {
+    'gujarat': {
+        'name': 'Gujarat',
+        'pin_prefixes': ('36', '37', '38', '39'),
+        'cities': (
+            'Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Gandhinagar', 'Bhavnagar', 'Jamnagar', 'Junagadh',
+            'Anand', 'Nadiad', 'Bharuch', 'Ankleshwar', 'Navsari', 'Valsad', 'Vapi', 'Mehsana', 'Morbi',
+            'Gandhidham', 'Bhuj', 'Porbandar', 'Amreli', 'Surendranagar', 'Palanpur', 'Patan', 'Himmatnagar',
+            'Godhra', 'Dahod', 'Botad', 'Veraval', 'Kalol',
+        ),
+    },
+}
+
+
+def _state_city_q(hub, prefix=''):
+    q = Q(**{f'{prefix}state__iexact': hub['name']})
+    for name in hub['cities']:
+        q |= Q(**{f'{prefix}name__iexact': name})
+    return q
+
+
+def state_hub_agents(agents_qs, hub):
+    """Agents serving a city in the state, or whose own pincode is in the state."""
+    q = _state_city_q(hub, 'serviceableCities__')
+    for prefix in hub['pin_prefixes']:
+        q |= Q(agent_pincode__startswith=prefix)
+    return agents_qs.filter(q).distinct()
 
 
 def filter_agents_for_category(agents_qs, category):
@@ -2224,9 +2251,9 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
 
     area_pincodes = []
     if state_hub:
-        city_display = state_hub
+        city_display = state_hub['name']
         state_display = 'India'
-        agents_qs = listed_agents_queryset().filter(serviceableCities__state__iexact=state_hub).distinct()
+        agents_qs = state_hub_agents(listed_agents_queryset(), state_hub)
     elif city_obj:
         city_display = city_obj.name
         state_display = city_obj.state or 'Gujarat'
@@ -2352,7 +2379,7 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
         from django.db.models import Count
         state_cities = [
             (_directory_path(c.slug, category_slug), c.name, c.n)
-            for c in City.objects.filter(is_active=True, state__iexact=state_hub,
+            for c in City.objects.filter(_state_city_q(state_hub), is_active=True,
                                          agents__in=listed_agents_queryset().values('id'))
             .annotate(n=Count('agents', distinct=True)).order_by('-n', 'name')[:40]
             if c.slug

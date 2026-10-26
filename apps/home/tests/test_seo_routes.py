@@ -122,11 +122,17 @@ class CityCategoryDirectoryTests(TestCase):
         self.assertEqual(self.client.get('/insurance-claim-assistance/xyzabc/').status_code, 404)
 
     def test_gujarat_hub_lists_state_agents_and_cities(self):
+        # Live cities mostly have no state saved; the hub must still find them.
+        City.objects.filter(pk=self.city.pk).update(state=None)
         mumbai = City.objects.create(name='Mumbai', slug='mumbai', state='Maharashtra')
         _listed_agent('Mumbai Agent', 'mumbai-agent', mumbai)
+        pin_only = _listed_agent('Pin Agent', 'pin-agent')
+        Agent.objects.filter(pk=pin_only.pk).update(agent_pincode='395007')
         response = self.client.get('/insurance-agents/gujarat/')
         self.assertContains(response, 'Verified Insurance Agents in Gujarat</h1>')
+        self.assertContains(response, '<meta name="robots" content="index, follow">')
         self.assertContains(response, 'health-agent')
+        self.assertContains(response, 'pin-agent')
         self.assertNotContains(response, 'mumbai-agent')
         self.assertContains(response, 'href="/insurance-agents/ahmedabad/"')
 
