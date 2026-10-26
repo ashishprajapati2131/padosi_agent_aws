@@ -70,8 +70,10 @@
                     </li>
                     {% endif %}
                     {% endif %}
+                    {% endif %}
 
-                    <li class="nav-item d-lg-none">
+                    {# Quick-registered guests (no Django login) also get Sign Out; JS reveals it right after the popup. #}
+                    <li class="nav-item d-lg-none js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
                         <form action="/logout/" method="POST" id="logout-form-mobile" class="m-0">
                             {% csrf_token %}
                             <button type="submit" class="nav-link text-danger border-0 bg-transparent w-100 text-left">
@@ -79,7 +81,6 @@
                             </button>
                         </form>
                     </li>
-                    {% endif %}
                 </ul>
                 <div class="header-right-btns d-none d-lg-flex align-items-center">
                     {% if not request.user.is_authenticated %}
@@ -91,8 +92,7 @@
                     {% endif %}
                     {% endif %}
 
-                    {% if request.user.is_authenticated %}
-                    <div class="dropdown">
+                    <div class="dropdown js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
                         <a class="contact_us text-decoration-none dropdown-toggle" href="#" role="button" id="userMenu"
                             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fa-solid fa-user-circle mr-2"></i>My Account
@@ -126,7 +126,6 @@
                             </form>
                         </div>
                     </div>
-                    {% endif %}
                 </div>
             </div>
             {% endif %}

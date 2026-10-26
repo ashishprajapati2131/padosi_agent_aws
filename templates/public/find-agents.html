@@ -4213,6 +4213,8 @@ no spam calls, only trusted licensed agents.{% endblock %}
                                     // contact-click handlers skip the popup and carry contact info.
                                     window._padosiGuestAuthenticated = true;
                                     window._padosiGuestData = result.value;
+                                    // Show My Account / Sign Out in the header without a reload.
+                                    document.querySelectorAll('.js-guest-account').forEach(function (el) { el.classList.remove('d-none'); });
                                     if (typeof onSuccessCallback === 'function') {
                                         onSuccessCallback(result.value, response);
                                     } else {

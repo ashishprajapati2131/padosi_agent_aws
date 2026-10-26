@@ -42,3 +42,25 @@ class QuickSignupExistingAccountTests(TestCase):
                 self.assertEqual(resp.status_code, 200, resp.content)
                 user = User.objects.get(email=email)
                 self.assertEqual(str(client.session.get('_auth_user_id')), str(user.pk))
+
+    def _header(self, session):
+        from django.contrib.auth.models import AnonymousUser
+        from django.template.loader import render_to_string
+        from django.test import RequestFactory
+        req = RequestFactory().get('/find-agents/')
+        req.user, req.session = AnonymousUser(), session
+        return render_to_string('partials/header.html', request=req)
+
+    def test_guest_sees_sign_out_and_can_log_out(self):
+        """An existing account gets only a guest session, but the header must still offer Sign Out."""
+        client, _ = self._post('/client/quick-register/', 'client.old@example.com')
+        html = self._header(client.session)
+        self.assertIn('id="logout-form"', html)
+        self.assertNotIn('js-guest-account d-none', html)
+
+        resp = client.post('/logout/', HTTP_REFERER='http://testserver/find-agents/')
+        self.assertEqual((resp.status_code, resp.url), (302, 'http://testserver/find-agents/'))  # back to the page, not agent login
+        self.assertNotIn('quick_lead_user', client.session)
+
+    def test_anonymous_visitor_has_hidden_account_menu(self):
+        self.assertIn('js-guest-account d-none', self._header({}))

@@ -492,7 +492,8 @@ def _resolve_logout_role(request):
 
     user = getattr(request, 'user', None)
     if not user or not getattr(user, 'is_authenticated', False):
-        return 'agent'
+        # A quick-registered visitor has only a guest session; send them back to where they were.
+        return 'client' if request.session.get('quick_lead_user') else 'agent'
 
     role = (getattr(user, 'role', None) or '').lower()
     if role in ('admin', 'agent', 'client', 'distributor', 'insurance_company'):
