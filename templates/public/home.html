@@ -205,10 +205,11 @@
                     <p class="section-subtitle-small mb-2"
                         style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#0f766e; margin:0;">
                         Why PadosiAgent</p>
-                    <h2
-                        style="font-size:16px!important; font-weight:800!important; color:#1e3a8a!important; line-height:1.35!important; font-family:'Urbanist', sans-serif!important; margin:0!important;">
+                    {# Mobile copy of the desktop H2 above: a <p> so the heading isn't duplicated; role keeps it a heading for screen readers. #}
+                    <p role="heading" aria-level="2"
+                        style="font-size:16px!important; font-weight:800!important; color:#1e3a8a!important; line-height:1.35!important; font-family:'Urbanist', sans-serif!important; letter-spacing:-0.03em!important; margin:0!important;">
                         What makes PadosiAgent one of India's most trusted ways to buy insurance?
-                    </h2>
+                    </p>
                 </div>
 
                 {% for item in why_cards_zipped %}
