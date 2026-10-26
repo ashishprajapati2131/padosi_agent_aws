@@ -682,6 +682,11 @@
             <a href="/admin/broadcast/" class="menu-item {% if '/admin/broadcast/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-paper-plane"></i> Broadcast
             </a>
+
+            <a href="{% url 'admin_wa_dashboard' %}" class="menu-item {% if '/admin/whatsapp/' in request.path %}active{% endif %}">
+                <i class="fa-brands fa-whatsapp text-success"></i> WhatsApp &amp; OpenWA
+                <span class="badge bg-success ms-auto" style="font-size: 10px;">Hub</span>
+            </a>
             {% endif %}
 
             <!-- Content Control -->

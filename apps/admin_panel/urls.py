@@ -207,6 +207,21 @@ from .views.export import (
 )
 from .views.broadcast import broadcast_index, send_broadcast
 from .views.notify import notify_index, notify_send, notify_broadcast
+from .views.wa_bot_admin import (
+    wa_bot_dashboard,
+    wa_bot_sessions_list,
+    wa_bot_logs_list,
+    wa_bot_security_status,
+    wa_bot_toggle_service,
+    wa_bot_session_action,
+    wa_bot_get_qr_ajax,
+    wa_bot_send_test_message,
+    wa_bot_reset_session,
+    wa_bot_resend_credentials,
+    wa_bot_save_config,
+    wa_bot_sync_webhook,
+    wa_bot_list_remote_sessions,
+)
 
 from .views.qr_files import (
     qr_files_index,
@@ -533,6 +548,11 @@ urlpatterns = [
     path("admin/settings/templates/",       settings.templates,           name="admin_settings_templates"),
     path("admin/settings/templates/update/",settings.update_templates,    name="admin_settings_templates_update"),
     path("admin/settings/update/",          settings.update_settings,     name="admin_settings_update"),
+    path("admin/settings/wa-bot/toggle/",   settings.toggle_wa_bot_service, name="admin_toggle_wa_bot_service"),
+    path("admin/wa_agent_bot/wabotsession/", wa_bot_sessions_list, name="admin_wa_bot_sessions"),
+    path("admin/wa-bot/sessions/",           wa_bot_sessions_list, name="admin_wa_bot_sessions_alt"),
+    path("admin/wa_agent_bot/wabotmessagelog/", wa_bot_logs_list, name="admin_wa_bot_logs"),
+    path("admin/wa-bot/logs/",               wa_bot_logs_list, name="admin_wa_bot_logs_alt"),
     # Phase PROFILE_BANNERS
     path("admin/profile-banners/", profile_banners_index, name="admin_profile_banners_index"),
     path("admin/profile-banners/upload/", profile_banner_upload, name="admin_profile_banner_upload"),
@@ -661,6 +681,22 @@ urlpatterns = [
     path("admin/account-deletion/terminate/", terminate_agent_account, name="admin_terminate_account"),
     path("admin/account-deletion/activate/", activate_agent_account, name="admin_activate_account"),
     path("admin/account-deletion/reject/", reject_deletion_request, name="admin_reject_deletion_request"),
+
+    # ── WhatsApp Bot & OpenWA Command Center ────────────────────────────────
+    path("admin/whatsapp/", wa_bot_dashboard, name="admin_wa_dashboard"),
+    path("admin/whatsapp/sessions/", wa_bot_sessions_list, name="admin_wa_sessions_list"),
+    path("admin/whatsapp/logs/", wa_bot_logs_list, name="admin_wa_logs_list"),
+    path("admin/whatsapp/security/", wa_bot_security_status, name="admin_wa_security_status"),
+    path("admin/whatsapp/toggle-bot/", wa_bot_toggle_service, name="admin_wa_toggle_service"),
+    path("admin/whatsapp/toggle-service/", wa_bot_toggle_service, name="admin_toggle_wa_bot_service"),
+    path("admin/whatsapp/session-action/", wa_bot_session_action, name="admin_wa_session_action"),
+    path("admin/whatsapp/get-qr/", wa_bot_get_qr_ajax, name="admin_wa_get_qr_ajax"),
+    path("admin/whatsapp/send-test/", wa_bot_send_test_message, name="admin_wa_send_test_message"),
+    path("admin/whatsapp/reset-session/<int:session_id>/", wa_bot_reset_session, name="admin_wa_reset_session"),
+    path("admin/whatsapp/resend-creds/<int:session_id>/", wa_bot_resend_credentials, name="admin_wa_resend_credentials"),
+    path("admin/whatsapp/save-config/", wa_bot_save_config, name="admin_wa_save_config"),
+    path("admin/whatsapp/sync-webhook/", wa_bot_sync_webhook, name="admin_wa_sync_webhook"),
+    path("admin/whatsapp/list-sessions/", wa_bot_list_remote_sessions, name="admin_wa_list_remote_sessions"),
 ]
 
 

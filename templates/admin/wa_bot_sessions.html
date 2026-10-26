@@ -1,0 +1,194 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}WhatsApp Bot Sessions — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}System &rsaquo; WhatsApp Agent Bot &rsaquo; Bot Sessions{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-1">
+            <i class="fa-brands fa-whatsapp text-success me-2"></i> WhatsApp Bot Sessions
+        </h5>
+        <p class="text-muted mb-0" style="font-size: 13px;">
+            Monitor live agent onboarding journeys, registration states, and payment links generated via WhatsApp.
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'admin_settings_general' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-sliders me-1"></i> Bot Settings
+        </a>
+        <a href="/admin/wa_agent_bot/wabotmessagelog/" class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i> Message Logs
+        </a>
+        <a href="/wa-bot/simulator/" target="_blank" class="btn btn-sm btn-success">
+            <i class="fa-solid fa-comments me-1"></i> Live Web Simulator
+        </a>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-grid mb-4" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#eef2ff;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:20px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.total }}</div>
+                <div class="stat-label">Total Sessions</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#ecfdf5;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-circle-check" style="color:#059669;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.registered }}</div>
+                <div class="stat-label">Registered Agents</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#fffbeb;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-credit-card" style="color:#d97706;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.awaiting_payment }}</div>
+                <div class="stat-label">Awaiting Payment</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#f8fafc;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-spinner" style="color:#64748b;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.in_progress }}</div>
+                <div class="stat-label">In Progress</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table Card -->
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h6 class="m-0 fw-bold">Bot Sessions List</h6>
+        <form method="get" class="d-flex gap-2 align-items-center">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search phone number..." class="form-control form-control-sm" style="width: 220px;">
+            <select name="state" class="form-select form-select-sm" style="width: 170px;">
+                <option value="">All States</option>
+                <option value="welcome" {% if state_filter == 'welcome' %}selected{% endif %}>welcome</option>
+                <option value="ask_fullname" {% if state_filter == 'ask_fullname' %}selected{% endif %}>ask_fullname</option>
+                <option value="ask_email" {% if state_filter == 'ask_email' %}selected{% endif %}>ask_email</option>
+                <option value="ask_mobile" {% if state_filter == 'ask_mobile' %}selected{% endif %}>ask_mobile</option>
+                <option value="ask_state" {% if state_filter == 'ask_state' %}selected{% endif %}>ask_state</option>
+                <option value="ask_pincode" {% if state_filter == 'ask_pincode' %}selected{% endif %}>ask_pincode</option>
+                <option value="ask_experience" {% if state_filter == 'ask_experience' %}selected{% endif %}>ask_experience</option>
+                <option value="ask_segments" {% if state_filter == 'ask_segments' %}selected{% endif %}>ask_segments</option>
+                <option value="confirm" {% if state_filter == 'confirm' %}selected{% endif %}>confirm</option>
+                <option value="ask_plan" {% if state_filter == 'ask_plan' %}selected{% endif %}>ask_plan</option>
+                <option value="awaiting_payment" {% if state_filter == 'awaiting_payment' %}selected{% endif %}>awaiting_payment</option>
+                <option value="logged_in" {% if state_filter == 'logged_in' %}selected{% endif %}>logged_in</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+            {% if search_query or state_filter %}
+                <a href="?" class="btn btn-sm btn-outline-secondary">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="font-size: 12px;">PHONE NUMBER</th>
+                    <th style="font-size: 12px;">NAME</th>
+                    <th style="font-size: 12px;">STATE / STEP</th>
+                    <th style="font-size: 12px;">STATUS</th>
+                    <th style="font-size: 12px;">SELECTED PLAN</th>
+                    <th style="font-size: 12px;">PAYMENT LINK</th>
+                    <th style="font-size: 12px;">LAST ACTIVITY</th>
+                    <th style="font-size: 12px;">ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in page_obj %}
+                <tr>
+                    <td>
+                        <strong class="text-dark">+{{ s.phone_number }}</strong>
+                    </td>
+                    <td>
+                        {{ s.registration_data.fullname|default:"-" }}
+                    </td>
+                    <td>
+                        {% if s.state == 'logged_in' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">logged_in</span>
+                        {% elif s.state == 'awaiting_payment' %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">awaiting_payment</span>
+                        {% elif s.state == 'confirm' %}
+                            <span class="badge bg-info-subtle text-info border border-info-subtle">confirm</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">{{ s.state }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if s.is_registered %}
+                            <span class="badge bg-success text-white"><i class="fa-solid fa-check me-1"></i> Registered</span>
+                        {% else %}
+                            <span class="badge bg-light text-muted border">In Progress</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ s.registration_data.plan_name|default:"-" }}
+                    </td>
+                    <td>
+                        {% if s.registration_data.payment_link %}
+                            <a href="{{ s.registration_data.payment_link }}" target="_blank" class="btn btn-xs btn-outline-success py-0 px-2" style="font-size: 11px;">
+                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Pay Link
+                            </a>
+                        {% else %}
+                            <span class="text-muted small">-</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size: 13px;" class="text-muted">
+                        {{ s.last_message_at|date:"d M Y, h:i A" }}
+                    </td>
+                    <td>
+                        <a href="/admin/wa_agent_bot/wabotmessagelog/?phone={{ s.phone_number }}" class="btn btn-sm btn-outline-secondary" title="View Message Logs">
+                            <i class="fa-solid fa-list-ul"></i> Logs
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        <i class="fa-brands fa-whatsapp fa-2x mb-3 text-secondary d-block"></i>
+                        No WhatsApp bot sessions found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white py-3 d-flex justify-content-between align-items-center">
+        <span class="text-muted small">Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} entries</span>
+        <ul class="pagination pagination-sm mb-0">
+            {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">&laquo;</a></li>
+            {% endif %}
+            <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+            {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}">&raquo;</a></li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

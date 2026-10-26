@@ -1,0 +1,190 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}WhatsApp Message Logs &amp; Audit — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}Communications &rsaquo; WhatsApp &amp; OpenWA &rsaquo; Message Logs{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-1">
+            <i class="fa-solid fa-clock-rotate-left text-primary me-2"></i> WhatsApp Message Logs &amp; Audit Trail
+        </h5>
+        <p class="text-muted mb-0" style="font-size: 13.5px;">
+            Complete audit trail of incoming user messages and automated WhatsApp bot replies with delivery timestamps and states.
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'admin_wa_dashboard' %}" class="btn btn-sm btn-outline-dark fw-bold">
+            <i class="fa-solid fa-gauge me-1"></i> Command Center
+        </a>
+        <a href="{% url 'admin_wa_sessions_list' %}" class="btn btn-sm btn-outline-primary fw-bold">
+            <i class="fa-brands fa-whatsapp me-1"></i> Bot Sessions
+        </a>
+        <a href="/wa-bot/simulator/" target="_blank" class="btn btn-sm btn-success fw-bold">
+            <i class="fa-solid fa-comments me-1"></i> Web Simulator
+        </a>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-grid mb-4" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#eef2ff;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-comments" style="color:#4f46e5;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.total }}</div>
+                <div class="stat-label">Total Messages Logged</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#ecfdf5;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-arrow-down-left" style="color:#059669;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.in }}</div>
+                <div class="stat-label">Incoming (From Agents)</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#f0f9ff;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-arrow-up-right" style="color:#0284c7;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.out }}</div>
+                <div class="stat-label">Outgoing (Bot Replies)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table Card -->
+<div class="card shadow-sm border-0 rounded-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h6 class="m-0 fw-bold">Message Audit Trail</h6>
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            <input type="text" name="phone" value="{{ phone_filter }}" placeholder="Filter by phone..." class="form-control form-control-sm" style="width: 170px;">
+            <select name="direction" class="form-select form-select-sm" style="width: 140px;">
+                <option value="">All Directions</option>
+                <option value="in" {% if dir_filter == 'in' %}selected{% endif %}>📥 Incoming</option>
+                <option value="out" {% if dir_filter == 'out' %}selected{% endif %}>📤 Outgoing</option>
+            </select>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search message text..." class="form-control form-control-sm" style="width: 180px;">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Filter</button>
+            {% if phone_filter or dir_filter or search_query %}
+                <a href="?" class="btn btn-sm btn-outline-secondary">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="font-size: 12px; width: 170px;">DATE &amp; TIME</th>
+                    <th style="font-size: 12px; width: 150px;">PHONE NUMBER</th>
+                    <th style="font-size: 12px; width: 110px;">DIRECTION</th>
+                    <th style="font-size: 12px; width: 150px;">STATE</th>
+                    <th style="font-size: 12px;">MESSAGE CONTENT</th>
+                    <th style="font-size: 12px; width: 80px; text-align: right;">ACTION</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in page_obj %}
+                <tr>
+                    <td class="text-muted small">
+                        {{ log.created_at|date:"d M Y, h:i:s A" }}
+                    </td>
+                    <td>
+                        <a href="?phone={{ log.session.phone_number }}" class="fw-bold text-dark text-decoration-none font-monospace small">
+                            +{{ log.session.phone_number }}
+                        </a>
+                    </td>
+                    <td>
+                        {% if log.direction == 'in' %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill" style="font-size: 11px;">
+                            <i class="fa-solid fa-arrow-down-left"></i> Incoming
+                        </span>
+                        {% else %}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill" style="font-size: 11px;">
+                            <i class="fa-solid fa-arrow-up-right"></i> Outgoing
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark border font-monospace" style="font-size: 10px;">
+                            {{ log.state_at_time|default:"—" }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="text-dark small text-truncate" style="max-width: 480px;">
+                            {{ log.content|linebreaksbr }}
+                        </div>
+                    </td>
+                    <td style="text-align: right;">
+                        <button type="button" class="btn btn-sm btn-light border py-1 px-2" onclick="viewFullMessage(`{{ log.content|escapejs }}`, '{{ log.session.phone_number }}', '{{ log.direction }}', '{{ log.created_at|date:'d M Y, h:i A' }}')" title="View Full Message">
+                            <i class="fa-solid fa-eye text-primary"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">
+                        <i class="fa-solid fa-inbox fs-1 text-muted mb-3 d-block opacity-50"></i>
+                        No WhatsApp message logs found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white py-3 d-flex justify-content-between align-items-center">
+        <span class="small text-muted">
+            Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} logs
+        </span>
+        <ul class="pagination pagination-sm m-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&phone={{ phone_filter }}&direction={{ dir_filter }}&q={{ search_query }}">&laquo;</a></li>
+            {% endif %}
+            <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&phone={{ phone_filter }}&direction={{ dir_filter }}&q={{ search_query }}">&raquo;</a></li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal: View Full Message -->
+<div class="modal fade" id="fullMsgModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="msgModalTitle">Message Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="p-3 bg-light rounded-3 mb-3 font-monospace small" style="white-space: pre-wrap; word-break: break-all;" id="msgModalBody"></div>
+                <div class="text-muted small" id="msgModalMeta"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function viewFullMessage(content, phone, dir, timestamp) {
+        document.getElementById('msgModalTitle').innerText = (dir === 'in' ? '📥 Incoming from +' : '📤 Outgoing to +') + phone;
+        document.getElementById('msgModalBody').innerText = content;
+        document.getElementById('msgModalMeta').innerText = 'Timestamp: ' + timestamp;
+        new bootstrap.Modal(document.getElementById('fullMsgModal')).show();
+    }
+</script>
+{% endblock %}

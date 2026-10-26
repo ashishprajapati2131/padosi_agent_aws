@@ -54,7 +54,6 @@ generate_sarvam_audio.py
 check_elevenlabs.py
 test_elevenlabs*.py
 inspect_new_audio.py
+error_500.html
+latest_general_rendered.html
 
-# Other project isolated modules
-apps/wa_agent_bot/
-simulate_wa_bot.py

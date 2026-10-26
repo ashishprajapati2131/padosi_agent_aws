@@ -4,6 +4,7 @@ import json
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.conf import settings
 from django.core.cache import cache
@@ -323,6 +324,12 @@ def general(request):
     else:
         card_enabled = bool(card_val) if card_val is not None else False
 
+    wa_val = SiteSetting.get_value('wa_agent_bot_enabled', True)
+    if isinstance(wa_val, str):
+        wa_bot_enabled = wa_val.lower() in ('1', 'true', 'yes', 'on')
+    else:
+        wa_bot_enabled = bool(wa_val) if wa_val is not None else True
+
     context = {
         'site_name': SiteSetting.get_value('site_name', 'PadosiAgent'),
         'site_logo': SiteSetting.get_value('site_logo', ''),
@@ -334,6 +341,7 @@ def general(request):
         'distributor_invite_message': SiteSetting.get_value('distributor_invite_message', default_message),
         'wholesale_marketplace_enabled': wm_enabled,
         'agent_digital_card_enabled': card_enabled,
+        'wa_agent_bot_enabled': wa_bot_enabled,
         'google_site_verification': SiteSetting.get_value('google_site_verification', ''),
     }
 
@@ -347,7 +355,7 @@ SETTINGS_FORM_KEYS = {
     'general': {
         'site_name', 'contact_email', 'contact_phone', 'contact_address',
         'social_links', 'distributor_invite_message', 'wholesale_marketplace_enabled',
-        'agent_digital_card_enabled', 'google_site_verification',
+        'agent_digital_card_enabled', 'wa_agent_bot_enabled', 'google_site_verification',
     },
     'seo': {
         'seo_meta_title', 'seo_meta_description', 'seo_keywords',
@@ -356,6 +364,27 @@ SETTINGS_FORM_KEYS = {
     },
     'security': {'rate_limit_clicks', 'rate_limit_timeframe', 'subscription_expiry_enforced'},
 }
+
+
+@csrf_exempt
+@require_POST
+def toggle_wa_bot_service(request):
+    """Quick AJAX ON/OFF toggle for the WhatsApp Agent Bot automation service."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+
+    wa_raw = SiteSetting.get_value('wa_agent_bot_enabled', True)
+    current = wa_raw.lower() in ('1', 'true', 'yes', 'on') if isinstance(wa_raw, str) else bool(wa_raw) if wa_raw is not None else True
+    new_val = not current
+    SiteSetting.set_value('wa_agent_bot_enabled', '1' if new_val else '0', group='general')
+    AdminActivityLog.log(f"Toggled WhatsApp Bot to {'Enabled' if new_val else 'Disabled'}", 'SiteSetting', request=request)
+    status_str = 'Enabled' if new_val else 'Disabled'
+    return JsonResponse({
+        'success': True,
+        'enabled': new_val,
+        'message': f'WhatsApp Agent Automation is now {status_str}.'
+    })
 
 
 def update_settings(request):
@@ -391,6 +420,9 @@ def update_settings(request):
 
             card_enabled = request.POST.get('agent_digital_card_enabled') in ('1', 'true', 'on')
             SiteSetting.set_value('agent_digital_card_enabled', card_enabled, group='general')
+
+            wa_bot_enabled = request.POST.get('wa_agent_bot_enabled') in ('1', 'true', 'on')
+            SiteSetting.set_value('wa_agent_bot_enabled', wa_bot_enabled, group='general')
             
         # Handle file uploads (site_logo, site_favicon, og_default_image)
         import uuid

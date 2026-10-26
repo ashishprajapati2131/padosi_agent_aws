@@ -1,0 +1,107 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}WhatsApp &amp; OpenWA Security Audit — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}Communications &rsaquo; WhatsApp &amp; OpenWA &rsaquo; Security Audit{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-1">
+            <i class="fa-solid fa-shield-halved text-success me-2"></i> WhatsApp &amp; OpenWA Security Center
+        </h5>
+        <p class="text-muted mb-0" style="font-size: 13.5px;">
+            Auditing webhook signatures, encryption, rate limiting, anti-spoofing guards, and credential exposure prevention.
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'admin_wa_dashboard' %}" class="btn btn-sm btn-outline-dark fw-bold">
+            <i class="fa-solid fa-gauge me-1"></i> Command Center
+        </a>
+        <a href="{% url 'admin_wa_sessions_list' %}" class="btn btn-sm btn-outline-primary fw-bold">
+            <i class="fa-brands fa-whatsapp me-1"></i> Bot Sessions
+        </a>
+        <a href="{% url 'admin_wa_logs_list' %}" class="btn btn-sm btn-outline-secondary fw-bold">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i> Message Logs
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Security Checklist Card -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-white border-0 py-3">
+                <h6 class="fw-bold text-dark m-0">
+                    <i class="fa-solid fa-list-check text-primary me-2"></i> Active Security Hardening Matrix
+                </h6>
+            </div>
+            <div class="card-body pt-0">
+                <div class="list-group list-group-flush">
+                    {% for check in security_checks %}
+                    <div class="list-group-item px-0 py-3 border-bottom d-flex align-items-start justify-content-between gap-3">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #f8fafc; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="{{ check.icon }} fs-5"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold text-dark mb-1" style="font-size: 14.5px;">{{ check.title }}</h6>
+                                <p class="text-muted small mb-0">{{ check.desc }}</p>
+                            </div>
+                        </div>
+                        <div>
+                            {% if check.status == 'SECURE' or check.status == 'ACTIVE' or check.status == 'ENFORCED' or check.status == 'AUTHENTICATED' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fw-bold" style="font-size: 11px;">
+                                <i class="fa-solid fa-check me-1"></i> {{ check.status }}
+                            </span>
+                            {% elif check.status == 'WARNING' %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 rounded-pill fw-bold" style="font-size: 11px;">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ check.status }}
+                            </span>
+                            {% else %}
+                            <span class="badge bg-info-subtle text-info border border-info-subtle px-3 py-2 rounded-pill fw-bold" style="font-size: 11px;">
+                                {{ check.status }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Summary & Guidelines -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-white border-0 py-3">
+                <h6 class="fw-bold text-dark m-0">
+                    <i class="fa-solid fa-circle-info text-info me-2"></i> Zero-Vulnerability Standards
+                </h6>
+            </div>
+            <div class="card-body pt-0">
+                <div class="p-3 bg-light rounded-3 mb-3">
+                    <div class="fw-bold text-dark small mb-1">🔐 Credential Leakage Shield</div>
+                    <p class="text-muted small mb-0" style="font-size: 12.5px;">
+                        Password plaintext is completely removed from all payment callbacks and confirmation web views. Only the agent's verified WhatsApp and private email receive credentials.
+                    </p>
+                </div>
+
+                <div class="p-3 bg-light rounded-3 mb-3">
+                    <div class="fw-bold text-dark small mb-1">🛡️ Anti-Spoofing Webhooks</div>
+                    <p class="text-muted small mb-0" style="font-size: 12.5px;">
+                        Payment callbacks explicitly cross-verify captured status with Razorpay API. An attacker cannot synthesize a fake URL to activate membership for free.
+                    </p>
+                </div>
+
+                <div class="p-3 bg-light rounded-3">
+                    <div class="fw-bold text-dark small mb-1">⚡ Anti-Spam Rate Limiting</div>
+                    <p class="text-muted small mb-0" style="font-size: 12.5px;">
+                        Incoming messages are throttled to a maximum of 10 requests per minute per phone number via Django memory cache.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

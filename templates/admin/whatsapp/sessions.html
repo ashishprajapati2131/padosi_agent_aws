@@ -1,0 +1,242 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}WhatsApp Agent Bot Sessions — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}Communications &rsaquo; WhatsApp &amp; OpenWA &rsaquo; Bot Sessions{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-1">
+            <i class="fa-brands fa-whatsapp text-success me-2"></i> WhatsApp Bot Sessions
+        </h5>
+        <p class="text-muted mb-0" style="font-size: 13.5px;">
+            Live tracking of agent onboarding journeys, states, data collection, and payment links.
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'admin_wa_dashboard' %}" class="btn btn-sm btn-outline-dark fw-bold">
+            <i class="fa-solid fa-gauge me-1"></i> Command Center
+        </a>
+        <a href="{% url 'admin_wa_logs_list' %}" class="btn btn-sm btn-outline-secondary fw-bold">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i> Message Logs
+        </a>
+        <a href="/wa-bot/simulator/" target="_blank" class="btn btn-sm btn-success fw-bold">
+            <i class="fa-solid fa-comments me-1"></i> Web Simulator
+        </a>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-grid mb-4" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#eef2ff;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:20px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.total }}</div>
+                <div class="stat-label">Total Sessions</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#ecfdf5;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-circle-check" style="color:#059669;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.registered }}</div>
+                <div class="stat-label">Registered Agents</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#fffbeb;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-credit-card" style="color:#d97706;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.awaiting_payment }}</div>
+                <div class="stat-label">Awaiting Payment</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#f8fafc;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-spinner" style="color:#64748b;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.in_progress }}</div>
+                <div class="stat-label">In Progress</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table Card -->
+<div class="card shadow-sm border-0 rounded-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h6 class="m-0 fw-bold">Active WhatsApp Bot Sessions</h6>
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search phone, name, email..." class="form-control form-control-sm" style="width: 220px;">
+            <select name="state" class="form-select form-select-sm" style="width: 170px;">
+                <option value="">All States</option>
+                <option value="welcome" {% if state_filter == 'welcome' %}selected{% endif %}>welcome</option>
+                <option value="ask_fullname" {% if state_filter == 'ask_fullname' %}selected{% endif %}>ask_fullname</option>
+                <option value="ask_email" {% if state_filter == 'ask_email' %}selected{% endif %}>ask_email</option>
+                <option value="ask_mobile" {% if state_filter == 'ask_mobile' %}selected{% endif %}>ask_mobile</option>
+                <option value="ask_state" {% if state_filter == 'ask_state' %}selected{% endif %}>ask_state</option>
+                <option value="ask_pincode" {% if state_filter == 'ask_pincode' %}selected{% endif %}>ask_pincode</option>
+                <option value="ask_experience" {% if state_filter == 'ask_experience' %}selected{% endif %}>ask_experience</option>
+                <option value="ask_segments" {% if state_filter == 'ask_segments' %}selected{% endif %}>ask_segments</option>
+                <option value="confirm" {% if state_filter == 'confirm' %}selected{% endif %}>confirm</option>
+                <option value="ask_plan" {% if state_filter == 'ask_plan' %}selected{% endif %}>ask_plan</option>
+                <option value="awaiting_payment" {% if state_filter == 'awaiting_payment' %}selected{% endif %}>awaiting_payment</option>
+                <option value="logged_in" {% if state_filter == 'logged_in' %}selected{% endif %}>logged_in</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
+            {% if search_query or state_filter %}
+                <a href="?" class="btn btn-sm btn-outline-secondary">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="font-size: 12px; width: 140px;">PHONE NUMBER</th>
+                    <th style="font-size: 12px; width: 180px;">AGENT</th>
+                    <th style="font-size: 12px; width: 130px;">JOURNEY STATE</th>
+                    <th style="font-size: 12px;">CAPTURED DATA</th>
+                    <th style="font-size: 12px; width: 130px;">LAST ACTIVE</th>
+                    <th style="font-size: 12px; width: 160px; text-align: right;">ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in page_obj %}
+                <tr>
+                    <td>
+                        <div class="fw-bold text-dark font-monospace" style="font-size: 13px;">+{{ s.phone_number }}</div>
+                        {% if s.is_registered %}
+                        <span class="badge bg-success" style="font-size: 10px;">Registered</span>
+                        {% else %}
+                        <span class="badge bg-secondary" style="font-size: 10px;">Onboarding</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if s.agent %}
+                            <div class="fw-bold text-dark">{{ s.agent.fullname }}</div>
+                            <div class="text-muted small">{{ s.agent.email }}</div>
+                        {% elif s.registration_data.fullname %}
+                            <div class="fw-bold text-dark">{{ s.registration_data.fullname }}</div>
+                            <div class="text-muted small">{{ s.registration_data.email|default:"No email yet" }}</div>
+                        {% else %}
+                            <span class="text-muted small">Not provided yet</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge 
+                            {% if s.state == 'logged_in' %}bg-success
+                            {% elif s.state == 'awaiting_payment' %}bg-warning text-dark
+                            {% elif s.state == 'welcome' %}bg-info text-dark
+                            {% else %}bg-light text-dark border{% endif %}">
+                            {{ s.state }}
+                        </span>
+                    </td>
+                    <td class="small">
+                        {% if s.registration_data %}
+                            {% if s.registration_data.state %}📍 {{ s.registration_data.state }}, {{ s.registration_data.agent_pincode }}{% endif %}
+                            {% if s.registration_data.plan_name %} &bull; 🏷️ {{ s.registration_data.plan_name }}{% endif %}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted small">
+                        {{ s.last_message_at|timesince }} ago
+                    </td>
+                    <td style="text-align: right;">
+                        <div class="d-inline-flex gap-1">
+                            <a href="/wa-bot/simulator/?phone={{ s.phone_number }}" target="_blank" class="btn btn-sm btn-outline-success py-1 px-2" title="Test in Web Simulator">
+                                <i class="fa-solid fa-play"></i>
+                            </a>
+
+                            {% if s.agent %}
+                            <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2" onclick="resendCreds({{ s.id }})" title="Resend Credentials to WhatsApp & Email">
+                                <i class="fa-solid fa-key"></i>
+                            </button>
+                            {% endif %}
+
+                            <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="resetSession({{ s.id }}, '{{ s.phone_number }}')" title="Reset Session to Welcome">
+                                <i class="fa-solid fa-arrows-rotate"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-5">
+                        <i class="fa-brands fa-whatsapp fs-1 text-muted mb-3 d-block opacity-50"></i>
+                        No WhatsApp bot sessions found matching your criteria.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="card-footer bg-white py-3 d-flex justify-content-between align-items-center">
+        <span class="small text-muted">
+            Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} sessions
+        </span>
+        <ul class="pagination pagination-sm m-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&state={{ state_filter }}">&laquo;</a></li>
+            {% endif %}
+            <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ search_query }}&state={{ state_filter }}">&raquo;</a></li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function resetSession(id, phone) {
+        if (!confirm(`Are you sure you want to reset session for ${phone} back to Welcome state? This will clear temporary onboarding data.`)) return;
+
+        fetch(`/admin/whatsapp/reset-session/${id}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+            }
+        })
+        .then(r => r.json())
+        .then(d => {
+            alert(d.message || (d.success ? 'Session reset' : 'Failed'));
+            if (d.success) location.reload();
+        })
+        .catch(e => alert('Error: ' + e));
+    }
+
+    function resendCreds(id) {
+        if (!confirm('Resend login credentials to this agent via WhatsApp and Email?')) return;
+
+        fetch(`/admin/whatsapp/resend-creds/${id}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+            }
+        })
+        .then(r => r.json())
+        .then(d => {
+            alert(d.message || (d.success ? 'Credentials resent' : 'Failed'));
+        })
+        .catch(e => alert('Error: ' + e));
+    }
+</script>
+{% endblock %}
