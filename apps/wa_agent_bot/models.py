@@ -73,6 +73,7 @@ class WaBotSession(models.Model):
         blank=True,
         related_name='wa_bot_sessions',
         help_text='Linked agent record after successful registration',
+        db_constraint=False,
     )
     is_registered = models.BooleanField(
         default=False,
@@ -137,6 +138,7 @@ class WaBotMessageLog(models.Model):
         WaBotSession,
         on_delete=models.CASCADE,
         related_name='message_logs',
+        db_constraint=False,
     )
     direction = models.CharField(max_length=3, choices=DIRECTION_CHOICES)
     content = models.TextField(help_text='Message text content')

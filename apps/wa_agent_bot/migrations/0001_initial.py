@@ -20,6 +20,13 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunSQL(
+            sql=[
+                "DROP TABLE IF EXISTS wa_bot_message_logs;",
+                "DROP TABLE IF EXISTS wa_bot_sessions;",
+            ],
+            reverse_sql="",
+        ),
         migrations.CreateModel(
             name='WaBotSession',
             fields=[
@@ -36,6 +43,8 @@ class Migration(migrations.Migration):
                         ('ask_experience', 'Ask Experience'),
                         ('ask_segments', 'Ask Segments'),
                         ('confirm_details', 'Confirm Details'),
+                        ('ask_plan', 'Ask Plan Selection'),
+                        ('awaiting_payment', 'Awaiting Payment'),
                         ('creating_account', 'Creating Account'),
                         ('registration_done', 'Registration Done'),
                         ('logged_in', 'Logged In'),
@@ -55,6 +64,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('agent', models.ForeignKey(
                     blank=True,
+                    db_constraint=False,
                     help_text='Linked agent record after successful registration',
                     null=True,
                     on_delete=django.db.models.deletion.SET_NULL,
@@ -78,6 +88,7 @@ class Migration(migrations.Migration):
                 ('state_at_time', models.CharField(blank=True, default='', help_text='Bot state when this message was processed', max_length=50)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('session', models.ForeignKey(
+                    db_constraint=False,
                     on_delete=django.db.models.deletion.CASCADE,
                     related_name='message_logs',
                     to='wa_agent_bot.wabotsession',
