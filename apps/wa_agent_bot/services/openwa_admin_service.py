@@ -126,7 +126,7 @@ def get_openwa_session_status():
                 'latency_ms': latency,
                 'session': data,
                 'status': raw_status,
-                'is_connected': raw_status in ('connected', 'working', 'authenticated'),
+                'is_connected': raw_status in ('connected', 'working', 'authenticated', 'ready'),  # OpenWA 0.12 reports 'ready'
                 'is_qr_ready': raw_status in ('qr_ready', 'scan_qr_code'),
                 'phone': data.get('phone'),
                 'push_name': data.get('pushName'),
