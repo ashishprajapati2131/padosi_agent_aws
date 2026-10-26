@@ -113,6 +113,7 @@ def logs(request):
                             'timestamp': timestamp_str,
                             'level': match.group(2),
                             'env': 'local' if getattr(settings, 'DEBUG', True) else 'production',
+                            'source': match.group(3),
                             'message': match.group(4),
                             'stack': ''
                         }
@@ -131,11 +132,19 @@ def logs(request):
     # Show newest first
     logs_data.reverse()
     
+    counts = collections.Counter(l['level'].lower() for l in logs_data)
+    counts['error'] += counts.pop('critical', 0)
+    level_counts = {'all': len(logs_data), **{k: counts[k] for k in ('error', 'warning', 'info')}}
+
     level_filter = request.GET.get('level', 'all')
     if level_filter != 'all':
-        logs_data = [l for l in logs_data if level_filter.lower() == l['level'].lower()]
+        # "error" also covers CRITICAL so fatal entries aren't hidden
+        wanted = {'error', 'critical'} if level_filter == 'error' else {level_filter.lower()}
+        logs_data = [l for l in logs_data if l['level'].lower() in wanted]
 
-    return render(request, 'admin/system/logs.html', {'logs': logs_data, 'levelFilter': level_filter})
+    return render(request, 'admin/system/logs.html', {
+        'logs': logs_data, 'levelFilter': level_filter, 'levelCounts': level_counts,
+    })
 
 def api_logs(request):
     """

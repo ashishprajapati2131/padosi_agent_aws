@@ -5,114 +5,177 @@
 
 {% block styles %}
 <style>
-    .log-container {
-        background-color: #0f172a;
-        color: #e2e8f0;
-        font-family: 'Consolas', 'Courier New', monospace;
-        padding: 16px;
-        border-radius: 8px;
-        max-height: 700px;
-        overflow-y: auto;
+    .logs-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .level-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+    .level-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
         font-size: 13px;
-        line-height: 1.5;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background .15s, color .15s;
     }
-    .log-item {
-        padding: 8px;
-        border-bottom: 1px solid #334155;
-        margin-bottom: 8px;
-    }
-    .log-item:last-child {
-        border-bottom: none;
-        margin-bottom: 0;
-    }
-    .log-timestamp {
-        color: #94a3b8;
-        margin-right: 12px;
-    }
-    .log-env {
-        color: #7dd3fc;
-        margin-right: 8px;
-    }
-    .log-level {
-        font-weight: bold;
-        margin-right: 12px;
-    }
-    .log-level.error, .log-level.critical { color: #ef4444; }
-    .log-level.warning { color: #f59e0b; }
-    .log-level.info { color: #3b82f6; }
-    .log-level.debug { color: #10b981; }
-    
-    .log-message {
-        color: #f8fafc;
-        word-break: break-all;
-    }
-    .log-stack {
-        display: none;
-        margin-top: 8px;
-        padding: 8px;
-        background: rgba(0,0,0,0.2);
-        color: #cbd5e1;
-        white-space: pre-wrap;
-        border-radius: 4px;
-        font-size: 12px;
-    }
-    .toggle-stack {
-        cursor: pointer;
-        color: #3b82f6;
-        text-decoration: underline;
-        margin-left: 8px;
+    .level-tab:hover { background: var(--border-light); color: inherit; }
+    .level-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .level-tab .count {
+        min-width: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: rgba(100,116,139,.15);
         font-size: 11px;
+        text-align: center;
+    }
+    .level-tab.active .count { background: rgba(255,255,255,.25); }
+    .logs-search { max-width: 280px; }
+
+    .log-list { max-height: 70vh; overflow-y: auto; }
+    .log-row {
+        display: grid;
+        grid-template-columns: 90px 160px 1fr;
+        gap: 12px;
+        align-items: start;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border-light);
+        border-left: 3px solid transparent;
+        font-size: 13px;
+    }
+    .log-row:hover { background: var(--border-light); }
+    .log-row.lvl-error, .log-row.lvl-critical { border-left-color: #ef4444; }
+    .log-row.lvl-warning { border-left-color: #f59e0b; }
+    .log-row.lvl-info { border-left-color: #3b82f6; }
+    .log-row.lvl-debug { border-left-color: #10b981; }
+
+    .log-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .03em;
+        text-align: center;
+    }
+    .log-badge.error, .log-badge.critical { background: rgba(239,68,68,.12); color: #dc2626; }
+    .log-badge.warning { background: rgba(245,158,11,.14); color: #b45309; }
+    .log-badge.info { background: rgba(59,130,246,.12); color: #2563eb; }
+    .log-badge.debug { background: rgba(16,185,129,.12); color: #059669; }
+
+    .log-time { color: var(--text-muted); font-family: Consolas, 'Courier New', monospace; font-size: 12px; white-space: nowrap; }
+    .log-meta { margin-bottom: 2px; font-size: 12px; color: var(--text-muted); }
+    .log-source { font-family: Consolas, 'Courier New', monospace; }
+    .log-message { overflow-wrap: anywhere; font-weight: 500; }
+
+    .log-stack summary {
+        margin-top: 6px;
+        cursor: pointer;
+        color: var(--primary);
+        font-size: 12px;
+        font-weight: 600;
+        user-select: none;
+    }
+    .log-stack pre {
+        margin: 8px 0 0;
+        padding: 12px;
+        max-height: 360px;
+        overflow: auto;
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.5;
+        white-space: pre;
+    }
+    .log-empty-search { display: none; padding: 32px; text-align: center; color: var(--text-muted); }
+
+    @media (max-width: 768px) {
+        .log-row { grid-template-columns: 1fr; gap: 4px; }
+        .logs-search { max-width: none; width: 100%; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="content-body">
-    
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="mb-1" style="font-weight: 700;">System Logs</h4>
-            <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Displaying the most recent entries from django.log</p>
-        </div>
-        <form method="GET" class="d-flex align-items-center gap-2">
-            <select name="level" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="all" {% if levelFilter == 'all' %}selected{% endif %}>All Levels</option>
-                <option value="error" {% if levelFilter == 'error' %}selected{% endif %}>Errors Only</option>
-                <option value="warning" {% if levelFilter == 'warning' %}selected{% endif %}>Warnings Only</option>
-                <option value="info" {% if levelFilter == 'info' %}selected{% endif %}>Info Only</option>
-            </select>
-        </form>
+
+    <div class="mb-4">
+        <h4 class="mb-1" style="font-weight: 700;">System Logs</h4>
+        <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Most recent entries from <code>django.log</code>, newest first</p>
     </div>
 
     <div class="card">
-        <div class="card-body p-0">
-            {% if not logs %}
-                <div class="p-5 text-center text-muted">
-                    <i class="fa-solid fa-check-circle mb-3" style="font-size: 48px; color: var(--primary);"></i>
-                    <h5>No Logs Found</h5>
-                    <p>There are no logs matching your criteria, or the log file is empty.</p>
-                </div>
-            {% else %}
-                <div class="log-container">
-                    {% for log in logs %}
-                        <div class="log-item">
-                            <div>
-                                <span class="log-timestamp">[{{ log.timestamp }}]</span>
-                                {% if log.env %}<span class="log-env">{{ log.env }}</span>{% endif %}
-                                <span class="log-level {{ log.level|lower }}">{{ log.level|upper }}</span>
-                                <span class="log-message">{{ log.message }}</span>
-                                {% if log.stack %}
-                                    <span class="toggle-stack" onclick="$('#stack-{{ forloop.counter }}').slideToggle()">Toggle Stack Trace</span>
-                                {% endif %}
-                            </div>
-                            {% if log.stack %}
-                                <div id="stack-{{ forloop.counter }}" class="log-stack">{{ log.stack }}</div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                </div>
+        <div class="logs-toolbar">
+            <nav class="level-tabs" aria-label="Filter by level">
+                <a href="?level=all" class="level-tab {% if levelFilter == 'all' %}active{% endif %}">All <span class="count">{{ levelCounts.all }}</span></a>
+                <a href="?level=error" class="level-tab {% if levelFilter == 'error' %}active{% endif %}">Errors <span class="count">{{ levelCounts.error }}</span></a>
+                <a href="?level=warning" class="level-tab {% if levelFilter == 'warning' %}active{% endif %}">Warnings <span class="count">{{ levelCounts.warning }}</span></a>
+                <a href="?level=info" class="level-tab {% if levelFilter == 'info' %}active{% endif %}">Info <span class="count">{{ levelCounts.info }}</span></a>
+            </nav>
+            {% if logs %}
+                <input type="search" id="logSearch" class="form-control form-control-sm logs-search" placeholder="Search message or source…" aria-label="Search logs">
             {% endif %}
         </div>
+
+        {% if not logs %}
+            <div class="p-5 text-center text-muted">
+                <i class="fa-solid fa-check-circle mb-3" style="font-size: 48px; color: var(--primary);"></i>
+                <h5>No Logs Found</h5>
+                <p class="mb-0">There are no logs matching this filter, or the log file is empty.</p>
+            </div>
+        {% else %}
+            <div class="log-list" id="logList">
+                {% for log in logs %}
+                    <div class="log-row lvl-{{ log.level|lower }}">
+                        <div><span class="log-badge {{ log.level|lower }}">{{ log.level|upper }}</span></div>
+                        <div class="log-time">{{ log.timestamp }}</div>
+                        <div>
+                            <div class="log-meta">
+                                {% if log.source %}<span class="log-source">{{ log.source }}</span>{% endif %}
+                                {% if log.env %}· {{ log.env }}{% endif %}
+                            </div>
+                            <div class="log-message">{{ log.message }}</div>
+                            {% if log.stack %}
+                                <details class="log-stack">
+                                    <summary>Stack trace</summary>
+                                    <pre>{{ log.stack }}</pre>
+                                </details>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+                <div class="log-empty-search" id="logEmptySearch">No entries match your search.</div>
+            </div>
+        {% endif %}
     </div>
 </div>
+
+<script>
+(function () {
+    var input = document.getElementById('logSearch');
+    if (!input) return;
+    var rows = document.querySelectorAll('#logList .log-row');
+    var empty = document.getElementById('logEmptySearch');
+    input.addEventListener('input', function () {
+        var q = input.value.trim().toLowerCase();
+        var shown = 0;
+        rows.forEach(function (row) {
+            var hit = !q || row.textContent.toLowerCase().indexOf(q) !== -1;
+            row.style.display = hit ? '' : 'none';
+            if (hit) shown++;
+        });
+        empty.style.display = shown ? 'none' : 'block';
+    });
+})();
+</script>
 {% endblock %}
