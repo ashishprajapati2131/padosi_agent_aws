@@ -70,3 +70,15 @@ class SeoRedirectTests(TestCase):
     def test_www_post_is_not_redirected(self):
         response = self.client.post('/contact/submit/', HTTP_HOST='www.example.com')
         self.assertNotEqual(response.status_code, 301)
+
+
+@override_settings(ALLOWED_HOSTS=['*'])
+class LegalPageMetaTests(TestCase):
+    def test_legal_pages_have_description_and_absolute_canonical(self):
+        for path in ('/terms/', '/privacy/', '/cancellation-refund-policy/'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200, path)
+            body = response.content.decode()
+            self.assertEqual(body.count('<meta name="description"'), 1, path)
+            # Host comes from APP_URL (get_public_site_base), so only check shape.
+            self.assertRegex(body, r'<link rel="canonical" href="https?://[^/"]+' + path + '">')
