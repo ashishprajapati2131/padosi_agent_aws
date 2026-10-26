@@ -237,6 +237,7 @@ class AgentQrAndCardTests(TestCase):
             razorpay_payment_id='pay_QRTEST123',
         )
         SiteSetting.set_value('qr_service_config', {'enabled': True, 'allow_download': True}, 'pricing')
+        SiteSetting.set_value('agent_digital_card_enabled', True, group='general')
 
     def test_target_urls_encode_profile_card_and_reviews(self):
         request = self.client.get('/').wsgi_request
