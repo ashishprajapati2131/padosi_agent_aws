@@ -12,9 +12,10 @@ from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import connection
 from django.conf import settings
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import collections
+from apps.admin_panel.services import log_reader
 
 logger = logging.getLogger(__name__)
 
@@ -75,75 +76,73 @@ def clear_cache(request):
     referer = request.META.get('HTTP_REFERER')
     return redirect(referer if referer else 'admin_dashboard')
 
+LOG_RANGES = {'1h': timedelta(hours=1), '24h': timedelta(hours=24), '7d': timedelta(days=7), 'all': None}
+
+
 def logs(request):
     """
-    Logs viewer.
+    Logs viewer: repeated log lines grouped into issues, with exception type, app location and a plain hint.
     """
     log_path = getattr(settings, 'LOGS_DIR', settings.BASE_DIR / 'logs') / 'django.log'
-    logs_data = []
-    
+    entries, file_info = [], None
+
     if log_path.exists():
         try:
-            with open(log_path, 'r', encoding='utf-8') as f:
-                # Regex for format: [2026-08-08 19:40:39,000] INFO apps.module — message
-                log_pattern = re.compile(r'^\[(.*?)\]\s+(\w+)\s+(\S+)\s+(?:—|-|.*?)\s+(.*)')
-                ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-                current_log = None
-                
-                # Use deque to efficiently get the last 1000 lines without loading the whole file in memory
-                lines = collections.deque(f, maxlen=1000)
-                
-                for line in lines:
-                    line = line.rstrip('\n')
-                    if not line:
-                        continue
-                        
-                    # Strip ANSI color codes
-                    line = ansi_escape.sub('', line)
-                        
-                    match = log_pattern.match(line)
-                    if match:
-                        if current_log:
-                            logs_data.append(current_log)
-                            
-                        # Format timestamp (remove milliseconds if present)
-                        timestamp_str = match.group(1).split(',')[0] if ',' in match.group(1) else match.group(1)
-                            
-                        current_log = {
-                            'timestamp': timestamp_str,
-                            'level': match.group(2),
-                            'env': 'local' if getattr(settings, 'DEBUG', True) else 'production',
-                            'source': match.group(3),
-                            'message': match.group(4),
-                            'stack': ''
-                        }
-                    else:
-                        # Append to previous log's stack trace
-                        if current_log:
-                            current_log['stack'] += line + '\n'
-                            
-                if current_log:
-                    logs_data.append(current_log)
-                    
+            entries = log_reader.parse_entries(log_reader.read_tail(log_path), settings.BASE_DIR)
+            stat = log_path.stat()
+            file_info = {'size': format_bytes(stat.st_size), 'modified': datetime.fromtimestamp(stat.st_mtime)}
         except Exception as e:
             logger.error(f"Error reading logs: {e}")
             messages.error(request, "Failed to read logs.")
-    
-    # Show newest first
-    logs_data.reverse()
-    
-    counts = collections.Counter(l['level'].lower() for l in logs_data)
-    counts['error'] += counts.pop('critical', 0)
-    level_counts = {'all': len(logs_data), **{k: counts[k] for k in ('error', 'warning', 'info')}}
 
-    level_filter = request.GET.get('level', 'all')
-    if level_filter != 'all':
-        # "error" also covers CRITICAL so fatal entries aren't hidden
-        wanted = {'error', 'critical'} if level_filter == 'error' else {level_filter.lower()}
-        logs_data = [l for l in logs_data if l['level'].lower() in wanted]
+    now = datetime.now()
+    view_mode = request.GET.get('view') if request.GET.get('view') in ('issues', 'stream') else 'issues'
+    level_filter = request.GET.get('level') if request.GET.get('level') in ('error', 'warning', 'info', 'all') else 'error'
+    range_key = request.GET.get('range') if request.GET.get('range') in LOG_RANGES else '7d'
+    query = request.GET.get('q', '').strip()
 
+    # Last-24h hourly activity chart, independent of the filters
+    buckets = [{'errors': 0, 'warnings': 0, 'hour': (now - timedelta(hours=23 - i)).strftime('%H:00')} for i in range(24)]
+    for e in entries:
+        if e['time'] and now - e['time'] < timedelta(hours=24) and e['severity'] in ('error', 'warning'):
+            idx = 23 - int((now - e['time']).total_seconds() // 3600)
+            buckets[idx]['errors' if e['severity'] == 'error' else 'warnings'] += 1
+    peak = max([b['errors'] + b['warnings'] for b in buckets] + [1])
+    for b in buckets:
+        b['err_pct'] = round(b['errors'] * 100 / peak)
+        b['warn_pct'] = round(b['warnings'] * 100 / peak)
+
+    if LOG_RANGES[range_key]:
+        cutoff = now - LOG_RANGES[range_key]
+        entries = [e for e in entries if e['time'] and e['time'] >= cutoff]
+
+    counts = collections.Counter(e['severity'] for e in entries)
+    errors = [e for e in entries if e['severity'] == 'error']
+    stats = {
+        'errors': counts['error'],
+        'warnings': counts['warning'],
+        'info': counts['info'] + counts['debug'],
+        'error_issues': len({e['fingerprint'] for e in errors}),
+        'last_error': errors[-1]['time'] if errors else None,
+    }
+
+    if level_filter == 'warning':
+        entries = [e for e in entries if e['severity'] in ('error', 'warning')]
+    elif level_filter != 'all':
+        entries = [e for e in entries if e['severity'] == level_filter]
+    if query:
+        q = query.lower()
+        entries = [e for e in entries if q in f"{e['message']} {e['source']} {e['stack']}".lower()]
+
+    items = log_reader.group_issues(entries) if view_mode == 'issues' else entries[::-1]
+    page = Paginator(items, 30).get_page(request.GET.get('page'))
+
+    params = request.GET.copy()
+    params.pop('page', None)
     return render(request, 'admin/system/logs.html', {
-        'logs': logs_data, 'levelFilter': level_filter, 'levelCounts': level_counts,
+        'page_obj': page, 'viewMode': view_mode, 'levelFilter': level_filter, 'rangeKey': range_key,
+        'query': query, 'stats': stats, 'buckets': buckets, 'fileInfo': file_info,
+        'baseQuery': params.urlencode(), 'now': now,
     })
 
 def api_logs(request):

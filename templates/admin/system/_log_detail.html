@@ -1,0 +1,46 @@
+<div class="lg-body">
+    {% if e.hint %}
+        <div class="lg-hint"><i class="fa-solid fa-lightbulb"></i><div><strong>What this means:</strong> {{ e.hint }}</div></div>
+    {% endif %}
+
+    <div>
+        <div class="lg-section-title">Message · {{ e.time|date:"d M Y, H:i:s" }} · {{ e.source }}</div>
+        <pre class="lg-fullmsg">{{ e.message }}{% if e.exc_type %}
+{{ e.exc_type }}{% if e.exc_msg %}: {{ e.exc_msg }}{% endif %}{% endif %}</pre>
+    </div>
+
+    {% if e.location %}
+        <div>
+            <div class="lg-section-title">Where it failed</div>
+            <div class="lg-where">
+                <div class="lg-where-file">{{ e.location.file }} · line {{ e.location.line }} · {{ e.location.func }}()</div>
+                {% if e.location.code %}<div class="lg-where-code">{{ e.location.code }}</div>{% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if e.frames %}
+        <div>
+            <div class="lg-section-title">Call path (your code highlighted)</div>
+            <div class="lg-frames">
+                {% for f in e.frames %}
+                    <div class="lg-frame {% if f.is_app %}app{% else %}lib{% endif %}{% if f is e.location %} last{% endif %}">
+                        <span class="f-file">{{ f.file }}:{{ f.line }}</span> in {{ f.func }}
+                        {% if f.code %}<span class="f-code">{{ f.code }}</span>{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="lg-actions">
+        <button type="button" class="lg-btn" data-lg-action="copy"><i class="fa-regular fa-copy me-1"></i>Copy for debugging</button>
+        {% if e.frames %}<button type="button" class="lg-btn" data-lg-action="frames" data-label="Show framework frames">Show framework frames</button>{% endif %}
+    </div>
+    {% if e.stack %}
+        <details class="lg-raw"><summary>Raw traceback</summary><pre class="lg-copy-src">[{{ e.time|date:"Y-m-d H:i:s" }}] {{ e.level }} {{ e.source }} — {{ e.message }}
+{{ e.stack }}</pre></details>
+    {% else %}
+        <pre class="lg-copy-src d-none">[{{ e.time|date:"Y-m-d H:i:s" }}] {{ e.level }} {{ e.source }} — {{ e.message }}</pre>
+    {% endif %}
+</div>
