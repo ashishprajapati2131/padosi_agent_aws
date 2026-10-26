@@ -680,3 +680,72 @@ class LeadAlertTests(unittest.TestCase):
         lead.agent.mobile = ''
         self.assertFalse(notify_agent_new_lead(lead))
         mock_send.assert_not_called()
+
+
+class SiteUrlTests(unittest.TestCase):
+    @override_settings(DEBUG=False, APP_URL='https://padosiagent.com')
+    def test_localhost_site_url_is_ignored_in_production(self):
+        from apps.wa_agent_bot.services.site_url import bot_site_url
+        with patch.dict('os.environ', {'WA_BOT_SITE_URL': 'http://localhost:8000'}):
+            self.assertEqual(bot_site_url(), 'https://padosiagent.com')
+
+    @override_settings(DEBUG=False, APP_URL='')
+    def test_falls_back_to_canonical_origin(self):
+        from apps.wa_agent_bot.services.site_url import bot_site_url
+        with patch.dict('os.environ', {'WA_BOT_SITE_URL': 'http://127.0.0.1:8000'}):
+            self.assertEqual(bot_site_url(), 'https://padosiagent.com')
+
+
+GET_VALUE = 'apps.home.models.site_setting.SiteSetting.get_value'
+
+
+class MessageTemplateTests(unittest.TestCase):
+    def _settings(self, templates=None, keywords=None):
+        values = {'wa_message_templates': templates or {}, 'wa_keyword_replies': keywords or []}
+        return patch(GET_VALUE, side_effect=lambda key, default=None: values.get(key, default))
+
+    def test_default_drops_lines_with_empty_values(self):
+        from apps.wa_agent_bot.services.message_templates import render
+        with self._settings():
+            text = render('lead_alert', customer_name='Ramesh', customer_mobile='98', customer_email='',
+                          dashboard_url='https://x/agent/dashboard/')
+        self.assertIn('Ramesh', text)
+        self.assertNotIn('Email', text)
+        self.assertNotIn('Pincode', text)
+
+    def test_admin_override_is_used(self):
+        from apps.wa_agent_bot.services.message_templates import render
+        with self._settings({'approval': 'Hi {agent_name}! {card_url}'}):
+            self.assertEqual(render('approval', agent_name='Asha', card_url='https://c'), 'Hi Asha! https://c')
+
+    def test_broken_override_falls_back_to_default(self):
+        from apps.wa_agent_bot.services.message_templates import render
+        with self._settings({'approval': 'Hi {agent_name.upper}'}):
+            self.assertIn('Congratulations, Asha', render('approval', agent_name='Asha'))
+
+    def test_template_errors(self):
+        from apps.wa_agent_bot.services.message_templates import template_errors
+        self.assertEqual(template_errors('approval', 'Hi {agent_name}'), [])
+        self.assertTrue(template_errors('approval', 'Hi {password}'))
+        self.assertTrue(template_errors('approval', 'Hi {agent_name'))
+
+    def test_keyword_matching(self):
+        from apps.wa_agent_bot.services.message_templates import match_keyword_reply
+        rules = [
+            {'keyword': 'Price', 'reply': 'Plans start at 999', 'match': 'exact', 'active': True},
+            {'keyword': 'office', 'reply': 'We are in Ahmedabad', 'match': 'contains', 'active': True},
+            {'keyword': 'off', 'reply': 'never', 'match': 'exact', 'active': False},
+        ]
+        with self._settings(keywords=rules):
+            self.assertEqual(match_keyword_reply('  price '), 'Plans start at 999')
+            self.assertIsNone(match_keyword_reply('price list'))
+            self.assertEqual(match_keyword_reply('where is your office?'), 'We are in Ahmedabad')
+            self.assertIsNone(match_keyword_reply('off'))
+
+    def test_keyword_reply_only_outside_registration(self):
+        rules = [{'keyword': 'price', 'reply': 'Plans start at 999', 'match': 'exact', 'active': True}]
+        with self._settings(keywords=rules):
+            welcome = MagicMock(state=WaBotSession.STATE_WELCOME, is_logged_in=False, agent=None)
+            self.assertEqual(process_message(welcome, 'price'), 'Plans start at 999')
+            mid = MagicMock(state=WaBotSession.STATE_ASK_FULLNAME, is_logged_in=False, agent=None, registration_data={})
+            self.assertNotEqual(process_message(mid, 'price'), 'Plans start at 999')

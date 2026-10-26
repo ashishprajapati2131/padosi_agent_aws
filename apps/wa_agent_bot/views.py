@@ -24,6 +24,8 @@ from .models import WaBotSession, WaBotMessageLog
 from .services.state_machine import process_message
 from .services.message_sender import send_text_message
 
+from apps.wa_agent_bot.services.site_url import bot_site_url
+
 logger = logging.getLogger(__name__)
 
 # ── Rate limiting ───────────────────────────────────────────────────────
@@ -355,7 +357,7 @@ def payment_callback(request):
     link_status = request.GET.get('razorpay_payment_link_status', '')
     signature = request.GET.get('razorpay_signature', '')
 
-    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+    site_url = bot_site_url()
     login_url = f"{site_url}/agent-login/"
 
     sub = None

@@ -40,6 +40,8 @@ from .payment_service import (
     activate_agent_subscription_after_payment,
 )
 
+from apps.wa_agent_bot.services.site_url import bot_site_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -280,6 +282,14 @@ def process_message(session, user_text):
                 + handle_credentials(session.agent)
             )
 
+    # ── Admin keyword auto-replies (Admin > WhatsApp > Messages) ─────
+    # Only outside the registration flow, so a keyword can't swallow an answer like a name or pincode.
+    if current_state in (WaBotSession.STATE_WELCOME, WaBotSession.STATE_LOGGED_IN):
+        from .message_templates import match_keyword_reply
+        keyword_reply = match_keyword_reply(text)
+        if keyword_reply:
+            return keyword_reply
+
     # ── Global: handle cancel at any registration state ─────────────
     if current_state not in (WaBotSession.STATE_WELCOME, WaBotSession.STATE_LOGGED_IN):
         if text_lower in CANCEL_KEYWORDS:
@@ -345,7 +355,7 @@ def _handle_welcome(session, text, text_lower):
     """Handle messages in WELCOME state."""
     # Check if already registered
     if session.is_registered and session.agent:
-        site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+        site_url = bot_site_url()
         login_url = f"{site_url}/agent-login/"
 
         # If they say register again, tell them they're already registered
@@ -404,7 +414,7 @@ def _handle_ask_email(session, text):
     email = parsed.get('email')
     mobile = parsed.get('mobile')
 
-    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+    site_url = bot_site_url()
     reg_data = session.registration_data or {}
 
     # Case 1: Both email and mobile provided at the same time
@@ -493,7 +503,7 @@ def _handle_ask_mobile(session, text):
     clean_wa = extract_clean_phone(session.phone_number)
     text_lower = text.strip().lower()
     reg_data = session.registration_data or {}
-    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+    site_url = bot_site_url()
 
     # Quick acceptance of WhatsApp number
     if text_lower in {'yes', 'y', '1', 'ha', 'haa', 'same', 'ok', 'sure'} and clean_wa:
@@ -728,7 +738,7 @@ def _handle_awaiting_payment(session, text, text_lower):
                     session.is_registered = True
                     session.is_logged_in = True
                     session.save()
-                    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+                    site_url = bot_site_url()
                     login_url = f"{site_url}/agent-login/"
                     mobile_clean = ''.join(c for c in (session.agent.mobile if session.agent else session.phone_number) if c.isdigit())
                     pw = mobile_clean[-10:] if len(mobile_clean) >= 10 else mobile_clean

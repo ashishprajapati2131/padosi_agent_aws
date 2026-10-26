@@ -289,3 +289,47 @@ class WaMessageLoggingTests(TestCase):
         WaBotMessageLog.objects.create(phone_number='2', direction='out', content='new')
         _wa_log_prune_job()
         self.assertEqual(list(WaBotMessageLog.objects.values_list('phone_number', flat=True)), ['2'])
+
+
+class WaMessagesPageTests(TestCase):
+    """Admin > WhatsApp > Messages: edit templates and keyword auto-replies."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.admin = Admin.objects.create(name='A', email='a2@padosiagent.com', password='x', role='super')
+
+    def _call(self, data=None):
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.middleware import SessionMiddleware
+        from apps.admin_panel.views.wa_bot_admin import wa_bot_messages
+        url = '/admin/whatsapp/messages/'
+        req = self.factory.post(url, data) if data is not None else self.factory.get(url)
+        SessionMiddleware(lambda r: None).process_request(req)
+        req.user = AnonymousUser()
+        req._messages = FallbackStorage(req)
+        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+            return wa_bot_messages(req)
+
+    def test_page_renders_defaults(self):
+        resp = self._call()
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('New lead alert', resp.content.decode('utf-8'))
+
+    def test_save_and_reset_template(self):
+        from apps.wa_agent_bot.services.message_templates import render
+        self._call({'action': 'save_template', 'key': 'approval', 'text': 'Approved {agent_name}'})
+        self.assertEqual(render('approval', agent_name='Asha'), 'Approved Asha')
+        self._call({'action': 'reset_template', 'key': 'approval'})
+        self.assertIn('Congratulations', render('approval', agent_name='Asha'))
+
+    def test_invalid_template_is_rejected(self):
+        from apps.wa_agent_bot.services.message_templates import get_overrides
+        self._call({'action': 'save_template', 'key': 'approval', 'text': 'Hi {password}'})
+        self.assertNotIn('approval', get_overrides())
+
+    def test_save_keywords(self):
+        from apps.wa_agent_bot.services.message_templates import get_keyword_replies
+        self._call({'action': 'save_keywords', 'keyword': ['price', ''], 'reply': ['999 only', ''],
+                    'match': ['exact', 'exact'], 'active': ['1', '1']})
+        self.assertEqual(get_keyword_replies(),
+                         [{'keyword': 'price', 'reply': '999 only', 'match': 'exact', 'active': True}])

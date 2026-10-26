@@ -17,6 +17,8 @@ Supported commands:
 import logging
 import os
 
+from apps.wa_agent_bot.services.site_url import bot_site_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,7 +77,7 @@ def handle_help():
 
 def handle_card(agent):
     """Provide visiting card link and public status."""
-    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+    site_url = bot_site_url()
     slug = None
     try:
         profile = agent.get_primary_profile()
@@ -112,7 +114,7 @@ def handle_profile(agent):
     plan_display = paid_plan_label(agent.plan_type) if agent.plan_type else 'None'
     segments = ', '.join(agent.user_types) if agent.user_types else 'None'
 
-    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+    site_url = bot_site_url()
 
     # Try to get the profile slug
     profile_url = ''
@@ -151,7 +153,7 @@ def handle_profile(agent):
 
 def handle_dashboard(agent):
     """Provide the dashboard link."""
-    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+    site_url = bot_site_url()
     dashboard_url = f"{site_url}/agent/dashboard/"
 
     return (
@@ -166,7 +168,7 @@ def handle_dashboard(agent):
 
 def handle_referral(agent):
     """Provide referral code and link."""
-    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+    site_url = bot_site_url()
 
     # Try to get referral code from the agent's profile or generate from ID
     referral_code = ''
@@ -266,7 +268,7 @@ def handle_support():
 
 def handle_credentials(agent):
     """Provide the agent's login information and password reminder."""
-    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+    site_url = bot_site_url()
     login_url = f"{site_url}/agent-login/"
     reset_url = f"{site_url}/password-reset/"
     mobile_clean = ''.join(c for c in (agent.mobile or '') if c.isdigit())

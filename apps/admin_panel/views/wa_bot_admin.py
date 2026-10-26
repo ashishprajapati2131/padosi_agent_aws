@@ -510,3 +510,77 @@ def wa_bot_list_remote_sessions(request):
     })
 
 
+
+
+def wa_bot_messages(request):
+    """Edit WhatsApp notification templates and keyword auto-replies."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect('admin_login')
+
+    from apps.wa_agent_bot.services import message_templates as mt
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action in ('save_template', 'reset_template'):
+            key = request.POST.get('key', '')
+            if key not in mt.TEMPLATES:
+                messages.error(request, 'Unknown template.')
+                return redirect('admin_wa_messages')
+            overrides = dict(mt.get_overrides())
+            if action == 'reset_template':
+                overrides.pop(key, None)
+                messages.success(request, f"'{mt.TEMPLATES[key]['label']}' reset to the default text.")
+            else:
+                text = request.POST.get('text', '').replace('\r\n', '\n').strip()
+                errors = mt.template_errors(key, text) if text else ['Message cannot be empty.']
+                if errors:
+                    for err in errors:
+                        messages.error(request, err)
+                    return redirect(f"{request.path}#tpl-{key}")
+                overrides[key] = text
+                messages.success(request, f"'{mt.TEMPLATES[key]['label']}' saved.")
+            SiteSetting.set_value(mt.TEMPLATES_SETTING, overrides, group='whatsapp')
+            _log_admin_action(request, f'wa_{action}', 'WhatsAppTemplate', 0, key)
+            return redirect(f"{request.path}#tpl-{key}")
+
+        if action == 'save_keywords':
+            rules, seen = [], set()
+            for keyword, reply, match, active in zip(
+                request.POST.getlist('keyword'), request.POST.getlist('reply'),
+                request.POST.getlist('match'), request.POST.getlist('active'),
+            ):
+                keyword, reply = keyword.strip()[:100], reply.replace('\r\n', '\n').strip()[:mt.MAX_TEMPLATE_LEN]
+                if not keyword and not reply:
+                    continue  # blank row
+                if not keyword or not reply:
+                    messages.error(request, f"Each keyword needs both a keyword and a reply ('{keyword or reply[:30]}').")
+                    return redirect(f"{request.path}#keywords")
+                if keyword.lower() in seen:
+                    messages.error(request, f"Keyword '{keyword}' is listed twice.")
+                    return redirect(f"{request.path}#keywords")
+                seen.add(keyword.lower())
+                rules.append({'keyword': keyword, 'reply': reply,
+                              'match': 'contains' if match == 'contains' else 'exact', 'active': active == '1'})
+            if len(rules) > mt.MAX_KEYWORDS:
+                messages.error(request, f'At most {mt.MAX_KEYWORDS} keywords are allowed.')
+                return redirect(f"{request.path}#keywords")
+            SiteSetting.set_value(mt.KEYWORDS_SETTING, rules, group='whatsapp')
+            _log_admin_action(request, 'wa_save_keywords', 'WhatsAppKeyword', 0, f'{len(rules)} keyword(s)')
+            messages.success(request, f'{len(rules)} keyword auto-repl{"y" if len(rules) == 1 else "ies"} saved.')
+            return redirect(f"{request.path}#keywords")
+
+        messages.error(request, 'Unknown action.')
+        return redirect('admin_wa_messages')
+
+    overrides = mt.get_overrides()
+    templates = [
+        {'key': key, 'label': spec['label'], 'placeholders': spec['placeholders'],
+         'text': overrides.get(key) or spec['default'], 'customized': key in overrides}
+        for key, spec in mt.TEMPLATES.items()
+    ]
+    return render(request, 'admin/whatsapp/messages.html', {
+        'templates': templates,
+        'keywords': mt.get_keyword_replies(),
+        'max_len': mt.MAX_TEMPLATE_LEN,
+    })

@@ -34,6 +34,9 @@ from apps.wa_agent_bot.models import WaBotSession
 from apps.wa_agent_bot.services.message_sender import send_text_message
 from apps.wa_agent_bot.services.registration_handler import _generate_password, _generate_slug, _ensure_unique_slug
 
+from apps.wa_agent_bot.services.message_templates import render as render_template
+from apps.wa_agent_bot.services.site_url import bot_site_url
+
 logger = logging.getLogger(__name__)
 
 # ── Default pricing fallback (mirrors admin panel pricing_config) ──────
@@ -261,7 +264,7 @@ def create_plan_payment_link(session, plan_key):
         plan_key = 'starter'
 
     plan = plans[plan_key]
-    site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+    site_url = bot_site_url()
 
     # Create / update Agent in pending_payment status
     agent, user, temp_password = create_or_update_pending_agent(session.registration_data, plan_key)
@@ -490,26 +493,11 @@ def activate_agent_subscription_after_payment(subscription_id, payment_id=None, 
             session.registration_data['temp_password'] = password
             session.save()
 
-            site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+            site_url = bot_site_url()
             login_url = f"{site_url}/agent-login/"
-            welcome_msg = (
-                f"🎉 *Payment Received, {agent.fullname}!* 🚀\n"
-                f"Your payment was successfully verified and your registration is submitted for *Admin Approval*.\n\n"
-                f"⏳ *Account Status:* Pending Admin Approval\n"
-                f"Our admin team will review your application shortly. Once approved, your public profile and digital visiting card will go *LIVE*!\n\n"
-                f"🔑 *Your Portal Login Credentials:*\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"🌐 *Login URL:* {login_url}\n"
-                f"📧 *Email / User ID:* {agent.email}\n"
-                f"🔒 *Password:* `{password}` _(Your registered mobile number)_\n"
-                f"📦 *Selected Plan:* {subscription.selected_plan}\n\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"👉 *What you can do now:*\n"
-                f"1. Login to your dashboard using your mobile number as password\n"
-                f"2. Review your personal profile and business details\n"
-                f"3. You will receive an instant WhatsApp alert here as soon as the admin approves your account!\n\n"
-                f"💬 *WhatsApp Agent Assistant is Ready!*\n"
-                f"Type *status* anytime to check your approval status, or *help* to see all commands."
+            welcome_msg = render_template(
+                'welcome', agent_name=agent.fullname, login_url=login_url, email=agent.email,
+                password=password, plan=subscription.selected_plan,
             )
 
             # 6. Send WhatsApp confirmation with credentials (logged by send_text_message)

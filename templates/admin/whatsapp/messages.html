@@ -1,0 +1,114 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}WhatsApp Messages &amp; Auto-Replies — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}Communications &rsaquo; WhatsApp &amp; OpenWA &rsaquo; Messages{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-1">
+            <i class="fa-solid fa-pen-to-square text-primary me-2"></i> WhatsApp Messages &amp; Keyword Auto-Replies
+        </h5>
+        <p class="text-muted mb-0" style="font-size: 13.5px;">
+            Edit the automatic WhatsApp messages agents receive, and set custom replies for keywords people send to the bot.
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'admin_wa_dashboard' %}" class="btn btn-sm btn-outline-dark fw-bold">
+            <i class="fa-solid fa-gauge me-1"></i> Command Center
+        </a>
+        <a href="{% url 'admin_wa_logs_list' %}" class="btn btn-sm btn-outline-secondary fw-bold">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i> Message Logs
+        </a>
+    </div>
+</div>
+
+<!-- Notification templates -->
+<h6 class="fw-bold mb-2">Automatic messages</h6>
+<p class="text-muted small mb-3">
+    Use the placeholders shown under each message, e.g. <code>{customer_name}</code>. A line whose placeholder has no value
+    (for example no email given) is left out automatically. WhatsApp formatting: <code>*bold*</code>, <code>_italic_</code>.
+</p>
+<div class="row g-3 mb-5">
+    {% for tpl in templates %}
+    <div class="col-lg-6" id="tpl-{{ tpl.key }}">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold small">{{ tpl.label }}</span>
+                {% if tpl.customized %}
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Customized</span>
+                {% else %}
+                <span class="badge bg-light text-muted border">Default</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="key" value="{{ tpl.key }}">
+                    <textarea name="text" rows="12" maxlength="{{ max_len }}" class="form-control font-monospace small" required>{{ tpl.text }}</textarea>
+                    <div class="small text-muted mt-2">
+                        Placeholders:
+                        {% for p in tpl.placeholders %}<code class="me-1">{{ "{" }}{{ p }}{{ "}" }}</code>{% endfor %}
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" name="action" value="save_template" class="btn btn-sm btn-primary fw-bold">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Save
+                        </button>
+                        {% if tpl.customized %}
+                        <button type="submit" name="action" value="reset_template" class="btn btn-sm btn-outline-secondary" formnovalidate
+                                onclick="return confirm('Reset this message to the default text?')">
+                            Reset to default
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Keyword auto-replies -->
+<div class="card shadow-sm border-0 rounded-4" id="keywords">
+    <div class="card-header bg-white py-3">
+        <h6 class="m-0 fw-bold">Keyword auto-replies</h6>
+        <div class="text-muted small mt-1">
+            When someone sends a matching message to the bot, it replies with your text. <b>Exact</b> matches the whole
+            message; <b>Contains</b> matches anywhere in it (case does not matter). Keywords are checked top to bottom and
+            are not used while someone is in the middle of registering, so they can't interrupt answers like a name or pincode.
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_keywords">
+            <div id="keywordRows">
+                {% for rule in keywords %}
+                {% include 'admin/whatsapp/_keyword_row.html' with rule=rule %}
+                {% empty %}
+                {% include 'admin/whatsapp/_keyword_row.html' %}
+                {% endfor %}
+            </div>
+            <template id="keywordRowTemplate">{% include 'admin/whatsapp/_keyword_row.html' %}</template>
+            <div class="d-flex gap-2 mt-3">
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addKeywordRow()">
+                    <i class="fa-solid fa-plus me-1"></i> Add keyword
+                </button>
+                <button type="submit" class="btn btn-sm btn-primary fw-bold">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> Save keywords
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function addKeywordRow() {
+        const row = document.getElementById('keywordRowTemplate').content.cloneNode(true);
+        document.getElementById('keywordRows').appendChild(row);
+    }
+    function removeKeywordRow(btn) {
+        btn.closest('.keyword-row').remove();
+    }
+</script>
+{% endblock %}
