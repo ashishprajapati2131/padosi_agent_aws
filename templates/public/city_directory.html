@@ -5,6 +5,7 @@
 {% block meta_description %}{{ meta_description }}{% endblock %}
 {% block meta_keywords %}{{ meta_keywords }}{% endblock %}
 {% block canonical_url %}{{ canonical_url }}{% endblock %}
+{% block meta_robots %}{{ meta_robots }}{% endblock %}
 {% block og_title %}{{ meta_title }}{% endblock %}
 {% block og_description %}{{ meta_description }}{% endblock %}
 {% block og_url %}{{ canonical_url }}{% endblock %}
@@ -27,13 +28,14 @@
       "item": {
         "@type": "InsuranceAgency",
         "name": "{{ a.fullname|escapejs }}",
-        {% if a.profile.profile_photo_url %}"image": "{{ a.profile.profile_photo_url }}",{% endif %}
+        "url": "{{ public_site_base }}/{{ a.state_code }}/{{ a.agent_slug }}/",
+        {% if a.profile.profile_photo_url %}"image": "{% if a.profile.profile_photo_url|slice:':1' == '/' %}{{ public_site_base }}{% endif %}{{ a.profile.profile_photo_url|escapejs }}",{% endif %}
         {% if a.mobile %}"telephone": "+91{{ a.mobile }}",{% endif %}
         "address": {
           "@type": "PostalAddress",
           "addressLocality": "{{ city_name|escapejs }}",
           "addressRegion": "{{ state_name|escapejs }}",
-          "postalCode": "{{ a.agent_pincode|default:'380001' }}",
+          {% if a.agent_pincode %}"postalCode": "{{ a.agent_pincode|escapejs }}",{% endif %}
           "addressCountry": "IN"
         }{% if a.average_rating and a.review_count %},
         "aggregateRating": {

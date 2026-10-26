@@ -75,6 +75,17 @@ class SEOMiddleware(MiddlewareMixin):
     # styles, fonts or CDNs, so no existing page can break.
     BASE_CSP = "base-uri 'self'; object-src 'none'"
 
+    def process_request(self, request):
+        # One host for search engines: www.<domain> -> <domain>. Only safe
+        # methods, so form/app POSTs to www are never dropped by a redirect.
+        host = request.get_host()
+        if host.startswith('www.') and request.method in ('GET', 'HEAD'):
+            from django.http import HttpResponsePermanentRedirect
+            return HttpResponsePermanentRedirect(
+                f"{request.scheme}://{host[4:]}{request.get_full_path()}"
+            )
+        return None
+
     def process_response(self, request, response):
         path = request.path
         if any(regex.match(path) for regex in self.compiled_paths):

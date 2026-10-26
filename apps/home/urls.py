@@ -15,7 +15,7 @@ urlpatterns = [
     path('contact/',         pages.contact,         name='contact'),
     path('contact/submit/',  pages.contact_submit,  name='contact_submit'),
     path('find-agents/',     pages.find_agents,     name='find_agents'),
-    path('insurance-agents/', pages.find_agents,     name='insurance_agents_hub'),
+    path('insurance-agents/', RedirectView.as_view(pattern_name='home:find_agents', permanent=True, query_string=True), name='insurance_agents_hub'),
     path('insurance-agents/<slug:city_slug>/', pages.city_agents_directory, name='city_agents_directory'),
     path('find-agents/ai-picks/', pages.ai_picks_comparison, name='ai_picks_comparison'),
     path('terms/',          pages.terms,          name='terms'),
@@ -27,7 +27,8 @@ urlpatterns = [
     path('marketing/', pages.marketing, name='marketing'),
     path('calculators/', calculators.hub, name='calculators'),
     path('calculators/<slug:slug>/', calculators.detail_or_category, name='calculator_detail'),
-    path('calculator/', RedirectView.as_view(url='/calculators/health-insurance-calculator/', permanent=True), name='calculator'),
+    # The health calculator is not live (404); send legacy links to the hub.
+    path('calculator/', RedirectView.as_view(pattern_name='home:calculators', permanent=True), name='calculator'),
     path('coming-soon/', pages.coming_soon, name='coming_soon'),
     path('lic-agent/', pages.lic_event, name='lic_event'),
     path('cancellation-refund-policy/', pages.cancellation_refund_policy, name='cancellation_refund'),

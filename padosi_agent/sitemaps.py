@@ -4,6 +4,10 @@ from apps.home.models.page import Page
 from apps.home.models.calculator import Calculator
 from apps.home.models.calculator_category import CalculatorCategory
 from apps.agents.models import Agent
+import re
+
+# Mirrors the profile route regex: one bad slug must not 500 the whole sitemap.
+_PROFILE_SLUG_RE = re.compile(r'[a-zA-Z0-9_-]+')
 
 class StaticViewSitemap(Sitemap):
     priority = 0.8
@@ -64,9 +68,12 @@ class AgentSitemap(Sitemap):
     changefreq = 'daily'
 
     def items(self):
-        # select_related: location() reads profile.slug/state for every agent
-        # (one extra query per agent without it).
-        return Agent.objects.filter(is_approved=True, status='active').select_related('profile').order_by('id')
+        # Same set the public directory lists (is_approved alone missed most
+        # live profiles). Drop the directory's heavy prefetches; location()
+        # only needs profile.
+        from apps.home.services.agent_filters import listed_agents_queryset
+        qs = listed_agents_queryset().prefetch_related(None).select_related('profile').order_by('id')
+        return [a for a in qs if _PROFILE_SLUG_RE.fullmatch(a.agent_slug)]
 
     def lastmod(self, obj):
         return obj.updated_at
@@ -83,8 +90,16 @@ class CitySitemap(Sitemap):
     changefreq = 'daily'
 
     def items(self):
+        from django.db.models import Count
         from apps.agents.models import City
-        return City.objects.filter(is_active=True, agents__is_approved=True, agents__status='active').distinct().order_by('name')
+        from apps.home.services.agent_filters import listed_agents_queryset
+        from apps.home.views.pages import MIN_INDEXABLE_CITY_AGENTS
+        from django.utils.text import slugify
+        # Only cities the city page itself marks indexable.
+        cities = (City.objects.filter(is_active=True, agents__in=listed_agents_queryset().values('id'))
+                .annotate(n=Count('agents', distinct=True))
+                .filter(n__gte=MIN_INDEXABLE_CITY_AGENTS).order_by('name'))
+        return [c for c in cities if _PROFILE_SLUG_RE.fullmatch(c.slug or slugify(c.name))]
 
     def location(self, obj):
         from django.utils.text import slugify

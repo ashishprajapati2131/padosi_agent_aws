@@ -109,9 +109,10 @@
             </div>
           </div>
 
-          <h1 class="pa-heading" id="pa-heading">
+          {# Same text as the mobile H1 above; a <p> so the page has one H1. #}
+          <p class="pa-heading" id="pa-heading">
             {{ hero_heading_html|clean_html }}
-          </h1>
+          </p>
 
           <div class="pa-stats-row" id="pa-stats">
             {% for s in stats_data %}

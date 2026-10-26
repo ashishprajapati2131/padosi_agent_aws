@@ -1421,6 +1421,8 @@ no spam calls, only trusted licensed agents.{% endblock %}
 
 {% block content %}
 <div style="display:none;">{% csrf_token %}</div>
+{# The design has no visible page title; one H1 for search engines and screen readers. #}
+<h1 class="sr-only">Find Verified Insurance Agents Near You</h1>
 <section class="benefit-con find-agents-con position-relative" style="padding-top: 0 !important;">
     <!-- Compact Horizontal Filter Bar (Spans full page width) -->
     <div class="compact-filter-bar">

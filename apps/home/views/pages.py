@@ -1981,6 +1981,9 @@ _AREA_PINCODE_MAP = {
 }
 
 
+MIN_INDEXABLE_CITY_AGENTS = 1
+
+
 def _resolve_area_to_pincodes(area_name_lower):
     """Return a list of pincodes for a known locality/area name, else empty list."""
     area = area_name_lower.strip()
@@ -2016,6 +2019,7 @@ def city_agents_directory(request, city_slug):
         or City.objects.filter(name__iexact=city_query_name).first()
     )
 
+    area_pincodes = []
     if city_obj:
         city_display = city_obj.name
         state_display = city_obj.state or 'Gujarat'
@@ -2072,7 +2076,7 @@ def city_agents_directory(request, city_slug):
             for pin in area_pincodes:
                 pin_q |= Q(agent_pincode__icontains=pin)
                 pin_q |= Q(profile__address__icontains=pin)
-                pin_q |= Q(servicePincodes__pincode=pin)
+                pin_q |= Q(servicePincodes__service_pincode=pin)
 
             # Also include area name in address
             pin_q |= Q(profile__address__icontains=city_query_name)
@@ -2108,6 +2112,11 @@ def city_agents_directory(request, city_slug):
         agents_qs
         .order_by('-created_at')[:200]   # cap to avoid full-table scans
     )
+    # Unknown slug with no agents: a real 404, not an indexable "Agents in <anything>" page.
+    if not agents_list and not city_obj and not area_pincodes:
+        from django.http import Http404
+        raise Http404("City not found")
+
     # Sort by rating descending
     agents_list.sort(key=lambda a: (getattr(a, 'average_rating', 0) or 0), reverse=True)
 
@@ -2129,6 +2138,11 @@ def city_agents_directory(request, city_slug):
     )
 
     canonical_url = request.build_absolute_uri(f"/insurance-agents/{raw_slug}/")
+    if page_obj.number > 1:
+        # Paginated pages are self-canonical (Google ignores rel=prev/next).
+        canonical_url += f"?page={page_obj.number}"
+    # Empty pages (no agents) stay reachable but out of the index (soft-404 risk).
+    meta_robots = 'index, follow' if paginator.count >= MIN_INDEXABLE_CITY_AGENTS else 'noindex, follow'
     meta_title = f"Verified Insurance Agents in {city_display} | Licensed Advisors — PadosiAgent"
     meta_desc = f"Looking for trusted insurance agents in {city_display}? Find verified local advisors for Health, Life, Car & Bike insurance with ratings & doorstep assistance on PadosiAgent."
     meta_kw = f"insurance agent in {city_display}, best insurance agent in {city_display}, insurance agent near me {city_display}, licensed insurance agent {city_display}, health insurance agent {city_display}, life insurance agent {city_display}, PadosiAgent"
@@ -2146,6 +2160,7 @@ def city_agents_directory(request, city_slug):
         'meta_title': meta_title,
         'meta_description': meta_desc,
         'meta_keywords': meta_kw,
+        'meta_robots': meta_robots,
     }
     return render(request, 'public/city_directory.html', context)
 
