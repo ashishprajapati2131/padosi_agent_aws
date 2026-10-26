@@ -1,4 +1,4 @@
-{% load static %}
+{% load static city_tags %}
 <footer class="footer-con position-relative">
     <div class="container position-relative">
         <div class="middle_portion">
@@ -108,6 +108,12 @@
         <p class="mb-0">© {% now "Y" %} {{ footer_settings.site_name|default:"PadosiAgent" }} ServTech Private Limited.
             All rights reserved. | <a href="/privacy/" class="text-decoration-none">Privacy Policy</a> | <a
                 href="/terms/" class="text-decoration-none">Terms & Conditions</a></p>
+        {% popular_cities as footer_cities %}
+        {% if footer_cities %}
+        <p class="mb-0 mt-1">Insurance agents in:
+            {% for c in footer_cities %}<a href="{% url 'home:city_agents_directory' c.slug %}" class="text-decoration-none">{{ c.name }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}
+        </p>
+        {% endif %}
     </div>
 
     {% if footer_settings.contact_email %}

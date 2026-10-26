@@ -111,3 +111,26 @@ class BlacklistedPageTests(TestCase):
         body = response.content.decode()
         self.assertEqual(body.count('<h1'), 1)
         self.assertIn('<meta name="description" content="Check whether an insurance agent has been blacklisted', body)
+
+
+@override_settings(ALLOWED_HOSTS=['*'])
+class FooterPopularCitiesTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_footer_links_cities_with_three_or_more_agents(self):
+        surat = City.objects.create(name='Surat', slug='surat', state='Gujarat')
+        junk = City.objects.create(name='all world', slug='all-world')
+        for i in range(3):
+            _listed_agent(f'Surat {i}', f'surat-{i}', surat)
+        _listed_agent('Solo', 'solo', junk)
+        body = self.client.get('/about/').content.decode()
+        self.assertIn('href="/insurance-agents/surat/"', body)
+        self.assertNotIn('/insurance-agents/all-world/', body)
+
+    def test_footer_renders_when_city_query_fails(self):
+        from unittest import mock
+        with mock.patch('apps.home.services.agent_filters.listed_agents_queryset', side_effect=RuntimeError('db down')):
+            response = self.client.get('/about/')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('Insurance agents in:', response.content.decode())
