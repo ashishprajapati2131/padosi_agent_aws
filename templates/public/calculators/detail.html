@@ -2,9 +2,10 @@
 {% load static %}
 
 {% block title %}{{ calc.meta_title|default:calc.title }}{% endblock %}
-{% block meta_description %}{{ calc.meta_description|default:calc.short_description }}{% endblock %}
+{# Admin descriptions are often one short line; pad short ones so search snippets have context. #}
+{% block meta_description %}{{ calc.meta_description|default:calc.short_description }}{% if calc.meta_description|default:calc.short_description|length < 90 %} Free {{ calc.title }} for India: get an instant estimate, then talk to a verified PadosiAgent near you.{% endif %}{% endblock %}
 {% block og_title %}{{ calc.meta_title|default:calc.title }}{% endblock %}
-{% block og_description %}{{ calc.meta_description|default:calc.short_description }}{% endblock %}
+{% block og_description %}{{ calc.meta_description|default:calc.short_description }}{% if calc.meta_description|default:calc.short_description|length < 90 %} Free {{ calc.title }} for India: get an instant estimate, then talk to a verified PadosiAgent near you.{% endif %}{% endblock %}
 {% block canonical_url %}{{ canonical_url }}{% endblock %}
 
 {% block extra_css %}

@@ -134,3 +134,35 @@ class FooterPopularCitiesTests(TestCase):
             response = self.client.get('/about/')
         self.assertEqual(response.status_code, 200)
         self.assertNotIn('Insurance agents in:', response.content.decode())
+
+
+@override_settings(ALLOWED_HOSTS=['*'])
+class CalculatorDescriptionTests(TestCase):
+    def setUp(self):
+        from apps.home.calculators.seed import seed_calculators, seed_categories
+        from apps.home.models.calculator import Calculator
+        from apps.home.models.calculator_category import CalculatorCategory
+        cache.clear()
+        seed_categories(CalculatorCategory)
+        seed_calculators(Calculator, CalculatorCategory, activate_all=True)
+        self.Calculator, self.Category = Calculator, CalculatorCategory
+
+    def _desc(self, path):
+        import re
+        response = self.client.get(path)
+        self.assertEqual(response.status_code, 200, path)
+        return re.search(r'<meta name="description" content="([^"]*)"', response.content.decode()).group(1)
+
+    def test_short_description_is_padded(self):
+        calc = self.Calculator.objects.get(slug='rd-calculator')
+        calc.meta_description = 'Estimate recurring deposit maturity value.'
+        calc.save()
+        desc = self._desc('/calculators/rd-calculator/')
+        self.assertTrue(desc.startswith('Estimate recurring deposit maturity value. Free '))
+        self.assertIn('verified PadosiAgent near you.', desc)
+
+    def test_long_description_left_alone(self):
+        calc = self.Calculator.objects.get(slug='rd-calculator')
+        calc.meta_description = 'x' * 100
+        calc.save()
+        self.assertEqual(self._desc('/calculators/rd-calculator/'), 'x' * 100)
