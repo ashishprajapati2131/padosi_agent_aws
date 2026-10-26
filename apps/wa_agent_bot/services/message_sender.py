@@ -50,18 +50,49 @@ def _format_chat_id(phone_number):
     return digits
 
 
-def send_text_message(phone_number, text):
+def _log_outbound(phone_number, text, category, session, result):
+    """Record every outbound attempt (sent or failed) for the admin WhatsApp logs. Never raises."""
+    try:
+        from apps.wa_agent_bot.models import WaBotSession, WaBotMessageLog
+        digits = ''.join(c for c in str(phone_number) if c.isdigit())
+        if session is None and digits:
+            session = WaBotSession.objects.filter(phone_number=digits).only('id', 'state').first()
+        WaBotMessageLog.objects.create(
+            session=session,
+            phone_number=digits[:20],
+            direction=WaBotMessageLog.DIRECTION_OUT,
+            category=category,
+            status=WaBotMessageLog.STATUS_SENT if result.get('success') else WaBotMessageLog.STATUS_FAILED,
+            error=(result.get('error') or '')[:500],
+            content=text[:5000],
+            state_at_time=getattr(session, 'state', '') or '',
+        )
+    except Exception as e:
+        logger.error(f"[WA-Bot] Could not write message log for {phone_number}: {e}")
+
+
+def send_text_message(phone_number, text, category='bot', session=None):
     """
-    Send a text message to a WhatsApp number via OpenWA API.
+    Send a text message to a WhatsApp number via OpenWA API and log the attempt.
 
     Args:
         phone_number: Phone number (e.g., '919876543210')
         text: Message text (supports WhatsApp formatting: *bold*, _italic_)
+        category: WaBotMessageLog category ('bot', 'lead_alert', 'approval', ...)
+        session: WaBotSession to link the log to (looked up by phone when omitted)
 
     Returns:
         dict with 'success' (bool) and 'data' or 'error' keys
     """
+    result = _send(phone_number, text)
+    _log_outbound(phone_number, text, category, session, result)
+    return result
+
+
+def _send(phone_number, text):
     config = _get_config()
+    if not config['base_url'] or not config['session_id']:
+        return {'success': False, 'error': 'OpenWA Server URL / Session ID not configured'}
     chat_id = _format_chat_id(phone_number)
     base = config['base_url'].rstrip('/')
     if not base.endswith('/api'):

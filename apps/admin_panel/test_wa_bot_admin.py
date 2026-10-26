@@ -240,3 +240,52 @@ class WaBotAdminTests(TestCase):
             self.assertEqual(data['sessions'][0]['id'], 'test-session-id')
 
 
+class WaMessageLoggingTests(TestCase):
+    """Every outbound WhatsApp attempt is logged (sent or failed) and visible in the admin logs page."""
+
+    CFG = {'base_url': 'https://openwa.example', 'session_id': 's1', 'api_key': 'k'}
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.admin = Admin.objects.create(name='A', email='a@padosiagent.com', password='x', role='super')
+
+    @patch('apps.wa_agent_bot.services.message_sender._get_config', return_value=CFG)
+    @patch('apps.wa_agent_bot.services.message_sender.requests.post')
+    def test_sent_and_failed_messages_are_logged(self, mock_post, _cfg):
+        from apps.wa_agent_bot.services.message_sender import send_text_message
+        mock_post.return_value = MagicMock(status_code=201, text='{}', json=lambda: {})
+        send_text_message('919800000001', 'hello', category='lead_alert')
+        mock_post.return_value = MagicMock(status_code=500, text='boom', json=lambda: {'message': 'boom'})
+        send_text_message('919800000002', 'hi again', category='approval')
+
+        sent = WaBotMessageLog.objects.get(phone_number='919800000001')
+        self.assertEqual((sent.status, sent.category, sent.session), ('sent', 'lead_alert', None))
+        failed = WaBotMessageLog.objects.get(phone_number='919800000002')
+        self.assertEqual(failed.status, 'failed')
+        self.assertIn('500', failed.error)
+
+    @patch('apps.wa_agent_bot.services.message_sender._get_config', return_value={'base_url': '', 'session_id': '', 'api_key': ''})
+    def test_unconfigured_openwa_logs_failure_without_request(self, _cfg):
+        from apps.wa_agent_bot.services.message_sender import send_text_message
+        self.assertFalse(send_text_message('919800000003', 'x')['success'])
+        self.assertEqual(WaBotMessageLog.objects.get(phone_number='919800000003').status, 'failed')
+
+    def test_logs_page_filters_failed(self):
+        WaBotMessageLog.objects.create(phone_number='919800000004', direction='out', status='failed', error='HTTP 500', content='a')
+        WaBotMessageLog.objects.create(phone_number='919800000005', direction='out', status='sent', content='b')
+        req = self.factory.get('/admin/whatsapp/logs/?status=failed')
+        req.session = {'admin_id': self.admin.pk}
+        req.user = AnonymousUser()
+        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+            html = wa_bot_logs_list(req).content.decode('utf-8')
+        self.assertIn('919800000004', html)
+        self.assertNotIn('919800000005', html)
+
+    def test_prune_job_drops_only_old_rows(self):
+        from datetime import datetime, timedelta
+        from apps.agents.services.background_jobs import _wa_log_prune_job
+        old = WaBotMessageLog.objects.create(phone_number='1', direction='out', content='old')
+        WaBotMessageLog.objects.filter(pk=old.pk).update(created_at=datetime.now() - timedelta(days=120))
+        WaBotMessageLog.objects.create(phone_number='2', direction='out', content='new')
+        _wa_log_prune_job()
+        self.assertEqual(list(WaBotMessageLog.objects.values_list('phone_number', flat=True)), ['2'])

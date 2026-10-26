@@ -55,10 +55,10 @@ class WaBotSessionAdmin(admin.ModelAdmin):
 
 @admin.register(WaBotMessageLog)
 class WaBotMessageLogAdmin(admin.ModelAdmin):
-    list_display = ('session', 'direction', 'short_content', 'state_at_time', 'created_at')
-    list_filter = ('direction', 'state_at_time')
-    search_fields = ('session__phone_number', 'content')
-    readonly_fields = ('session', 'direction', 'content', 'state_at_time', 'created_at')
+    list_display = ('phone_number', 'direction', 'category', 'status', 'short_content', 'created_at')
+    list_filter = ('direction', 'category', 'status')
+    search_fields = ('phone_number', 'content')
+    readonly_fields = ('session', 'phone_number', 'direction', 'category', 'status', 'error', 'content', 'state_at_time', 'created_at')
 
     def short_content(self, obj):
         return obj.content[:80] + '...' if len(obj.content) > 80 else obj.content

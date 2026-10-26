@@ -134,13 +134,41 @@ class WaBotMessageLog(models.Model):
         (DIRECTION_OUT, 'Outgoing'),
     ]
 
+    STATUS_SENT = 'sent'
+    STATUS_FAILED = 'failed'
+    STATUS_RECEIVED = 'received'
+    STATUS_CHOICES = [
+        (STATUS_SENT, 'Sent'),
+        (STATUS_FAILED, 'Failed'),
+        (STATUS_RECEIVED, 'Received'),
+    ]
+
+    # What triggered the message, so admins can filter e.g. only lead alerts.
+    CATEGORY_CHOICES = [
+        ('bot', 'Bot conversation'),
+        ('lead_alert', 'Lead alert'),
+        ('approval', 'Approval notice'),
+        ('rejection', 'Rejection notice'),
+        ('welcome', 'Welcome / credentials'),
+        ('admin_test', 'Admin test message'),
+        ('rate_limit', 'Rate-limit warning'),
+        ('simulator', 'Simulator'),
+    ]
+
+    # Null for messages sent to numbers that never chatted with the bot (e.g. lead alerts).
     session = models.ForeignKey(
         WaBotSession,
         on_delete=models.CASCADE,
         related_name='message_logs',
         db_constraint=False,
+        null=True,
+        blank=True,
     )
+    phone_number = models.CharField(max_length=20, blank=True, default='', db_index=True)
     direction = models.CharField(max_length=3, choices=DIRECTION_CHOICES)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='bot', db_index=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_SENT, db_index=True)
+    error = models.CharField(max_length=500, blank=True, default='')
     content = models.TextField(help_text='Message text content')
     state_at_time = models.CharField(
         max_length=50,
@@ -148,7 +176,7 @@ class WaBotMessageLog(models.Model):
         default='',
         help_text='Bot state when this message was processed',
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         db_table = 'wa_bot_message_logs'
@@ -157,4 +185,4 @@ class WaBotMessageLog(models.Model):
         verbose_name_plural = 'WhatsApp Bot Message Logs'
 
     def __str__(self):
-        return f"[{self.direction}] {self.session.phone_number} @ {self.created_at}"
+        return f"[{self.direction}/{self.status}] {self.phone_number} @ {self.created_at}"

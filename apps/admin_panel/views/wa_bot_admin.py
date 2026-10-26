@@ -84,10 +84,15 @@ def wa_bot_dashboard(request):
     # Message Counts
     now = timezone.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    total_msgs = WaBotMessageLog.objects.count()
-    today_msgs = WaBotMessageLog.objects.filter(created_at__gte=today_start).count()
-    today_in = WaBotMessageLog.objects.filter(created_at__gte=today_start, direction=WaBotMessageLog.DIRECTION_IN).count()
-    today_out = WaBotMessageLog.objects.filter(created_at__gte=today_start, direction=WaBotMessageLog.DIRECTION_OUT).count()
+    today = Q(created_at__gte=today_start)
+    msg_counts = WaBotMessageLog.objects.aggregate(
+        total=Count('id'),
+        today=Count('id', filter=today),
+        today_in=Count('id', filter=today & Q(direction=WaBotMessageLog.DIRECTION_IN)),
+        today_out=Count('id', filter=today & Q(direction=WaBotMessageLog.DIRECTION_OUT)),
+    )
+    total_msgs, today_msgs = msg_counts['total'], msg_counts['today']
+    today_in, today_out = msg_counts['today_in'], msg_counts['today_out']
 
     # Step-by-Step Funnel
     state_counts = dict(
@@ -195,22 +200,34 @@ def wa_bot_logs_list(request):
     if not admin_id:
         return redirect('admin_login')
 
-    phone_filter = request.GET.get('phone', '').strip()
+    phone_filter = ''.join(c for c in request.GET.get('phone', '') if c.isdigit())
     dir_filter = request.GET.get('direction', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    category_filter = request.GET.get('category', '').strip()
     search_query = request.GET.get('q', '').strip()
 
-    logs_qs = WaBotMessageLog.objects.select_related('session').all().order_by('-created_at')
+    # The list reads phone_number off the log row, so no join to sessions is needed.
+    logs_qs = WaBotMessageLog.objects.order_by('-created_at')
 
     if phone_filter:
-        logs_qs = logs_qs.filter(session__phone_number__icontains=phone_filter)
+        logs_qs = logs_qs.filter(phone_number__contains=phone_filter)
     if dir_filter:
         logs_qs = logs_qs.filter(direction=dir_filter)
+    if status_filter:
+        logs_qs = logs_qs.filter(status=status_filter)
+    if category_filter:
+        logs_qs = logs_qs.filter(category=category_filter)
     if search_query:
         logs_qs = logs_qs.filter(content__icontains=search_query)
 
-    total_logs = WaBotMessageLog.objects.count()
-    in_logs = WaBotMessageLog.objects.filter(direction=WaBotMessageLog.DIRECTION_IN).count()
-    out_logs = WaBotMessageLog.objects.filter(direction=WaBotMessageLog.DIRECTION_OUT).count()
+    # One aggregate query instead of a COUNT per stat card.
+    stats = WaBotMessageLog.objects.aggregate(
+        total=Count('id'),
+        incoming=Count('id', filter=Q(direction=WaBotMessageLog.DIRECTION_IN)),
+        outgoing=Count('id', filter=Q(direction=WaBotMessageLog.DIRECTION_OUT, status=WaBotMessageLog.STATUS_SENT)),
+        failed=Count('id', filter=Q(status=WaBotMessageLog.STATUS_FAILED)),
+        lead_alerts=Count('id', filter=Q(category='lead_alert')),
+    )
 
     paginator = Paginator(logs_qs, 50)
     page_number = request.GET.get('page', 1)
@@ -220,12 +237,11 @@ def wa_bot_logs_list(request):
         'page_obj': page_obj,
         'phone_filter': phone_filter,
         'dir_filter': dir_filter,
+        'status_filter': status_filter,
+        'category_filter': category_filter,
+        'category_choices': WaBotMessageLog.CATEGORY_CHOICES,
         'search_query': search_query,
-        'stats': {
-            'total': total_logs,
-            'in': in_logs,
-            'out': out_logs,
-        },
+        'stats': stats,
         'bot_enabled': SiteSetting.get_value('wa_agent_bot_enabled', True),
     }
     return render(request, 'admin/whatsapp/logs.html', context)

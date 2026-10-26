@@ -687,7 +687,10 @@ def simulator_send(request):
     # Log incoming
     WaBotMessageLog.objects.create(
         session=session,
+        phone_number=phone,
         direction=WaBotMessageLog.DIRECTION_IN,
+        category='simulator',
+        status=WaBotMessageLog.STATUS_RECEIVED,
         content=text[:2000],
         state_at_time=session.state,
     )
@@ -702,7 +705,9 @@ def simulator_send(request):
     # Log outgoing
     WaBotMessageLog.objects.create(
         session=session,
+        phone_number=phone,
         direction=WaBotMessageLog.DIRECTION_OUT,
+        category='simulator',
         content=reply[:5000],
         state_at_time=session.state,
     )

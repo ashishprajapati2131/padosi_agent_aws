@@ -275,7 +275,7 @@ def send_admin_test_whatsapp(phone, text):
     if len(clean_phone) < 10:
         return False, "Invalid phone number format"
 
-    res = send_text_message(clean_phone, text)
+    res = send_text_message(clean_phone, text, category='admin_test')
     if res.get('success'):
         return True, "Message sent successfully!"
     return False, res.get('error', 'Failed to send message via OpenWA')

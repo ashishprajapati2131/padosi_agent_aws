@@ -202,7 +202,7 @@ def webhook_receiver(request):
     # ── Rate limiting ───────────────────────────────────────────────
     if not _check_rate_limit(phone):
         logger.warning(f"[WA-Bot] Rate limit exceeded for {phone}")
-        send_text_message(phone, "⚠️ You're sending messages too quickly. Please wait a moment and try again.")
+        send_text_message(phone, "⚠️ You're sending messages too quickly. Please wait a moment and try again.", category='rate_limit')
         return JsonResponse({'status': 'rate_limited'}, status=429)
 
     # ── Get or create session ───────────────────────────────────────
@@ -224,7 +224,9 @@ def webhook_receiver(request):
     # ── Log incoming message ────────────────────────────────────────
     WaBotMessageLog.objects.create(
         session=session,
+        phone_number=phone[:20],
         direction=WaBotMessageLog.DIRECTION_IN,
+        status=WaBotMessageLog.STATUS_RECEIVED,
         content=text[:2000],  # cap at 2000 chars
         state_at_time=session.state,
     )
@@ -239,19 +241,11 @@ def webhook_receiver(request):
             "Please try again in a moment or type *restart* to start over."
         )
 
-    # ── Log outgoing message ────────────────────────────────────────
-    WaBotMessageLog.objects.create(
-        session=session,
-        direction=WaBotMessageLog.DIRECTION_OUT,
-        content=reply[:5000],  # cap at 5000 chars
-        state_at_time=session.state,
-    )
-
     # ── Save session (state machine already saved, but ensure) ──────
     session.save()
 
-    # ── Send reply via OpenWA ───────────────────────────────────────
-    send_result = send_text_message(phone, reply)
+    # ── Send reply via OpenWA (send_text_message logs it) ───────────
+    send_result = send_text_message(phone, reply, session=session)
 
     if not send_result['success']:
         logger.error(f"[WA-Bot] Failed to send reply to {phone}: {send_result.get('error', 'unknown')}")

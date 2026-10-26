@@ -30,7 +30,7 @@ from apps.agents.services.razorpay_checkout import (
     razorpay_webhook_secret,
 )
 from apps.agents.services.post_payment import queue_invoice_and_welcome
-from apps.wa_agent_bot.models import WaBotSession, WaBotMessageLog
+from apps.wa_agent_bot.models import WaBotSession
 from apps.wa_agent_bot.services.message_sender import send_text_message
 from apps.wa_agent_bot.services.registration_handler import _generate_password, _generate_slug, _ensure_unique_slug
 
@@ -512,16 +512,8 @@ def activate_agent_subscription_after_payment(subscription_id, payment_id=None, 
                 f"Type *status* anytime to check your approval status, or *help* to see all commands."
             )
 
-            # 6. Log credentials message to database
-            WaBotMessageLog.objects.create(
-                session=session,
-                direction=WaBotMessageLog.DIRECTION_OUT,
-                content=welcome_msg,
-                state_at_time=session.state,
-            )
-
-            # 7. Send WhatsApp confirmation with credentials
-            send_res = send_text_message(session.phone_number, welcome_msg)
+            # 6. Send WhatsApp confirmation with credentials (logged by send_text_message)
+            send_res = send_text_message(session.phone_number, welcome_msg, category='welcome', session=session)
             if not send_res.get('success'):
                 logger.warning(f"[WA-Bot] Failed to send credentials via OpenWA: {send_res.get('error')}. Setting retry flag.")
                 session.registration_data['pending_credentials_delivery'] = True
@@ -533,7 +525,7 @@ def activate_agent_subscription_after_payment(subscription_id, payment_id=None, 
                 if len(agent_mobile) == 10:
                     agent_mobile = '91' + agent_mobile
                 if agent_mobile != session.phone_number:
-                    send_text_message(agent_mobile, welcome_msg)
+                    send_text_message(agent_mobile, welcome_msg, category='welcome')
 
             logger.info(f"[WA-Bot] Successfully activated agent #{agent.id} and dispatched WhatsApp credentials")
 

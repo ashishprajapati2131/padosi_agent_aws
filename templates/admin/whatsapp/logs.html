@@ -46,7 +46,7 @@
                 <i class="fa-solid fa-arrow-down-left" style="color:#059669;font-size:18px;"></i>
             </div>
             <div>
-                <div class="stat-value">{{ stats.in }}</div>
+                <div class="stat-value">{{ stats.incoming }}</div>
                 <div class="stat-label">Incoming (From Agents)</div>
             </div>
         </div>
@@ -57,11 +57,33 @@
                 <i class="fa-solid fa-arrow-up-right" style="color:#0284c7;font-size:18px;"></i>
             </div>
             <div>
-                <div class="stat-value">{{ stats.out }}</div>
-                <div class="stat-label">Outgoing (Bot Replies)</div>
+                <div class="stat-value">{{ stats.outgoing }}</div>
+                <div class="stat-label">Outgoing (Delivered to OpenWA)</div>
             </div>
         </div>
     </div>
+    <a href="?status=failed" class="stat-card text-decoration-none">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#fef2f2;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#dc2626;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value text-danger">{{ stats.failed }}</div>
+                <div class="stat-label">Failed to Send</div>
+            </div>
+        </div>
+    </a>
+    <a href="?category=lead_alert" class="stat-card text-decoration-none">
+        <div class="d-flex align-items-center gap-3">
+            <div style="width:44px;height:44px;background:#fffbeb;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-solid fa-bell" style="color:#d97706;font-size:18px;"></i>
+            </div>
+            <div>
+                <div class="stat-value">{{ stats.lead_alerts }}</div>
+                <div class="stat-label">Lead Alerts</div>
+            </div>
+        </div>
+    </a>
 </div>
 
 <!-- Table Card -->
@@ -74,6 +96,18 @@
                 <option value="">All Directions</option>
                 <option value="in" {% if dir_filter == 'in' %}selected{% endif %}>📥 Incoming</option>
                 <option value="out" {% if dir_filter == 'out' %}selected{% endif %}>📤 Outgoing</option>
+            </select>
+            <select name="status" class="form-select form-select-sm" style="width: 130px;">
+                <option value="">All Status</option>
+                <option value="sent" {% if status_filter == 'sent' %}selected{% endif %}>✅ Sent</option>
+                <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>❌ Failed</option>
+                <option value="received" {% if status_filter == 'received' %}selected{% endif %}>📥 Received</option>
+            </select>
+            <select name="category" class="form-select form-select-sm" style="width: 170px;">
+                <option value="">All Types</option>
+                {% for value, label in category_choices %}
+                <option value="{{ value }}" {% if category_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
             </select>
             <input type="text" name="q" value="{{ search_query }}" placeholder="Search message text..." class="form-control form-control-sm" style="width: 180px;">
             <button type="submit" class="btn btn-sm btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Filter</button>
@@ -89,7 +123,7 @@
                     <th style="font-size: 12px; width: 170px;">DATE &amp; TIME</th>
                     <th style="font-size: 12px; width: 150px;">PHONE NUMBER</th>
                     <th style="font-size: 12px; width: 110px;">DIRECTION</th>
-                    <th style="font-size: 12px; width: 150px;">STATE</th>
+                    <th style="font-size: 12px; width: 150px;">TYPE / STATUS</th>
                     <th style="font-size: 12px;">MESSAGE CONTENT</th>
                     <th style="font-size: 12px; width: 80px; text-align: right;">ACTION</th>
                 </tr>
@@ -101,8 +135,8 @@
                         {{ log.created_at|date:"d M Y, h:i:s A" }}
                     </td>
                     <td>
-                        <a href="?phone={{ log.session.phone_number }}" class="fw-bold text-dark text-decoration-none font-monospace small">
-                            +{{ log.session.phone_number }}
+                        <a href="?phone={{ log.phone_number }}" class="fw-bold text-dark text-decoration-none font-monospace small">
+                            +{{ log.phone_number|default:"—" }}
                         </a>
                     </td>
                     <td>
@@ -117,9 +151,12 @@
                         {% endif %}
                     </td>
                     <td>
-                        <span class="badge bg-light text-dark border font-monospace" style="font-size: 10px;">
-                            {{ log.state_at_time|default:"—" }}
-                        </span>
+                        <span class="badge bg-light text-dark border" style="font-size: 10px;">{{ log.get_category_display }}</span>
+                        {% if log.status == 'failed' %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 10px;" title="{{ log.error }}">Failed</span>
+                        <div class="text-danger mt-1 text-truncate" style="font-size: 10px; max-width: 150px;" title="{{ log.error }}">{{ log.error }}</div>
+                        {% endif %}
+                        {% if log.state_at_time %}<div class="text-muted font-monospace mt-1" style="font-size: 10px;">{{ log.state_at_time }}</div>{% endif %}
                     </td>
                     <td>
                         <div class="text-dark small text-truncate" style="max-width: 480px;">
@@ -127,7 +164,7 @@
                         </div>
                     </td>
                     <td style="text-align: right;">
-                        <button type="button" class="btn btn-sm btn-light border py-1 px-2" onclick="viewFullMessage(`{{ log.content|escapejs }}`, '{{ log.session.phone_number }}', '{{ log.direction }}', '{{ log.created_at|date:'d M Y, h:i A' }}')" title="View Full Message">
+                        <button type="button" class="btn btn-sm btn-light border py-1 px-2" onclick="viewFullMessage(`{{ log.content|escapejs }}`, '{{ log.phone_number|escapejs }}', '{{ log.direction }}', '{{ log.created_at|date:'d M Y, h:i A' }}')" title="View Full Message">
                             <i class="fa-solid fa-eye text-primary"></i>
                         </button>
                     </td>
@@ -152,11 +189,11 @@
         </span>
         <ul class="pagination pagination-sm m-0">
             {% if page_obj.has_previous %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&phone={{ phone_filter }}&direction={{ dir_filter }}&q={{ search_query }}">&laquo;</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&phone={{ phone_filter }}&direction={{ dir_filter|urlencode }}&status={{ status_filter|urlencode }}&category={{ category_filter|urlencode }}&q={{ search_query|urlencode }}">&laquo;</a></li>
             {% endif %}
             <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
             {% if page_obj.has_next %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&phone={{ phone_filter }}&direction={{ dir_filter }}&q={{ search_query }}">&raquo;</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&phone={{ phone_filter }}&direction={{ dir_filter|urlencode }}&status={{ status_filter|urlencode }}&category={{ category_filter|urlencode }}&q={{ search_query|urlencode }}">&raquo;</a></li>
             {% endif %}
         </ul>
     </div>

@@ -19,7 +19,7 @@ def notify_agent_approved_whatsapp(agent_id):
     digital visiting card, and agent dashboard.
     """
     from apps.agents.models import Agent
-    from apps.wa_agent_bot.models import WaBotSession, WaBotMessageLog
+    from apps.wa_agent_bot.models import WaBotSession
     from apps.wa_agent_bot.services.message_sender import send_text_message
     from apps.wa_agent_bot.views import is_wa_bot_enabled
 
@@ -77,15 +77,8 @@ def notify_agent_approved_whatsapp(agent_id):
             session.state = WaBotSession.STATE_LOGGED_IN
             session.save()
 
-            WaBotMessageLog.objects.create(
-                session=session,
-                direction=WaBotMessageLog.DIRECTION_OUT,
-                content=approval_msg,
-                state_at_time=session.state,
-            )
-
         # Send via OpenWA
-        send_res = send_text_message(target_phone, approval_msg)
+        send_res = send_text_message(target_phone, approval_msg, category='approval', session=session)
         if send_res.get('success'):
             logger.info(f"[WA-Bot-Notification] Sent approval notification to {target_phone} for agent #{agent.id}")
             return True, "Notification sent"
@@ -104,7 +97,7 @@ def notify_agent_rejected_whatsapp(agent_id, reason=None):
     Sends an informative notification message.
     """
     from apps.agents.models import Agent
-    from apps.wa_agent_bot.models import WaBotSession, WaBotMessageLog
+    from apps.wa_agent_bot.models import WaBotSession
     from apps.wa_agent_bot.services.message_sender import send_text_message
     from apps.wa_agent_bot.views import is_wa_bot_enabled
 
@@ -136,15 +129,7 @@ def notify_agent_rejected_whatsapp(agent_id, reason=None):
             f"Please reach out to our support team at support@padosiagent.com if you believe this is an error or need assistance updating your documents."
         )
 
-        if session:
-            WaBotMessageLog.objects.create(
-                session=session,
-                direction=WaBotMessageLog.DIRECTION_OUT,
-                content=msg,
-                state_at_time=session.state,
-            )
-
-        send_text_message(target_phone, msg)
+        send_text_message(target_phone, msg, category='rejection', session=session)
         return True, "Rejection notification sent"
     except Exception as e:
         logger.error(f"[WA-Bot-Notification] Error notifying rejected agent #{agent_id}: {e}")
@@ -202,9 +187,13 @@ def notify_agent_new_lead(lead):
         text = "\n".join(lines)
 
         def _send():
-            res = send_text_message(digits, text)
-            if not res.get('success'):
-                logger.warning(f"[WA-Lead-Alert] Failed for lead #{lead.id}: {res.get('error')}")
+            from django.db import connection
+            try:
+                res = send_text_message(digits, text, category='lead_alert')
+                if not res.get('success'):
+                    logger.warning(f"[WA-Lead-Alert] Failed for lead #{lead.id}: {res.get('error')}")
+            finally:
+                connection.close()  # this thread opened its own DB connection for the log row
 
         threading.Thread(target=_send, daemon=True).start()
         return True

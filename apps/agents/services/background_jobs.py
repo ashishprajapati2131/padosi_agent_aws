@@ -110,11 +110,29 @@ def _system_load_monitor_job():
         logger.warning(f"[bgjobs] system-load-monitor check failed: {e}")
 
 
+WA_LOG_RETENTION_DAYS = 90
+
+
+def _wa_log_prune_job():
+    """Keep the WhatsApp message log bounded: drop rows older than WA_LOG_RETENTION_DAYS in small batches."""
+    from apps.wa_agent_bot.models import WaBotMessageLog
+    cutoff = datetime.now() - timedelta(days=WA_LOG_RETENTION_DAYS)
+    deleted = 0
+    while True:
+        ids = list(WaBotMessageLog.objects.filter(created_at__lt=cutoff).values_list('id', flat=True)[:1000])
+        if not ids:
+            break
+        deleted += WaBotMessageLog.objects.filter(id__in=ids).delete()[0]
+    if deleted:
+        logger.info('[bgjobs] pruned %s WhatsApp message log row(s) older than %s days', deleted, WA_LOG_RETENTION_DAYS)
+
+
 # (name, interval in seconds, function)
 JOBS = (
     ('system-load-monitor', 60, _system_load_monitor_job),
     ('invoice-retry', 60 * 60, _invoice_job),
     ('paldi-expirations', 30 * 60, _paldi_expiry_job),
+    ('wa-log-prune', 24 * 60 * 60, _wa_log_prune_job),
 )
 
 
