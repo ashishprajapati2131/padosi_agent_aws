@@ -358,6 +358,10 @@ FCM_APP_ID               = os.environ.get('FCM_APP_ID', '')
 FCM_VAPID_KEY            = os.environ.get('FCM_VAPID_KEY', '')
 FCM_SERVICE_ACCOUNT_JSON = os.environ.get('FCM_SERVICE_ACCOUNT_JSON', '')
 
+# ─── IndexNow (Bing/Yandex URL submission) ───────────────────────────────────
+# Empty = feature off: /<key>.txt returns 404 and `manage.py indexnow_ping` refuses to run.
+INDEXNOW_KEY = os.environ.get('INDEXNOW_KEY', '').strip()
+
 # ─── Google OAuth ────────────────────────────────────────────────────────────
 GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')

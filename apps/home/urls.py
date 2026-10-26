@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from django.views.generic import RedirectView
 from .views import pages, seo, calculators
 from apps.agents.views.account_deletion import account_deletion_view
@@ -8,6 +8,8 @@ app_name = 'home'
 
 urlpatterns = [
     path('robots.txt',       seo.robots_txt,        name='robots_txt'),
+    # IndexNow key file; 404 unless the path matches settings.INDEXNOW_KEY.
+    re_path(r'^(?P<key>[a-zA-Z0-9-]{8,128})\.txt$', seo.indexnow_key, name='indexnow_key'),
     path('favicon.ico',      pages.favicon,         name='favicon'),
     path('',                 pages.home,            name='home'),
     path('about/',           pages.about,           name='about'),
