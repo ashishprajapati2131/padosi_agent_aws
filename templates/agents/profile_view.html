@@ -13,7 +13,7 @@
 {% block twitter_title %}{{ og_share_title|default:"PadosiAgent" }}{% endblock %}
 {% block twitter_description %}{{ og_share_description|default:"Find trusted insurance advisors on PadosiAgent." }}{% endblock %}
 {% block twitter_image %}{{ og_image_absolute_url }}{% endblock %}
-{% block meta_description %}Connect with {{ agentDisplayName|default:agent.fullname }}, a Licensed Insurance &amp; Financial Advisor on PadosiAgent. View profile, services, ratings &amp; direct contact options.{% endblock %}
+{% block meta_description %}Connect with {{ agentDisplayName|default:agent.fullname }}, {% if profile.license_number %}a Licensed{% else %}an{% endif %} Insurance &amp; Financial Advisor on PadosiAgent. View profile, services, ratings &amp; direct contact options.{% endblock %}
 {% block canonical_url %}{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/{% endblock %}
 
 {% block extra_head %}
@@ -65,7 +65,7 @@
       "@context": "https://schema.org",
       "@type": "FinancialService",
       "name": "{{ agentDisplayName|default:agent.fullname|escapejs }}",
-      "description": "Licensed Insurance and Financial Advisor on PadosiAgent",
+      "description": "{% if profile.license_number %}Licensed {% endif %}Insurance and Financial Advisor on PadosiAgent",
       "url": "{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:'gj' }}/{{ profile.slug }}/",
       {% if profile.profile_photo_url %}"image": "{{ profile.profile_photo_url }}",{% endif %}
       {% if agent.mobile %}"telephone": "+91{{ agent.mobile }}",{% endif %}
@@ -344,7 +344,7 @@
                 await navigator.share({
                     files: [file],
                     title: agentName + ' — Digital Visiting Card',
-                    text: agentName + ' | Licensed Insurance & Financial Advisor\n' + shareUrl
+                    text: agentName + ' | {% if profile.license_number %}Licensed {% endif %}Insurance & Financial Advisor\n' + shareUrl
                 });
                 return true;
             } catch (e) {
