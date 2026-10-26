@@ -402,6 +402,7 @@ def payment_callback(request):
     mobile_clean = ''.join(c for c in (agent.mobile or '') if c.isdigit()) if agent else ''
     masked_mobile = f"+91 {mobile_clean[:2]}•••••{mobile_clean[-3:]}" if len(mobile_clean) == 10 else (f"+{mobile_clean}" if mobile_clean else 'Registered Number')
     plan_name = (sub.selected_plan if sub and sub.selected_plan else 'Membership Plan')
+    copy_email_btn = f'<button type="button" class="copy-btn" onclick="copyText(\'{email}\', this)">Copy</button>' if email else ''
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -774,7 +775,7 @@ def payment_callback(request):
                 <div class="cred-label">Login User ID (Email)</div>
                 <div class="cred-val">
                     <span>{email if email else 'Your registered email'}</span>
-                    {'<button type="button" class="copy-btn" onclick="copyText(\'' + email + '\', this)">Copy</button>' if email else ''}
+                    {copy_email_btn}
                 </div>
             </div>
 
