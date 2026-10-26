@@ -41,19 +41,21 @@ INSURANCE_SEGMENTS = [
 def validate_fullname(text):
     """
     Validate the agent's full name.
+    Supports English, Gujarati, Hindi, and Indian names with salutations.
     Returns (True, cleaned_name) or (False, error_message).
     """
     name = text.strip()
     if not name:
         return False, "Name cannot be empty. Please enter your full name."
-    if len(name) < 3:
-        return False, "Name is too short. Please enter at least 3 characters."
+    if len(name) < 2:
+        return False, "Name is too short. Please enter at least 2 characters."
     if len(name) > 70:
         return False, "Name is too long. Please keep it under 70 characters."
-    # Only allow letters, spaces, dots, and hyphens
-    if not re.match(r'^[a-zA-Z\s.\-\']+$', name):
+    # Disallow numbers or special symbols except letters, spaces, dots, hyphens, apostrophes
+    if re.search(r'[\d!@#$%^&*()_+={}\[\]:;"<>?\/\\|`~]', name):
         return False, "Name should only contain letters, spaces, dots, and hyphens."
-    return True, name
+    cleaned = re.sub(r'\s+', ' ', name)
+    return True, cleaned.title() if cleaned.isascii() else cleaned
 
 
 def validate_email(text):
@@ -168,85 +170,184 @@ def parse_contact_input(text):
     return {'email': found_email, 'mobile': found_mobile}
 
 
+# ── State aliases & common abbreviations / major cities ──────────────────
+STATE_ALIASES = {
+    'gj': 'Gujarat', 'gujrat': 'Gujarat', 'gujarat': 'Gujarat', 'guj': 'Gujarat',
+    'ahmedabad': 'Gujarat', 'surat': 'Gujarat', 'vadodara': 'Gujarat', 'rajkot': 'Gujarat', 'gandhinagar': 'Gujarat',
+    'mh': 'Maharashtra', 'maharastra': 'Maharashtra', 'maharashtra': 'Maharashtra', 'maha': 'Maharashtra',
+    'mumbai': 'Maharashtra', 'pune': 'Maharashtra', 'nagpur': 'Maharashtra', 'nashik': 'Maharashtra', 'thane': 'Maharashtra',
+    'dl': 'Delhi', 'delhi': 'Delhi', 'new delhi': 'Delhi', 'ncr': 'Delhi', 'delhi ncr': 'Delhi',
+    'rj': 'Rajasthan', 'rajasthan': 'Rajasthan', 'jaipur': 'Rajasthan', 'rajastan': 'Rajasthan', 'jodhpur': 'Rajasthan', 'udaipur': 'Rajasthan',
+    'mp': 'Madhya Pradesh', 'madhya pradesh': 'Madhya Pradesh', 'indore': 'Madhya Pradesh', 'bhopal': 'Madhya Pradesh',
+    'up': 'Uttar Pradesh', 'uttar pradesh': 'Uttar Pradesh', 'lucknow': 'Uttar Pradesh', 'kanpur': 'Uttar Pradesh', 'noida': 'Uttar Pradesh', 'varanasi': 'Uttar Pradesh',
+    'ka': 'Karnataka', 'karnataka': 'Karnataka', 'karnatak': 'Karnataka', 'bangalore': 'Karnataka', 'bengaluru': 'Karnataka',
+    'tn': 'Tamil Nadu', 'tamil nadu': 'Tamil Nadu', 'tamilnadu': 'Tamil Nadu', 'chennai': 'Tamil Nadu',
+    'wb': 'West Bengal', 'west bengal': 'West Bengal', 'kolkata': 'West Bengal', 'bengal': 'West Bengal',
+    'tg': 'Telangana', 'ts': 'Telangana', 'telangana': 'Telangana', 'hyderabad': 'Telangana',
+    'ap': 'Andhra Pradesh', 'andhra pradesh': 'Andhra Pradesh', 'andhra': 'Andhra Pradesh', 'vizag': 'Andhra Pradesh',
+    'kl': 'Kerala', 'kerala': 'Kerala', 'kochi': 'Kerala', 'trivandrum': 'Kerala',
+    'hr': 'Haryana', 'haryana': 'Haryana', 'gurgaon': 'Haryana', 'gurugram': 'Haryana', 'faridabad': 'Haryana',
+    'pb': 'Punjab', 'punjab': 'Punjab', 'amritsar': 'Punjab', 'ludhiana': 'Punjab',
+    'br': 'Bihar', 'bihar': 'Bihar', 'patna': 'Bihar',
+    'or': 'Odisha', 'odisha': 'Odisha', 'orissa': 'Odisha', 'bhubaneswar': 'Odisha',
+    'jh': 'Jharkhand', 'jharkhand': 'Jharkhand', 'ranchi': 'Jharkhand',
+    'as': 'Assam', 'assam': 'Assam', 'guwahati': 'Assam',
+    'ch': 'Chandigarh', 'chandigarh': 'Chandigarh',
+    'ga': 'Goa', 'goa': 'Goa',
+    'uk': 'Uttarakhand', 'uttarakhand': 'Uttarakhand', 'uttaranchal': 'Uttarakhand', 'dehradun': 'Uttarakhand',
+    'hp': 'Himachal Pradesh', 'himachal': 'Himachal Pradesh', 'shimla': 'Himachal Pradesh',
+}
+
+
 def validate_state_selection(text, states_list=None):
     """
-    Validate state selection (by number or name).
+    Validate state selection (by number, abbreviation, city or state name).
     Returns (True, state_name) or (False, error_message).
     """
     if states_list is None:
         states_list = INDIAN_STATES
 
     cleaned = text.strip()
+    cleaned_lower = cleaned.lower()
 
-    # Check if input is a number (selection from numbered list)
+    # 1. Selection by number (1-indexed)
     if cleaned.isdigit():
-        idx = int(cleaned) - 1  # 1-indexed
+        idx = int(cleaned) - 1
         if 0 <= idx < len(states_list):
             return True, states_list[idx]
         return False, f"Invalid selection. Please enter a number between 1 and {len(states_list)}."
 
-    # Check if input matches a state name (case-insensitive)
-    cleaned_lower = cleaned.lower()
+    # 2. Check alias / abbreviation / major city dictionary
+    if cleaned_lower in STATE_ALIASES:
+        state_name = STATE_ALIASES[cleaned_lower]
+        if state_name in states_list:
+            return True, state_name
+
+    # 3. Exact case-insensitive match
     for state in states_list:
         if state.lower() == cleaned_lower:
             return True, state
-    # Fuzzy partial match
+
+    # 4. Partial substring match
     for state in states_list:
         if cleaned_lower in state.lower():
             return True, state
 
-    return False, "State not found. Please enter the number from the list or the full state name."
+    return False, "State not found. Please enter the number from the list or the full state name (e.g., Gujarat)."
 
 
 def validate_pincode(text):
     """
     Validate Indian pincode (6 digits).
+    Extracts 6-digit pincode even if user types surrounding text.
     Returns (True, cleaned_pincode) or (False, error_message).
     """
-    pincode = re.sub(r'\D', '', text.strip())
-    if len(pincode) != 6:
-        return False, "Please enter a valid 6-digit pincode."
-    if pincode[0] == '0':
-        return False, "That doesn't look like a valid Indian pincode. The first digit can't be 0."
-    return True, pincode
+    cleaned = text.strip()
+    if not cleaned:
+        return False, "Pincode cannot be empty. Please enter your 6-digit area pincode."
+
+    # 1. Search for 6-digit number bounded by words
+    match = re.search(r'\b([1-9]\d{5})\b', cleaned)
+    if match:
+        return True, match.group(1)
+
+    # 2. Clean all non-digits
+    digits = re.sub(r'\D', '', cleaned)
+    if len(digits) == 6:
+        if digits[0] == '0':
+            return False, "That doesn't look like a valid Indian pincode. The first digit can't be 0."
+        return True, digits
+
+    return False, "Please enter a valid 6-digit area pincode (e.g., 380015)."
 
 
 def validate_experience_selection(text):
     """
     Validate experience range selection.
+    Supports option numbers (1-4), range text (e.g. '2-5 years'),
+    keywords ('fresher'), or direct years (e.g. '3 years', '5 yrs').
     Returns (True, experience_string) or (False, error_message).
     """
-    cleaned = text.strip()
+    cleaned = text.strip().lower()
 
-    # Check if input is a number
-    if cleaned.isdigit():
-        idx = int(cleaned) - 1
-        if 0 <= idx < len(EXPERIENCE_RANGES):
-            return True, EXPERIENCE_RANGES[idx]
-        return False, f"Invalid selection. Please enter a number between 1 and {len(EXPERIENCE_RANGES)}."
+    # 1. Direct option number 1 to 4
+    if cleaned in ('1', '1.', 'one'):
+        return True, EXPERIENCE_RANGES[0]
+    elif cleaned in ('2', '2.', 'two'):
+        return True, EXPERIENCE_RANGES[1]
+    elif cleaned in ('3', '3.', 'three'):
+        return True, EXPERIENCE_RANGES[2]
+    elif cleaned in ('4', '4.', 'four'):
+        return True, EXPERIENCE_RANGES[3]
 
-    # Match by text
-    cleaned_lower = cleaned.lower()
+    # 2. Direct range match
+    if '0-2' in cleaned or '0 to 2' in cleaned:
+        return True, EXPERIENCE_RANGES[0]
+    if '2-5' in cleaned or '2 to 5' in cleaned:
+        return True, EXPERIENCE_RANGES[1]
+    if '5-10' in cleaned or '5 to 10' in cleaned:
+        return True, EXPERIENCE_RANGES[2]
+    if '10+' in cleaned or '10 +' in cleaned or 'more than 10' in cleaned or 'above 10' in cleaned:
+        return True, EXPERIENCE_RANGES[3]
+
+    # 3. Fresher / beginner
+    if any(w in cleaned for w in ('fresh', 'new', 'start', 'beginner', 'learn')):
+        return True, EXPERIENCE_RANGES[0]
+
+    # 4. If year mentioned, like '3 years', '7 yrs', '15 years'
+    yr_match = re.search(r'(\d{1,2})\s*(?:years?|yrs?)', cleaned)
+    if yr_match:
+        yrs = int(yr_match.group(1))
+        if yrs <= 2:
+            return True, EXPERIENCE_RANGES[0]
+        elif yrs <= 5:
+            return True, EXPERIENCE_RANGES[1]
+        elif yrs <= 10:
+            return True, EXPERIENCE_RANGES[2]
+        else:
+            return True, EXPERIENCE_RANGES[3]
+
+    # 5. Fallback text search in predefined ranges
     for exp in EXPERIENCE_RANGES:
-        if cleaned_lower in exp.lower() or exp.lower() in cleaned_lower:
+        if cleaned in exp.lower() or exp.lower() in cleaned:
             return True, exp
 
-    return False, "Invalid selection. Please choose from the numbered list."
+    return False, "Invalid selection. Please choose from 1 to 4 or type your years of experience."
 
 
 def validate_segments_selection(text):
     """
-    Validate insurance segments selection (comma-separated numbers or names).
+    Validate insurance segments selection.
+    Supports:
+    - Comma/space separated numbers (e.g. '1, 2' or '1 2')
+    - Compact numbers (e.g. '12' or '123')
+    - Segment names (e.g. 'Health and Life', 'Motor')
+    - 'all' / 'every' / 'badha' -> all 4 segments
+    - 'general' / 'GI' -> motor, health, sme
     Returns (True, list_of_segment_ids) or (False, error_message).
     """
-    cleaned = text.strip()
+    cleaned = text.strip().lower()
     if not cleaned:
         return False, "Please select at least one segment."
 
-    selected_ids = []
+    all_ids = [s['id'] for s in INSURANCE_SEGMENTS]
 
-    # Split by comma, space, or both
-    parts = re.split(r'[,\s]+', cleaned)
+    # Quick check for 'all' or 'badha'
+    if any(w in cleaned for w in ('all', 'badha', 'every', 'char', 'chaar', 'both')):
+        return True, all_ids
+
+    # Remove noise words like 'and', '&', '+', 'aur', 'ane', 'with'
+    cleaned_norm = re.sub(r'\b(and|aur|ane|plus|with)\b|[&+/]', ' ', cleaned)
+
+    # Check if user typed compact digits like '12', '123', '1234', '134'
+    compact_match = re.match(r'^[1-4]{2,4}$', cleaned_norm.strip())
+    if compact_match:
+        digits = list(cleaned_norm.strip())
+        selected = [INSURANCE_SEGMENTS[int(d)-1]['id'] for d in digits]
+        return True, list(dict.fromkeys(selected))
+
+    selected_ids = []
+    parts = re.split(r'[,\s]+', cleaned_norm)
 
     for part in parts:
         part = part.strip()
@@ -261,11 +362,14 @@ def validate_segments_selection(text):
                     selected_ids.append(seg_id)
             else:
                 return False, f"Invalid number: {part}. Please enter numbers between 1 and {len(INSURANCE_SEGMENTS)}."
+        elif part in ('general', 'gi'):
+            for sid in ('motor', 'health', 'sme'):
+                if sid not in selected_ids:
+                    selected_ids.append(sid)
         else:
-            # Match by name
             matched = False
             for seg in INSURANCE_SEGMENTS:
-                if part.lower() in seg['label'].lower() or seg['label'].lower() in part.lower():
+                if part in seg['label'].lower() or seg['label'].lower() in part:
                     if seg['id'] not in selected_ids:
                         selected_ids.append(seg['id'])
                     matched = True

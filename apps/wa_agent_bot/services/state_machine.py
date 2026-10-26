@@ -44,8 +44,16 @@ logger = logging.getLogger(__name__)
 
 
 # ── Welcome / registration trigger keywords ─────────────────────────────
-REGISTER_KEYWORDS = {'register', 'start', 'signup', 'sign up', 'join', 'hi', 'hello', 'hey', 'namaste'}
-CANCEL_KEYWORDS = {'cancel', 'stop', 'exit', 'quit', 'bye'}
+REGISTER_KEYWORDS = {
+    'register', 'start', 'signup', 'sign up', 'join', 'hi', 'hello', 'hey', 'namaste',
+    'kem cho', 'kemcho', 'agent', 'chalu', 'shuru', 'account', 'join now'
+}
+CANCEL_KEYWORDS = {
+    'cancel', 'stop', 'exit', 'quit', 'bye', 'rad', 'bandh', 'nathi karvu', 'abort', 'close'
+}
+BACK_KEYWORDS = {
+    'back', 'pachhu', 'pacho', 'piche', 'prev', 'previous', 'go back', '<'
+}
 RESTART_KEYWORDS = {'restart', 'reset', 'start over', 'new'}
 
 
@@ -281,7 +289,7 @@ def process_message(session, user_text):
             return _build_cancel_message()
 
     # ── Global: handle "back" during registration ───────────────────
-    if current_state in BACK_STATE_MAP and text_lower == 'back':
+    if current_state in BACK_STATE_MAP and text_lower in BACK_KEYWORDS:
         prev_state = BACK_STATE_MAP[current_state]
         session.state = prev_state
         session.save()
@@ -353,8 +361,12 @@ def _handle_welcome(session, text, text_lower):
         session.save()
         return process_post_login_message(session.agent, text)
 
-    # New user — check for registration keywords
-    if text_lower in REGISTER_KEYWORDS:
+    # New user — check for registration keywords or greetings
+    is_start_intent = (
+        text_lower in REGISTER_KEYWORDS
+        or any(kw in text_lower for kw in ('register', 'start', 'signup', 'sign up', 'join', 'hi', 'hello', 'hey', 'namaste', 'kem cho', 'kemcho', 'agent', 'account'))
+    )
+    if is_start_intent:
         session.state = WaBotSession.STATE_ASK_FULLNAME
         session.registration_data = {}
         session.save()
@@ -597,13 +609,22 @@ def _handle_ask_segments(session, text):
 
 def _handle_confirm(session, text, text_lower):
     """Handle confirmation of registration details."""
-    if text_lower in ('yes', 'y', 'confirm', 'ok', 'done', 'ha', 'haa'):
+    confirm_yes = {
+        'yes', 'y', 'confirm', 'ok', 'okay', 'done', 'ha', 'haa', 'han', 'haan',
+        'sachu', 'sachu che', 'right', 'sure', 'correct', 'yep', 'yeah', 'perfect',
+        '1', 'continue', 'next', 'proceed', '👍', '👌'
+    }
+    confirm_edit = {
+        'edit', 'change', 'modify', 'badlo', 'update', 'start over', 'restart', '2'
+    }
+
+    if text_lower in confirm_yes:
         # ── Advance to Plan Selection ───────────────────────────────
         session.state = WaBotSession.STATE_ASK_PLAN
         session.save()
         return "✅ *Details Confirmed!*\n\n" + format_plan_selection_message()
 
-    elif text_lower in ('edit', 'change', 'modify', 'badlo'):
+    elif text_lower in confirm_edit:
         session.state = WaBotSession.STATE_ASK_FULLNAME
         session.registration_data = {}
         session.save()
@@ -631,11 +652,20 @@ def _handle_ask_plan(session, text, text_lower):
     """Handle plan selection (1: Digital Presence / Starter, 2: Professional Presence)."""
     plan_key = None
 
-    if text_lower in ('1', 'starter', 'starter plan', 'digital', 'digital presence', 'plan 1'):
+    starter_synonyms = (
+        '1', 'starter', 'starter plan', 'digital', 'digital presence', 'plan 1', 'plan1',
+        'first', 'first plan', '1st', 'basic'
+    )
+    prof_synonyms = (
+        '2', 'professional', 'pro', 'professional plan', 'professional presence', 'plan 2', 'plan2',
+        'second', 'second plan', '2nd'
+    )
+
+    if text_lower in starter_synonyms:
         plan_key = 'starter'
-    elif text_lower in ('2', 'professional', 'pro', 'professional plan', 'professional presence', 'plan 2'):
+    elif text_lower in prof_synonyms:
         plan_key = 'professional'
-    elif text_lower in ('edit', 'change'):
+    elif text_lower in ('edit', 'change', 'modify'):
         session.state = WaBotSession.STATE_ASK_FULLNAME
         session.registration_data = {}
         session.save()

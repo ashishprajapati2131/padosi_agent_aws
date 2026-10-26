@@ -92,6 +92,15 @@ class ValidatorTests(unittest.TestCase):
         self.assertTrue(valid)
         self.assertEqual(val, "Maharashtra")
 
+        # Abbreviations & cities
+        valid, val = validators.validate_state_selection("GJ")
+        self.assertTrue(valid)
+        self.assertEqual(val, "Gujarat")
+
+        valid, val = validators.validate_state_selection("mumbai")
+        self.assertTrue(valid)
+        self.assertEqual(val, "Maharashtra")
+
         valid, err = validators.validate_state_selection("InvalidState123")
         self.assertFalse(valid)
 
@@ -99,6 +108,11 @@ class ValidatorTests(unittest.TestCase):
         valid, val = validators.validate_pincode("380001")
         self.assertTrue(valid)
         self.assertEqual(val, "380001")
+
+        # Pincode embedded in text
+        valid, val = validators.validate_pincode("380015 Ahmedabad")
+        self.assertTrue(valid)
+        self.assertEqual(val, "380015")
 
         valid, err = validators.validate_pincode("1234")
         self.assertFalse(valid)
@@ -108,7 +122,20 @@ class ValidatorTests(unittest.TestCase):
         self.assertTrue(valid)
         self.assertEqual(val, "2-5 years")
 
-        valid, err = validators.validate_experience_selection("99")
+        # Natural language and years
+        valid, val = validators.validate_experience_selection("fresher")
+        self.assertTrue(valid)
+        self.assertEqual(val, "0-2 years")
+
+        valid, val = validators.validate_experience_selection("3 years")
+        self.assertTrue(valid)
+        self.assertEqual(val, "2-5 years")
+
+        valid, val = validators.validate_experience_selection("15 years")
+        self.assertTrue(valid)
+        self.assertEqual(val, "10+ years")
+
+        valid, err = validators.validate_experience_selection("invalid-choice")
         self.assertFalse(valid)
 
     def test_validate_segments(self):
@@ -116,6 +143,21 @@ class ValidatorTests(unittest.TestCase):
         self.assertTrue(valid)
         self.assertIn("health", val)
         self.assertIn("motor", val)
+
+        # 'and' noise words
+        valid, val = validators.validate_segments_selection("1 and 2")
+        self.assertTrue(valid)
+        self.assertEqual(val, ["health", "life"])
+
+        # Compact digits
+        valid, val = validators.validate_segments_selection("1234")
+        self.assertTrue(valid)
+        self.assertEqual(len(val), 4)
+
+        # 'all' / 'badha'
+        valid, val = validators.validate_segments_selection("all")
+        self.assertTrue(valid)
+        self.assertEqual(len(val), 4)
 
 
 class StateMachineFlowTests(unittest.TestCase):
