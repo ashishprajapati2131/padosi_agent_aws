@@ -2851,6 +2851,9 @@ def agent_capture_lead(request):
             ip_address=client_ip,
         )
 
+        from apps.wa_agent_bot.services.notification_service import notify_agent_new_lead
+        notify_agent_new_lead(lead)
+
         # Retrieve device tokens for the agent and dispatch FCM pushes via FcmService
         tokens = list(AgentDeviceToken.objects.filter(agent_id=agent_id).values_list('token', flat=True))
         tokens = [t for t in tokens if t]

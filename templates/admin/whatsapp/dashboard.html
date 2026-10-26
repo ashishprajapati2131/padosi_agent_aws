@@ -128,6 +128,11 @@
             <i class="fa-solid fa-power-off me-1"></i> Bot: {% if bot_enabled %}ENABLED{% else %}PAUSED{% endif %}
         </button>
 
+        <!-- Feature flag: WhatsApp agents on every new lead -->
+        <button id="btnToggleLeadAlerts" onclick="toggleLeadAlerts()" class="btn btn-sm {% if lead_alerts_enabled %}btn-success{% else %}btn-outline-secondary{% endif %} fw-bold px-3 py-2" title="Send agents a WhatsApp message when they get a new lead">
+            <i class="fa-solid fa-bell me-1"></i> Lead Alerts: {% if lead_alerts_enabled %}ON{% else %}OFF{% endif %}
+        </button>
+
         <a href="{% url 'admin_wa_sessions_list' %}" class="btn btn-sm btn-outline-primary py-2 px-3 fw-bold">
             <i class="fa-solid fa-users me-1"></i> Sessions ({{ stats.total_sessions }})
         </a>
@@ -530,6 +535,22 @@
 </div>
 
 <script>
+    // ── Toggle Lead WhatsApp Alerts (feature flag) ─────────────────
+    function toggleLeadAlerts() {
+        const btn = document.getElementById('btnToggleLeadAlerts');
+        btn.disabled = true;
+        fetch("{% url 'admin_wa_toggle_lead_alerts' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { location.reload(); }
+            else { alert('Error: ' + (d.error || 'Failed to toggle')); btn.disabled = false; }
+        })
+        .catch(err => { alert('Request error: ' + err); btn.disabled = false; });
+    }
+
     // ── Toggle Master Bot ──────────────────────────────────────────
     function toggleBotService() {
         if (!confirm('Are you sure you want to toggle the WhatsApp Bot service?')) return;

@@ -149,3 +149,65 @@ def notify_agent_rejected_whatsapp(agent_id, reason=None):
     except Exception as e:
         logger.error(f"[WA-Bot-Notification] Error notifying rejected agent #{agent_id}: {e}")
         return False, str(e)
+
+
+LEAD_ALERT_SETTING = 'wa_lead_alert_enabled'
+
+
+def lead_alerts_enabled():
+    """Feature flag (Admin > WhatsApp): send agents a WhatsApp message for every new lead. Off by default."""
+    from apps.home.models.site_setting import SiteSetting
+    val = SiteSetting.get_value(LEAD_ALERT_SETTING, False)
+    if isinstance(val, str):
+        return val.strip().lower() in ('true', '1', 'yes', 'on')
+    return bool(val)
+
+
+def notify_agent_new_lead(lead):
+    """
+    WhatsApp the agent about a new AgentLead. Builds the message in the caller's thread and
+    sends it in a background thread so a slow OpenWA server never delays the customer's request.
+    Returns True when a send was queued.
+    """
+    import threading
+    from apps.wa_agent_bot.services.message_sender import send_text_message
+
+    try:
+        if not lead_alerts_enabled():
+            return False
+        agent = lead.agent
+        digits = ''.join(c for c in (getattr(agent, 'mobile', '') or '') if c.isdigit())
+        if len(digits) == 10:
+            digits = '91' + digits
+        if len(digits) < 11:
+            logger.info(f"[WA-Lead-Alert] Agent #{getattr(agent, 'id', None)} has no usable mobile; skipping.")
+            return False
+
+        site_url = os.environ.get('WA_BOT_SITE_URL', os.environ.get('APP_URL', 'http://localhost:8000')).rstrip('/')
+        lines = [
+            "🔔 *New Lead on PadosiAgent!*",
+            "",
+            f"👤 *Name:* {lead.customer_name or 'Not given'}",
+            f"📱 *Mobile:* {lead.customer_mobile or 'Not given'}",
+        ]
+        if lead.customer_email:
+            lines.append(f"📧 *Email:* {lead.customer_email}")
+        if lead.insurance_type or lead.service_type:
+            lines.append(f"🛡️ *Interested in:* {lead.insurance_type or lead.service_type}")
+        if lead.customer_pincode:
+            lines.append(f"📍 *Pincode:* {lead.customer_pincode}")
+        if lead.enquiry_requirements:
+            lines.append(f"📝 *Requirement:* {lead.enquiry_requirements[:300]}")
+        lines += ["", f"👉 View all leads: {site_url}/agent/dashboard/", "_Please contact the customer soon._"]
+        text = "\n".join(lines)
+
+        def _send():
+            res = send_text_message(digits, text)
+            if not res.get('success'):
+                logger.warning(f"[WA-Lead-Alert] Failed for lead #{lead.id}: {res.get('error')}")
+
+        threading.Thread(target=_send, daemon=True).start()
+        return True
+    except Exception as e:
+        logger.error(f"[WA-Lead-Alert] Error for lead #{getattr(lead, 'id', None)}: {e}")
+        return False

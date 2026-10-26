@@ -3,6 +3,7 @@ Unit tests for WhatsApp & OpenWA Admin Command Center and Security Controls.
 Run: python manage.py test apps.admin_panel.test_wa_bot_admin
 """
 
+import json
 from unittest.mock import patch, MagicMock
 from django.test import TestCase, RequestFactory
 from django.contrib.auth.models import AnonymousUser
@@ -105,6 +106,18 @@ class WaBotAdminTests(TestCase):
         status = get_openwa_session_status()
         self.assertEqual(status['status'], 'not_configured')
         self.assertIn('not configured', status['error'])
+
+    def test_toggle_lead_alerts_flips_flag(self):
+        from apps.admin_panel.views.wa_bot_admin import wa_bot_toggle_lead_alerts
+        from apps.wa_agent_bot.services.notification_service import lead_alerts_enabled
+        self.assertFalse(lead_alerts_enabled())
+        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+            req = self._auth_request(self.factory.post('/admin/whatsapp/toggle-lead-alerts/'))
+            self.assertTrue(json.loads(wa_bot_toggle_lead_alerts(req).content)['enabled'])
+            self.assertTrue(lead_alerts_enabled())
+            req = self._auth_request(self.factory.post('/admin/whatsapp/toggle-lead-alerts/'))
+            self.assertFalse(json.loads(wa_bot_toggle_lead_alerts(req).content)['enabled'])
+            self.assertFalse(lead_alerts_enabled())
 
     def test_dashboard_redirects_unauthenticated(self):
         req = self.factory.get('/admin/whatsapp/')

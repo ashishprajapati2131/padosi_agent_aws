@@ -641,3 +641,42 @@ class BotSecurityTests(unittest.TestCase):
         self.assertFalse(_override_url_allowed('http://10.0.0.5:8080', configured))
         self.assertFalse(_override_url_allowed('file:///etc/passwd', configured))
         self.assertTrue(_override_url_allowed('http://localhost:2785/api', configured))
+
+
+class LeadAlertTests(unittest.TestCase):
+    """WhatsApp message to the agent on a new lead, behind the wa_lead_alert_enabled flag."""
+
+    def _lead(self):
+        lead = MagicMock(id=7, customer_name='Ramesh', customer_mobile='9811111111', customer_email='',
+                         insurance_type='Health', service_type='', customer_pincode='380001',
+                         enquiry_requirements='Family floater')
+        lead.agent.mobile = '98250 00000'
+        return lead
+
+    @patch('apps.wa_agent_bot.services.message_sender.send_text_message')
+    @patch('apps.wa_agent_bot.services.notification_service.lead_alerts_enabled', return_value=False)
+    def test_flag_off_sends_nothing(self, _flag, mock_send):
+        from apps.wa_agent_bot.services.notification_service import notify_agent_new_lead
+        self.assertFalse(notify_agent_new_lead(self._lead()))
+        mock_send.assert_not_called()
+
+    @patch('threading.Thread')
+    @patch('apps.wa_agent_bot.services.message_sender.send_text_message', return_value={'success': True})
+    @patch('apps.wa_agent_bot.services.notification_service.lead_alerts_enabled', return_value=True)
+    def test_flag_on_messages_agent(self, _flag, mock_send, mock_thread):
+        from apps.wa_agent_bot.services.notification_service import notify_agent_new_lead
+        mock_thread.side_effect = lambda target, daemon: MagicMock(start=target)
+        self.assertTrue(notify_agent_new_lead(self._lead()))
+        phone, text = mock_send.call_args[0]
+        self.assertEqual(phone, '919825000000')
+        self.assertIn('Ramesh', text)
+        self.assertIn('9811111111', text)
+
+    @patch('apps.wa_agent_bot.services.message_sender.send_text_message')
+    @patch('apps.wa_agent_bot.services.notification_service.lead_alerts_enabled', return_value=True)
+    def test_agent_without_mobile_is_skipped(self, _flag, mock_send):
+        from apps.wa_agent_bot.services.notification_service import notify_agent_new_lead
+        lead = self._lead()
+        lead.agent.mobile = ''
+        self.assertFalse(notify_agent_new_lead(lead))
+        mock_send.assert_not_called()

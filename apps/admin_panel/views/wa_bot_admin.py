@@ -62,6 +62,7 @@ def wa_bot_dashboard(request):
 
     # 2. Master Bot Status
     bot_enabled = SiteSetting.get_value('wa_agent_bot_enabled', True)
+    from apps.wa_agent_bot.services.notification_service import lead_alerts_enabled
 
     # 3. Overall Statistics & Funnel
     total_sessions = WaBotSession.objects.count()
@@ -121,6 +122,7 @@ def wa_bot_dashboard(request):
         'openwa_status': openwa_status,
         'qr_data': qr_data,
         'bot_enabled': bot_enabled,
+        'lead_alerts_enabled': lead_alerts_enabled(),
         'stats': {
             'total_sessions': total_sessions,
             'registered': registered_sessions,
@@ -310,6 +312,21 @@ def wa_bot_toggle_service(request):
     SiteSetting.set_value('wa_agent_bot_enabled', new_val)
 
     _log_admin_action(request, 'toggle_wa_bot', 'System', 0, f"Bot enabled set to {new_val}")
+    return JsonResponse({'success': True, 'enabled': new_val})
+
+
+@require_POST
+def wa_bot_toggle_lead_alerts(request):
+    """Feature flag: WhatsApp agents when they receive a new lead."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+
+    from apps.wa_agent_bot.services.notification_service import LEAD_ALERT_SETTING, lead_alerts_enabled
+    new_val = not lead_alerts_enabled()
+    SiteSetting.set_value(LEAD_ALERT_SETTING, new_val)
+
+    _log_admin_action(request, 'toggle_wa_lead_alerts', 'System', 0, f"Lead WhatsApp alerts set to {new_val}")
     return JsonResponse({'success': True, 'enabled': new_val})
 
 

@@ -446,6 +446,9 @@ def agent_card_lead_submit(request, slug):
         ip_address=client_ip
     )
 
+    from apps.wa_agent_bot.services.notification_service import notify_agent_new_lead
+    notify_agent_new_lead(lead)
+
     # Dispatch FCM push notification to agent devices
     try:
         tokens = list(AgentDeviceToken.objects.filter(agent_id=agent.id).values_list('token', flat=True))
