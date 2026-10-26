@@ -102,6 +102,12 @@ def get_openwa_session_status():
     """
     cfg = get_openwa_config()
     session_id = cfg['session_id']
+    if not session_id or not cfg['base_url']:
+        return {
+            'online': False, 'latency_ms': 0, 'session': None, 'status': 'not_configured',
+            'is_connected': False, 'is_qr_ready': False, 'phone': None, 'push_name': None,
+            'error': 'OpenWA Server URL / Session ID not configured (Admin > WhatsApp settings or .env).',
+        }
     base = cfg['base_url'].rstrip('/')
     if not base.endswith('/api'):
         base = f"{base}/api"

@@ -295,6 +295,7 @@
                     <div class="text-center py-4">
                         <i class="fa-solid fa-spinner fa-spin text-muted" style="font-size: 32px;"></i>
                         <p class="text-muted small mt-2 mb-0">Starting OpenWA engine or waiting for QR code...</p>
+                        <p class="small mt-1 mb-0 text-danger" id="qrStatusNote">{% if openwa_status.error %}Status: {{ openwa_status.status }} — {{ openwa_status.error }}{% else %}Status: {{ openwa_status.status|default:"unknown" }}{% endif %}</p>
                         <button class="btn btn-sm btn-outline-primary mt-3" onclick="refreshQrCode()">Fetch QR Code</button>
                     </div>
                     {% endif %}
@@ -604,14 +605,15 @@
                     </div>
                 `;
             } else {
-                alert('QR code not ready: ' + d.status);
+                const note = document.getElementById('qrStatusNote');
+                if (note) note.textContent = 'Status: ' + (d.status || 'unknown') + (d.error ? ' — ' + d.error : '');
             }
         })
         .catch(e => console.error(e));
     }
 
-    // Auto-poll QR code every 15 seconds if in QR ready state
-    {% if openwa_status.is_qr_ready %}
+    // Auto-poll every 15 seconds until the device is paired
+    {% if not openwa_status.is_connected %}
     setInterval(refreshQrCode, 15000);
     {% endif %}
 

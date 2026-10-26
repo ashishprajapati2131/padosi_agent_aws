@@ -97,6 +97,15 @@ class WaBotAdminTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn('New Visitor', resp.content.decode('utf-8'))
 
+    @patch.dict('os.environ', {'WA_BOT_OPENWA_SESSION_ID': ''})
+    @patch('apps.home.models.site_setting.SiteSetting.get_value', return_value=None)
+    def test_openwa_status_reports_missing_config(self, _mock_setting):
+        """With no session id configured the QR panel must say why instead of spinning forever."""
+        from apps.wa_agent_bot.services.openwa_admin_service import get_openwa_session_status
+        status = get_openwa_session_status()
+        self.assertEqual(status['status'], 'not_configured')
+        self.assertIn('not configured', status['error'])
+
     def test_dashboard_redirects_unauthenticated(self):
         req = self.factory.get('/admin/whatsapp/')
         req.session = {}

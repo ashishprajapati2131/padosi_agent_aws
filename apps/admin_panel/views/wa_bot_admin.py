@@ -54,7 +54,8 @@ def wa_bot_dashboard(request):
     # 1. Fetch live OpenWA status
     openwa_status = get_openwa_session_status()
     qr_data = None
-    if openwa_status.get('is_qr_ready'):
+    # OpenWA status names vary by version, so try for a QR whenever the server is up but not paired.
+    if openwa_status.get('online') and not openwa_status.get('is_connected'):
         qr_resp = get_openwa_qr_code()
         if qr_resp.get('success'):
             qr_data = qr_resp.get('qr_code')
@@ -342,6 +343,7 @@ def wa_bot_get_qr_ajax(request):
         'is_connected': status_res.get('is_connected', False),
         'is_qr_ready': status_res.get('is_qr_ready', False),
         'phone': status_res.get('phone'),
+        'error': status_res.get('error') or res.get('error'),
     })
 
 
