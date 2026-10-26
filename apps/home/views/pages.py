@@ -1982,6 +1982,8 @@ _AREA_PINCODE_MAP = {
 
 
 MIN_INDEXABLE_CITY_AGENTS = 1
+# Agent-typed "cities" that are not places: pages stay up (profile breadcrumbs link here) but are noindex and kept out of the sitemap.
+JUNK_CITY_SLUGS = frozenset({'all-pune', 'all-world', 'and-all-over-world', 'pan-india'})
 
 
 def _resolve_area_to_pincodes(area_name_lower):
@@ -2370,6 +2372,7 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
     top_cities = list(
         City.objects.filter(is_active=True, agents__status='active')
         .exclude(slug=raw_slug)
+        .exclude(slug__in=JUNK_CITY_SLUGS)
         .exclude(name__iexact=city_display)
         .distinct()[:15]
     )
@@ -2390,7 +2393,7 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
         # Paginated pages are self-canonical (Google ignores rel=prev/next).
         canonical_url += f"?page={page_obj.number}"
     # Empty pages (no agents) stay reachable but out of the index (soft-404 risk).
-    meta_robots = 'index, follow' if paginator.count >= MIN_INDEXABLE_CITY_AGENTS else 'noindex, follow'
+    meta_robots = 'index, follow' if paginator.count >= MIN_INDEXABLE_CITY_AGENTS and raw_slug not in JUNK_CITY_SLUGS else 'noindex, follow'
     meta_title = f"Verified Insurance Agents in {city_display} | Licensed Advisors — PadosiAgent"
     meta_desc = f"Looking for trusted insurance agents in {city_display}? Find verified local advisors for Health, Life, Car & Bike insurance with ratings & doorstep assistance on PadosiAgent."
     meta_kw = f"insurance agent in {city_display}, best insurance agent in {city_display}, insurance agent near me {city_display}, licensed insurance agent {city_display}, health insurance agent {city_display}, life insurance agent {city_display}, PadosiAgent"

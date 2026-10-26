@@ -93,13 +93,14 @@ class CitySitemap(Sitemap):
         from django.db.models import Count
         from apps.agents.models import City
         from apps.home.services.agent_filters import listed_agents_queryset
-        from apps.home.views.pages import MIN_INDEXABLE_CITY_AGENTS
+        from apps.home.views.pages import JUNK_CITY_SLUGS, MIN_INDEXABLE_CITY_AGENTS
         from django.utils.text import slugify
         # Only cities the city page itself marks indexable.
         cities = (City.objects.filter(is_active=True, agents__in=listed_agents_queryset().values('id'))
                 .annotate(n=Count('agents', distinct=True))
                 .filter(n__gte=MIN_INDEXABLE_CITY_AGENTS).order_by('name'))
-        return [c for c in cities if _PROFILE_SLUG_RE.fullmatch(c.slug or slugify(c.name))]
+        return [c for c in cities if _PROFILE_SLUG_RE.fullmatch(c.slug or slugify(c.name))
+                and (c.slug or slugify(c.name)) not in JUNK_CITY_SLUGS]
 
     def location(self, obj):
         from django.utils.text import slugify
@@ -115,7 +116,7 @@ class CityCategorySitemap(Sitemap):
         from django.db.models import Count
         from apps.agents.models import City
         from apps.home.services.agent_filters import listed_agents_queryset
-        from apps.home.views.pages import (CITY_CATEGORIES, MIN_INDEXABLE_CITY_AGENTS, SERVICE_PAGES,
+        from apps.home.views.pages import (CITY_CATEGORIES, JUNK_CITY_SLUGS, MIN_INDEXABLE_CITY_AGENTS, SERVICE_PAGES,
                                            STATE_HUBS, filter_agents_for_category, state_hub_agents)
         from django.utils.text import slugify
         listed = listed_agents_queryset()
@@ -128,7 +129,7 @@ class CityCategorySitemap(Sitemap):
                       .filter(n__gte=MIN_INDEXABLE_CITY_AGENTS).order_by('name'))
             for c in cities:
                 slug = c.slug or slugify(c.name)
-                if _PROFILE_SLUG_RE.fullmatch(slug) and slug not in STATE_HUBS:
+                if _PROFILE_SLUG_RE.fullmatch(slug) and slug not in STATE_HUBS and slug not in JUNK_CITY_SLUGS:
                     items.append((slug, key))
         for state_slug, hub in STATE_HUBS.items():
             in_state = state_hub_agents(listed, hub)

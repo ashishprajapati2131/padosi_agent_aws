@@ -95,6 +95,17 @@ class CityCategoryDirectoryTests(TestCase):
         self.assertIn('/insurance-agents/ahmedabad/motor-insurance/', body)
         self.assertNotIn('/insurance-agents/ahmedabad/business-insurance/', body)
 
+    def test_junk_city_stays_up_but_noindex_and_out_of_sitemap(self):
+        world = City.objects.create(name='All World', slug='all-world')
+        _listed_agent('World Agent', 'world-agent', world)
+        for path in ('/insurance-agents/all-world/', '/insurance-claim-assistance/all-world/'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200, path)
+            self.assertContains(response, '<meta name="robots" content="noindex, follow">')
+        body = self.client.get('/sitemap.xml').content.decode()
+        self.assertNotIn('all-world', body)
+        self.assertIn('/insurance-agents/ahmedabad/', body)
+
     def _lic_agent(self):
         from apps.agents.models import AgentPortfolio
         lic = _listed_agent('Lic Agent', 'lic-agent', self.city)
