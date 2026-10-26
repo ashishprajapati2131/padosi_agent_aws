@@ -148,6 +148,30 @@ def _map_badges(items):
     return mapped
 
 
+def _indian_grouping(n):
+    """1234567 -> '12,34,567' (same as JS toLocaleString('en-IN'))."""
+    s = str(abs(n))
+    if len(s) > 3:
+        head, tail = s[:-3], s[-3:]
+        parts = []
+        while len(head) > 2:
+            parts.insert(0, head[-2:])
+            head = head[:-2]
+        if head:
+            parts.insert(0, head)
+        s = ','.join(parts + [tail])
+    return ('-' if n < 0 else '') + s
+
+
+def _stat_display(target, is_large, is_decimal):
+    """The number the hero counter animation ends on, rendered server-side so
+    the HTML (crawlers, no-JS) shows the real value instead of 0."""
+    if is_decimal:
+        return f'{target:.1f}'
+    val = int(target)
+    return _indian_grouping(val) if is_large else str(val)
+
+
 def _map_stats(items):
     mapped = []
     for item in items:
@@ -158,13 +182,16 @@ def _map_stats(items):
             target = float(_attr(item, 'target', default=0) or 0)
         except (TypeError, ValueError):
             target = 0.0
+        is_large = _flag(_attr(item, 'is_large', 'large', default=False))
+        is_decimal = _flag(_attr(item, 'is_decimal', 'decimal', default=False))
         mapped.append({
             'label': label,
             'target': target,
+            'display': _stat_display(target, is_large, is_decimal),
             'suffix': _attr(item, 'suffix'),
             'icon': _attr(item, 'icon', default='users'),
-            'is_large': _flag(_attr(item, 'is_large', 'large', default=False)),
-            'is_decimal': _flag(_attr(item, 'is_decimal', 'decimal', default=False)),
+            'is_large': is_large,
+            'is_decimal': is_decimal,
         })
     return mapped
 

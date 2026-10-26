@@ -83,3 +83,18 @@ class HomePageTests(TestCase):
         self.assertNotContains(response, 'id="review-slider"')
         self.assertContains(response, '"@type": "Organization"')
         self.assertContains(response, '"@type": "WebSite"')
+
+    def test_hero_stats_render_real_values_not_zero(self):
+        # Crawlers and no-JS visitors must see the counter's final value.
+        response = self.client.get(reverse('home:home'))
+        self.assertContains(response, 'id="pa-counter-0">1,000</span>')
+        self.assertNotContains(response, 'id="pa-counter-0">0</span>')
+
+
+class StatDisplayTests(TestCase):
+    def test_formats_match_js_counter(self):
+        from apps.home.services.homepage import _stat_display
+        self.assertEqual(_stat_display(4.8, False, True), '4.8')
+        self.assertEqual(_stat_display(500.0, False, False), '500')
+        self.assertEqual(_stat_display(1000.0, True, False), '1,000')
+        self.assertEqual(_stat_display(1234567.0, True, False), '12,34,567')

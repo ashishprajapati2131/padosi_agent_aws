@@ -79,7 +79,7 @@
             <div class="pa-stat" data-target="{{ s.target }}" data-suffix="{{ s.suffix }}" data-large="{% if s.is_large %}1{% else %}0{% endif %}" data-decimal="{% if s.is_decimal %}1{% else %}0{% endif %}">
               <div class="pa-stat-top">
                 <span class="pa-stat-icon">{% include 'components/hero-icon.html' with name=s.icon sw='1.8' %}</span>
-                <span class="pa-stat-num"><span class="pa-stat-counter" id="pa-counter-{{ forloop.counter0 }}">0</span>{{ s.suffix }}</span>
+                <span class="pa-stat-num"><span class="pa-stat-counter" id="pa-counter-{{ forloop.counter0 }}">{{ s.display|default:"0" }}</span>{{ s.suffix }}</span>
               </div>
               <span class="pa-stat-label">{{ s.label }}</span>
             </div>
@@ -120,7 +120,7 @@
                 <div class="pa-stat" data-target="{{ s.target }}" data-suffix="{{ s.suffix }}" data-large="{% if s.is_large %}1{% else %}0{% endif %}" data-decimal="{% if s.is_decimal %}1{% else %}0{% endif %}">
                   <div class="pa-stat-top">
                     <span class="pa-stat-icon">{% include 'components/hero-icon.html' with name=s.icon sw='1.8' %}</span>
-                    <span class="pa-stat-num"><span class="pa-stat-counter" id="pa-counter-d-{{ forloop.counter0 }}">0</span>{{ s.suffix }}</span>
+                    <span class="pa-stat-num"><span class="pa-stat-counter" id="pa-counter-d-{{ forloop.counter0 }}">{{ s.display|default:"0" }}</span>{{ s.suffix }}</span>
                   </div>
                   <span class="pa-stat-label">{{ s.label }}</span>
                 </div>
