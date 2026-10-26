@@ -5,6 +5,35 @@
 {% block meta_description %}Find and compare local, verified insurance agents in your neighborhood. Zero platform fees,
 no spam calls, only trusted licensed agents.{% endblock %}
 
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "CollectionPage",
+      "@id": "{{ public_site_base }}/find-agents/#webpage",
+      "url": "{{ public_site_base }}/find-agents/",
+      "name": "Find Verified Insurance Agents Near You",
+      "description": "Find and compare local, verified insurance agents for health, life, LIC, car, bike and business insurance across India. Call or WhatsApp agents directly.",
+      "inLanguage": "en-IN",
+      "isPartOf": {"@type": "WebSite", "name": "PadosiAgent", "url": "{{ public_site_base }}/"},
+      "about": {"@type": "Thing", "name": "Insurance agents"},
+      "breadcrumb": {"@id": "{{ public_site_base }}/find-agents/#breadcrumb"}
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "{{ public_site_base }}/find-agents/#breadcrumb",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "{{ public_site_base }}/"},
+        {"@type": "ListItem", "position": 2, "name": "Find Insurance Agents", "item": "{{ public_site_base }}/find-agents/"}
+      ]
+    }
+  ]
+}
+</script>
+{% endblock %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/find-agents-filter-v2.css' %}?v=20261007g">
 <style>

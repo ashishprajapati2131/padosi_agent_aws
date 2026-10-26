@@ -2398,6 +2398,17 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
     meta_desc = f"Looking for trusted insurance agents in {city_display}? Find verified local advisors for Health, Life, Car & Bike insurance with ratings & doorstep assistance on PadosiAgent."
     meta_kw = f"insurance agent in {city_display}, best insurance agent in {city_display}, insurance agent near me {city_display}, licensed insurance agent {city_display}, health insurance agent {city_display}, life insurance agent {city_display}, PadosiAgent"
 
+    breadcrumb = [
+        {'@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': request.build_absolute_uri('/')},
+        {'@type': 'ListItem', 'position': 2, 'name': 'Insurance Agents', 'item': request.build_absolute_uri('/find-agents/')},
+        {'@type': 'ListItem', 'position': 3, 'name': city_display,
+         'item': request.build_absolute_uri(f"/insurance-agents/{raw_slug}/")},
+    ]
+    if category:
+        breadcrumb.append({'@type': 'ListItem', 'position': 4, 'name': f"{category['label']} Agents",
+                           'item': request.build_absolute_uri(_directory_path(raw_slug, category_slug))})
+    breadcrumb_schema = {'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': breadcrumb}
+
     category_context = {}
     if category:
         label = category['label']
@@ -2421,23 +2432,11 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
                     for q, a in faqs
                 ],
             },
-            'breadcrumb_schema': {
-                '@context': 'https://schema.org',
-                '@type': 'BreadcrumbList',
-                'itemListElement': [
-                    {'@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': request.build_absolute_uri('/')},
-                    {'@type': 'ListItem', 'position': 2, 'name': 'Insurance Agents',
-                     'item': request.build_absolute_uri('/find-agents/')},
-                    {'@type': 'ListItem', 'position': 3, 'name': city_display,
-                     'item': request.build_absolute_uri(f"/insurance-agents/{raw_slug}/")},
-                    {'@type': 'ListItem', 'position': 4, 'name': f"{label} Agents",
-                     'item': request.build_absolute_uri(_directory_path(raw_slug, category_slug))},
-                ],
-            },
         }
 
     context = {
         **category_context,
+        'breadcrumb_schema': breadcrumb_schema,
         'city_categories': [(_directory_path(raw_slug, slug), c['label'])
                             for slug, c in {**CITY_CATEGORIES, **SERVICE_PAGES}.items() if slug != category_slug],
         'state_cities': state_cities,

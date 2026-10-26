@@ -95,6 +95,34 @@ class CityCategoryDirectoryTests(TestCase):
         self.assertIn('/insurance-agents/ahmedabad/motor-insurance/', body)
         self.assertNotIn('/insurance-agents/ahmedabad/business-insurance/', body)
 
+    def _json_ld(self, response):
+        import json, re
+        return [json.loads(b) for b in re.findall(r'<script type="application/ld\+json">(.*?)</script>',
+                                                  response.content.decode(), re.S)]
+
+    def test_city_hub_has_breadcrumb_schema(self):
+        blocks = self._json_ld(self.client.get('/insurance-agents/ahmedabad/'))
+        crumbs = [b for b in blocks if b.get('@type') == 'BreadcrumbList']
+        self.assertEqual(len(crumbs), 1)
+        items = crumbs[0]['itemListElement']
+        self.assertEqual([i['name'] for i in items], ['Home', 'Insurance Agents', 'Ahmedabad'])
+        self.assertTrue(items[2]['item'].endswith('/insurance-agents/ahmedabad/'))
+
+        blocks = self._json_ld(self.client.get('/insurance-agents/ahmedabad/health-insurance/'))
+        crumbs = [b for b in blocks if b.get('@type') == 'BreadcrumbList']
+        self.assertEqual(len(crumbs), 1)
+        self.assertEqual(crumbs[0]['itemListElement'][3]['name'], 'Health Insurance Agents')
+
+    def test_find_agents_template_has_valid_json_ld(self):
+        import json, re
+        from django.template.loader import render_to_string
+        from django.test import RequestFactory
+        html = render_to_string('public/find-agents.html', {}, request=RequestFactory().get('/find-agents/'))
+        blocks = [json.loads(b) for b in re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)]
+        types = {node['@type'] for b in blocks for node in b.get('@graph', [b])}
+        self.assertIn('CollectionPage', types)
+        self.assertIn('BreadcrumbList', types)
+
     def test_junk_city_stays_up_but_noindex_and_out_of_sitemap(self):
         world = City.objects.create(name='All World', slug='all-world')
         _listed_agent('World Agent', 'world-agent', world)
