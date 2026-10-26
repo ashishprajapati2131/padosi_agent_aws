@@ -200,6 +200,20 @@
     {% endif %}
   </div>
 
+  {% if state_cities %}
+  <!-- State hub: city links -->
+  <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background: #ffffff; border: 1px solid #e2e8f0;">
+    <h2 style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 12px;">
+      {% if category %}{{ category.label }}{% else %}Insurance Agents{% endif %} by City in {{ city_name }}
+    </h2>
+    <div class="d-flex flex-wrap gap-2">
+      {% for path, name, n in state_cities %}
+        <a href="{{ path }}" class="city-pill-link">{{ name }}{% if not category %} <span class="text-muted">({{ n }})</span>{% endif %}</a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Agent Listings Grid -->
   <div class="row">
     <div class="col-lg-8 col-12">
@@ -309,14 +323,14 @@
       <!-- Insurance Type Links -->
       <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background: #ffffff; border: 1px solid #e2e8f0;">
         <h4 style="font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 12px;">
-          <i class="fas fa-layer-group me-2 text-primary"></i> Agents by Insurance Type in {{ city_name }}
+          <i class="fas fa-layer-group me-2 text-primary"></i> Agents &amp; Services in {{ city_name }}
         </h4>
         <div class="d-flex flex-wrap gap-2">
           {% if category %}
             <a href="{% url 'home:city_agents_directory' city_slug=city_slug %}" class="city-pill-link">All Insurance Agents</a>
           {% endif %}
-          {% for slug, label in city_categories %}
-            <a href="{% url 'home:city_category_agents_directory' city_slug=city_slug category_slug=slug %}" class="city-pill-link">{{ label }}</a>
+          {% for path, label in city_categories %}
+            <a href="{{ path }}" class="city-pill-link">{{ label }}</a>
           {% endfor %}
         </div>
       </div>

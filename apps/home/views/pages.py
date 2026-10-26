@@ -2044,6 +2044,28 @@ CITY_CATEGORIES = {
              'Yes. A local agent helps the nominee collect documents, fill the claim form and follow up with the insurer.'),
         ],
     },
+    'lic-agents': {
+        'label': 'LIC',
+        # Matched on the insurer name saved in the agent's portfolio (see fastapi_app/utils/companies.py).
+        'companies': ['Life Insurance Corporation'],
+        'keywords': 'LIC agent in {city}, LIC agent near me {city}, LIC policy advisor {city}, LIC premium payment help {city}, LIC claim assistance {city}',
+        'intro': (
+            'Find verified LIC agents in {city}. A local LIC advisor helps you choose between term, endowment, '
+            'money-back and pension plans, keeps track of premium due dates, revives lapsed policies and supports '
+            'your family with maturity and death claims.'
+        ),
+        'faqs': [
+            ('How do I find a genuine LIC agent in {city}?',
+             'Every agent on this page represents LIC on their PadosiAgent profile. Check their experience and reviews, '
+             'and ask for their LIC agent code before you buy.'),
+            ('Can an LIC agent help me revive a lapsed policy?',
+             'Yes. An agent can tell you the revival amount, any medical requirements and the forms LIC needs.'),
+            ('Does an LIC agent help with maturity and death claims?',
+             'Yes. The agent helps you or your nominee collect the documents, submit the claim to the LIC branch and follow it up.'),
+            ('Is it free to contact an LIC agent on PadosiAgent?',
+             'Yes. Open any agent profile on this page and call or WhatsApp them directly. There is no fee for using PadosiAgent.'),
+        ],
+    },
     'motor-insurance': {
         'label': 'Car & Bike Insurance',
         'segment': 'motor',
@@ -2089,7 +2111,83 @@ CITY_CATEGORIES = {
 }
 
 
-def city_agents_directory(request, city_slug, category_slug=None):
+# /<service>/<city>/ pages: every listed agent in the city, with service-specific copy.
+SERVICE_PAGES = {
+    'insurance-claim-assistance': {
+        'label': 'Insurance Claim Assistance',
+        'keywords': 'insurance claim assistance in {city}, insurance claim support {city}, health insurance claim assistance {city}, car insurance claim assistance {city}, insurance claim advisor near me {city}',
+        'intro': (
+            'Get help with your insurance claim in {city}. Verified local advisors guide you through health, '
+            'life, motor and business insurance claims: what to tell the insurer, which documents to collect, '
+            'cashless versus reimbursement, and how to follow up on a delayed or rejected claim.'
+        ),
+        'faqs': [
+            ('Can a local advisor in {city} help if my policy was bought from someone else?',
+             'Yes. Many advisors on this page help with claims on any policy. Share your policy details when you '
+             'contact them and they will tell you how they can help.'),
+            ('What documents are usually needed for a health insurance claim?',
+             'Usually the claim form, policy copy, ID proof, hospital bills, discharge summary, doctor\'s '
+             'prescriptions and test reports. For reimbursement claims you also need the original bills and a '
+             'cancelled cheque. Your insurer may ask for more.'),
+            ('What should I do first after a car accident?',
+             'Inform your insurer as soon as you can, take photos of the vehicle and the spot, and do not move the '
+             'vehicle to a garage before the insurer says so. File an FIR if there is injury, theft or major damage.'),
+            ('My claim was rejected. Can an advisor help?',
+             'An advisor can read the rejection letter, check it against your policy terms and help you appeal to '
+             'the insurer\'s grievance cell. If that fails, you can approach the Insurance Ombudsman.'),
+        ],
+    },
+    'insurance-renewal': {
+        'label': 'Insurance Policy Renewal',
+        'keywords': 'insurance policy renewal agent {city}, insurance renewal near me {city}, health insurance renewal agent {city}, car insurance renewal {city}, bike insurance renewal agent {city}, insurance policy review {city}',
+        'intro': (
+            'Renew your health, life, car or bike insurance with a verified local advisor in {city}. An advisor '
+            'reviews your current cover before renewal, compares plans, keeps your no-claim bonus and waiting-period '
+            'benefits, and reminds you before the next due date.'
+        ),
+        'faqs': [
+            ('What happens if I miss my health insurance renewal date?',
+             'Most insurers give a short grace period. If you renew after it ends, the policy may lapse and you can '
+             'lose waiting-period credit for pre-existing diseases. Renew before the due date.'),
+            ('Can I switch insurers at renewal without losing benefits?',
+             'Yes. Health insurance portability lets you carry waiting-period credit to a new insurer, and the motor '
+             'no-claim bonus can be transferred. Apply before your current policy expires.'),
+            ('Can my bike or car insurance be renewed after it has expired?',
+             'Yes, but the insurer may ask for a vehicle inspection, and driving without valid insurance is illegal. '
+             'A local advisor can arrange the inspection.'),
+            ('Is a policy review before renewal useful?',
+             'Yes. Your income, family and vehicle may have changed. A review checks whether your sum insured and '
+             'add-ons still fit before you pay the next premium.'),
+        ],
+    },
+}
+
+# /insurance-agents/<state>/ hubs: every listed agent serving a city in that state.
+STATE_HUBS = {'gujarat': 'Gujarat'}
+
+
+def filter_agents_for_category(agents_qs, category):
+    """Narrow an agent queryset to a CITY_CATEGORIES / SERVICE_PAGES entry (services keep everyone)."""
+    if category.get('segment'):
+        agents_qs = agents_qs.filter(insuranceSegments__segment_type=category['segment']).distinct()
+    if category.get('companies'):
+        company_q = Q()
+        for name in category['companies']:
+            company_q |= Q(portfolios__primary_companies__icontains=name)
+            company_q |= Q(portfolios__secondary_companies__icontains=name)
+        agents_qs = agents_qs.filter(company_q).distinct()
+    return agents_qs
+
+
+def _directory_path(place_slug, key=None):
+    if key in SERVICE_PAGES:
+        return f"/{key}/{place_slug}/"
+    if key:
+        return f"/insurance-agents/{place_slug}/{key}/"
+    return f"/insurance-agents/{place_slug}/"
+
+
+def city_agents_directory(request, city_slug, category_slug=None, service_slug=None):
     """
     Programmatic Local SEO Hub: /insurance-agents/<city_slug>/
     Targeting 'insurance agent in <city>', 'best insurance agent in <city>'.
@@ -2110,8 +2208,12 @@ def city_agents_directory(request, city_slug, category_slug=None):
             from django.http import Http404
             raise Http404("Category not found")
         category_slug = str(category_slug).lower()
+    elif service_slug is not None:
+        category = SERVICE_PAGES[service_slug]
+        category_slug = service_slug
 
     raw_slug = str(city_slug).strip().lower()
+    state_hub = STATE_HUBS.get(raw_slug)
     city_query_name = raw_slug.replace('-', ' ')
 
     # --- Tier 1: Try exact City model match ---
@@ -2121,7 +2223,11 @@ def city_agents_directory(request, city_slug, category_slug=None):
     )
 
     area_pincodes = []
-    if city_obj:
+    if state_hub:
+        city_display = state_hub
+        state_display = 'India'
+        agents_qs = listed_agents_queryset().filter(serviceableCities__state__iexact=state_hub).distinct()
+    elif city_obj:
         city_display = city_obj.name
         state_display = city_obj.state or 'Gujarat'
 
@@ -2210,14 +2316,14 @@ def city_agents_directory(request, city_slug, category_slug=None):
                     agents_qs = base_qs.filter(serviceableCities=parent_city_obj).distinct()
 
     if category:
-        agents_qs = agents_qs.filter(insuranceSegments__segment_type=category['segment']).distinct()
+        agents_qs = filter_agents_for_category(agents_qs, category)
 
     agents_list = list(
         agents_qs
         .order_by('-created_at')[:200]   # cap to avoid full-table scans
     )
     # Unknown slug with no agents: a real 404, not an indexable "Agents in <anything>" page.
-    if not agents_list and not city_obj and not area_pincodes:
+    if not agents_list and not city_obj and not area_pincodes and not state_hub:
         from django.http import Http404
         raise Http404("City not found")
 
@@ -2241,6 +2347,17 @@ def city_agents_directory(request, city_slug, category_slug=None):
         .distinct()[:15]
     )
 
+    state_cities = []
+    if state_hub:
+        from django.db.models import Count
+        state_cities = [
+            (_directory_path(c.slug, category_slug), c.name, c.n)
+            for c in City.objects.filter(is_active=True, state__iexact=state_hub,
+                                         agents__in=listed_agents_queryset().values('id'))
+            .annotate(n=Count('agents', distinct=True)).order_by('-n', 'name')[:40]
+            if c.slug
+        ]
+
     canonical_url = request.build_absolute_uri(f"/insurance-agents/{raw_slug}/")
     if page_obj.number > 1:
         # Paginated pages are self-canonical (Google ignores rel=prev/next).
@@ -2254,10 +2371,10 @@ def city_agents_directory(request, city_slug, category_slug=None):
     category_context = {}
     if category:
         label = category['label']
-        canonical_url = canonical_url.replace(f"/insurance-agents/{raw_slug}/", f"/insurance-agents/{raw_slug}/{category_slug}/", 1)
+        canonical_url = canonical_url.replace(f"/insurance-agents/{raw_slug}/", _directory_path(raw_slug, category_slug), 1)
         meta_title = f"{label} Agents in {city_display} - Verified Local Advisors | PadosiAgent"
         count_text = f"{paginator.count}+ " if paginator.count else ''
-        meta_desc = (f"Looking for a trusted {label.lower()} agent in {city_display}? Compare {count_text}verified local "
+        meta_desc = (f"Looking for a trusted {label if label.isupper() else label.lower()} agent in {city_display}? Compare {count_text}verified local "
                      f"advisors with ratings and reviews. Connect directly on call or WhatsApp for free claim guidance.")
         meta_kw = category['keywords'].format(city=city_display) + ', PadosiAgent'
         faqs = [(q.format(city=city_display), a.format(city=city_display)) for q, a in category['faqs']]
@@ -2284,14 +2401,16 @@ def city_agents_directory(request, city_slug, category_slug=None):
                     {'@type': 'ListItem', 'position': 3, 'name': city_display,
                      'item': request.build_absolute_uri(f"/insurance-agents/{raw_slug}/")},
                     {'@type': 'ListItem', 'position': 4, 'name': f"{label} Agents",
-                     'item': request.build_absolute_uri(f"/insurance-agents/{raw_slug}/{category_slug}/")},
+                     'item': request.build_absolute_uri(_directory_path(raw_slug, category_slug))},
                 ],
             },
         }
 
     context = {
         **category_context,
-        'city_categories': [(slug, c['label']) for slug, c in CITY_CATEGORIES.items() if slug != category_slug],
+        'city_categories': [(_directory_path(raw_slug, slug), c['label'])
+                            for slug, c in {**CITY_CATEGORIES, **SERVICE_PAGES}.items() if slug != category_slug],
+        'state_cities': state_cities,
         'city_name': city_display,
         'state_name': state_display,
         'city_slug': raw_slug,

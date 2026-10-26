@@ -95,6 +95,55 @@ class CityCategoryDirectoryTests(TestCase):
         self.assertIn('/insurance-agents/ahmedabad/motor-insurance/', body)
         self.assertNotIn('/insurance-agents/ahmedabad/business-insurance/', body)
 
+    def _lic_agent(self):
+        from apps.agents.models import AgentPortfolio
+        lic = _listed_agent('Lic Agent', 'lic-agent', self.city)
+        AgentPortfolio.objects.create(agent=lic, segment_type='life',
+                                      primary_companies={'name': 'Life Insurance Corporation of India', 'percentage': '100'})
+        return lic
+
+    def test_lic_page_lists_only_lic_agents(self):
+        self._lic_agent()
+        response = self.client.get('/insurance-agents/ahmedabad/lic-agents/')
+        self.assertContains(response, 'Top-Rated LIC Agents in Ahmedabad, Gujarat')
+        self.assertContains(response, 'lic-agent')
+        self.assertNotContains(response, 'health-agent')
+        self.assertContains(response, 'Looking for a trusted LIC agent')
+
+    def test_service_pages_list_all_city_agents(self):
+        for path, heading in (('/insurance-claim-assistance/ahmedabad/', 'Insurance Claim Assistance'),
+                              ('/insurance-renewal/ahmedabad/', 'Insurance Policy Renewal')):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200, path)
+            self.assertContains(response, f'Top-Rated {heading} Agents in Ahmedabad')
+            self.assertContains(response, 'health-agent')
+            self.assertContains(response, 'motor-agent')
+            self.assertRegex(response.content.decode(), r'<link rel="canonical" href="https?://[^"]+' + path + '">')
+        self.assertEqual(self.client.get('/insurance-claim-assistance/xyzabc/').status_code, 404)
+
+    def test_gujarat_hub_lists_state_agents_and_cities(self):
+        mumbai = City.objects.create(name='Mumbai', slug='mumbai', state='Maharashtra')
+        _listed_agent('Mumbai Agent', 'mumbai-agent', mumbai)
+        response = self.client.get('/insurance-agents/gujarat/')
+        self.assertContains(response, 'Verified Insurance Agents in Gujarat</h1>')
+        self.assertContains(response, 'health-agent')
+        self.assertNotContains(response, 'mumbai-agent')
+        self.assertContains(response, 'href="/insurance-agents/ahmedabad/"')
+
+        response = self.client.get('/insurance-agents/gujarat/health-insurance/')
+        self.assertContains(response, 'Top-Rated Health Insurance Agents in Gujarat, India')
+        self.assertNotContains(response, 'motor-agent')
+        self.assertContains(response, 'href="/insurance-agents/ahmedabad/health-insurance/"')
+
+    def test_sitemap_lists_services_lic_and_state_hub(self):
+        self._lic_agent()
+        body = self.client.get('/sitemap.xml').content.decode()
+        for path in ('/insurance-agents/ahmedabad/lic-agents/', '/insurance-claim-assistance/ahmedabad/',
+                     '/insurance-renewal/ahmedabad/', '/insurance-agents/gujarat/',
+                     '/insurance-agents/gujarat/health-insurance/', '/insurance-claim-assistance/gujarat/'):
+            self.assertIn(path, body)
+        self.assertNotIn('/insurance-agents/gujarat/business-insurance/', body)
+
 
 @override_settings(ALLOWED_HOSTS=['*'])
 class SeoRedirectTests(TestCase):

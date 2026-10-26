@@ -107,6 +107,7 @@ class CitySitemap(Sitemap):
         return reverse('home:city_agents_directory', kwargs={'city_slug': slug})
 
 class CityCategorySitemap(Sitemap):
+    """City x category / service pages, plus state hubs, that have listed agents."""
     priority = 0.8
     changefreq = 'daily'
 
@@ -114,26 +115,32 @@ class CityCategorySitemap(Sitemap):
         from django.db.models import Count
         from apps.agents.models import City
         from apps.home.services.agent_filters import listed_agents_queryset
-        from apps.home.views.pages import CITY_CATEGORIES, MIN_INDEXABLE_CITY_AGENTS
+        from apps.home.views.pages import (CITY_CATEGORIES, MIN_INDEXABLE_CITY_AGENTS, SERVICE_PAGES,
+                                           STATE_HUBS, filter_agents_for_category)
         from django.utils.text import slugify
-        listed_ids = listed_agents_queryset().values('id')
+        listed = listed_agents_queryset()
+        pages = {**CITY_CATEGORIES, **SERVICE_PAGES}
         items = []
-        for category_slug, category in CITY_CATEGORIES.items():
-            # Same filter() call so the segment and the listing apply to the same agent.
-            cities = (City.objects.filter(is_active=True, agents__in=listed_ids,
-                                          agents__insuranceSegments__segment_type=category['segment'])
+        for key, category in pages.items():
+            agent_ids = filter_agents_for_category(listed, category).values('id')
+            cities = (City.objects.filter(is_active=True, agents__in=agent_ids)
                       .annotate(n=Count('agents', distinct=True))
                       .filter(n__gte=MIN_INDEXABLE_CITY_AGENTS).order_by('name'))
             for c in cities:
                 slug = c.slug or slugify(c.name)
-                if _PROFILE_SLUG_RE.fullmatch(slug):
-                    items.append((slug, category_slug))
+                if _PROFILE_SLUG_RE.fullmatch(slug) and slug not in STATE_HUBS:
+                    items.append((slug, key))
+        for state_slug, state in STATE_HUBS.items():
+            in_state = listed.filter(serviceableCities__state__iexact=state).distinct()
+            for key in [None, *pages]:
+                qs = filter_agents_for_category(in_state, pages[key]) if key else in_state
+                if qs.count() >= MIN_INDEXABLE_CITY_AGENTS:
+                    items.append((state_slug, key))
         return items
 
     def location(self, item):
-        city_slug, category_slug = item
-        return reverse('home:city_category_agents_directory',
-                       kwargs={'city_slug': city_slug, 'category_slug': category_slug})
+        from apps.home.views.pages import _directory_path
+        return _directory_path(*item)
 
 
 sitemaps = {
