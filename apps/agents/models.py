@@ -550,8 +550,18 @@ class Agent(models.Model):
 
     @property
     def agent_slug(self):
+        from django.utils.text import slugify
         if hasattr(self, 'profile') and self.profile and self.profile.slug:
             return self.profile.slug
+        if self.fullname:
+            clean = slugify(self.fullname)
+            if clean:
+                return clean
+        if self.email:
+            prefix = self.email.split('@')[0]
+            clean = slugify(prefix)
+            if clean:
+                return clean
         return str(self.id)
 
     @property

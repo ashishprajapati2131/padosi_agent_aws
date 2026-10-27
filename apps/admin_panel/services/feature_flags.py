@@ -43,7 +43,7 @@ DEFAULT_SYSTEM_FLAGS: List[Dict[str, Any]] = [
         'category': 'Growth & Marketing',
         'description': 'Allows insurance agents to generate, customize, and share live digital visiting cards with QR codes, WhatsApp direct links, and client lead forms.',
         'redirect_url': '/admin/agents/?status=active',
-        'default': False,
+        'default': True,
         'icon': 'fa-solid fa-id-card',
         'is_system': True,
     },

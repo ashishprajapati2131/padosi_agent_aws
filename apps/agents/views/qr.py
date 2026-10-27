@@ -16,11 +16,137 @@ from apps.agents.views.dashboard import _resolve_agent_plan
 logger = logging.getLogger(__name__)
 
 
-def _resolve_agent_by_slug(slug):
-    agent = Agent.objects.filter(profile__slug=slug).first()
-    if not agent and str(slug).isdigit():
-        agent = Agent.objects.filter(id=int(slug)).first()
+def _ensure_profile(agent, preferred_slug=None):
+    """Ensure agent has a valid AgentProfile with a usable slug and active card visibility."""
+    if not agent:
+        return None
+    from apps.agents.models import AgentProfile
+    from django.utils.text import slugify
+
+    profile = agent.get_primary_profile()
+    if not profile:
+        candidate_slug = preferred_slug or slugify(agent.fullname) or slugify(agent.email.split('@')[0]) or str(agent.id)
+        unique_slug = candidate_slug
+        count = 1
+        while AgentProfile.objects.filter(slug=unique_slug).exclude(agent=agent).exists():
+            unique_slug = f"{candidate_slug}-{count}"
+            count += 1
+
+        profile, _ = AgentProfile.objects.get_or_create(
+            agent=agent,
+            defaults={
+                'slug': unique_slug,
+                'display_name': agent.fullname or 'Agent',
+                'is_card_visible': True,
+                'is_profile_visible': True,
+            }
+        )
+    else:
+        # If profile exists but slug is empty
+        if not profile.slug:
+            candidate_slug = preferred_slug or slugify(agent.fullname) or slugify(agent.email.split('@')[0]) or str(agent.id)
+            unique_slug = candidate_slug
+            count = 1
+            while AgentProfile.objects.filter(slug=unique_slug).exclude(agent=agent).exists():
+                unique_slug = f"{candidate_slug}-{count}"
+                count += 1
+            profile.slug = unique_slug
+            try:
+                profile.save(update_fields=['slug', 'updated_at'])
+            except Exception:
+                pass
+
+        # Ensure is_card_visible has a valid boolean value
+        if getattr(profile, 'is_card_visible', None) is None:
+            profile.is_card_visible = True
+            try:
+                profile.save(update_fields=['is_card_visible', 'updated_at'])
+            except Exception:
+                pass
+
     return agent
+
+
+def _resolve_agent_by_slug(slug):
+    """
+    Resolve Agent instance flexibly by:
+    1. Exact or case-insensitive profile slug
+    2. URL-unquoted and normalized slug (with/without hyphens)
+    3. Agent fullname (exact and case-insensitive, with spaces/hyphens/underscores for /card/{AGENT Name})
+    4. Profile display_name
+    5. Agent email or username (e.g. sadhuparth1080p matching sadhuparth1080p@gmail.com)
+    6. Numeric primary key (agent ID)
+    7. Fallback: Substring / slugified match on agent fullname
+    8. Ensures agent has an active profile with valid slug
+    """
+    if not slug:
+        return None
+
+    import urllib.parse
+    from django.utils.text import slugify
+    from django.db.models import Q
+    from apps.agents.models import Agent
+
+    raw_slug = str(slug).strip()
+    unquoted = urllib.parse.unquote(raw_slug).strip()
+    normalized_slug = slugify(unquoted) or raw_slug.lower()
+    with_spaces = unquoted.replace('-', ' ').replace('_', ' ').strip()
+    with_hyphens = unquoted.replace(' ', '-').replace('_', '-').strip()
+
+    # 1. Search by profile slug (case-insensitive)
+    agent = Agent.objects.filter(
+        Q(profile__slug__iexact=raw_slug) |
+        Q(profile__slug__iexact=unquoted) |
+        Q(profile__slug__iexact=normalized_slug) |
+        Q(profile__slug__iexact=with_hyphens)
+    ).first()
+    if agent:
+        return _ensure_profile(agent, normalized_slug)
+
+    # 2. Search by Agent fullname (case-insensitive match for /card/{AGENT Name})
+    agent = Agent.objects.filter(
+        Q(fullname__iexact=unquoted) |
+        Q(fullname__iexact=with_spaces) |
+        Q(fullname__iexact=with_hyphens) |
+        Q(fullname__iexact=raw_slug)
+    ).first()
+    if agent:
+        return _ensure_profile(agent, normalized_slug)
+
+    # 3. Search by Profile display_name
+    agent = Agent.objects.filter(
+        Q(profile__display_name__iexact=unquoted) |
+        Q(profile__display_name__iexact=with_spaces)
+    ).first()
+    if agent:
+        return _ensure_profile(agent, normalized_slug)
+
+    # 4. Search by email or email prefix (e.g. sadhuparth1080p matching sadhuparth1080p@gmail.com)
+    agent = Agent.objects.filter(
+        Q(email__iexact=unquoted) |
+        Q(email__istartswith=f"{unquoted}@") |
+        Q(user__username__iexact=unquoted)
+    ).first()
+    if agent:
+        return _ensure_profile(agent, normalized_slug)
+
+    # 5. Search by numeric agent ID
+    if raw_slug.isdigit():
+        agent = Agent.objects.filter(id=int(raw_slug)).first()
+        if agent:
+            return _ensure_profile(agent, normalized_slug)
+
+    # 6. Fallback: Search agents where slugified fullname matches normalized_slug
+    if normalized_slug and len(normalized_slug) >= 2:
+        for candidate in Agent.objects.filter(
+            Q(fullname__icontains=normalized_slug.replace('-', ' ')[:10]) |
+            Q(email__icontains=normalized_slug[:10])
+        )[:30]:
+            cand_slug = slugify(candidate.fullname) or ''
+            if cand_slug == normalized_slug or cand_slug.replace('-', '') == normalized_slug.replace('-', ''):
+                return _ensure_profile(candidate, normalized_slug)
+
+    return None
 
 
 def _logged_in_agent(request):
@@ -96,12 +222,6 @@ def public_agent_card(request, slug):
     import json
     import urllib.parse
 
-    # Master Admin ON/OFF Feature Flag
-    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', False)
-    card_feature_enabled = str(raw_flag).strip().lower() in ('1', 'true', 'yes', 'on')
-    if not card_feature_enabled:
-        return render(request, 'agents/profile_unavailable.html', status=404)
-
     agent = _resolve_agent_by_slug(slug)
     if not agent:
         raise _Http404('Agent not found')
@@ -109,12 +229,43 @@ def public_agent_card(request, slug):
     if profile is None:
         raise _Http404('Agent profile not found')
 
-    is_visible = bool(getattr(profile, 'is_profile_visible', False) or getattr(profile, 'is_card_visible', False))
-    if agent.status in ('inactive', 'suspended', 'deleted') or not is_visible:
-        return render(request, 'agents/profile_unavailable.html', {
-            'agent': agent,
-            'profile': profile,
-        }, status=404)
+    # Detect if logged-in agent is viewing their own card or admin is previewing
+    logged_agent = _logged_in_agent(request)
+    is_owner = bool(logged_agent and logged_agent.id == agent.id)
+    if not is_owner and request.user.is_authenticated:
+        is_owner = bool(getattr(request.user, 'agent', None) == agent or getattr(agent, 'user', None) == request.user)
+
+    is_admin = False
+    try:
+        from apps.admin_panel.views.dashboard import _get_admin_from_session
+        is_admin = bool(_get_admin_from_session(request))
+    except Exception:
+        is_admin = False
+
+    is_privileged = is_owner or is_admin
+
+    # Master Admin ON/OFF Feature Flag
+    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', True)
+    if raw_flag is None:
+        card_feature_enabled = True
+    else:
+        card_feature_enabled = str(raw_flag).strip().lower() in ('1', 'true', 'yes', 'on')
+
+    if not card_feature_enabled and not is_privileged:
+        return render(request, 'agents/profile_unavailable.html', status=404)
+
+    is_visible = getattr(profile, 'is_card_visible', None)
+    if is_visible is None:
+        is_visible = getattr(profile, 'is_profile_visible', True)
+    else:
+        is_visible = bool(is_visible)
+
+    if not is_privileged:
+        if agent.status in ('suspended', 'deleted') or getattr(agent, 'is_blacklisted', False) or not is_visible:
+            return render(request, 'agents/profile_unavailable.html', {
+                'agent': agent,
+                'profile': profile,
+            }, status=404)
 
     agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
     display_name = (profile.display_name if profile else '') or agent.fullname or 'Agent'
@@ -308,8 +459,8 @@ def public_agent_card(request, slug):
 def agent_card_vcf_download(request, slug):
     """Download RFC 2426 vCard 3.0 file for 1-Tap Save to Phone Contacts."""
     from apps.home.models import SiteSetting
-    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', False)
-    if str(raw_flag).strip().lower() not in ('1', 'true', 'yes', 'on'):
+    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', True)
+    if raw_flag is not None and str(raw_flag).strip().lower() not in ('1', 'true', 'yes', 'on'):
         raise Http404('Digital Card is disabled')
 
     agent = _resolve_agent_by_slug(slug)
@@ -384,8 +535,8 @@ def agent_card_lead_submit(request, slug):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
 
-    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', False)
-    if str(raw_flag).strip().lower() not in ('1', 'true', 'yes', 'on'):
+    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', True)
+    if raw_flag is not None and str(raw_flag).strip().lower() not in ('1', 'true', 'yes', 'on'):
         return JsonResponse({'success': False, 'message': 'Digital Card enquiry is currently disabled.'}, status=403)
 
     agent = _resolve_agent_by_slug(slug)
@@ -518,8 +669,8 @@ def agent_card_pure_qr_image(request, slug):
     from apps.home.models import SiteSetting
     from django.core.cache import cache
 
-    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', False)
-    if str(raw_flag).strip().lower() not in ('1', 'true', 'yes', 'on'):
+    raw_flag = SiteSetting.get_value('agent_digital_card_enabled', True)
+    if raw_flag is not None and str(raw_flag).strip().lower() not in ('1', 'true', 'yes', 'on'):
         raise Http404('Digital Card is disabled')
 
     agent = _resolve_agent_by_slug(slug)

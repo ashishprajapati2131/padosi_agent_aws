@@ -182,3 +182,79 @@ class AgentDigitalCardTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'image/png')
         self.assertTrue(len(response.content) > 100)
+
+    def test_card_resolves_by_agent_fullname_and_unquoted_name(self):
+        # Resolve by agent fullname directly: /card/Kishan Patel/
+        url_with_space = reverse('agents:agent_public_card', kwargs={'slug': 'Kishan Patel'})
+        res_space = self.client.get(url_with_space)
+        self.assertEqual(res_space.status_code, 200)
+        self.assertContains(res_space, 'Kishan Patel')
+
+    def test_card_resolves_by_email_prefix(self):
+        # Resolve by email prefix: /card/cardagent/
+        url = reverse('agents:agent_public_card', kwargs={'slug': 'cardagent'})
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'Kishan Patel')
+
+    def test_card_resolves_when_agent_has_no_prior_profile(self):
+        # Simulate agent without profile (like 'zsdfghjk')
+        user_new = User.objects.create_user(
+            username='zsdfghjk@test.com',
+            email='zsdfghjk@test.com',
+            password='Password123'
+        )
+        agent_new = Agent.objects.create(
+            user=user_new,
+            fullname='zsdfghjk',
+            email='zsdfghjk@test.com',
+            mobile='9123456780',
+            status='active'
+        )
+        # Ensure no AgentProfile exists yet
+        self.assertFalse(hasattr(agent_new, 'profile'))
+
+        # Request /card/zsdfghjk/
+        url = reverse('agents:agent_public_card', kwargs={'slug': 'zsdfghjk'})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'zsdfghjk')
+
+        # Verify profile was automatically initialized and slug was assigned
+        agent_new.refresh_from_db()
+        self.assertTrue(hasattr(agent_new, 'profile'))
+        self.assertTrue(agent_new.profile.is_card_visible)
+        self.assertEqual(agent_new.profile.slug, 'zsdfghjk')
+
+    def test_authenticated_agent_can_preview_card_when_hidden(self):
+        # When an agent has is_card_visible=False, anonymous visitor gets 404, owner gets 200 preview
+        user_draft = User.objects.create_user(
+            username='draftagent@test.com',
+            email='draftagent@test.com',
+            password='Password123'
+        )
+        agent_draft = Agent.objects.create(
+            user=user_draft,
+            fullname='Parth Sadhu',
+            email='draftagent@test.com',
+            mobile='9123456789',
+            status='active'
+        )
+        AgentProfile.objects.create(
+            agent=agent_draft,
+            slug='parth-sadhu',
+            display_name='Parth Sadhu',
+            is_card_visible=False
+        )
+        url = reverse('agents:agent_public_card', kwargs={'slug': 'parth-sadhu'})
+        # Anonymous visitor gets 404 because card is not visible to public
+        anon_res = self.client.get(url)
+        self.assertEqual(anon_res.status_code, 404)
+
+        # Logged in owner gets 200 preview in visiting card studio
+        self.client.force_login(user_draft)
+        owner_res = self.client.get(url)
+        self.assertEqual(owner_res.status_code, 200)
+        self.assertContains(owner_res, 'Parth Sadhu')
+
+
