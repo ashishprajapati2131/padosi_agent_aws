@@ -1467,7 +1467,7 @@
                     </h2>
 
                     <p class="about-bio-text">
-                        {{ card_bio|default:profile.career_highlights|default:"Professional insurance advisor dedicated to finding optimal policy coverage, prompt renewal management, and reliable claim settlement assistance for individuals, families, and businesses." }}
+                        {% if card_bio %}{{ card_bio }}{% elif profile and profile.career_highlights %}{{ profile.career_highlights }}{% else %}Professional insurance advisor dedicated to finding optimal policy coverage, prompt renewal management, and reliable claim settlement assistance for individuals, families, and businesses.{% endif %}
                     </p>
 
                     <div class="structured-info-card">

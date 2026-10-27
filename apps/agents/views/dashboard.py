@@ -571,6 +571,11 @@ def agent_dashboard(request):
     studio_config = get_digital_card_studio_config(use_cache=False)
     studio_config['enabled'] = agent_digital_card_enabled
 
+    card_cfg = profile.get_card_config() if profile else {}
+    card_agency_name = (card_cfg.get('agency_name') or getattr(profile, 'agency_name', '') or '').strip()
+    card_tagline = (card_cfg.get('tagline') or getattr(profile, 'card_tagline', '') or studio_config.get('default_card_tagline', '') or '').strip()
+    card_banner_css = getattr(profile, 'card_banner_css', 'linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)') if profile else 'linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)'
+
     qr_items = []
     if qr_access_for_plan(agent_plan) and slug:
         for qr_type in QR_TYPES:
@@ -698,7 +703,10 @@ def agent_dashboard(request):
         'qr_items': qr_items,
         'agent_digital_card_enabled': agent_digital_card_enabled,
         'studio_config': studio_config,
-        'card_config': profile.get_card_config() if profile else {},
+        'card_config': card_cfg,
+        'card_agency_name': card_agency_name,
+        'card_tagline': card_tagline,
+        'card_banner_css': card_banner_css,
         'card_public_url': reverse('agents:agent_public_card', kwargs={'slug': slug}) if slug else '',
         'card_qr_url': reverse('agents:agent_card_pure_qr', kwargs={'slug': slug}) if slug else '',
         'card_qr_download_url': (reverse('agents:agent_card_pure_qr', kwargs={'slug': slug}) + '?download=1') if slug else '',
