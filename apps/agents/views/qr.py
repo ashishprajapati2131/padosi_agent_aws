@@ -280,20 +280,27 @@ def public_agent_card(request, slug):
     if len(whatsapp_digits) == 10:
         whatsapp_digits = '91' + whatsapp_digits
 
+    from apps.admin_panel.services.digital_card_studio import (
+        get_digital_card_studio_config,
+        resolve_effective_section_visibility,
+    )
+    studio_cfg = get_digital_card_studio_config()
     card_cfg = profile.get_card_config() if profile else {}
+
     agency_name = (card_cfg.get('agency_name') or getattr(profile, 'agency_name', '') or '').strip()
-    card_tagline = (card_cfg.get('tagline') or getattr(profile, 'card_tagline', '') or '').strip()
-    card_bio = (card_cfg.get('bio') or getattr(profile, 'career_highlights', '') or '').strip()
-    theme_color = (card_cfg.get('theme_color') or '#0B1F3A').strip()
+    card_tagline = (card_cfg.get('tagline') or getattr(profile, 'card_tagline', '') or studio_cfg.get('default_card_tagline', '') or '').strip()
+    card_bio = (card_cfg.get('bio') or getattr(profile, 'career_highlights', '') or studio_cfg.get('default_card_bio', '') or '').strip()
+    theme_color = (card_cfg.get('theme_color') or studio_cfg.get('default_theme_color', '#0B1F3A')).strip()
     if not re.match(r'^#[A-Fa-f0-9]{6}$', theme_color):
-        theme_color = '#0B1F3A'
+        theme_color = studio_cfg.get('default_theme_color', '#0B1F3A')
     theme_color_rgb = f"{int(theme_color[1:3], 16)}, {int(theme_color[3:5], 16)}, {int(theme_color[5:7], 16)}"
     card_banner_css = profile.card_banner_css if profile else 'linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)'
 
     # Pre-filled WhatsApp message
     custom_wa_msg = card_cfg.get('whatsapp_msg')
     if not custom_wa_msg:
-        custom_wa_msg = f"Hello {display_name},\nI viewed your Digital Visiting Card and would like consultation regarding insurance plans."
+        default_tpl = studio_cfg.get('default_whatsapp_msg') or "Hello {agent_name},\nI viewed your Digital Visiting Card and would like consultation regarding insurance plans."
+        custom_wa_msg = default_tpl.replace('{agent_name}', display_name)
     wa_greeting = urllib.parse.quote(custom_wa_msg)
     whatsapp_url = f"https://api.whatsapp.com/send?phone={whatsapp_digits}&text={wa_greeting}" if whatsapp_digits else ""
     call_url = f"tel:+91{mobile_digits[-10:]}" if len(mobile_digits) >= 10 else (f"tel:{mobile_digits}" if mobile_digits else "")
@@ -400,15 +407,18 @@ def public_agent_card(request, slug):
         'card_theme_color': theme_color,
         'card_theme_color_rgb': theme_color_rgb,
         'card_banner_css': card_banner_css,
-        'show_call': bool(card_cfg.get('show_call', True)),
-        'show_whatsapp': bool(card_cfg.get('show_whatsapp', True)),
-        'show_email': bool(card_cfg.get('show_email', True)),
-        'show_address': bool(card_cfg.get('show_address', True)),
-        'show_save_contact': bool(card_cfg.get('show_save_contact', True)),
-        'show_lead_form': bool(card_cfg.get('show_lead_form', True)),
-        'show_services': bool(card_cfg.get('show_services', True)),
-        'show_reviews': bool(card_cfg.get('show_reviews', True)),
-        'show_qr_card': bool(card_cfg.get('show_qr_card', True)),
+        'show_call': resolve_effective_section_visibility('policy_call', card_cfg.get('show_call', True), studio_cfg),
+        'show_whatsapp': resolve_effective_section_visibility('policy_whatsapp', card_cfg.get('show_whatsapp', True), studio_cfg),
+        'show_email': resolve_effective_section_visibility('policy_email', card_cfg.get('show_email', True), studio_cfg),
+        'show_address': resolve_effective_section_visibility('policy_address', card_cfg.get('show_address', True), studio_cfg),
+        'show_save_contact': resolve_effective_section_visibility('policy_save_contact', card_cfg.get('show_save_contact', True), studio_cfg),
+        'show_lead_form': resolve_effective_section_visibility('policy_lead_form', card_cfg.get('show_lead_form', True), studio_cfg),
+        'show_services': resolve_effective_section_visibility('policy_services', card_cfg.get('show_services', True), studio_cfg),
+        'show_reviews': resolve_effective_section_visibility('policy_reviews', card_cfg.get('show_reviews', True), studio_cfg),
+        'show_qr_card': resolve_effective_section_visibility('policy_qr_card', card_cfg.get('show_qr_card', True), studio_cfg),
+        'show_powered_by_badge': bool(studio_cfg.get('show_powered_by_badge', True)),
+        'powered_by_text': studio_cfg.get('powered_by_text', 'Powered by PadosiAgent'),
+        'powered_by_url': studio_cfg.get('powered_by_url', '/'),
         'custom_button_label': (card_cfg.get('custom_button_label') or '').strip(),
         'custom_button_url': (
             (card_cfg.get('custom_button_url') or '').strip()
@@ -452,6 +462,20 @@ def public_agent_card(request, slug):
         'hide_chatbot': True,
     }
     ctx.update(profile_og_context(request, agent, display_name=display_name))
+
+    # Track public view impression
+    if not is_privileged:
+        try:
+            from django.utils import timezone
+            from django.db import models as _dj_models
+            from apps.agents.models import AgentProfileView
+            today = timezone.localdate() if hasattr(timezone, 'localdate') else timezone.now().date()
+            view_rec, created = AgentProfileView.objects.get_or_create(agent=agent, view_date=today)
+            if not created:
+                AgentProfileView.objects.filter(id=view_rec.id).update(view_count=_dj_models.F('view_count') + 1)
+        except Exception:
+            pass
+
     return render(request, 'agents/public_agent_card.html', ctx)
 
 

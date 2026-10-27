@@ -398,6 +398,8 @@ class AdminPermissionMiddleware:
         from apps.admin_panel.models.admin_auth import Admin
         
         admin_id = _get_admin_from_session(request)
+        if not admin_id and hasattr(request, 'session'):
+            admin_id = request.session.get('admin_id')
         if not admin_id:
             import logging
             logging.getLogger(__name__).warning(f"Unauthorized admin access from path: {request.path}")

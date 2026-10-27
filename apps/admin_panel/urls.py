@@ -271,6 +271,13 @@ from .views.feature_flags import (
     feature_flag_update,
     feature_flag_delete,
 )
+from .views.digital_card_studio import (
+    digital_card_studio_index,
+    update_studio_config,
+    toggle_agent_card_visibility,
+    admin_agent_card_detail_api,
+    admin_agent_card_save_api,
+)
 from .views.insurance_approvals import (
     insurance_approvals_index,
     insurance_approvals_process,
@@ -384,6 +391,12 @@ urlpatterns = [
     path('admin/content/about/update/',   content.update_about,   name='admin_content_about_update'),
     path('admin/content/invite-studio/',        content.invite_studio,        name='admin_content_invite_studio'),
     path('admin/content/invite-studio/update/', content.update_invite_studio, name='admin_content_invite_studio_update'),
+    path('admin/content/visiting-card-studio/', digital_card_studio_index, name='admin_digital_card_studio'),
+    path('admin/visiting-card-studio/',         digital_card_studio_index, name='admin_digital_card_studio_direct'),
+    path('admin/content/visiting-card-studio/update/', update_studio_config, name='admin_digital_card_studio_update'),
+    path('admin/content/visiting-card-studio/agent/<int:agent_id>/toggle/', toggle_agent_card_visibility, name='admin_digital_card_agent_toggle'),
+    path('admin/content/visiting-card-studio/agent/<int:agent_id>/detail/', admin_agent_card_detail_api, name='admin_digital_card_agent_detail'),
+    path('admin/content/visiting-card-studio/agent/<int:agent_id>/save/', admin_agent_card_save_api, name='admin_digital_card_agent_save'),
     path('admin/content/faqs/',                          content.faqs,                name='admin_content_faqs'),
     path('admin/content/faqs/settings/update/',          content.faq_settings_update, name='admin_content_faqs_settings_update'),
     path('admin/content/faqs/store/',                    content.faq_store,           name='admin_content_faqs_store'),

@@ -1,0 +1,1109 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}Personal Digital Visiting Card Studio — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}Content Control › Personal Digital Visiting Card Studio{% endblock %}
+
+{% block extra_css %}
+<style>
+    .kpi-stat-card {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid #E2E8F0;
+        padding: 18px 20px;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .kpi-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+    }
+    .kpi-icon-box {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+    .nav-tabs-studio {
+        border-bottom: 2px solid #E2E8F0;
+        gap: 8px;
+    }
+    .nav-tabs-studio .nav-link {
+        border: none;
+        color: #64748B;
+        font-weight: 700;
+        font-size: 14px;
+        padding: 12px 18px;
+        border-radius: 10px 10px 0 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.15s ease;
+    }
+    .nav-tabs-studio .nav-link.active {
+        color: #0F172A;
+        border-bottom: 3px solid #2563EB;
+        background: transparent;
+    }
+    .studio-panel-card {
+        background: #ffffff;
+        border: 1px solid #E2E8F0;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+        margin-bottom: 24px;
+        overflow: hidden;
+    }
+    .studio-panel-header {
+        padding: 18px 22px;
+        border-bottom: 1px solid #F1F5F9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #FAFAFA;
+    }
+    .studio-panel-body {
+        padding: 22px;
+    }
+    .policy-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+    }
+    .policy-allow {
+        background: #EFF6FF;
+        color: #1D4ED8;
+    }
+    .policy-force-on {
+        background: #ECFDF5;
+        color: #047857;
+    }
+    .policy-force-off {
+        background: #FEF2F2;
+        color: #B91C1C;
+    }
+    .switch-ios {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        margin: 0;
+    }
+    .switch-ios input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .slider-ios {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #CBD5E1;
+        transition: .25s;
+        border-radius: 34px;
+    }
+    .slider-ios:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .25s;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .switch-ios input:checked + .slider-ios {
+        background-color: #10B981;
+    }
+    .switch-ios input:checked + .slider-ios:before {
+        transform: translateX(20px);
+    }
+    .color-swatch-picker {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        display: inline-block;
+        transition: transform 0.15s ease;
+    }
+    .color-swatch-picker:hover {
+        transform: scale(1.1);
+    }
+    .color-swatch-picker.active {
+        border-color: #0F172A;
+        box-shadow: 0 0 0 2px rgba(15,23,42,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Top Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <h4 class="fw-bold mb-0 text-dark">
+                    <i class="fa-solid fa-id-card text-primary me-2"></i>Personal Digital Visiting Card Studio
+                </h4>
+                {% if config.enabled %}
+                <span class="badge bg-success-subtle text-success border border-success px-2 py-1" style="font-size: 11px;">
+                    <i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i> Master Active
+                </span>
+                {% else %}
+                <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1" style="font-size: 11px;">
+                    <i class="fa-solid fa-circle me-1" style="font-size: 8px;"></i> Master Disabled
+                </span>
+                {% endif %}
+            </div>
+            <p class="text-muted small mb-0">
+                Complete administration, content management, global section enforcement, and agent card moderation.
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'admin_feature_flags' %}" class="btn btn-outline-secondary btn-sm fw-bold">
+                <i class="fa-solid fa-flag me-1"></i> Feature Flags
+            </a>
+            <button type="button" class="btn btn-primary btn-sm fw-bold shadow-sm" onclick="document.getElementById('studioConfigForm').submit();">
+                <i class="fa-solid fa-save me-1"></i> Save Changes
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Metric Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-sm-6">
+            <div class="kpi-stat-card d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Total Agents</span>
+                    <h3 class="fw-bold mb-0 text-dark">{{ kpi.total_agents }}</h3>
+                    <small class="text-muted">Registered advisors</small>
+                </div>
+                <div class="kpi-icon-box" style="background: #EFF6FF; color: #2563EB;">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-sm-6">
+            <div class="kpi-stat-card d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Live Cards</span>
+                    <h3 class="fw-bold mb-0 text-success">{{ kpi.active_cards }}</h3>
+                    <small class="text-success"><i class="fa-solid fa-check-circle me-1"></i>Publicly accessible</small>
+                </div>
+                <div class="kpi-icon-box" style="background: #ECFDF5; color: #10B981;">
+                    <i class="fa-solid fa-id-badge"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-sm-6">
+            <div class="kpi-stat-card d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Card Enquiries</span>
+                    <h3 class="fw-bold mb-0 text-primary">{{ kpi.total_leads }}</h3>
+                    <small class="text-muted">Total leads captured</small>
+                </div>
+                <div class="kpi-icon-box" style="background: #EEF2FF; color: #4F46E5;">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-sm-6">
+            <div class="kpi-stat-card d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted small fw-bold text-uppercase d-block mb-1">Card Impressions</span>
+                    <h3 class="fw-bold mb-0 text-dark">{{ kpi.total_views }}</h3>
+                    <small class="text-muted">Total client visits</small>
+                </div>
+                <div class="kpi-icon-box" style="background: #FFFBEB; color: #D97706;">
+                    <i class="fa-solid fa-eye"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation Tabs -->
+    <ul class="nav nav-tabs nav-tabs-studio mb-4" id="studioTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-policies-link" data-bs-toggle="tab" data-bs-target="#tab-policies" type="button" role="tab">
+                <i class="fa-solid fa-sliders text-primary"></i> Global Policies &amp; Content CMS
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-directory-link" data-bs-toggle="tab" data-bs-target="#tab-directory" type="button" role="tab">
+                <i class="fa-solid fa-address-book text-success"></i> Agent Cards Directory &amp; Moderation
+                <span class="badge bg-secondary ms-1">{{ agents_page.paginator.count }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-leads-link" data-bs-toggle="tab" data-bs-target="#tab-leads" type="button" role="tab">
+                <i class="fa-solid fa-inbox text-info"></i> Recent Card Enquiries
+                <span class="badge bg-primary ms-1">{{ recent_leads|length }}</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="studioTabContent">
+        <!-- TAB 1: Global Policies & Content CMS -->
+        <div class="tab-pane fade show active" id="tab-policies" role="tabpanel">
+            <form method="POST" action="{% url 'admin_digital_card_studio_update' %}" id="studioConfigForm">
+                {% csrf_token %}
+
+                <!-- Master Feature Switch -->
+                <div class="studio-panel-card mb-4" style="border-left: 4px solid var(--primary) !important;">
+                    <div class="studio-panel-header">
+                        <div>
+                            <h6 class="m-0 fw-bold text-dark"><i class="fa-solid fa-power-off text-primary me-2"></i>Master Service Activation</h6>
+                            <small class="text-muted">Enable or disable digital visiting cards platform-wide.</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="fw-bold small {% if config.enabled %}text-success{% else %}text-danger{% endif %}" id="masterFlagLabel">
+                                {% if config.enabled %}System Enabled{% else %}System Disabled{% endif %}
+                            </span>
+                            <label class="switch-ios">
+                                <input type="checkbox" name="enabled" value="1" {% if config.enabled %}checked{% endif %} onchange="document.getElementById('masterFlagLabel').textContent = this.checked ? 'System Enabled' : 'System Disabled'; document.getElementById('masterFlagLabel').className = this.checked ? 'fw-bold small text-success' : 'fw-bold small text-danger';">
+                                <span class="slider-ios"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. Studio Header CMS (Controls text in Agent Dashboard) -->
+                <div class="studio-panel-card mb-4">
+                    <div class="studio-panel-header">
+                        <h6 class="m-0 fw-bold text-dark">
+                            <i class="fa-solid fa-pen-to-square text-primary me-2"></i>Agent Studio Header &amp; Intro CMS
+                        </h6>
+                        <span class="badge bg-light text-muted border">Agent Dashboard View</span>
+                    </div>
+                    <div class="studio-panel-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">Studio Main Title</label>
+                                <input type="text" name="studio_title" value="{{ config.studio_title|default:'Personal Digital Visiting Card Studio' }}" class="form-control">
+                                <div class="form-text small">Displayed prominently at the top of the agent's studio in dashboard.</div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small text-dark">Studio Badge</label>
+                                <input type="text" name="studio_badge" value="{{ config.studio_badge|default:'Link-In-Bio Studio' }}" class="form-control">
+                                <div class="form-text small">Top glowing badge text.</div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small text-dark">Style Badge</label>
+                                <input type="text" name="style_badge" value="{{ config.style_badge|default:'PassKard Style' }}" class="form-control">
+                                <div class="form-text small">Secondary subtitle badge.</div>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-bold small text-dark">Studio Subtitle / Description</label>
+                                <textarea name="studio_subtitle" rows="2" class="form-control">{{ config.studio_subtitle|default:'' }}</textarea>
+                                <div class="form-text small">Guidance note explaining visiting card features to agents.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Global Section Visibility Policies -->
+                <div class="studio-panel-card mb-4">
+                    <div class="studio-panel-header">
+                        <div>
+                            <h6 class="m-0 fw-bold text-dark">
+                                <i class="fa-solid fa-layer-group text-primary me-2"></i>Global Section Visibility Policies
+                            </h6>
+                            <small class="text-muted">Control whether specific buttons or blocks are agent-configurable or globally forced ON/OFF.</small>
+                        </div>
+                    </div>
+                    <div class="studio-panel-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr style="font-size: 12.5px;">
+                                        <th class="ps-4">Card Section / Element</th>
+                                        <th>Description</th>
+                                        <th style="width: 280px;" class="pe-4 text-end">Admin Policy Enforcement</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="ps-4 fw-bold">
+                                            <i class="fa-solid fa-phone-alt text-primary me-2"></i>Direct Call Button
+                                        </td>
+                                        <td class="small text-muted">1-tap dialer calling agent's registered phone number.</td>
+                                        <td class="pe-4 text-end">
+                                            <select name="policy_call" class="form-select form-select-sm d-inline-block w-auto">
+                                                <option value="allow_agent" {% if config.policy_call == 'allow_agent' %}selected{% endif %}>Allow Agent Choice (Studio)</option>
+                                                <option value="always_show" {% if config.policy_call == 'always_show' %}selected{% endif %}>Always Force Visible</option>
+                                                <option value="always_hide" {% if config.policy_call == 'always_hide' %}selected{% endif %}>Always Force Hidden</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="ps-4 fw-bold">
+                                            <i class="fa-brands fa-whatsapp text-success me-2"></i>WhatsApp Chat Button
+                                        </td>
+                                        <td class="small text-muted">Instant WhatsApp consultation with pre-drafted message.</td>
+                                        <td class="pe-4 text-end">
+                                            <select name="policy_whatsapp" class="form-select form-select-sm d-inline-block w-auto">
+                                                <option value="allow_agent" {% if config.policy_whatsapp == 'allow_agent' %}selected{% endif %}>Allow Agent Choice (Studio)</option>
+                                                <option value="always_show" {% if config.policy_whatsapp == 'always_show' %}selected{% endif %}>Always Force Visible</option>
+                                                <option value="always_hide" {% if config.policy_whatsapp == 'always_hide' %}selected{% endif %}>Always Force Hidden</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="ps-4 fw-bold">
+                                            <i class="fa-solid fa-address-card text-secondary me-2"></i>Save Contact (vCard .vcf)
+                                        </td>
+                                        <td class="small text-muted">1-tap RFC 2426 vCard download to save directly into phone contacts.</td>
+                                        <td class="pe-4 text-end">
+                                            <select name="policy_save_contact" class="form-select form-select-sm d-inline-block w-auto">
+                                                <option value="allow_agent" {% if config.policy_save_contact == 'allow_agent' %}selected{% endif %}>Allow Agent Choice (Studio)</option>
+                                                <option value="always_show" {% if config.policy_save_contact == 'always_show' %}selected{% endif %}>Always Force Visible</option>
+                                                <option value="always_hide" {% if config.policy_save_contact == 'always_hide' %}selected{% endif %}>Always Force Hidden</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="ps-4 fw-bold">
+                                            <i class="fa-solid fa-file-invoice text-info me-2"></i>Direct Lead Enquiry Form
+                                        </td>
+                                        <td class="small text-muted">Lead capture form embedded at bottom of visiting card.</td>
+                                        <td class="pe-4 text-end">
+                                            <select name="policy_lead_form" class="form-select form-select-sm d-inline-block w-auto">
+                                                <option value="allow_agent" {% if config.policy_lead_form == 'allow_agent' %}selected{% endif %}>Allow Agent Choice (Studio)</option>
+                                                <option value="always_show" {% if config.policy_lead_form == 'always_show' %}selected{% endif %}>Always Force Visible</option>
+                                                <option value="always_hide" {% if config.policy_lead_form == 'always_hide' %}selected{% endif %}>Always Force Hidden</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="ps-4 fw-bold">
+                                            <i class="fa-solid fa-star text-warning me-2"></i>Client Reviews &amp; Rating
+                                        </td>
+                                        <td class="small text-muted">Displays verified client testimonials &amp; star rating.</td>
+                                        <td class="pe-4 text-end">
+                                            <select name="policy_reviews" class="form-select form-select-sm d-inline-block w-auto">
+                                                <option value="allow_agent" {% if config.policy_reviews == 'allow_agent' %}selected{% endif %}>Allow Agent Choice (Studio)</option>
+                                                <option value="always_show" {% if config.policy_reviews == 'always_show' %}selected{% endif %}>Always Force Visible</option>
+                                                <option value="always_hide" {% if config.policy_reviews == 'always_hide' %}selected{% endif %}>Always Force Hidden</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="ps-4 fw-bold">
+                                            <i class="fa-solid fa-map-location-dot text-danger me-2"></i>Office Google Maps
+                                        </td>
+                                        <td class="small text-muted">Direct GPS navigation link to advisor office.</td>
+                                        <td class="pe-4 text-end">
+                                            <select name="policy_address" class="form-select form-select-sm d-inline-block w-auto">
+                                                <option value="allow_agent" {% if config.policy_address == 'allow_agent' %}selected{% endif %}>Allow Agent Choice (Studio)</option>
+                                                <option value="always_show" {% if config.policy_address == 'always_show' %}selected{% endif %}>Always Force Visible</option>
+                                                <option value="always_hide" {% if config.policy_address == 'always_hide' %}selected{% endif %}>Always Force Hidden</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="ps-4 fw-bold">
+                                            <i class="fa-solid fa-envelope text-primary me-2"></i>Email Button
+                                        </td>
+                                        <td class="small text-muted">Opens email client pre-addressed to advisor.</td>
+                                        <td class="pe-4 text-end">
+                                            <select name="policy_email" class="form-select form-select-sm d-inline-block w-auto">
+                                                <option value="allow_agent" {% if config.policy_email == 'allow_agent' %}selected{% endif %}>Allow Agent Choice (Studio)</option>
+                                                <option value="always_show" {% if config.policy_email == 'always_show' %}selected{% endif %}>Always Force Visible</option>
+                                                <option value="always_hide" {% if config.policy_email == 'always_hide' %}selected{% endif %}>Always Force Hidden</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="ps-4 fw-bold">
+                                            <i class="fa-solid fa-shield-halved text-success me-2"></i>Insurance Specialties
+                                        </td>
+                                        <td class="small text-muted">Displays Health, Life, Motor, and SME insurance tags.</td>
+                                        <td class="pe-4 text-end">
+                                            <select name="policy_services" class="form-select form-select-sm d-inline-block w-auto">
+                                                <option value="allow_agent" {% if config.policy_services == 'allow_agent' %}selected{% endif %}>Allow Agent Choice (Studio)</option>
+                                                <option value="always_show" {% if config.policy_services == 'always_show' %}selected{% endif %}>Always Force Visible</option>
+                                                <option value="always_hide" {% if config.policy_services == 'always_hide' %}selected{% endif %}>Always Force Hidden</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="ps-4 fw-bold">
+                                            <i class="fa-solid fa-qrcode text-dark me-2"></i>Desktop QR Scan Box
+                                        </td>
+                                        <td class="small text-muted">Shown in desktop sidebar for instant phone camera scanning.</td>
+                                        <td class="pe-4 text-end">
+                                            <select name="policy_qr_card" class="form-select form-select-sm d-inline-block w-auto">
+                                                <option value="allow_agent" {% if config.policy_qr_card == 'allow_agent' %}selected{% endif %}>Allow Agent Choice (Studio)</option>
+                                                <option value="always_show" {% if config.policy_qr_card == 'always_show' %}selected{% endif %}>Always Force Visible</option>
+                                                <option value="always_hide" {% if config.policy_qr_card == 'always_hide' %}selected{% endif %}>Always Force Hidden</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Global Visual Defaults & Platform Watermark -->
+                <div class="row g-4 mb-4">
+                    <!-- Left: Visual Defaults -->
+                    <div class="col-lg-6">
+                        <div class="studio-panel-card h-100">
+                            <div class="studio-panel-header">
+                                <h6 class="m-0 fw-bold text-dark"><i class="fa-solid fa-palette text-primary me-2"></i>Global Visual Defaults</h6>
+                                <small class="text-muted">Applied when agent hasn't set custom</small>
+                            </div>
+                            <div class="studio-panel-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-dark d-flex justify-content-between">
+                                        <span>Default Brand Theme Color</span>
+                                        <span class="text-muted font-monospace" id="defaultColorHex">{{ config.default_theme_color|default:'#0B1F3A' }}</span>
+                                    </label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="color" name="default_theme_color" id="defaultThemeColorInput" value="{{ config.default_theme_color|default:'#0B1F3A' }}" class="form-control form-control-color" style="width: 48px; height: 38px;" onchange="document.getElementById('defaultColorHex').textContent = this.value;">
+                                        <input type="text" class="form-control font-monospace" value="{{ config.default_theme_color|default:'#0B1F3A' }}" oninput="document.getElementById('defaultThemeColorInput').value = this.value; document.getElementById('defaultColorHex').textContent = this.value;">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-dark">Default Cover Banner Style</label>
+                                    <select name="default_banner_style" class="form-select">
+                                        <option value="profile" {% if config.default_banner_style == 'profile' %}selected{% endif %}>Profile Banner (Dynamic from Profile)</option>
+                                        <option value="gradient_navy" {% if config.default_banner_style == 'gradient_navy' %}selected{% endif %}>Ocean Twilight (Navy &amp; Teal)</option>
+                                        <option value="gradient_emerald" {% if config.default_banner_style == 'gradient_emerald' %}selected{% endif %}>Emerald Glow (Rich Emerald)</option>
+                                        <option value="gradient_indigo" {% if config.default_banner_style == 'gradient_indigo' %}selected{% endif %}>Royal Indigo (Deep Violet)</option>
+                                        <option value="gradient_sunset" {% if config.default_banner_style == 'gradient_sunset' %}selected{% endif %}>Sunset Flare (Amber Orange)</option>
+                                        <option value="gradient_purple" {% if config.default_banner_style == 'gradient_purple' %}selected{% endif %}>Amethyst Glow (Purple Glow)</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-dark">Default Pre-filled WhatsApp Message</label>
+                                    <textarea name="default_whatsapp_msg" rows="3" class="form-control">{{ config.default_whatsapp_msg|default:'' }}</textarea>
+                                    <div class="form-text small">Use <code>{agent_name}</code> as dynamic placeholder.</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-dark">Default Card Tagline</label>
+                                    <input type="text" name="default_card_tagline" value="{{ config.default_card_tagline|default:'' }}" class="form-control">
+                                </div>
+
+                                <div>
+                                    <label class="form-label fw-bold small text-dark">Default Welcome Bio</label>
+                                    <textarea name="default_card_bio" rows="2" class="form-control">{{ config.default_card_bio|default:'' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Platform Watermark & Agent Permissions -->
+                    <div class="col-lg-6">
+                        <!-- Platform Watermark -->
+                        <div class="studio-panel-card mb-4">
+                            <div class="studio-panel-header">
+                                <h6 class="m-0 fw-bold text-dark"><i class="fa-solid fa-stamp text-primary me-2"></i>Platform Watermark &amp; Branding</h6>
+                            </div>
+                            <div class="studio-panel-body">
+                                <div class="d-flex align-items-center justify-content-between mb-3">
+                                    <div>
+                                        <span class="fw-bold small d-block text-dark">Show "Powered by" Footer Badge</span>
+                                        <small class="text-muted">Displays platform watermark link on digital visiting cards.</small>
+                                    </div>
+                                    <label class="switch-ios">
+                                        <input type="checkbox" name="show_powered_by_badge" value="1" {% if config.show_powered_by_badge %}checked{% endif %}>
+                                        <span class="slider-ios"></span>
+                                    </label>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-dark">Watermark Text</label>
+                                    <input type="text" name="powered_by_text" value="{{ config.powered_by_text|default:'Powered by PadosiAgent' }}" class="form-control">
+                                </div>
+
+                                <div>
+                                    <label class="form-label fw-bold small text-dark">Watermark Redirect URL</label>
+                                    <input type="text" name="powered_by_url" value="{{ config.powered_by_url|default:'/' }}" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Agent Customization Permissions -->
+                        <div class="studio-panel-card">
+                            <div class="studio-panel-header">
+                                <h6 class="m-0 fw-bold text-dark"><i class="fa-solid fa-user-gear text-primary me-2"></i>Agent Customization Permissions</h6>
+                            </div>
+                            <div class="studio-panel-body">
+                                <div class="d-flex align-items-center justify-content-between mb-3">
+                                    <div>
+                                        <span class="fw-bold small d-block text-dark">Allow Theme Color Customization</span>
+                                        <small class="text-muted">Can agents select custom theme colors in their studio?</small>
+                                    </div>
+                                    <label class="switch-ios">
+                                        <input type="checkbox" name="allow_theme_customization" value="1" {% if config.allow_theme_customization %}checked{% endif %}>
+                                        <span class="slider-ios"></span>
+                                    </label>
+                                </div>
+
+                                <div class="d-flex align-items-center justify-content-between mb-3">
+                                    <div>
+                                        <span class="fw-bold small d-block text-dark">Allow Custom Cover Banner Upload</span>
+                                        <small class="text-muted">Can agents upload their own cover photo banner?</small>
+                                    </div>
+                                    <label class="switch-ios">
+                                        <input type="checkbox" name="allow_custom_banner" value="1" {% if config.allow_custom_banner %}checked{% endif %}>
+                                        <span class="slider-ios"></span>
+                                    </label>
+                                </div>
+
+                                <div class="d-flex align-items-center justify-content-between mb-3">
+                                    <div>
+                                        <span class="fw-bold small d-block text-dark">Allow Custom Agency Logo Upload</span>
+                                        <small class="text-muted">Can agents brand their card with their agency logo?</small>
+                                    </div>
+                                    <label class="switch-ios">
+                                        <input type="checkbox" name="allow_custom_logo" value="1" {% if config.allow_custom_logo %}checked{% endif %}>
+                                        <span class="slider-ios"></span>
+                                    </label>
+                                </div>
+
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <span class="fw-bold small d-block text-dark">Allow Custom External Link Button</span>
+                                        <small class="text-muted">Can agents add custom links (Calendly, brochure, website)?</small>
+                                    </div>
+                                    <label class="switch-ios">
+                                        <input type="checkbox" name="allow_custom_button" value="1" {% if config.allow_custom_button %}checked{% endif %}>
+                                        <span class="slider-ios"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. SEO & Social Meta Configuration -->
+                <div class="studio-panel-card mb-4">
+                    <div class="studio-panel-header">
+                        <h6 class="m-0 fw-bold text-dark"><i class="fa-solid fa-share-nodes text-primary me-2"></i>SEO &amp; OpenGraph Social Sharing Format</h6>
+                    </div>
+                    <div class="studio-panel-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">Meta Title Pattern</label>
+                                <input type="text" name="meta_title_pattern" value="{{ config.meta_title_pattern|default:'' }}" class="form-control">
+                                <div class="form-text small">Use <code>{agent_name}</code> as placeholder.</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">Meta Description Pattern</label>
+                                <input type="text" name="meta_description_pattern" value="{{ config.meta_description_pattern|default:'' }}" class="form-control">
+                                <div class="form-text small">Displayed when link is shared on WhatsApp, Facebook, or LinkedIn.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Save Button -->
+                <div class="d-flex justify-content-end mb-5">
+                    <button type="submit" class="btn btn-primary px-5 py-2 fw-bold shadow-sm">
+                        <i class="fa-solid fa-save me-2"></i> Save All Visiting Card Studio Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- TAB 2: Agent Cards Directory & Moderation -->
+        <div class="tab-pane fade" id="tab-directory" role="tabpanel">
+            <div class="studio-panel-card mb-4">
+                <div class="studio-panel-header flex-wrap gap-2">
+                    <form method="GET" class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 600px;">
+                        <input type="text" name="q" value="{{ search_q }}" placeholder="Search by name, email, mobile, city, slug..." class="form-control form-control-sm">
+                        <select name="status" class="form-select form-select-sm w-auto">
+                            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Status</option>
+                            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                            <option value="incomplete" {% if status_filter == 'incomplete' %}selected{% endif %}>Incomplete</option>
+                            <option value="pending_approval" {% if status_filter == 'pending_approval' %}selected{% endif %}>Pending</option>
+                            <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>Suspended</option>
+                        </select>
+                        <select name="visibility" class="form-select form-select-sm w-auto">
+                            <option value="all" {% if visibility_filter == 'all' %}selected{% endif %}>All Visibility</option>
+                            <option value="visible" {% if visibility_filter == 'visible' %}selected{% endif %}>Live / Visible Only</option>
+                            <option value="hidden" {% if visibility_filter == 'hidden' %}selected{% endif %}>Hidden Only</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary btn-sm px-3">
+                            <i class="fa-solid fa-search"></i>
+                        </button>
+                        {% if search_q or status_filter != 'all' or visibility_filter != 'all' %}
+                        <a href="{% url 'admin_digital_card_studio' %}" class="btn btn-outline-secondary btn-sm" title="Clear filters">
+                            <i class="fa-solid fa-times"></i>
+                        </a>
+                        {% endif %}
+                    </form>
+                    <div class="text-muted small">
+                        Showing <strong>{{ agents_decorated|length }}</strong> of <strong>{{ agents_page.paginator.count }}</strong> agents
+                    </div>
+                </div>
+
+                <div class="studio-panel-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light" style="font-size: 12.5px;">
+                                <tr>
+                                    <th class="ps-4">Advisor &amp; Contacts</th>
+                                    <th>Agency / Tagline</th>
+                                    <th>Visiting Card URL</th>
+                                    <th>Theme / Leads</th>
+                                    <th class="text-center" style="width: 130px;">Card Visibility</th>
+                                    <th class="pe-4 text-end" style="width: 140px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in agents_decorated %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 38px; height: 38px; background: {{ item.theme_color }}; font-size: 14px; flex-shrink: 0;">
+                                                {{ item.agent.fullname|slice:":1"|upper }}
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold text-dark d-flex align-items-center gap-1">
+                                                    {{ item.agent.fullname }}
+                                                    {% if item.agent.status == 'active' %}
+                                                    <i class="fa-solid fa-badge-check text-primary" style="font-size: 11px;" title="Active"></i>
+                                                    {% endif %}
+                                                </div>
+                                                <small class="text-muted d-block">{{ item.agent.mobile }} &bull; {{ item.agent.email }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <span class="d-block fw-semibold text-dark small">{{ item.agency_name|default:'Independent Advisor' }}</span>
+                                        <small class="text-muted d-block text-truncate" style="max-width: 190px;">{{ item.profile.card_tagline|default:'—' }}</small>
+                                    </td>
+
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <a href="{{ item.card_url }}" target="_blank" class="badge bg-light text-primary text-decoration-none border px-2 py-1 font-monospace" style="font-size: 11.5px;">
+                                                /card/{{ item.card_slug }}/ <i class="fa-solid fa-external-link-alt ms-1" style="font-size: 9px;"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-link text-muted p-0" onclick="copyCardUrl('{{ item.card_url }}')" title="Copy Card Link">
+                                                <i class="fa-regular fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="d-inline-block rounded-circle" style="width: 12px; height: 12px; background: {{ item.theme_color }};" title="Theme Color: {{ item.theme_color }}"></span>
+                                            <span class="badge bg-info-subtle text-info border border-info" style="font-size: 11px;">
+                                                <i class="fa-solid fa-envelope-open-text me-1"></i>{{ item.card_leads }} leads
+                                            </span>
+                                        </div>
+                                    </td>
+
+                                    <td class="text-center">
+                                        <label class="switch-ios">
+                                            <input type="checkbox" id="toggle-card-{{ item.agent.id }}" {% if item.is_card_visible %}checked{% endif %} onchange="toggleAgentCard('{{ item.agent.id }}', this)">
+                                            <span class="slider-ios"></span>
+                                        </label>
+                                        <div class="small mt-1" id="label-card-{{ item.agent.id }}" style="font-size: 10.5px; font-weight: 700; color: {% if item.is_card_visible %}#10B981{% else %}#94A3B8{% endif %};">
+                                            {% if item.is_card_visible %}Live / Visible{% else %}Hidden{% endif %}
+                                        </div>
+                                    </td>
+
+                                    <td class="pe-4 text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-primary" onclick="openAgentCardModal('{{ item.agent.id }}')" title="Inspect &amp; Edit Card">
+                                                <i class="fa-solid fa-sliders"></i>
+                                            </button>
+                                            <a href="{{ item.card_url }}" target="_blank" class="btn btn-outline-secondary" title="View Live Card">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="fa-solid fa-address-card fa-3x mb-3 text-secondary opacity-50"></i>
+                                        <h6>No agents found matching your criteria.</h6>
+                                        <p class="small mb-0">Try clearing your filters or searching a different name.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if agents_page.has_other_pages %}
+                    <div class="p-3 border-top d-flex justify-content-between align-items-center">
+                        <span class="text-muted small">Page {{ agents_page.number }} of {{ agents_page.paginator.num_pages }}</span>
+                        <ul class="pagination pagination-sm mb-0">
+                            {% if agents_page.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ agents_page.previous_page_number }}&q={{ search_q }}&status={{ status_filter }}&visibility={{ visibility_filter }}">Previous</a>
+                            </li>
+                            {% endif %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ agents_page.number }}</span>
+                            </li>
+                            {% if agents_page.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ agents_page.next_page_number }}&q={{ search_q }}&status={{ status_filter }}&visibility={{ visibility_filter }}">Next</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Recent Leads Submitted via Digital Visiting Cards -->
+        <div class="tab-pane fade" id="tab-leads" role="tabpanel">
+            <div class="studio-panel-card mb-4">
+                <div class="studio-panel-header">
+                    <div>
+                        <h6 class="m-0 fw-bold text-dark"><i class="fa-solid fa-inbox text-primary me-2"></i>Recent Enquiries via Digital Cards</h6>
+                        <small class="text-muted">Real-time enquiries submitted directly through `/card/{slug}` pages.</small>
+                    </div>
+                    <span class="badge bg-primary">{{ recent_leads|length }} Recent Enquiries</span>
+                </div>
+                <div class="studio-panel-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light" style="font-size: 12.5px;">
+                                <tr>
+                                    <th class="ps-4">Client Name &amp; Phone</th>
+                                    <th>Pincode</th>
+                                    <th>Insurance &amp; Service</th>
+                                    <th>Assigned Advisor</th>
+                                    <th>Message / Requirements</th>
+                                    <th class="pe-4 text-end">Date &amp; Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lead in recent_leads %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="fw-bold text-dark">{{ lead.customer_name }}</div>
+                                        <small class="text-muted"><i class="fa-solid fa-phone me-1"></i>{{ lead.customer_mobile }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">{{ lead.customer_pincode|default:'—' }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary small d-inline-block mb-1">
+                                            {{ lead.insurance_type|default:'General' }}
+                                        </span>
+                                        <small class="d-block text-muted">{{ lead.service_type|default:'Consultation' }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold text-dark small">{{ lead.agent.fullname }}</div>
+                                        <a href="{% url 'agents:agent_public_card' slug=lead.agent.agent_slug %}" target="_blank" class="small text-muted text-decoration-none">
+                                            /card/{{ lead.agent.agent_slug }}/
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <small class="text-secondary text-truncate d-block" style="max-width: 250px;">{{ lead.enquiry_requirements|default:lead.message|default:'No note attached.' }}</small>
+                                    </td>
+                                    <td class="pe-4 text-end text-muted small">
+                                        {{ lead.created_at|date:"d M Y, h:i A" }}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="fa-solid fa-inbox fa-3x mb-3 text-secondary opacity-50"></i>
+                                        <h6>No card enquiries received yet.</h6>
+                                        <p class="small mb-0">When clients use the "Get in Touch" form on any digital card, their details will display here.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Inspect & Override Agent Card Settings -->
+<div class="modal fade" id="agentCardEditModal" tabindex="-1" aria-labelledby="agentCardEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h5 class="modal-title fw-bold text-dark" id="agentCardEditModalLabel">
+                        <i class="fa-solid fa-id-card text-primary me-2"></i>Inspect &amp; Override Card Settings
+                    </h5>
+                    <small class="text-muted" id="modalAgentSubtitle">Loading advisor profile...</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <form id="agentCardOverrideForm">
+                    <input type="hidden" id="modalAgentId" name="agent_id">
+                    
+                    <div class="alert alert-light border d-flex align-items-center justify-content-between p-3 mb-3 rounded-3">
+                        <div>
+                            <span class="fw-bold small d-block text-dark">Live Card Direct Link</span>
+                            <a href="#" target="_blank" id="modalLiveCardLink" class="small text-primary font-monospace">/card/.../</a>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small fw-bold text-muted">Card Visibility:</span>
+                            <label class="switch-ios">
+                                <input type="checkbox" id="modalCardVisibility" name="is_card_visible" value="1">
+                                <span class="slider-ios"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-dark">Custom Card URL Slug</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text font-monospace small">/card/</span>
+                                <input type="text" name="slug" id="modalSlug" class="form-control font-monospace" placeholder="e.g. kishan-patel">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-dark">Agency / Firm Name</label>
+                            <input type="text" name="agency_name" id="modalAgencyName" class="form-control form-control-sm" placeholder="e.g. Patel Wealth &amp; Insurance">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-dark">Card Headline / Tagline</label>
+                            <input type="text" name="card_tagline" id="modalCardTagline" class="form-control form-control-sm" placeholder="e.g. Protecting 1,500+ families with trusted advice">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-dark">Personal Bio / About Statement</label>
+                            <textarea name="card_bio" id="modalCardBio" rows="2" class="form-control form-control-sm" placeholder="Introductory bio displayed on card..."></textarea>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-dark">Brand Theme Color</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="color" name="theme_color" id="modalThemeColor" class="form-control form-control-color" style="width: 44px; height: 32px;">
+                                <input type="text" id="modalThemeColorText" class="form-control form-control-sm font-monospace" oninput="document.getElementById('modalThemeColor').value = this.value;">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-dark">Cover Banner Style</label>
+                            <select name="banner_style" id="modalBannerStyle" class="form-select form-select-sm">
+                                <option value="profile">Profile Banner</option>
+                                <option value="gradient_navy">Ocean Twilight</option>
+                                <option value="gradient_emerald">Emerald Glow</option>
+                                <option value="gradient_indigo">Royal Indigo</option>
+                                <option value="gradient_sunset">Sunset Flare</option>
+                                <option value="gradient_purple">Amethyst Glow</option>
+                                <option value="custom">Custom Uploaded Banner</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-dark">Pre-filled WhatsApp Message</label>
+                            <textarea name="whatsapp_msg" id="modalWhatsappMsg" rows="2" class="form-control form-control-sm"></textarea>
+                        </div>
+
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small text-dark">Custom Button Label</label>
+                            <input type="text" name="custom_button_label" id="modalCustomBtnLabel" class="form-control form-control-sm" placeholder="e.g. Book Consultation">
+                        </div>
+
+                        <div class="col-md-7">
+                            <label class="form-label fw-bold small text-dark">Custom Button URL</label>
+                            <input type="url" name="custom_button_url" id="modalCustomBtnUrl" class="form-control form-control-sm" placeholder="https://calendly.com/...">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="resetAgentCardToDefault()">
+                    <i class="fa-solid fa-rotate-left me-1"></i> Reset to Defaults
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm fw-bold px-4" id="modalSaveBtn" onclick="saveAgentCardOverrides()">
+                        <i class="fa-solid fa-save me-1"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
+}
+
+function copyCardUrl(url) {
+    const fullUrl = window.location.origin + url;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+        alert("Copied visiting card link to clipboard:\n" + fullUrl);
+    }).catch(() => {
+        prompt("Copy card URL:", fullUrl);
+    });
+}
+
+function toggleAgentCard(agentId, checkbox) {
+    const label = document.getElementById(`label-card-${agentId}`);
+    const originalChecked = !checkbox.checked;
+
+    fetch(`/admin/content/visiting-card-studio/agent/${agentId}/toggle/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            checkbox.checked = data.is_card_visible;
+            if (label) {
+                label.textContent = data.is_card_visible ? 'Live / Visible' : 'Hidden';
+                label.style.color = data.is_card_visible ? '#10B981' : '#94A3B8';
+            }
+        } else {
+            alert(data.message || 'Could not update visibility.');
+            checkbox.checked = originalChecked;
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Network error while updating card visibility.');
+        checkbox.checked = originalChecked;
+    });
+}
+
+function openAgentCardModal(agentId) {
+    document.getElementById('modalAgentId').value = agentId;
+    document.getElementById('modalAgentSubtitle').textContent = "Loading card configuration...";
+
+    fetch(`/admin/content/visiting-card-studio/agent/${agentId}/detail/`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.agent) {
+            const ag = data.agent;
+            document.getElementById('modalAgentSubtitle').textContent = `${ag.fullname} (${ag.email} • ${ag.mobile})`;
+            document.getElementById('modalSlug').value = ag.slug || '';
+            document.getElementById('modalLiveCardLink').href = ag.card_url;
+            document.getElementById('modalLiveCardLink').textContent = ag.card_url;
+            document.getElementById('modalCardVisibility').checked = !!ag.is_card_visible;
+            document.getElementById('modalAgencyName').value = ag.agency_name || '';
+            document.getElementById('modalCardTagline').value = ag.card_tagline || '';
+            document.getElementById('modalCardBio').value = ag.card_bio || '';
+            document.getElementById('modalThemeColor').value = ag.theme_color || '#0B1F3A';
+            document.getElementById('modalThemeColorText').value = ag.theme_color || '#0B1F3A';
+            document.getElementById('modalBannerStyle').value = ag.banner_style || 'profile';
+            document.getElementById('modalWhatsappMsg').value = ag.whatsapp_msg || '';
+            document.getElementById('modalCustomBtnLabel').value = ag.custom_button_label || '';
+            document.getElementById('modalCustomBtnUrl').value = ag.custom_button_url || '';
+
+            const modal = new bootstrap.Modal(document.getElementById('agentCardEditModal'));
+            modal.show();
+        } else {
+            alert('Could not load agent details.');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Failed to fetch card details.');
+    });
+}
+
+function saveAgentCardOverrides() {
+    const agentId = document.getElementById('modalAgentId').value;
+    const form = document.getElementById('agentCardOverrideForm');
+    const formData = new FormData(form);
+    const saveBtn = document.getElementById('modalSaveBtn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...';
+
+    fetch(`/admin/content/visiting-card-studio/agent/${agentId}/save/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fa-solid fa-save me-1"></i> Save Changes';
+        if (data.success) {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert(data.message || 'Could not save card overrides.');
+        }
+    })
+    .catch(err => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fa-solid fa-save me-1"></i> Save Changes';
+        console.error(err);
+        alert('Error saving card changes.');
+    });
+}
+
+function resetAgentCardToDefault() {
+    if (!confirm("Are you sure you want to reset this agent's card to system defaults? Custom branding, banner styles, and buttons will be cleared.")) {
+        return;
+    }
+    const agentId = document.getElementById('modalAgentId').value;
+    const formData = new FormData();
+    formData.append('action', 'reset');
+
+    fetch(`/admin/content/visiting-card-studio/agent/${agentId}/save/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert(data.message || 'Reset failed.');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Error resetting card.');
+    });
+}
+</script>
+{% endblock %}

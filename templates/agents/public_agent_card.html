@@ -1728,11 +1728,12 @@
                 </div>
                 {% endif %}
 
-                <!-- Minimal Trustworthy Footer -->
+                <!-- Minimal Trustworthy Footer (Controlled by Admin Panel) -->
+                {% if show_powered_by_badge %}
                 <footer class="advisor-footer">
                     <img src="{{ brand_logo_url }}" alt="PadosiAgent" class="advisor-footer-logo" onerror="this.style.display='none';">
                     <p class="advisor-footer-text">
-                        Powered by <strong>PadosiAgent</strong> · India's Trusted Insurance Agent Network
+                        <a href="{{ powered_by_url|default:'/' }}" class="text-decoration-none text-muted"><strong>{{ powered_by_text|default:'Powered by PadosiAgent' }}</strong> · India's Trusted Insurance Agent Network</a>
                     </p>
                     <div class="advisor-footer-links">
                         <a href="/">About PadosiAgent</a> ·
@@ -1740,6 +1741,7 @@
                         <a href="/terms/">Terms of Service</a>
                     </div>
                 </footer>
+                {% endif %}
             </section>
         </div>
 

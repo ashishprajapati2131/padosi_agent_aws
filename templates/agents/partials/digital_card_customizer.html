@@ -478,12 +478,12 @@
     <!-- Studio Hero -->
     <div class="pa-studio-hero">
         <div class="d-flex align-items-center gap-2 mb-2">
-            <span class="pa-studio-badge"><i class="fas fa-sparkles"></i> Link-In-Bio Studio</span>
-            <span class="badge" style="background: rgba(255,255,255,0.2); font-size: 11px;">PassKard Style</span>
+            <span class="pa-studio-badge"><i class="fas fa-sparkles"></i> {{ studio_config.studio_badge|default:'Link-In-Bio Studio' }}</span>
+            <span class="badge" style="background: rgba(255,255,255,0.2); font-size: 11px;">{{ studio_config.style_badge|default:'PassKard Style' }}</span>
         </div>
-        <h2 class="pa-studio-title">Personal Digital Visiting Card Studio</h2>
+        <h2 class="pa-studio-title">{{ studio_config.studio_title|default:'Personal Digital Visiting Card Studio' }}</h2>
         <p class="pa-studio-sub">
-            Customize your professional digital card! Showcase your own agency branding, custom banner, logo, colors, and direct WhatsApp / call buttons without 3rd-party marketing.
+            {{ studio_config.studio_subtitle|default:'Customize your professional digital card! Showcase your own agency branding, custom banner, logo, colors, and direct WhatsApp / call buttons without 3rd-party marketing.' }}
         </p>
         <div class="pa-studio-btn-row">
             <a href="{% url 'agents:agent_public_card' slug=agent.agent_slug %}" target="_blank" class="pa-studio-btn pa-studio-btn-primary">

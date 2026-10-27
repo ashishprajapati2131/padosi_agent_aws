@@ -698,6 +698,12 @@
                 <i class="fa-solid fa-share-nodes"></i> Invite Studio Editor
             </a>
 
+            <a href="{% url 'admin_digital_card_studio' %}"
+                class="menu-item {% if '/admin/content/visiting-card-studio/' in request.path or '/admin/visiting-card-studio/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-id-card text-info"></i> Visiting Card Studio
+                <span class="badge bg-primary ms-auto" style="font-size: 10px;">Pro</span>
+            </a>
+
             <a href="{% url 'admin_investment_types_index' %}"
                 class="menu-item {% if '/admin/investment-types/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-chart-pie"></i> Investment Types

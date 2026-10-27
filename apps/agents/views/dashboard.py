@@ -557,12 +557,19 @@ def agent_dashboard(request):
         f"I'm now on PadosiAgent — India's trusted insurance agent network. "
         f"View my profile and leave a review: {profile_url}"
     )
-    # ── Digital Visiting Card feature flag ──
-    card_flag_val = SiteSetting.get_value('agent_digital_card_enabled', False)
-    if isinstance(card_flag_val, str):
-        agent_digital_card_enabled = card_flag_val.strip().lower() in ('1', 'true', 'yes', 'on')
+    # ── Digital Visiting Card feature flag & studio config ──
+    from apps.admin_panel.services.digital_card_studio import get_digital_card_studio_config
+    card_flag_val = SiteSetting.get_value('agent_digital_card_enabled', None)
+    if card_flag_val is not None:
+        if isinstance(card_flag_val, str):
+            agent_digital_card_enabled = card_flag_val.strip().lower() in ('1', 'true', 'yes', 'on')
+        else:
+            agent_digital_card_enabled = bool(card_flag_val)
     else:
-        agent_digital_card_enabled = bool(card_flag_val) if card_flag_val is not None else False
+        agent_digital_card_enabled = True
+
+    studio_config = get_digital_card_studio_config(use_cache=False)
+    studio_config['enabled'] = agent_digital_card_enabled
 
     qr_items = []
     if qr_access_for_plan(agent_plan) and slug:
@@ -690,6 +697,7 @@ def agent_dashboard(request):
         'qr_allow_download': qr_access_for_plan(agent_plan, download=True),
         'qr_items': qr_items,
         'agent_digital_card_enabled': agent_digital_card_enabled,
+        'studio_config': studio_config,
         'card_config': profile.get_card_config() if profile else {},
         'card_public_url': reverse('agents:agent_public_card', kwargs={'slug': slug}) if slug else '',
         'card_qr_url': reverse('agents:agent_card_pure_qr', kwargs={'slug': slug}) if slug else '',
