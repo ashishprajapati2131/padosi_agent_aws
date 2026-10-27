@@ -351,6 +351,7 @@ def set_feature_flag_status(
     SiteSetting.flush_cache()
     cache.delete(FEATURE_FLAGS_CACHE_KEY)
     cache.delete('admin_sidebar_counts_v4')
+    cache.delete('digital_card_studio_config_v2')
 
     status_str = "Enabled" if new_state else "Disabled"
     action_msg = f"Toggled feature flag '{flag.get('name', key)}' ({key}) to {status_str}"

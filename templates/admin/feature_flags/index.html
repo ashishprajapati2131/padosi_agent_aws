@@ -732,6 +732,14 @@ function getCookie(name) {
     return cookieValue;
 }
 
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        || document.querySelector('[name=csrfmiddlewaretoken]')?.value
+        || getCookie('padosi_csrf_token')
+        || getCookie('csrftoken')
+        || '{{ csrf_token }}';
+}
+
 function showToast(message, isSuccess = true) {
     const toastEl = document.getElementById('liveToast');
     const toastMsg = document.getElementById('toastMessage');
@@ -779,22 +787,43 @@ function toggleFeatureFlag(flagKey, switchElem) {
     // Loading indication
     switchElem.disabled = true;
 
-    fetch("{% url 'admin_feature_flag_toggle' %}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken'),
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: JSON.stringify({
-            key: flagKey,
-            state: isChecked
-        })
+    function sendToggle(token) {
+        return fetch("{% url 'admin_feature_flag_toggle' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': token,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                key: flagKey,
+                state: isChecked
+            })
+        });
+    }
+
+    sendToggle(getCsrfToken())
+    .then(async response => {
+        let data = {};
+        try {
+            data = await response.json();
+        } catch (e) {
+            data = {};
+        }
+
+        // Auto-retry once if CSRF validation failed and returned a fresh token
+        if (response.status === 403 && data.csrf_error && data.csrf_token) {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta) meta.setAttribute('content', data.csrf_token);
+            document.querySelectorAll('[name=csrfmiddlewaretoken]').forEach(el => el.value = data.csrf_token);
+            const retryRes = await sendToggle(data.csrf_token);
+            return retryRes.json();
+        }
+        return data;
     })
-    .then(response => response.json())
     .then(data => {
         switchElem.disabled = false;
-        if (data.success) {
+        if (data && data.success) {
             showToast(data.message || `Feature flag updated to ${data.status_text}.`, true);
             
             // Update Card Border & Status Label
@@ -812,7 +841,7 @@ function toggleFeatureFlag(flagKey, switchElem) {
         } else {
             // Revert switch on error
             switchElem.checked = originalChecked;
-            showToast(data.message || 'Failed to update feature flag.', false);
+            showToast((data && data.message) ? data.message : 'Failed to update feature flag.', false);
         }
     })
     .catch(error => {

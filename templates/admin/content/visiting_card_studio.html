@@ -964,8 +964,27 @@
 </div>
 
 <script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 function getCsrfToken() {
-    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        || document.querySelector('[name=csrfmiddlewaretoken]')?.value
+        || getCookie('padosi_csrf_token')
+        || getCookie('csrftoken')
+        || '{{ csrf_token }}';
 }
 
 function copyCardUrl(url) {
@@ -981,23 +1000,39 @@ function toggleAgentCard(agentId, checkbox) {
     const label = document.getElementById(`label-card-${agentId}`);
     const originalChecked = !checkbox.checked;
 
-    fetch(`/admin/content/visiting-card-studio/agent/${agentId}/toggle/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCsrfToken(),
-            'Content-Type': 'application/json'
+    function sendRequest(token) {
+        return fetch(`/admin/content/visiting-card-studio/agent/${agentId}/toggle/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': token,
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+    }
+
+    sendRequest(getCsrfToken())
+    .then(async res => {
+        let data = {};
+        try { data = await res.json(); } catch(e) { data = {}; }
+        if (res.status === 403 && data.csrf_error && data.csrf_token) {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta) meta.setAttribute('content', data.csrf_token);
+            document.querySelectorAll('[name=csrfmiddlewaretoken]').forEach(el => el.value = data.csrf_token);
+            const retryRes = await sendRequest(data.csrf_token);
+            return retryRes.json();
         }
+        return data;
     })
-    .then(res => res.json())
     .then(data => {
-        if (data.success) {
+        if (data && data.success) {
             checkbox.checked = data.is_card_visible;
             if (label) {
                 label.textContent = data.is_card_visible ? 'Live / Visible' : 'Hidden';
                 label.style.color = data.is_card_visible ? '#10B981' : '#94A3B8';
             }
         } else {
-            alert(data.message || 'Could not update visibility.');
+            alert((data && data.message) ? data.message : 'Could not update visibility.');
             checkbox.checked = originalChecked;
         }
     })
