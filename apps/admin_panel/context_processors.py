@@ -44,6 +44,7 @@ def admin_badge_counts(request):
         'total_pincodes_count':    0,
         'insurance_pending_count': 0,
         'payment_pending_count':   0,
+        'active_feature_flags_count': 0,
         'notif_count':             0,
         # Permission-gate helpers used by the sidebar template:
         #   is_super_admin     – True for Super Admins (all items visible)
@@ -215,6 +216,13 @@ def admin_badge_counts(request):
                 except Exception:
                     non_active_agents = 0
 
+                # 11c. Active Feature Flags Count
+                try:
+                    from apps.admin_panel.services.feature_flags import get_active_flags_count
+                    counts['active_feature_flags_count'] = get_active_flags_count()
+                except Exception:
+                    counts['active_feature_flags_count'] = 0
+
                 notif_count = (
                     non_active_agents
                     + counts['pending_reviews_count']
@@ -231,7 +239,7 @@ def admin_badge_counts(request):
                 'unsynced_invoice_count', 'active_trial_count',
                 'unclaimed_rewards_count', 'geo_missing_count',
                 'total_pincodes_count', 'insurance_pending_count',
-                'payment_pending_count', 'notif_count'
+                'payment_pending_count', 'active_feature_flags_count', 'notif_count'
             ]
             cache.set(badge_cache_key, {k: counts[k] for k in badge_keys}, timeout=30)
         except Exception:

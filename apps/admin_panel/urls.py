@@ -264,6 +264,13 @@ from .views.insurance import (
     insurance_show,
     insurance_toggle_status,
 )
+from .views.feature_flags import (
+    feature_flags_index,
+    feature_flag_toggle,
+    feature_flag_create,
+    feature_flag_update,
+    feature_flag_delete,
+)
 from .views.insurance_approvals import (
     insurance_approvals_index,
     insurance_approvals_process,
@@ -702,6 +709,13 @@ urlpatterns = [
     path("admin/whatsapp/save-config/", wa_bot_save_config, name="admin_wa_save_config"),
     path("admin/whatsapp/sync-webhook/", wa_bot_sync_webhook, name="admin_wa_sync_webhook"),
     path("admin/whatsapp/list-sessions/", wa_bot_list_remote_sessions, name="admin_wa_list_remote_sessions"),
+
+    # Feature Flags Control Center
+    path("admin/feature-flags/", feature_flags_index, name="admin_feature_flags"),
+    path("admin/feature-flags/toggle/", feature_flag_toggle, name="admin_feature_flag_toggle"),
+    path("admin/feature-flags/create/", feature_flag_create, name="admin_feature_flag_create"),
+    path("admin/feature-flags/update/", feature_flag_update, name="admin_feature_flag_update"),
+    path("admin/feature-flags/delete/", feature_flag_delete, name="admin_feature_flag_delete"),
 ]
 
 

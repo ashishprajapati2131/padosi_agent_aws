@@ -1,0 +1,877 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}Feature Flags Control Center — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}System &rsaquo; Feature Flags{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ─────────────────────────────────────────────────────────────
+   FEATURE FLAGS CONTROL CENTER STYLING
+   ───────────────────────────────────────────────────────────── */
+
+.flag-card {
+    background: var(--bg-card, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 14px;
+    transition: all 0.25s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+}
+
+.flag-card:hover {
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+}
+
+.flag-card.status-active {
+    border-left: 4px solid #10b981;
+}
+
+.flag-card.status-inactive {
+    border-left: 4px solid #94a3b8;
+}
+
+.flag-icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.icon-box-emerald { background: #ecfdf5; color: #059669; }
+.icon-box-blue    { background: #eff6ff; color: #2563eb; }
+.icon-box-purple  { background: #f5f3ff; color: #7c3aed; }
+.icon-box-amber   { background: #fffbeb; color: #d97706; }
+.icon-box-cyan    { background: #ecfeff; color: #0891b2; }
+.icon-box-rose    { background: #fff1f2; color: #e11d48; }
+.icon-box-slate   { background: #f1f5f9; color: #475569; }
+
+/* Custom toggle switch */
+.flag-toggle-switch {
+    width: 3.2rem;
+    height: 1.75rem;
+    cursor: pointer;
+    background-color: #cbd5e1;
+    border: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+    transition: background-position 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+.flag-toggle-switch:checked {
+    background-color: #10b981;
+}
+
+.flag-toggle-switch:focus {
+    box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.25);
+    border-color: transparent;
+}
+
+/* Monospace key badge */
+.flag-key-badge {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.78rem;
+    background: #f1f5f9;
+    color: #334155;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    user-select: all;
+    cursor: copy;
+}
+
+.flag-key-badge:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+/* Pulse Beacon */
+.pulse-beacon {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+    position: relative;
+}
+
+.pulse-beacon.beacon-active {
+    background-color: #10b981;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    animation: pulse-emerald 2s infinite;
+}
+
+.pulse-beacon.beacon-inactive {
+    background-color: #94a3b8;
+}
+
+@keyframes pulse-emerald {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* Category Filter Pills */
+.category-pill {
+    padding: 6px 14px;
+    border-radius: 50rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--text-muted, #64748b);
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.category-pill:hover,
+.category-pill.active {
+    color: #ffffff;
+    background: #0f3460;
+    border-color: #0f3460;
+}
+
+.category-pill.active {
+    box-shadow: 0 2px 6px rgba(15, 52, 96, 0.25);
+}
+
+/* URL Quick Chip */
+.url-chip {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-block;
+    margin-bottom: 4px;
+}
+.url-chip:hover {
+    background: #0f3460;
+    color: #fff;
+    border-color: #0f3460;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+    <!-- Flash Messages -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show shadow-sm" role="alert">
+                <i class="fa-solid {% if message.tags == 'error' %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %} me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Top Action Bar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1" style="color: #0f172a;">
+                <i class="fa-solid fa-toggle-on text-primary me-2"></i> Feature Flags Control Center
+            </h3>
+            <p class="text-muted small mb-0">
+                Manage global application levers, toggle modules ON/OFF instantly, and jump straight into feature sections.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#createFlagModal">
+                <i class="fa-solid fa-plus-circle me-1"></i> Create New Feature Flag
+            </button>
+        </div>
+    </div>
+
+    <!-- Metrics Cards Grid -->
+    <div class="stats-grid mb-4">
+        <div class="stat-card">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-value text-primary">{{ total_count }}</div>
+                    <div class="stat-label">Total Feature Flags</div>
+                </div>
+                <div class="flag-icon-box icon-box-blue">
+                    <i class="fa-solid fa-flag"></i>
+                </div>
+            </div>
+            <div class="small text-muted mt-2">
+                <i class="fa-solid fa-layer-group me-1"></i> Core platform &amp; custom levers
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-value text-success">
+                        <span class="pulse-beacon beacon-active"></span> {{ active_count }}
+                    </div>
+                    <div class="stat-label">Active / Live Flags</div>
+                </div>
+                <div class="flag-icon-box icon-box-emerald">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            </div>
+            <div class="small text-success mt-2">
+                <i class="fa-solid fa-bolt me-1"></i> Live features served to users
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-value text-secondary">{{ inactive_count }}</div>
+                    <div class="stat-label">Disabled / Hidden</div>
+                </div>
+                <div class="flag-icon-box icon-box-slate">
+                    <i class="fa-solid fa-circle-pause"></i>
+                </div>
+            </div>
+            <div class="small text-muted mt-2">
+                <i class="fa-solid fa-shield-halved me-1"></i> Staged or offline features
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="stat-value text-purple" style="color: #7c3aed;">{{ custom_count }}</div>
+                    <div class="stat-label">Custom Created</div>
+                </div>
+                <div class="flag-icon-box icon-box-purple">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+            </div>
+            <div class="small text-muted mt-2">
+                <i class="fa-solid fa-user-gear me-1"></i> User-defined feature levers
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Search Controls -->
+    <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-body p-3">
+            <div class="row g-3 align-items-center">
+                <!-- Live Search Box -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input type="text" id="liveSearchInput" class="form-control border-start-0 ps-0" 
+                               placeholder="Search feature flags by name, key, or tag..." value="{{ query }}">
+                    </div>
+                </div>
+
+                <!-- Status Filter Dropdown -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white text-muted"><i class="fa-solid fa-sliders"></i></span>
+                        <select id="statusFilterSelect" class="form-select" onchange="applyFilters()">
+                            <option value="all" {% if selected_status == 'all' %}selected{% endif %}>All Statuses (Active &amp; Disabled)</option>
+                            <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Active / Enabled Only</option>
+                            <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Disabled / Offline Only</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Category Quick Pills -->
+                <div class="col-lg-5 col-md-12 d-flex flex-wrap gap-1 align-items-center justify-content-lg-end">
+                    <a href="?category=all&status={{ selected_status }}&q={{ query }}" 
+                       class="category-pill {% if selected_category == 'all' %}active{% endif %}">
+                        All
+                    </a>
+                    {% for cat in categories %}
+                    <a href="?category={{ cat|urlencode }}&status={{ selected_status }}&q={{ query }}" 
+                       class="category-pill {% if selected_category == cat %}active{% endif %}">
+                        {{ cat }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature Flags Grid / List -->
+    <div class="row g-3" id="flagsContainer">
+        {% for flag in flags %}
+        <div class="col-xl-6 col-12 flag-item" 
+             data-key="{{ flag.key|lower }}" 
+             data-name="{{ flag.name|lower }}" 
+             data-desc="{{ flag.description|lower }}" 
+             data-cat="{{ flag.category|lower }}"
+             data-status="{% if flag.is_enabled %}active{% else %}inactive{% endif %}">
+            
+            <div class="flag-card p-3 p-md-4 {% if flag.is_enabled %}status-active{% else %}status-inactive{% endif %}" id="card-{{ flag.key }}">
+                
+                <!-- Card Header -->
+                <div class="d-flex align-items-start justify-content-between gap-3 mb-2">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="flag-icon-box {% if 'Core' in flag.category %}icon-box-blue{% elif 'Growth' in flag.category %}icon-box-purple{% elif 'Automation' in flag.category %}icon-box-emerald{% elif 'BI' in flag.category %}icon-box-amber{% elif 'Security' in flag.category %}icon-box-rose{% else %}icon-box-cyan{% endif %}">
+                            <i class="{{ flag.icon|default:'fa-solid fa-flag' }}"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <h5 class="fw-bold mb-0 text-dark">{{ flag.name }}</h5>
+                                {% if flag.is_system %}
+                                    <span class="badge bg-light text-secondary border" title="Core platform feature flag" style="font-size: 10px;">
+                                        <i class="fa-solid fa-shield-cat me-1 text-primary"></i> System
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-purple-subtle text-purple border" style="font-size: 10px; background-color: #f3e8ff; color: #7e22ce;">
+                                        <i class="fa-solid fa-user-pen me-1"></i> Custom
+                                    </span>
+                                {% endif %}
+                                <span class="badge bg-secondary-subtle text-secondary" style="font-size: 10px;">
+                                    {{ flag.category }}
+                                </span>
+                            </div>
+
+                            <!-- Monospace Key with Click to Copy -->
+                            <div class="mt-1">
+                                <span class="flag-key-badge" onclick="copyToClipboard('{{ flag.key }}', this)" title="Click to copy code key">
+                                    <code>{{ flag.key }}</code>
+                                    <i class="fa-regular fa-copy ms-1 text-muted"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ON/OFF Switch -->
+                    <div class="d-flex flex-column align-items-end">
+                        <div class="form-check form-switch p-0 m-0">
+                            <input class="form-check-input flag-toggle-switch m-0" type="checkbox" role="switch"
+                                   id="toggle-{{ flag.key }}"
+                                   data-key="{{ flag.key }}"
+                                   {% if flag.is_enabled %}checked{% endif %}
+                                   onchange="toggleFeatureFlag('{{ flag.key }}', this)">
+                        </div>
+                        <span class="small fw-semibold mt-1" id="status-label-{{ flag.key }}" style="font-size: 11px;">
+                            {% if flag.is_enabled %}
+                                <span class="text-success"><span class="pulse-beacon beacon-active"></span>Active</span>
+                            {% else %}
+                                <span class="text-muted"><span class="pulse-beacon beacon-inactive"></span>Disabled</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <p class="text-muted small mt-2 mb-3" style="min-height: 38px; line-height: 1.45;">
+                    {{ flag.description|default:"No description provided for this feature flag." }}
+                </p>
+
+                <!-- Footer with Redirect and Edit Actions -->
+                <div class="d-flex flex-wrap align-items-center justify-content-between pt-2 border-top gap-2">
+                    
+                    <!-- Section Redirect Button (Redirection Requirement) -->
+                    <div>
+                        {% if flag.redirect_url %}
+                            <a href="{{ flag.redirect_url }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold shadow-xs" 
+                               target="_blank" title="Redirect directly to {{ flag.name }} module">
+                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Open Section
+                            </a>
+                        {% else %}
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" 
+                                    onclick="promptSetRedirectUrl('{{ flag.key }}', '{{ flag.name|escapejs }}')">
+                                <i class="fa-solid fa-link me-1"></i> Assign Target Section
+                            </button>
+                        {% endif %}
+                    </div>
+
+                    <!-- Meta Actions -->
+                    <div class="d-flex align-items-center gap-1">
+                        <!-- Edit Button -->
+                        <button type="button" class="btn btn-sm btn-light text-secondary rounded-circle" style="width: 32px; height: 32px; padding: 0;"
+                                title="Edit flag metadata"
+                                onclick="openEditModal('{{ flag.key }}', '{{ flag.name|escapejs }}', '{{ flag.category|escapejs }}', '{{ flag.description|escapejs }}', '{{ flag.redirect_url|escapejs }}', '{{ flag.icon|escapejs }}')">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+
+                        <!-- Delete Button (Custom Flags Only) -->
+                        {% if not flag.is_system %}
+                            <button type="button" class="btn btn-sm btn-light text-danger rounded-circle" style="width: 32px; height: 32px; padding: 0;"
+                                    title="Delete custom feature flag"
+                                    onclick="openDeleteModal('{{ flag.key }}', '{{ flag.name|escapejs }}')">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="card p-5 text-center border-0 shadow-sm">
+                <div class="mb-3">
+                    <i class="fa-solid fa-flag-checkered fa-3x text-muted opacity-50"></i>
+                </div>
+                <h5 class="fw-bold">No Feature Flags Found</h5>
+                <p class="text-muted small mb-3">No flags match your active search or category filters.</p>
+                <div>
+                    <a href="{% url 'admin_feature_flags' %}" class="btn btn-sm btn-outline-secondary">Reset Filters</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  MODAL: CREATE NEW FEATURE FLAG                                            -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="createFlagModal" tabindex="-1" aria-labelledby="createFlagModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-light border-bottom-0 py-3 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="flag-icon-box icon-box-emerald" style="width: 36px; height: 36px;">
+                        <i class="fa-solid fa-plus"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark" id="createFlagModalLabel">Create New Feature Flag</h5>
+                        <p class="text-muted small mb-0">Define a new runtime toggle with automatic SiteSetting sync and redirection.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form method="POST" action="{% url 'admin_feature_flag_create' %}">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        
+                        <!-- Flag Key -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark">
+                                Flag Key / Slug <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-code"></i></span>
+                                <input type="text" class="form-control" name="key" id="create_key" required
+                                       placeholder="e.g. festive_agent_bonus"
+                                       pattern="[a-zA-Z0-9_]+"
+                                       oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9_]/g, '')">
+                            </div>
+                            <small class="text-muted" style="font-size: 11px;">Lowercase letters, numbers, and underscores only.</small>
+                        </div>
+
+                        <!-- Flag Name -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark">
+                                Feature Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" name="name" id="create_name" required
+                                   placeholder="e.g. Festive Agent Bonus Program">
+                        </div>
+
+                        <!-- Category -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark">Category</label>
+                            <select class="form-select" name="category" id="create_category">
+                                <option value="Core Platform">Core Platform</option>
+                                <option value="Growth & Marketing" selected>Growth &amp; Marketing</option>
+                                <option value="Automation & AI">Automation &amp; AI</option>
+                                <option value="BI & Analytics">BI &amp; Analytics</option>
+                                <option value="Security & Compliance">Security &amp; Compliance</option>
+                                <option value="Developer & API">Developer &amp; API</option>
+                                <option value="Custom Features">Custom Features</option>
+                            </select>
+                        </div>
+
+                        <!-- Icon Selection -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark">FontAwesome Icon Class</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted" id="create_icon_preview"><i class="fa-solid fa-flag"></i></span>
+                                <input type="text" class="form-control" name="icon" id="create_icon"
+                                       placeholder="fa-solid fa-trophy" value="fa-solid fa-flag"
+                                       oninput="updateIconPreview(this.value, 'create_icon_preview')">
+                            </div>
+                        </div>
+
+                        <!-- Target Section Redirect URL -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold text-dark">
+                                Target Section Redirect URL <i class="fa-solid fa-arrow-up-right-from-square ms-1 text-primary"></i>
+                            </label>
+                            <input type="text" class="form-control" name="redirect_url" id="create_redirect_url"
+                                   placeholder="/admin/referrals/ or /wholesale/admin/dashboard/">
+                            <div class="mt-2">
+                                <small class="text-muted d-block mb-1" style="font-size: 11px;">Quick Suggestion Chips (click to fill):</small>
+                                <span class="url-chip" onclick="fillUrl('create_redirect_url', '/wholesale/admin/dashboard/')">Wholesale Dashboard</span>
+                                <span class="url-chip" onclick="fillUrl('create_redirect_url', '/admin/pincode-heatmap/')">Pincode Heatmap</span>
+                                <span class="url-chip" onclick="fillUrl('create_redirect_url', '/admin/whatsapp/')">WhatsApp Center</span>
+                                <span class="url-chip" onclick="fillUrl('create_redirect_url', '/admin/profile-banners/')">Profile Banners</span>
+                                <span class="url-chip" onclick="fillUrl('create_redirect_url', '/admin/settings/banner-popup/')">Banner Studio</span>
+                                <span class="url-chip" onclick="fillUrl('create_redirect_url', '/admin/referrals/')">Referral System</span>
+                                <span class="url-chip" onclick="fillUrl('create_redirect_url', '/admin/settings/general/')">General Settings</span>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold text-dark">Description</label>
+                            <textarea class="form-control" name="description" id="create_description" rows="3"
+                                      placeholder="Describe what this feature flag enables, which endpoints or UI elements it gates..."></textarea>
+                        </div>
+
+                        <!-- Initial Status -->
+                        <div class="col-12">
+                            <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded-3">
+                                <div>
+                                    <div class="fw-semibold text-dark">Enable Flag Immediately?</div>
+                                    <small class="text-muted">If enabled, the feature will be live upon creation.</small>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input flag-toggle-switch m-0" type="checkbox" name="is_enabled" value="1" id="create_is_enabled">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0 px-4 py-3">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold shadow-sm">
+                        <i class="fa-solid fa-check me-1"></i> Create Feature Flag
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  MODAL: EDIT FEATURE FLAG METADATA                                         -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="editFlagModal" tabindex="-1" aria-labelledby="editFlagModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-light border-bottom-0 py-3 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="flag-icon-box icon-box-blue" style="width: 36px; height: 36px;">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark" id="editFlagModalLabel">Edit Feature Flag Details</h5>
+                        <p class="text-muted small mb-0">Update name, target redirect URL, icon, and operational description.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form method="POST" action="{% url 'admin_feature_flag_update' %}">
+                {% csrf_token %}
+                <input type="hidden" name="key" id="edit_key">
+                
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        
+                        <!-- Flag Key (Read Only) -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark">Flag Key / Slug (Immutable)</label>
+                            <input type="text" class="form-control bg-light font-monospace text-muted" id="edit_key_display" readonly>
+                        </div>
+
+                        <!-- Flag Name -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark">Feature Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name" id="edit_name" required>
+                        </div>
+
+                        <!-- Category -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark">Category</label>
+                            <select class="form-select" name="category" id="edit_category">
+                                <option value="Core Platform">Core Platform</option>
+                                <option value="Growth & Marketing">Growth &amp; Marketing</option>
+                                <option value="Automation & AI">Automation &amp; AI</option>
+                                <option value="BI & Analytics">BI &amp; Analytics</option>
+                                <option value="Security & Compliance">Security &amp; Compliance</option>
+                                <option value="Developer & API">Developer &amp; API</option>
+                                <option value="Custom Features">Custom Features</option>
+                            </select>
+                        </div>
+
+                        <!-- Icon -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark">FontAwesome Icon Class</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted" id="edit_icon_preview"><i class="fa-solid fa-flag"></i></span>
+                                <input type="text" class="form-control" name="icon" id="edit_icon"
+                                       oninput="updateIconPreview(this.value, 'edit_icon_preview')">
+                            </div>
+                        </div>
+
+                        <!-- Target Section Redirect URL -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold text-dark">
+                                Target Section Redirect URL <i class="fa-solid fa-arrow-up-right-from-square ms-1 text-primary"></i>
+                            </label>
+                            <input type="text" class="form-control" name="redirect_url" id="edit_redirect_url"
+                                   placeholder="/admin/settings/general/ or /wholesale/admin/dashboard/">
+                            <div class="mt-2">
+                                <small class="text-muted d-block mb-1" style="font-size: 11px;">Quick Suggestion Chips:</small>
+                                <span class="url-chip" onclick="fillUrl('edit_redirect_url', '/wholesale/admin/dashboard/')">Wholesale Dashboard</span>
+                                <span class="url-chip" onclick="fillUrl('edit_redirect_url', '/admin/pincode-heatmap/')">Pincode Heatmap</span>
+                                <span class="url-chip" onclick="fillUrl('edit_redirect_url', '/admin/whatsapp/')">WhatsApp Center</span>
+                                <span class="url-chip" onclick="fillUrl('edit_redirect_url', '/admin/profile-banners/')">Profile Banners</span>
+                                <span class="url-chip" onclick="fillUrl('edit_redirect_url', '/admin/settings/banner-popup/')">Banner Studio</span>
+                                <span class="url-chip" onclick="fillUrl('edit_redirect_url', '/admin/referrals/')">Referral System</span>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold text-dark">Description</label>
+                            <textarea class="form-control" name="description" id="edit_description" rows="3"></textarea>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0 px-4 py-3">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold shadow-sm">
+                        <i class="fa-solid fa-check me-1"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!--  MODAL: DELETE CUSTOM FEATURE FLAG                                         -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="deleteFlagModal" tabindex="-1" aria-labelledby="deleteFlagModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-danger-subtle border-bottom-0 py-3 px-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="flag-icon-box icon-box-rose" style="width: 36px; height: 36px;">
+                        <i class="fa-solid fa-triangle-exclamation text-danger"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold text-danger" id="deleteFlagModalLabel">Delete Custom Feature Flag</h5>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form method="POST" action="{% url 'admin_feature_flag_delete' %}">
+                {% csrf_token %}
+                <input type="hidden" name="key" id="delete_key">
+                <div class="modal-body p-4 text-center">
+                    <p class="mb-2">Are you sure you want to permanently delete this feature flag?</p>
+                    <h6 class="fw-bold text-dark font-monospace p-2 bg-light rounded" id="delete_name_display"></h6>
+                    <small class="text-muted d-block mt-2">
+                        Any code branches or components expecting this flag will fall back to their default setting.
+                    </small>
+                </div>
+                <div class="modal-footer bg-light border-top-0 px-4 py-3 justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger px-4 fw-semibold shadow-sm">
+                        <i class="fa-solid fa-trash-can me-1"></i> Confirm Delete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Toast Container for Real-time Feedback -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+    <div id="liveToast" class="toast align-items-center text-white border-0 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center gap-2" id="toastMessage">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Action executed successfully.</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ─────────────────────────────────────────────────────────────
+   FEATURE FLAGS CLIENT INTERACTION LOGIC
+   ───────────────────────────────────────────────────────────── */
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function showToast(message, isSuccess = true) {
+    const toastEl = document.getElementById('liveToast');
+    const toastMsg = document.getElementById('toastMessage');
+    toastEl.className = `toast align-items-center text-white border-0 shadow-lg ${isSuccess ? 'bg-success' : 'bg-danger'}`;
+    toastMsg.innerHTML = `<i class="fa-solid ${isSuccess ? 'fa-circle-check' : 'fa-triangle-exclamation'} me-2"></i> ${message}`;
+    const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    toast.show();
+}
+
+function copyToClipboard(text, elem) {
+    navigator.clipboard.writeText(text).then(() => {
+        const originalHtml = elem.innerHTML;
+        elem.innerHTML = `<code>${text}</code> <i class="fa-solid fa-check text-success ms-1"></i>`;
+        setTimeout(() => { elem.innerHTML = originalHtml; }, 1500);
+    }).catch(err => {
+        console.error('Copy failed:', err);
+    });
+}
+
+function updateIconPreview(iconClass, previewId) {
+    const preview = document.getElementById(previewId);
+    if (!preview) return;
+    const clean = iconClass.trim();
+    if (clean.startsWith('fa-')) {
+        preview.innerHTML = `<i class="${clean}"></i>`;
+    } else {
+        preview.innerHTML = `<i class="fa-solid fa-flag"></i>`;
+    }
+}
+
+function fillUrl(targetId, url) {
+    const input = document.getElementById(targetId);
+    if (input) {
+        input.value = url;
+    }
+}
+
+/* Instant AJAX Toggle */
+function toggleFeatureFlag(flagKey, switchElem) {
+    const isChecked = switchElem.checked;
+    const card = document.getElementById(`card-${flagKey}`);
+    const statusLabel = document.getElementById(`status-label-${flagKey}`);
+    const originalChecked = !isChecked;
+
+    // Loading indication
+    switchElem.disabled = true;
+
+    fetch("{% url 'admin_feature_flag_toggle' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            key: flagKey,
+            state: isChecked
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        switchElem.disabled = false;
+        if (data.success) {
+            showToast(data.message || `Feature flag updated to ${data.status_text}.`, true);
+            
+            // Update Card Border & Status Label
+            if (card) {
+                if (data.is_enabled) {
+                    card.classList.remove('status-inactive');
+                    card.classList.add('status-active');
+                    statusLabel.innerHTML = '<span class="text-success"><span class="pulse-beacon beacon-active"></span>Active</span>';
+                } else {
+                    card.classList.remove('status-active');
+                    card.classList.add('status-inactive');
+                    statusLabel.innerHTML = '<span class="text-muted"><span class="pulse-beacon beacon-inactive"></span>Disabled</span>';
+                }
+            }
+        } else {
+            // Revert switch on error
+            switchElem.checked = originalChecked;
+            showToast(data.message || 'Failed to update feature flag.', false);
+        }
+    })
+    .catch(error => {
+        switchElem.disabled = false;
+        switchElem.checked = originalChecked;
+        showToast('Network or server error while updating feature flag.', false);
+        console.error('Toggle error:', error);
+    });
+}
+
+/* Live Client Search Filtering */
+document.getElementById('liveSearchInput').addEventListener('input', function() {
+    const q = this.value.trim().toLowerCase();
+    const items = document.querySelectorAll('.flag-item');
+
+    items.forEach(item => {
+        const key = item.dataset.key || '';
+        const name = item.dataset.name || '';
+        const desc = item.dataset.desc || '';
+        const cat = item.dataset.cat || '';
+
+        if (!q || key.includes(q) || name.includes(q) || desc.includes(q) || cat.includes(q)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+function applyFilters() {
+    const status = document.getElementById('statusFilterSelect').value;
+    const url = new URL(window.location.href);
+    url.searchParams.set('status', status);
+    window.location.href = url.toString();
+}
+
+function openEditModal(key, name, category, description, redirectUrl, icon) {
+    document.getElementById('edit_key').value = key;
+    document.getElementById('edit_key_display').value = key;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_category').value = category;
+    document.getElementById('edit_description').value = description;
+    document.getElementById('edit_redirect_url').value = redirectUrl;
+    document.getElementById('edit_icon').value = icon;
+    updateIconPreview(icon, 'edit_icon_preview');
+
+    const modal = new bootstrap.Modal(document.getElementById('editFlagModal'));
+    modal.show();
+}
+
+function promptSetRedirectUrl(key, name) {
+    openEditModal(key, name, '', '', '', 'fa-solid fa-flag');
+}
+
+function openDeleteModal(key, name) {
+    document.getElementById('delete_key').value = key;
+    document.getElementById('delete_name_display').textContent = `${name} (${key})`;
+    const modal = new bootstrap.Modal(document.getElementById('deleteFlagModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

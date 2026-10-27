@@ -43,6 +43,7 @@ def get_permissions_list():
         {'key': 'pincode', 'label': 'Pincode Database Manager'},
         {'key': 'analytics', 'label': 'Analytics, Activity Logs & Threat Intelligence'},
         {'key': 'error_logs', 'label': 'Error Logs'},
+        {'key': 'feature_flags', 'label': 'Feature Flags Control Center'},
         {'key': 'site_settings', 'label': 'Site Settings, SEO & Security Rules'},
         {'key': 'email_templates', 'label': 'Email & PDF Templates'},
         {'key': 'server_health', 'label': 'Server Health'},

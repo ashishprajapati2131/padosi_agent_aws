@@ -937,8 +937,18 @@
             {% endif %}
 
             <!-- System -->
-            {% if is_super_admin or 'site_settings' in admin_permissions or 'email_templates' in admin_permissions or 'server_health' in admin_permissions or 'logs' in admin_permissions or 'api_logs' in admin_permissions or 'backups' in admin_permissions %}
+            {% if is_super_admin or 'feature_flags' in admin_permissions or 'site_settings' in admin_permissions or 'email_templates' in admin_permissions or 'server_health' in admin_permissions or 'logs' in admin_permissions or 'api_logs' in admin_permissions or 'backups' in admin_permissions %}
             <div class="menu-label">System</div>
+
+            {% if is_super_admin or 'feature_flags' in admin_permissions or 'site_settings' in admin_permissions %}
+            <a href="{% url 'admin_feature_flags' %}"
+                class="menu-item {% if '/admin/feature-flags/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-toggle-on" style="color:#0ea5e9;"></i> Feature Flags
+                {% if active_feature_flags_count > 0 %}
+                <span class="badge ms-auto bg-primary text-white" style="font-size: 10px;">{{ active_feature_flags_count }} Active</span>
+                {% endif %}
+            </a>
+            {% endif %}
 
             <a href="/admin/settings/general/"
                 class="menu-item {% if '/admin/settings/general/' in request.path %}active{% endif %}">
