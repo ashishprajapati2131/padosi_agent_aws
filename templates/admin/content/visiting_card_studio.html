@@ -824,12 +824,14 @@
                                     </td>
                                     <td>
                                         <div class="fw-semibold text-dark small">{{ lead.agent.fullname }}</div>
+                                        {% if lead.agent and lead.agent.agent_slug %}
                                         <a href="{% url 'agents:agent_public_card' slug=lead.agent.agent_slug %}" target="_blank" class="small text-muted text-decoration-none">
                                             /card/{{ lead.agent.agent_slug }}/
                                         </a>
+                                        {% endif %}
                                     </td>
                                     <td>
-                                        <small class="text-secondary text-truncate d-block" style="max-width: 250px;">{{ lead.enquiry_requirements|default:lead.message|default:'No note attached.' }}</small>
+                                        <small class="text-secondary text-truncate d-block" style="max-width: 250px;">{{ lead.enquiry_requirements|default:'No note attached.' }}</small>
                                     </td>
                                     <td class="pe-4 text-end text-muted small">
                                         {{ lead.created_at|date:"d M Y, h:i A" }}

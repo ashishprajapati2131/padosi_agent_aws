@@ -1156,6 +1156,11 @@ class AgentLead(models.Model):
         db_table = 'agent_leads'
         managed = True
 
+    @property
+    def message(self):
+        """Backward-compatibility property returning enquiry_requirements."""
+        return self.enquiry_requirements or ''
+
 
 class AgentProfileView(models.Model):
     agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='profile_views', db_constraint=False)

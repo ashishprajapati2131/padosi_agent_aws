@@ -130,6 +130,17 @@ class VisitingCardStudioAdminTestCase(TestCase):
         self.assertEqual(res_limited.status_code, 302)
         self.assertTrue(res_limited.url.startswith('/admin'))
 
+        # Create a card lead with null enquiry_requirements to verify robust table rendering
+        AgentLead.objects.create(
+            agent=self.agent,
+            customer_name='Ramesh Bhai',
+            customer_mobile='9825112233',
+            customer_pincode='380015',
+            insurance_type='Health',
+            interaction_type='digital_card_enquiry',
+            enquiry_requirements=None
+        )
+
         # Super admin -> 200 OK with full studio layout & KPIs
         super_client = Client()
         self._login_admin(self.admin, client=super_client)
@@ -138,6 +149,8 @@ class VisitingCardStudioAdminTestCase(TestCase):
         self.assertContains(res_super, 'Personal Digital Visiting Card Studio')
         self.assertContains(res_super, 'Vipul Shah')
         self.assertContains(res_super, '/card/vipul-shah/')
+        self.assertContains(res_super, 'Ramesh Bhai')
+        self.assertContains(res_super, 'No note attached.')
         self.assertContains(res_super, 'Global Section Visibility Policies')
 
     def test_toggle_agent_card_visibility_ajax(self):
