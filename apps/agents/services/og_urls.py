@@ -59,5 +59,6 @@ def build_og_absolute_url(request, path: str) -> str:
 
 
 def agent_og_image_absolute_url(request, agent_id: int) -> str:
+    from apps.agents.models import OG_IMAGE_CACHE_VERSION
     path = reverse('agents:agent_og_image', kwargs={'agent_id': agent_id})
-    return build_og_absolute_url(request, path)
+    return build_og_absolute_url(request, path) + f'?v={OG_IMAGE_CACHE_VERSION}'

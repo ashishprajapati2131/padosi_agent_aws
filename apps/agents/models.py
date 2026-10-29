@@ -618,13 +618,8 @@ class Agent(models.Model):
 
     @property
     def agent_city_display(self):
-        first_city = self.serviceableCities.first()
-        if first_city:
-            remain = self.serviceableCities.count() - 1
-            return first_city.name + (f" +{remain} more" if remain > 0 else "")
-        if hasattr(self, 'profile') and self.profile and self.profile.office_address:
-            return self.profile.office_address
-        return ""
+        from apps.agents.services.agent_city import agent_city_label
+        return agent_city_label(self)
 
     @property
     def badge_list(self):
@@ -1732,7 +1727,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.cache import cache
 
-OG_IMAGE_CACHE_VERSION = 'v5'
+OG_IMAGE_CACHE_VERSION = 'v6'
 
 
 def og_image_cache_key(agent_id):

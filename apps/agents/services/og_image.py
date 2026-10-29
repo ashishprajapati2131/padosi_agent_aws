@@ -38,6 +38,25 @@ def _safe_str(val, default=""):
     except Exception:
         return default
 
+def _share_card_place(agent, profile=None):
+    """City shown on the share card. Never invents Ahmedabad."""
+    city = ''
+    if not hasattr(agent, '_mock_return_value'):
+        try:
+            from apps.agents.services.agent_city import resolve_agent_city
+            city = resolve_agent_city(agent)
+        except Exception:
+            city = ''
+    if not city:
+        city = _safe_str(getattr(profile, 'display_city', None)) or _safe_str(getattr(profile, 'city', None))
+    city = city.split('+')[0].strip()
+    if not city:
+        return 'India'
+    if 'india' in city.lower():
+        return city
+    return f'{city}, India'
+
+
 def _safe_num(val, default=0):
     """Safely extract float/int, ignoring unassigned MagicMock attributes in tests."""
     if val is None or hasattr(val, '_mock_return_value'):
@@ -134,9 +153,7 @@ def render_agent_og_jpeg(agent):
     name = _safe_str(getattr(profile, 'display_name', None)) or _safe_str(getattr(agent, 'fullname', None)) or _safe_str(getattr(agent, 'full_name', None)) or 'Insurance Advisor'
     agent_initial = (name[0].upper() if name else 'A')
     
-    raw_city = _safe_str(getattr(agent, 'agent_city_display', None)) or _safe_str(getattr(profile, 'display_city', None)) or _safe_str(getattr(profile, 'city', None)) or 'Ahmedabad'
-    if '+' in raw_city: raw_city = raw_city.split('+')[0].strip()
-    location = f'{raw_city}, India' if raw_city and 'india' not in raw_city.lower() else (raw_city or 'Ahmedabad, India')
+    location = _share_card_place(agent, profile)
 
     badge_val = _safe_str(getattr(agent, 'badge', None)).lower()
     show_licensed = bool((profile and (getattr(profile, 'license_number', None) or getattr(profile, 'arn_number', None))) or 'irdai' in badge_val or 'licensed' in badge_val or True)
@@ -376,9 +393,7 @@ def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
     draw.text((rx + 56, 170), f"({rev_cnt} reviews)", font=fonts['meta'], fill=(100, 116, 139))
 
     # Location
-    city = _safe_str(getattr(agent, 'agent_city_display', None)) or _safe_str(getattr(profile, 'display_city', None)) or _safe_str(getattr(profile, 'city', None)) or 'Ahmedabad'
-    if '+' in city: city = city.split('+')[0].strip()
-    loc_text = f"📍  {city}, India" if city and 'india' not in city.lower() else (f"📍  {city}" if city else "📍  Ahmedabad, India")
+    loc_text = f"📍  {_share_card_place(agent, profile)}"
     draw.text((rx + 180, 170), loc_text, font=fonts['meta'], fill=(100, 116, 139))
 
     # 4 Stat Boxes (Width 165, Height 88, Gap 14)
