@@ -129,6 +129,20 @@ class AgentPublicProfileTests(TestCase):
         self.assertIn('property="og:description"', body)
         self.assertIn('Connect with Ravi Kumar', body)
 
+    def test_profile_og_description_includes_experience_and_segments(self):
+        from apps.agents.models import AgentInsuranceSegment
+        self.profile.experience_years = 8
+        self.profile.license_number = 'IRDAI123'
+        self.profile.save()
+        AgentInsuranceSegment.objects.create(agent=self.agent, segment_type='health')
+        AgentInsuranceSegment.objects.create(agent=self.agent, segment_type='life')
+        response = self.client.get(reverse('agents:agent_public_profile', args=['ravi-kumar']))
+        body = response.content.decode()
+        self.assertIn('8 yrs exp', body)
+        self.assertIn('Health', body)
+        self.assertIn('Life', body)
+        self.assertNotContains(response, 'id="eligibilityPopup"')
+
     def test_missing_agent_returns_404(self):
         response = self.client.get(reverse('agents:agent_public_profile', args=['999999']))
         self.assertEqual(response.status_code, 404)

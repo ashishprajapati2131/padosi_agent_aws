@@ -1033,6 +1033,9 @@ def pincode_fetch(request, pincode):
     cache_key = f'pincode_fetch_json_{pincode}'
     cached_payload = cache.get(cache_key)
     if cached_payload is not None and isinstance(cached_payload, dict):
+        data = cached_payload.get('data')
+        if isinstance(data, dict) and not data.get('taluk'):
+            data['taluk'] = data.get('district') or ''
         return JsonResponse(cached_payload)
 
     # Check exact curated pin first
@@ -1045,6 +1048,7 @@ def pincode_fetch(request, pincode):
             'data': {
                 'office_name': exact.get('office_name') or f"PIN {pincode}",
                 'district': exact.get('district') or '',
+                'taluk': (exact.get('taluk') or exact.get('district') or '')[:100],
                 'state': exact.get('state') or 'India',
                 'formatted_location': formatted_location,
                 'latitude': str(exact['lat']),
@@ -1083,6 +1087,7 @@ def pincode_fetch(request, pincode):
         'data': {
             'office_name': record.office_name,
             'district': record.district,
+            'taluk': (record.taluk or record.district or '')[:100],
             'state': record.state,
             'formatted_location': formatted_location,
             'latitude': str(record.latitude),

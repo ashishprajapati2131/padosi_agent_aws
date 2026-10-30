@@ -159,6 +159,10 @@ function startRenewal() {
       form.submit();
       return;
     }
+    var useCallback = !!data.checkout_use_callback && !data.unsafe_localhost_checkout;
+    if (data.unsafe_localhost_checkout) {
+      alert('On local HTTP, EMI and netbanking redirects are blocked by your browser. Use card or UPI in the Razorpay window, or test on HTTPS staging.');
+    }
     var options = {
       key: data.razorpay_key_id || data.key,
       amount: data.amount_paise || data.amount,
@@ -166,7 +170,6 @@ function startRenewal() {
       name: 'PadosiAgent',
       description: '{{ plan_name }} Renewal',
       order_id: data.razorpay_order_id,
-      callback_url: "{% url 'agents:agent_register_payment_callback' %}",
       prefill: {
         name: data.customer_name || '',
         email: data.customer_email || '',
@@ -193,8 +196,11 @@ function startRenewal() {
         form.submit();
       },
     };
-    if (data.checkout_use_callback) {
+    if (useCallback) {
+      options.callback_url = window.location.origin + "{% url 'agents:agent_register_payment_callback' %}";
       options.redirect = true;
+    } else {
+      options.redirect = false;
     }
     var rzp = new Razorpay(options);
     rzp.on('payment.failed', function(resp) {

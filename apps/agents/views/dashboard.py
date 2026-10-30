@@ -1080,6 +1080,7 @@ def agent_public_profile(request, slug, state_code=None):
             'profile': profile,
             'agentDisplayName': display_name,
             'agentInitial': agent_initial,
+            'hide_eligibility_popup': True,
         })
     
     social_links = {}
@@ -1111,6 +1112,7 @@ def agent_public_profile(request, slug, state_code=None):
         'performanceStats': getattr(agent, 'performanceStats', None),
         'leadPreferences': getattr(agent, 'leadPreferences', None),
         'review_scroll_delay_ms': 3000,
+        'hide_eligibility_popup': True,
     }
     context.update(profile_og_context(request, agent, display_name=display_name))
     try:

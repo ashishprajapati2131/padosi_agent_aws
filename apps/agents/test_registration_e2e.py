@@ -101,6 +101,7 @@ class AgentRegistrationEndToEndTests(TestCase):
             )
         self.assertEqual(r.status_code, 200, r.content)
         self.assertTrue(r.json()['success'], r.json())
+        self.assertIn('/agent/edit-profile/', r.json().get('redirect_url', ''))
 
         sub.refresh_from_db()
         agent = Agent.objects.get(pk=sub.agent_id)
@@ -109,7 +110,7 @@ class AgentRegistrationEndToEndTests(TestCase):
         self.assertIn(agent.status, ('active', 'pending_approval'))
         _queue.assert_called_once()
 
-        # Signed in by the payment itself; dashboard is open.
+        # Signed in by the payment itself; dashboard is still reachable.
         with _no_favorites():
             dash = self.client.get('/agent/dashboard/')
         self.assertEqual(dash.status_code, 200)

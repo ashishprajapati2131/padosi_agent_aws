@@ -21,6 +21,68 @@ TAG_COLORS = {
 }
 TAG_DEFAULT = ((243, 244, 246), (55, 65, 81), (229, 231, 235))
 
+SEGMENT_DISPLAY_MAP = {
+    'health': 'Health',
+    'motor': 'Motor',
+    'life': 'Life',
+    'sme': 'SME Insurance',
+    'travel': 'Travel',
+    'marine': 'Marine',
+    'fire': 'Fire Insurance',
+    'general': 'General Insurance',
+    'commercial': 'Commercial',
+}
+
+PILL_COLORS = {
+    'health': ((255, 241, 242), (253, 164, 175), (225, 29, 72)),
+    'life': ((245, 243, 255), (196, 181, 253), (124, 58, 237)),
+    'motor': ((239, 246, 255), (147, 197, 253), (37, 99, 235)),
+    'sme': ((255, 251, 235), (252, 211, 77), (217, 119, 6)),
+}
+
+
+def _agent_segment_pills(agent):
+    """Return [{name, class}, ...] from the agent's real segments. Empty if none."""
+    import re
+    raw_tags = []
+    ordered = getattr(agent, 'ordered_insurance_segments', None)
+    if ordered is not None and not hasattr(ordered, '_mock_return_value'):
+        try:
+            raw_tags = list(ordered or [])
+        except Exception:
+            raw_tags = []
+    if not raw_tags and hasattr(agent, 'insuranceSegments') and not hasattr(agent.insuranceSegments, '_mock_return_value'):
+        try:
+            raw_tags = [
+                getattr(s, 'segment_type', None) or getattr(s, 'segment_name', str(s))
+                for s in agent.insuranceSegments.all()
+            ]
+        except Exception:
+            raw_tags = []
+
+    cleaned_segments = []
+    seen_classes = set()
+    for t in raw_tags:
+        clean_key = re.sub(r'[{}\s%|"\']', '', str(t)).lower()
+        if 'ifseg' in clean_key or 'endif' in clean_key:
+            continue
+        matched_cls = 'default'
+        display_name = None
+        for known in ['health', 'motor', 'life', 'sme', 'travel', 'marine', 'fire', 'general', 'commercial']:
+            if known in clean_key:
+                matched_cls = known
+                display_name = SEGMENT_DISPLAY_MAP[known]
+                break
+        if not display_name:
+            cleaned_word = re.sub(r'[^a-zA-Z0-9 ]', '', str(t)).strip()
+            if cleaned_word and not cleaned_word.startswith('seg'):
+                display_name = cleaned_word.title()
+                matched_cls = 'default'
+        if display_name and matched_cls not in seen_classes:
+            seen_classes.add(matched_cls)
+            cleaned_segments.append({'name': display_name, 'class': matched_cls})
+    return cleaned_segments
+
 
 import base64
 import logging
@@ -168,9 +230,9 @@ def render_agent_og_jpeg(agent):
     review_count = int(_safe_num(getattr(agent, 'review_count', None) or (getattr(perf, 'total_reviews', None) if perf else None), 124))
 
     # Experience
-    exp_val = int(_safe_num(getattr(profile, 'experience_years', None) if profile else getattr(agent, 'experience_years', None), 12))
+    exp_val = int(_safe_num(getattr(profile, 'experience_years', None) if profile else getattr(agent, 'experience_years', None), 0))
     exp_text = f'{exp_val}+ Years Experience • Top Rated' if exp_val else 'Verified Advisor • Top Rated'
-    exp_years = f"{exp_val}+" if exp_val else "12+"
+    exp_years = f"{exp_val}+" if exp_val else "New"
 
     # Dynamic Metrics with realistic defaults
     clients = _safe_str(getattr(agent, 'formatted_client_base', None)) or _safe_str(getattr(agent, 'client_base', None))
@@ -192,59 +254,7 @@ def render_agent_og_jpeg(agent):
     else:
         settled_val = "₹2.5Cr+"
 
-    # Segment mapping & clean tag sanitization
-    SEGMENT_DISPLAY_MAP = {
-        'health': 'Health',
-        'motor': 'Motor',
-        'life': 'Life',
-        'sme': 'SME Insurance',
-        'travel': 'Travel',
-        'marine': 'Marine',
-        'fire': 'Fire Insurance',
-        'general': 'General Insurance',
-        'commercial': 'Commercial',
-    }
-
-    raw_tags = []
-    if hasattr(agent, 'ordered_insurance_segments') and not hasattr(agent.ordered_insurance_segments, '_mock_return_value'):
-        raw_tags = list(agent.ordered_insurance_segments or [])
-    elif hasattr(agent, 'insuranceSegments') and not hasattr(agent.insuranceSegments, '_mock_return_value'):
-        try:
-            raw_tags = [getattr(s, 'segment_name', str(s)) for s in agent.insuranceSegments.all()]
-        except Exception:
-            raw_tags = []
-    if not raw_tags:
-        raw_tags = ['health', 'motor', 'sme']
-
-    import re
-    cleaned_segments = []
-    seen_classes = set()
-    for t in raw_tags:
-        clean_key = re.sub(r'[{}\s%|"\']', '', str(t)).lower()
-        if 'ifseg' in clean_key or 'endif' in clean_key:
-            continue
-        matched_cls = 'default'
-        display_name = None
-        for known in ['health', 'motor', 'life', 'sme', 'travel', 'marine', 'fire', 'general', 'commercial']:
-            if known in clean_key:
-                matched_cls = known
-                display_name = SEGMENT_DISPLAY_MAP[known]
-                break
-        if not display_name:
-            cleaned_word = re.sub(r'[^a-zA-Z0-9 ]', '', str(t)).strip()
-            if cleaned_word and not cleaned_word.startswith('seg'):
-                display_name = cleaned_word.title()
-                matched_cls = 'default'
-        if display_name and matched_cls not in seen_classes:
-            seen_classes.add(matched_cls)
-            cleaned_segments.append({'name': display_name, 'class': matched_cls})
-
-    if not cleaned_segments:
-        cleaned_segments = [
-            {'name': 'Health', 'class': 'health'},
-            {'name': 'Motor', 'class': 'motor'},
-            {'name': 'SME Insurance', 'class': 'sme'},
-        ]
+    cleaned_segments = _agent_segment_pills(agent)
 
     # Inject exact frontend CSS for 100% pixel-perfect match
     css_path = os.path.join(settings.BASE_DIR, 'static', 'css', 'agent-card-shared.css')
@@ -402,8 +412,8 @@ def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
     box_h = 88
     gap = 14
 
-    exp_val = int(_safe_num(getattr(profile, 'experience_years', None) if profile else getattr(agent, 'experience_years', None), 12))
-    exp_years = f"{exp_val}+" if exp_val else "12+"
+    exp_val = int(_safe_num(getattr(profile, 'experience_years', None) if profile else getattr(agent, 'experience_years', None), 0))
+    exp_years = f"{exp_val}+" if exp_val else "New"
 
     clients = _safe_str(getattr(agent, 'formatted_client_base', None)) or _safe_str(getattr(agent, 'client_base', None))
     clients_val = f"{clients}+" if clients and '+' not in clients else (clients if clients else "500+")
@@ -449,13 +459,13 @@ def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
         ly = by0 + 50
         draw.text((lx, ly), lbl, font=fonts['stat_lbl'], fill=lbl_col)
 
-    # Segment Pills (Health, Motor, SME Insurance)
+    # Segment pills from the agent's real Health / Life / Motor / SME list.
     pill_y = 345
-    pills = [
-        ("Health", (255, 241, 242), (253, 164, 175), (225, 29, 72)),
-        ("Motor", (239, 246, 255), (147, 197, 253), (37, 99, 235)),
-        ("SME Insurance", (255, 251, 235), (252, 211, 77), (217, 119, 6)),
-    ]
+    cleaned = _agent_segment_pills(agent)
+    pills = []
+    for item in cleaned[:4]:
+        colors = PILL_COLORS.get(item.get('class'), ((241, 245, 249), (203, 213, 225), (51, 65, 85)))
+        pills.append((item['name'], colors[0], colors[1], colors[2]))
     px = rx
     for p_name, p_bg, p_border, p_text in pills:
         pw, ph = _text_size(draw, p_name, fonts['pill'])

@@ -2,7 +2,7 @@
 {% load static %}
 {% block pwa_manifest %}{% endblock %}
 
-{% block title %}{% if event_referral_mode %}{{ event_referral_campaign.page_title|default:"Event Registration" }} | PadosiAgent{% elif referring_agent %}{% if referring_agent.is_championship %}Agent Championship — Invited by {{ referring_agent.name }} | PadosiAgent{% else %}You're Invited by {{ referring_agent.name }} | PadosiAgent{% endif %}{% else %}Agent Registration | PadosiAgent{% endif %}{% endblock %}
+{% block title %}{% if welcome_preview_mode %}Your Agent Card & Website | PadosiAgent{% elif event_referral_mode %}{{ event_referral_campaign.page_title|default:"Event Registration" }} | PadosiAgent{% elif referring_agent %}{% if referring_agent.is_championship %}Agent Championship — Invited by {{ referring_agent.name }} | PadosiAgent{% else %}You're Invited by {{ referring_agent.name }} | PadosiAgent{% endif %}{% else %}Agent Registration | PadosiAgent{% endif %}{% endblock %}
 
 {% block og_title %}{% if use_paldi_og %}{{ paldi_og_share_title|default:"PadosiAgent" }}{% elif use_championship_og %}{{ championship_og_share_title|default:"Agent Championship | PadosiAgent" }}{% elif og_share_title %}{{ og_share_title }}{% elif referring_agent %}{% if referring_agent.is_championship %}Agent Championship | PadosiAgent{% else %}PadosiAgent{% endif %}{% else %}Agent Registration | PadosiAgent{% endif %}{% endblock %}
 {% block og_description %}{% if use_paldi_og %}{{ paldi_og_share_title|default:"PadosiAgent" }}{% elif use_championship_og %}{{ championship_og_description|default:"Join the PadosiAgent Championship." }}{% elif og_share_title %}{{ og_share_title }}{% elif referring_agent %}{% if referring_agent.is_championship %}Agent Championship on PadosiAgent{% else %}Join PadosiAgent{% endif %}{% else %}Register as a PadosiAgent Insurance & Investment Advisor.{% endif %}{% endblock %}
@@ -462,15 +462,20 @@
 {% endblock %}
 
 {% block content %}
-    {% if not event_referral_mode and require_quick_reg_gate %}
-        {% include 'partials/registration_gate_popup.html' %}
-    {% endif %}
-
+{% if registration_popup_only %}
+    <div class="min-h-screen glass-bg" aria-hidden="true"></div>
+    {% include 'partials/eligibility_popup.html' with eligibility_on_registration_page=True %}
+{% else %}
     <div id="registrationMainWrapper" hx-history="false" hx-boost="false"
         class="glass-bg flex flex-col px-2 sm:px-6 lg:px-8{% if event_referral_mode %} event-paldi-reg{% else %} min-h-screen pt-4 sm:pt-6 pb-12{% endif %}"
         {% if require_quick_reg_gate and not event_referral_mode %}inert{% endif %}
         x-data="agentRegistration()">
-        <div class="max-w-3xl w-full mx-auto flex flex-col items-center justify-center{% if event_referral_mode %} event-paldi-shell{% else %} gap-4 lg:gap-7 pt-2 sm:pt-4{% endif %}">
+        {% if welcome_preview_mode %}
+        <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-950 text-white" aria-hidden="true">
+            <p class="text-sm font-semibold tracking-wide">Opening your digital card…</p>
+        </div>
+        {% endif %}
+        <div class="max-w-3xl w-full mx-auto flex flex-col items-center justify-center{% if event_referral_mode %} event-paldi-shell{% else %} gap-4 lg:gap-7 pt-2 sm:pt-4{% endif %}{% if welcome_preview_mode %} hidden{% endif %}">
 
             {% if referring_agent %}
             <!-- Invited By Agent Card -->
@@ -1149,11 +1154,11 @@
         <template x-teleport="body">
         <div x-show="showPreviewModal" style="display: none;"
             class="reg-preview-overlay fixed inset-0 z-50 flex flex-col"
-            @keydown.escape.window="showPreviewModal = false"
+            @keydown.escape.window="if (!welcomePreviewMode) showPreviewModal = false"
             @touchstart.passive="onPreviewTouchStart($event)"
             @touchend="onPreviewTouchEnd($event)">
 
-            <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-md" @click="showPreviewModal = false"></div>
+            <div class="absolute inset-0 bg-slate-950/80 backdrop-blur-md" @click="if (!welcomePreviewMode) showPreviewModal = false"></div>
 
             <div class="relative z-10 flex-1 px-3 sm:px-6 pt-4 sm:pt-5 pb-28 overflow-y-auto reg-preview-scroll-zone">
                 <div class="w-full mx-auto max-w-5xl reg-preview-stage">
@@ -1169,6 +1174,7 @@
                         class="reg-preview-slide reg-preview-slide--card reg-preview-directory-card">
                         <div class="reg-preview-card-stack">
                         <button type="button"
+                            x-show="!welcomePreviewMode"
                             @click="showPreviewModal = false"
                             title="Edit details"
                             aria-label="Edit details"
@@ -1788,8 +1794,8 @@
                     <button type="button" @click="cyclePreview(-1)" class="reg-preview-nav-btn" title="Previous" aria-label="Previous">
                         <i data-lucide="chevron-left" class="h-5 w-5"></i>
                     </button>
-                    <button type="button" @click="submitStep1()" :disabled="isSubmitting" class="reg-preview-claim-btn">
-                        <span x-text="isSubmitting ? 'Processing...' : (eventReferralMode ? 'Open my Dashboard' : 'Claim now')"></span>
+                    <button type="button" @click="claimPreview()" :disabled="isSubmitting" class="reg-preview-claim-btn">
+                        <span x-text="isSubmitting ? 'Processing...' : (eventReferralMode ? 'Open my Dashboard' : (welcomePreviewMode ? 'Claim offer' : 'Claim now'))"></span>
                     </button>
                     <button type="button" @click="cyclePreview(1)" class="reg-preview-nav-btn" title="Next" aria-label="Next">
                         <i data-lucide="chevron-right" class="h-5 w-5"></i>
@@ -1855,9 +1861,11 @@
             </div>
         </div>
     </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
+{% if not registration_popup_only %}
     <script>
         // === HTMX History Restore Protection ===
         // When HTMX restores a cached DOM snapshot via browser back/forward,
@@ -1907,8 +1915,9 @@
                 errors: {},
                 selectedPlan: 'professional',
                 eventReferralMode: {% if event_referral_mode %}true{% else %}false{% endif %},
+                welcomePreviewMode: {% if welcome_preview_mode %}true{% else %}false{% endif %},
                 registrationClosed: {% if registration_closed %}true{% else %}false{% endif %},
-                postSubmitRedirect: '{% if event_referral_mode %}{% url "agents:agent_dashboard" %}{% else %}/chooseplan/{% endif %}',
+                postSubmitRedirect: '{% if event_referral_mode %}{% url "agents:agent_dashboard" %}{% else %}{% url "agents:chooseplan" %}{% endif %}',
                 config: {
                     title: {% if event_referral_mode %}'{{ event_referral_campaign.page_title|default:"Event Registration"|escapejs }}'{% else %}'Become a PadosiAgent'{% endif %},
                     description: {% if event_referral_mode %}'{{ event_referral_campaign.page_instructions|default:"Register to join the referral challenge and unlock your dashboard."|escapejs }}'{% else %}'Register to start getting leads and grow your business'{% endif %}
@@ -1926,17 +1935,17 @@
                 phone: '{% if event_referral_mode %}{% if draft %}{{ draft.mobile|default:""|escapejs }}{% endif %}{% else %}{% if prefilled_phone %}{{ prefilled_phone|escapejs }}{% elif draft %}{{ draft.mobile|default:""|escapejs }}{% endif %}{% endif %}',
                 whatsapp: '{% if event_referral_mode %}{% if draft %}{{ draft.whatsapp|default:""|escapejs }}{% endif %}{% else %}{% if prefilled_phone %}{{ prefilled_phone|escapejs }}{% elif draft %}{{ draft.whatsapp|default:""|escapejs }}{% endif %}{% endif %}',
                 pincode: '{% if draft %}{{ draft.agent_pincode|default:""|escapejs }}{% endif %}',
-                city: '{{ prefilledState|default:""|escapejs }}',
-                state: '{{ prefilledState|default:""|escapejs }}',
+                city: '{{ prefilled_state|default:""|escapejs }}',
+                state: '{{ prefilled_state|default:""|escapejs }}',
                 pan: '',
-                yearsExperience: '',
+                yearsExperience: '{% if draft %}{{ draft.experience_range|default:""|escapejs }}{% endif %}',
                 clientBase: '',
                 claimAmount: '',
                 claimsSettled: '',
                 aum: '',
                 photoPreview: null,
                 photoFile: null,
-                segments: [],
+                segments: {{ agent_segments_json|default:"[]"|safe }},
                 mfProducts: ['sip', 'lumpsum', 'elss'],
                 promoCode: '{{ prefilledPromo|default:""|escapejs }}',
                 promoApplied: {% if prefilledPromo %}true{% else %}false{% endif %},
@@ -1944,7 +1953,7 @@
                 agreeTerms: false,
                 isSubmitting: false,
 
-                showPreviewModal: false,
+                showPreviewModal: {% if welcome_preview_mode %}true{% else %}false{% endif %},
                 previewSlide: 0,
                 previewAutoTimer: null,
                 previewAutoDone: false,
@@ -2072,6 +2081,20 @@
                     setTimeout(() => {
                         if (window.lucide) lucide.createIcons();
                     }, 100);
+
+                    if (this.welcomePreviewMode) {
+                        this.agreeTerms = true;
+                        this.$nextTick(() => this.openPreviewModal());
+                    }
+                },
+
+                claimPreview() {
+                    if (this.welcomePreviewMode) {
+                        this.isSubmitting = true;
+                        window.location.href = this.postSubmitRedirect;
+                        return;
+                    }
+                    this.submitStep1();
                 },
 
                 async validateAndOpenPreview() {
@@ -2992,4 +3015,5 @@
     })();
     </script>
     {% endif %}
+{% endif %}
 {% endblock %}

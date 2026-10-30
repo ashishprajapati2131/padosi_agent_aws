@@ -2654,7 +2654,7 @@
     function redirectAfterPaymentVerified(data) {
         hideLoadingPopup();
         try { sessionStorage.removeItem('padosiPendingCheckout'); } catch (e) { }
-        var redirectUrl = (data && data.redirect_url) || '{% url "agents:agent_dashboard" %}';
+        var redirectUrl = (data && data.redirect_url) || '{% url "agents:agent_edit_profile" %}?welcome=1';
         var agentName = (data && data.agent_name) || '';
 
         if (typeof window.showPaymentSuccessPopup === 'function') {
@@ -2689,10 +2689,18 @@
     }
 
     function checkoutUsesCallback(data) {
+        if (data && data.unsafe_localhost_checkout) {
+            return false;
+        }
         if (data && data.checkout_use_callback !== undefined && data.checkout_use_callback !== null) {
             return !!data.checkout_use_callback;
         }
         return window.location.protocol === 'https:';
+    }
+
+    function localRedirectPaymentWarning(data) {
+        if (!data || !data.unsafe_localhost_checkout) return '';
+        return 'On local HTTP, EMI and netbanking redirects are blocked by your browser. Use card or UPI in the Razorpay window, or test on an HTTPS staging URL.';
     }
 
     function isRazorpayInProgressError(err) {
@@ -2736,10 +2744,10 @@
         options.handler = onSuccess;
 
         if (useCallback) {
-            // HTTPS netbanking/UPI: Razorpay redirects back to callback_url after payment.
+            // HTTPS netbanking/UPI/EMI: Razorpay redirects back after payment.
             options.callback_url = window.location.origin + '/agent-register/payment-callback/';
+            options.redirect = true;
         } else {
-            // Local HTTP dev: explicitly disable redirect so modal handler handles it.
             options.redirect = false;
         }
 
@@ -2855,6 +2863,15 @@
                 }
 
                 if (orderId && keyId && amountPaise > 0) {
+                    var redirectWarning = localRedirectPaymentWarning(data);
+                    if (redirectWarning) {
+                        await Swal.fire({
+                            icon: 'info',
+                            title: 'Local payment note',
+                            text: redirectWarning,
+                            confirmButtonText: 'Continue to payment'
+                        });
+                    }
                     var sdkReady = await ensureRazorpaySdk();
                     if (!sdkReady) {
                         Swal.fire('Error', 'Could not reach Razorpay. Check your internet and try again.', 'error');

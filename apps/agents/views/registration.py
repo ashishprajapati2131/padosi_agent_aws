@@ -1015,6 +1015,11 @@ def _get_registration_context(request):
         'prefilled_name': quick_name or getattr(draft, 'fullname', '') or '',
         'prefilled_phone': quick_phone or draft_phone,
         'prefilled_whatsapp': quick_phone or getattr(draft, 'whatsapp', '') or draft_phone,
+        'prefilled_state': getattr(draft, 'state', '') or '',
+        'agent_segments_json': json.dumps([
+            s for s in (getattr(draft, 'segments', None) or [])
+            if s in ALLOWED_SEGMENT_IDS
+        ]),
         'require_quick_reg_gate': require_quick_reg_gate,
         'registration_swipe_enabled': bool(swipe.get('enabled')) and bool(swipe.get('slides')),
         'registration_swipe_slides': swipe.get('slides') or [],
@@ -1022,7 +1027,10 @@ def _get_registration_context(request):
         'hide_site_nav': True,
         'hide_footer': True,
         'hide_chatbot': True,
+        'hide_eligibility_popup': True,
         'event_referral_mode': False,
+        'welcome_preview_mode': False,
+        'registration_popup_only': False,
         'register_step1_url': reverse('agents:agent_register_step1'),
     }
 
@@ -1165,6 +1173,8 @@ def agent_registration(request):
                 referring_agent_data = _build_referring_agent_data(referring_agent, is_championship=is_champ)
 
         context = _get_registration_context(request)
+        context['registration_popup_only'] = True
+        context['require_quick_reg_gate'] = False
         if referring_agent_data:
             context['referring_agent'] = referring_agent_data
 
@@ -1211,7 +1221,28 @@ def agent_registration(request):
     except Exception as e:
         logger.exception(f"Error in agent_registration view: {e}")
         context = _get_registration_context(request)
+        context['registration_popup_only'] = True
+        context['require_quick_reg_gate'] = False
         return render(request, 'agents/registration.html', context)
+
+
+@require_http_methods(["GET"])
+def welcome_preview(request):
+    """Show the digital card + profile website preview after the public popup.
+
+    Requires a session draft created by quick registration. Does not render the
+    long registration form or redirect there.
+    """
+    draft_id = _resolve_chooseplan_draft_id(request)
+    if not draft_id:
+        return redirect('home:home')
+    context = _get_registration_context(request)
+    if not context.get('draft'):
+        return redirect('home:home')
+    context['welcome_preview_mode'] = True
+    context['require_quick_reg_gate'] = False
+    context['hide_eligibility_popup'] = True
+    return render(request, 'agents/registration.html', context)
 
 
 @require_POST
@@ -1412,15 +1443,22 @@ def _public_profile_path(agent):
     return f"/{slug}/"
 
 
-def _activation_success_payload(request, agent, message='Payment successful and account activated.'):
+def _post_payment_redirect_url(request, agent=None):
+    """First-time website signup lands on edit profile; upgrades stay on dashboard."""
     from apps.distributors.views.dashboard import is_distributor
 
-    redirect_url = reverse('agents:agent_dashboard')
     try:
         if request.user.is_authenticated and is_distributor(request.user):
-            redirect_url = reverse('distributors:agents_index')
+            return reverse('distributors:agents_index')
     except Exception:
         pass
+    if request.session.get('app_upgrade_handoff_plan'):
+        return reverse('agents:agent_dashboard') + '?upgrade_success=1'
+    return reverse('agents:agent_edit_profile') + '?welcome=1'
+
+
+def _activation_success_payload(request, agent, message='Payment successful and account activated.'):
+    redirect_url = _post_payment_redirect_url(request, agent)
     profile_path = _public_profile_path(agent)
     return {
         'success': True,
@@ -2225,10 +2263,22 @@ def exclusive_discount_status(request):
 
 
 def _resolve_chooseplan_draft_id(request):
-    """Restore choose-plan draft from session or the logged-in agent's email."""
+    """Restore choose-plan draft from session, cookie phone, or logged-in email."""
     draft_id = request.session.get('current_draft_id')
     if draft_id:
         return draft_id
+    from apps.agents.models import AgentDraft
+    from apps.agents.services.registration_leads import normalize_phone
+    cookie_phone = normalize_phone(
+        (request.COOKIES.get('pa_quick_reg_phone') if hasattr(request, 'COOKIES') else '')
+        or request.session.get('quick_reg_phone')
+        or ''
+    )
+    if cookie_phone and re.fullmatch(r'[6-9]\d{9}', cookie_phone):
+        draft = AgentDraft.objects.filter(mobile=cookie_phone).order_by('-updated_at').first()
+        if draft:
+            request.session['current_draft_id'] = draft.pk
+            return draft.pk
     if not request.user.is_authenticated:
         return None
     try:
@@ -2821,8 +2871,8 @@ def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment
             profile.service_pincodes = [draft.agent_pincode]
         profile.save()
 
-    if draft.slug:
-        base_slug = slugify(draft.slug) or slugify(draft.fullname) or 'agent'
+    if not profile.slug or draft.slug:
+        base_slug = slugify(draft.slug) or slugify(draft.fullname) or slugify((draft.email or '').split('@')[0]) or 'agent'
         unique_slug = base_slug
         count = 1
         while AgentProfile.objects.filter(slug=unique_slug).exclude(pk=profile.pk).exists():
@@ -3948,7 +3998,6 @@ def payment_complete(request):
         return redirect('agents:chooseplan')
 
     from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
-    from apps.distributors.views.dashboard import is_distributor
     try:
         agent = resolve_agent_for_user(request.user)
     except Exception:
@@ -3957,10 +4006,10 @@ def payment_complete(request):
     if not agent or not agent_can_access_dashboard(agent):
         return redirect('agents:chooseplan')
 
-    redirect_url = reverse('distributors:agents_index') if is_distributor(request.user) else reverse('agents:agent_dashboard')
-    handoff_plan = request.session.pop('app_upgrade_handoff_plan', None)
-    if handoff_plan and not is_distributor(request.user):
-        redirect_url = redirect_url + '?upgrade_success=1'
+    handoff_plan = request.session.get('app_upgrade_handoff_plan')
+    redirect_url = _post_payment_redirect_url(request, agent)
+    request.session.pop('app_upgrade_handoff_plan', None)
+    request.session.pop('post_payment_landing', None)
     return render(request, 'agents/payment_complete.html', {
         'agent_name': (getattr(agent, 'fullname', '') or '').strip(),
         'redirect_url': redirect_url,

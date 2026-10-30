@@ -295,8 +295,9 @@
     
     <script>
         var shareUrl   = '{{ request.scheme }}://{{ request.get_host }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/';
-        var shareTitle = '{{ agentDisplayName|default:agent.fullname|escapejs }} — Digital Visiting Card | PadosiAgent';
-        var ogImageUrl = '{{ request.scheme }}://{{ request.get_host }}{% url "agents:agent_og_image" agent.id %}';
+        var shareTitle = '{{ og_share_title|default:agentDisplayName|escapejs }}';
+        var shareDescription = '{{ og_share_description|escapejs }}';
+        var ogImageUrl = '{{ og_image_absolute_url|default:"" }}';
         var agentName  = '{{ agentDisplayName|default:agent.fullname|escapejs }}';
 
         /* =====================================================
@@ -320,7 +321,7 @@
 
             /* ─ Path 2: Mobile navigator.share without files ─ */
             if (navigator.share) {
-                navigator.share({ title: shareTitle, url: shareUrl }).catch(function(){});
+                navigator.share({ title: shareTitle, text: shareDescription, url: shareUrl }).catch(function(){});
                 return;
             }
 
@@ -343,8 +344,8 @@
                 if (!navigator.canShare({ files: [file] })) return false;
                 await navigator.share({
                     files: [file],
-                    title: agentName + ' — Digital Visiting Card',
-                    text: agentName + ' | {% if profile.license_number %}Licensed {% endif %}Insurance & Financial Advisor\n' + shareUrl
+                    title: shareTitle,
+                    text: shareDescription + '\n' + shareUrl
                 });
                 return true;
             } catch (e) {
@@ -370,7 +371,7 @@
             if (!shared) {
                 /* Fallback: send .jpg URL via WhatsApp text
                  * WhatsApp renders image-URLs as inline photos — no green bar */
-                var waText = agentName + ' \u2014 Digital Visiting Card\n' +
+                var waText = shareDescription + '\n' +
                              shareUrl + '\n\n' + ogImageUrl;
                 window.open(
                     'https://api.whatsapp.com/send?text=' + encodeURIComponent(waText),
@@ -383,7 +384,7 @@
         /* ── Build WhatsApp URL using .jpg image URL (PHP trick) ──
          * WhatsApp auto-previews .jpg links as large inline photos. */
         function _waImageTextUrl() {
-            var txt = agentName + ' \u2014 Digital Visiting Card\n' +
+            var txt = shareDescription + '\n' +
                       shareUrl + '\n\n' + ogImageUrl;
             return 'https://api.whatsapp.com/send?text=' + encodeURIComponent(txt);
         }

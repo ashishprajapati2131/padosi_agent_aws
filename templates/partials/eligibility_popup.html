@@ -1,5 +1,5 @@
 {% load static %}
-<div id="eligibilityPopup" class="elig-popup" hidden>
+<div id="eligibilityPopup" class="elig-popup" hidden{% if eligibility_on_registration_page %} data-elig-mode="registration"{% endif %}>
     <div class="elig-popup__backdrop" data-elig-close></div>
     <div class="elig-popup__dialog" role="dialog" aria-modal="true" aria-labelledby="eligibilityPopupTitle">
         <button type="button" class="elig-popup__close" data-elig-close aria-label="Close">
@@ -24,30 +24,74 @@
             {% elif request.GET.refCode %}
             <input type="hidden" name="ref" value="{{ request.GET.refCode }}">
             {% endif %}
-            <input type="hidden" name="page" value="{{ request.path }}">
+            <input type="hidden" name="page" value="{% if eligibility_on_registration_page %}/{% else %}{{ request.path }}{% endif %}">
             <h2 id="eligibilityFormTitle" class="elig-popup__form-title">Check your eligibility for a free digital presence</h2>
-            <label class="elig-popup__label" for="eligibility-name">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z"/></svg>
-                Name <span class="elig-popup__req">*</span>
-            </label>
-            <input class="elig-popup__input" id="eligibility-name" name="name" type="text" maxlength="70" autocomplete="name" placeholder="Enter your full name" required>
-            <p class="elig-popup__error" id="eligibility-name-error" hidden></p>
-            <label class="elig-popup__label" for="eligibility-phone">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.8c.4-.4 1-.5 1.5-.3l2.2.9c.5.2.8.7.8 1.2l-.2 2.4c0 .4-.2.8-.6 1l-1.3.7a12.6 12.6 0 0 0 5.9 5.9l.7-1.3c.2-.4.6-.6 1-.6l2.4-.2c.5 0 1 .3 1.2.8l.9 2.2c.2.5.1 1.1-.3 1.5l-1.6 1.6c-.4.4-1 .6-1.6.5C10.2 19.4 4.6 13.8 4 7c-.1-.6.1-1.2.5-1.6l2.1-1.6z"/></svg>
-                Mobile Number <span class="elig-popup__req">*</span>
-            </label>
-            <div class="elig-popup__phone">
-                <span class="elig-popup__cc" aria-hidden="true">+91</span>
-                <input class="elig-popup__input elig-popup__input--phone" id="eligibility-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="98765 43210" required>
+            <div class="elig-popup__field">
+                <label class="elig-popup__label" for="eligibility-name">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5z"/></svg>
+                    Name <span class="elig-popup__req">*</span>
+                </label>
+                <input class="elig-popup__input" id="eligibility-name" name="name" type="text" maxlength="70" autocomplete="name" placeholder="Enter your full name" required>
+                <p class="elig-popup__error" id="eligibility-name-error" hidden></p>
             </div>
-            <p class="elig-popup__error" id="eligibility-phone-error" hidden></p>
+            <div class="elig-popup__field">
+                <label class="elig-popup__label" for="eligibility-phone">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 3.8c.4-.4 1-.5 1.5-.3l2.2.9c.5.2.8.7.8 1.2l-.2 2.4c0 .4-.2.8-.6 1l-1.3.7a12.6 12.6 0 0 0 5.9 5.9l.7-1.3c.2-.4.6-.6 1-.6l2.4-.2c.5 0 1 .3 1.2.8l.9 2.2c.2.5.1 1.1-.3 1.5l-1.6 1.6c-.4.4-1 .6-1.6.5C10.2 19.4 4.6 13.8 4 7c-.1-.6.1-1.2.5-1.6l2.1-1.6z"/></svg>
+                    Mobile Number <span class="elig-popup__req">*</span>
+                </label>
+                <div class="elig-popup__phone">
+                    <span class="elig-popup__cc" aria-hidden="true">+91</span>
+                    <input class="elig-popup__input elig-popup__input--phone" id="eligibility-phone" name="phone" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="98765 43210" required>
+                </div>
+                <p class="elig-popup__error" id="eligibility-phone-error" hidden></p>
+            </div>
+            <div class="elig-popup__field">
+                <label class="elig-popup__label" for="eligibility-email">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zm8 6 8-5H4z"/></svg>
+                    Email ID <span class="elig-popup__req">*</span>
+                </label>
+                <input class="elig-popup__input" id="eligibility-email" name="email" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com" required>
+                <p class="elig-popup__error" id="eligibility-email-error" hidden></p>
+            </div>
+            <div class="elig-popup__field">
+                <label class="elig-popup__label" for="eligibility-pincode">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+                    Pincode <span class="elig-popup__req">*</span>
+                </label>
+                <input class="elig-popup__input" id="eligibility-pincode" name="pincode" type="tel" inputmode="numeric" maxlength="6" autocomplete="postal-code" placeholder="380001" required>
+                <p class="elig-popup__error" id="eligibility-pincode-error" hidden></p>
+                <p class="elig-popup__pin-status" id="eligibility-pin-status" hidden>Finding location…</p>
+                <div class="elig-popup__loc" id="eligibility-location" hidden>
+                    <div class="elig-popup__loc-card">
+                        <span class="elig-popup__loc-label">Taluka</span>
+                        <span class="elig-popup__loc-value" id="eligibility-taluka"></span>
+                    </div>
+                    <div class="elig-popup__loc-card">
+                        <span class="elig-popup__loc-label">State</span>
+                        <span class="elig-popup__loc-value" id="eligibility-state"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="elig-popup__field">
+                <p class="elig-popup__label">Insurance segments <span class="elig-popup__req">*</span></p>
+                <div class="elig-popup__segs" role="group" aria-label="Insurance segments">
+                    <label class="elig-popup__seg"><input type="checkbox" name="segments" value="health"><span>Health</span></label>
+                    <label class="elig-popup__seg"><input type="checkbox" name="segments" value="life"><span>Life</span></label>
+                    <label class="elig-popup__seg"><input type="checkbox" name="segments" value="motor"><span>Motor</span></label>
+                    <label class="elig-popup__seg"><input type="checkbox" name="segments" value="sme"><span>SME</span></label>
+                </div>
+                <p class="elig-popup__error" id="eligibility-segments-error" hidden></p>
+            </div>
             <p class="elig-popup__error" id="eligibility-form-error" hidden></p>
-            <button type="submit" class="elig-popup__submit">Get Started</button>
+            <button type="submit" class="elig-popup__submit">Submit</button>
         </form>
     </div>
 </div>
 <style>
 .elig-popup[hidden] { display: none !important; }
+.elig-popup *,
+.elig-popup *::before,
+.elig-popup *::after { box-sizing: border-box; }
 .elig-popup {
     position: fixed;
     inset: 0;
@@ -55,7 +99,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 16px;
+    overflow: hidden;
 }
 .elig-popup__backdrop {
     position: absolute;
@@ -65,42 +110,47 @@
 }
 .elig-popup__dialog {
     position: relative;
-    width: min(440px, 100%);
+    width: min(420px, 100%);
+    max-height: calc(100dvh - 24px);
+    overflow: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     background: #fff;
-    border-radius: 28px;
-    padding: 28px 26px 26px;
+    border-radius: 24px;
+    padding: 20px 22px 18px;
     box-shadow: 0 18px 50px rgba(37, 99, 235, 0.16), 0 8px 24px rgba(15, 23, 42, 0.08);
     font-family: 'Outfit', system-ui, sans-serif;
     text-align: center;
     animation: eligRise 0.35s ease;
 }
+.elig-popup__dialog::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .elig-popup__close {
     position: absolute;
-    top: 14px;
-    right: 14px;
-    width: 32px;
-    height: 32px;
+    top: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
     border: 0;
     border-radius: 999px;
     background: transparent;
     color: #94a3b8;
-    font-size: 24px;
+    font-size: 22px;
     line-height: 1;
     cursor: pointer;
 }
 .elig-popup__close:hover { background: #f1f5f9; color: #334155; }
 .elig-popup__logo {
     display: block;
-    height: 52px;
+    height: 40px;
     width: auto;
-    max-width: 180px;
-    margin: 2px auto 16px;
+    max-width: 148px;
+    margin: 0 auto 8px;
     object-fit: contain;
 }
 .elig-popup__title {
     margin: 0 8px;
     color: #1d4ed8;
-    font-size: 28px;
+    font-size: 24px;
     line-height: 1.25;
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -110,13 +160,13 @@
 .elig-popup__choices {
     display: flex;
     gap: 12px;
-    margin-top: 28px;
+    margin-top: 22px;
 }
 .elig-popup__choice {
     flex: 1;
-    height: 52px;
-    border-radius: 16px;
-    font-size: 17px;
+    height: 48px;
+    border-radius: 14px;
+    font-size: 16px;
     font-weight: 800;
     cursor: pointer;
     font-family: inherit;
@@ -125,7 +175,7 @@
     border: 0;
     color: #fff;
     background: linear-gradient(90deg, #3b82f6, #2563eb);
-    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.28);
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.28);
 }
 .elig-popup__choice--yes:hover { filter: brightness(1.05); }
 .elig-popup__choice--no {
@@ -134,14 +184,20 @@
     color: #374151;
 }
 .elig-popup__choice--no:hover { background: #f8fafc; border-color: #d1d5db; }
-.elig-popup__form { margin-top: 6px; text-align: left; }
+.elig-popup__form {
+    margin-top: 2px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
 .elig-popup__form[hidden] { display: none !important; }
 .elig-popup__form-title {
-    margin: 0 6px 2px;
+    margin: 0 4px 4px;
     text-align: center;
     color: #1d4ed8;
-    font-size: 22px;
-    line-height: 1.35;
+    font-size: 18px;
+    line-height: 1.25;
     font-weight: 800;
     letter-spacing: -0.02em;
     text-wrap: balance;
@@ -152,60 +208,94 @@
     height: 0;
     overflow: hidden;
 }
+.elig-popup__field { min-width: 0; }
 .elig-popup__label {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin: 14px 0 8px;
+    gap: 6px;
+    margin: 0 0 4px;
     color: #1f2937;
-    font-size: 15px;
+    font-size: 12px;
     font-weight: 700;
+    line-height: 1.2;
 }
 .elig-popup__label svg {
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
     fill: #6b7280;
     flex: 0 0 auto;
 }
 .elig-popup__req { color: #1f2937; }
 .elig-popup__input {
     width: 100%;
-    height: 52px;
+    height: 42px;
     border: 1.5px solid #e5e7eb;
-    border-radius: 12px;
+    border-radius: 10px;
     background: #fff;
-    padding: 0 14px;
-    font-size: 16px;
+    padding: 0 12px;
+    font-size: 15px;
     color: #111827;
+    appearance: none;
+    -webkit-appearance: none;
+    background-clip: padding-box;
+    color-scheme: light;
+    transition: none;
 }
 .elig-popup__input::placeholder { color: #9ca3af; }
-.elig-popup__input:focus {
+.elig-popup__input:hover,
+.elig-popup__input:focus,
+.elig-popup__input:focus-visible,
+.elig-popup__input:active,
+.elig-popup__input:valid,
+.elig-popup__input:invalid,
+.elig-popup__input:user-valid,
+.elig-popup__input:user-invalid,
+.elig-popup__input:required:valid,
+.elig-popup__input:required:invalid {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    border-color: #e5e7eb;
+    box-shadow: none;
+    background: #fff;
+    color: #111827;
+}
+.elig-popup input:-webkit-autofill,
+.elig-popup input:-webkit-autofill:hover,
+.elig-popup input:-webkit-autofill:focus,
+.elig-popup input:-webkit-autofill:active {
+    -webkit-text-fill-color: #111827 !important;
+    caret-color: #111827;
+    border-color: #e5e7eb !important;
+    background-color: #fff !important;
+    background-image: none !important;
+    box-shadow: 0 0 0 1000px #fff inset !important;
+    -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+    transition: background-color 99999s ease-out 0s;
 }
 .elig-popup__phone {
     display: flex;
     align-items: center;
-    height: 52px;
+    height: 42px;
     border: 1.5px solid #e5e7eb;
-    border-radius: 12px;
+    border-radius: 10px;
     background: #fff;
     overflow: hidden;
 }
+.elig-popup__phone:hover,
+.elig-popup__phone:focus,
 .elig-popup__phone:focus-within {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    border-color: #e5e7eb;
+    box-shadow: none;
+    background: #fff;
 }
 .elig-popup__cc {
     display: flex;
     align-items: center;
     justify-content: center;
     align-self: stretch;
-    width: 64px;
+    width: 52px;
     background: #f3f4f6;
     color: #6b7280;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 600;
     border-right: 1.5px solid #e5e7eb;
 }
@@ -219,52 +309,186 @@
     background: transparent;
     box-shadow: none;
 }
-.elig-popup__input--phone:focus { box-shadow: none; }
+.elig-popup__input--phone:hover,
+.elig-popup__input--phone:focus,
+.elig-popup__input--phone:focus-visible,
+.elig-popup__input--phone:valid,
+.elig-popup__input--phone:invalid {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+}
+.elig-popup__input--phone:-webkit-autofill,
+.elig-popup__input--phone:-webkit-autofill:hover,
+.elig-popup__input--phone:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+    box-shadow: 0 0 0 1000px #fff inset !important;
+    background-color: #fff !important;
+}
 .elig-popup__error {
-    margin: 6px 0 0;
+    margin: 3px 0 0;
     color: #dc2626;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
+    line-height: 1.2;
+}
+.elig-popup__pin-status {
+    margin: 4px 0 0;
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+.elig-popup__pin-status[hidden],
+.elig-popup__loc[hidden] { display: none !important; }
+.elig-popup__loc {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 6px;
+}
+.elig-popup__loc-card {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    min-height: 40px;
+    padding: 5px 10px;
+    border: 1.5px solid #bfdbfe;
+    border-radius: 10px;
+    background: #eff6ff;
+    text-align: left;
+}
+.elig-popup__loc-label {
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+.elig-popup__loc-value {
+    color: #1e3a8a;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .elig-popup__submit {
     width: 100%;
-    height: 54px;
-    margin-top: 22px;
+    height: 46px;
+    margin-top: 4px;
     border: 0;
-    border-radius: 16px;
+    border-radius: 12px;
     background: linear-gradient(90deg, #3b82f6, #2563eb);
     color: #fff;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 800;
     letter-spacing: 0.01em;
     cursor: pointer;
-    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.32);
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.28);
 }
 .elig-popup__submit:hover { filter: brightness(1.05); }
 .elig-popup__submit:disabled { opacity: 0.7; cursor: wait; }
+.elig-popup__segs {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+}
+.elig-popup__seg {
+    position: relative;
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    min-width: 0;
+    height: 36px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0 2px;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    background: #fff;
+    user-select: none;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.elig-popup__seg span { white-space: nowrap; }
+.elig-popup__seg input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+.elig-popup__seg:has(input:checked) {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #1d4ed8;
+    box-shadow: inset 0 0 0 1px #2563eb;
+}
 @keyframes eligRise {
     from { opacity: 0; transform: translateY(12px) scale(0.98); }
     to { opacity: 1; transform: none; }
 }
 @media (max-width: 480px) {
-    .elig-popup__dialog { padding: 26px 16px 18px; border-radius: 22px; }
-    .elig-popup__title { font-size: 24px; }
-    .elig-popup__form-title { font-size: 20px; }
-    .elig-popup__logo { height: 46px; }
+    .elig-popup { padding: 10px; align-items: center; }
+    .elig-popup__dialog {
+        width: 100%;
+        max-height: calc(100dvh - 16px);
+        padding: 16px 14px 14px;
+        border-radius: 20px;
+    }
+    .elig-popup__logo { height: 34px; margin-bottom: 6px; }
+    .elig-popup__title { font-size: 22px; }
+    .elig-popup__form-title { font-size: 16px; margin-bottom: 2px; }
+    .elig-popup__form { gap: 7px; }
+    .elig-popup__input,
+    .elig-popup__phone { height: 40px; }
+    .elig-popup__seg { height: 34px; font-size: 11px; }
+    .elig-popup__submit { height: 44px; font-size: 15px; }
+    .elig-popup__loc-card { min-height: 36px; padding: 4px 8px; }
+    .elig-popup__loc-value { font-size: 12px; }
+}
+@media (max-height: 700px) {
+    .elig-popup__logo { height: 32px; margin-bottom: 4px; }
+    .elig-popup__form-title { font-size: 16px; }
+    .elig-popup__form { gap: 6px; }
+    .elig-popup__input,
+    .elig-popup__phone { height: 38px; }
+    .elig-popup__submit { height: 42px; margin-top: 2px; }
+    .elig-popup__loc { gap: 5px; margin-top: 5px; }
+    .elig-popup__loc-card { min-height: 34px; }
 }
 </style>
 <script>
 (function () {
     var root = document.getElementById('eligibilityPopup');
     if (!root) return;
+    var registrationPage = root.getAttribute('data-elig-mode') === 'registration';
     var storageKey = 'padosi_eligibility_popup';
-    try {
-        if (sessionStorage.getItem(storageKey)) return;
-    } catch (err) {}
+    if (!registrationPage) {
+        try {
+            if (sessionStorage.getItem(storageKey)) return;
+        } catch (err) {}
+    }
 
     var form = document.getElementById('eligibilityPopupForm');
     var nameInput = document.getElementById('eligibility-name');
     var phoneInput = document.getElementById('eligibility-phone');
+    var emailInput = document.getElementById('eligibility-email');
+    var pinInput = document.getElementById('eligibility-pincode');
+    var locBox = document.getElementById('eligibility-location');
+    var talukaEl = document.getElementById('eligibility-taluka');
+    var stateEl = document.getElementById('eligibility-state');
+    var pinStatus = document.getElementById('eligibility-pin-status');
+    var pinLookupId = 0;
+    var pinOk = false;
     var opened = false;
     var waits = 0;
 
@@ -305,6 +529,10 @@
     }
 
     function closePopup() {
+        if (registrationPage) {
+            window.location.href = '/';
+            return;
+        }
         root.hidden = true;
         document.body.style.overflow = '';
         try { sessionStorage.setItem(storageKey, 'dismissed'); } catch (err) {}
@@ -323,43 +551,131 @@
             phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(0, 10);
         });
     }
+    function hideLocation() {
+        pinOk = false;
+        if (locBox) locBox.hidden = true;
+        if (talukaEl) talukaEl.textContent = '';
+        if (stateEl) stateEl.textContent = '';
+        if (pinStatus) pinStatus.hidden = true;
+    }
+
+    function lookupPin(pin) {
+        var id = ++pinLookupId;
+        pinOk = false;
+        if (locBox) locBox.hidden = true;
+        if (pinStatus) pinStatus.hidden = false;
+        fetch('/insurance/api/pincode/fetch/' + pin, { credentials: 'same-origin' })
+            .then(function (response) { return response.json(); })
+            .then(function (payload) {
+                if (id !== pinLookupId) return;
+                var data = payload && payload.data;
+                if (payload && payload.success && data) {
+                    var taluka = String(data.taluk || data.district || data.formatted_location || '').trim();
+                    var state = String(data.state || '').trim();
+                    if (talukaEl) talukaEl.textContent = taluka || '—';
+                    if (stateEl) stateEl.textContent = state || '—';
+                    if (locBox) locBox.hidden = false;
+                    if (pinStatus) pinStatus.hidden = true;
+                    showError('eligibility-pincode-error', '');
+                    pinOk = !!(taluka || state);
+                    return;
+                }
+                hideLocation();
+                showError('eligibility-pincode-error', 'This pincode was not found. Please enter a valid pincode.');
+            })
+            .catch(function () {
+                if (id !== pinLookupId) return;
+                hideLocation();
+            });
+    }
+
+    if (pinInput) {
+        pinInput.addEventListener('input', function () {
+            pinInput.value = pinInput.value.replace(/\D/g, '').slice(0, 6);
+            showError('eligibility-pincode-error', '');
+            if (pinInput.value.length === 6) lookupPin(pinInput.value);
+            else hideLocation();
+        });
+    }
     form.addEventListener('submit', function (event) {
         event.preventDefault();
         showError('eligibility-name-error', '');
         showError('eligibility-phone-error', '');
+        showError('eligibility-email-error', '');
+        showError('eligibility-pincode-error', '');
+        showError('eligibility-segments-error', '');
         showError('eligibility-form-error', '');
+        var emailVal = emailInput ? emailInput.value.trim() : '';
+        var pinVal = pinInput ? pinInput.value.trim() : '';
+        var segs = form.querySelectorAll('input[name="segments"]:checked');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+            showError('eligibility-email-error', 'Enter a valid email address.');
+            if (emailInput) emailInput.focus();
+            return;
+        }
+        if (!/^[1-9]\d{5}$/.test(pinVal)) {
+            showError('eligibility-pincode-error', 'Enter a valid 6-digit pincode.');
+            if (pinInput) pinInput.focus();
+            return;
+        }
+        if (!segs.length) {
+            showError('eligibility-segments-error', 'Select at least one insurance segment.');
+            return;
+        }
         var button = form.querySelector('button[type="submit"]');
         button.disabled = true;
         button.textContent = 'Checking...';
         var data = new FormData(form);
+        var csrf = (form.querySelector('[name="csrfmiddlewaretoken"]') || {}).value || '';
         fetch("{% url 'agents:quick_registration' %}", {
             method: 'POST',
             body: data,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrf
+            },
             credentials: 'same-origin'
         }).then(function (response) {
             return response.json().then(function (payload) {
                 return { ok: response.ok, payload: payload };
             });
         }).then(function (result) {
-            if (result.ok && result.payload.redirect) {
+            var previewUrl = result.payload && result.payload.redirect
+                ? result.payload.redirect
+                : "{% url 'agents:welcome_preview' %}";
+            if (result.ok) {
                 try { sessionStorage.setItem(storageKey, 'submitted'); } catch (err) {}
-                window.location.href = result.payload.redirect;
+                window.location.href = previewUrl;
                 return;
             }
             var errors = (result.payload && result.payload.errors) || {};
             showError('eligibility-name-error', errors.name || '');
             showError('eligibility-phone-error', errors.phone || '');
-            showError('eligibility-form-error', errors.form || (errors.name || errors.phone ? '' : 'Please try again.'));
+            showError('eligibility-email-error', errors.email || '');
+            showError('eligibility-pincode-error', errors.pincode || '');
+            showError('eligibility-segments-error', errors.segments || '');
+            var formMsg = errors.form || '';
+            if (!formMsg && errors.login) {
+                formMsg = 'This email or mobile is already registered. Use a different one or log in from the Agent Login page.';
+            }
+            if (!formMsg && !(errors.name || errors.phone || errors.email || errors.pincode || errors.segments)) {
+                formMsg = 'Please try again.';
+            }
+            showError('eligibility-form-error', formMsg);
             button.disabled = false;
-            button.textContent = 'Get Started';
+            button.textContent = 'Submit';
         }).catch(function () {
             showError('eligibility-form-error', 'Please try again.');
             button.disabled = false;
-            button.textContent = 'Get Started';
+            button.textContent = 'Submit';
         });
     });
 
-    window.setTimeout(openPopup, 3500);
+    if (registrationPage) {
+        showForm();
+        openPopup();
+    } else {
+        window.setTimeout(openPopup, 3500);
+    }
 })();
 </script>

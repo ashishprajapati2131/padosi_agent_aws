@@ -278,10 +278,17 @@ class RazorpayVerifyFlowTests(SimpleTestCase):
         }))
 
     @override_settings(DEBUG=True, RAZORPAY_KEY='rzp_test_abc', RAZORPAY_SECRET='secret')
-    def test_localhost_test_keys_enable_redirect_callback(self):
+    def test_localhost_http_test_keys_disable_redirect_callback(self):
         from apps.agents.services.razorpay_checkout import checkout_uses_redirect_callback
         request = RequestFactory().get('/', HTTP_HOST='127.0.0.1:1234')
-        self.assertTrue(checkout_uses_redirect_callback(request))
+        self.assertFalse(checkout_uses_redirect_callback(request))
+
+    @override_settings(DEBUG=True, RAZORPAY_KEY='rzp_test_abc', RAZORPAY_SECRET='secret')
+    def test_localhost_http_opt_in_can_enable_redirect_callback(self):
+        from apps.agents.services.razorpay_checkout import checkout_uses_redirect_callback
+        with patch.dict(os.environ, {'RAZORPAY_ALLOW_LOCALHOST': '1'}):
+            request = RequestFactory().get('/', HTTP_HOST='127.0.0.1:1234')
+            self.assertTrue(checkout_uses_redirect_callback(request))
 
     @override_settings(DEBUG=True, RAZORPAY_KEY='rzp_live_abc', RAZORPAY_SECRET='secret')
     def test_localhost_live_keys_disable_redirect_callback(self):

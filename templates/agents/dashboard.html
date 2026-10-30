@@ -2250,7 +2250,12 @@
             }
 
             // Launch Razorpay
-            const useCallback = !!(data.checkout_use_callback || window.location.protocol === 'https:');
+            const useCallback = !data.unsafe_localhost_checkout && !!(
+                data.checkout_use_callback || window.location.protocol === 'https:'
+            );
+            if (data.unsafe_localhost_checkout) {
+                alert('On local HTTP, EMI and netbanking redirects are blocked by your browser. Use card or UPI in the Razorpay window, or test on HTTPS staging.');
+            }
             const options = {
                 key:         data.key,
                 currency:    'INR',

@@ -321,7 +321,7 @@
     {% endblock %}
     {% block modals %}
         {% include 'partials/exit_intent_popup.html' %}
-        {% if not hide_site_nav and '/agent/' not in request.path and '/chooseplan' not in request.path and '/upgrade-plan' not in request.path and '/payment' not in request.path %}
+        {% if not hide_site_nav and not hide_eligibility_popup and '/agent/' not in request.path and '/chooseplan' not in request.path and '/upgrade-plan' not in request.path and '/payment' not in request.path and '/welcome-preview' not in request.path %}
             {% include 'partials/eligibility_popup.html' %}
         {% endif %}
     {% endblock %}
@@ -335,6 +335,7 @@
                 path.indexOf('/agent-register') !== -1 ||
                 path.indexOf('/register') !== -1 ||
                 path.indexOf('/chooseplan') !== -1 ||
+                path.indexOf('/welcome-preview') !== -1 ||
                 path.indexOf('/agent-login') !== -1 ||
                 path.indexOf('/insurance-login') !== -1 ||
                 path.indexOf('/forgot-password') !== -1 ||

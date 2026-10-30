@@ -14,13 +14,19 @@
             .replace(/"/g, '&quot;');
     }
 
-    function buildHtml(agentName, kicker, lead) {
+    function buildHtml(agentName, kicker, lead, toProfile) {
         var safeName = escapeHtml(agentName);
         var nameBlock = safeName
             ? '<h3 class="pay-success-name">Welcome, ' + safeName + '!</h3>'
             : '<h3 class="pay-success-name">You\'re all set!</h3>';
         var kickerText = escapeHtml(kicker || 'Payment Successful');
         var leadText = escapeHtml(lead || 'Your account is activated and ready to use.');
+        var opening = toProfile
+            ? 'Opening your profile editor automatically'
+            : 'Opening your agent dashboard automatically';
+        var redirecting = toProfile
+            ? 'Redirecting to your profile editor…'
+            : 'Redirecting to dashboard…';
 
         return ''
             + '<div class="pay-success-popup">'
@@ -36,18 +42,19 @@
             + '  <ul class="pay-success-notes">'
             + '    <li><i class="fa-solid fa-shield-halved"></i> Payment verified securely via Razorpay</li>'
             + '    <li><i class="fa-solid fa-file-invoice"></i> Invoice &amp; login details will be emailed shortly</li>'
-            + '    <li><i class="fa-solid fa-gauge-high"></i> Opening your agent dashboard automatically</li>'
+            + '    <li><i class="fa-solid fa-gauge-high"></i> ' + opening + '</li>'
             + '  </ul>'
             + '  <div class="pay-success-footer">'
             + '    <i class="fa-solid fa-spinner fa-spin"></i>'
-            + '    <span>Redirecting to dashboard…</span>'
+            + '    <span>' + redirecting + '</span>'
             + '  </div>'
             + '</div>';
     }
 
     function showPaymentSuccessPopup(options) {
         options = options || {};
-        var redirectUrl = options.redirectUrl || '/agent/dashboard/';
+        var redirectUrl = options.redirectUrl || '/agent/edit-profile/?welcome=1';
+        var toProfile = (redirectUrl || '').indexOf('edit-profile') !== -1;
         var agentName = options.agentName || '';
         var duration = typeof options.duration === 'number' ? options.duration : DEFAULT_MS;
         var kicker = options.title || options.kicker;
@@ -63,7 +70,7 @@
         }
 
         return window.Swal.fire({
-            html: buildHtml(agentName, kicker, lead),
+            html: buildHtml(agentName, kicker, lead, toProfile),
             customClass: { popup: 'payment-success-popup' },
             showConfirmButton: false,
             showCloseButton: false,

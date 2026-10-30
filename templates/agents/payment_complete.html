@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 {% if is_plan_upgrade %}
                 title: 'Plan upgraded successfully',
                 lead: 'Your new plan is active. Opening your dashboard…'
+                {% elif 'edit-profile' in redirect_url %}
+                title: 'Payment Successful',
+                lead: 'Complete your profile so clients can find you.'
                 {% endif %}
             });
             return;

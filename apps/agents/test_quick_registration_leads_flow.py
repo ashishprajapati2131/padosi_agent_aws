@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from apps.admin_panel.models import RegistrationLead
 from apps.agents.models import Agent
+from apps.home.models.pincode import Pincode
 from apps.agents.services.registration_leads import (
     normalize_phone,
     capture_quick_lead,
@@ -22,6 +23,16 @@ class QuickRegistrationLeadsFlowTests(TestCase):
         self.client = Client()
         self.phone = "9876543210"
         self.name = "Vikram Sharma"
+        Pincode.objects.get_or_create(
+            pincode='380001',
+            defaults={
+                'office_name': 'Ahmedabad GPO',
+                'district': 'Ahmedabad',
+                'state': 'Gujarat',
+                'latitude': '23.02250000',
+                'longitude': '72.57140000',
+            },
+        )
 
     def test_normalize_phone_variations(self):
         """Test that normalize_phone always produces the canonical 10-digit phone number."""
@@ -32,19 +43,22 @@ class QuickRegistrationLeadsFlowTests(TestCase):
         self.assertEqual(normalize_phone("+91 98765 43210"), "9876543210")
         self.assertEqual(normalize_phone(" 98765-43210 "), "9876543210")
 
-    def test_agent_registration_page_shows_gate_for_new_visitor(self):
-        """A new visitor without lead session or draft must receive require_quick_reg_gate=True."""
+    def test_agent_registration_page_shows_eligibility_popup_for_new_visitor(self):
+        """Agent registration URL is replaced by the public eligibility popup."""
         response = self.client.get(reverse("agents:agent_registration"))
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context.get("require_quick_reg_gate"))
-        self.assertContains(response, "registrationGate")
-        self.assertContains(response, "Quick Registration")
+        self.assertTrue(response.context.get("registration_popup_only"))
+        self.assertFalse(response.context.get("require_quick_reg_gate"))
+        self.assertContains(response, 'id="eligibilityPopup"')
+        self.assertContains(response, 'data-elig-mode="registration"')
+        self.assertNotContains(response, 'id="registrationGate"')
 
     def test_quick_registration_submission_creates_lead_and_sets_cookie(self):
-        """Submitting quick registration saves lead, returns prefill payload, and sets 30-day cookie."""
+        """Registration-page gate (name+phone only) still saves a lead and cookie."""
         payload = {
             "name": self.name,
             "phone": "+91 98765 43210",
+            "page": "/agent-registration/",
         }
         response = self.client.post(
             reverse("agents:quick_registration"),
@@ -54,6 +68,8 @@ class QuickRegistrationLeadsFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertTrue(data.get("ok"))
+        self.assertEqual(data.get("redirect"), "")
+        self.assertTrue(data.get("reload"))
         self.assertEqual(data.get("lead", {}).get("phone"), self.phone)
         self.assertEqual(data.get("lead", {}).get("name"), self.name)
         self.assertEqual(data.get("lead", {}).get("whatsapp"), self.phone)
@@ -72,10 +88,11 @@ class QuickRegistrationLeadsFlowTests(TestCase):
 
     def test_duplicate_submission_does_not_create_duplicate_leads(self):
         """Submitting multiple times with same phone updates the existing lead without duplicate rows."""
+        gate = {"page": "/agent-registration/"}
         # 1st submission
         self.client.post(
             reverse("agents:quick_registration"),
-            data=json.dumps({"name": "Initial Name", "phone": self.phone}),
+            data=json.dumps({"name": "Initial Name", "phone": self.phone, **gate}),
             content_type="application/json",
         )
         self.assertEqual(RegistrationLead.objects.filter(phone=self.phone).count(), 1)
@@ -83,7 +100,7 @@ class QuickRegistrationLeadsFlowTests(TestCase):
         # 2nd submission with updated name
         self.client.post(
             reverse("agents:quick_registration"),
-            data=json.dumps({"name": "Updated Name", "phone": self.phone}),
+            data=json.dumps({"name": "Updated Name", "phone": self.phone, **gate}),
             content_type="application/json",
         )
         self.assertEqual(RegistrationLead.objects.filter(phone=self.phone).count(), 1)
@@ -100,7 +117,13 @@ class QuickRegistrationLeadsFlowTests(TestCase):
         )
         response = self.client.post(
             reverse("agents:quick_registration"),
-            data=json.dumps({"name": "Test User", "phone": self.phone}),
+            data=json.dumps({
+                "name": "Test User",
+                "phone": self.phone,
+                "email": "new.user@example.com",
+                "pincode": "380001",
+                "segments": ["health"],
+            }),
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 409)
@@ -109,22 +132,18 @@ class QuickRegistrationLeadsFlowTests(TestCase):
         self.assertTrue(data.get("has_account"))
         self.assertIn("/agent-login/", data.get("login_url"))
 
-    def test_page_refresh_preserves_lead_and_bypasses_gate(self):
-        """When user refreshes or returns with session or cookie, gate is bypassed and prefilled."""
-        # Quick register
+    def test_page_refresh_still_shows_registration_popup(self):
+        """Returning to agent registration always shows the eligibility popup shell."""
         self.client.post(
             reverse("agents:quick_registration"),
-            data=json.dumps({"name": self.name, "phone": self.phone}),
+            data=json.dumps({"name": self.name, "phone": self.phone, "page": "/agent-registration/"}),
             content_type="application/json",
         )
 
-        # Visit registration page again
         response = self.client.get(reverse("agents:agent_registration"))
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(response.context.get("require_quick_reg_gate"))
-        self.assertEqual(response.context.get("prefilled_phone"), self.phone)
-        self.assertEqual(response.context.get("prefilled_whatsapp"), self.phone)
-        self.assertEqual(response.context.get("prefilled_name"), self.name)
+        self.assertTrue(response.context.get("registration_popup_only"))
+        self.assertContains(response, 'id="eligibilityPopup"')
 
     def test_progress_endpoint_advances_status_to_form_started(self):
         """Interacting with registration form triggers progress endpoint and advances status to form_started."""

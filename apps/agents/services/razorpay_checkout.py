@@ -122,14 +122,19 @@ def localhost_checkout_allowed():
 
 def checkout_uses_redirect_callback(request):
     """
-    Netbanking/UPI require callback_url with redirect=true.
-    HTTPS always; localhost HTTP only with Razorpay test keys (or opt-in).
+    Netbanking/UPI/EMI require callback_url with redirect=true.
+
+    Local HTTP + real Razorpay must not redirect back to localhost — browsers
+    block that (Private Network Access). Use in-modal handler + verify-payment,
+    or test on HTTPS (tunnel/staging).
     """
     if request is None:
         return False
     if request.is_secure():
         return True
     if not is_local_request(request):
+        return False
+    if is_unsafe_localhost_checkout(request) and not localhost_checkout_allowed():
         return False
     if razorpay_key_mode() == 'test':
         return True
