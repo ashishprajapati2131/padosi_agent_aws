@@ -1055,6 +1055,8 @@ def agent_public_profile(request, slug, state_code=None):
                     profile_view.save()
                     
                 request.session[session_key] = current_time
+                from apps.wa_agent_bot.services.notification_service import notify_agent_profile_view
+                notify_agent_profile_view(request, agent.id)
         except Exception as e:
             if settings.DEBUG:
                 logger.warning(f"Profile tracking failed: {e}")

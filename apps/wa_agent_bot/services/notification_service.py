@@ -5,8 +5,10 @@ Handles system-triggered notifications sent to agents on WhatsApp,
 such as Admin Approval or Admin Rejection notices.
 """
 
+import datetime
 import logging
 import os
+import re
 from django.utils import timezone
 
 from apps.wa_agent_bot.services.message_templates import render as render_template
@@ -124,6 +126,116 @@ def notify_agent_rejected_whatsapp(agent_id, reason=None):
 
 LEAD_ALERT_SETTING = 'wa_lead_alert_enabled'
 
+# Admin > WhatsApp: "someone saw your card / profile" alerts. Off by default.
+VIEW_ALERTS_SETTING = 'wa_view_alerts'
+VIEW_ALERTS_DEFAULTS = {'card_enabled': False, 'profile_enabled': False, 'top_n': 3}
+MAX_VIEW_ALERT_TOP_N = 20
+
+# Crawlers and link-preview fetchers (WhatsApp/Facebook unfurl a shared link) are not clients.
+_BOT_UA_RE = re.compile(
+    r'bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|curl|wget|python|headless',
+    re.IGNORECASE,
+)
+
+
+def _agent_wa_number(agent):
+    """Agent mobile as a WhatsApp number (91XXXXXXXXXX), or '' when unusable."""
+    digits = ''.join(c for c in (getattr(agent, 'mobile', '') or '') if c.isdigit())
+    if len(digits) == 10:
+        digits = '91' + digits
+    return digits if len(digits) >= 11 else ''
+
+
+def is_bot_request(request):
+    ua = request.META.get('HTTP_USER_AGENT', '') or ''
+    return not ua or bool(_BOT_UA_RE.search(ua))
+
+
+def view_alert_settings():
+    """{'card_enabled': bool, 'profile_enabled': bool, 'top_n': int} from SiteSetting, with safe defaults."""
+    from apps.home.models.site_setting import SiteSetting
+    conf = dict(VIEW_ALERTS_DEFAULTS)
+    try:
+        val = SiteSetting.get_value(VIEW_ALERTS_SETTING, {})
+        if isinstance(val, dict):
+            conf['card_enabled'] = bool(val.get('card_enabled'))
+            conf['profile_enabled'] = bool(val.get('profile_enabled'))
+            conf['top_n'] = min(max(int(val.get('top_n', 3)), 1), MAX_VIEW_ALERT_TOP_N)
+    except Exception as e:
+        logger.error(f"[WA-View-Alert] Could not read settings: {e}")
+    return conf
+
+
+def send_view_alert(agent_id, kind, pincode=''):
+    """
+    WhatsApp an active, paid agent that a client saw their card ('card_view_alert') or profile
+    ('profile_view_alert'). At most one of each kind per agent per calendar day (resets at midnight).
+    Blocking: call from a background thread. Returns True when a message was sent.
+    """
+    from django.core.cache import cache
+    from apps.agents.models import Agent
+    from apps.agents.services.account_auth import agent_has_completed_payment
+    from apps.wa_agent_bot.models import WaBotMessageLog
+    from apps.wa_agent_bot.services.message_sender import send_text_message
+
+    try:
+        conf = view_alert_settings()
+        if not conf['card_enabled' if kind == 'card_view_alert' else 'profile_enabled']:
+            return False
+        if kind == 'card_view_alert' and not pincode:
+            return False
+        agent = Agent.objects.filter(id=agent_id, status='active').first()
+        if not agent or not agent_has_completed_payment(agent):
+            return False
+        digits = _agent_wa_number(agent)
+        if not digits:
+            return False
+
+        today = datetime.date.today()
+        # cache.add closes the race between two views in the same second; the log check survives cache eviction.
+        if not cache.add(f'wa_view_alert:{kind}:{agent_id}:{today}', 1, 26 * 3600):
+            return False
+        if WaBotMessageLog.objects.filter(
+            phone_number=digits, category=kind,
+            created_at__gte=datetime.datetime.combine(today, datetime.time.min),
+        ).exists():
+            return False
+
+        text = render_template(
+            kind,
+            agent_name=getattr(agent, 'fullname', ''),
+            pincode=pincode,
+            dashboard_url=f"{bot_site_url()}/agent/dashboard/",
+        )
+        res = send_text_message(digits, text, category=kind)
+        if not res.get('success'):
+            logger.warning(f"[WA-View-Alert] {kind} failed for agent #{agent_id}: {res.get('error')}")
+        return bool(res.get('success'))
+    except Exception as e:
+        logger.error(f"[WA-View-Alert] {kind} error for agent #{agent_id}: {e}")
+        return False
+
+
+def notify_agent_profile_view(request, agent_id):
+    """Queue a profile-view alert unless the visitor is a bot or the feature is off."""
+    import threading
+    try:
+        if is_bot_request(request) or not view_alert_settings()['profile_enabled']:
+            return False
+
+        def _run():
+            from django.db import connection
+            try:
+                send_view_alert(agent_id, 'profile_view_alert')
+            finally:
+                connection.close()
+
+        threading.Thread(target=_run, daemon=True).start()
+        return True
+    except Exception as e:
+        logger.error(f"[WA-View-Alert] Could not queue profile alert for agent #{agent_id}: {e}")
+        return False
+
 
 def lead_alerts_enabled():
     """Feature flag (Admin > WhatsApp): send agents a WhatsApp message for every new lead. Off by default."""
@@ -147,10 +259,8 @@ def notify_agent_new_lead(lead):
         if not lead_alerts_enabled():
             return False
         agent = lead.agent
-        digits = ''.join(c for c in (getattr(agent, 'mobile', '') or '') if c.isdigit())
-        if len(digits) == 10:
-            digits = '91' + digits
-        if len(digits) < 11:
+        digits = _agent_wa_number(agent)
+        if not digits:
             logger.info(f"[WA-Lead-Alert] Agent #{getattr(agent, 'id', None)} has no usable mobile; skipping.")
             return False
 

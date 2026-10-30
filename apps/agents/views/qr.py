@@ -463,6 +463,8 @@ def public_agent_card(request, slug):
             view_rec, created = AgentProfileView.objects.get_or_create(agent=agent, view_date=today)
             if not created:
                 AgentProfileView.objects.filter(id=view_rec.id).update(view_count=_dj_models.F('view_count') + 1)
+            from apps.wa_agent_bot.services.notification_service import notify_agent_profile_view
+            notify_agent_profile_view(request, agent.id)
         except Exception:
             pass
 

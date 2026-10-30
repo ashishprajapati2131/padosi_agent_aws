@@ -133,6 +133,31 @@
             <i class="fa-solid fa-bell me-1"></i> Lead Alerts: {% if lead_alerts_enabled %}ON{% else %}OFF{% endif %}
         </button>
 
+        <!-- Card-view / profile-view alerts (max once a day per agent, active paid agents only) -->
+        <div class="dropdown">
+            <button class="btn btn-sm {% if view_alerts.card_enabled or view_alerts.profile_enabled %}btn-success{% else %}btn-outline-secondary{% endif %} fw-bold px-3 py-2 dropdown-toggle"
+                    data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+                    title="WhatsApp agents when a client sees their card or profile">
+                <i class="fa-solid fa-eye me-1"></i> View Alerts: {% if view_alerts.card_enabled or view_alerts.profile_enabled %}ON{% else %}OFF{% endif %}
+            </button>
+            <form id="viewAlertsForm" class="dropdown-menu dropdown-menu-end p-3" style="min-width: 280px;" onsubmit="saveViewAlerts(event)">
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="vaCard" {% if view_alerts.card_enabled %}checked{% endif %}>
+                    <label class="form-check-label" for="vaCard">Card shown in pincode search</label>
+                </div>
+                <div class="mb-2 ps-1">
+                    <label class="form-label small mb-1" for="vaTopN">Send only to top cards of the first page</label>
+                    <input type="number" class="form-control form-control-sm" id="vaTopN" min="1" max="20" value="{{ view_alerts.top_n }}" required>
+                </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="vaProfile" {% if view_alerts.profile_enabled %}checked{% endif %}>
+                    <label class="form-check-label" for="vaProfile">Profile viewed by a client</label>
+                </div>
+                <p class="small text-muted mb-2">Each agent gets at most one of each per day (resets at midnight). Active, paid agents only. Edit the texts under Messages &amp; Keywords.</p>
+                <button type="submit" id="btnSaveViewAlerts" class="btn btn-sm btn-primary w-100">Save</button>
+            </form>
+        </div>
+
         <a href="{% url 'admin_wa_sessions_list' %}" class="btn btn-sm btn-outline-primary py-2 px-3 fw-bold">
             <i class="fa-solid fa-users me-1"></i> Sessions ({{ stats.total_sessions }})
         </a>
@@ -551,6 +576,28 @@
         .then(d => {
             if (d.success) { location.reload(); }
             else { alert('Error: ' + (d.error || 'Failed to toggle')); btn.disabled = false; }
+        })
+        .catch(err => { alert('Request error: ' + err); btn.disabled = false; });
+    }
+
+    // ── Card-view / profile-view alerts ────────────────────────────
+    function saveViewAlerts(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSaveViewAlerts');
+        btn.disabled = true;
+        fetch("{% url 'admin_wa_save_view_alerts' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                card_enabled: document.getElementById('vaCard').checked,
+                profile_enabled: document.getElementById('vaProfile').checked,
+                top_n: document.getElementById('vaTopN').value,
+            })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) { location.reload(); }
+            else { alert('Error: ' + (d.error || 'Failed to save')); btn.disabled = false; }
         })
         .catch(err => { alert('Request error: ' + err); btn.disabled = false; });
     }

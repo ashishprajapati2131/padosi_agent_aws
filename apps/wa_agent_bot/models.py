@@ -147,6 +147,8 @@ class WaBotMessageLog(models.Model):
     CATEGORY_CHOICES = [
         ('bot', 'Bot conversation'),
         ('lead_alert', 'Lead alert'),
+        ('card_view_alert', 'Card view alert'),
+        ('profile_view_alert', 'Profile view alert'),
         ('approval', 'Approval notice'),
         ('rejection', 'Rejection notice'),
         ('welcome', 'Welcome / credentials'),

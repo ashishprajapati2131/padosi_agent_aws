@@ -686,6 +686,79 @@ class LeadAlertTests(unittest.TestCase):
         mock_send.assert_not_called()
 
 
+class ViewAlertTests(unittest.TestCase):
+    """Card-view / profile-view WhatsApp alerts: active paid agents only, once per kind per day."""
+
+    NS = 'apps.wa_agent_bot.services.notification_service'
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.agent = MagicMock(id=11, fullname='Asha', mobile='9825000000')
+        patches = [
+            patch(f'{self.NS}.view_alert_settings',
+                  return_value={'card_enabled': True, 'profile_enabled': True, 'top_n': 3}),
+            patch('apps.agents.models.Agent.objects.filter',
+                  return_value=MagicMock(first=MagicMock(return_value=self.agent))),
+            patch('apps.agents.services.account_auth.agent_has_completed_payment', return_value=True),
+            patch('apps.wa_agent_bot.models.WaBotMessageLog.objects.filter',
+                  return_value=MagicMock(exists=MagicMock(return_value=False))),
+            patch(f'{self.NS}.render_template', side_effect=lambda key, **kw: f"{key}:{kw.get('pincode')}"),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+
+    @patch('apps.wa_agent_bot.services.message_sender.send_text_message', return_value={'success': True})
+    def test_card_alert_sent_once_per_day(self, mock_send):
+        from apps.wa_agent_bot.services.notification_service import send_view_alert
+        self.assertTrue(send_view_alert(11, 'card_view_alert', '380001'))
+        self.assertFalse(send_view_alert(11, 'card_view_alert', '380015'))
+        mock_send.assert_called_once_with('919825000000', 'card_view_alert:380001', category='card_view_alert')
+        # The profile alert is a separate daily quota.
+        self.assertTrue(send_view_alert(11, 'profile_view_alert'))
+        self.assertEqual(mock_send.call_count, 2)
+
+    @patch('apps.wa_agent_bot.services.message_sender.send_text_message')
+    def test_already_logged_today_is_skipped(self, mock_send):
+        from apps.wa_agent_bot.services.notification_service import send_view_alert
+        with patch('apps.wa_agent_bot.models.WaBotMessageLog.objects.filter',
+                   return_value=MagicMock(exists=MagicMock(return_value=True))):
+            self.assertFalse(send_view_alert(11, 'card_view_alert', '380001'))
+        mock_send.assert_not_called()
+
+    @patch('apps.wa_agent_bot.services.message_sender.send_text_message')
+    def test_unpaid_agent_is_skipped(self, mock_send):
+        from apps.wa_agent_bot.services.notification_service import send_view_alert
+        with patch('apps.agents.services.account_auth.agent_has_completed_payment', return_value=False):
+            self.assertFalse(send_view_alert(11, 'card_view_alert', '380001'))
+        mock_send.assert_not_called()
+
+    @patch('apps.wa_agent_bot.services.message_sender.send_text_message')
+    def test_flag_off_sends_nothing(self, mock_send):
+        from apps.wa_agent_bot.services.notification_service import send_view_alert
+        with patch(f'{self.NS}.view_alert_settings',
+                   return_value={'card_enabled': False, 'profile_enabled': True, 'top_n': 3}):
+            self.assertFalse(send_view_alert(11, 'card_view_alert', '380001'))
+        mock_send.assert_not_called()
+
+    def test_bot_user_agents_are_detected(self):
+        from apps.wa_agent_bot.services.notification_service import is_bot_request
+        req = lambda ua: MagicMock(META={'HTTP_USER_AGENT': ua})
+        self.assertTrue(is_bot_request(req('WhatsApp/2.23.20.0 A')))
+        self.assertTrue(is_bot_request(req('Mozilla/5.0 (compatible; Googlebot/2.1)')))
+        self.assertTrue(is_bot_request(req('')))
+        self.assertFalse(is_bot_request(req('Mozilla/5.0 (Linux; Android 14) Chrome/129.0 Mobile Safari/537.36')))
+
+
+class ViewAlertSettingsTests(unittest.TestCase):
+    def test_settings_clamp_top_n(self):
+        from apps.wa_agent_bot.services.notification_service import view_alert_settings
+        with patch(GET_VALUE, return_value={'card_enabled': True, 'top_n': 999}):
+            conf = view_alert_settings()
+        self.assertEqual((conf['card_enabled'], conf['profile_enabled'], conf['top_n']), (True, False, 20))
+
+
 class SiteUrlTests(unittest.TestCase):
     @override_settings(DEBUG=False, APP_URL='https://padosiagent.com')
     def test_localhost_site_url_is_ignored_in_production(self):

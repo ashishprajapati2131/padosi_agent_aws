@@ -62,7 +62,7 @@ def wa_bot_dashboard(request):
 
     # 2. Master Bot Status
     bot_enabled = SiteSetting.get_value('wa_agent_bot_enabled', True)
-    from apps.wa_agent_bot.services.notification_service import lead_alerts_enabled
+    from apps.wa_agent_bot.services.notification_service import lead_alerts_enabled, view_alert_settings
 
     # 3. Overall Statistics & Funnel
     total_sessions = WaBotSession.objects.count()
@@ -128,6 +128,7 @@ def wa_bot_dashboard(request):
         'qr_data': qr_data,
         'bot_enabled': bot_enabled,
         'lead_alerts_enabled': lead_alerts_enabled(),
+        'view_alerts': view_alert_settings(),
         'stats': {
             'total_sessions': total_sessions,
             'registered': registered_sessions,
@@ -344,6 +345,32 @@ def wa_bot_toggle_lead_alerts(request):
 
     _log_admin_action(request, 'toggle_wa_lead_alerts', 'System', 0, f"Lead WhatsApp alerts set to {new_val}")
     return JsonResponse({'success': True, 'enabled': new_val})
+
+
+@require_POST
+def wa_bot_save_view_alerts(request):
+    """Card-view / profile-view WhatsApp alerts: on/off switches and how many top cards get the card alert."""
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=401)
+
+    from apps.wa_agent_bot.services.notification_service import MAX_VIEW_ALERT_TOP_N, VIEW_ALERTS_SETTING
+    try:
+        data = json.loads(request.body or b'{}')
+        top_n = int(data.get('top_n', 3))
+    except (ValueError, TypeError):
+        return JsonResponse({'success': False, 'error': 'Top cards must be a number'}, status=400)
+    if not 1 <= top_n <= MAX_VIEW_ALERT_TOP_N:
+        return JsonResponse({'success': False, 'error': f'Top cards must be 1 to {MAX_VIEW_ALERT_TOP_N}'}, status=400)
+
+    conf = {
+        'card_enabled': bool(data.get('card_enabled')),
+        'profile_enabled': bool(data.get('profile_enabled')),
+        'top_n': top_n,
+    }
+    SiteSetting.set_value(VIEW_ALERTS_SETTING, conf)
+    _log_admin_action(request, 'save_wa_view_alerts', 'System', 0, f"View WhatsApp alerts set to {conf}")
+    return JsonResponse({'success': True, **conf})
 
 
 @require_POST

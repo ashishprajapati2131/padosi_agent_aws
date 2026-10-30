@@ -928,7 +928,7 @@ def find_agents(request):
     # search page for visitors. Tracking only fires on real search renders
     # (not resets, not filter-gate screens).
     if not invalid_pincode and agents_page:
-        def _async_track_search(search_pincode, agent_ids):
+        def _async_track_search(search_pincode, agent_ids, alert_agent_ids=()):
             try:
                 from django.db import close_old_connections
                 close_old_connections()
@@ -975,6 +975,13 @@ def find_agents(request):
                         )
             except Exception as _e:
                 logger.warning(f"Analytics tracking error in find_agents: {_e}")
+            try:
+                if alert_agent_ids:
+                    from apps.wa_agent_bot.services.notification_service import send_view_alert
+                    for _aid in alert_agent_ids:
+                        send_view_alert(_aid, 'card_view_alert', search_pincode)
+            except Exception as _e:
+                logger.warning(f"Card view WhatsApp alert error in find_agents: {_e}")
             finally:
                 from django.db import close_old_connections
                 close_old_connections()
@@ -982,9 +989,16 @@ def find_agents(request):
         try:
             import threading
             _tracked_agent_ids = [_a.id for _a in agents_page]
+            # WhatsApp "your card was seen" goes only to the top N cards of the first page, never to bots.
+            _alert_agent_ids = []
+            if start == 0 and pincode:
+                from apps.wa_agent_bot.services.notification_service import is_bot_request, view_alert_settings
+                _va = view_alert_settings()
+                if _va['card_enabled'] and not is_bot_request(request):
+                    _alert_agent_ids = _tracked_agent_ids[:_va['top_n']]
             threading.Thread(
                 target=_async_track_search,
-                args=(pincode or None, _tracked_agent_ids),
+                args=(pincode or None, _tracked_agent_ids, _alert_agent_ids),
                 daemon=True
             ).start()
         except Exception as _t_err:

@@ -31,6 +31,24 @@ TEMPLATES = {
             "_Please contact the customer soon._"
         ),
     },
+    'card_view_alert': {
+        'label': 'Card shown in a pincode search (to agent, max once a day)',
+        'placeholders': ['agent_name', 'pincode', 'dashboard_url'],
+        'default': (
+            "👀 *Hi {agent_name}!*\n\n"
+            "A client searched for agents in pincode *{pincode}* and your card was shown to them on PadosiAgent.\n\n"
+            "👉 See your views and leads: {dashboard_url}"
+        ),
+    },
+    'profile_view_alert': {
+        'label': 'Profile viewed by a client (to agent, max once a day)',
+        'placeholders': ['agent_name', 'dashboard_url'],
+        'default': (
+            "👀 *Hi {agent_name}!*\n\n"
+            "A client just viewed your profile on PadosiAgent.\n\n"
+            "👉 See your views and leads: {dashboard_url}"
+        ),
+    },
     'approval': {
         'label': 'Account approved (to agent)',
         'placeholders': ['agent_name', 'profile_url', 'card_url', 'dashboard_url'],
