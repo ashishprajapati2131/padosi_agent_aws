@@ -37,18 +37,8 @@ def profile_og_context(request, agent, *, display_name=None):
     except Exception:
         profile = getattr(agent, 'profile', None)
 
-    exp = 0
-    try:
-        exp = int(getattr(agent, 'experience_years', 0) or 0)
-    except (TypeError, ValueError):
-        exp = 0
-    if profile:
-        try:
-            profile_exp = int(getattr(profile, 'experience_years', 0) or 0)
-        except (TypeError, ValueError):
-            profile_exp = 0
-        if profile_exp:
-            exp = profile_exp
+    from apps.agents.services.og_image import _share_experience_years
+    exp = _share_experience_years(agent, profile)
 
     parts = []
     if exp:

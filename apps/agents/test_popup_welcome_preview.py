@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from apps.admin_panel.models import RegistrationLead
 from apps.agents.models import Agent, AgentDraft, AgentInsuranceSegment, AgentProfile
-from apps.agents.services.og_image import _agent_segment_pills
+from apps.agents.services.og_image import _agent_segment_pills, _share_experience_years
 from apps.agents.services.og_meta import profile_og_context
 from apps.home.models.pincode import Pincode
 
@@ -171,3 +171,39 @@ class PopupWelcomePreviewTests(TestCase):
         self.assertIn('Life', ctx['og_share_description'])
         self.assertIn('SME', ctx['og_share_description'])
         self.assertIn('Connect with Segment Agent', ctx['og_share_description'])
+
+    def test_share_card_uses_agent_experience_when_profile_years_are_blank(self):
+        agent = Agent.objects.create(
+            fullname='Range Agent',
+            email='range.agent@example.com',
+            mobile='9876500003',
+            status='active',
+            experience_range='12',
+        )
+        profile = AgentProfile.objects.create(
+            agent=agent,
+            slug='range-agent',
+            display_name='Range Agent',
+            experience_years=0,
+            is_profile_visible=True,
+        )
+        self.assertEqual(_share_experience_years(agent, profile), 12)
+        request = RequestFactory().get('/gj/range-agent/')
+        ctx = profile_og_context(request, agent, display_name='Range Agent')
+        self.assertIn('12 yrs exp', ctx['og_share_description'])
+
+        other = Agent.objects.create(
+            fullname='Four Year Agent',
+            email='four.year@example.com',
+            mobile='9876500004',
+            status='active',
+            experience_range='4',
+        )
+        other_profile = AgentProfile.objects.create(
+            agent=other,
+            slug='four-year-agent',
+            display_name='Four Year Agent',
+            experience_years=15,
+            is_profile_visible=True,
+        )
+        self.assertEqual(_share_experience_years(other, other_profile), 4)

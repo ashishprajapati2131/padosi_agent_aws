@@ -2,6 +2,7 @@
 import io
 import math
 import os
+import re
 
 from PIL import Image, ImageDraw, ImageFont
 from django.conf import settings
@@ -128,6 +129,27 @@ def _safe_num(val, default=0):
     except Exception:
         return default
 
+
+def _share_experience_years(agent, profile):
+    """Years printed on the WhatsApp card.
+
+    Same source as the public profile: the number the agent saved
+    (experience_range). Profile.experience_years is used only when that
+    field is empty.
+    """
+    range_raw = _safe_str(getattr(agent, 'experience_range', None))
+    if range_raw:
+        match = re.search(r'(\d+)', range_raw)
+        if match:
+            parsed = int(match.group(1))
+            if parsed > 0:
+                return parsed
+    if profile is not None:
+        profile_years = int(_safe_num(getattr(profile, 'experience_years', None), 0))
+        if profile_years > 0:
+            return profile_years
+    return 0
+
 try:
     from playwright.sync_api import sync_playwright
     PLAYWRIGHT_AVAILABLE = True
@@ -230,7 +252,7 @@ def render_agent_og_jpeg(agent):
     review_count = int(_safe_num(getattr(agent, 'review_count', None) or (getattr(perf, 'total_reviews', None) if perf else None), 124))
 
     # Experience
-    exp_val = int(_safe_num(getattr(profile, 'experience_years', None) if profile else getattr(agent, 'experience_years', None), 0))
+    exp_val = _share_experience_years(agent, profile)
     exp_text = f'{exp_val}+ Years Experience • Top Rated' if exp_val else 'Verified Advisor • Top Rated'
     exp_years = f"{exp_val}+" if exp_val else "New"
 
@@ -412,7 +434,7 @@ def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
     box_h = 88
     gap = 14
 
-    exp_val = int(_safe_num(getattr(profile, 'experience_years', None) if profile else getattr(agent, 'experience_years', None), 0))
+    exp_val = _share_experience_years(agent, profile)
     exp_years = f"{exp_val}+" if exp_val else "New"
 
     clients = _safe_str(getattr(agent, 'formatted_client_base', None)) or _safe_str(getattr(agent, 'client_base', None))
