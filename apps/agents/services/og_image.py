@@ -114,7 +114,7 @@ def _share_card_place(agent, profile=None):
         city = _safe_str(getattr(profile, 'display_city', None)) or _safe_str(getattr(profile, 'city', None))
     city = city.split('+')[0].strip()
     if not city:
-        return 'India'
+        return ''  # no city saved: the card shows no location rather than a made-up one
     if 'india' in city.lower():
         return city
     return f'{city}, India'
@@ -149,6 +149,93 @@ def _share_experience_years(agent, profile):
         if profile_years > 0:
             return profile_years
     return 0
+
+
+def _shown(profile, flag):
+    """Agent's own show_* privacy toggle (missing profile or field = shown)."""
+    val = getattr(profile, flag, True) if profile is not None else True
+    return val is not False and not hasattr(val, '_mock_return_value')
+
+
+def _load_card_sources(agent, profile=None, perf=None):
+    if profile is None:
+        try:
+            profile = AgentProfile.objects.filter(agent=agent).first()
+        except Exception:
+            profile = getattr(agent, 'profile', None)
+    if perf is None:
+        try:
+            perf = AgentPerformanceStat.objects.filter(agent=agent).first()
+        except Exception:
+            perf = None
+    return profile, perf
+
+
+def _card_data(agent, profile=None, perf=None):
+    """
+    Everything the share card shows, taken only from what the agent saved.
+    Anything blank, zero or hidden by the agent's show_* toggles is left out (never a placeholder).
+    """
+    from apps.agents.models import format_indian_number
+
+    profile, perf = _load_card_sources(agent, profile, perf)
+    name = (_safe_str(getattr(profile, 'display_name', None)) or _safe_str(getattr(agent, 'fullname', None))
+            or _safe_str(getattr(agent, 'full_name', None)) or 'Insurance Advisor')
+    agency = _safe_str(getattr(profile, 'agency_name', None)) or _safe_str(getattr(agent, 'agency_name', None))
+
+    review_count = 0
+    rating = 0.0
+    if _shown(profile, 'show_ratings'):
+        review_count = int(_safe_num(getattr(agent, 'review_count', None), 0))
+        rating = round(_safe_num(getattr(agent, 'average_rating', None), 0.0), 1) if review_count else 0.0
+
+    stats = []
+    exp_val = _share_experience_years(agent, profile)
+    if exp_val and _shown(profile, 'show_experience'):
+        stats.append((f'{exp_val}+', 'YEARS EXP', False))
+    clients_raw = _safe_str(getattr(agent, 'client_base', None))
+    if clients_raw and _shown(profile, 'show_client_base'):
+        digits = re.sub(r'[^\d.]', '', clients_raw)
+        if digits and _safe_num(digits) > 0:
+            clients = format_indian_number(digits) if digits == clients_raw.strip() else clients_raw
+            stats.append((clients if '+' in clients else f'{clients}+', 'CLIENTS', False))
+    if perf is not None and _shown(profile, 'show_claims_stats'):
+        claims = int(_safe_num(getattr(perf, 'claims_processed', None), 0))
+        if claims > 0:
+            stats.append((f'{format_indian_number(claims)}+', 'CLAIMS', False))
+        amount = _safe_num(getattr(perf, 'claims_amount', None), 0)
+        if amount > 0:
+            stats.append((f"₹{format_indian_number(amount).replace(' ', '')}+", 'SETTLED', True))
+
+    return {
+        'name': name,
+        'initial': name[0].upper(),
+        'subtitle': f'Insurance & Financial Advisor · {agency}' if agency and agency.lower() != name.lower()
+                    else 'Insurance & Financial Advisor',
+        'location': _share_card_place(agent, profile),
+        'show_licensed': bool(profile is not None and (_safe_str(getattr(profile, 'license_number', None))
+                                                       or _safe_str(getattr(profile, 'arn_number', None)))),
+        'show_trusted': bool(_safe_num(getattr(agent, 'is_trusted', False), 0)),
+        'show_verified': bool(_safe_num(getattr(agent, 'is_verified_agent', False), 0)),
+        'rating': rating,
+        'review_count': review_count,
+        'stats': stats,
+        'segments': _agent_segment_pills(agent),
+        # Identifies the photo so a new upload changes the image version.
+        'photo_ref': (_safe_str(getattr(profile, 'profile_photo_url', None)) + '|'
+                      + _safe_str(getattr(profile, 'profile_photo_path', None))),
+    }
+
+
+def card_version(agent):
+    """Short hash of what the card shows; part of the og:image URL so WhatsApp refetches after a change."""
+    import hashlib
+    import json
+    try:
+        data = _card_data(agent)
+    except Exception:
+        return ''
+    return hashlib.sha1(json.dumps(data, sort_keys=True, default=str).encode('utf-8')).hexdigest()[:10]
 
 try:
     from playwright.sync_api import sync_playwright
@@ -195,16 +282,8 @@ def render_agent_og_jpeg(agent):
     if not getattr(settings, 'DEBUG', False):
         return _render_agent_og_jpeg_pillow(agent)
 
-    profile = None
-    perf = None
-    try:
-        profile = AgentProfile.objects.filter(agent=agent).first()
-    except Exception:
-        profile = getattr(agent, 'profile', None)
-    try:
-        perf = AgentPerformanceStat.objects.filter(agent=agent).first()
-    except Exception:
-        perf = getattr(agent, 'performance_stat', None)
+    profile, perf = _load_card_sources(agent)
+    card = _card_data(agent, profile, perf)
 
     # Image processing
     photo_base64 = ""
@@ -233,51 +312,6 @@ def render_agent_og_jpeg(agent):
         with open(logo_path, "rb") as f:
             logo_base64 = "data:image/png;base64," + base64.b64encode(f.read()).decode('utf-8')
 
-    # Agent details
-    name = _safe_str(getattr(profile, 'display_name', None)) or _safe_str(getattr(agent, 'fullname', None)) or _safe_str(getattr(agent, 'full_name', None)) or 'Insurance Advisor'
-    agent_initial = (name[0].upper() if name else 'A')
-    
-    location = _share_card_place(agent, profile)
-
-    badge_val = _safe_str(getattr(agent, 'badge', None)).lower()
-    show_licensed = bool((profile and (getattr(profile, 'license_number', None) or getattr(profile, 'arn_number', None))) or 'irdai' in badge_val or 'licensed' in badge_val or True)
-    show_trusted = bool(getattr(agent, 'is_trusted', False) or 'trusted' in badge_val or _safe_str(getattr(agent, 'plan_type', None)).lower() in ('professional', 'pro', 'exclusive') or True)
-
-    agency = _safe_str(getattr(profile, 'agency_name', None)) or _safe_str(getattr(agent, 'agency_name', None))
-    subtitle = f'Insurance & Financial Advisor · {agency}' if agency and agency.lower() != name.lower() else 'Insurance & Financial Advisor'
-
-    rating = _safe_num(getattr(agent, 'average_rating', None) or (getattr(perf, 'rating', None) if perf else None), 4.8)
-    if rating <= 0: rating = 4.8
-    rating_int = max(1, min(5, int(round(rating))))
-    review_count = int(_safe_num(getattr(agent, 'review_count', None) or (getattr(perf, 'total_reviews', None) if perf else None), 124))
-
-    # Experience
-    exp_val = _share_experience_years(agent, profile)
-    exp_text = f'{exp_val}+ Years Experience • Top Rated' if exp_val else 'Verified Advisor • Top Rated'
-    exp_years = f"{exp_val}+" if exp_val else "New"
-
-    # Dynamic Metrics with realistic defaults
-    clients = _safe_str(getattr(agent, 'formatted_client_base', None)) or _safe_str(getattr(agent, 'client_base', None))
-    if clients and clients not in ('0', ''):
-        clients_val = clients if '+' in clients else f"{clients}+"
-    else:
-        clients_val = "500+"
-
-    claims = _safe_str(getattr(perf, 'formatted_claims_processed', None) if perf else None) or _safe_str(getattr(perf, 'claims_settled', None) if perf else None)
-    if claims and claims not in ('0', ''):
-        claims_val = claims if '+' in claims else f"{claims}+"
-    else:
-        claims_val = "150+"
-
-    settled = _safe_str(getattr(perf, 'formatted_claims_amount', None) if perf else None) or _safe_str(getattr(perf, 'total_claim_amount', None) if perf else None)
-    if settled and settled not in ('0', ''):
-        s_str = settled if settled.startswith('₹') else f"₹{settled}"
-        settled_val = s_str if '+' in s_str else f"{s_str}+"
-    else:
-        settled_val = "₹2.5Cr+"
-
-    cleaned_segments = _agent_segment_pills(agent)
-
     # Inject exact frontend CSS for 100% pixel-perfect match
     css_path = os.path.join(settings.BASE_DIR, 'static', 'css', 'agent-card-shared.css')
     inline_css = ""
@@ -287,23 +321,11 @@ def render_agent_og_jpeg(agent):
 
     context = {
         'inline_css': inline_css,
-        'name': name,
-        'agent_initial': agent_initial,
-        'location': location,
         'photo_base64': photo_base64,
         'logo_base64': logo_base64,
-        'show_licensed': show_licensed,
-        'show_trusted': show_trusted,
-        'subtitle': subtitle,
-        'rating': rating,
-        'rating_int': rating_int,
-        'review_count': review_count,
-        'exp_text': exp_text,
-        'exp_years': exp_years,
-        'clients_val': clients_val,
-        'claims_val': claims_val,
-        'settled_val': settled_val,
-        'segments': cleaned_segments,
+        'agent_initial': card['initial'],
+        'rating_int': max(1, min(5, int(round(card['rating'])))) if card['review_count'] else 0,
+        **card,
     }
 
     if PLAYWRIGHT_AVAILABLE and sync_playwright is not None:
@@ -338,30 +360,18 @@ def render_agent_og_jpeg(agent):
 
 
 def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
-    """Fast, lightweight in-memory Pillow fallback for 1200x630 OG digital visiting card."""
-    if profile is None:
-        try:
-            profile = AgentProfile.objects.filter(agent=agent).first()
-        except Exception:
-            profile = getattr(agent, 'profile', None)
-    if perf is None:
-        try:
-            perf = AgentPerformanceStat.objects.filter(agent=agent).first()
-        except Exception:
-            perf = getattr(agent, 'performance_stat', None)
+    """Fast, lightweight in-memory Pillow 1200x630 OG digital visiting card (used in production)."""
+    profile, perf = _load_card_sources(agent, profile, perf)
+    card = _card_data(agent, profile, perf)
 
-    # Outer canvas with background
-    canvas = Image.new('RGB', (1200, 630), (238, 244, 249))
+    # Full-bleed card: fills the whole 1200x630 frame so WhatsApp's preview shows it as large as possible.
+    W, H = 1200, 630
+    canvas = Image.new('RGB', (W, H), (255, 255, 255))
     draw = ImageDraw.Draw(canvas)
     fonts = _load_fonts()
 
-    # Card background (1120x550 centered at 40,40)
-    card_box = [(40, 40), (1160, 590)]
-    _rounded_rect(draw, card_box, radius=28, fill=(255, 255, 255), outline=(226, 232, 240), width=1)
-
-    # Left Column: Photo or initial avatar (320px wide: 40 to 360)
-    photo_w = 320
-    photo_box = [(40, 40), (40 + photo_w, 590)]
+    # Left column: photo or initial avatar, full height
+    photo_w = 380
     photo = _load_photo(agent, profile)
     if photo:
         if photo.mode in ('RGBA', 'LA', 'P'):
@@ -375,133 +385,96 @@ def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
             photo = bg
         elif photo.mode != 'RGB':
             photo = photo.convert('RGB')
-        cropped = _cover_crop(photo, photo_w, 550)
-        canvas.paste(cropped, (40, 40))
-        # Re-stroke card border on top
-        _rounded_rect(draw, card_box, radius=28, outline=(226, 232, 240), width=1)
+        canvas.paste(_cover_crop(photo, photo_w, H), (0, 0))
     else:
-        # Draw Royal Blue background on left
-        _rounded_rect(draw, photo_box, radius=24, fill=(30, 58, 138))
-        name = _safe_str(getattr(profile, 'display_name', None)) or _safe_str(getattr(agent, 'fullname', None)) or _safe_str(getattr(agent, 'full_name', None)) or 'Agent'
-        initial = (name[0].upper() if name else 'A')
-        # Draw centered initial
+        draw.rectangle([(0, 0), (photo_w, H)], fill=(30, 58, 138))
+        initial = card['initial']
         iw, ih = _text_size(draw, initial, fonts['initial'])
-        ix = 40 + (photo_w - iw) // 2
-        iy = 40 + (550 - ih) // 2
-        draw.text((ix, iy), initial, font=fonts['initial'], fill=(255, 255, 255))
+        draw.text(((photo_w - iw) // 2, (H - ih) // 2 - 12), initial, font=fonts['initial'], fill=(255, 255, 255))
 
-    # Right Column: details starting at x = 405
-    rx = 405
-    name = _safe_str(getattr(profile, 'display_name', None)) or _safe_str(getattr(agent, 'fullname', None)) or _safe_str(getattr(agent, 'full_name', None)) or 'Insurance Advisor'
-    draw.text((rx, 72), name, font=fonts['name'], fill=(15, 23, 42))
+    # Right column
+    rx = photo_w + 44
+    right = W - 44
+    col_w = right - rx
 
-    # Badges next to name
-    nw, nh = _text_size(draw, name, fonts['name'])
-    bx = rx + nw + 16
-    by = 78
+    # Badges the agent has earned, then the name sized to the space left
+    badges = []
+    if card['show_licensed']:
+        badges.append(("Licensed", (238, 242, 255), (199, 210, 254), (67, 56, 202)))
+    if card['show_trusted']:
+        badges.append(("Trusted", (236, 253, 245), (167, 243, 208), (5, 150, 105)))
+    badge_ws = [_text_size(draw, b[0], fonts['badge'])[0] + 28 for b in badges]
+    badges_w = sum(badge_ws) + 12 * len(badges) + (16 if badges else 0)
+    name_font = _shrink_font(draw, card['name'], fonts['name'], col_w - badges_w, 34)
+    name = _fit_text(draw, card['name'], name_font, col_w - badges_w)
+    draw.text((rx, 44 + (getattr(fonts['name'], 'size', 0) - getattr(name_font, 'size', 0)) // 2), name, font=name_font, fill=(15, 23, 42))
+    nw, _ = _text_size(draw, name, name_font)
+    bx, by = rx + nw + 16, 58
+    for (label, fill, outline, color), bw in zip(badges, badge_ws):
+        _rounded_rect(draw, [(bx, by), (bx + bw, by + 32)], radius=16, fill=fill, outline=outline, width=1)
+        draw.text((bx + 14, by + 6), label, font=fonts['badge'], fill=color)
+        bx += bw + 12
 
-    # Licensed Badge
-    _rounded_rect(draw, [(bx, by), (bx + 85, by + 26)], radius=13, fill=(238, 242, 255), outline=(199, 210, 254), width=1)
-    draw.text((bx + 12, by + 5), "Licensed", font=fonts['badge'], fill=(67, 56, 202))
+    draw.text((rx, 112), _fit_text(draw, card['subtitle'], fonts['sub'], col_w), font=fonts['sub'], fill=(100, 116, 139))
 
-    # Trusted Badge
-    tx = bx + 95
-    _rounded_rect(draw, [(tx, by), (tx + 80, by + 26)], radius=13, fill=(236, 253, 245), outline=(167, 243, 208), width=1)
-    draw.text((tx + 14, by + 5), "Trusted", font=fonts['badge'], fill=(5, 150, 105))
+    # Rating (only with real approved reviews) and location (only if saved)
+    meta_y = 164
+    mx = rx
+    if card['review_count']:
+        _draw_star(draw, mx + 10, meta_y + 13, 10, fill=(245, 158, 11))
+        score = f"{card['rating']:.1f}"
+        draw.text((mx + 26, meta_y), score, font=fonts['meta_bold'], fill=(15, 23, 42))
+        sw, _ = _text_size(draw, score, fonts['meta_bold'])
+        count = f"({card['review_count']} review{'s' if card['review_count'] != 1 else ''})"
+        draw.text((mx + 34 + sw, meta_y), count, font=fonts['meta'], fill=(100, 116, 139))
+        cw, _ = _text_size(draw, count, fonts['meta'])
+        mx += 34 + sw + cw + 32
+    if card['location']:
+        _draw_pin(draw, mx + 7, meta_y + 13, fill=(100, 116, 139))
+        loc = _fit_text(draw, card['location'], fonts['meta'], right - (mx + 24))
+        draw.text((mx + 24, meta_y), loc, font=fonts['meta'], fill=(100, 116, 139))
+    has_meta = bool(card['review_count'] or card['location'])
 
-    # Subtitle
-    agency = _safe_str(getattr(profile, 'agency_name', None)) or _safe_str(getattr(agent, 'agency_name', None))
-    subtitle = f'Insurance & Financial Advisor · {agency}' if agency and agency.lower() != name.lower() else 'Insurance & Financial Advisor'
-    draw.text((rx, 126), subtitle, font=fonts['sub'], fill=(100, 116, 139))
-
-    # Rating & Location Row
-    rating = _safe_num(getattr(agent, 'average_rating', None) or (getattr(perf, 'rating', None) if perf else None), 4.8)
-    if rating <= 0: rating = 4.8
-    rev_cnt = int(_safe_num(getattr(agent, 'review_count', None) or (getattr(perf, 'total_reviews', None) if perf else None), 124))
-
-    # Draw star
-    _draw_star(draw, rx + 8, 180, 8, fill=(245, 158, 11))
-    draw.text((rx + 22, 170), f"{round(rating, 1)}", font=fonts['meta_bold'], fill=(15, 23, 42))
-    draw.text((rx + 56, 170), f"({rev_cnt} reviews)", font=fonts['meta'], fill=(100, 116, 139))
-
-    # Location
-    loc_text = f"📍  {_share_card_place(agent, profile)}"
-    draw.text((rx + 180, 170), loc_text, font=fonts['meta'], fill=(100, 116, 139))
-
-    # 4 Stat Boxes (Width 165, Height 88, Gap 14)
-    stat_y = 218
-    box_w = 165
-    box_h = 88
-    gap = 14
-
-    exp_val = _share_experience_years(agent, profile)
-    exp_years = f"{exp_val}+" if exp_val else "New"
-
-    clients = _safe_str(getattr(agent, 'formatted_client_base', None)) or _safe_str(getattr(agent, 'client_base', None))
-    clients_val = f"{clients}+" if clients and '+' not in clients else (clients if clients else "500+")
-
-    claims = _safe_str(getattr(perf, 'formatted_claims_processed', None) if perf else None) or _safe_str(getattr(perf, 'claims_settled', None) if perf else None)
-    claims_val = f"{claims}+" if claims and '+' not in claims else (claims if claims else "150+")
-
-    settled = _safe_str(getattr(perf, 'formatted_claims_amount', None) if perf else None) or _safe_str(getattr(perf, 'total_claim_amount', None) if perf else None)
-    if settled and settled not in ('0', ''):
-        s_str = settled if settled.startswith('₹') else f"₹{settled}"
-        settled_val = s_str if '+' in s_str else f"{s_str}+"
-    else:
-        settled_val = "₹2.5Cr+"
-
-    stats_data = [
-        (exp_years, "YEARS EXP", False),
-        (clients_val, "CLIENTS", False),
-        (claims_val, "CLAIMS", False),
-        (settled_val, "SETTLED", True),
-    ]
-
-    for i, (val, lbl, is_green) in enumerate(stats_data):
+    # Stat boxes: only the numbers the agent filled in, sharing the row width
+    stat_y = 222 if has_meta else 170
+    box_h, gap = 112, 16
+    stats = card['stats']
+    box_w = min((col_w - gap * (len(stats) - 1)) // len(stats), 260) if stats else 0
+    for i, (val, lbl, is_green) in enumerate(stats):
         bx0 = rx + i * (box_w + gap)
-        bx1 = bx0 + box_w
-        by0 = stat_y
-        by1 = by0 + box_h
         bg_fill = (240, 253, 244) if is_green else (248, 250, 252)
         border_col = (187, 247, 208) if is_green else (226, 232, 240)
         num_col = (21, 128, 61) if is_green else (15, 23, 42)
         lbl_col = (22, 101, 52) if is_green else (71, 85, 105)
+        _rounded_rect(draw, [(bx0, stat_y), (bx0 + box_w, stat_y + box_h)], radius=16, fill=bg_fill, outline=border_col, width=2)
+        # Numbers are never cut: the font shrinks to fit the box instead.
+        num_font = _shrink_font(draw, val, fonts['stat_num'], box_w - 16, 18)
+        vw, vh = _text_size(draw, val, num_font)
+        draw.text((bx0 + (box_w - vw) // 2, stat_y + 14 + (getattr(fonts['stat_num'], 'size', 0) - getattr(num_font, 'size', 0)) // 2), val,
+                  font=num_font, fill=num_col)
+        lw, _ = _text_size(draw, lbl, fonts['stat_lbl'])
+        draw.text((bx0 + (box_w - lw) // 2, stat_y + 70), lbl, font=fonts['stat_lbl'], fill=lbl_col)
 
-        _rounded_rect(draw, [(bx0, by0), (bx1, by1)], radius=14, fill=bg_fill, outline=border_col, width=2)
-        
-        # Center number
-        vw, vh = _text_size(draw, val, fonts['stat_num'])
-        vx = bx0 + (box_w - vw) // 2
-        vy = by0 + 10
-        draw.text((vx, vy), val, font=fonts['stat_num'], fill=num_col)
-
-        # Center label
-        lw, lh = _text_size(draw, lbl, fonts['stat_lbl'])
-        lx = bx0 + (box_w - lw) // 2
-        ly = by0 + 50
-        draw.text((lx, ly), lbl, font=fonts['stat_lbl'], fill=lbl_col)
-
-    # Segment pills from the agent's real Health / Life / Motor / SME list.
-    pill_y = 345
-    cleaned = _agent_segment_pills(agent)
-    pills = []
-    for item in cleaned[:4]:
-        colors = PILL_COLORS.get(item.get('class'), ((241, 245, 249), (203, 213, 225), (51, 65, 85)))
-        pills.append((item['name'], colors[0], colors[1], colors[2]))
+    # Segment pills from the agent's real Health / Life / Motor / SME list (never past the column)
+    pill_y = stat_y + box_h + 30 if stats else stat_y
     px = rx
-    for p_name, p_bg, p_border, p_text in pills:
-        pw, ph = _text_size(draw, p_name, fonts['pill'])
-        full_pw = pw + 32
-        _rounded_rect(draw, [(px, pill_y), (px + full_pw, pill_y + 36)], radius=18, fill=p_bg, outline=p_border, width=1)
-        draw.text((px + 16, pill_y + 8), p_name, font=fonts['pill'], fill=p_text)
+    for item in card['segments'][:4]:
+        p_bg, p_border, p_text = PILL_COLORS.get(item.get('class'), ((241, 245, 249), (203, 213, 225), (51, 65, 85)))
+        pw, _ = _text_size(draw, item['name'], fonts['pill'])
+        full_pw = pw + 36
+        if px + full_pw > right:
+            break
+        _rounded_rect(draw, [(px, pill_y), (px + full_pw, pill_y + 44)], radius=22, fill=p_bg, outline=p_border, width=1)
+        draw.text((px + 18, pill_y + 10), item['name'], font=fonts['pill'], fill=p_text)
         px += full_pw + 14
 
-    # Divider Line
-    draw.line([(rx, 490), (1110, 490)], fill=(241, 245, 249), width=1)
-
-    # Footer Strip
-    draw.text((rx, 512), "Direct WhatsApp & Calls · Zero middlemen", font=fonts['footer'], fill=(51, 65, 85))
-    draw.text((920, 510), "PadosiAgent Verified", font=fonts['footer_bold'], fill=(30, 58, 138))
+    # Footer strip pinned to the bottom
+    draw.line([(rx, 540), (right, 540)], fill=(226, 232, 240), width=2)
+    draw.text((rx, 562), "Direct WhatsApp & Calls · Zero middlemen", font=fonts['footer'], fill=(51, 65, 85))
+    if card['show_verified']:
+        label = "PadosiAgent Verified"
+        lw, _ = _text_size(draw, label, fonts['footer_bold'])
+        draw.text((right - lw, 561), label, font=fonts['footer_bold'], fill=(30, 58, 138))
 
     buf = io.BytesIO()
     canvas.save(buf, format='JPEG', quality=95)
@@ -544,17 +517,17 @@ def _load_fonts():
         return ImageFont.load_default()
 
     return {
-        'initial': pick(bold_paths, 105),
-        'name': pick(bold_paths, 36),
-        'badge': pick(bold_paths, 13),
-        'sub': pick(semi_paths, 18),
-        'meta': pick(reg_paths, 16),
-        'meta_bold': pick(bold_paths, 16),
-        'stat_num': pick(bold_paths, 30),
-        'stat_lbl': pick(bold_paths, 13),
-        'pill': pick(bold_paths, 15),
-        'footer': pick(bold_paths, 16),
-        'footer_bold': pick(bold_paths, 17),
+        'initial': pick(bold_paths, 150),
+        'name': pick(bold_paths, 46),
+        'badge': pick(bold_paths, 16),
+        'sub': pick(semi_paths, 23),
+        'meta': pick(reg_paths, 21),
+        'meta_bold': pick(bold_paths, 21),
+        'stat_num': pick(bold_paths, 40),
+        'stat_lbl': pick(bold_paths, 16),
+        'pill': pick(bold_paths, 19),
+        'footer': pick(bold_paths, 19),
+        'footer_bold': pick(bold_paths, 21),
     }
 
 
@@ -661,6 +634,31 @@ def _load_photo(agent, profile):
             except Exception:
                 continue
     return None
+
+
+def _shrink_font(draw, text, font, max_w, min_size):
+    """Smaller variant of font until text fits max_w (or min_size is reached)."""
+    size = getattr(font, 'size', None)
+    while size and size > min_size and _text_size(draw, text, font)[0] > max_w:
+        size -= 2
+        font = font.font_variant(size=size)
+    return font
+
+
+def _fit_text(draw, text, font, max_w):
+    """Shorten text with an ellipsis so it never runs past max_w (server fonts are wider than dev fonts)."""
+    if max_w <= 0 or _text_size(draw, text, font)[0] <= max_w:
+        return text
+    while text and _text_size(draw, text + '…', font)[0] > max_w:
+        text = text[:-1]
+    return text.rstrip() + '…'
+
+
+def _draw_pin(draw, cx, cy, fill):
+    """Small map-pin marker (the emoji has no glyph in the card fonts)."""
+    draw.ellipse([(cx - 7, cy - 11), (cx + 7, cy + 3)], fill=fill)
+    draw.polygon([(cx - 6, cy - 2), (cx + 6, cy - 2), (cx, cy + 11)], fill=fill)
+    draw.ellipse([(cx - 3, cy - 7), (cx + 3, cy - 1)], fill=(255, 255, 255))
 
 
 def _draw_star(draw, cx, cy, r, fill):

@@ -59,6 +59,11 @@ def build_og_absolute_url(request, path: str) -> str:
 
 
 def agent_og_image_absolute_url(request, agent_id: int) -> str:
-    from apps.agents.models import OG_IMAGE_CACHE_VERSION
+    """og:image URL. The version changes whenever what the card shows changes, because WhatsApp
+    and Facebook cache link-preview images by URL for days."""
+    from apps.agents.models import Agent, OG_IMAGE_CACHE_VERSION
+    from apps.agents.services.og_image import card_version
     path = reverse('agents:agent_og_image', kwargs={'agent_id': agent_id})
-    return build_og_absolute_url(request, path) + f'?v={OG_IMAGE_CACHE_VERSION}'
+    agent = Agent.objects.filter(pk=agent_id).first()
+    version = OG_IMAGE_CACHE_VERSION + (f'-{card_version(agent)}' if agent else '')
+    return build_og_absolute_url(request, path) + f'?v={version}'

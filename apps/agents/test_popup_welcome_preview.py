@@ -187,7 +187,7 @@ class PopupWelcomePreviewTests(TestCase):
         ctx = profile_og_context(request, agent, display_name='Segment Agent')
         self.assertEqual(
             ctx['og_share_description'],
-            'Segment Agent | Licensed Insurance & Financial Advisor',
+            'Segment Agent | Insurance & Financial Advisor'  # no license number entered, so not 'Licensed',
         )
         self.assertEqual(ctx['og_share_title'], ctx['og_share_description'])
         self.assertNotIn('yrs exp', ctx['og_share_description'])
@@ -212,7 +212,7 @@ class PopupWelcomePreviewTests(TestCase):
         ctx = profile_og_context(request, agent, display_name='Range Agent')
         self.assertEqual(
             ctx['og_share_description'],
-            'Range Agent | Licensed Insurance & Financial Advisor',
+            'Range Agent | Insurance & Financial Advisor'  # no license number entered, so not 'Licensed',
         )
 
         other = Agent.objects.create(

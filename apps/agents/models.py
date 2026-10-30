@@ -1718,7 +1718,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.cache import cache
 
-OG_IMAGE_CACHE_VERSION = 'v9'
+OG_IMAGE_CACHE_VERSION = 'v10'  # v10: card shows only what the agent filled in
 
 
 def og_image_cache_key(agent_id):
@@ -1751,6 +1751,8 @@ def clear_og_image_on_agent_change(sender, instance, **kwargs):
 
 @receiver(post_save, sender=AgentInsuranceSegment)
 @receiver(post_delete, sender=AgentInsuranceSegment)
+@receiver(post_save, sender='admin_panel.AgentServicePincode')  # service pincodes decide the card's city
+@receiver(post_delete, sender='admin_panel.AgentServicePincode')
 def clear_og_image_on_segment_change(sender, instance, **kwargs):
     agent_id = getattr(instance, 'agent_id', None)
     if agent_id:

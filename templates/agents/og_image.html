@@ -322,40 +322,39 @@
                     {{ subtitle }}
                 </div>
 
+                {% if review_count or location %}
                 <div class="og-meta-row">
+                    {% if review_count %}
                     <div class="og-rating">
                         <span class="star-icon">★</span>
                         <span class="rating-score">{{ rating|floatformat:1 }}</span>
-                        <span class="rating-count">({{ review_count }} reviews)</span>
+                        <span class="rating-count">({{ review_count }} review{{ review_count|pluralize }})</span>
                     </div>
+                    {% endif %}
+                    {% if location %}
                     <div class="og-location">
                         <i class="fas fa-map-marker-alt location-icon"></i>
                         <span>{{ location }}</span>
                     </div>
+                    {% endif %}
                 </div>
+                {% endif %}
             </div>
 
-            <!-- 4 Stat Boxes -->
-            <div class="og-stats-grid">
-                <div class="og-stat-box">
-                    <div class="og-stat-num">{{ exp_years }}</div>
-                    <div class="og-stat-lbl">YEARS EXP</div>
+            <!-- Stat boxes: only the numbers the agent filled in -->
+            {% if stats %}
+            <div class="og-stats-grid" style="grid-template-columns: repeat({{ stats|length }}, minmax(0, 1fr));">
+                {% for value, label, is_amount in stats %}
+                <div class="og-stat-box{% if is_amount %} stat-box--amount{% endif %}">
+                    <div class="og-stat-num">{{ value }}</div>
+                    <div class="og-stat-lbl">{{ label }}</div>
                 </div>
-                <div class="og-stat-box">
-                    <div class="og-stat-num">{{ clients_val }}</div>
-                    <div class="og-stat-lbl">CLIENTS</div>
-                </div>
-                <div class="og-stat-box">
-                    <div class="og-stat-num">{{ claims_val }}</div>
-                    <div class="og-stat-lbl">CLAIMS</div>
-                </div>
-                <div class="og-stat-box stat-box--amount">
-                    <div class="og-stat-num">{{ settled_val }}</div>
-                    <div class="og-stat-lbl">SETTLED</div>
-                </div>
+                {% endfor %}
             </div>
+            {% endif %}
 
             <!-- Product Segment Tags -->
+            {% if segments %}
             <div class="og-tags-row">
                 {% for seg in segments %}
                 <span class="segment-pill segment-pill--{{ seg.class }}">
@@ -363,13 +362,16 @@
                 </span>
                 {% endfor %}
             </div>
+            {% endif %}
 
             <!-- Footer Strip -->
             <div class="og-footer-strip">
                 <span class="og-footer-tagline">Direct WhatsApp &amp; Calls · Zero middlemen</span>
+                {% if show_verified %}
                 <span class="og-footer-brand">
                     <i class="fas fa-shield-alt"></i> PadosiAgent Verified
                 </span>
+                {% endif %}
             </div>
         </div>
     </div>
