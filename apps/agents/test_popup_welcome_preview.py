@@ -120,6 +120,24 @@ class PopupWelcomePreviewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertNotIn('agent-registration', response['Location'])
 
+    def test_forged_phone_cookie_does_not_restore_someone_elses_draft(self):
+        victim = AgentDraft.objects.create(
+            session_key='victim-session',
+            email='victim@example.com',
+            fullname='Victim Person',
+            mobile='9876543210',
+            registration_step=1,
+        )
+        RegistrationLead.objects.create(name='Victim Person', phone='9876543210', draft_id=victim.pk)
+        self.client.cookies['pa_quick_reg_phone'] = '9876543210'
+        # Visiting the registration page binds the lead; it must not bind the draft.
+        self.client.get(reverse('agents:agent_registration'))
+        for name in ('agents:welcome_preview', 'agents:chooseplan'):
+            response = self.client.get(reverse(name))
+            self.assertEqual(response.status_code, 302, name)
+            self.assertNotContains(response, 'victim@example.com', status_code=302)
+        self.assertNotEqual(self.client.session.get('current_draft_id'), victim.pk)
+
     def test_home_shows_eligibility_popup_profile_does_not(self):
         agent = Agent.objects.create(
             fullname='Maheshkumar Parmar',

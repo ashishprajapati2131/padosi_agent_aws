@@ -12,6 +12,7 @@ Comprehensive test suite for the Admin Panel Personal Digital Visiting Card Stud
 8. Watermark branding toggle enforcement
 """
 
+import datetime
 import json
 from django.test import TestCase, Client
 from django.urls import reverse
@@ -19,6 +20,7 @@ from django.contrib.auth.models import User
 
 from apps.admin_panel.models.admin_auth import Admin
 from apps.admin_panel.models import AdminActivityLog
+from apps.admin_panel.models.user_session import UserSession, UserSessionData
 from apps.home.models import SiteSetting
 from apps.agents.models import Agent, AgentProfile, AgentLead
 from apps.admin_panel.services.digital_card_studio import (
@@ -82,12 +84,75 @@ class VisitingCardStudioAdminTestCase(TestCase):
         SiteSetting.set_value('agent_digital_card_enabled', True, group='general')
 
     def _login_admin(self, admin_obj, client=None):
+        # Admin auth comes only from the session_token cookie (user_sessions), never session['admin_id'].
         c = client or self.client
-        session = c.session
-        session['admin_id'] = admin_obj.id
-        session['admin_name'] = admin_obj.name
-        session['admin_role'] = admin_obj.role
+        now = datetime.datetime.now()
+        token = f'tok_card_{admin_obj.id}_{UserSession.objects.count()}'
+        sess = UserSession.objects.create(
+            session_token=token, admin_id=admin_obj.id,
+            expires_at=now + datetime.timedelta(days=1), created_at=now, updated_at=now)
+        UserSessionData.objects.create(session=sess, data_key='admin_id', data_value=str(admin_obj.id))
+        c.cookies['session_token'] = token
+
+    def test_session_admin_id_alone_is_not_admin_auth(self):
+        session = self.client.session
+        session['admin_id'] = self.admin.id
         session.save()
+        res = self.client.get(reverse('admin_digital_card_studio'))
+        self.assertEqual(res.status_code, 302)
+        self.assertIn('/login', res.url)
+
+    def test_staff_with_content_permission_can_open_studio(self):
+        staff = Admin.objects.create(name='Content Staff', email='content_staff@test.com',
+                                     password='x', role='staff', permissions=['content'])
+        self._login_admin(staff)
+        self.assertEqual(self.client.get(reverse('admin_digital_card_studio')).status_code, 200)
+
+    def test_detail_get_does_not_create_profile(self):
+        self._login_admin(self.admin)
+        bare = Agent.objects.create(fullname='No Profile Agent', email='noprof@test.com',
+                                    mobile='9000000001', status='active')
+        res = self.client.get(reverse('admin_digital_card_agent_detail', kwargs={'agent_id': bare.id}))
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(AgentProfile.objects.filter(agent=bare).exists())
+
+    def test_save_api_rejects_unsafe_input(self):
+        self._login_admin(self.admin)
+        save_url = reverse('admin_digital_card_agent_save', kwargs={'agent_id': self.agent.id})
+        AgentProfile.objects.create(agent=Agent.objects.create(
+            fullname='Other', email='other@test.com', mobile='9000000002', status='active'),
+            slug='taken-slug', display_name='Other')
+        for payload in (
+            {'custom_button_url': 'javascript:alert(1)'},
+            {'custom_button_url': ' java\tscript:alert(1)'},
+            {'custom_button_url': '//evil.example/x'},
+            {'custom_button_url': 'https://x.example/' + 'a' * 500},
+            {'theme_color': 'red;background:url(x)'},
+            {'slug': '<>"\''},
+            {'slug': 'taken-slug'},
+        ):
+            res = self.client.post(save_url, payload)
+            self.assertEqual(res.status_code, 400, payload)
+            self.assertFalse(res.json()['success'])
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.slug, 'vipul-shah')
+        self.assertEqual(self.profile.get_card_config().get('custom_button_url'), '')
+
+        res = self.client.post(save_url, {'custom_button_url': '/agent/contact/', 'slug': 'Vipul Shah New'})
+        self.assertEqual(res.status_code, 200)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.slug, 'vipul-shah-new')
+        self.assertEqual(self.profile.get_card_config()['custom_button_url'], '/agent/contact/')
+
+    def test_powered_by_url_validation(self):
+        with self.assertRaises(ValueError):
+            save_digital_card_studio_config({'powered_by_url': 'javascript:alert(1)'})
+        self.assertEqual(save_digital_card_studio_config({'powered_by_url': 'https://padosiagent.com/'})['powered_by_url'],
+                         'https://padosiagent.com/')
+        self._login_admin(self.admin)
+        res = self.client.post(reverse('admin_digital_card_studio_update'), {'powered_by_url': 'data:text/html,x'})
+        self.assertEqual(res.status_code, 302)
+        self.assertEqual(get_digital_card_studio_config(use_cache=False)['powered_by_url'], 'https://padosiagent.com/')
 
     def test_default_studio_config_retrieval(self):
         config = get_digital_card_studio_config(use_cache=False)

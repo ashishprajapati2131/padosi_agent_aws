@@ -19,12 +19,14 @@ import re
 import json
 import logging
 from typing import Dict, Any, Optional, Tuple
+from urllib.parse import urlsplit
 from django.core.cache import cache
 
 logger = logging.getLogger('apps.admin_panel.services.digital_card_studio')
 
 CACHE_KEY_STUDIO_CONFIG = 'digital_card_studio_config_v1'
 CACHE_TTL = 300  # 5 minutes
+MAX_CARD_URL_LENGTH = 500
 
 DEFAULT_DIGITAL_CARD_STUDIO_CONFIG: Dict[str, Any] = {
     # 1. Master & Header
@@ -74,6 +76,27 @@ VALID_BANNER_STYLES = {
     'profile', 'gradient_navy', 'gradient_emerald',
     'gradient_indigo', 'gradient_sunset', 'gradient_purple', 'custom'
 }
+
+
+def clean_card_url(value: Any) -> Optional[str]:
+    """
+    Return a link that is safe to put in an href: '' when blank, a site-relative path
+    ('/...' but not '//' or '/\\'), or an absolute http(s) URL. Returns None when invalid.
+    """
+    url = re.sub(r'[\x00-\x1f\x7f]', '', str(value or '')).strip()
+    if not url:
+        return ''
+    if len(url) > MAX_CARD_URL_LENGTH:
+        return None
+    if url.startswith('/'):
+        return None if url[1:2] in ('/', '\\') else url
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return None
+    if parts.scheme.lower() in ('http', 'https') and parts.netloc:
+        return url
+    return None
 
 
 def get_digital_card_studio_config(use_cache: bool = True) -> Dict[str, Any]:
@@ -158,6 +181,13 @@ def save_digital_card_studio_config(updates: Dict[str, Any], request=None) -> Di
     for k in str_keys:
         if k in updates:
             clean_str = str(updates[k]).strip()
+            if k == 'powered_by_url':
+                clean_str = clean_card_url(clean_str)
+                if clean_str is None:
+                    raise ValueError(
+                        'Powered-by link must be a site path starting with "/" or an http(s) URL '
+                        f'(max {MAX_CARD_URL_LENGTH} characters).'
+                    )
             if clean_str:
                 current[k] = clean_str
 

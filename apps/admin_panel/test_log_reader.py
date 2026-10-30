@@ -51,3 +51,19 @@ class LogReaderTests(SimpleTestCase):
         self.assertEqual(top['count'], 2)
         self.assertEqual(top['latest']['message'], "Mail failed for 'z@w.com'")
         self.assertEqual([i['count'] for i in issues[1:]], [2, 1])
+
+    def test_logs_view_handles_future_timestamp(self):
+        """A log line stamped slightly in the future lands in the current hour instead of a 500."""
+        import tempfile
+        from datetime import datetime, timedelta
+        from unittest.mock import patch
+        from django.test import RequestFactory, override_settings
+        from apps.admin_panel.views import system
+
+        future = (datetime.now() + timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S,000')
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, 'django.log').write_text(f'[{future}] ERROR apps.x — clock skew\n', encoding='utf-8')
+            with override_settings(LOGS_DIR=Path(tmp)), patch.object(system, 'render') as render:
+                system.logs(RequestFactory().get('/admin/system/logs/'))
+        buckets = render.call_args[0][2]['buckets']
+        self.assertEqual(buckets[-1]['errors'], 1)

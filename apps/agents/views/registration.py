@@ -1016,10 +1016,10 @@ def _get_registration_context(request):
         'prefilled_phone': quick_phone or draft_phone,
         'prefilled_whatsapp': quick_phone or getattr(draft, 'whatsapp', '') or draft_phone,
         'prefilled_state': getattr(draft, 'state', '') or '',
-        'agent_segments_json': json.dumps([
+        'agent_segments_json': [
             s for s in (getattr(draft, 'segments', None) or [])
             if s in ALLOWED_SEGMENT_IDS
-        ]),
+        ],
         'require_quick_reg_gate': require_quick_reg_gate,
         'registration_swipe_enabled': bool(swipe.get('enabled')) and bool(swipe.get('slides')),
         'registration_swipe_slides': swipe.get('slides') or [],
@@ -1454,6 +1454,11 @@ def _post_payment_redirect_url(request, agent=None):
         pass
     if request.session.get('app_upgrade_handoff_plan'):
         return reverse('agents:agent_dashboard') + '?upgrade_success=1'
+    if agent is not None and getattr(agent, 'pk', None):
+        from apps.agents.models import AgentSubscription
+        # Renewal / repeat payment: an earlier paid order exists.
+        if AgentSubscription.objects.filter(agent=agent, payment_status='completed').count() > 1:
+            return reverse('agents:agent_dashboard')
     return reverse('agents:agent_edit_profile') + '?welcome=1'
 
 
@@ -2263,22 +2268,14 @@ def exclusive_discount_status(request):
 
 
 def _resolve_chooseplan_draft_id(request):
-    """Restore choose-plan draft from session, cookie phone, or logged-in email."""
+    """Restore choose-plan draft from session or logged-in email.
+
+    Never by phone (cookie or lead): a phone number does not prove ownership
+    of the draft's name/email.
+    """
     draft_id = request.session.get('current_draft_id')
     if draft_id:
         return draft_id
-    from apps.agents.models import AgentDraft
-    from apps.agents.services.registration_leads import normalize_phone
-    cookie_phone = normalize_phone(
-        (request.COOKIES.get('pa_quick_reg_phone') if hasattr(request, 'COOKIES') else '')
-        or request.session.get('quick_reg_phone')
-        or ''
-    )
-    if cookie_phone and re.fullmatch(r'[6-9]\d{9}', cookie_phone):
-        draft = AgentDraft.objects.filter(mobile=cookie_phone).order_by('-updated_at').first()
-        if draft:
-            request.session['current_draft_id'] = draft.pk
-            return draft.pk
     if not request.user.is_authenticated:
         return None
     try:

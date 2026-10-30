@@ -105,7 +105,7 @@ def logs(request):
     buckets = [{'errors': 0, 'warnings': 0, 'hour': (now - timedelta(hours=23 - i)).strftime('%H:00')} for i in range(24)]
     for e in entries:
         if e['time'] and now - e['time'] < timedelta(hours=24) and e['severity'] in ('error', 'warning'):
-            idx = 23 - int((now - e['time']).total_seconds() // 3600)
+            idx = min(23, 23 - int((now - e['time']).total_seconds() // 3600))  # future timestamps -> current hour
             buckets[idx]['errors' if e['severity'] == 'error' else 'warnings'] += 1
     peak = max([b['errors'] + b['warnings'] for b in buckets] + [1])
     for b in buckets:

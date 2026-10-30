@@ -10,12 +10,13 @@ Admin Panel Controller for Personal Digital Visiting Card Studio Management:
 
 import json
 import logging
+import re
 from typing import Optional, Tuple
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib import messages
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
 from django.core.paginator import Paginator
 from django.urls import reverse
 
@@ -25,6 +26,8 @@ from apps.admin_panel.models import AdminActivityLog
 from apps.admin_panel.services.digital_card_studio import (
     get_digital_card_studio_config,
     save_digital_card_studio_config,
+    clean_card_url,
+    MAX_CARD_URL_LENGTH,
     DEFAULT_DIGITAL_CARD_STUDIO_CONFIG,
     VALID_POLICIES,
     VALID_BANNER_STYLES,
@@ -41,8 +44,6 @@ def _check_admin_permission(request) -> Tuple[Optional[Admin], bool]:
     Allowed: 'super' role, or 'content', 'agents', or 'site_settings' permissions.
     """
     admin_id = _get_admin_from_session(request)
-    if not admin_id and hasattr(request, 'session'):
-        admin_id = request.session.get('admin_id')
     if not admin_id:
         return None, False
 
@@ -107,7 +108,9 @@ def digital_card_studio_index(request):
     visibility_filter = request.GET.get('visibility', 'all').strip()
     page_num = request.GET.get('page', 1)
 
-    agents_qs = Agent.objects.select_related('profile', 'user').all().order_by('-id')
+    agents_qs = Agent.objects.select_related('profile', 'user').annotate(
+        card_leads_count=Count('leads', filter=Q(leads__interaction_type='digital_card_enquiry'), distinct=True)
+    ).order_by('-id')
 
     if search_q:
         agents_qs = agents_qs.filter(
@@ -138,12 +141,6 @@ def digital_card_studio_index(request):
         is_visible = getattr(prof, 'is_card_visible', True) if prof else True
         cfg = prof.get_card_config() if prof else {}
 
-        # Lead count for this specific agent from card
-        card_leads = AgentLead.objects.filter(
-            agent=ag,
-            interaction_type='digital_card_enquiry'
-        ).count()
-
         agents_decorated.append({
             'agent': ag,
             'profile': prof,
@@ -153,7 +150,7 @@ def digital_card_studio_index(request):
             'theme_color': cfg.get('theme_color') or studio_cfg.get('default_theme_color', '#0B1F3A'),
             'banner_style': cfg.get('banner_style') or studio_cfg.get('default_banner_style', 'profile'),
             'agency_name': (cfg.get('agency_name') or getattr(prof, 'agency_name', '') or ag.fullname or '').strip(),
-            'card_leads': card_leads,
+            'card_leads': ag.card_leads_count,
         })
 
     # 3. Recent 15 Card Leads
@@ -233,7 +230,11 @@ def update_studio_config(request):
         'meta_description_pattern': request.POST.get('meta_description_pattern', '').strip(),
     }
 
-    saved = save_digital_card_studio_config(updates, request=request)
+    try:
+        save_digital_card_studio_config(updates, request=request)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect('admin_digital_card_studio')
     messages.success(request, 'Digital Visiting Card Studio settings & policies updated successfully.')
     return redirect('admin_digital_card_studio')
 
@@ -283,8 +284,7 @@ def admin_agent_card_detail_api(request, agent_id):
         return JsonResponse({'success': False, 'message': 'Permission denied.'}, status=403)
 
     agent = get_object_or_404(Agent, id=agent_id)
-    _ensure_profile(agent, agent.agent_slug)
-    profile = agent.get_primary_profile() or getattr(agent, 'profile', None)
+    profile = agent.get_primary_profile()
     cfg = profile.get_card_config() if profile else {}
 
     return JsonResponse({
@@ -298,9 +298,9 @@ def admin_agent_card_detail_api(request, agent_id):
             'slug': profile.slug if profile else agent.agent_slug,
             'card_url': reverse('agents:agent_public_card', kwargs={'slug': profile.slug if profile else agent.agent_slug}),
             'is_card_visible': getattr(profile, 'is_card_visible', True),
-            'agency_name': (profile.agency_name if profile else '') or cfg.get('agency_name', ''),
-            'card_tagline': (profile.card_tagline if profile else '') or cfg.get('tagline', ''),
-            'card_bio': cfg.get('bio', '') or (profile.career_highlights if profile else '') or '',
+            'agency_name': (getattr(profile, 'agency_name', '') or '') or cfg.get('agency_name', ''),
+            'card_tagline': (getattr(profile, 'card_tagline', '') or '') or cfg.get('tagline', ''),
+            'card_bio': cfg.get('bio', '') or getattr(profile, 'career_highlights', '') or '',
             'theme_color': cfg.get('theme_color', '#0B1F3A'),
             'banner_style': cfg.get('banner_style', 'profile'),
             'whatsapp_msg': cfg.get('whatsapp_msg', ''),
@@ -359,6 +359,23 @@ def admin_agent_card_save_api(request, agent_id):
     whatsapp_msg = request.POST.get('whatsapp_msg', '').strip()
     slug_val = request.POST.get('slug', '').strip()
 
+    if theme_color and not re.match(r'^#[A-Fa-f0-9]{6}$', theme_color):
+        return JsonResponse({'success': False, 'message': 'Theme color must be a hex value like #0B1F3A.'}, status=400)
+    safe_button_url = clean_card_url(custom_button_url)
+    if safe_button_url is None:
+        return JsonResponse({
+            'success': False,
+            'message': f'Button link must be a site path starting with "/" or an http(s) URL (max {MAX_CARD_URL_LENGTH} characters).',
+        }, status=400)
+    new_slug = None
+    if slug_val and slug_val != profile.slug:
+        from django.utils.text import slugify
+        new_slug = slugify(slug_val)
+        if not new_slug:
+            return JsonResponse({'success': False, 'message': 'Card slug must contain letters or numbers.'}, status=400)
+        if new_slug != profile.slug and AgentProfile.objects.filter(slug=new_slug).exclude(id=profile.id).exists():
+            return JsonResponse({'success': False, 'message': f"The card slug '{new_slug}' is already in use."}, status=400)
+
     if agency_name:
         profile.agency_name = agency_name
         cfg['agency_name'] = agency_name
@@ -373,20 +390,16 @@ def admin_agent_card_save_api(request, agent_id):
         cfg['banner_style'] = banner_style
     if custom_button_label:
         cfg['custom_button_label'] = custom_button_label
-    if custom_button_url:
-        cfg['custom_button_url'] = custom_button_url
+    if safe_button_url:
+        cfg['custom_button_url'] = safe_button_url
     if whatsapp_msg:
         cfg['whatsapp_msg'] = whatsapp_msg
 
     if 'is_card_visible' in request.POST:
         profile.is_card_visible = request.POST.get('is_card_visible') == '1'
 
-    # If slug changed, ensure uniqueness
-    if slug_val and slug_val != profile.slug:
-        from django.utils.text import slugify
-        new_slug = slugify(slug_val) or slug_val
-        if not AgentProfile.objects.filter(slug=new_slug).exclude(id=profile.id).exists():
-            profile.slug = new_slug
+    if new_slug:
+        profile.slug = new_slug
 
     profile.card_config = cfg
     profile.save(update_fields=['agency_name', 'card_tagline', 'slug', 'is_card_visible', 'card_config', 'updated_at'])

@@ -12,6 +12,7 @@ _JUNK_CITY = re.compile(
     r'^(all\b|and all\b|world\b|other\b|na\b|n/?a\b|none\b|\d)',
     re.IGNORECASE,
 )
+_CITY_NAMES_CACHE_KEY = 'agent_city:city_names'
 _PIN = re.compile(r'^[1-9]\d{5}$')
 _OFFICE_SUFFIX = re.compile(
     r'\s+(S\.?O\.?|B\.?O\.?|H\.?O\.?|G\.?P\.?O\.?)$',
@@ -140,6 +141,32 @@ def _service_city_names(agent):
     return [name for name in names if _sensible_city_name(name)]
 
 
+def _service_pincode_row(agent, pin):
+    try:
+        # Use the prefetched rows on listing pages instead of one query per card.
+        if 'servicePincodes' in getattr(agent, '_prefetched_objects_cache', {}):
+            return next(
+                (row for row in agent.servicePincodes.all() if row.service_pincode == pin),
+                None,
+            )
+        return agent.servicePincodes.filter(service_pincode=pin).first()
+    except Exception:
+        return None
+
+
+def _known_city_names():
+    from django.core.cache import cache
+    names = cache.get(_CITY_NAMES_CACHE_KEY)
+    if names is None:
+        try:
+            from apps.agents.models import City
+            names = list(City.objects.values_list('name', flat=True))
+        except Exception:
+            return []
+        cache.set(_CITY_NAMES_CACHE_KEY, names, 60 * 60)
+    return names
+
+
 def resolve_agent_city(agent):
     """Return the agent's own city, or their state when the city is unknown."""
     if agent is None or _is_mock(agent):
@@ -161,10 +188,7 @@ def resolve_agent_city(agent):
         city = _city_from_pincode_row(row)
         if city:
             return city
-        try:
-            service_pin = agent.servicePincodes.filter(service_pincode=pin).first()
-        except Exception:
-            service_pin = None
+        service_pin = _service_pincode_row(agent, pin)
         if service_pin is not None and not _is_mock(service_pin):
             named = _title_city(getattr(service_pin, 'city_name', ''))
             if named and _sensible_city_name(named):
@@ -183,12 +207,7 @@ def resolve_agent_city(agent):
     if matched:
         return matched
     if address.strip():
-        try:
-            from apps.agents.models import City
-            known = list(City.objects.values_list('name', flat=True))
-        except Exception:
-            known = []
-        matched = _rightmost_city(address, known, skip_name=state)
+        matched = _rightmost_city(address, _known_city_names(), skip_name=state)
         if matched:
             return matched
 
@@ -199,6 +218,19 @@ def resolve_agent_city(agent):
 
 def agent_city_label(agent):
     """City label for cards and listings, with a count of other service cities."""
+    cached = getattr(agent, '_agent_city_label', None) if not _is_mock(agent) else None
+    if isinstance(cached, str):
+        return cached
+    label = _agent_city_label(agent)
+    if agent is not None and not _is_mock(agent):
+        try:
+            agent._agent_city_label = label
+        except Exception:
+            pass
+    return label
+
+
+def _agent_city_label(agent):
     city = resolve_agent_city(agent)
     if not city:
         return ''

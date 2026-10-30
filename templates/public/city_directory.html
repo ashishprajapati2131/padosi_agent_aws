@@ -13,42 +13,7 @@
 {% block twitter_description %}{{ meta_description }}{% endblock %}
 
 {% block extra_head %}
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "ItemList",
-  "name": "Verified {% if category %}{{ category.label }}{% else %}Insurance{% endif %} Agents in {{ city_name }}",
-  "description": "{{ meta_description|escapejs }}",
-  "numberOfItems": {{ agent_count }},
-  "itemListElement": [
-    {% for a in agents %}
-    {
-      "@type": "ListItem",
-      "position": {{ forloop.counter }},
-      "item": {
-        "@type": "InsuranceAgency",
-        "name": "{{ a.fullname|escapejs }}",
-        "url": "{{ public_site_base }}/{{ a.state_code }}/{{ a.agent_slug }}/",
-        {% if a.profile.profile_photo_url %}"image": "{% if a.profile.profile_photo_url|slice:':1' == '/' %}{{ public_site_base }}{% endif %}{{ a.profile.profile_photo_url|escapejs }}",{% endif %}
-        {% if a.mobile %}"telephone": "+91{{ a.mobile }}",{% endif %}
-        "address": {
-          "@type": "PostalAddress",
-          "addressLocality": "{{ city_name|escapejs }}",
-          "addressRegion": "{{ state_name|escapejs }}",
-          {% if a.agent_pincode %}"postalCode": "{{ a.agent_pincode|escapejs }}",{% endif %}
-          "addressCountry": "IN"
-        }{% if a.average_rating and a.review_count %},
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "{{ a.average_rating }}",
-          "reviewCount": "{{ a.review_count }}"
-        }{% endif %}
-      }
-    }{% if not forloop.last %},{% endif %}
-    {% endfor %}
-  ]
-}
-</script>
+<script type="application/ld+json">{{ item_list_schema|safe_json }}</script>
 {% if category %}
 <script type="application/ld+json">{{ faq_schema|safe_json }}</script>
 {% endif %}

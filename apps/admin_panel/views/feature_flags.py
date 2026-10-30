@@ -60,8 +60,7 @@ def _check_admin_permission(request) -> Tuple[Optional[Admin], bool]:
 
         return admin_obj, False
     except Exception:
-        # Fallback to true if admin_id is valid to avoid blocking super admin on DB schema nuances
-        return None, bool(admin_id)
+        return None, False
 
 
 def feature_flags_index(request):
@@ -74,7 +73,7 @@ def feature_flags_index(request):
         return redirect('admin_login')
 
     admin_obj, has_permission = _check_admin_permission(request)
-    if not has_permission and admin_obj:
+    if not has_permission:
         messages.error(request, "You do not have permission to access Feature Flags.")
         return redirect('admin_dashboard')
 
@@ -146,7 +145,7 @@ def feature_flag_toggle(request):
         return redirect('admin_login')
 
     admin_obj, has_permission = _check_admin_permission(request)
-    if not has_permission and admin_obj:
+    if not has_permission:
         return JsonResponse({'success': False, 'message': 'Unauthorized action.'}, status=403)
 
     # Read payload (form-data or json)
@@ -205,7 +204,7 @@ def feature_flag_create(request):
         return redirect('admin_login')
 
     admin_obj, has_permission = _check_admin_permission(request)
-    if not has_permission and admin_obj:
+    if not has_permission:
         messages.error(request, "Permission denied.")
         return redirect('admin_feature_flags')
 
@@ -250,7 +249,7 @@ def feature_flag_update(request):
         return redirect('admin_login')
 
     admin_obj, has_permission = _check_admin_permission(request)
-    if not has_permission and admin_obj:
+    if not has_permission:
         messages.error(request, "Permission denied.")
         return redirect('admin_feature_flags')
 
@@ -294,7 +293,7 @@ def feature_flag_delete(request):
         return redirect('admin_login')
 
     admin_obj, has_permission = _check_admin_permission(request)
-    if not has_permission and admin_obj:
+    if not has_permission:
         messages.error(request, "Permission denied.")
         return redirect('admin_feature_flags')
 

@@ -25,6 +25,7 @@ from apps.agents.views import pwa as pwa_views
 from apps.insurance.views.dashboard import InsuranceLoginView
 
 from django.contrib.sitemaps.views import sitemap
+from django.views.decorators.cache import cache_page
 from padosi_agent.sitemaps import sitemaps
 from padosi_agent.views import csrf_refresh_api, health_check_view
 from apps.event_referral.views.public_leaderboard import public_leaderboard as stall_public_leaderboard
@@ -39,7 +40,8 @@ urlpatterns = [
     path('manifest.webmanifest', pwa_views.manifest,       name='pwa.manifest'),
     path('sw.js',                pwa_views.service_worker, name='pwa.sw'),
     path('offline.html',         pwa_views.offline,        name='pwa.offline'),
-    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+    # Heavy (counts + every listed agent): cache the rendered XML for an hour.
+    path('sitemap.xml', cache_page(60 * 60)(sitemap), {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
     path('insurance-login/', InsuranceLoginView.as_view(), name='insurance_login'),
     # Removed overriding logout view, now handled by apps.agents.urls
     path('media/app/private/<path:file_path>', serve_private_file, name='serve_private_file'),

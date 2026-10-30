@@ -8,11 +8,14 @@ Comprehensive test suite for Feature Flags Management:
 - Audit logging verification via AdminActivityLog
 """
 
+import datetime
 import json
 from unittest.mock import patch
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, Client
+from django.urls import reverse
 
 from apps.admin_panel.models.admin_auth import Admin
+from apps.admin_panel.models.user_session import UserSession, UserSessionData
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
 from apps.home.models.site_setting import SiteSetting
 from apps.admin_panel.services.feature_flags import (
@@ -26,6 +29,7 @@ from apps.admin_panel.services.feature_flags import (
     get_active_flags_count,
     sanitize_redirect_url,
     sanitize_key,
+    FEATURE_FLAGS_REGISTRY_KEY,
 )
 from apps.admin_panel.views.feature_flags import (
     feature_flags_index,
@@ -209,3 +213,79 @@ class FeatureFlagsTests(TestCase):
         self.assertIsNotNone(flag)
         self.assertEqual(flag['name'], 'Festive Promo 2026')
         self.assertTrue(flag['is_enabled'])
+
+    def test_custom_flag_never_touches_real_setting(self):
+        """A custom flag named like a real setting is namespaced; toggle/delete leave the setting alone."""
+        SiteSetting.set_value('razorpay_mode', 'live', group='payment')
+        self.assertTrue(create_custom_feature_flag('razorpay_mode', 'X', 'Custom', '', '', is_enabled=True)['success'])
+        set_feature_flag_status('razorpay_mode', False)
+        self.assertTrue(delete_custom_feature_flag('razorpay_mode')['success'])
+        self.assertEqual(SiteSetting.get_value('razorpay_mode'), 'live')
+        self.assertFalse(SiteSetting.objects.filter(key='custom_flag_razorpay_mode').exists())
+        self.assertFalse(create_custom_feature_flag(FEATURE_FLAGS_REGISTRY_KEY, 'X', 'Custom', '', '')['success'])
+
+    def test_legacy_custom_flag_keeps_bare_key(self):
+        """Flags stored before namespacing still read their bare key; delete leaves that row."""
+        SiteSetting.set_value(FEATURE_FLAGS_REGISTRY_KEY, {'old_flag': {'key': 'old_flag', 'name': 'Old', 'default': False}})
+        SiteSetting.set_value('old_flag', '1')
+        self.assertTrue(get_feature_flag('old_flag')['is_enabled'])
+        delete_custom_feature_flag('old_flag')
+        self.assertTrue(SiteSetting.objects.filter(key='old_flag').exists())
+
+    def test_edited_system_flag_listed_once(self):
+        update_feature_flag_metadata('wholesale_marketplace_enabled', 'Wholesale Renamed', '', 'd', '/x/')
+        matches = [f for f in get_all_feature_flags() if f['key'] == 'wholesale_marketplace_enabled']
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]['name'], 'Wholesale Renamed')
+        self.assertTrue(matches[0]['is_system'])
+        self.assertFalse(matches[0]['is_custom'])
+
+    def test_subscription_expiry_flag_matches_enforcement(self):
+        from apps.agents.services.subscription_expiry import expiry_enforced
+        self.assertFalse(get_feature_flag('subscription_expiry_enforced')['is_enabled'])
+        self.assertFalse(expiry_enforced())
+
+    def test_dead_system_flags_removed(self):
+        keys = {f['key'] for f in get_all_feature_flags()}
+        for dead in ('fastapi_services_enabled', 'find_agent_locator_v2', 'qr_service_enabled',
+                     'google_review_system_enabled', 'event_referral_test_mode'):
+            self.assertNotIn(dead, keys)
+
+    def test_permission_check_fails_closed(self):
+        req = self._setup_req(self.rf.post('/admin/feature-flags/toggle/', {'key': 'feature_flag_pincode_heatmap'}))
+        with patch('apps.admin_panel.views.feature_flags._get_admin_from_session', return_value=self.admin.id), \
+             patch('apps.admin_panel.views.feature_flags.Admin.objects.filter', side_effect=Exception('db')):
+            resp = feature_flag_toggle(req)
+        self.assertEqual(resp.status_code, 403)
+
+
+class FeatureFlagsStaffAccessTests(TestCase):
+    """Staff reach the Control Center only with the permission the sidebar checks."""
+
+    def _client_for(self, admin):
+        now = datetime.datetime.now()
+        sess = UserSession.objects.create(session_token=f'tok_ff_{admin.id}', admin_id=admin.id,
+                                          expires_at=now + datetime.timedelta(days=1), created_at=now, updated_at=now)
+        UserSessionData.objects.create(session=sess, data_key='admin_id', data_value=str(admin.id))
+        c = Client()
+        c.cookies['session_token'] = sess.session_token
+        return c
+
+    def test_staff_without_permission_denied(self):
+        staff = Admin.objects.create(name='S1', email='s1@ff.test', password='x', role='staff', permissions=['leads'])
+        c = self._client_for(staff)
+        resp = c.get(reverse('admin_feature_flags'))
+        self.assertEqual(resp.status_code, 302)
+        self.assertNotIn('feature-flags', resp.url)
+        resp = c.post(reverse('admin_feature_flag_toggle'), {'key': 'feature_flag_pincode_heatmap', 'state': '0'})
+        self.assertNotEqual(resp.status_code, 200)
+        self.assertIsNone(SiteSetting.get_value('feature_flag_pincode_heatmap'))
+
+    def test_staff_with_permission_allowed(self):
+        staff = Admin.objects.create(name='S2', email='s2@ff.test', password='x', role='staff', permissions=['feature_flags'])
+        c = self._client_for(staff)
+        self.assertEqual(c.get(reverse('admin_feature_flags')).status_code, 200)
+        resp = c.post(reverse('admin_feature_flag_toggle'), {'key': 'feature_flag_pincode_heatmap', 'state': '0'},
+                      HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['success'])

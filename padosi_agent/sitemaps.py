@@ -93,14 +93,20 @@ class CitySitemap(Sitemap):
         from django.db.models import Count
         from apps.agents.models import City
         from apps.home.services.agent_filters import listed_agents_queryset
-        from apps.home.views.pages import JUNK_CITY_SLUGS, MIN_INDEXABLE_CITY_AGENTS
+        from apps.home.views.pages import JUNK_CITY_SLUGS, MIN_INDEXABLE_CITY_AGENTS, STATE_HUBS
         from django.utils.text import slugify
         # Only cities the city page itself marks indexable.
         cities = (City.objects.filter(is_active=True, agents__in=listed_agents_queryset().values('id'))
                 .annotate(n=Count('agents', distinct=True))
                 .filter(n__gte=MIN_INDEXABLE_CITY_AGENTS).order_by('name'))
-        return [c for c in cities if _PROFILE_SLUG_RE.fullmatch(c.slug or slugify(c.name))
-                and (c.slug or slugify(c.name)) not in JUNK_CITY_SLUGS]
+        # One entry per URL; state-hub slugs render the hub page, listed by CityCategorySitemap.
+        by_slug = {}
+        for c in cities:
+            slug = c.slug or slugify(c.name)
+            if (_PROFILE_SLUG_RE.fullmatch(slug) and slug not in JUNK_CITY_SLUGS
+                    and slug not in STATE_HUBS):
+                by_slug.setdefault(slug, c)
+        return list(by_slug.values())
 
     def location(self, obj):
         from django.utils.text import slugify
@@ -137,7 +143,7 @@ class CityCategorySitemap(Sitemap):
                 qs = filter_agents_for_category(in_state, pages[key]) if key else in_state
                 if qs.count() >= MIN_INDEXABLE_CITY_AGENTS:
                     items.append((state_slug, key))
-        return items
+        return list(dict.fromkeys(items))
 
     def location(self, item):
         from apps.home.views.pages import _directory_path

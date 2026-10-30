@@ -19,11 +19,16 @@ from django.core.cache import cache
 
 from apps.home.models.site_setting import SiteSetting
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
+from apps.admin_panel.services.digital_card_studio import CACHE_KEY_STUDIO_CONFIG
 
 logger = logging.getLogger(__name__)
 
 FEATURE_FLAGS_REGISTRY_KEY = 'admin_feature_flags_registry'
 FEATURE_FLAGS_CACHE_KEY = 'feature_flags_all_v1'
+# Custom flags store their state under this prefix so they can never overwrite a real
+# SiteSetting. Flags created before the prefix have no 'setting_key' and keep their bare key.
+CUSTOM_FLAG_SETTING_PREFIX = 'custom_flag_'
+SYSTEM_FLAG_EDITABLE_FIELDS = ('name', 'category', 'description', 'redirect_url', 'icon', 'updated_at')
 
 # Built-in System Feature Flags pre-configured with descriptions, categories, icons, and redirect routes
 DEFAULT_SYSTEM_FLAGS: List[Dict[str, Any]] = [
@@ -113,58 +118,8 @@ DEFAULT_SYSTEM_FLAGS: List[Dict[str, Any]] = [
         'category': 'Security & Compliance',
         'description': 'Automatically revokes public listing and premium portal perks once an agent\'s 365-day subscription or trial period lapses.',
         'redirect_url': '/admin/settings/security/',
-        'default': True,
+        'default': False,
         'icon': 'fa-solid fa-calendar-xmark',
-        'is_system': True,
-    },
-    {
-        'key': 'event_referral_test_mode',
-        'name': 'Referral Championship Sandbox / Test Mode',
-        'category': 'Growth & Marketing',
-        'description': 'Enables testing mode for referral reward simulations and points calculation without altering live agent balances.',
-        'redirect_url': '/admin/referrals/',
-        'default': False,
-        'icon': 'fa-solid fa-trophy',
-        'is_system': True,
-    },
-    {
-        'key': 'qr_service_enabled',
-        'name': 'Agent QR Code Marketing Generator',
-        'category': 'Growth & Marketing',
-        'description': 'Dynamically generates branded SVG and PNG QR codes linking directly to agent profiles and lead capture forms.',
-        'redirect_url': '/admin/qr-files/',
-        'default': True,
-        'icon': 'fa-solid fa-qrcode',
-        'is_system': True,
-    },
-    {
-        'key': 'fastapi_services_enabled',
-        'name': 'High-Performance FastAPI Services Hub',
-        'category': 'Developer & API',
-        'description': 'Controls FastAPI backend endpoints for high-speed mobile client API interactions and interactive OpenAPI documentation.',
-        'redirect_url': '/api/docs',
-        'default': True,
-        'icon': 'fa-solid fa-code',
-        'is_system': True,
-    },
-    {
-        'key': 'google_review_system_enabled',
-        'name': 'Automated Google Review Collection',
-        'category': 'Growth & Marketing',
-        'description': 'Coordinates automated feedback and Google My Business review invitations after verified client interactions.',
-        'redirect_url': '/admin/reviews/',
-        'default': False,
-        'icon': 'fa-brands fa-google',
-        'is_system': True,
-    },
-    {
-        'key': 'find_agent_locator_v2',
-        'name': 'Enhanced Geospatial Agent Locator',
-        'category': 'Core Platform',
-        'description': 'Powers the interactive radius-based agent discovery tool with auto-detected coordinates and postal code fallback.',
-        'redirect_url': '/admin/find-agent-locator/',
-        'default': True,
-        'icon': 'fa-solid fa-location-crosshairs',
         'is_system': True,
     },
 ]
@@ -208,7 +163,7 @@ def _read_live_status(flag_def: Dict[str, Any]) -> bool:
                 return bool(popup_data.get('is_active', False))
             return default_val
 
-        raw_val = SiteSetting.get_value(key, None)
+        raw_val = SiteSetting.get_value(flag_def.get('setting_key') or key, None)
         if raw_val is None:
             return default_val
         return _parse_bool_value(raw_val, default_val)
@@ -242,7 +197,7 @@ def _sync_live_status_to_db(flag_def: Dict[str, Any], is_enabled: bool, category
 
     # Standard direct key
     db_val = '1' if is_enabled else '0'
-    SiteSetting.set_value(key, db_val, group=category or 'general')
+    SiteSetting.set_value(flag_def.get('setting_key') or key, db_val, group=category or 'general')
 
 
 def get_custom_registry() -> Dict[str, Dict[str, Any]]:
@@ -275,15 +230,20 @@ def get_all_feature_flags() -> List[Dict[str, Any]]:
     custom_registry = get_custom_registry()
     flags_list: List[Dict[str, Any]] = []
 
-    # 1. Process System Flags
+    # 1. Process System Flags (metadata edits are stored as overrides in the registry)
     for defn in DEFAULT_SYSTEM_FLAGS:
         flag = dict(defn)
+        override = custom_registry.get(defn['key'])
+        if isinstance(override, dict):
+            flag.update({f: override[f] for f in SYSTEM_FLAG_EDITABLE_FIELDS if f in override})
         flag['is_enabled'] = _read_live_status(defn)
         flag['is_custom'] = False
         flags_list.append(flag)
 
-    # 2. Process Custom Flags
+    # 2. Process Custom Flags (skip system overrides, incl. ones for retired system flags)
     for key, c_flag in custom_registry.items():
+        if not isinstance(c_flag, dict) or c_flag.get('is_system'):
+            continue
         flag = dict(c_flag)
         flag['key'] = key
         flag['is_system'] = False
@@ -351,7 +311,7 @@ def set_feature_flag_status(
     SiteSetting.flush_cache()
     cache.delete(FEATURE_FLAGS_CACHE_KEY)
     cache.delete('admin_sidebar_counts_v4')
-    cache.delete('digital_card_studio_config_v2')
+    cache.delete(CACHE_KEY_STUDIO_CONFIG)
 
     status_str = "Enabled" if new_state else "Disabled"
     action_msg = f"Toggled feature flag '{flag.get('name', key)}' ({key}) to {status_str}"
@@ -436,6 +396,8 @@ def create_custom_feature_flag(
     for defn in DEFAULT_SYSTEM_FLAGS:
         if defn['key'] == clean_key:
             return {'success': False, 'message': f"The key '{clean_key}' is a protected system feature flag."}
+    if clean_key == FEATURE_FLAGS_REGISTRY_KEY:
+        return {'success': False, 'message': f"The key '{clean_key}' is reserved."}
 
     registry = get_custom_registry()
     if clean_key in registry:
@@ -448,6 +410,7 @@ def create_custom_feature_flag(
 
     flag_record = {
         'key': clean_key,
+        'setting_key': CUSTOM_FLAG_SETTING_PREFIX + clean_key,
         'name': clean_name,
         'category': clean_category,
         'description': description.strip(),
@@ -526,7 +489,7 @@ def update_feature_flag_metadata(
         if not sys_match:
             return {'success': False, 'message': f"Feature flag '{clean_key}' was not found."}
 
-        # Store system flag overrides in registry
+        # Store system flag overrides in registry (only the editable metadata is merged back)
         rec = dict(sys_match)
         rec['name'] = name.strip() or rec['name']
         rec['category'] = category.strip() or rec['category']
@@ -583,11 +546,14 @@ def delete_custom_feature_flag(
     deleted_record = registry.pop(clean_key)
     save_custom_registry(registry)
 
-    # Clean up associated SiteSetting row
-    try:
-        SiteSetting.objects.filter(key=clean_key).delete()
-    except Exception as e:
-        logger.warning(f"Failed to delete SiteSetting row for {clean_key}: {e}")
+    # Clean up the flag's own SiteSetting row. Legacy flags (no setting_key) used a bare key
+    # that may be a real setting, so their row is left in place.
+    setting_key = deleted_record.get('setting_key') or ''
+    if setting_key.startswith(CUSTOM_FLAG_SETTING_PREFIX):
+        try:
+            SiteSetting.objects.filter(key=setting_key).delete()
+        except Exception as e:
+            logger.warning(f"Failed to delete SiteSetting row for {setting_key}: {e}")
 
     SiteSetting.flush_cache()
 

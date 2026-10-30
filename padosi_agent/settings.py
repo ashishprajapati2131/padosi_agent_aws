@@ -137,6 +137,7 @@ MIDDLEWARE = [
     'padosi_agent.middleware.StaleCookieSanitizerMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'padosi_agent.middleware.WwwRedirectMiddleware',
     'django.middleware.gzip.GZipMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

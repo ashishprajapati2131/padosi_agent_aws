@@ -25,7 +25,7 @@ def _ensure_profile(agent, preferred_slug=None):
 
     profile = agent.get_primary_profile()
     if not profile:
-        candidate_slug = preferred_slug or slugify(agent.fullname) or slugify(agent.email.split('@')[0]) or str(agent.id)
+        candidate_slug = preferred_slug or slugify(agent.fullname) or slugify((agent.email or '').split('@')[0]) or str(agent.id)
         unique_slug = candidate_slug
         count = 1
         while AgentProfile.objects.filter(slug=unique_slug).exclude(agent=agent).exists():
@@ -44,7 +44,7 @@ def _ensure_profile(agent, preferred_slug=None):
     else:
         # If profile exists but slug is empty
         if not profile.slug:
-            candidate_slug = preferred_slug or slugify(agent.fullname) or slugify(agent.email.split('@')[0]) or str(agent.id)
+            candidate_slug = preferred_slug or slugify(agent.fullname) or slugify((agent.email or '').split('@')[0]) or str(agent.id)
             unique_slug = candidate_slug
             count = 1
             while AgentProfile.objects.filter(slug=unique_slug).exclude(agent=agent).exists():
@@ -68,16 +68,12 @@ def _ensure_profile(agent, preferred_slug=None):
 
 
 def _resolve_agent_by_slug(slug):
-    """
-    Resolve Agent instance flexibly by:
-    1. Exact or case-insensitive profile slug
-    2. URL-unquoted and normalized slug (with/without hyphens)
-    3. Agent fullname (exact and case-insensitive, with spaces/hyphens/underscores for /card/{AGENT Name})
-    4. Profile display_name
-    5. Agent email or username (e.g. sadhuparth1080p matching sadhuparth1080p@gmail.com)
-    6. Numeric primary key (agent ID)
-    7. Fallback: Substring / slugified match on agent fullname
-    8. Ensures agent has an active profile with valid slug
+    """Resolve a public /card/<slug>/ to an Agent. Read-only: never creates profiles.
+
+    1. Profile slug (case-insensitive)
+    2. Numeric agent ID
+    3. Slugified fullname / display_name, only when exactly one agent matches
+       (keeps old name-based links working without guessing between namesakes)
     """
     if not slug:
         return None
@@ -91,62 +87,64 @@ def _resolve_agent_by_slug(slug):
     unquoted = urllib.parse.unquote(raw_slug).strip()
     normalized_slug = slugify(unquoted) or raw_slug.lower()
     with_spaces = unquoted.replace('-', ' ').replace('_', ' ').strip()
-    with_hyphens = unquoted.replace(' ', '-').replace('_', '-').strip()
 
-    # 1. Search by profile slug (case-insensitive)
     agent = Agent.objects.filter(
         Q(profile__slug__iexact=raw_slug) |
         Q(profile__slug__iexact=unquoted) |
-        Q(profile__slug__iexact=normalized_slug) |
-        Q(profile__slug__iexact=with_hyphens)
+        Q(profile__slug__iexact=normalized_slug)
     ).first()
     if agent:
-        return _ensure_profile(agent, normalized_slug)
+        return agent
 
-    # 2. Search by Agent fullname (case-insensitive match for /card/{AGENT Name})
-    agent = Agent.objects.filter(
-        Q(fullname__iexact=unquoted) |
-        Q(fullname__iexact=with_spaces) |
-        Q(fullname__iexact=with_hyphens) |
-        Q(fullname__iexact=raw_slug)
-    ).first()
-    if agent:
-        return _ensure_profile(agent, normalized_slug)
-
-    # 3. Search by Profile display_name
-    agent = Agent.objects.filter(
-        Q(profile__display_name__iexact=unquoted) |
-        Q(profile__display_name__iexact=with_spaces)
-    ).first()
-    if agent:
-        return _ensure_profile(agent, normalized_slug)
-
-    # 4. Search by email or email prefix (e.g. sadhuparth1080p matching sadhuparth1080p@gmail.com)
-    agent = Agent.objects.filter(
-        Q(email__iexact=unquoted) |
-        Q(email__istartswith=f"{unquoted}@") |
-        Q(user__username__iexact=unquoted)
-    ).first()
-    if agent:
-        return _ensure_profile(agent, normalized_slug)
-
-    # 5. Search by numeric agent ID
     if raw_slug.isdigit():
         agent = Agent.objects.filter(id=int(raw_slug)).first()
         if agent:
-            return _ensure_profile(agent, normalized_slug)
+            return agent
 
-    # 6. Fallback: Search agents where slugified fullname matches normalized_slug
-    if normalized_slug and len(normalized_slug) >= 2:
-        for candidate in Agent.objects.filter(
-            Q(fullname__icontains=normalized_slug.replace('-', ' ')[:10]) |
-            Q(email__icontains=normalized_slug[:10])
-        )[:30]:
-            cand_slug = slugify(candidate.fullname) or ''
-            if cand_slug == normalized_slug or cand_slug.replace('-', '') == normalized_slug.replace('-', ''):
-                return _ensure_profile(candidate, normalized_slug)
-
+    if not normalized_slug:
+        return None
+    matches = set()
+    for candidate in Agent.objects.filter(
+        Q(fullname__iexact=unquoted) | Q(fullname__iexact=with_spaces) |
+        Q(profile__display_name__iexact=unquoted) | Q(profile__display_name__iexact=with_spaces)
+    ).distinct()[:5]:
+        profile = candidate.get_primary_profile()
+        names = (candidate.fullname, getattr(profile, 'display_name', None))
+        if any(slugify(n or '') == normalized_slug for n in names):
+            matches.add(candidate.pk)
+    if len(matches) == 1:
+        return Agent.objects.filter(pk=matches.pop()).first()
     return None
+
+
+_PUBLIC_HIDDEN_STATUSES = ('incomplete', 'pending_payment', 'suspended', 'deleted', 'inactive', 'blacklisted')
+
+
+def _hidden_from_public(agent):
+    """Unpaid or blocked agents get no public card, QR or leads."""
+    return agent.status in _PUBLIC_HIDDEN_STATUSES or bool(getattr(agent, 'is_blacklisted', False))
+
+
+def _card_viewer_is_privileged(request, agent):
+    """Owner of the card or a logged-in admin."""
+    logged_agent = _logged_in_agent(request)
+    is_owner = bool(logged_agent and logged_agent.id == agent.id)
+    if not is_owner and request.user.is_authenticated:
+        is_owner = bool(getattr(request.user, 'agent', None) == agent or getattr(agent, 'user', None) == request.user)
+    if is_owner:
+        return True
+    try:
+        from apps.admin_panel.views.dashboard import _get_admin_from_session
+        return bool(_get_admin_from_session(request))
+    except Exception:
+        return False
+
+
+def _safe_card_link(url):
+    """Allow only http(s), relative, tel: and mailto: links (browsers ignore tabs/newlines in schemes)."""
+    url = (url or '').strip()
+    probe = re.sub(r'[\x00-\x20\x7f]+', '', url).lower()
+    return url if probe.startswith(('http://', 'https://', '/', 'tel:', 'mailto:')) else ''
 
 
 def _logged_in_agent(request):
@@ -204,7 +202,7 @@ def public_qr_image(request, slug, qr_type):
     if qr_type not in QR_TYPES or not is_qr_enabled():
         raise Http404('QR service is not available')
     agent = _resolve_agent_by_slug(slug)
-    if not agent:
+    if not agent or (_hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent)):
         raise Http404('Agent not found')
     plan = _resolve_agent_plan(agent.plan_type, agent=agent)
     if not qr_access_for_plan(plan):
@@ -225,24 +223,20 @@ def public_agent_card(request, slug):
     agent = _resolve_agent_by_slug(slug)
     if not agent:
         raise _Http404('Agent not found')
+
+    # Owner viewing their own card or admin previewing
+    is_privileged = _card_viewer_is_privileged(request, agent)
+    if not is_privileged and _hidden_from_public(agent):
+        return render(request, 'agents/profile_unavailable.html', {
+            'agent': agent,
+            'profile': agent.get_primary_profile(),
+        }, status=404)
+    # Hidden (unpaid/blocked) agents already returned 404 above, so this only fills in a missing
+    # profile for a paid agent or the owner/admin, as before.
+    _ensure_profile(agent)
     profile = agent.get_primary_profile()
     if profile is None:
         raise _Http404('Agent profile not found')
-
-    # Detect if logged-in agent is viewing their own card or admin is previewing
-    logged_agent = _logged_in_agent(request)
-    is_owner = bool(logged_agent and logged_agent.id == agent.id)
-    if not is_owner and request.user.is_authenticated:
-        is_owner = bool(getattr(request.user, 'agent', None) == agent or getattr(agent, 'user', None) == request.user)
-
-    is_admin = False
-    try:
-        from apps.admin_panel.views.dashboard import _get_admin_from_session
-        is_admin = bool(_get_admin_from_session(request))
-    except Exception:
-        is_admin = False
-
-    is_privileged = is_owner or is_admin
 
     # Master Admin ON/OFF Feature Flag
     raw_flag = SiteSetting.get_value('agent_digital_card_enabled', True)
@@ -261,7 +255,7 @@ def public_agent_card(request, slug):
         is_visible = bool(is_visible)
 
     if not is_privileged:
-        if agent.status in ('suspended', 'deleted') or getattr(agent, 'is_blacklisted', False) or not is_visible:
+        if not is_visible:
             return render(request, 'agents/profile_unavailable.html', {
                 'agent': agent,
                 'profile': profile,
@@ -420,11 +414,7 @@ def public_agent_card(request, slug):
         'powered_by_text': studio_cfg.get('powered_by_text', 'Powered by PadosiAgent'),
         'powered_by_url': studio_cfg.get('powered_by_url', '/'),
         'custom_button_label': (card_cfg.get('custom_button_label') or '').strip(),
-        'custom_button_url': (
-            (card_cfg.get('custom_button_url') or '').strip()
-            if not (card_cfg.get('custom_button_url') or '').strip().lower().startswith(('javascript:', 'data:', 'vbscript:'))
-            else ''
-        ),
+        'custom_button_url': _safe_card_link(card_cfg.get('custom_button_url')),
         'qr_type_label': QR_TYPE_LABELS['card'],
         'mobile_number': mobile_raw,
         'whatsapp_number': whatsapp_raw,
@@ -488,7 +478,7 @@ def agent_card_vcf_download(request, slug):
         raise Http404('Digital Card is disabled')
 
     agent = _resolve_agent_by_slug(slug)
-    if not agent:
+    if not agent or (_hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent)):
         raise Http404('Agent not found')
     profile = agent.get_primary_profile()
     if profile is None:
@@ -564,7 +554,7 @@ def agent_card_lead_submit(request, slug):
         return JsonResponse({'success': False, 'message': 'Digital Card enquiry is currently disabled.'}, status=403)
 
     agent = _resolve_agent_by_slug(slug)
-    if not agent:
+    if not agent or (_hidden_from_public(agent) and not _card_viewer_is_privileged(request, agent)):
         return JsonResponse({'success': False, 'message': 'Agent not found.'}, status=404)
 
     client_ip = ThreatMonitorMiddleware.get_client_ip(request)
@@ -814,7 +804,8 @@ def agent_save_card_customization(request):
     if len(custom_label) > 100: custom_label = custom_label[:100]
     if len(custom_url) > 500: custom_url = custom_url[:500]
     if custom_url:
-        lower_url = custom_url.lower()
+        # Browsers drop tabs/newlines inside a scheme ("java\tscript:").
+        lower_url = re.sub(r'[\x00-\x20\x7f]+', '', custom_url).lower()
         if lower_url.startswith(('javascript:', 'data:', 'vbscript:')):
             custom_url = ''
         elif not lower_url.startswith(('http://', 'https://')):
@@ -967,12 +958,14 @@ def public_review_card(request, slug):
     agent = _resolve_agent_by_slug(slug)
     if not agent:
         raise Http404('Agent not found')
+    owner = _logged_in_agent(request)
+    is_owner = bool(owner and owner.id == agent.id)
+    if is_owner:
+        _ensure_profile(agent)
     profile = agent.get_primary_profile()
     if profile is None:
         raise Http404('Agent profile not found')
     is_visible = bool(getattr(profile, 'is_profile_visible', False) or getattr(profile, 'is_card_visible', False))
-    owner = _logged_in_agent(request)
-    is_owner = bool(owner and owner.id == agent.id)
     if not is_owner and (agent.status in ('inactive', 'suspended', 'deleted') or not is_visible):
         return render(request, 'agents/profile_unavailable.html', {
             'agent': agent,

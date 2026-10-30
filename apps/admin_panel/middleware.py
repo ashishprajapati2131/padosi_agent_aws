@@ -398,8 +398,6 @@ class AdminPermissionMiddleware:
         from apps.admin_panel.models.admin_auth import Admin
         
         admin_id = _get_admin_from_session(request)
-        if not admin_id and hasattr(request, 'session'):
-            admin_id = request.session.get('admin_id')
         if not admin_id:
             import logging
             logging.getLogger(__name__).warning(f"Unauthorized admin access from path: {request.path}")
@@ -629,6 +627,13 @@ class AdminPermissionMiddleware:
             # Note: admin_settings_homepage* and admin_settings_hero_section*
             # map to 'content' (sidebar: Content Control), NOT 'site_settings'.
             'admin_content_about':                      'content',
+            # Visiting Card Studio (sidebar: Content Control)
+            'admin_digital_card_studio':                'content',
+            'admin_digital_card_studio_direct':         'content',
+            'admin_digital_card_studio_update':         'content',
+            'admin_digital_card_agent_toggle':          'content',
+            'admin_digital_card_agent_detail':          'content',
+            'admin_digital_card_agent_save':            'content',
             'admin_content_about_update':               'content',
             'admin_content_faqs':                       'content',
             'admin_content_faqs_settings_update':       'content',
@@ -765,6 +770,12 @@ class AdminPermissionMiddleware:
             'admin_error_logs_index':                   'error_logs',
             'admin_error_logs_show':                    'error_logs',
             'admin_error_logs_delete':                  'error_logs',
+            # ── Feature Flags (sidebar shows them for either permission) ──
+            'admin_feature_flags':                      ('feature_flags', 'site_settings'),
+            'admin_feature_flag_toggle':                ('feature_flags', 'site_settings'),
+            'admin_feature_flag_create':                ('feature_flags', 'site_settings'),
+            'admin_feature_flag_update':                ('feature_flags', 'site_settings'),
+            'admin_feature_flag_delete':                ('feature_flags', 'site_settings'),
             'security_threat_logs':                     'analytics',
             'security_threat_logs_delete':              'analytics',
             # ── Investment Types ──────────────────────────────────────────
@@ -834,6 +845,7 @@ class AdminPermissionMiddleware:
             'pincode': 'admin_pincode_index',
             'analytics': 'advanced_analytics',
             'error_logs': 'admin_error_logs_index',
+            'feature_flags': 'admin_feature_flags',
             'site_settings': 'admin_settings_general',
             'email_templates': 'admin_settings_templates',
             'server_health': 'admin_system_health',

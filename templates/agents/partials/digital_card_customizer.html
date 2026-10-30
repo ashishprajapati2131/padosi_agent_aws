@@ -849,7 +849,7 @@
                         </div>
 
                         <!-- Banner -->
-                        <div class="pa-mock-banner" id="mockBannerStrip" style="{% if card_banner_css %}{{ card_banner_css }}{% elif profile and profile.card_banner_css %}{{ profile.card_banner_css }}{% else %}linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%){% endif %}"></div>
+                        <div class="pa-mock-banner" id="mockBannerStrip" style="background: {% if card_banner_css %}{{ card_banner_css }}{% elif profile and profile.card_banner_css %}{{ profile.card_banner_css }}{% else %}linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%){% endif %}"></div>
 
                         <!-- Avatar Row -->
                         <div class="pa-mock-avatar-row">

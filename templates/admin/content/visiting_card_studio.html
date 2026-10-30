@@ -709,7 +709,7 @@
                                             <a href="{{ item.card_url }}" target="_blank" class="badge bg-light text-primary text-decoration-none border px-2 py-1 font-monospace" style="font-size: 11.5px;">
                                                 /card/{{ item.card_slug }}/ <i class="fa-solid fa-external-link-alt ms-1" style="font-size: 9px;"></i>
                                             </a>
-                                            <button type="button" class="btn btn-sm btn-link text-muted p-0" onclick="copyCardUrl('{{ item.card_url }}')" title="Copy Card Link">
+                                            <button type="button" class="btn btn-sm btn-link text-muted p-0" onclick="copyCardUrl('{{ item.card_url|escapejs }}')" title="Copy Card Link">
                                                 <i class="fa-regular fa-copy"></i>
                                             </button>
                                         </div>

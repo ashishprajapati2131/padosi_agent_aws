@@ -744,7 +744,9 @@ function showToast(message, isSuccess = true) {
     const toastEl = document.getElementById('liveToast');
     const toastMsg = document.getElementById('toastMessage');
     toastEl.className = `toast align-items-center text-white border-0 shadow-lg ${isSuccess ? 'bg-success' : 'bg-danger'}`;
-    toastMsg.innerHTML = `<i class="fa-solid ${isSuccess ? 'fa-circle-check' : 'fa-triangle-exclamation'} me-2"></i> ${message}`;
+    const icon = document.createElement('i');
+    icon.className = `fa-solid ${isSuccess ? 'fa-circle-check' : 'fa-triangle-exclamation'} me-2`;
+    toastMsg.replaceChildren(icon, document.createTextNode(' ' + message));
     const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
     toast.show();
 }

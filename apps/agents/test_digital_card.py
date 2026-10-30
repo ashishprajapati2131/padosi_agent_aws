@@ -190,14 +190,60 @@ class AgentDigitalCardTestCase(TestCase):
         self.assertEqual(res_space.status_code, 200)
         self.assertContains(res_space, 'Kishan Patel')
 
-    def test_card_resolves_by_email_prefix(self):
-        # Resolve by email prefix: /card/cardagent/
+    def test_card_does_not_resolve_by_email_prefix(self):
+        # Email prefixes are private; /card/cardagent/ must not find the agent.
         url = reverse('agents:agent_public_card', kwargs={'slug': 'cardagent'})
         res = self.client.get(url)
-        self.assertEqual(res.status_code, 200)
-        self.assertContains(res, 'Kishan Patel')
+        self.assertEqual(res.status_code, 404)
 
-    def test_card_resolves_when_agent_has_no_prior_profile(self):
+    def test_unpaid_agent_card_lead_and_qr_hidden_from_public(self):
+        for status in ('incomplete', 'pending_payment'):
+            self.agent.status = status
+            self.agent.save(update_fields=['status'])
+            card = self.client.get(reverse('agents:agent_public_card', kwargs={'slug': 'kishan-patel'}))
+            self.assertEqual(card.status_code, 404, status)
+            vcard = self.client.get(reverse('agents:agent_card_vcf', kwargs={'slug': 'kishan-patel'}))
+            self.assertEqual(vcard.status_code, 404, status)
+            lead = self.client.post(
+                reverse('agents:agent_card_lead_submit', kwargs={'slug': 'kishan-patel'}),
+                {'customer_name': 'Test', 'customer_mobile': '9898989898'},
+            )
+            self.assertEqual(lead.status_code, 404, status)
+            qr = self.client.get(reverse('agents:agent_public_qr_image', kwargs={'slug': 'kishan-patel', 'qr_type': 'card'}))
+            self.assertEqual(qr.status_code, 404, status)
+        self.assertFalse(AgentLead.objects.filter(agent=self.agent).exists())
+        # Owner can still preview their own card.
+        self.client.force_login(self.user)
+        owner = self.client.get(reverse('agents:agent_public_card', kwargs={'slug': 'kishan-patel'}))
+        self.assertEqual(owner.status_code, 200)
+
+    def test_duplicate_name_slug_does_not_pick_an_arbitrary_agent(self):
+        for i, email in enumerate(('ravi.one@test.com', 'ravi.two@test.com')):
+            agent = Agent.objects.create(
+                fullname='Ravi Kumar', email=email, mobile=f'912345678{i}', status='active',
+            )
+            AgentProfile.objects.create(agent=agent, slug=f'ravi-{i}', display_name='Ravi Kumar', is_card_visible=True)
+        res = self.client.get(reverse('agents:agent_public_card', kwargs={'slug': 'ravi-kumar'}))
+        self.assertEqual(res.status_code, 404)
+
+    def test_unique_name_slug_still_resolves(self):
+        agent = Agent.objects.create(fullname='Meera Shah', email='meera@test.com', mobile='9123450000', status='active')
+        AgentProfile.objects.create(agent=agent, slug='meera-77', display_name='Meera Shah', is_card_visible=True)
+        res = self.client.get(reverse('agents:agent_public_card', kwargs={'slug': 'meera-shah'}))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.context['agent'].pk, agent.pk)
+
+    def test_custom_button_rejects_whitespace_obfuscated_javascript(self):
+        cfg = self.profile.get_card_config()
+        cfg['custom_button_label'] = 'Click'
+        cfg['custom_button_url'] = 'java\tscript:alert(1)'
+        self.profile.card_config = cfg
+        self.profile.save()
+        res = self.client.get(reverse('agents:agent_public_card', kwargs={'slug': 'kishan-patel'}))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.context['custom_button_url'], '')
+
+    def test_card_without_profile_created_only_for_paid_agent(self):
         # Simulate agent without profile (like 'zsdfghjk')
         user_new = User.objects.create_user(
             username='zsdfghjk@test.com',
@@ -214,13 +260,19 @@ class AgentDigitalCardTestCase(TestCase):
         # Ensure no AgentProfile exists yet
         self.assertFalse(hasattr(agent_new, 'profile'))
 
-        # Request /card/zsdfghjk/
         url = reverse('agents:agent_public_card', kwargs={'slug': 'zsdfghjk'})
+
+        # An unpaid agent's card stays hidden and no profile is created by a public visit.
+        Agent.objects.filter(pk=agent_new.pk).update(status='pending_payment')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(AgentProfile.objects.filter(agent=agent_new).exists())
+
+        # A paid (active) agent's shared card link works for anyone and initialises the profile.
+        Agent.objects.filter(pk=agent_new.pk).update(status='active')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'zsdfghjk')
-
-        # Verify profile was automatically initialized and slug was assigned
         agent_new.refresh_from_db()
         self.assertTrue(hasattr(agent_new, 'profile'))
         self.assertTrue(agent_new.profile.is_card_visible)

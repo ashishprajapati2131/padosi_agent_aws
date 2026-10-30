@@ -2333,7 +2333,8 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
                     agents_qs = (agents_qs | city_qs).distinct()
         else:
             # --- Tier 3: Pure text search on address/city fields ---
-            tokens = [t.strip() for t in city_query_name.split() if len(t.strip()) >= 3]
+            # Cap the OR'd icontains scans an arbitrary slug can trigger.
+            tokens = [t.strip() for t in city_query_name.split() if len(t.strip()) >= 3][:3]
             text_q = Q()
             for token in tokens:
                 text_q |= Q(profile__address__icontains=token)
@@ -2398,7 +2399,12 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
         # Paginated pages are self-canonical (Google ignores rel=prev/next).
         canonical_url += f"?page={page_obj.number}"
     # Empty pages (no agents) stay reachable but out of the index (soft-404 risk).
-    meta_robots = 'index, follow' if paginator.count >= MIN_INDEXABLE_CITY_AGENTS and raw_slug not in JUNK_CITY_SLUGS else 'noindex, follow'
+    # Tier 3/4 text-search pages (unknown slugs like /insurance-agents/road/) stay out of the index.
+    # An area counts only when a whole locality name is in the slug ('road' only partially matches 'sg road').
+    known_area = bool(area_pincodes) and any(key in city_query_name for key in _AREA_PINCODE_MAP)
+    known_place = bool(state_hub or city_obj or known_area)
+    meta_robots = ('index, follow' if known_place and paginator.count >= MIN_INDEXABLE_CITY_AGENTS
+                   and raw_slug not in JUNK_CITY_SLUGS else 'noindex, follow')
     meta_title = f"Verified Insurance Agents in {city_display} | Licensed Advisors — PadosiAgent"
     meta_desc = f"Looking for trusted insurance agents in {city_display}? Find verified local advisors for Health, Life, Car & Bike insurance with ratings & doorstep assistance on PadosiAgent."
     meta_kw = f"insurance agent in {city_display}, best insurance agent in {city_display}, insurance agent near me {city_display}, licensed insurance agent {city_display}, health insurance agent {city_display}, life insurance agent {city_display}, PadosiAgent"
@@ -2413,6 +2419,41 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
         breadcrumb.append({'@type': 'ListItem', 'position': 4, 'name': f"{category['label']} Agents",
                            'item': request.build_absolute_uri(_directory_path(raw_slug, category_slug))})
     breadcrumb_schema = {'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': breadcrumb}
+
+    from apps.agents.services.og_urls import get_public_site_base
+    site_base = get_public_site_base(request)
+    list_items = []
+    for position, a in enumerate(page_obj.object_list, start=1):
+        try:
+            photo = a.profile.profile_photo_url if a.profile else ''
+        except Exception:
+            photo = ''
+        item = {
+            '@type': 'InsuranceAgency',
+            'name': a.fullname or '',
+            'url': f"{site_base}/{a.state_code}/{a.agent_slug}/",
+        }
+        if photo:
+            item['image'] = (site_base if photo.startswith('/') else '') + photo
+        if a.mobile:
+            item['telephone'] = f"+91{a.mobile}"
+        address = {'@type': 'PostalAddress', 'addressLocality': city_display, 'addressRegion': state_display}
+        if a.agent_pincode:
+            address['postalCode'] = a.agent_pincode
+        address['addressCountry'] = 'IN'
+        item['address'] = address
+        if a.average_rating and a.review_count:
+            item['aggregateRating'] = {'@type': 'AggregateRating',
+                                       'ratingValue': str(a.average_rating), 'reviewCount': str(a.review_count)}
+        list_items.append({'@type': 'ListItem', 'position': position, 'item': item})
+    item_list_schema = {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        'name': f"Verified {category['label'] if category else 'Insurance'} Agents in {city_display}",
+        'description': meta_desc,
+        'numberOfItems': paginator.count,
+        'itemListElement': list_items,
+    }
 
     category_context = {}
     if category:
@@ -2442,6 +2483,7 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
     context = {
         **category_context,
         'breadcrumb_schema': breadcrumb_schema,
+        'item_list_schema': item_list_schema,
         'city_categories': [(_directory_path(raw_slug, slug), c['label'])
                             for slug, c in {**CITY_CATEGORIES, **SERVICE_PAGES}.items() if slug != category_slug],
         'state_cities': state_cities,

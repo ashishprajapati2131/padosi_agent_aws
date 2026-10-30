@@ -68,24 +68,8 @@ def bind_session(request, lead):
     request.session[SESSION_LEAD_ID] = lead.pk
     request.session[SESSION_CONTINUE] = True
     request.session.pop('quick_reg_success', None)
-
-    # Restore draft progress if not already in session
-    if not request.session.get('current_draft_id'):
-        try:
-            from apps.agents.models import AgentDraft
-            draft = None
-            if lead.draft_id:
-                draft = AgentDraft.objects.filter(pk=lead.draft_id).first()
-            if not draft and lead.phone:
-                draft = AgentDraft.objects.filter(mobile=lead.phone).order_by('-pk').first()
-            if draft:
-                request.session['current_draft_id'] = draft.pk
-                if not lead.draft_id:
-                    lead.draft_id = draft.pk
-                    lead.save(update_fields=['draft_id'])
-        except Exception:
-            pass
-
+    # No draft restore here: leads are found by phone (cookie / form input),
+    # which does not prove ownership of the draft's name and email.
     request.session.modified = True
 
 
