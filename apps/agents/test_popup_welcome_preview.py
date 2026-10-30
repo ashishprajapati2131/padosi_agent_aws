@@ -167,10 +167,12 @@ class PopupWelcomePreviewTests(TestCase):
 
         request = RequestFactory().get('/gj/segment-agent/')
         ctx = profile_og_context(request, agent, display_name='Segment Agent')
-        self.assertIn('7 yrs exp', ctx['og_share_description'])
-        self.assertIn('Life', ctx['og_share_description'])
-        self.assertIn('SME', ctx['og_share_description'])
-        self.assertIn('Connect with Segment Agent', ctx['og_share_description'])
+        self.assertEqual(
+            ctx['og_share_description'],
+            'Segment Agent | Licensed Insurance & Financial Advisor',
+        )
+        self.assertEqual(ctx['og_share_title'], ctx['og_share_description'])
+        self.assertNotIn('yrs exp', ctx['og_share_description'])
 
     def test_share_card_uses_agent_experience_when_profile_years_are_blank(self):
         agent = Agent.objects.create(
@@ -190,7 +192,10 @@ class PopupWelcomePreviewTests(TestCase):
         self.assertEqual(_share_experience_years(agent, profile), 12)
         request = RequestFactory().get('/gj/range-agent/')
         ctx = profile_og_context(request, agent, display_name='Range Agent')
-        self.assertIn('12 yrs exp', ctx['og_share_description'])
+        self.assertEqual(
+            ctx['og_share_description'],
+            'Range Agent | Licensed Insurance & Financial Advisor',
+        )
 
         other = Agent.objects.create(
             fullname='Four Year Agent',
