@@ -5807,7 +5807,17 @@ def razorpay_webhook(request):
             logger.error(f"[Razorpay Webhook] Missing order_id in event {event}")
             return HttpResponse("Missing order ID", status=400)
 
-        from apps.agents.models import AgentSubscription, Invoice
+        from apps.agents.models import AgentSubscription, EventRegistration, Invoice
+
+        # Event checkout orders are fulfilled on their registration, not through
+        # the agent-signup path (the browser tab may close after capture).
+        event_registration = EventRegistration.objects.filter(
+            razorpay_order_id=order_id
+        ).first()
+        if event_registration:
+            return _fulfil_event_order_webhook(
+                event_registration, order_id, payment_id, payment_entity
+            )
 
         subscription = AgentSubscription.objects.filter(
             razorpay_order_id=order_id
@@ -5881,6 +5891,34 @@ def razorpay_webhook(request):
     elif event == "refund.processed":
         return _handle_refund_webhook(data)
 
+    return HttpResponse("Webhook processed successfully", status=200)
+
+
+def _fulfil_event_order_webhook(event_registration, order_id, payment_id, payment_entity):
+    from apps.agents.views.events import EventPaymentRejected, fulfil_event_registration
+
+    if not payment_id:
+        logger.error(f"[Webhook] Event order {order_id} has no payment id; not fulfilled")
+        return HttpResponse("Webhook ignored: event order without payment", status=200)
+    payment = payment_entity if payment_entity.get("id") == payment_id else None
+    try:
+        _reg, fulfilled = fulfil_event_registration(
+            event_registration.pk, order_id, payment_id, payment=payment
+        )
+    except EventPaymentRejected as exc:
+        # 200: a rejected payment never becomes valid, so a retry cannot help.
+        logger.error(
+            f"[Webhook] Event registration #{event_registration.pk} not fulfilled: "
+            f"order {order_id}, payment {payment_id}: {exc}"
+        )
+        return HttpResponse("Webhook ignored: event payment rejected", status=200)
+    except Exception:
+        logger.exception(
+            f"[Webhook] Event fulfilment failed for order {order_id}, payment {payment_id}"
+        )
+        return HttpResponse("Event fulfilment failed", status=500)
+    if not fulfilled:
+        return HttpResponse("Webhook processed successfully (already completed)", status=200)
     return HttpResponse("Webhook processed successfully", status=200)
 
 

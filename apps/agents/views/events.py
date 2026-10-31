@@ -359,10 +359,7 @@ def _render_plans(request, event_registration, pricing, promo_code_str):
                 agent.registration_step = 2
                 agent.status = 'pending_payment'
                 agent.save()
-                subscription = AgentSubscription.objects.filter(agent=agent).order_by('-created_at').first()
-                if subscription:
-                    subscription.razorpay_order_id = razorpay_order_id
-                    subscription.save()
+                _link_order_to_subscription(agent, razorpay_order_id)
             except Agent.DoesNotExist:
                 pass
 
@@ -542,7 +539,9 @@ def select_plan(request):
             agent.save()
 
             subscription = AgentSubscription.objects.filter(agent=agent).order_by('-created_at').first()
-            if subscription:
+            # A paid row, or one already tied to a Razorpay order, keeps its plan and
+            # amount (invariant 9): the new choice gets its own pending row.
+            if subscription and subscription.payment_status != 'completed' and not subscription.razorpay_order_id:
                 subscription.selected_plan = selected_plan['name']
                 subscription.registration_amount = selected_plan['total']
                 subscription.payment_status = 'pending'
@@ -609,10 +608,7 @@ def show_payment(request):
             agent.registration_step = 2
             agent.status = 'pending_payment'
             agent.save()
-            subscription = AgentSubscription.objects.filter(agent=agent).order_by('-created_at').first()
-            if subscription:
-                subscription.razorpay_order_id = razorpay_order_id
-                subscription.save()
+            _link_order_to_subscription(agent, razorpay_order_id)
         except Agent.DoesNotExist:
             pass
 
@@ -628,8 +624,195 @@ def show_payment(request):
     })
 
 
-class _EventAlreadyPaid(Exception):
-    """Raised inside the payment transaction when a parallel request finished first."""
+class EventPaymentRejected(Exception):
+    """This payment must not complete the registration; str(exc) is safe to show the payer."""
+
+
+def _event_razorpay_client():
+    # Same credentials _create_razorpay_order used to create the order.
+    key, secret = _razorpay_key(), _razorpay_secret()
+    if not key or not secret:
+        return None
+    import razorpay
+    return razorpay.Client(auth=(key, secret))
+
+
+def _link_order_to_subscription(agent, order_id):
+    """Point the agent's open subscription at this event order without ever
+    overwriting another order's row (invariant 9: one row per order)."""
+    if not order_id or AgentSubscription.objects.filter(agent=agent, razorpay_order_id=order_id).exists():
+        return
+    subscription = AgentSubscription.objects.filter(agent=agent).order_by('-created_at').first()
+    if not subscription or subscription.payment_status == 'completed':
+        return  # fulfilment creates the row for this order
+    if not subscription.razorpay_order_id:
+        subscription.razorpay_order_id = order_id
+        subscription.save()
+        return
+    AgentSubscription.objects.create(
+        agent=agent,
+        selected_plan=subscription.selected_plan,
+        registration_amount=subscription.registration_amount,
+        payment_status='pending',
+        status='inactive',
+        promo_code=subscription.promo_code,
+        razorpay_order_id=order_id,
+    )
+
+
+def _subscription_for_event_order(agent, order_id, plan_data, promocode):
+    subscription = AgentSubscription.objects.select_for_update().filter(
+        agent=agent, razorpay_order_id=order_id,
+    ).order_by('-created_at').first()
+    if subscription:
+        return subscription
+    subscription = AgentSubscription.objects.select_for_update().filter(agent=agent).order_by('-created_at').first()
+    if subscription and subscription.payment_status != 'completed' and not subscription.razorpay_order_id:
+        return subscription
+    return AgentSubscription.objects.create(
+        agent=agent,
+        selected_plan=plan_data['name'],
+        registration_amount=plan_data['total'],
+        payment_status='pending',
+        status='inactive',
+        promo_code=promocode or None,
+        razorpay_order_id=order_id,
+    )
+
+
+def fulfil_event_registration(reg_id, order_id, payment_id, signature=None, payment=None):
+    """Complete a paid event registration exactly once.
+
+    Shared by the browser callback, the Razorpay webhook and
+    recover_orphaned_payments. ``payment`` is the Razorpay payment entity when
+    the caller already has it (webhook / recovery); otherwise it is fetched.
+    Returns (registration, fulfilled): fulfilled is False when it was already paid.
+    Raises EventPaymentRejected when this payment must not complete it.
+    """
+    from apps.agents.services.account_auth import default_agent_temp_password
+    from apps.agents.services.post_payment import queue_invoice_and_welcome
+    from apps.agents.services.razorpay_checkout import ensure_payment_captured
+    from apps.agents.views.registration import _paise_amounts_match
+
+    failed = 'Payment verification failed. Please contact support.'
+    event_registration = EventRegistration.objects.filter(pk=reg_id).first()
+    if not event_registration:
+        raise EventPaymentRejected('Event registration record not found.')
+    if event_registration.payment_status == 'success':
+        return event_registration, False
+
+    # One captured payment must never complete more than one registration.
+    # An order that belongs to ANOTHER registration is rejected; a stale order of
+    # this same registration (plan re-selected in another tab) is still accepted
+    # because the payment id is unique and the amount is verified below.
+    if (event_registration.razorpay_order_id or '') != order_id:
+        if EventRegistration.objects.filter(razorpay_order_id=order_id).exclude(pk=event_registration.pk).exists():
+            logger.critical(
+                'EVENT REGISTRATION - order mismatch: reg=%s has order=%s, payment claims order=%s of another registration',
+                event_registration.pk, event_registration.razorpay_order_id, order_id,
+            )
+            raise EventPaymentRejected(failed)
+        logger.warning(
+            'EVENT REGISTRATION - reg=%s paid stale order %s (current order %s); accepted after payment/amount checks.',
+            event_registration.pk, order_id, event_registration.razorpay_order_id,
+        )
+    if EventRegistration.objects.filter(razorpay_payment_id=payment_id).exclude(pk=event_registration.pk).exists():
+        logger.critical('EVENT REGISTRATION - payment %s already used by another registration', payment_id)
+        raise EventPaymentRejected(failed)
+
+    # Invariant 10: only a captured payment is money.
+    client = _event_razorpay_client()
+    try:
+        if payment is None:
+            if client is None:
+                logger.error('EVENT REGISTRATION - Razorpay keys not configured.')
+                raise EventPaymentRejected(failed)
+            payment = client.payment.fetch(payment_id)
+        payment = ensure_payment_captured(client, payment)
+    except EventPaymentRejected:
+        raise
+    except Exception as exc:
+        logger.error(f"EVENT REGISTRATION - verification failed for order {order_id}: {exc}")
+        raise EventPaymentRejected(failed)
+    if not payment or payment.get('id') != payment_id:
+        logger.error('EVENT REGISTRATION - payment %s for order %s is not captured', payment_id, order_id)
+        raise EventPaymentRejected('Payment is not completed.')
+    if payment.get('order_id') and payment.get('order_id') != order_id:
+        logger.critical('EVENT REGISTRATION - payment %s belongs to order %s, not %s', payment_id, payment.get('order_id'), order_id)
+        raise EventPaymentRejected(failed)
+
+    pricing = get_pricing(event_registration.promocode)
+    plan_data = pricing.get(event_registration.selected_plan or 'professional', pricing['professional'])
+    expected_paise = int(round(plan_data['total'] * 100))
+    if not _paise_amounts_match(payment.get('amount'), expected_paise):
+        logger.error(
+            'EVENT REGISTRATION - Amount mismatch. order=%s payment=%s Paid=%s Expected=%s',
+            order_id, payment_id, payment.get('amount'), expected_paise,
+        )
+        raise EventPaymentRejected('Payment amount mismatch.')
+
+    from django.contrib.auth.models import User as AuthUser
+    with transaction.atomic():
+        locked = EventRegistration.objects.select_for_update().get(pk=event_registration.pk)
+        if locked.payment_status == 'success':
+            return locked, False  # completed concurrently: no second invoice/email
+
+        locked.status = 'completed'
+        locked.payment_status = 'success'
+        locked.current_step = 3
+        locked.razorpay_payment_id = payment_id
+        locked.razorpay_order_id = order_id
+        locked.save()
+
+        agent = Agent.objects.select_for_update().filter(email=locked.email).first()
+        if not agent:
+            raise ValueError('No agent found for email: ' + locked.email)
+
+        pricing = get_pricing(locked.promocode)
+        plan_key_agent = agent.plan_type or locked.selected_plan or 'professional'
+        plan_data = pricing.get(plan_key_agent, pricing['professional'])
+
+        if agent.status != 'active':  # never demote an already-approved agent
+            agent.status = 'pending_approval'
+        agent.registration_step = 3
+        agent.plan_type = plan_key_agent
+        agent.save()
+
+        subscription = _subscription_for_event_order(agent, order_id, plan_data, locked.promocode)
+        # Already activated for this order (e.g. by the agent payment path): its
+        # invoice + welcome went out then.
+        newly_paid = subscription.payment_status != 'completed'
+        if newly_paid:
+            subscription.selected_plan = plan_data['name']
+            subscription.registration_amount = plan_data['total']
+            subscription.payment_status = 'completed'
+            subscription.status = 'active'
+            subscription.promo_code = locked.promocode or None
+            subscription.razorpay_payment_id = payment_id
+            subscription.razorpay_order_id = order_id
+            if signature:
+                subscription.razorpay_signature = signature
+            subscription.starts_at = timezone.now()
+            subscription.expires_at = timezone.now() + timezone.timedelta(days=365)
+            subscription.save()
+
+        # Invariant 3: a new login gets the 10-digit mobile (sent in the welcome
+        # email); an existing password is never overwritten.
+        is_new_user = not AuthUser.objects.filter(email=agent.email).exists()
+        create_or_link_django_user(agent)
+        if newly_paid:
+            queue_invoice_and_welcome(agent.id, subscription.id)  # after commit, off the request
+
+    if is_new_user:
+        cache.set(_password_cache_key(agent.email), default_agent_temp_password(agent), timeout=600)
+    if locked.promocode:
+        try:
+            from django.db.models import F
+            PromoCode.objects.filter(code=locked.promocode).update(times_used=F('times_used') + 1)
+        except Exception:
+            logger.exception('EVENT REGISTRATION - promo usage update failed for %s', locked.promocode)
+    logger.info('EVENT REGISTRATION - reg=%s fulfilled by order %s payment %s', locked.pk, order_id, payment_id)
+    return locked, True
 
 
 @require_POST
@@ -660,171 +843,50 @@ def payment_success(request):
         logger.error(f"EVENT REGISTRATION PAYMENT SUCCESS - record not found for order {order_id}")
         return JsonResponse({'success': False, 'message': 'Event registration record not found.'}, status=404)
 
-    if event_registration.payment_status == 'success':
-        return JsonResponse({
-            'success': True,
-            'message': 'Already registered successfully.',
-            'redirect_url': '/events/success/',
-        })
-
-    # One captured payment must never complete more than one registration.
-    # An order that belongs to ANOTHER registration is rejected; a stale order of
-    # this same registration (plan re-selected in another tab) is still accepted
-    # because the payment id is unique and the amount is verified below.
-    if (event_registration.razorpay_order_id or '') != order_id:
-        if EventRegistration.objects.filter(razorpay_order_id=order_id).exclude(pk=event_registration.pk).exists():
-            logger.critical(
-                'EVENT REGISTRATION - order mismatch: reg=%s has order=%s, payment claims order=%s of another registration',
-                event_registration.pk, event_registration.razorpay_order_id, order_id,
-            )
-            return JsonResponse({'success': False, 'message': 'Payment verification failed. Please contact support.'}, status=422)
-        logger.warning(
-            'EVENT REGISTRATION - reg=%s paid stale order %s (current order %s); accepted after payment/amount checks.',
-            event_registration.pk, order_id, event_registration.razorpay_order_id,
+    try:
+        event_registration, fulfilled = fulfil_event_registration(
+            event_registration.pk, order_id, payment_id, signature=signature,
         )
-    if EventRegistration.objects.filter(razorpay_payment_id=payment_id).exclude(pk=event_registration.pk).exists():
-        logger.critical('EVENT REGISTRATION - payment %s already used by another registration', payment_id)
-        return JsonResponse({'success': False, 'message': 'Payment verification failed. Please contact support.'}, status=422)
-
-    # Verify payment against Razorpay API (amount + status)
-    import razorpay
-
-    key, secret = _razorpay_key(), _razorpay_secret()
-    if not key or not secret:
-        logger.error('EVENT REGISTRATION - Razorpay keys not configured.')
-        return JsonResponse({'success': False, 'message': 'Payment verification failed. Please contact support.'}, status=400)
-
-    try:
-        client = razorpay.Client(auth=(key, secret))
-        rzp_payment = client.payment.fetch(payment_id)
-        from apps.agents.services.razorpay_checkout import ensure_payment_captured
-        rzp_payment = ensure_payment_captured(client, rzp_payment)
-        if not rzp_payment:
-            return JsonResponse({'success': False, 'message': 'Payment is not completed.'}, status=400)
-
-        pricing = get_pricing(event_registration.promocode)
-        plan_key = event_registration.selected_plan or 'professional'
-        plan_data = pricing.get(plan_key, pricing['professional'])
-        expected_paise = int(round(plan_data['total'] * 100))
-        if int(rzp_payment.get('amount', 0)) != expected_paise:
-            logger.critical(f"EVENT REGISTRATION - Amount mismatch. Paid={rzp_payment.get('amount')}, Expected={expected_paise}")
-            return JsonResponse({'success': False, 'message': 'Payment amount mismatch.'}, status=400)
-    except Exception as exc:
-        logger.error(f"EVENT REGISTRATION PAYMENT SUCCESS - verification failed: {exc}")
-        return JsonResponse({'success': False, 'message': 'Payment verification failed. Please contact support.'}, status=400)
-
-    generated_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
-
-    try:
-        with transaction.atomic():
-            locked = EventRegistration.objects.select_for_update().get(pk=event_registration.pk)
-            if locked.payment_status == 'success':
-                # Completed concurrently: don't regenerate password/invoice/email.
-                raise _EventAlreadyPaid()
-
-            locked.status = 'completed'
-            locked.payment_status = 'success'
-            locked.current_step = 3
-            locked.razorpay_payment_id = payment_id
-            locked.razorpay_order_id = order_id
-            locked.save()
-
-            agent = Agent.objects.select_for_update().filter(email=locked.email).first()
-            if not agent:
-                raise ValueError('No agent found for email: ' + locked.email)
-
-            pricing = get_pricing(locked.promocode)
-            plan_key_agent = agent.plan_type or locked.selected_plan or 'professional'
-            plan_data = pricing.get(plan_key_agent, pricing['professional'])
-
-            agent.status = 'pending_approval'
-            agent.registration_step = 3
-            agent.plan_type = plan_key_agent
-            agent.save()
-
-            subscription = AgentSubscription.objects.filter(agent=agent).order_by('-created_at').first()
-            if not subscription:
-                subscription = AgentSubscription.objects.create(
-                    agent=agent,
-                    selected_plan=plan_data['name'],
-                    registration_amount=plan_data['total'],
-                    payment_status='completed',
-                    status='active',
-                    promo_code=locked.promocode or None,
-                )
-            subscription.selected_plan = plan_data['name']
-            subscription.registration_amount = plan_data['total']
-            subscription.payment_status = 'completed'
-            subscription.status = 'active'
-            subscription.promo_code = locked.promocode or None
-            subscription.razorpay_payment_id = payment_id
-            subscription.razorpay_order_id = order_id
-            subscription.razorpay_signature = signature or None
-            subscription.starts_at = timezone.now()
-            subscription.expires_at = timezone.now() + timezone.timedelta(days=365)
-            subscription.save()
-
-            from django.contrib.auth.models import User as AuthUser
-            is_new_user = not AuthUser.objects.filter(email=agent.email).exists()
-            user = create_or_link_django_user(agent, plain_password=generated_password if is_new_user else None)
-
-        # Post-transaction (best effort): cache password, promo usage, invoice + welcome email
-        if is_new_user:
-            cache.set(_password_cache_key(agent.email), generated_password, timeout=600)
-        request.session['registration_success_email'] = agent.email
-        _clear_flow_session(request)
-
-        if locked.promocode:
-            try:
-                from django.db.models import F
-                PromoCode.objects.filter(code=locked.promocode).update(
-                    times_used=F('times_used') + 1
-                )
-            except Exception:
-                pass
-
-        try:
-            from apps.agents.services.brevo import email_service
-            from apps.agents.services.invoice import invoice_service
-            invoice = invoice_service.generate_from_subscription(agent, subscription)
-            pdf_path = None
-            if invoice and invoice.pdf_path:
-                import os
-                from django.conf import settings as _s
-                pdf_path = os.path.join(_s.MEDIA_ROOT, 'app', 'private', invoice.pdf_path)
-            email_service.send_welcome(
-                to_email=agent.email,
-                to_name=agent.fullname,
-                temp_password=generated_password,
-                plan_name=subscription.selected_plan,
-                attachment_path=pdf_path,
-            )
-        except Exception as mail_err:
-            logger.error(f"EVENT REGISTRATION - post-payment invoice/email failed: {mail_err}")
-
-        if not request.user.is_authenticated:
-            try:
-                from apps.agents.services.razorpay_checkout import login_agent_user
-                login_agent_user(request, user)  # refuses staff/insurance/distributor users
-                request.session.save()
-            except Exception as login_err:
-                logger.warning(f"EVENT REGISTRATION - auto-login failed: {login_err}")
-
-        return JsonResponse({
-            'success': True,
-            'message': 'Payment validated and registration completed successfully!',
-            'redirect_url': '/events/success/',
-        })
-
-    except _EventAlreadyPaid:
-        return JsonResponse({
-            'success': True,
-            'message': 'Already registered successfully.',
-            'redirect_url': '/events/success/',
-        })
+    except EventPaymentRejected as exc:
+        return JsonResponse({'success': False, 'message': str(exc)}, status=400)
     except Exception as exc:
         logger.error(f"EVENT REGISTRATION PAYMENT SUCCESS - processing failed: {exc}")
         return JsonResponse({'success': False, 'message': 'Could not complete registration. Please contact support.'}, status=500)
+
+    already = {
+        'success': True,
+        'message': 'Already registered successfully.',
+        'redirect_url': '/events/success/',
+    }
+    # The webhook may have completed it first. The signature proves this browser
+    # paid this order, so finish its session only when the registration was paid
+    # by exactly this order + payment (invariant 1).
+    if (event_registration.razorpay_order_id, event_registration.razorpay_payment_id) != (order_id, payment_id):
+        logger.warning(
+            'EVENT REGISTRATION - reg=%s already paid by %s; second payment %s (order %s) needs a manual refund check',
+            event_registration.pk, event_registration.razorpay_payment_id, payment_id, order_id,
+        )
+        return JsonResponse(already)
+
+    request.session['registration_success_email'] = event_registration.email
+    _clear_flow_session(request)
+
+    agent = Agent.objects.filter(email=event_registration.email).first()
+    if agent and agent.user and not request.user.is_authenticated:
+        try:
+            from apps.agents.services.razorpay_checkout import login_agent_user
+            login_agent_user(request, agent.user)  # refuses staff/insurance/distributor users
+            request.session.save()
+        except Exception as login_err:
+            logger.warning(f"EVENT REGISTRATION - auto-login failed: {login_err}")
+
+    if not fulfilled:
+        return JsonResponse(already)
+    return JsonResponse({
+        'success': True,
+        'message': 'Payment validated and registration completed successfully!',
+        'redirect_url': '/events/success/',
+    })
 
 
 @require_POST
