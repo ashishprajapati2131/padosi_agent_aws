@@ -174,6 +174,8 @@ def agents_store(request):
 @login_required
 def agents_show(request, agent_id):
     user = request.user
+    if not hasattr(user, 'insurance_profile'):
+        return redirect('/')
     company_id = user.insurance_profile.get_insurance_company_id()
     agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)
     
@@ -191,6 +193,8 @@ def agents_show(request, agent_id):
 @login_required
 def request_status_change(request, agent_id):
     user = request.user
+    if not hasattr(user, 'insurance_profile'):
+        return redirect('/')
     company_id = user.insurance_profile.get_insurance_company_id()
     agent = get_object_or_404(Agent, id=agent_id, insurance_id=company_id)
 
@@ -256,6 +260,7 @@ def add_to_cart(request):
             'total_count': len(cart),
             'subtotal': sum(item['amount'] for item in cart)
         })
+    return JsonResponse({'success': False, 'message': 'Method not allowed.'}, status=405)
 
 @login_required
 def remove_from_cart(request):
@@ -271,6 +276,7 @@ def remove_from_cart(request):
             'total_count': len(cart),
             'subtotal': sum(item['amount'] for item in cart)
         })
+    return JsonResponse({'success': False, 'message': 'Method not allowed.'}, status=405)
 
 @login_required
 def clear_cart(request):

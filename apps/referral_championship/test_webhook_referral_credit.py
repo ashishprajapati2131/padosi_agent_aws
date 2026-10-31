@@ -5,7 +5,8 @@ from unittest.mock import patch
 from apps.agents.models import Agent, AgentSubscription
 from apps.agents.signup_test_support import ORDER_A, _SignupBase, _captured_webhook, _rzp
 from apps.event_referral.models import EventReferral, EventReferralCampaign, EventReferralParticipant
-from apps.referral_championship.models import ChampionshipCampaign, ChampionshipParticipant
+from apps.referral_championship.models import ChampionshipParticipant
+from apps.referral_championship.testing import live_campaign
 
 
 class WebhookReferralCreditTests(_SignupBase):
@@ -29,7 +30,7 @@ class WebhookReferralCreditTests(_SignupBase):
     def test_webhook_credits_championship_referrer(self, _q):
         referrer = Agent.objects.create(fullname='Ref', email='pa.ref@example.com', mobile='9000000011',
                                         status='active', plan_type='professional')
-        participant = ChampionshipParticipant.get_or_create_for_agent(referrer, ChampionshipCampaign.get_current())
+        participant = ChampionshipParticipant.get_or_create_for_agent(referrer, live_campaign())
         self._signup_with_code_and_webhook('pa.referred@example.com', participant.referral_id)
         participant.refresh_from_db()
         self.assertEqual(participant.qualifying_referrals_count, 1)

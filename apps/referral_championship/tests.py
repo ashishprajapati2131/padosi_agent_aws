@@ -1,10 +1,10 @@
 from django.test import Client, TestCase, RequestFactory
 from django.urls import reverse
+from apps.referral_championship.testing import live_campaign
 from django.contrib.auth.models import User
 from django.utils import timezone
 from apps.agents.models import Agent, AgentSubscription
 from apps.referral_championship.models import (
-    ChampionshipCampaign,
     ChampionshipParticipant,
     ChampionshipReferral,
     ChampionshipRewardSlab,
@@ -33,7 +33,7 @@ from apps.referral_championship.services.og_meta import championship_og_context
 class ReferralChampionshipTestCase(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
-        self.campaign = ChampionshipCampaign.get_current()
+        self.campaign = live_campaign()
 
         # Create Agent 1 (Referrer)
         self.user1 = User.objects.create_user(username='agent1@example.com', email='agent1@example.com', password='pass')

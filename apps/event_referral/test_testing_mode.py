@@ -19,8 +19,9 @@ from apps.event_referral.models import EventReferralCampaign, EventReferralParti
 from apps.event_referral.views import admin_views
 from apps.home.models import SiteSetting
 from apps.home.services.agent_filters import listed_agents_queryset
+from apps.referral_championship.testing import live_campaign
 from apps.referral_championship.models import (
-    ChampionshipCampaign, ChampionshipParticipant, ChampionshipRewardClaim, ChampionshipRewardSlab,
+    ChampionshipParticipant, ChampionshipRewardClaim, ChampionshipRewardSlab,
 )
 
 SUPER = SimpleNamespace(role='super')
@@ -36,7 +37,7 @@ class LiveTestingModeTests(TestCase):
         self.challenger = Agent.objects.create(fullname='Challenger', email='live.tm@example.com',
                                                mobile='9000001501', status='event_challenge', plan_type='')
         self.participant = EventReferralParticipant.create_for_agent(self.challenger, campaign)
-        champ = ChampionshipCampaign.get_current()
+        champ = live_campaign()
         ChampionshipRewardSlab.objects.get_or_create(
             campaign=champ, threshold=5,
             defaults={'reward_type': 'membership_fee_back', 'title': 'Fee Back', 'value': 1999, 'is_active': True})

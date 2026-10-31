@@ -11,8 +11,9 @@ from django.test import Client, RequestFactory, TestCase, override_settings
 from apps.agents.models import Agent
 from apps.event_referral.models import EventReferral, EventReferralCampaign, EventReferralParticipant
 from apps.event_referral.views import admin_views
+from apps.referral_championship.testing import live_campaign
 from apps.referral_championship.models import (
-    ChampionshipCampaign, ChampionshipParticipant, ChampionshipRewardClaim, ChampionshipRewardSlab,
+    ChampionshipParticipant, ChampionshipRewardClaim, ChampionshipRewardSlab,
 )
 
 
@@ -22,7 +23,7 @@ class PaldiCountsInChampionshipTests(TestCase):
         EventReferralCampaign.objects.all().delete()
         self.ev_campaign = EventReferralCampaign.objects.create(is_enabled=True, required_paid_referrals=5,
                                                                 window_hours=48)
-        self.champ = ChampionshipCampaign.get_current()
+        self.champ = live_campaign()
         for threshold, rtype, title in ((5, 'membership_fee_back', 'Fee Back'), (10, 'plan_upgrade', 'Pro Free')):
             ChampionshipRewardSlab.objects.get_or_create(
                 campaign=self.champ, threshold=threshold,

@@ -19,6 +19,7 @@ from apps.event_referral.services.public_leaderboard import get_public_leaderboa
 from apps.event_referral.views import admin_views
 from apps.home.models import SiteSetting
 from apps.referral_championship.models import ChampionshipParticipant
+from apps.referral_championship.testing import live_campaign
 
 SUPER = SimpleNamespace(role='super')
 STAFF = SimpleNamespace(role='staff')
@@ -28,6 +29,7 @@ STAFF = SimpleNamespace(role='staff')
 class AdminDeleteParticipantTests(TestCase):
     def setUp(self):
         cache.clear()
+        live_campaign()
         EventReferralCampaign.objects.all().delete()
         self.campaign = EventReferralCampaign.objects.create(is_enabled=True, required_paid_referrals=5, window_hours=48)
 

@@ -1788,6 +1788,28 @@ def ai_picks_comparison(request):
         return JsonResponse({'success': False, 'message': 'Internal Server Error'}, status=500)
 
 
+def resolve_home_location(request):
+    """Area name, city label and coordinates for the pincode saved in the session ({} if unknown)."""
+    pincode = request.session.get('last_pincode')
+    if not pincode:
+        return {}
+    try:
+        record = _get_or_create_pincode(pincode)
+    except Exception:
+        logger.warning('Pincode lookup failed for %s', pincode, exc_info=True)
+        return {}
+    if not record:
+        return {}
+    loc = {
+        'detected_area': record.office_name or '',
+        'city_label': record.district or record.office_name or '',
+    }
+    if record.latitude and record.longitude:
+        loc['user_lat'] = float(record.latitude)
+        loc['user_lng'] = float(record.longitude)
+    return loc
+
+
 @require_POST
 def save_user_location(request):
     """
