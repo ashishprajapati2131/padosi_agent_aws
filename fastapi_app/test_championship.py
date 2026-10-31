@@ -42,7 +42,8 @@ class TestChampionshipFastAPI(unittest.TestCase):
         )
         self.assertIn("Rajesh Patel", rendered)
         self.assertIn("PA-123456", rendered)
-        self.assertIn("999", rendered)
+        self.assertNotIn("₹", rendered)
+        self.assertNotIn("profile", rendered.lower())
 
     def test_whatsapp_url_generation(self):
         msg = "Hello World & PadosiAgent"

@@ -40,8 +40,8 @@ WHATSAPP_TEMPLATES = {
         'templates': [
             {
                 'id': 'en_1',
-                'title': 'Professional Growth Invitation',
-                'text': "Hi, I'm {{agent_name}}, an Insurance Agent.\n\nJoin PadosiAgent and build your digital presence with better online visibility.\n\nCurrent campaign offer:\n• Starter's Plan: ₹{{digital_price}}/year\n• Professional's Plan: ₹{{professional_price}}/year\n\nJoin through my referral:\n{{referral_link}}\n\nYou can also view my profile:\n{{profile_link}}"
+                'title': 'Referral invite (recommended)',
+                'text': "Hi, I'm {{agent_name}}, an Insurance Agent. 👋\n\nI'm growing my digital presence with PadosiAgent and would love to have you join the platform too.\n\nJoin PadosiAgent through my referral link and take your insurance business online 🚀\n\n👉 {{referral_link}}"
             },
             {
                 'id': 'en_2',
@@ -70,8 +70,8 @@ WHATSAPP_TEMPLATES = {
         'templates': [
             {
                 'id': 'hi_1',
-                'title': 'डिजिटल पहचान बनाएं',
-                'text': "नमस्ते, मैं {{agent_name}}, एक सर्टिफाइड इंश्योरेंस एडवाइजर हूँ।\n\nPadosiAgent के साथ अपनी डिजिटल प्रोफाइल बनाएं और नए ग्राहकों तक पहुँचें।\n\nऑफर:\n• डिजिटल प्लान: मात्र ₹{{digital_price}}/वर्ष\n• प्रोफेशनल प्लान: मात्र ₹{{professional_price}}/वर्ष\n\nमेरे रेफरल लिंक से जुड़ें:\n{{referral_link}}\n\nमेरी प्रोफाइल देखें:\n{{profile_link}}"
+                'title': 'रेफरल निमंत्रण (अनुशंसित)',
+                'text': "नमस्ते, मैं {{agent_name}}, एक इंश्योरेंस एजेंट हूँ। 👋\n\nमैं PadosiAgent के साथ अपनी डिजिटल पहचान बढ़ा रहा हूँ और चाहूँगा कि आप भी इस प्लेटफॉर्म से जुड़ें।\n\nअपने इंश्योरेंस व्यवसाय को ऑनलाइन ले जाने के लिए मेरे रेफरल लिंक से PadosiAgent पर जुड़ें 🚀\n\n👉 {{referral_link}}"
             },
             {
                 'id': 'hi_2',
@@ -100,8 +100,8 @@ WHATSAPP_TEMPLATES = {
         'templates': [
             {
                 'id': 'gu_1',
-                'title': 'ડિજિટલ પ્રોફાઇલ આમંત્રણ',
-                'text': "નમસ્તે, હું {{agent_name}}, ઇન્સ્યોરન્સ એડવાઇઝર છું.\n\nPadosiAgent સાથે તમારી ડિજિટલ ઓળખ બનાવો અને વધુ ગ્રાહકો સુધી પહોંચો.\n\nકેમ્પેઇન ઓફર:\n• Digital: માત્ર ₹{{digital_price}}/વર્ષ\n• Professional: માત્ર ₹{{professional_price}}/વર્ષ\n\nમારી લિંકથી જોડાઓ:\n{{referral_link}}\n\nમારી પ્રોફાઇલ જુઓ:\n{{profile_link}}"
+                'title': 'રેફરલ આમંત્રણ (ભલામણ)',
+                'text': "નમસ્તે, હું {{agent_name}}, ઇન્સ્યોરન્સ એજન્ટ છું. 👋\n\nહું PadosiAgent સાથે મારી ડિજિટલ હાજરી વધારી રહ્યો છું અને તમે પણ પ્લેટફોર્મમાં જોડાઓ તે મારી ઈચ્છા છે.\n\nતમારા વીમા વ્યવસાયને ઓનલાઇન લાવવા મારા રેફરલ લિંકથી PadosiAgent માં જોડાઓ 🚀\n\n👉 {{referral_link}}"
             },
             {
                 'id': 'gu_2',
@@ -130,8 +130,8 @@ WHATSAPP_TEMPLATES = {
         'templates': [
             {
                 'id': 'mr_1',
-                'title': 'डिजिटल ओळख तयार करा',
-                'text': "नमस्कार, मी {{agent_name}}, विमा सल्लागार आहे.\n\nPadosiAgent सह आपली डिजिटल ओळख निर्माण करा.\n\nऑफर: ₹{{digital_price}}/वर्ष\nयेथे नोंदणी करा: {{referral_link}}\nमाझे प्रोफाइल पहा: {{profile_link}}"
+                'title': 'रेफरल निमंत्रण (शिफारस)',
+                'text': "नमस्कार, मी {{agent_name}}, विमा सल्लागार आहे. 👋\n\nमी PadosiAgent सोबत माझी डिजिटल ओळख वाढवत आहे आणि तुम्हीही या प्लॅटफॉर्मवर सामील व्हा अशी माझी इच्छा आहे.\n\nतुमचा विमा व्यवसाय ऑनलाइन नेण्यासाठी माझ्या रेफरल लिंकवरून PadosiAgent वर सामील व्हा 🚀\n\n👉 {{referral_link}}"
             },
             {
                 'id': 'mr_2',
@@ -160,8 +160,8 @@ WHATSAPP_TEMPLATES = {
         'templates': [
             {
                 'id': 'ta_1',
-                'title': 'டிஜிட்டல் அடையாளம்',
-                'text': "வணக்கம், நான் {{agent_name}}, காப்பீட்டு ஆலோசகர்.\n\nPadosiAgent மூலம் உங்கள் ஆன்லைன் இருப்பை உருவாக்குங்கள்.\nசலுகை விலை: ₹{{digital_price}}/ஆண்டு\nஇணைப்பு: {{referral_link}}\nஎன் சுயவிவரம்: {{profile_link}}"
+                'title': 'பரிந்துரை அழைப்பு (பரிந்துரை)',
+                'text': "வணக்கம், நான் {{agent_name}}, காப்பீட்டு ஆலோசகர். 👋\n\nPadosiAgent மூலம் எனது டிஜிட்டல் இருப்பை வளர்த்து வருகிறேன்; நீங்களும் இந்த தளத்தில் சேர விரும்புகிறேன்.\n\nஉங்கள் காப்பீட்டு தொழிலை ஆன்லைனில் கொண்டு செல்ல எனது பரிந்துரை இணைப்பில் PadosiAgent-ஐ சேருங்கள் 🚀\n\n👉 {{referral_link}}"
             },
             {
                 'id': 'ta_2',
@@ -190,8 +190,8 @@ WHATSAPP_TEMPLATES = {
         'templates': [
             {
                 'id': 'te_1',
-                'title': 'డిజిటల్ గుర్తింపు',
-                'text': "నమస్కారం, నేను {{agent_name}}, ఇన్సూరెన్స్ అడ్వైజర్.\n\nPadosiAgent లో డిజిటల్ ప్రొఫైల్ ఏర్పాటు చేసుకోండి.\nప్రత్యేక ధర: ₹{{digital_price}}/సంవత్సరం\nలింక్: {{referral_link}}\nనా ప్రొఫైల్: {{profile_link}}"
+                'title': 'రెఫరల్ ఆహ్వానం (సిఫార్సు)',
+                'text': "నమస్కారం, నేను {{agent_name}}, ఇన్సూరెన్స్ అడ్వైజర్. 👋\n\nనేను PadosiAgent తో నా డిజిటల్ ఉనికిని పెంచుకుంటున్నాను; మీరు కూడా ఈ ప్లాట్‌ఫామ్‌లో చేరాలని కోరుకుంటున్నాను.\n\nమీ ఇన్సూరెన్స్ వ్యాపారాన్ని ఆన్‌లైన్‌కు తీసుకెళ్లడానికి నా రెఫరల్ లింక్ ద్వారా PadosiAgent‌లో చేరండి 🚀\n\n👉 {{referral_link}}"
             },
             {
                 'id': 'te_2',
@@ -220,8 +220,8 @@ WHATSAPP_TEMPLATES = {
         'templates': [
             {
                 'id': 'bn_1',
-                'title': 'ডিজিটাল প্রোফাইল তৈরি করুন',
-                'text': "নমস্কার, আমি {{agent_name}}, ইনসিওরেন্স এজেন্ট।\n\nPadosiAgent-এ আপনার ডিজিটাল প্রোফাইল তৈরি করুন।\nঅফার মূল্য: ₹{{digital_price}}/বছর\nলিঙ্ক: {{referral_link}}\nআমার প্রোফাইল: {{profile_link}}"
+                'title': 'রেফারেল আমন্ত্রণ (সুপারিশ)',
+                'text': "নমস্কার, আমি {{agent_name}}, ইনসিওরেন্স এজেন্ট। 👋\n\nআমি PadosiAgent-এর সাথে আমার ডিজিটাল উপস্থিতি বাড়াচ্ছি এবং আপনাকেও এই প্ল্যাটফর্মে যোগ দিতে চাই।\n\nআপনার ইনস্যুরেন্স ব্যবসা অনলাইনে নিতে আমার রেফারেল লিঙ্ক দিয়ে PadosiAgent-এ যোগ দিন 🚀\n\n👉 {{referral_link}}"
             },
             {
                 'id': 'bn_2',
@@ -250,8 +250,8 @@ WHATSAPP_TEMPLATES = {
         'templates': [
             {
                 'id': 'ml_1',
-                'title': 'ഡിജിറ്റൽ പ്രൊഫൈൽ',
-                'text': "നമസ്കാരം, ഞാൻ {{agent_name}}, ഇൻഷുറൻസ് ഏജന്റ് ആണ്.\n\nPadosiAgent വഴി നിങ്ങളുടെ ഡിജിറ്റൽ പ്രൊഫൈൽ തുടങ്ങൂ.\nവില: ₹{{digital_price}}/വർഷം\nലിങ്ക്: {{referral_link}}\nഎന്റെ പ്രൊഫൈൽ: {{profile_link}}"
+                'title': 'റഫറൽ ക്ഷണം (ശുപാർശ)',
+                'text': "നമസ്കാരം, ഞാൻ {{agent_name}}, ഇൻഷുറൻസ് ഏജന്റ് ആണ്. 👋\n\nഞാൻ PadosiAgent ഉപയോഗിച്ച് എന്റെ ഡിജിറ്റൽ സാന്നിധ്യം വളർത്തുന്നു; നിങ്ങളും ഈ പ്ലാറ്റ്‌ഫോമിൽ ചേരണമെന്ന് ആഗ്രഹിക്കുന്നു.\n\nനിങ്ങളുടെ ഇൻഷുറൻസ് ബിസിനസ് ഓൺലൈനാക്കാൻ എന്റെ റഫറൽ ലിങ്ക് വഴി PadosiAgent-ൽ ചേരൂ 🚀\n\n👉 {{referral_link}}"
             },
             {
                 'id': 'ml_2',
@@ -280,8 +280,8 @@ WHATSAPP_TEMPLATES = {
         'templates': [
             {
                 'id': 'kn_1',
-                'title': 'ಡಿಜಿಟಲ್ ಗುರುತು',
-                'text': "ನಮಸ್ಕಾರ, ನಾನು {{agent_name}}, ವಿಮಾ ಸಲಹೆಗಾರ.\n\nPadosiAgent ನಲ್ಲಿ ನಿಮ್ಮ ಡಿಜಿಟಲ್ ಪ್ರೊಫೈಲ್ ರಚಿಸಿ.\nಆಫರ್ ದರ: ₹{{digital_price}}/ವರ್ಷ\nಲಿಂಕ್: {{referral_link}}\nನನ್ನ ಪ್ರೊಫೈಲ್: {{profile_link}}"
+                'title': 'ರೆಫರಲ್ ಆಹ್ವಾನ (ಶಿಫಾರಸು)',
+                'text': "ನಮಸ್ಕಾರ, ನಾನು {{agent_name}}, ವಿಮಾ ಸಲಹೆಗಾರ. 👋\n\nನಾನು PadosiAgent ಜೊತೆ ನನ್ನ ಡಿಜಿಟಲ್ ಹಾಜರಿ ಹೆಚ್ಚಿಸುತ್ತಿದ್ದೇನೆ; ನೀವೂ ಈ ವೇದಿಕೆಯಲ್ಲಿ ಸೇರಲಿ ಎಂದು ಬಯಸುತ್ತೇನೆ.\n\nನಿಮ್ಮ ವಿಮಾ ವ್ಯವಹಾರವನ್ನು ಆನ್‌ಲೈನ್‌ಗೆ ತರಲು ನನ್ನ ರೆಫರಲ್ ಲಿಂಕ್ ಮೂಲಕ PadosiAgent ಗೆ ಸೇರಿ 🚀\n\n👉 {{referral_link}}"
             },
             {
                 'id': 'kn_2',
