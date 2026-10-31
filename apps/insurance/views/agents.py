@@ -12,6 +12,8 @@ from apps.agents.services.feature_unlock import PLAN_LABELS
 from django.contrib.auth.models import User
 from apps.admin_panel.models.insurance_approval import AgentApprovalRequest
 from padosi_agent.razorpay_env import USER_PAYMENT_UNAVAILABLE
+from apps.insurance.models import InsuranceBulkOrder
+from apps.insurance.views.payments import InsurancePaymentRejected, captured_insurance_payment
 import random, string, logging, datetime
 
 logger = logging.getLogger(__name__)
@@ -435,6 +437,14 @@ def checkout_online_start(request):
         try:
             razorpay_order = client.order.create(data=order_data)
             order_id = razorpay_order['id']
+            # The webhook / recovery fulfil from this row if the tab closes after payment.
+            InsuranceBulkOrder.objects.create(
+                razorpay_order_id=order_id,
+                created_by=user,
+                company_id=get_or_sync_insurance_company_id(user),
+                cart=cart,
+                amount_paise=int(total_amount * 100),
+            )
             request.session['insurance_bulk_order_id'] = order_id
         except Exception as e:
             logger.error('Insurance Razorpay order failed: %s', e)
@@ -452,67 +462,41 @@ def checkout_online_start(request):
         'test_payment': is_test_key or not key,
     })
 
-@login_required
-def checkout_online_success(request):
-    user = request.user
-    if not (is_insurance_manager(user) or is_insurance_onboarding(user) or is_insurance_sales(user)):
-        return JsonResponse({'success': False, 'message': 'Unauthorized.'}, status=403)
+def fulfil_insurance_bulk_order(order_id, payment_id, payment=None, signature=None):
+    """Create the agents of a captured bulk-cart (``cart_ins_``) order exactly once.
 
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
+    Shared by the browser callback, the Razorpay webhook and
+    recover_orphaned_payments. The cart and amount come from the
+    InsuranceBulkOrder row written when the order was created, never from the
+    session or the client. Returns (order, fulfilled): fulfilled is False when
+    it was already paid. Raises InsurancePaymentRejected.
+    """
+    from apps.agents.views.registration import _paise_amounts_match
 
-    cart = request.session.get('insurance_bulk_cart', [])
-    if not cart:
-        return JsonResponse({'success': False, 'message': 'Your cart is empty or already processed.'}, status=400)
-
-    payment_ref = request.POST.get('razorpay_payment_id')
-    order_id = request.POST.get('razorpay_order_id')
-    signature = request.POST.get('razorpay_signature')
+    bulk_order = InsuranceBulkOrder.objects.filter(razorpay_order_id=order_id).first()
+    if not bulk_order:
+        raise InsurancePaymentRejected('Order not found.')
+    if bulk_order.status == 'paid':
+        return bulk_order, False
 
     key = getattr(settings, 'RAZORPAY_KEY', '')
     secret = getattr(settings, 'RAZORPAY_SECRET', '')
-    is_mock_payment = not bool(key and secret and razorpay) and getattr(settings, 'DEBUG', False)
-
-    if not is_mock_payment:
-        if not (key and secret and razorpay):
-            return JsonResponse({'success': False, 'message': USER_PAYMENT_UNAVAILABLE}, status=500)
-
-        expected_order_id = request.session.get('insurance_bulk_order_id')
-        if not expected_order_id or expected_order_id != order_id:
-            return JsonResponse({'success': False, 'message': 'Invalid order ID.'}, status=400)
-
-        client = razorpay.Client(auth=(key, secret))
-        try:
-            client.utility.verify_payment_signature({
-                'razorpay_order_id': order_id,
-                'razorpay_payment_id': payment_ref,
-                'razorpay_signature': signature
-            })
-            
-            # Amount verification
-            expected_amount = sum(item.get('amount', 0) for item in cart)
-            expected_amount_paise = int(expected_amount * 100)
-            
-            razorpay_payment = client.payment.fetch(payment_ref)
-            if int(razorpay_payment['amount']) != expected_amount_paise:
-                return JsonResponse({'success': False, 'message': 'Payment amount mismatch.'}, status=400)
-                
-        except razorpay.errors.SignatureVerificationError:
-            return JsonResponse({'success': False, 'message': 'Invalid payment signature.'}, status=400)
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': f'Failed to verify payment: {str(e)}'}, status=400)
-    else:
-        if not getattr(settings, 'DEBUG', False):
-            return JsonResponse({'success': False, 'message': 'Mock payments are disabled in production.'}, status=403)
-
-    if not payment_ref:
-        payment_ref = 'TEST_PAY_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+    client = razorpay.Client(auth=(key, secret)) if key and secret and razorpay else None
+    payment = captured_insurance_payment(client, order_id, payment_id, payment)
+    if not _paise_amounts_match(payment.get('amount'), bulk_order.amount_paise):
+        logger.error('Insurance bulk order %s - amount mismatch. payment=%s paid=%s expected=%s',
+                     order_id, payment_id, payment.get('amount'), bulk_order.amount_paise)
+        raise InsurancePaymentRejected('Payment amount mismatch.')
 
     try:
         with transaction.atomic():
-            company_id = get_or_sync_insurance_company_id(user)
-            
-            for item in cart:
+            bulk_order = InsuranceBulkOrder.objects.select_for_update().get(pk=bulk_order.pk)
+            if bulk_order.status == 'paid':
+                return bulk_order, False  # completed concurrently
+            user = bulk_order.created_by
+            company_id = bulk_order.company_id
+
+            for item in bulk_order.cart:
                 fullname = item.get('fullname')
                 email = item.get('email')
                 mobile = item.get('mobile')
@@ -559,20 +543,101 @@ def checkout_online_success(request):
                     starts_at=timezone.now(),
                     expires_at=timezone.now() + timezone.timedelta(days=365),
                     razorpay_order_id=order_id,
-                    razorpay_payment_id=payment_ref,
+                    razorpay_payment_id=payment_id,
                     razorpay_signature=signature,
                 )
 
-            request.session.pop('insurance_bulk_cart', None)
-            request.session.pop('insurance_bulk_order_id', None)
+            bulk_order.status = 'paid'
+            bulk_order.razorpay_payment_id = payment_id
+            bulk_order.fulfilled_at = datetime.datetime.now()
+            bulk_order.error = ''
+            bulk_order.save()
+    except ValueError as exc:
+        # The company has paid: keep the order visible for a manual fix / refund.
+        InsuranceBulkOrder.objects.filter(pk=bulk_order.pk).update(
+            status='failed', razorpay_payment_id=payment_id, error=str(exc),
+        )
+        logger.error('Insurance bulk order %s paid by %s but NOT fulfilled (see insurance_bulk_orders.error)',
+                     order_id, payment_id)
+        raise InsurancePaymentRejected(str(exc))
+    logger.info('Insurance bulk order %s fulfilled by payment %s', order_id, payment_id)
+    return bulk_order, True
 
-            return JsonResponse({
-                'success': True,
-                'message': 'Online payment completed successfully. Agents onboarded!',
-                'redirect': '/insurance/agents/',
-                'redirect_url': '/insurance/agents/'
+@login_required
+def checkout_online_success(request):
+    user = request.user
+    if not (is_insurance_manager(user) or is_insurance_onboarding(user) or is_insurance_sales(user)):
+        return JsonResponse({'success': False, 'message': 'Unauthorized.'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
+
+    cart = request.session.get('insurance_bulk_cart', [])
+    if not cart:
+        return JsonResponse({'success': False, 'message': 'Your cart is empty or already processed.'}, status=400)
+
+    payment_ref = request.POST.get('razorpay_payment_id')
+    order_id = request.POST.get('razorpay_order_id')
+    signature = request.POST.get('razorpay_signature')
+
+    key = getattr(settings, 'RAZORPAY_KEY', '')
+    secret = getattr(settings, 'RAZORPAY_SECRET', '')
+    is_mock_payment = not bool(key and secret and razorpay) and getattr(settings, 'DEBUG', False)
+
+    if not is_mock_payment:
+        if not (key and secret and razorpay):
+            return JsonResponse({'success': False, 'message': USER_PAYMENT_UNAVAILABLE}, status=500)
+
+        expected_order_id = request.session.get('insurance_bulk_order_id')
+        if not expected_order_id or expected_order_id != order_id:
+            return JsonResponse({'success': False, 'message': 'Invalid order ID.'}, status=400)
+
+        client = razorpay.Client(auth=(key, secret))
+        try:
+            client.utility.verify_payment_signature({
+                'razorpay_order_id': order_id,
+                'razorpay_payment_id': payment_ref,
+                'razorpay_signature': signature
             })
+        except razorpay.errors.SignatureVerificationError:
+            return JsonResponse({'success': False, 'message': 'Invalid payment signature.'}, status=400)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'Failed to verify payment: {str(e)}'}, status=400)
+    else:
+        if not getattr(settings, 'DEBUG', False):
+            return JsonResponse({'success': False, 'message': 'Mock payments are disabled in production.'}, status=403)
+        order_id = order_id or 'order_local_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        if not payment_ref:
+            payment_ref = 'TEST_PAY_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
 
+    try:
+        # Mock checkouts, and carts whose order predates InsuranceBulkOrder, have
+        # no row yet; the order id is this session's own (checked above).
+        bulk_order, _created = InsuranceBulkOrder.objects.get_or_create(
+            razorpay_order_id=order_id,
+            defaults={
+                'created_by': user,
+                'company_id': get_or_sync_insurance_company_id(user),
+                'cart': cart,
+                'amount_paise': int(sum(item.get('amount', 0) for item in cart) * 100),
+            },
+        )
+        mock_payment = None
+        if is_mock_payment:
+            mock_payment = {'id': payment_ref, 'order_id': order_id, 'amount': bulk_order.amount_paise, 'status': 'captured'}
+        fulfil_insurance_bulk_order(order_id, payment_ref, payment=mock_payment, signature=signature)
+    except InsurancePaymentRejected as exc:
+        return JsonResponse({'success': False, 'message': str(exc)}, status=400)
     except Exception as e:
         logger.error(f'Online checkout failed: {e}')
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+    request.session.pop('insurance_bulk_cart', None)
+    request.session.pop('insurance_bulk_order_id', None)
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Online payment completed successfully. Agents onboarded!',
+        'redirect': '/insurance/agents/',
+        'redirect_url': '/insurance/agents/'
+    })

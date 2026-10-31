@@ -13,7 +13,9 @@ Razorpay, verifies the amount and sends the invoice + welcome email.
     python manage.py recover_orphaned_payments --days 60 --apply
 
 Captured event-checkout payments whose EventRegistration is still unpaid (tab
-closed after capture) are fulfilled with fulfil_event_registration.
+closed after capture) are fulfilled with fulfil_event_registration; insurance
+portal orders (single agent / bulk cart) with fulfil_insurance_agent_order /
+fulfil_insurance_bulk_order.
 """
 import time
 
@@ -29,6 +31,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from apps.agents.models import Agent, AgentSubscription, EventRegistration
+        from apps.insurance.models import InsuranceBulkOrder
         from apps.agents.services.account_auth import agent_has_completed_payment
         from apps.agents.services.feature_unlock import PLAN_SLUGS, normalize_plan_slug, plan_slug_from_name
         from apps.agents.services.razorpay_checkout import razorpay_client
@@ -53,9 +56,22 @@ class Command(BaseCommand):
                 if payment.get('status') != 'captured' or not payment.get('order_id'):
                     continue
                 order_id = payment['order_id']
-                event_reg = EventRegistration.objects.filter(razorpay_order_id=order_id).first()
+                try:
+                    event_reg = EventRegistration.objects.filter(razorpay_order_id=order_id).first()
+                except Exception:
+                    event_reg = None
                 if event_reg:
                     found += self._event_order(event_reg, payment, apply)
+                    continue
+                bulk_order = InsuranceBulkOrder.objects.filter(razorpay_order_id=order_id).first()
+                if bulk_order:
+                    if bulk_order.status != 'paid':
+                        from apps.insurance.views.agents import fulfil_insurance_bulk_order
+                        found += self._insurance_order(
+                            'INSURANCE_BULK_NOT_FULFILLED',
+                            f'bulk order #{bulk_order.pk} status={bulk_order.status} agents={len(bulk_order.cart)}',
+                            fulfil_insurance_bulk_order, payment, apply,
+                        )
                     continue
                 sub = AgentSubscription.objects.filter(razorpay_order_id=order_id).first()
                 if sub and sub.payment_status == 'completed':
@@ -69,12 +85,18 @@ class Command(BaseCommand):
                     if receipt.startswith('evt_'):
                         # A stale order of a registration that has since got a newer one.
                         reg_id = receipt.split('_')[1]
-                        event_reg = EventRegistration.objects.filter(pk=reg_id).first() if reg_id.isdigit() else None
+                        try:
+                            event_reg = EventRegistration.objects.filter(pk=reg_id).first() if reg_id.isdigit() else None
+                        except Exception:
+                            event_reg = None
                         if event_reg:
                             found += self._event_order(event_reg, payment, apply)
                         continue
+                    if receipt.startswith('agent_ins_'):
+                        found += self._insurance_agent_order(order, payment, apply)
+                        continue
                     if not receipt.startswith('agent_draft_'):
-                        continue  # insurance / other checkout
+                        continue  # other checkout
                     notes = order.get('notes') if isinstance(order.get('notes'), dict) else {}
                     agent = Agent.objects.filter(email__iexact=str(notes.get('email') or '')).first()
                     order_plan = str(notes.get('plan_type') or '')
@@ -110,6 +132,34 @@ class Command(BaseCommand):
 
         mode = 'applied' if apply else 'dry run, nothing changed'
         self.stdout.write(self.style.SUCCESS(f'{found} unactivated registration payment(s) found ({mode}).'))
+
+    def _insurance_agent_order(self, order, payment, apply):
+        """Report (and with --apply fulfil) a captured single-agent insurance order."""
+        from apps.agents.models import Agent
+        from apps.insurance.views.payments import INSURANCE_PAID_STATUSES, fulfil_insurance_agent_order
+
+        notes = order.get('notes') if isinstance(order.get('notes'), dict) else {}
+        agent_id = str(notes.get('agent_id') or '')
+        agent = Agent.objects.filter(pk=int(agent_id)).first() if agent_id.isdigit() else None
+        if agent and agent.payment_reference == payment['id']:
+            return 0  # this payment is already recorded
+        detail = f'agent #{agent.pk} status={agent.status}' if agent else 'agent NOT FOUND'
+        if agent and agent.status in INSURANCE_PAID_STATUSES:
+            detail += '  <- already paid another way: possible DOUBLE CHARGE, refund manually'
+        return self._insurance_order(
+            'INSURANCE_AGENT_NOT_FULFILLED', detail, fulfil_insurance_agent_order, payment, apply,
+        )
+
+    def _insurance_order(self, kind, detail, fulfil, payment, apply):
+        amount = (payment.get('amount') or 0) / 100
+        self.stdout.write(f'{kind}  {payment["id"]}  {payment["order_id"]}  Rs {amount:.2f}  {detail}')
+        if apply:
+            try:
+                _obj, fulfilled = fulfil(payment['order_id'], payment['id'], payment=payment)
+                self.stdout.write(f'    fulfilled={fulfilled}')
+            except Exception as exc:  # InsurancePaymentRejected or a DB error: report, keep scanning
+                self.stdout.write(f'    not fulfilled: {exc}')
+        return 1
 
     def _event_order(self, event_reg, payment, apply):
         """Report (and with --apply fulfil) a captured payment of an unpaid event registration."""

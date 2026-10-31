@@ -2,6 +2,7 @@
 {% load html_tags %}
 
 {% block title %}{{ page.meta_title|default:page.title }} — PadosiAgent{% endblock %}
+{% block meta_description %}{% if page.meta_description %}{{ page.meta_description }}{% elif page.description %}{{ page.description|striptags|truncatechars:155 }}{% else %}Explore {{ page.title }} on PadosiAgent, the leading platform connecting you with verified licensed insurance advisors in your neighbourhood across India.{% endif %}{% endblock %}
 
 {% block content %}
 <div class="sub_banner position-relative">

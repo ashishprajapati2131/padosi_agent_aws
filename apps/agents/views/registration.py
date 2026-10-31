@@ -5655,8 +5655,8 @@ from django.views.decorators.csrf import csrf_exempt
 _FOREIGN_CHECKOUT_RECEIPTS = ("agent_ins_", "cart_ins_", "evt_")
 
 
-def _is_foreign_checkout_order(order_id):
-    """True only for orders of the insurance / event checkouts.
+def _foreign_checkout_receipt(order_id):
+    """The receipt of an insurance / event checkout order, else None.
 
     Anything else (agent orders, unknown receipts, Razorpay unreachable) keeps
     the 503 so Razorpay retries rather than a real payment being dropped.
@@ -5666,8 +5666,10 @@ def _is_foreign_checkout_order(order_id):
         order = client.order.fetch(order_id) if client else None
         receipt = order.get("receipt") if isinstance(order, dict) else None
     except Exception:
-        return False
-    return isinstance(receipt, str) and receipt.startswith(_FOREIGN_CHECKOUT_RECEIPTS)
+        return None
+    if isinstance(receipt, str) and receipt.startswith(_FOREIGN_CHECKOUT_RECEIPTS):
+        return receipt
+    return None
 
 
 _ORPHAN_PLAN_NAMES = {
@@ -5811,12 +5813,26 @@ def razorpay_webhook(request):
 
         # Event checkout orders are fulfilled on their registration, not through
         # the agent-signup path (the browser tab may close after capture).
-        event_registration = EventRegistration.objects.filter(
-            razorpay_order_id=order_id
-        ).first()
+        try:
+            event_registration = EventRegistration.objects.filter(
+                razorpay_order_id=order_id
+            ).first()
+        except Exception as exc:
+            logger.warning(f"[Razorpay Webhook] EventRegistration lookup skipped: {exc}")
+            event_registration = None
         if event_registration:
             return _fulfil_event_order_webhook(
                 event_registration, order_id, payment_id, payment_entity
+            )
+
+        # Insurance bulk-cart orders: the cart is stored on InsuranceBulkOrder.
+        from apps.insurance.models import InsuranceBulkOrder
+
+        if InsuranceBulkOrder.objects.filter(razorpay_order_id=order_id).exists():
+            from apps.insurance.views.agents import fulfil_insurance_bulk_order
+
+            return _fulfil_insurance_order_webhook(
+                fulfil_insurance_bulk_order, order_id, payment_id, payment_entity
             )
 
         subscription = AgentSubscription.objects.filter(
@@ -5835,9 +5851,19 @@ def razorpay_webhook(request):
             # A paid registration order whose row was re-pointed at a newer
             # checkout (pre one-row-per-order data): rebuild it from the order.
             subscription = adopt_orphan_registration_order(order_id)
-        if not subscription and _is_foreign_checkout_order(order_id):
-            # Insurance / event checkouts are verified by their own flows; a
-            # 503 here made Razorpay retry them forever (and risk disabling
+        # Single-agent insurance orders never bind a subscription row (the
+        # agent is in the order notes), so they are recognised by receipt here
+        # rather than with a Razorpay fetch on every agent webhook.
+        foreign_receipt = None if subscription else _foreign_checkout_receipt(order_id)
+        if foreign_receipt and foreign_receipt.startswith("agent_ins_"):
+            from apps.insurance.views.payments import fulfil_insurance_agent_order
+
+            return _fulfil_insurance_order_webhook(
+                fulfil_insurance_agent_order, order_id, payment_id, payment_entity
+            )
+        if foreign_receipt:
+            # Other insurance / event checkouts are verified by their own flows;
+            # a 503 here made Razorpay retry them forever (and risk disabling
             # the webhook endpoint).
             return HttpResponse(
                 "Webhook ignored: insurance / event checkout order", status=200
@@ -5917,6 +5943,32 @@ def _fulfil_event_order_webhook(event_registration, order_id, payment_id, paymen
             f"[Webhook] Event fulfilment failed for order {order_id}, payment {payment_id}"
         )
         return HttpResponse("Event fulfilment failed", status=500)
+    if not fulfilled:
+        return HttpResponse("Webhook processed successfully (already completed)", status=200)
+    return HttpResponse("Webhook processed successfully", status=200)
+
+
+def _fulfil_insurance_order_webhook(fulfil, order_id, payment_id, payment_entity):
+    """Run an insurance fulfil_* function with the event-order response rules."""
+    from apps.insurance.views.payments import InsurancePaymentRejected
+
+    if not payment_id:
+        logger.error(f"[Webhook] Insurance order {order_id} has no payment id; not fulfilled")
+        return HttpResponse("Webhook ignored: insurance order without payment", status=200)
+    payment = payment_entity if payment_entity.get("id") == payment_id else None
+    try:
+        _obj, fulfilled = fulfil(order_id, payment_id, payment=payment)
+    except InsurancePaymentRejected as exc:
+        # 200: a rejected payment never becomes valid, so a retry cannot help.
+        logger.error(
+            f"[Webhook] Insurance order {order_id} not fulfilled: payment {payment_id}: {exc}"
+        )
+        return HttpResponse("Webhook ignored: insurance payment rejected", status=200)
+    except Exception:
+        logger.exception(
+            f"[Webhook] Insurance fulfilment failed for order {order_id}, payment {payment_id}"
+        )
+        return HttpResponse("Insurance fulfilment failed", status=500)
     if not fulfilled:
         return HttpResponse("Webhook processed successfully (already completed)", status=200)
     return HttpResponse("Webhook processed successfully", status=200)

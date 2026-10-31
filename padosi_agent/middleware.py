@@ -84,7 +84,14 @@ class SEOMiddleware(MiddlewareMixin):
             r'^/admin/',
             r'^/django-admin/',
             r'^/agent-login/',
+            r'^/agent-logout/',
+            r'^/forgot-password/',
+            r'^/reset-password/',
             r'^/agent/dashboard/',
+            r'^/agent/edit-profile/',
+            r'^/agent/plans/',
+            r'^/agent/renew-plan/',
+            r'^/agent/referral/',
             r'^/insurance-login/',
             r'^/media/app/private/',
             r'^/api/',
@@ -92,6 +99,11 @@ class SEOMiddleware(MiddlewareMixin):
             # JS-loaded AI picks fragment (no title/content of its own).
             r'^/coming-soon/',
             r'^/find-agents/ai-picks/',
+            r'^/agent-register-',
+            r'^/agent-registration/progress/',
+            r'^/chooseplan/',
+            r'^/agent-register/',
+            r'^/payment-',
         ]
         self.compiled_paths = [re.compile(path) for path in self.private_paths]
 

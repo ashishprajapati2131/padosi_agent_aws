@@ -227,3 +227,11 @@ Full suite after the fixes: `manage.py test apps fastapi_app` ran 1026 tests, OK
 | 09 Webhooks | ✅ WhatsApp-bot webhook: event allowlist, amount and capture checks, no demotion, message de-duplication · main webhook returns 200 and an alert on amount mismatch. ⏳ Event/insurance order fulfilment from the webhook is still open (needs an events.py refactor). |
 | 10 Backups | ✅ A failed backup aborts the deploy · no incomplete `dumpdata` fallback on MySQL · daily backup job keeps 14 · password passed via env. ⚠️ An offsite, encrypted copy and backup of `media/` need a destination you choose. |
 | Extra | ✅ Expired deletion OTP fixed · OTP row lock · cron token no longer uses a `SECRET_KEY` fallback · deletion route uses the correct client IP · contact form no longer logs PII · mobile bio returns 429 at the cap. |
+
+### Update: event/insurance webhook (2026-11-01)
+- ✅ Event orders: the webhook, the browser callback and `recover_orphaned_payments --apply` all go through one idempotent function, `fulfil_event_registration` (row lock, capture check, amount check, no duplicate emails). Invariant 9: an existing order id is never overwritten.
+- ✅ Insurance bulk checkout (`checkout_online_success`) now requires a captured payment (invariant 10). Test: `apps/insurance/test_bulk_checkout_capture.py`.
+- ⏳ Insurance single-agent webhook: the fulfilment code first has to be moved out of `handle_payment_success`. Bulk cart needs a server-side cart table (migration).
+- ⚠️ `/events/` signup flow can't be reached: `urls_events.py` declares `register/` and `plans/` twice, so `register` and `select_plan` never run. Enabling it is a product decision.
+- ⚠️ Behaviour change: a new event agent's first password is their mobile number (invariant 3), not a random password.
+- Full suite: 1033 tests OK (2 skipped).

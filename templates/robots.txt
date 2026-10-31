@@ -1,0 +1,78 @@
+# robots.txt for PadosiAgent
+# Tells search engines which pages to crawl and which to avoid
+
+User-agent: *
+Allow: /
+
+# Disallow private/admin areas
+Disallow: /admin/
+Disallow: /django-admin/
+Disallow: /agent/dashboard*
+Disallow: /client/dashboard*
+Disallow: /user/dashboard*
+Disallow: /agent-registration*
+Disallow: /agent-register*
+Disallow: /chooseplan*
+Disallow: /payment-*
+
+# Disallow authentication pages
+Disallow: /agent-login
+Disallow: /login
+Disallow: /logout
+Disallow: /forgot-password
+Disallow: /reset-password*
+Disallow: /register
+
+# Disallow internal/API endpoints
+Disallow: /api/
+Disallow: /api/*
+Disallow: /ajax/
+Disallow: /ajax/*
+Disallow: /media/app/private/
+
+# Disallow search query parameters to prevent duplicate crawl loops
+Disallow: /*?*
+Disallow: /search*
+Disallow: /filter*
+
+# Allow canonical directory pages
+Allow: /find-agents/
+Allow: /insurance-agents/
+Allow: /about/
+Allow: /faq/
+Allow: /contact/
+Allow: /calculator/
+Allow: /calculators/
+
+# Specific rules for Googlebot
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /django-admin/
+Disallow: /agent/dashboard*
+Disallow: /agent-login
+Disallow: /forgot-password
+Disallow: /reset-password*
+Disallow: /*?*
+
+# Specific rules for Bingbot
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+Disallow: /django-admin/
+Disallow: /agent/dashboard*
+Disallow: /agent-login
+Disallow: /*?*
+
+# Block aggressive scrapers
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# Canonical Sitemap URL
+Sitemap: https://padosiagent.com/sitemap.xml

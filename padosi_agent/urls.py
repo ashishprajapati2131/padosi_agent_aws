@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
-from django.views.generic import RedirectView
+from django.views.generic import RedirectView, TemplateView
 from django.conf import settings
 
 from apps.agents.views.dashboard import serve_private_file, track_google_review_click_view
@@ -41,6 +41,7 @@ urlpatterns = [
     path('offline.html',         pwa_views.offline,        name='pwa.offline'),
     # Heavy (counts + every listed agent): cache the rendered XML for an hour.
     path('sitemap.xml', cache_page(60 * 60)(sitemap), {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+    path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain'), name='robots_txt'),
     path('insurance-login/', InsuranceLoginView.as_view(), name='insurance_login'),
     # Removed overriding logout view, now handled by apps.agents.urls
     path('media/app/private/<path:file_path>', serve_private_file, name='serve_private_file'),
