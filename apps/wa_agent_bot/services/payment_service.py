@@ -163,9 +163,12 @@ def create_or_update_pending_agent(registration_data, plan_key):
     experience_range = registration_data.get("experience_range", "").strip()
     segments = registration_data.get("segments", [])
 
-    # 1. User creation / retrieval — default password is the agent's 10-digit mobile number
-    mobile_digits = "".join(c for c in mobile if c.isdigit())
-    password = mobile_digits[-10:] if len(mobile_digits) >= 10 else mobile_digits
+    # 1. User creation / retrieval — generate a cryptographically random temporary password
+    # (Do NOT use the agent's mobile number: mobile numbers are public and predictable).
+    import string as _str_mod
+    _alphabet = _str_mod.ascii_letters + _str_mod.digits + "!@#$"
+    password = "".join(secrets.choice(_alphabet) for _ in range(12))
+
     user, u_created = User.objects.get_or_create(
         username=email,
         defaults={
@@ -462,13 +465,17 @@ def activate_agent_subscription_after_payment(
             agent.trial_ends_at = subscription.expires_at
         agent.save()
 
-        # 3. Ensure User exists and password is set to 10-digit mobile number
-        mobile_digits = "".join(c for c in (agent.mobile or "") if c.isdigit())
-        password = (
-            mobile_digits[-10:]
-            if len(mobile_digits) >= 10
-            else (mobile_digits or "1234567890")
-        )
+        # 3. Ensure User exists with a cryptographically secure random temporary password
+        import string as _str_mod
+        _alphabet = _str_mod.ascii_letters + _str_mod.digits + "!@#$"
+        password = "".join(secrets.choice(_alphabet) for _ in range(12))
+
+        # Prefer reusing the temporary password generated during initial plan selection if present
+        _target_session = WaBotSession.objects.filter(agent=agent).first()
+        if _target_session and isinstance(_target_session.registration_data, dict):
+            _saved_pw = _target_session.registration_data.get("temp_password")
+            if _saved_pw and len(_saved_pw) >= 8:
+                password = _saved_pw
 
         # Only a login created here gets the mobile password; an existing one is never overwritten.
         new_user = False

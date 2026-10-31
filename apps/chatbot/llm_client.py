@@ -1366,7 +1366,7 @@ def get_chat_completion(
         logger.error(f"Error generating chat completion: {e}")
         return {
             "success": False,
-            "reply": f"I am here to help you with insurance and investment related queries. Please try again. (DEBUG: {type(e).__name__} - {str(e)})",
+            "reply": "I am here to help you with insurance and investment related queries. Please try again.",
             "quick_options": [],
             "agent_links": [],
             "total_time": time.time() - t_start,
@@ -1794,5 +1794,5 @@ def stream_plain_text_completion(session_id, user_message):
             continue  # Try next provider — no partial text has been yielded yet
     yield {
         "type": "error",
-        "message": f"I am here to help you with insurance and investment related queries. Please try again. (DEBUG: {type(last_error).__name__} - {str(last_error)})",
+        "message": "I am here to help you with insurance and investment related queries. Please try again.",
     }

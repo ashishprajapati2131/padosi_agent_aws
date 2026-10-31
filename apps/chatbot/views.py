@@ -20,6 +20,27 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
+# ── Prompt injection detection ─────────────────────────────────────────────────
+_INJECTION_PATTERNS = [
+    r"ignore\s+(all\s+)?(previous|above|prior|earlier)\s+instructions?",
+    r"disregard\s+(all\s+)?instructions",
+    r"you\s+are\s+now\s+a(?:n)?\s+\w",
+    r"pretend\s+(?:you\s+are|to\s+be)",
+    r"act\s+as\s+(?:if\s+you\s+are|an?\s+)",
+    r"repeat\s+(?:your\s+)?(?:full\s+)?system\s+prompt",
+    r"reveal\s+(?:your\s+)?(?:system\s+)?prompt",
+    r"print\s+(?:your\s+)?(?:system\s+)?prompt",
+    r"output\s+(?:your\s+)?(?:system\s+)?prompt",
+    r"DAN\s*(?:mode)?",
+    r"jailbreak",
+    r"(?:ignore|bypass|override)\s+(?:the\s+)?(?:safety|content)\s+(?:filter|policy|guidelines?)",
+]
+
+def _is_injection_attempt(text: str) -> bool:
+    """Return True if the user message matches known prompt injection signatures."""
+    lower = text.lower()
+    return any(re.search(p, lower) for p in _INJECTION_PATTERNS)
+
 MAX_CHAT_MESSAGE_CHARS = 2000
 # LLM spend caps: messages per IP per day, and across all visitors per day.
 CHATBOT_DAILY_IP_LIMIT = int(os.environ.get("CHATBOT_DAILY_IP_LIMIT", "100"))
@@ -201,6 +222,18 @@ def send_message(request):
             # Every character is billed LLM input; cap it.
             return JsonResponse(
                 {"success": False, "error": "Message is too long."}, status=400
+            )
+
+        # Prompt injection guard: refuse instructions that attempt to hijack persona or leak system prompts
+        if _is_injection_attempt(user_message):
+            logger.warning(
+                "Prompt injection attempt blocked from IP %s (session=%s)",
+                client_ip,
+                session_id,
+            )
+            return _canned_reply(
+                session_id,
+                "I can only assist with insurance and investment queries. How can I help you today?",
             )
 
         # Daily spend caps; per-IP first so a capped IP doesn't use up the global budget.

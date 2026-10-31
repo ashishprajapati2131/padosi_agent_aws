@@ -514,3 +514,6 @@ if not DEBUG:
 # ─── Admin Access Controls ───────────────────────────────────────────────────
 _whitelist_ips_env = os.environ.get("ADMIN_WHITELIST_IPS", "")
 ADMIN_WHITELIST_IPS = [ip.strip() for ip in _whitelist_ips_env.split(",") if ip.strip()]
+
+# Multi-Factor Authentication (MFA / 2FA) for Administrative Logins
+ADMIN_MFA_ENABLED = os.environ.get("ADMIN_MFA_ENABLED", "True").lower() in ("true", "1", "yes")

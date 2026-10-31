@@ -316,7 +316,18 @@ def bot_health(request):
     """
     Health check endpoint for the WhatsApp bot.
     GET /wa-bot/health/
+    Restricted to authenticated admin sessions and internal/localhost monitoring.
     """
+    from apps.admin_panel.views.dashboard import _get_admin_from_session
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware
+
+    client_ip = ThreatMonitorMiddleware.get_client_ip(request)
+    is_admin = bool(_get_admin_from_session(request))
+    is_internal = client_ip in ("127.0.0.1", "::1", "localhost")
+
+    if not is_admin and not is_internal:
+        return JsonResponse({"status": "unauthorized"}, status=401)
+
     enabled = is_wa_bot_enabled()
     total_sessions = WaBotSession.objects.count()
     registered_sessions = WaBotSession.objects.filter(is_registered=True).count()
@@ -379,6 +390,32 @@ def razorpay_webhook(request):
         data = json.loads(raw_body)
     except json.JSONDecodeError:
         return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+
+    # ── Replay protection: reject stale events (older than 5 minutes) ────────
+    import time as _time_mod
+    event_created_at = data.get("created_at")
+    if event_created_at:
+        try:
+            age_seconds = abs(_time_mod.time() - float(event_created_at))
+            if age_seconds > 300:  # 5 minutes
+                logger.warning(
+                    "[WA-Bot-Razorpay] Stale webhook rejected (age=%.0fs, event=%s)",
+                    age_seconds,
+                    data.get("event", "?"),
+                )
+                return JsonResponse({"status": "ignored", "message": "Stale event"})
+        except (TypeError, ValueError):
+            pass
+
+    # ── Idempotency guard: reject duplicate event IDs ────────────────────────
+    rzp_event_id = request.headers.get("X-Razorpay-Event-Id", "").strip() or data.get("event_id", "")
+    if rzp_event_id:
+        from django.core.cache import cache as _cache_mod
+        _idem_key = f"rzp_event_{rzp_event_id}"
+        if _cache_mod.get(_idem_key):
+            logger.info("[WA-Bot-Razorpay] Duplicate webhook event ignored: %s", rzp_event_id)
+            return JsonResponse({"status": "ignored", "message": "Already processed"})
+        _cache_mod.set(_idem_key, 1, timeout=86400)
 
     event = data.get("event", "")
     logger.info(f"[WA-Bot-Razorpay] Webhook event received: {event}")

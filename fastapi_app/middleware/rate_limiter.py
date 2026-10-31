@@ -2,7 +2,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
 from fastapi.responses import JSONResponse
 import time
+import logging
 from collections import defaultdict
+
+logger = logging.getLogger(__name__)
 
 # Substrings of the real router paths. The earlier "/auth/login" marker never
 # matched, so credential and payment endpoints ran on the generic 100/min limit.
@@ -92,7 +95,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     cache, f"{bucket}_{ip}", self.window_seconds
                 )
                 limited = count > limit
-            except Exception:
+            except Exception as _e:
+                logger.warning("Shared cache rate-limiting failed: %s; falling back to per-process limiter for %s", _e, ip)
                 limited = None  # cache unavailable: fall back to per-process counting
         if limited is None:
             limited = self._memory_limited(bucket_key, limit)

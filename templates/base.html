@@ -370,6 +370,17 @@
         document.addEventListener('DOMContentLoaded', function () {
             if (!('geolocation' in navigator)) return;
 
+            // DPDP 2023 Compliance: Expire stored GPS coordinates after 24 hours
+            var _geoExp = parseInt(localStorage.getItem('padosi_geo_expiry') || '0');
+            if (_geoExp && Date.now() > _geoExp) {
+                localStorage.removeItem('user_lat');
+                localStorage.removeItem('user_lng');
+                localStorage.removeItem('padosi_geo_expiry');
+                if (localStorage.getItem('padosi_location_status') === 'granted') {
+                    localStorage.removeItem('padosi_location_status');
+                }
+            }
+
             const hasSessionLocation = Boolean("{{ request.session.last_lat|default:'' }}" || "{{ request.session.last_pincode|default:'' }}");
             const permissionStatus = localStorage.getItem('padosi_location_status');
 
@@ -382,6 +393,7 @@
                         localStorage.setItem('padosi_location_status', 'granted');
                         localStorage.setItem('user_lat', lat);
                         localStorage.setItem('user_lng', lng);
+                        localStorage.setItem('padosi_geo_expiry', (Date.now() + 86400000).toString());
 
                         fetch("{% url 'home:save_user_location' %}", {
                             method: 'POST',

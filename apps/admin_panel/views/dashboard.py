@@ -269,81 +269,41 @@ def admin_login(request):
             "old_email": email,
         })
 
-    # Agent Django sessions and admin cookie sessions must not coexist.
-    invalidate_admin_session_token(request.COOKIES.get(ADMIN_SESSION_COOKIE))
-    django_logout(request)
+    # --- 4. Two-Factor Authentication (MFA) Gate ---
+    admin_mfa_enabled = getattr(settings, "ADMIN_MFA_ENABLED", True)
+    if admin_mfa_enabled:
+        from django.core.cache import cache
+        from apps.admin_panel.services.brevo import send_otp_email
 
-    # --- 4. Create session ---
-    token      = secrets.token_hex(32)                        # 64-char hex string
-    now_curr   = datetime.now()
+        otp = f"{secrets.randbelow(900000) + 100000}"
+        mfa_ticket = secrets.token_urlsafe(32)
+        cache.set(
+            f"admin_mfa_{mfa_ticket}",
+            {
+                "admin_id": admin_db_id,
+                "email": email,
+                "otp": otp,
+                "attempts": 0,
+            },
+            timeout=300,
+        )
 
-    expires_at = now_curr + timedelta(days=ADMIN_SESSION_DAYS)
-    ip_address = (request.META.get("REMOTE_ADDR") or "")[:45]
-    user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
+        try:
+            send_otp_email(to_email=email, to_name="Administrator", otp_code=otp)
+        except Exception as e:
+            logger.error("Failed to send Admin MFA OTP email: %s", e)
 
-    try:
-        with connection.cursor() as cursor:
-            # Insert into user_sessions with fallback for schema variations
-            try:
-                cursor.execute(
-                    """
-                    INSERT INTO user_sessions
-                        (session_token, admin_id, agent_id, distributor_id,
-                         ip_address, user_agent, last_activity,
-                         expires_at, created_at, updated_at)
-                    VALUES
-                        (%s, %s, NULL, NULL, %s, %s, %s, %s, %s, %s)
-                    """,
-                    [
-                        token, admin_db_id, ip_address, user_agent,
-                        now_curr, expires_at, now_curr, now_curr,
-                    ],
-                )
-            except Exception:
-                cursor.execute(
-                    """
-                    INSERT INTO user_sessions
-                        (session_token, ip_address, user_agent, last_activity,
-                         expires_at, created_at, updated_at)
-                    VALUES
-                        (%s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    [
-                        token, ip_address, user_agent,
-                        now_curr, expires_at, now_curr, now_curr,
-                    ],
-                )
-            session_id = cursor.lastrowid
+        if settings.DEBUG:
+            logger.info("[ADMIN MFA] Security code for %s: %s", email, otp)
 
-            # Insert admin_id into user_session_data
-            cursor.execute(
-                """
-                INSERT INTO user_session_data
-                    (session_id, data_key, data_value, created_at, updated_at)
-                VALUES
-                    (%s, %s, %s, %s, %s)
-                """,
-                [session_id, "admin_id", str(admin_db_id), now_curr, now_curr],
-            )
-    except Exception as exc:
-        logger.error("Session creation error: %s", exc)
         return render(request, "admin/login.html", {
-            "error":     "Could not create session. Please try again.",
-            "old_email": email,
+            "mfa_required": True,
+            "mfa_ticket": mfa_ticket,
+            "masked_email": _mask_email(email),
+            "info": "A 6-digit two-factor verification code has been sent to your email.",
         })
 
-
-    # --- 5. Set cookie and redirect ---
-    response = redirect("admin_dashboard")
-    response.set_cookie(
-        ADMIN_SESSION_COOKIE,
-        token,
-        max_age=ADMIN_SESSION_DAYS * 24 * 60 * 60,
-        httponly=True,
-        samesite="Lax",
-        secure=_admin_cookie_secure(),
-    )
-    return response
+    return _issue_admin_session(request, admin_db_id, email)
 
 
 @csrf_exempt

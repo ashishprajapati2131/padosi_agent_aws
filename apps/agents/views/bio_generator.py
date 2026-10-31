@@ -222,34 +222,46 @@ def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict)
 
     insurance_str = ", ".join([s for s in all_insurance if s]) if all_insurance else ""
 
+    def _sanitize_field_value(val, max_len=100):
+        if not val:
+            return ""
+        s = str(val).strip()
+        s = re.sub(r"[\r\n\t]+", " ", s)
+        # Strip potential prompt injection sequences from agent-submitted profile fields
+        s = re.sub(r"(?i)\b(ignore\s+(all\s+)?instructions|system\s+prompt|disregard|jailbreak)\b", "", s)
+        return s[:max_len].strip()
+
     agent_details = {}
     if fullname:
-        agent_details["name"] = str(fullname)
+        agent_details["name"] = _sanitize_field_value(fullname, 80)
     if agency_name:
-        agent_details["company"] = str(agency_name)
+        agent_details["company"] = _sanitize_field_value(agency_name, 100)
     if experience:
-        exp_text = str(experience).strip()
+        exp_text = _sanitize_field_value(str(experience).strip(), 30)
         agent_details["experience"] = (
             exp_text if "year" in exp_text.lower() else f"{exp_text} years"
         )
     if city:
-        agent_details["city"] = str(city)
+        agent_details["city"] = _sanitize_field_value(city, 50)
     if state:
-        agent_details["state"] = str(state)
+        agent_details["state"] = _sanitize_field_value(state, 50)
     if insurance_str:
-        agent_details["insurance"] = insurance_str
+        agent_details["insurance"] = _sanitize_field_value(insurance_str, 200)
     if languages:
-        agent_details["languages"] = str(languages)
+        agent_details["languages"] = _sanitize_field_value(languages, 100)
     if pincode:
-        agent_details["pincode"] = str(pincode)
+        agent_details["pincode"] = _sanitize_field_value(pincode, 10)
     if investments:
-        agent_details["investments"] = investments
+        agent_details["investments"] = _sanitize_field_value(investments, 150)
     if is_licensed:
         agent_details["licensed"] = "Yes, verified licensed agent"
     if client_base:
-        agent_details["clients_served"] = str(client_base)
+        # Numeric or bounded descriptor only
+        agent_details["clients_served"] = _sanitize_field_value(str(client_base), 30)
     if success_rate:
-        agent_details["claim_success_rate"] = str(success_rate)
+        # Numeric percentage only
+        clean_sr = re.sub(r"[^0-9.]", "", str(success_rate))
+        agent_details["claim_success_rate"] = f"{clean_sr}%" if clean_sr else ""
     agent_details["claim_support"] = "Yes"
 
     agent_details_json = json.dumps(

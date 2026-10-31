@@ -11,16 +11,20 @@ concurrency:
   group: production-deploy
   cancel-in-progress: false
 
+# Restrict the default GITHUB_TOKEN to the minimum required scope.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2  # v5.3.0
         with:
           python-version: "3.11"
           # Reuse downloaded wheels between runs; refreshed whenever requirements.txt changes.
@@ -78,6 +82,8 @@ jobs:
           # 2. Setup SSH directory and private key
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
+          ssh-keyscan -p "$GODADDY_PORT" -H "$GODADDY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          chmod 644 ~/.ssh/known_hosts 2>/dev/null || true
           echo "$GODADDY_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           if [ -n "$(tail -c 1 ~/.ssh/deploy_key)" ]; then
             echo "" >> ~/.ssh/deploy_key
@@ -106,8 +112,7 @@ jobs:
 
             if ssh -i "$SSH_KEY_FILE" \
                 -p "$GODADDY_PORT" \
-                -o StrictHostKeyChecking=no \
-                -o UserKnownHostsFile=/dev/null \
+                -o StrictHostKeyChecking=accept-new \
                 -o IdentitiesOnly=yes \
                 -o HostkeyAlgorithms=+ssh-rsa,ssh-ed25519 \
                 -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-ed25519 \
@@ -157,8 +162,7 @@ jobs:
           echo "==> ERROR: ${SITE_URL%/}/health/ failed after deploy. Rolling back..."
           ssh -i "$SSH_KEY_FILE" \
               -p "$GODADDY_PORT" \
-              -o StrictHostKeyChecking=no \
-              -o UserKnownHostsFile=/dev/null \
+              -o StrictHostKeyChecking=accept-new \
               -o IdentitiesOnly=yes \
               -o HostkeyAlgorithms=+ssh-rsa,ssh-ed25519 \
               -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-ed25519 \

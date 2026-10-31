@@ -193,7 +193,3 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.get("/")
 def health_check():
     return {"status": "ok", "service": "PadosiAgent FastAPI"}
-
-@app.get("/get-ip")
-def get_ip(request: Request):
-    return {"ip": request.client.host}

@@ -207,6 +207,37 @@
         </div>
 
         <div class="card">
+            {% if mfa_required %}
+            <h1 class="title">Two-Factor Authentication</h1>
+            <p class="subtitle">Enter the 6-digit code sent to <strong>{{ masked_email }}</strong></p>
+
+            {% if error %}
+            <div class="error-box">
+                {{ error }}
+            </div>
+            {% endif %}
+            {% if info %}
+            <div class="success-box">
+                {{ info }}
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{% url 'admin_login_post' %}">
+                {% csrf_token %}
+                <input type="hidden" name="mfa_ticket" value="{{ mfa_ticket }}">
+
+                <div class="form-group">
+                    <label>6-Digit Verification Code</label>
+                    <input type="text" name="otp" pattern="[0-9]{6}" maxlength="6" inputmode="numeric"
+                        placeholder="123456" required autofocus style="text-align: center; letter-spacing: 6px; font-size: 20px; font-weight: 700;">
+                </div>
+
+                <button type="submit" class="btn">Verify & Sign In</button>
+                <div style="text-align: center; margin-top: 16px;">
+                    <a href="{% url 'admin_login' %}" style="color: var(--secondary); font-size: 13px; text-decoration: none;">← Back to Sign In</a>
+                </div>
+            </form>
+            {% else %}
             <h1 class="title">Welcome Back</h1>
             <p class="subtitle">Enter your credentials to access the admin panel</p>
 
@@ -240,6 +271,7 @@
 
                 <button type="submit" class="btn">Sign In</button>
             </form>
+            {% endif %}
         </div>
 
         <div class="footer">
