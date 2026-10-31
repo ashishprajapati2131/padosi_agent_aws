@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Union, Any
+from typing import Optional
 from uuid import uuid4
 from jose import jwt, JWTError
 from fastapi_app.config import settings

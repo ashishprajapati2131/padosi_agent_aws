@@ -31,14 +31,12 @@ from django.core.paginator import Paginator
 from django.db import connection
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
-from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_http_methods
 
 from .dashboard import _get_admin_from_session
 from ..services.site_settings import get_setting, set_setting
 from ..services.referral_service import (
-    REFERRAL_TIERS,
-    get_tier_for_count,
     generate_referral_code_for_agent,
     apply_tier_reward,
 )

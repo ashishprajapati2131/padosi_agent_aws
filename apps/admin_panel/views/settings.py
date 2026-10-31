@@ -494,7 +494,6 @@ def link_og_save(request):
     if not admin_id: return redirect('admin_login')
 
     from apps.home.models.link_og_setting import LinkOgSetting
-    import uuid
 
     if request.method == 'POST':
         rule_id = request.POST.get('rule_id', '').strip()

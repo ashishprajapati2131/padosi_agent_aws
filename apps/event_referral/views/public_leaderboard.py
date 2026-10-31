@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from apps.agents.models import Agent
-from apps.event_referral.constants import PALDI_EVENT_NAME, PALDI_OG_TITLE
+from apps.event_referral.constants import PALDI_EVENT_NAME
 from apps.event_referral.services.og_meta import paldi_og_context
 from apps.event_referral.services.public_leaderboard import get_public_leaderboard_payload
 

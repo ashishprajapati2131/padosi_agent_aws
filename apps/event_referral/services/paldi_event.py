@@ -41,10 +41,3 @@ def get_or_create_paldi_event():
     return event
 
 
-def assign_paldi_event_to_agent(agent):
-    if not agent:
-        return
-    event = get_or_create_paldi_event()
-    if agent.event_id != event.id:
-        agent.event_id = event.id
-        agent.save(update_fields=['event_id', 'updated_at'])

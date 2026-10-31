@@ -18,7 +18,7 @@ Service layer for managing the Personal Digital Visiting Card Studio CMS:
 import re
 import json
 import logging
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 from urllib.parse import urlsplit
 from django.core.cache import cache
 

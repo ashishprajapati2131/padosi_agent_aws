@@ -18,7 +18,6 @@ from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic import RedirectView
 from django.conf import settings
-from django.conf.urls.static import static
 
 from apps.agents.views.dashboard import serve_private_file, track_google_review_click_view
 from apps.agents.views import pwa as pwa_views

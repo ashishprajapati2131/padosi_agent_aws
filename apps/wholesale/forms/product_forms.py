@@ -2,8 +2,7 @@
 Product Wizard and Management Forms.
 """
 from django import forms
-from apps.wholesale.models.product import WholesaleProduct, ProductImage, ProductVariant
-from apps.wholesale.models.category import ProductCategory
+from apps.wholesale.models.product import WholesaleProduct
 
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True

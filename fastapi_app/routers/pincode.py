@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi_app.schemas.pincode import PincodeResponse
 from fastapi_app.services.pincode_service import PincodeService
 

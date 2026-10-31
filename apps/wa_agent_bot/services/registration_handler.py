@@ -12,9 +12,7 @@ Creates:
 """
 
 import logging
-import os
 import secrets
-import string
 
 from django.contrib.auth.models import User
 from django.db import IntegrityError
@@ -23,23 +21,6 @@ from django.db.models import Q
 from apps.wa_agent_bot.services.site_url import bot_site_url
 
 logger = logging.getLogger(__name__)
-
-
-def _generate_password(length=10):
-    """Generate a secure random password with mixed characters."""
-    # Ensure at least one of each type
-    lowercase = secrets.choice(string.ascii_lowercase)
-    uppercase = secrets.choice(string.ascii_uppercase)
-    digit = secrets.choice(string.digits)
-    special = secrets.choice('!@#$%&*')
-    # Fill the rest
-    remaining = length - 4
-    pool = string.ascii_letters + string.digits + '!@#$%&*'
-    rest = ''.join(secrets.choice(pool) for _ in range(remaining))
-    # Shuffle all together
-    password_chars = list(lowercase + uppercase + digit + special + rest)
-    secrets.SystemRandom().shuffle(password_chars)
-    return ''.join(password_chars)
 
 
 def _generate_slug(fullname, email):

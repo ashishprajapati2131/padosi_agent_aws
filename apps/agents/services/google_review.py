@@ -4,7 +4,6 @@ Manages global admin configuration, plan eligibility, agent-level review configs
 and post-review nudge flows.
 """
 import logging
-from decimal import Decimal, InvalidOperation
 from apps.home.models import SiteSetting, GoogleReviewConfig
 from apps.agents.services.feature_unlock import normalize_plan_slug, PLAN_SLUGS
 
@@ -122,11 +121,6 @@ def save_google_review_system_config(config_dict):
     sanitized = sanitize_google_review_config(config_dict)
     SiteSetting.set_value('google_review_system_config', sanitized, group='google_review')
     return sanitized
-
-
-def is_google_review_enabled():
-    """Check master ON/OFF switch."""
-    return bool(get_google_review_system_config().get('enabled', False))
 
 
 def agent_can_use_google_reviews(agent):

@@ -7,7 +7,6 @@ from rest_framework.decorators import action
 from django.db.models import Q
 from apps.wholesale.models.product import WholesaleProduct
 from apps.wholesale.models.category import ProductCategory
-from apps.wholesale.models.inquiry import BuyerInquiry
 from apps.wholesale.services.pricing_service import PricingService
 from apps.wholesale.services.cross_sell_service import CrossSellService
 from .serializers import (

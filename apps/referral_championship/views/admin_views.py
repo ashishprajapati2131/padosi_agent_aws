@@ -1,14 +1,12 @@
-import csv
 from apps.admin_panel.services.spreadsheet_safety import safe_csv_writer
-import json
 import logging
 from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.contrib import messages
-from django.views.decorators.http import require_POST, require_http_methods
-from django.db.models import Sum, Count, Q
+from django.views.decorators.http import require_POST
+from django.db.models import Q
 
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.referral_championship.models import (
@@ -245,7 +243,6 @@ def admin_leaderboard_view(request):
 
     campaign = ChampionshipCampaign.get_current()
     query = request.GET.get('q', '').strip()
-    city_filter = request.GET.get('city', '').strip()
 
     participants = ChampionshipParticipant.objects.filter(campaign=campaign).select_related('agent')
     if query:

@@ -6,8 +6,7 @@ import logging
 import qrcode
 from urllib.parse import quote
 from datetime import datetime, date
-from decimal import Decimal
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, asc
@@ -16,18 +15,12 @@ from fastapi_app.models.agent import Agent
 from fastapi_app.models.agent_review import AgentReview
 from fastapi_app.models.agent_profile import AgentProfile
 from fastapi_app.models.agent_serviceable_city import AgentServiceableCity
-from fastapi_app.models.city import City
 from fastapi_app.models.championship import (
     ChampionshipCampaign,
     ChampionshipParticipant,
     ChampionshipReferral,
     ChampionshipRewardSlab,
     ChampionshipRewardClaim,
-    ChampionshipSocialAction,
-    ChampionshipScratchUnlock,
-    ChampionshipGoogleReviewLog,
-    ChampionshipFraudFlag,
-    ChampionshipAuditLog,
     ChampionshipLeaderboardCache,
 )
 

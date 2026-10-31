@@ -4,11 +4,10 @@ import re
 
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.agents.models import Agent
 from apps.agents.services.qr_branded import get_or_create_qr_png
 from apps.agents.services.review_growth import QR_TYPE_LABELS, QR_TYPES, is_qr_enabled, qr_access_for_plan
 from apps.agents.views.dashboard import _resolve_agent_plan

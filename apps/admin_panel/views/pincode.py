@@ -13,7 +13,6 @@ from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.core.files.storage import FileSystemStorage
 from django.core.paginator import Paginator
-from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 from django.conf import settings

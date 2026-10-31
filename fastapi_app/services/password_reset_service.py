@@ -100,7 +100,7 @@ class PasswordResetService:
                     "message": "Email sent successfully. Please check your inbox for the password reset link."
                 }
             )
-        except Exception as e:
+        except Exception:
             self.db.rollback()
             return JSONResponse(
                 status_code=500,
@@ -242,7 +242,7 @@ class PasswordResetService:
                     "message": "Your password has been reset successfully! Please log in."
                 }
             )
-        except Exception as e:
+        except Exception:
             self.db.rollback()
             return JSONResponse(
                 status_code=500,

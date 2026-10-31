@@ -6,19 +6,15 @@ from decimal import Decimal
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.contrib import messages
-from django.utils import timezone
 from django.db import transaction
 from django.conf import settings
 
 from apps.agents.models import Agent, AgentDraft, AgentSubscription, Invoice
-from apps.agents.services.razorpay_checkout import razorpay_client, _dotenv_file_maps, razorpay_credentials
+from apps.agents.services.razorpay_checkout import razorpay_client, _dotenv_file_maps
 from padosi_agent.razorpay_env import credential_pair_from_mapping
 from apps.agents.services.post_payment import fulfill_invoice_and_welcome
 from apps.agents.views.registration import (
     create_agent_from_draft,
-    create_or_link_django_user,
-    verify_and_activate_pending_payment,
 )
 from .dashboard import _get_admin_from_session
 

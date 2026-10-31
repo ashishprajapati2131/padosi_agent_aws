@@ -1,6 +1,5 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.hashers import check_password, make_password
 from django.contrib import messages
 from apps.distributors.views.dashboard import is_distributor
 from django.contrib.auth.models import User

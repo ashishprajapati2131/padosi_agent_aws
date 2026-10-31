@@ -2,17 +2,15 @@ import hashlib
 import logging
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
-from sqlalchemy import text, func
+from sqlalchemy import func
 
 from fastapi_app.database import get_db
 from fastapi_app.models.account_deletion_request import AccountDeletionRequest
 from fastapi_app.models.agent import Agent
 from fastapi_app.models.agent_profile import AgentProfile
-from fastapi_app.models.user import User
 from fastapi_app.schemas.account_deletion import (
     RequestDeletionOtpSchema,
     VerifyDeletionOtpSchema,

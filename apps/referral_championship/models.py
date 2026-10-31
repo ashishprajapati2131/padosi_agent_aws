@@ -1,4 +1,3 @@
-import json
 import random
 import string
 from django.db import models

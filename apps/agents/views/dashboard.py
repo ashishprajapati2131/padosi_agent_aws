@@ -1,6 +1,5 @@
 import os
 import logging
-import math
 from urllib.parse import quote
 from json import dumps as json_dumps, loads as json_loads, JSONDecodeError as JSONDecodeError
 from django.shortcuts import render, redirect
@@ -10,18 +9,16 @@ from django.contrib.auth import logout
 from django.contrib import messages
 from apps.home.services.portal_messages import PORTAL_AGENT, portal_error
 from django.utils import timezone
-from django.db.models import Sum, Q, Avg
+from django.db.models import Sum, Q
 from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
-from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentLead, AgentProfileView, AgentInsuranceSegment, City, AgentDeviceToken, FavoriteAgent
+from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentLead, AgentProfileView, AgentDeviceToken, FavoriteAgent
 from apps.home.models import SiteSetting, UpcomingFeature
 from apps.admin_panel.models.referral_code import ReferralCode
 from apps.admin_panel.models.referral_usage import ReferralUsage
 from apps.agents.utils.file_validation import (
-    EXTENSION_KIND,
-    has_dangerous_extra_extension,
     validate_license_document,
     validate_magic_bytes,
 )
@@ -37,7 +34,6 @@ from apps.agents.services.feature_unlock import (
     plan_slug_from_name,
     profile_completion_percent,
     resolve_checkout_plan_slug,
-    resolve_plan_feature_slugs,
     resolve_plan_entitlements,
     EDIT_PROFILE_CHILD_FEATURES,
 )
@@ -1017,7 +1013,7 @@ def referral(request):
 def agent_public_profile(request, slug, state_code=None):
     from django.http import Http404
     from django.conf import settings
-    from apps.agents.models import Agent, AgentProfileView, AgentReview
+    from apps.agents.models import Agent, AgentProfileView
     import time
     
     # Try to find by slug first
@@ -1072,7 +1068,6 @@ def agent_public_profile(request, slug, state_code=None):
     profile = agent.get_primary_profile()
     if profile is None:
         raise Http404("Agent profile not found")
-    is_admin = request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
     display_name = (profile.display_name if profile else '') or agent.fullname or 'Agent'
     agent_initial = display_name[0].upper() if display_name else 'A'
 
@@ -2692,7 +2687,6 @@ def agent_capture_lead(request):
         client_ip = ThreatMonitorMiddleware.get_client_ip(request)
 
         # 1. Explicit IP Block Check
-        from apps.agents.models import BlockedIp
         from apps.admin_panel.middleware import is_ip_blocked
         if is_ip_blocked(client_ip):
             return JsonResponse({

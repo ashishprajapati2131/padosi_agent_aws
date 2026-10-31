@@ -1,4 +1,3 @@
-import os
 from django.db import models
 from django.core.cache import cache
 

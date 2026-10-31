@@ -1,7 +1,6 @@
 from django.shortcuts import render, redirect
 from django.db import connection
 from django.http import HttpResponse
-import csv
 from apps.admin_panel.services.spreadsheet_safety import safe_csv_writer
 from datetime import datetime
 from .dashboard import _get_admin_from_session

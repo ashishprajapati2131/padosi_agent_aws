@@ -1,7 +1,7 @@
 """
 Buyer RFQ Submission and Messaging Views.
 """
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
 from apps.wholesale.models.product import WholesaleProduct

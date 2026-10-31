@@ -2,7 +2,6 @@ import io
 import base64
 import logging
 import qrcode
-from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 

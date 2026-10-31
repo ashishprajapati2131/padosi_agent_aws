@@ -13,11 +13,9 @@ Routes:
 """
 
 import json
-import random
-import string
 
 from django.contrib import messages
-from django.db import connection, transaction
+from django.db import connection
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
@@ -26,7 +24,6 @@ from .dashboard import _get_admin_from_session
 from ..services.referral_service import (
     REFERRAL_TIERS,
     generate_referral_code_for_agent,
-    apply_tier_reward,
     get_tier_for_count,
 )
 

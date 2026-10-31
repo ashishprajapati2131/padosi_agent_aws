@@ -1,6 +1,6 @@
 import json
 import logging
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone

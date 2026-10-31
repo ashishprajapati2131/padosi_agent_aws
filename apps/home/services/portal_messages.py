@@ -33,10 +33,6 @@ def portal_success(request, text, portal):
     messages.success(request, text, extra_tags=portal_tag(portal))
 
 
-def portal_warning(request, text, portal):
-    messages.warning(request, text, extra_tags=portal_tag(portal))
-
-
 _AUTH_TEXT_MARKERS = (
     'logged out',
     'login',

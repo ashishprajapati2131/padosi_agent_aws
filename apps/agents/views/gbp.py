@@ -20,7 +20,6 @@ import datetime
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from apps.agents.models import Agent, AgentProfile
@@ -75,30 +74,6 @@ def _refresh_gbp_token(profile):
     except Exception as exc:
         logger.error("GBP token refresh error: %s", exc)
         return None
-
-
-def _get_valid_access_token(profile):
-    """
-    Return a valid access token for the profile, refreshing if necessary.
-    Returns None if no token is available.
-    """
-    now = datetime.datetime.utcnow()
-    token_exp = profile.gbp_token_expires_at
-
-    # Token exists and is still valid (with 5-min buffer)
-    if profile.gbp_access_token and token_exp:
-        if isinstance(token_exp, datetime.datetime):
-            expires_naive = token_exp.replace(tzinfo=None) if token_exp.tzinfo else token_exp
-        else:
-            expires_naive = token_exp
-        if expires_naive > now + datetime.timedelta(minutes=5):
-            return profile.gbp_access_token
-
-    # Try to refresh
-    new_token = _refresh_gbp_token(profile)
-    if new_token:
-        profile.save(update_fields=["gbp_access_token", "gbp_token_expires_at"])
-    return new_token
 
 
 def _fetch_gbp_locations(access_token):

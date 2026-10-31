@@ -3,7 +3,6 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.utils import timezone
 from django.db.models import Q, F
-from django.contrib import messages
 from django.core.paginator import Paginator
 
 # Use session based authentication

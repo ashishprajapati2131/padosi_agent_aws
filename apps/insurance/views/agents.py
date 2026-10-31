@@ -214,7 +214,6 @@ def request_status_change(request, agent_id):
 
     return redirect('insurance:agents_show', agent_id=agent.id)
 
-from django.views.decorators.csrf import csrf_exempt
 
 # Bulk Cart Methods
 @login_required

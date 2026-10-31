@@ -11,7 +11,6 @@ Flow:
 
 import json
 import os
-import random
 import time
 import logging
 import re
@@ -28,7 +27,6 @@ from django.conf import settings
 from apps.agents.models import Agent, AgentDraft, PromoCode, RegistrationActivityLog
 from apps.home.models import SiteSetting
 from apps.home.models.pincode import Pincode
-from apps.agents.services.brevo import send_otp_email
 from apps.agents.services.feature_unlock import (
     PLAN_LABELS,
     paid_plan_label,
@@ -37,13 +35,11 @@ from apps.agents.services.feature_unlock import (
 )
 from apps.agents.services.post_payment import queue_invoice_and_welcome
 from apps.agents.services.razorpay_checkout import (
-    MOCK_SIGNATURE,
     checkout_payload,
     create_checkout_order,
     gateway_failure_message,
     is_mock_payment,
     login_agent_user,
-    mock_payment_id,
     razorpay_client,
     razorpay_webhook_secret,
 )
@@ -473,7 +469,6 @@ def _get_tier_prices(pricing_config, follow_count):
     }
 
 
-from django.core.cache import cache
 
 
 def _exclusive_base_price(exclusive_config, follow_count=0, discount_unlocked=False):
@@ -550,13 +545,6 @@ def _to_paise(value):
     return int((_to_money(value) * 100).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
 
 
-def _gst_total_from_inclusive(final_inclusive):
-    base = int(round(float(final_inclusive) / 1.18, 0))
-    gst = round(base * 0.18, 2)
-    total = int(round(base + gst, 0))
-    return base, gst, total
-
-
 def _gst_bundle_from_base(base_amount):
     """GST-exclusive base → (base_rupees, gst, gst_inclusive_total). Matches chooseplan display."""
     base = int(round(float(base_amount or 0)))
@@ -570,13 +558,6 @@ def _tier_follow_count(tier):
         return int((tier or {}).get('follows', 0) or 0)
     except (TypeError, ValueError, AttributeError):
         return 0
-
-
-def _session_follow_count(request, draft_id):
-    followed = request.session.get(f'followed_platforms_{draft_id}') or []
-    if isinstance(followed, (list, tuple, set)):
-        return len(followed)
-    return 0
 
 
 def _scratch_session_key(plan_type):
@@ -821,7 +802,7 @@ def _deactivate_superseded_subscriptions(agent, keep_subscription_id):
 
 def _display_plan_name(agent, pricing_config):
     """Dashboard header plan label — checks active subscription selected_plan first to match admin listing, falling back to agent.plan_type slug."""
-    from apps.agents.services.feature_unlock import normalize_plan_slug, plan_slug_from_name
+    from apps.agents.services.feature_unlock import normalize_plan_slug
 
     active_sub = getattr(agent, 'activeSubscription', None)
     if not active_sub and hasattr(agent, 'subscriptions'):
@@ -843,7 +824,6 @@ def _display_plan_name(agent, pricing_config):
         except (json.JSONDecodeError, TypeError, ValueError):
             pass
         if raw_plan:
-            slug_from_sub = plan_slug_from_name(raw_plan)
             label = paid_plan_label(raw_plan)
             if label in (PLAN_LABELS['starter'], PLAN_LABELS['professional']):
                 return label
@@ -1411,23 +1391,6 @@ def _int_or_zero(value):
         return 0
 
 
-def _unique_profile_slug(desired, exclude_pk=None):
-    from django.utils.text import slugify
-    from apps.agents.models import AgentProfile
-
-    base = slugify(desired or '') or 'agent'
-    slug = base
-    n = 1
-    while True:
-        qs = AgentProfile.objects.filter(slug=slug)
-        if exclude_pk:
-            qs = qs.exclude(pk=exclude_pk)
-        if not qs.exists():
-            return slug
-        slug = f'{base}-{n}'
-        n += 1
-
-
 def _public_profile_path(agent):
     slug = ''
     try:
@@ -1712,8 +1675,6 @@ def register_step1(request):
     experience = (request.POST.get('experience_range', '') or '').strip()
     segments = request.POST.getlist('segments[]') or request.POST.getlist('segments')
     investment_types = request.POST.getlist('investment_types[]') or request.POST.getlist('investment_types')
-    promo_code = request.POST.get('promo_code', '').strip()
-    address = request.POST.get('address', '').strip()
     client_base = request.POST.get('client_base', '').strip()
     slug = request.POST.get('slug', '').strip()
 
@@ -1845,7 +1806,6 @@ def register_step1(request):
             'errors': {'photo': ['Profile photo must be a real JPG, PNG, WEBP, or GIF image under 5MB.']},
         }, status=422)
 
-    from django.contrib.auth.models import User
     from apps.agents.models import Agent, Invoice, AgentDraft
 
     # Check if an Agent record already exists for the email
@@ -3183,10 +3143,7 @@ def verify_and_activate_pending_payment(agent, include_paid_agents=False):
     callback and webhook were both lost can still be activated (admin Verify,
     recover_orphaned_payments); it then returns True only if one was activated.
     """
-    from django.utils import timezone
-    from django.db import transaction
-    from apps.agents.models import AgentSubscription, PromoCode
-    from apps.home.models import SiteSetting
+    from apps.agents.models import AgentSubscription
 
     from apps.agents.services.account_auth import agent_has_completed_payment, is_real_razorpay_id
 
@@ -3484,7 +3441,7 @@ def _agent_register_complete_impl(request):
         })
 
     from django.db import transaction
-    from apps.agents.models import Agent, AgentSubscription, Invoice
+    from apps.agents.models import AgentSubscription
 
     instant_complete = False
     try:
@@ -3647,7 +3604,6 @@ def _agent_register_complete_impl(request):
         }, status=500)
 
     if instant_complete:
-        from apps.distributors.views.dashboard import is_distributor
         try:
             user = create_or_link_django_user(agent)
             login_agent_user(request, user)
@@ -3741,12 +3697,8 @@ def _finalize_razorpay_payment(request, data):
     # the Starter price and be activated on Professional/Exclusive.
     agent_id = pending.get('agent_id')
     plan_name = pending.get('plan_name')
-    plan_type = resolve_checkout_plan_slug(pending.get('plan_type'), plan_name)
 
-    from apps.agents.models import Agent, AgentSubscription, Invoice
-    from apps.home.models import SiteSetting
-    from apps.admin_panel.models.referral_code import ReferralCode
-    from apps.admin_panel.models.referral_usage import ReferralUsage
+    from apps.agents.models import AgentSubscription, Invoice
 
     if razorpay_order_id:
         existing_sub = AgentSubscription.objects.filter(
@@ -4628,9 +4580,7 @@ def razorpay_webhook(request):
             logger.error(f"[Razorpay Webhook] Missing order_id in event {event}")
             return HttpResponse('Missing order ID', status=400)
 
-        from apps.agents.models import Agent, AgentSubscription, PromoCode, Invoice
-        from apps.home.models import SiteSetting
-        from django.utils import timezone
+        from apps.agents.models import AgentSubscription, Invoice
 
         subscription = AgentSubscription.objects.filter(razorpay_order_id=order_id).first()
         existing_invoice = Invoice.objects.filter(razorpay_order_id=order_id).first()
@@ -4775,7 +4725,6 @@ def _handle_refund_webhook(data):
     return HttpResponse('Refund processed', status=200)
 
 
-from django.contrib.auth.decorators import login_required
 
 def agent_register_failed(request):
     """
@@ -4843,7 +4792,7 @@ def fb_ad_signup(request):
         }, status=422)
 
     from django.contrib.auth.models import User
-    from apps.agents.models import Client, Agent
+    from apps.agents.models import Client
     from django.contrib.auth import login
     from django.db import transaction
     

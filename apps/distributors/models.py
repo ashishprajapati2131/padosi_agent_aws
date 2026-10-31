@@ -1,7 +1,6 @@
 import random
 import string
 from django.db import models
-from django.utils import timezone
 
 
 class SubDistributor(models.Model):

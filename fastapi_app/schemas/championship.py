@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Any, Dict
-from datetime import datetime, date
+from typing import List, Optional
 
 
 class UnlockProgressSchema(BaseModel):
@@ -89,12 +88,6 @@ class WhatsAppTemplateSchema(BaseModel):
     text: str
 
 
-class WhatsAppLanguageTemplatesSchema(BaseModel):
-    language_code: str
-    label: str
-    templates: List[WhatsAppTemplateSchema]
-
-
 class WhatsAppShareRequest(BaseModel):
     language: str = "en"
     template_id: str = "en_1"
@@ -146,34 +139,3 @@ class PublicLandingResponse(BaseModel):
     registration_url: str
 
 
-class AdminCampaignSettingsRequest(BaseModel):
-    status: Optional[str] = "live"
-    digital_regular_price: Optional[int] = 1999
-    digital_campaign_price: Optional[int] = 999
-    digital_renewal_price: Optional[int] = 1999
-    prof_regular_price: Optional[int] = 9999
-    prof_campaign_price: Optional[int] = 4999
-    prof_renewal_price: Optional[int] = 9999
-    min_profile_percent: Optional[int] = 80
-    min_reviews: Optional[int] = 10
-    google_review_url: Optional[str] = None
-    instagram_url: Optional[str] = None
-    facebook_url: Optional[str] = None
-
-
-class AdminFinancialLiabilityResponse(BaseModel):
-    success: bool = True
-    campaign_name: str
-    gross_revenue: float
-    refund_amount: float
-    net_revenue: float
-    digital_paid_count: int
-    prof_paid_count: int
-    potential_liability: float
-    current_liability: float
-    rewards_issued: float
-    health_status: str
-    health_color: str
-    total_participants: int
-    total_qualifying: int
-    fraud_flags_count: int

@@ -1,9 +1,7 @@
 import logging
-from django.utils import timezone
 from apps.referral_championship.models import (
     ChampionshipCampaign,
     ChampionshipParticipant,
-    ChampionshipReferral,
     ChampionshipFraudFlag,
 )
 
@@ -44,14 +42,6 @@ def bind_referral_session(request, ref_id):
         return participant.referral_id
 
     return None
-
-
-def get_attributed_participant(request):
-    """Get the locked attributed participant from session."""
-    ref_id = request.session.get('championship_ref_id')
-    if not ref_id:
-        return None
-    return ChampionshipParticipant.objects.filter(referral_id=ref_id).first()
 
 
 def validate_referral_integrity(referrer_participant, candidate_agent, ip_address=None):

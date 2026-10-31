@@ -1,4 +1,3 @@
-import json
 import logging
 
 from django.conf import settings
@@ -8,7 +7,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from apps.admin_panel.views.dashboard import _get_admin_from_session
-from apps.event_referral.models import EventReferral, EventReferralCampaign, EventReferralParticipant
+from apps.event_referral.models import EventReferralCampaign, EventReferralParticipant
 from apps.event_referral.services.participant_service import (
     _block_participant,
     admin_grant_win,

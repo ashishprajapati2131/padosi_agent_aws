@@ -197,10 +197,6 @@ def get_review_upgrade_pricing(agent):
     }
 
 
-def should_use_review_upgrade_pricing(agent):
-    return get_review_upgrade_pricing(agent) is not None
-
-
 def get_qr_config():
     try:
         return sanitize_qr_config(SiteSetting.get_value('qr_service_config', DEFAULT_QR_CONFIG))
@@ -321,7 +317,6 @@ def get_review_growth_status(agent):
     eligible = slug in cfg.get('eligible_plans', [])
     enabled = bool(cfg.get('enabled'))
     upgrade_cta = bool(cfg.get('upgrade_cta_enabled', True))
-    on_upgrade_plan = slug == cfg.get('upgrade_plan')
     show_cta = should_show_upgrade_cta(agent)
     show_progress = should_show_upgrade_progress(agent)
     remaining = max(min_reviews - count, 0)

@@ -11,28 +11,24 @@ Handles:
 """
 
 import logging
-import os
 import secrets
 import time
 from decimal import Decimal
 
-from django.conf import settings
 from django.db import transaction, IntegrityError
 from django.utils import timezone
 from django.contrib.auth.models import User
 
 from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentInsuranceSegment
 from apps.home.models import SiteSetting
-from apps.agents.services.feature_unlock import PLAN_LABELS, normalize_plan_slug
+from apps.agents.services.feature_unlock import normalize_plan_slug
 from apps.agents.services.razorpay_checkout import (
     razorpay_client,
-    razorpay_credentials,
-    razorpay_webhook_secret,
 )
 from apps.agents.services.post_payment import queue_invoice_and_welcome
 from apps.wa_agent_bot.models import WaBotSession
 from apps.wa_agent_bot.services.message_sender import send_text_message
-from apps.wa_agent_bot.services.registration_handler import _generate_password, _generate_slug, _ensure_unique_slug
+from apps.wa_agent_bot.services.registration_handler import _generate_slug, _ensure_unique_slug
 
 from apps.wa_agent_bot.services.message_templates import render as render_template
 from apps.wa_agent_bot.services.site_url import bot_site_url

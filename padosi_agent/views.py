@@ -2,7 +2,6 @@ import logging
 from django.http import JsonResponse, HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.contrib import messages
-from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 
 logger = logging.getLogger(__name__)

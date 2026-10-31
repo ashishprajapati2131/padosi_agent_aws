@@ -3,7 +3,6 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_http_methods
-from django.utils import timezone
 
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.agents.models import InvestmentType

@@ -387,18 +387,6 @@ def send_brevo_email(to_email: str, to_name: str, subject: str, html_content: st
     return email_service.send_generic(to_email, to_name, subject, html_content)
 
 
-def queue_welcome_email(to_email: str, to_name: str, temp_password: str, plan_name: str = "", attachment_path: str = None, subject: str = ""):
-    """Convenience helper to queue a welcome email asynchronously."""
-    return email_service.queue_welcome(
-        to_email=to_email,
-        to_name=to_name,
-        temp_password=temp_password,
-        plan_name=plan_name,
-        attachment_path=attachment_path,
-        subject=subject,
-    )
-
-
 # ─── HTML Email Builders ─────────────────────────────────────────────────────
 
 def _build_otp_html(otp_code: str) -> str:

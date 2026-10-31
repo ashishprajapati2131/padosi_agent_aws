@@ -7,9 +7,7 @@ such as Admin Approval or Admin Rejection notices.
 
 import datetime
 import logging
-import os
 import re
-from django.utils import timezone
 
 from apps.wa_agent_bot.services.message_templates import render as render_template
 from apps.wa_agent_bot.services.site_url import bot_site_url

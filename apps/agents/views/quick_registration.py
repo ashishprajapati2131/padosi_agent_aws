@@ -23,17 +23,6 @@ _SEGMENT_IDS = frozenset({'health', 'life', 'motor', 'sme'})
 _REUSABLE_AGENT_STATUSES = ('incomplete', 'pending_payment', 'rejected')
 
 
-def _client_ip(request):
-    from django.core.validators import validate_ipv46_address
-    from apps.admin_panel.middleware import ThreatMonitorMiddleware
-    ip = ThreatMonitorMiddleware.get_client_ip(request) or request.META.get('REMOTE_ADDR') or ''
-    try:
-        validate_ipv46_address(ip)
-    except ValidationError:
-        return None
-    return ip
-
-
 def _clean_ref(value):
     ref = (value or '').strip()[:50]
     if _REF_RE.fullmatch(ref):

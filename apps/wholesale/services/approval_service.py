@@ -6,7 +6,6 @@ from django.db import transaction
 from django.core.exceptions import ValidationError, PermissionDenied
 from apps.wholesale.models.product import WholesaleProduct
 from apps.wholesale.models.approval import ProductApprovalLog
-from apps.wholesale.models.profile import WholesalerProfile
 
 class ApprovalService:
     """Encapsulates business rules and state transitions for product approval."""

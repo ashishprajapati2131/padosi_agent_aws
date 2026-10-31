@@ -2,12 +2,9 @@ import os
 import threading
 import json
 import logging
-import traceback
 import concurrent.futures
 from apps.chatbot.models import ChatSession, ChatMessage, LatencyLog
-from apps.home.views.pages import build_agent_query
 import time
-from django.utils.timezone import now
 from django.core.cache import cache
 import re
 
@@ -839,8 +836,6 @@ def get_chat_completion(session_id, user_message=None, prefilled_response_messag
         }
     ]
 
-    user_msg_lower = user_message.lower() if user_message else ""
-    needs_agent = any(k in user_msg_lower for k in ["find", "search", "agent", "looking for", "help me find", "need someone"])
     current_tool_choice = "auto"
 
     try:

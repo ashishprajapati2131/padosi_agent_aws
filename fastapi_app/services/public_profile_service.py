@@ -6,7 +6,6 @@ from fastapi_app.schemas.public_profile import (
     InsuranceSegmentSchema, TimelineSchema, 
     PerformanceStatsSchema, ServiceFeeSchema, ReviewSchema
 )
-import math
 
 class PublicProfileService:
     def __init__(self, agent_repo: AgentRepository):
@@ -49,9 +48,6 @@ class PublicProfileService:
         if profile is not None and not profile.is_profile_visible:
             raise HTTPException(status_code=404, detail="Agent Profile Not found")
 
-        show_certificates = profile.show_certificates if profile else True
-        show_achievements = profile.show_achievements if profile else True
-        show_reviews = profile.show_reviews if profile else True
         perf = agent.performance_stats
         prefs = agent.lead_preferences
         
@@ -120,7 +116,6 @@ class PublicProfileService:
         certifications = []
         achievements = []
         
-        has_pos_license = profile.has_pos_license if profile else False
         has_license_number = bool(profile.license_number) if profile else False
         
         if has_license_number:

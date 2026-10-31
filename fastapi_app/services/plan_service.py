@@ -76,13 +76,6 @@ def normalize_plan_slug(plan_type: Optional[str]) -> str:
 
 
 
-def _website_total(full_price: float, discount_pct: int) -> float:
-    """GST-inclusive total exactly as the website upgrade computes it."""
-    final = round(float(full_price) * (100 - discount_pct) / 100)
-    base = round(final / 1.18, 0)
-    return float(base + round(base * 0.18, 0))
-
-
 class PlanService:
     def __init__(self, db: Session):
         self.db = db

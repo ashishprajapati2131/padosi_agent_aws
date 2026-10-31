@@ -7,7 +7,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import asyncio
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from fastapi_app.config import settings
 
 logger = logging.getLogger("email_service")

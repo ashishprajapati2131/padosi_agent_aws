@@ -18,7 +18,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_GET
 from django.conf import settings
 from django.core.cache import cache
-from django.utils import timezone
 
 from .models import WaBotSession, WaBotMessageLog
 from .services.state_machine import process_message
@@ -354,7 +353,6 @@ def payment_callback(request):
 
     payment_id = request.GET.get('razorpay_payment_id', '')
     link_id = request.GET.get('razorpay_payment_link_id', '')
-    link_status = request.GET.get('razorpay_payment_link_status', '')
     signature = request.GET.get('razorpay_signature', '')
 
     site_url = bot_site_url()

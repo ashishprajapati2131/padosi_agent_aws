@@ -13,7 +13,7 @@ import logging
 import re
 from typing import Optional, Tuple
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib import messages
 from django.db.models import Count, Q, Sum
@@ -28,7 +28,6 @@ from apps.admin_panel.services.digital_card_studio import (
     save_digital_card_studio_config,
     clean_card_url,
     MAX_CARD_URL_LENGTH,
-    DEFAULT_DIGITAL_CARD_STUDIO_CONFIG,
     VALID_POLICIES,
     VALID_BANNER_STYLES,
 )

@@ -92,15 +92,6 @@ def agent_can_access_dashboard(agent):
     return False
 
 
-def agent_needs_payment(agent):
-    """True when the agent must complete payment before dashboard access."""
-    if not agent:
-        return False
-    if agent.status in BLOCKED_DASHBOARD_STATUSES:
-        return False
-    return not agent_has_completed_payment(agent)
-
-
 def _split_name(fullname):
     parts = (fullname or '').strip().split(' ', 1)
     first = parts[0] if parts and parts[0] else ''

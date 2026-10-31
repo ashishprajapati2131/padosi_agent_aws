@@ -7,9 +7,8 @@ import re
 import random
 import string
 import json
-from django.contrib.auth.hashers import make_password
 from django.utils import timezone
-from django.http import JsonResponse, Http404
+from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
 from password_hashing import hash_password

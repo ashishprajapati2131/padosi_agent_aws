@@ -6,7 +6,6 @@ from django.contrib import messages
 from decimal import Decimal
 from apps.wholesale.models.product import WholesaleProduct
 from apps.wholesale.models.category import ProductCategory
-from apps.wholesale.models.profile import WholesalerProfile
 from apps.wholesale.services.cross_sell_service import CrossSellService
 from apps.wholesale.services.pricing_service import PricingService
 from apps.wholesale.forms.rfq_forms import BuyerInquiryForm

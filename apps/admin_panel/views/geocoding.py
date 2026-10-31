@@ -2,8 +2,6 @@ import json
 import logging
 from django.shortcuts import render
 from django.http import JsonResponse
-from django.utils import timezone
-from django.db.models import Q
 
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from django.shortcuts import redirect

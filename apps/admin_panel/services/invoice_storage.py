@@ -14,22 +14,3 @@ def get_folder_path(folder_name):
     """
     return get_invoice_root() / folder_name
 
-def ensure_invoice_directories():
-    """
-    Ensures that the expected folder structure exists.
-    """
-    folders = [
-        'no_discount',
-        '10_percent',
-        '25_percent',
-        '50_percent',
-        '1re',
-        'others'
-    ]
-    
-    root_dir = get_invoice_root()
-    root_dir.mkdir(parents=True, exist_ok=True)
-    
-    for folder in folders:
-        folder_path = get_folder_path(folder)
-        folder_path.mkdir(parents=True, exist_ok=True)

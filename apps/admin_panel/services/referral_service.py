@@ -17,7 +17,6 @@ import random
 import re
 import string
 
-from django.db import connection
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -43,14 +42,6 @@ def get_tier_for_count(total_referrals: int) -> dict | None:
         if total_referrals >= t['min']:
             tier = t
     return tier
-
-
-def get_next_tier(total_referrals: int) -> dict | None:
-    """Return the next tier the agent has not yet reached, or None if maxed."""
-    for t in REFERRAL_TIERS:
-        if total_referrals < t['min']:
-            return t
-    return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -152,83 +143,3 @@ def apply_tier_reward(cursor, agent_id: int, ref_code_id: int, total_referrals: 
 #  CREDIT REFERRAL  — core hook called after successful registration
 # ─────────────────────────────────────────────────────────────────────────────
 
-def credit_referral(cursor, referred_agent_id: int, referred_agent_name: str, referred_by_code: str) -> bool:
-    """
-    Credit the referring agent when a new agent completes registration.
-
-    Mirrors AgentRegistrationService::creditReferral() from Laravel but uses
-    the Django canonical tier table (5/10/15) instead of Laravel's broken >=5
-    hardcode.
-
-    Steps:
-      1. Lookup referral_code by code string.
-      2. firstOrCreate referral_usage (duplicate prevention).
-      3. If already converted → skip (idempotent).
-      4. Mark usage as converted.
-      5. Recount converted usages for accuracy (mirrors Laravel sync).
-      6. Update referral_codes.total_referrals.
-      7. Apply tier reward if threshold crossed.
-
-    Returns True if the credit was applied, False if skipped.
-    Caller must pass an already-open cursor (inside a transaction).
-    """
-    if not referred_by_code:
-        return False
-
-    cursor.execute(
-        "SELECT id, agent_id, total_referrals FROM referral_codes WHERE code = %s LIMIT 1",
-        [referred_by_code],
-    )
-    code_row = cursor.fetchone()
-    if not code_row:
-        return False
-
-    ref_code_id, referrer_agent_id, _ = code_row
-
-    # firstOrNew behaviour — check for existing usage
-    cursor.execute(
-        "SELECT id, status FROM referral_usages "
-        "WHERE referral_code_id = %s AND referred_agent_id = %s LIMIT 1",
-        [ref_code_id, referred_agent_id],
-    )
-    usage_row = cursor.fetchone()
-
-    if usage_row:
-        usage_id, usage_status = usage_row
-        if usage_status == 'converted':
-            return False  # Already credited — idempotent
-        # Update existing pending → converted
-        cursor.execute(
-            """
-            UPDATE referral_usages
-            SET status = 'converted', converted_at = NOW(), updated_at = NOW()
-            WHERE id = %s
-            """,
-            [usage_id],
-        )
-    else:
-        cursor.execute(
-            """
-            INSERT INTO referral_usages
-                (referral_code_id, referrer_agent_id, referred_agent_id,
-                 referred_agent_name, status, converted_at, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, 'converted', NOW(), NOW(), NOW())
-            """,
-            [ref_code_id, referrer_agent_id, referred_agent_id, referred_agent_name],
-        )
-
-    # Recount converted usages (mirrors Laravel's accuracy sync)
-    cursor.execute(
-        "SELECT COUNT(*) FROM referral_usages "
-        "WHERE referral_code_id = %s AND status = 'converted'",
-        [ref_code_id],
-    )
-    active_count = cursor.fetchone()[0]
-
-    cursor.execute(
-        "UPDATE referral_codes SET total_referrals = %s, updated_at = NOW() WHERE id = %s",
-        [active_count, ref_code_id],
-    )
-
-    apply_tier_reward(cursor, referrer_agent_id, ref_code_id, active_count)
-    return True

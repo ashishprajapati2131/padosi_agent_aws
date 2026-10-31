@@ -1,9 +1,7 @@
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.shortcuts import render, redirect
 from django.db import connection
-from django.db.models import Count, Avg, Q
-from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.core.paginator import Paginator
 from django.http import JsonResponse
@@ -154,7 +152,7 @@ def analytics(request):
                 {'label': r[0], 'whatsapp': int(r[2] or 0), 'call': int(r[3] or 0)} for r in rows
             ]
 
-    except Exception as e:
+    except Exception:
         import traceback
         traceback.print_exc()
         top_leads = []

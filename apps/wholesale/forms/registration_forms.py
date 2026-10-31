@@ -3,7 +3,7 @@ Wholesaler Registration and Verification Forms.
 """
 from django import forms
 from django.contrib.auth.models import User
-from apps.wholesale.models.profile import WholesalerProfile, BusinessVerificationDocument
+from apps.wholesale.models.profile import WholesalerProfile
 
 class WholesalerAccountForm(forms.Form):
     """Step 1: Account credentials and contact person."""

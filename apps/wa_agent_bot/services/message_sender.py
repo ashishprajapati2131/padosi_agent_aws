@@ -7,7 +7,6 @@ error handling, logging, and rate control.
 """
 
 import logging
-import os
 import requests
 from requests.exceptions import RequestException
 
@@ -135,16 +134,3 @@ def _send(phone_number, text):
         return {'success': False, 'error': error_msg}
 
 
-def send_multi_line_message(phone_number, lines):
-    """
-    Send a multi-line message (joins lines with newline).
-
-    Args:
-        phone_number: Phone number
-        lines: List of strings to join
-
-    Returns:
-        dict with 'success' and 'data' or 'error'
-    """
-    text = '\n'.join(lines)
-    return send_text_message(phone_number, text)

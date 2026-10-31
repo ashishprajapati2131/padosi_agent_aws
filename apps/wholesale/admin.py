@@ -8,8 +8,8 @@ from apps.wholesale.models.product import WholesaleProduct, ProductImage, Produc
 from apps.wholesale.models.pricing import WholesalePriceTier
 from apps.wholesale.models.approval import ProductApprovalLog
 from apps.wholesale.models.relationship import ProductRelationship
-from apps.wholesale.models.inquiry import BuyerInquiry, InquiryMessage
-from apps.wholesale.models.import_job import BulkImportJob, BulkImportError
+from apps.wholesale.models.inquiry import BuyerInquiry
+from apps.wholesale.models.import_job import BulkImportJob
 
 class VerificationDocumentInline(admin.TabularInline):
     model = BusinessVerificationDocument

@@ -12,7 +12,6 @@ from apps.home.models.faq import Faq
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.agents.views.registration import (
-    _DEFAULT_SCRATCH_POPUP,
     _normalize_scratch_popup,
     _parse_scratch_popup_from_post,
 )
@@ -29,7 +28,6 @@ from apps.agents.services.feature_unlock import (
     load_plan_features_config,
     normalize_plan_slug,
     remove_plan_only_unlock_rule,
-    resolve_plan_feature_slugs,
     resolve_plan_entitlements,
     sanitize_unlock_rules,
     toggle_plan_feature,

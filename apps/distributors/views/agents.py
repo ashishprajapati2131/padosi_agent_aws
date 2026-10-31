@@ -1,19 +1,13 @@
-import re
-import random
-import string
 import logging
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.utils import timezone
-from django.db import transaction
 
 from apps.distributors.views.dashboard import is_distributor
-from apps.agents.models import Agent, AgentProfile, AgentSubscription
+from apps.agents.models import Agent, AgentSubscription
 from apps.admin_panel.models.referral_code import ReferralCode
-from apps.admin_panel.models.referral_usage import ReferralUsage
-from apps.agents.views.registration import ALL_INDIAN_STATES
 
 logger = logging.getLogger(__name__)
 

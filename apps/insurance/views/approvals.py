@@ -2,7 +2,6 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from apps.agents.models import Agent
-from django.http import HttpResponseForbidden
 from apps.insurance.decorators import insurance_manager_required
 
 @login_required

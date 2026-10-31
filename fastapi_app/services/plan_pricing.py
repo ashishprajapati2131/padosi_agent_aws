@@ -6,7 +6,6 @@ Scratch and social-follow discounts are applied only after this agent has
 recorded them.
 """
 import json
-from typing import Any, Optional
 
 from fastapi_app.models.agent_plan_offer import AgentPlanOffer
 from fastapi_app.models.site_setting import SiteSetting

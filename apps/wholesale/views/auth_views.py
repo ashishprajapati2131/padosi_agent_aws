@@ -9,7 +9,7 @@ from django.db import transaction
 from apps.wholesale.forms.registration_forms import (
     WholesalerAccountForm, WholesalerBusinessForm, DocumentUploadForm
 )
-from apps.wholesale.models.profile import WholesalerProfile, BusinessVerificationDocument
+from apps.wholesale.models.profile import BusinessVerificationDocument
 from apps.wholesale.adapters.auth_bridge import is_wholesale_admin, safe_next_url
 
 def wholesaler_login_view(request):

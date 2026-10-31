@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponseForbidden
+from django.http import JsonResponse
 from django.utils import timezone
 from django.core.paginator import Paginator
-from django.db.models import Q, Exists, OuterRef
+from django.db.models import Q
 from apps.agents.models import Agent
 from apps.home.models.blacklisted_agent import BlacklistedAgent
 from apps.admin_panel.views.dashboard import _get_admin_from_session

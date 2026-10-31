@@ -20,7 +20,6 @@ import string
 import time
 
 from django.contrib import messages
-from django.contrib.auth import login
 from django.core.cache import cache
 from django.db import transaction
 from django.http import JsonResponse
@@ -689,7 +688,6 @@ def payment_success(request):
 
     # Verify payment against Razorpay API (amount + status)
     import razorpay
-    from django.conf import settings
 
     key, secret = _razorpay_key(), _razorpay_secret()
     if not key or not secret:

@@ -667,7 +667,6 @@ def update_visibility(request):
     return JsonResponse({'success': True})
 
 
-from django.contrib import messages
 
 def update_achievement_limit(request):
     if request.method != 'POST':
@@ -1418,7 +1417,6 @@ def agent_pending_registrations(request):
     return render(request, 'admin/agents/pending_registrations.html', context)
 
 
-from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect
 
 @require_POST

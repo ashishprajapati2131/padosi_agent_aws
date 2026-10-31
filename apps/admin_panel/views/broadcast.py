@@ -1,9 +1,7 @@
-import json
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from django.db.models import Q
 from django.contrib import messages
-from django.db import models
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.models import Agent, AdminActivityLog, AdminBroadcast
 

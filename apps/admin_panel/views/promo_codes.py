@@ -1,7 +1,6 @@
-import json
 import logging
 from django.shortcuts import render, redirect
-from django.http import JsonResponse, Http404
+from django.http import JsonResponse
 from django.db import connection
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect

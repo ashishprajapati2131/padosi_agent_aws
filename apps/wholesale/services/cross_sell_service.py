@@ -2,7 +2,6 @@
 Cross-Sell and Related Products Recommendation Service.
 Ensures only published, approved, and stock-ready products are recommended.
 """
-from django.db.models import Q
 from typing import List
 from apps.wholesale.models.product import WholesaleProduct
 from apps.wholesale.models.relationship import ProductRelationship

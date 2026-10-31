@@ -1,7 +1,5 @@
 import logging
 from django.core.cache import cache
-from django.db.models import Count, Q
-from django.utils import timezone
 from apps.referral_championship.models import (
     ChampionshipCampaign,
     ChampionshipParticipant,
@@ -32,7 +30,6 @@ def refresh_leaderboard_cache(campaign=None):
     ).order_by('-qualifying_referrals_count', 'last_qualification_time', 'created_at')
 
     rank = 1
-    cache_entries = []
     for p in participants:
         p.current_rank = rank
         p.save(update_fields=['current_rank'])

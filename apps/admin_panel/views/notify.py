@@ -1,10 +1,9 @@
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.db.models import Count, Max, Q
+from django.db.models import Count, Max
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from django.db import models
 
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.models import AdminActivityLog, Agent

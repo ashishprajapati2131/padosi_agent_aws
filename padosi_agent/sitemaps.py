@@ -3,7 +3,6 @@ from django.urls import reverse
 from apps.home.models.page import Page
 from apps.home.models.calculator import Calculator
 from apps.home.models.calculator_category import CalculatorCategory
-from apps.agents.models import Agent
 import re
 
 # Mirrors the profile route regex: one bad slug must not 500 the whole sitemap.

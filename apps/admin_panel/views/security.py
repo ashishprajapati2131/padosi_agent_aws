@@ -4,7 +4,6 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.contrib import messages
 from django.db.models import Count, Max
-from django.db import models
 
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.models import AdminActivityLog

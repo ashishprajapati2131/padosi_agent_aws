@@ -12,13 +12,10 @@ State flow:
 """
 
 import logging
-import os
 
 from ..models import WaBotSession
 from .validators import (
     validate_fullname,
-    validate_email,
-    validate_mobile,
     extract_clean_phone,
     parse_contact_input,
     validate_state_selection,
@@ -30,7 +27,6 @@ from .validators import (
     format_experience_list,
     format_segments_list,
 )
-from .registration_handler import create_agent_from_wa_data
 from .post_login_handler import process_post_login_message
 from .payment_service import (
     get_available_plans,
@@ -186,22 +182,6 @@ def _build_confirm_message(reg_data):
         "✅ Type *yes* to confirm and create your account\n"
         "✏️ Type *edit* to start over\n"
         "❌ Type *cancel* to abort registration"
-    )
-
-
-def _build_credentials_message(email, password, login_url):
-    """Build the credentials delivery message."""
-    return (
-        "🎉 *Account Created Successfully!*\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "Here are your login credentials:\n\n"
-        f"🔗 *Login URL:* {login_url}\n"
-        f"📧 *Login ID:* {email}\n"
-        f"🔑 *Password:* `{password}` _(Your registered mobile number)_\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "👉 You can login directly using your mobile number as password.\n"
-        "You can change your password anytime from your profile or via Forgot Password.\n\n"
-        "Type *help* anytime to view your profile and commands."
     )
 
 

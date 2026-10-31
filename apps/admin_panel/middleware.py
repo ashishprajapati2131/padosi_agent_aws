@@ -1,7 +1,6 @@
 import re
 import json
 import logging
-import urllib.request
 from django.http import HttpResponseForbidden, JsonResponse
 from django.utils import timezone
 from django.conf import settings

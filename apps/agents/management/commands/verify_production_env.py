@@ -8,7 +8,6 @@ Usage:
 import os
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from padosi_agent.razorpay_env import credential_pair_from_mapping, complete_pair_from_env_files
 
 
 class Command(BaseCommand):

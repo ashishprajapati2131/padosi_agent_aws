@@ -26,10 +26,9 @@ from apps.agents.services.account_auth import (
     DJANGO_AUTH_BACKEND,
     INCOMPLETE_STATUSES,
     agent_can_access_dashboard,
-    agent_needs_payment,
     create_or_link_django_user,
     find_agent,
-    find_laravel_user,
+    find_laravel_user,  # noqa: F401 -- patched by test_password_auth
     resolve_agent_for_user,
     sync_verified_password,
     verify_agent_password,

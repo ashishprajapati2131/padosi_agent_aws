@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, Boolean, Text
-from datetime import datetime
 from fastapi_app.database import Base
 from fastapi_app.utils.datetime_util import get_current_time
 

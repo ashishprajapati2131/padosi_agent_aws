@@ -6,8 +6,6 @@ from datetime import datetime, timedelta
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
-from django.urls import reverse
-from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from apps.agents.models import AgentSubscription
@@ -21,8 +19,6 @@ from apps.agents.services.razorpay_checkout import (
     checkout_payload,
     create_checkout_order,
     should_mock_razorpay,
-    mock_payment_id,
-    MOCK_SIGNATURE,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,7 +41,7 @@ def _renewal_price_paise(plan_type, pricing_config):
 @login_required(login_url='agents:agent_login')
 @require_http_methods(['GET', 'POST'])
 def renew_plan(request):
-    from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
+    from apps.agents.services.account_auth import resolve_agent_for_user
     try:
         agent = resolve_agent_for_user(request.user)
     except Exception:

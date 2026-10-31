@@ -5,20 +5,17 @@ import json
 from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.core.paginator import Paginator
 from django.db import transaction
 from apps.wholesale.adapters.auth_bridge import wholesaler_required, get_wholesaler_profile, is_wholesale_admin
 from apps.wholesale.models.product import WholesaleProduct, ProductImage, ProductVariant
-from apps.wholesale.models.pricing import WholesalePriceTier
 from apps.wholesale.models.category import ProductCategory
-from apps.wholesale.models.inquiry import BuyerInquiry
 from apps.wholesale.models.import_job import BulkImportJob
 from apps.wholesale.forms.product_forms import ProductWizardForm
 from apps.wholesale.services.approval_service import ApprovalService
 from apps.wholesale.services.pricing_service import PricingService
 from apps.wholesale.services.bulk_import_service import BulkImportService
-from apps.wholesale.services.rfq_service import RFQService
 
 @wholesaler_required
 def wholesaler_dashboard_view(request):

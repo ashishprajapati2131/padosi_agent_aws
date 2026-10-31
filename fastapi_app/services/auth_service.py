@@ -1,7 +1,7 @@
-from fastapi import HTTPException, Request
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from fastapi_app.schemas.auth import LoginRequest, LoginResponse
+from fastapi_app.schemas.auth import LoginRequest
 from fastapi_app.repositories.user_repository import UserRepository
 from fastapi_app.repositories.agent_repository import AgentRepository
 from fastapi_app.utils.auth import verify_password, generate_and_register_token, get_password_hash
@@ -248,7 +248,7 @@ class AuthService:
                 user_id=user.id
             )
             self.db.commit()
-        except Exception as e:
+        except Exception:
             self.db.rollback()
             return JSONResponse(
                 status_code=500,

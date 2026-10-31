@@ -162,10 +162,6 @@ def sanitize_contact(raw):
     return ''
 
 
-def mock_order_id():
-    return f'{MOCK_ORDER_PREFIX}{int(time.time())}_{uuid.uuid4().hex[:10]}'
-
-
 def mock_payment_id():
     return f'{MOCK_PAYMENT_PREFIX}{int(time.time())}_{uuid.uuid4().hex[:8]}'
 

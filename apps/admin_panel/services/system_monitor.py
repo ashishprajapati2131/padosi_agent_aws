@@ -13,8 +13,6 @@ Recipients:
 Includes intelligent cooldown throttling (15 minutes) to avoid mail flooding.
 """
 
-import os
-import sys
 import time
 import socket
 import logging

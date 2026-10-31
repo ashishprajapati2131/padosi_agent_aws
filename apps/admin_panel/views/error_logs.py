@@ -1,4 +1,3 @@
-import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import models
 from django.core.paginator import Paginator

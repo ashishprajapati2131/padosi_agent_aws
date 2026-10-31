@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from urllib.parse import quote
 
@@ -7,7 +7,6 @@ from fastapi_app.dependencies.auth import get_current_agent
 from fastapi_app.models.agent import Agent
 from fastapi_app.models.referral_code import ReferralCode
 from fastapi_app.models.referral_usage import ReferralUsage
-from fastapi_app.models.site_setting import SiteSetting
 from fastapi_app.config import settings
 
 router = APIRouter(

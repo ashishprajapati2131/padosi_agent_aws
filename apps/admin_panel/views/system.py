@@ -1,5 +1,4 @@
 import os
-import re
 import json
 import psutil
 import platform
@@ -10,7 +9,6 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.core.cache import cache
 from django.core.paginator import Paginator
-from django.db import connection
 from django.conf import settings
 from datetime import datetime, timedelta
 import logging

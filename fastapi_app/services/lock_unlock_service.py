@@ -1,16 +1,14 @@
 import json
 import logging
-from typing import Dict, Any, List, Optional, Set, Union
+from typing import Dict, Any, List, Optional
 from decimal import Decimal, InvalidOperation
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from fastapi import HTTPException, status
 
 from fastapi_app.models.agent import Agent
 from fastapi_app.models.agent_profile import AgentProfile
 from fastapi_app.models.agent_lead import AgentLead
 from fastapi_app.models.agent_review import AgentReview
-from fastapi_app.models.agent_subscription import AgentSubscription
 from fastapi_app.models.agent_insurance_segment import AgentInsuranceSegment
 from fastapi_app.models.agent_portfolio import AgentPortfolio
 from fastapi_app.models.agent_product_expertise import AgentProductExpertise
@@ -18,7 +16,6 @@ from fastapi_app.models.agent_lead_preference import AgentLeadPreference
 from fastapi_app.models.agent_serviceable_city import AgentServiceableCity
 from fastapi_app.models.agent_performance_stat import AgentPerformanceStat
 from fastapi_app.models.referral_code import ReferralCode
-from fastapi_app.models.referral_usage import ReferralUsage
 from fastapi_app.models.site_setting import SiteSetting
 
 logger = logging.getLogger(__name__)

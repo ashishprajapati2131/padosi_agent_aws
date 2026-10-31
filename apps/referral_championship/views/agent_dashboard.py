@@ -32,7 +32,6 @@ from apps.referral_championship.services.reward_engine import (
 from apps.referral_championship.services.leaderboard_service import (
     get_leaderboard_data,
     get_campaign_aggregate_stats,
-    refresh_leaderboard_cache,
 )
 from apps.referral_championship.services.whatsapp_service import (
     WHATSAPP_TEMPLATES,

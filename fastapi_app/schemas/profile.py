@@ -257,14 +257,7 @@ class CareerTimelineCreateRequest(BaseModel):
     month: Optional[str] = ""
     type: str = "Career Event"
 
-class CareerTimelineResponse(BaseModel):
-    success: bool
-    data: List[CareerTimelineItem]
-    message: Optional[str] = None
 
-class DeleteItemResponse(BaseModel):
-    success: bool
-    message: str
 
 
 class VisibilityState(BaseModel):

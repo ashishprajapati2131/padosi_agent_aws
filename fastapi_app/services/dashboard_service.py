@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from urllib.parse import quote
 
 from sqlalchemy.orm import Session
@@ -11,7 +11,6 @@ from fastapi_app.models.agent_profile import AgentProfile
 from fastapi_app.models.agent_subscription import AgentSubscription
 from fastapi_app.models.agent_insurance_segment import AgentInsuranceSegment
 from fastapi_app.models.referral_code import ReferralCode
-from fastapi_app.models.agent_notification import AgentNotification
 
 from fastapi_app.repositories.agent_lead_repository import AgentLeadRepository
 from fastapi_app.repositories.agent_profile_view_repository import AgentProfileViewRepository

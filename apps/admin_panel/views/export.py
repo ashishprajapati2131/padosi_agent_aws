@@ -12,7 +12,6 @@ Adaptations from source:
   - All SQL queries, CSV structure, and business logic are preserved identically.
 """
 
-import csv
 from apps.admin_panel.services.spreadsheet_safety import safe_csv_writer
 
 from django.db import connection

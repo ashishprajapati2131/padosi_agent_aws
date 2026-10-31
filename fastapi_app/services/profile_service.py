@@ -11,7 +11,6 @@ from fastapi_app.schemas.profile import (
     PortfolioProfileUpdateRequest,
     AdditionalProfileUpdateRequest,
 )
-from fastapi_app.config import settings
 from fastapi_app.services.lock_unlock_service import LockUnlockService
 
 logger = logging.getLogger(__name__)

@@ -1,4 +1,3 @@
-import json
 import logging
 from functools import wraps
 
@@ -9,13 +8,12 @@ from django.urls import reverse
 from django.utils import timezone
 from django.db.models import Q, Count
 from django.core.paginator import Paginator
-from django.http import JsonResponse, HttpResponseForbidden
 
 from password_hashing import hash_password, check_password_hash
 from apps.distributors.models import SubDistributor
 from apps.distributors.views.dashboard import is_distributor
 from apps.distributors.views.agents import _distributor_laravel_id
-from apps.agents.models import Agent, AgentDraft
+from apps.agents.models import Agent
 from apps.admin_panel.models.referral_code import ReferralCode
 from apps.admin_panel.models import User as LaravelUser
 

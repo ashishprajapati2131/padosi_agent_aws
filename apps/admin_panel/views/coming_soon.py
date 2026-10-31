@@ -223,7 +223,7 @@ def save_feature(request):
                 'is_active': feature.is_active,
             }
         })
-    except Exception as e:
+    except Exception:
         return JsonResponse({
             'success': False,
             'message': 'Database table has not been migrated yet. Please run "python manage.py migrate" in your terminal first.'

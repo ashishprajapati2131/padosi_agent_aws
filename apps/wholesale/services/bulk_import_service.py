@@ -6,13 +6,10 @@ import csv
 import io
 from decimal import Decimal
 from datetime import datetime
-from typing import Tuple, List, Dict
-from django.utils.text import slugify
 from django.db import transaction
 from apps.wholesale.models.import_job import BulkImportJob, BulkImportError
 from apps.wholesale.models.product import WholesaleProduct
 from apps.wholesale.models.category import ProductCategory
-from apps.wholesale.models.profile import WholesalerProfile
 
 class BulkImportService:
     """Processes bulk CSV product uploads."""

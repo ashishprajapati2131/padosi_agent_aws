@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, Request
 from sqlalchemy.orm import Session
-from typing import Optional, List
 from datetime import datetime
 from fastapi_app.utils.datetime_util import get_current_time
 
@@ -17,8 +16,6 @@ from fastapi_app.models.championship import (
     ChampionshipRewardClaim,
     ChampionshipSocialAction,
     ChampionshipScratchUnlock,
-    ChampionshipGoogleReviewLog,
-    ChampionshipAuditLog,
 )
 from fastapi_app.schemas.championship import (
     ChampionshipDashboardResponse,
@@ -28,8 +25,6 @@ from fastapi_app.schemas.championship import (
     LeaderboardEntrySchema,
     LeaderboardResponse,
     AggregateStatsSchema,
-    WhatsAppLanguageTemplatesSchema,
-    WhatsAppTemplateSchema,
     WhatsAppShareRequest,
     WhatsAppShareResponse,
     RewardClaimRequest,
@@ -46,15 +41,13 @@ from fastapi_app.services.championship_service import (
     get_participant_roadmap,
     get_leaderboard_data,
     get_campaign_aggregate_stats,
-    refresh_leaderboard_cache,
     WHATSAPP_TEMPLATES,
     render_whatsapp_message,
     get_whatsapp_share_url,
     generate_qr_base64,
     generate_qr_bytes,
-    format_inr,
 )
-from fastapi_app.config import settings, get_base_url
+from fastapi_app.config import get_base_url
 
 router = APIRouter(
     prefix="/v1/championship",

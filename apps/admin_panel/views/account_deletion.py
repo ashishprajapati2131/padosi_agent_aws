@@ -11,9 +11,6 @@ from django.core.paginator import Paginator
 from apps.agents.models import (
     AccountDeletionRequest,
     Agent,
-    AgentProfile,
-    Invoice,
-    AgentSubscription,
 )
 from apps.admin_panel.models import AdminActivityLog
 from .dashboard import _get_admin_from_session

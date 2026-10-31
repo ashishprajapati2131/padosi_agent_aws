@@ -15,7 +15,6 @@ Supported commands:
 """
 
 import logging
-import os
 
 from apps.wa_agent_bot.services.site_url import bot_site_url
 

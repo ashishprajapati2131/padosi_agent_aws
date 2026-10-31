@@ -50,7 +50,6 @@ def normalize_phone(value):
 
 def _safe_client_ip(request):
     try:
-        from django.core.exceptions import ValidationError
         from django.core.validators import validate_ipv46_address
         from apps.admin_panel.middleware import ThreatMonitorMiddleware
         ip = ThreatMonitorMiddleware.get_client_ip(request) or request.META.get('REMOTE_ADDR') or ''

@@ -18,8 +18,8 @@ def favicon(request):
         return redirect(url)
     return redirect(staticfiles_storage.url('favicon.ico'))
 from apps.admin_panel.models.contact_submission import ContactSubmission
-from apps.agents.models import Agent, AgentPortfolio, AgentReview, City, FavoriteAgent
-from apps.home.models import Pincode, PincodeCache
+from apps.agents.models import Agent, AgentPortfolio, FavoriteAgent
+from apps.home.models import Pincode
 from apps.home.services.agent_filters import (
     apply_insurance_product_filter,
     apply_insurance_type_filter,
@@ -36,7 +36,7 @@ from apps.home.services.geocoding import GeocodingService
 from apps.home.services.ai_picks import AIPicksService
 from apps.home.services.matching import assign_match_percents
 from apps.home.services.avatar_thumbs import small_avatar_url
-from django.db.models import Avg, Q
+from django.db.models import Q
 from django.db.models.expressions import RawSQL
 from django.core.paginator import Paginator
 from django.core.cache import cache
@@ -435,7 +435,6 @@ def get_all_claim_companies():
     if cached is not None:
         return cached
 
-    company_set = {}
     try:
         from django.db import connection
         with connection.cursor() as cursor:
@@ -635,7 +634,6 @@ def fetch_filtered_agents_list(request):
     # Add claim company boost to smart_rank if a claim company was selected.
     # Agents whose insurance_companies JSON contains the searched company get +60 pts.
     if claim_company_input:
-        escaped = claim_company_input.replace('"', '\\"')
         claim_boost_sql = f'(CASE WHEN JSON_CONTAINS(IFNULL(agents.insurance_companies, \'[]\'::JSON), JSON_QUOTE(%s)) THEN 60 ELSE 0 END)'
         # Use standard MySQL-compatible syntax (no ::JSON cast)
         claim_boost_sql = '(CASE WHEN JSON_CONTAINS(IFNULL(agents.insurance_companies, \'[]\'), JSON_QUOTE(%s)) THEN 60 ELSE 0 END)'
@@ -838,15 +836,7 @@ def find_agents(request):
 
     should_gate_guest = False
     service_type_input = request.GET.getlist('ServiceType')
-    service_type = service_type_input[0] if service_type_input else ''
     
-    has_any_filter = bool(
-        request.GET.get('ServiceType') or
-        request.GET.get('InsuranceType') or
-        request.GET.get('InsuranceCompany') or
-        request.GET.get('ComplaintType') or
-        request.GET.get('search')
-    )
 
     has_new_policy = 'New Policy' in service_type_input or 'Buying new insurance' in service_type_input
     has_claim_assistance = 'Claim Assistance' in service_type_input or 'Claim' in service_type_input

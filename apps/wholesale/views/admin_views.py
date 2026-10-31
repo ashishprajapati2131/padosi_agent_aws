@@ -4,13 +4,13 @@ Wholesale Administrator Views: Moderation Queues, Split-Screen Review, Wholesale
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q, Count
+from django.db.models import Q
 from django.http import JsonResponse
 from datetime import datetime
 from apps.home.models.site_setting import SiteSetting
 from apps.wholesale.adapters.auth_bridge import wholesale_admin_required, is_wholesale_enabled, safe_next_url
 from apps.wholesale.models.product import WholesaleProduct
-from apps.wholesale.models.profile import WholesalerProfile, BusinessVerificationDocument
+from apps.wholesale.models.profile import WholesalerProfile
 from apps.wholesale.models.category import ProductCategory
 from apps.wholesale.models.relationship import ProductRelationship
 from apps.wholesale.services.approval_service import ApprovalService

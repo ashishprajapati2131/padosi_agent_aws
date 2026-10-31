@@ -11,12 +11,11 @@ Admin Panel Controller for Feature Flags Management:
 """
 
 import json
-from typing import Optional, Tuple, Any, Dict, List
+from typing import Optional, Tuple
 from django.shortcuts import render, redirect
-from django.http import JsonResponse, HttpResponse
-from django.views.decorators.http import require_POST, require_http_methods
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from django.contrib import messages
-from django.core.cache import cache
 
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.models.admin_auth import Admin
@@ -27,7 +26,6 @@ from apps.admin_panel.services.feature_flags import (
     create_custom_feature_flag,
     update_feature_flag_metadata,
     delete_custom_feature_flag,
-    sanitize_key,
 )
 
 

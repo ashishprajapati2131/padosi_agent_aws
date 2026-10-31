@@ -1,8 +1,6 @@
 import logging
-from django.utils import timezone
 from apps.referral_championship.models import (
     ChampionshipCampaign,
-    ChampionshipParticipant,
     ChampionshipRewardSlab,
     ChampionshipRewardClaim,
 )

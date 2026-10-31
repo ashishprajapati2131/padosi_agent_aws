@@ -8,7 +8,7 @@ from decimal import Decimal
 from datetime import datetime
 from apps.wholesale.models.category import ProductCategory
 from apps.wholesale.models.profile import WholesalerProfile
-from apps.wholesale.models.product import WholesaleProduct, ProductVariant
+from apps.wholesale.models.product import WholesaleProduct
 from apps.wholesale.models.pricing import WholesalePriceTier
 from apps.wholesale.models.relationship import ProductRelationship
 

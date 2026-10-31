@@ -8,7 +8,7 @@ PWA endpoints — mirrors Laravel routes named pwa.manifest / pwa.sw / pwa.offli
 
 from django.conf import settings
 from django.contrib.staticfiles import finders
-from django.http import FileResponse, HttpResponse, Http404
+from django.http import FileResponse, Http404
 from django.shortcuts import render
 
 

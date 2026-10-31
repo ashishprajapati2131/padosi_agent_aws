@@ -7,7 +7,6 @@ from apps.distributors.views.dashboard import is_distributor
 @login_required(login_url='distributors:login')
 @user_passes_test(is_distributor, login_url='distributors:login')
 def leads(request):
-    distributor = request.user
     
     # In PHP:
     # $leads = DB::table('agent_leads')

@@ -29,7 +29,7 @@ from apps.wa_agent_bot.services.openwa_admin_service import (
     sync_openwa_webhook,
     list_openwa_sessions,
 )
-from apps.agents.models import Agent, AgentSubscription
+from apps.agents.models import AgentSubscription
 
 logger = logging.getLogger(__name__)
 

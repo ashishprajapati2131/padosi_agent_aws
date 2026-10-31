@@ -1,12 +1,10 @@
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect
-from django.http import HttpResponse, Http404, FileResponse, JsonResponse
+from django.http import Http404, FileResponse, JsonResponse
 from django.db import connection
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 import os
-from django.core.mail import EmailMessage
-from django.conf import settings
 from apps.agents.models import Agent, Invoice, PromoCode
 from apps.agents.services.invoice import generate_invoice_number, get_pdf_absolute_path, get_logo_data_uri, InvoiceService
 

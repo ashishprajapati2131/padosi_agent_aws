@@ -1,5 +1,4 @@
 from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey
-from sqlalchemy.orm import relationship
 from datetime import datetime
 from fastapi_app.database import Base
 

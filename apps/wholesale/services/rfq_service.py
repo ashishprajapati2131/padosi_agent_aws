@@ -1,7 +1,7 @@
 """
 Buyer RFQ (Request for Quotation) and Lead Management Service.
 """
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from django.db import transaction
 from django.core.exceptions import ValidationError, PermissionDenied
 from apps.wholesale.models.inquiry import BuyerInquiry, InquiryMessage
