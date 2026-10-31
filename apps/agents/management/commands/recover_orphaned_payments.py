@@ -11,6 +11,9 @@ Razorpay, verifies the amount and sends the invoice + welcome email.
 
     python manage.py recover_orphaned_payments --days 60
     python manage.py recover_orphaned_payments --days 60 --apply
+
+Captured event-checkout payments whose EventRegistration is still unpaid (tab
+closed after capture) are fulfilled with fulfil_event_registration.
 """
 import time
 
@@ -25,7 +28,7 @@ class Command(BaseCommand):
         parser.add_argument('--apply', action='store_true', help='Activate the agents found (default: dry run).')
 
     def handle(self, *args, **options):
-        from apps.agents.models import Agent, AgentSubscription
+        from apps.agents.models import Agent, AgentSubscription, EventRegistration
         from apps.agents.services.account_auth import agent_has_completed_payment
         from apps.agents.services.feature_unlock import PLAN_SLUGS, normalize_plan_slug, plan_slug_from_name
         from apps.agents.services.razorpay_checkout import razorpay_client
@@ -50,6 +53,10 @@ class Command(BaseCommand):
                 if payment.get('status') != 'captured' or not payment.get('order_id'):
                     continue
                 order_id = payment['order_id']
+                event_reg = EventRegistration.objects.filter(razorpay_order_id=order_id).first()
+                if event_reg:
+                    found += self._event_order(event_reg, payment, apply)
+                    continue
                 sub = AgentSubscription.objects.filter(razorpay_order_id=order_id).first()
                 if sub and sub.payment_status == 'completed':
                     continue
@@ -58,8 +65,16 @@ class Command(BaseCommand):
                 order_plan = plan_slug_from_name(sub.selected_plan or '') if sub else ''
                 if not sub:
                     order = client.order.fetch(order_id)
-                    if not str(order.get('receipt') or '').startswith('agent_draft_'):
-                        continue  # insurance / events / other checkout
+                    receipt = str(order.get('receipt') or '')
+                    if receipt.startswith('evt_'):
+                        # A stale order of a registration that has since got a newer one.
+                        reg_id = receipt.split('_')[1]
+                        event_reg = EventRegistration.objects.filter(pk=reg_id).first() if reg_id.isdigit() else None
+                        if event_reg:
+                            found += self._event_order(event_reg, payment, apply)
+                        continue
+                    if not receipt.startswith('agent_draft_'):
+                        continue  # insurance / other checkout
                     notes = order.get('notes') if isinstance(order.get('notes'), dict) else {}
                     agent = Agent.objects.filter(email__iexact=str(notes.get('email') or '')).first()
                     order_plan = str(notes.get('plan_type') or '')
@@ -95,3 +110,24 @@ class Command(BaseCommand):
 
         mode = 'applied' if apply else 'dry run, nothing changed'
         self.stdout.write(self.style.SUCCESS(f'{found} unactivated registration payment(s) found ({mode}).'))
+
+    def _event_order(self, event_reg, payment, apply):
+        """Report (and with --apply fulfil) a captured payment of an unpaid event registration."""
+        from apps.agents.views.events import fulfil_event_registration
+
+        if event_reg.payment_status == 'success':
+            return 0
+        amount = (payment.get('amount') or 0) / 100
+        self.stdout.write(
+            f'EVENT_NOT_FULFILLED  {payment["id"]}  {payment["order_id"]}  Rs {amount:.2f}  '
+            f'event registration #{event_reg.pk} {event_reg.email}'
+        )
+        if apply:
+            try:
+                _reg, fulfilled = fulfil_event_registration(
+                    event_reg.pk, payment['order_id'], payment['id'], payment=payment,
+                )
+                self.stdout.write(f'    fulfilled={fulfilled}')
+            except Exception as exc:  # EventPaymentRejected or a DB error: report, keep scanning
+                self.stdout.write(f'    not fulfilled: {exc}')
+        return 1
