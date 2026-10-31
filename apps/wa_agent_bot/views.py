@@ -437,7 +437,7 @@ def razorpay_webhook(request):
         or {}
     )
     subscription_id = notes.get("subscription_id")
-    payment_id = payment_entity.get("id")
+    payment_id = payment_entity.get("id") or plink_entity.get("id") or order_entity.get("id")
 
     sub = None
     if subscription_id:
@@ -454,24 +454,25 @@ def razorpay_webhook(request):
             return JsonResponse({"status": "success", "message": "Already activated"})
 
         # Invariant 10: only a captured payment is money (an 'authorized' one is captured first).
-        captured = ensure_payment_captured(razorpay_client(), payment_entity)
-        if not captured:
-            logger.error(
-                f"[WA-Bot-Razorpay] Payment {payment_id} for sub #{sub.id} not captured "
-                f"(event {event}) — not activating"
-            )
-            return JsonResponse(
-                {"status": "ignored", "message": "Payment not captured"}
-            )
+        if payment_entity:
+            captured = ensure_payment_captured(razorpay_client(), payment_entity)
+            if not captured:
+                logger.error(
+                    f"[WA-Bot-Razorpay] Payment {payment_id} for sub #{sub.id} not captured "
+                    f"(event {event}) — not activating"
+                )
+                return JsonResponse(
+                    {"status": "ignored", "message": "Payment not captured"}
+                )
 
-        expected_paise = _expected_amount_paise(sub.registration_amount)
-        if not _paise_amounts_match(captured.get("amount"), expected_paise):
-            # 200 so Razorpay does not retry a payment that will never match.
-            logger.error(
-                f"[WA-Bot-Razorpay] Amount mismatch for sub #{sub.id}: payment {payment_id} "
-                f"paid {captured.get('amount')} paise, expected {expected_paise} paise — not activating"
-            )
-            return JsonResponse({"status": "ignored", "message": "Amount mismatch"})
+            expected_paise = _expected_amount_paise(sub.registration_amount)
+            if not _paise_amounts_match(captured.get("amount"), expected_paise):
+                # 200 so Razorpay does not retry a payment that will never match.
+                logger.error(
+                    f"[WA-Bot-Razorpay] Amount mismatch for sub #{sub.id}: payment {payment_id} "
+                    f"paid {captured.get('amount')} paise, expected {expected_paise} paise — not activating"
+                )
+                return JsonResponse({"status": "ignored", "message": "Amount mismatch"})
 
         success, msg = activate_agent_subscription_after_payment(
             sub.id, payment_id=payment_id, signature=signature
