@@ -5655,8 +5655,8 @@ from django.views.decorators.csrf import csrf_exempt
 _FOREIGN_CHECKOUT_RECEIPTS = ("agent_ins_", "cart_ins_", "evt_")
 
 
-def _foreign_checkout_receipt(order_id):
-    """The receipt of an insurance / event checkout order, else None.
+def _foreign_checkout_order(order_id):
+    """The Razorpay order if it is an insurance / event checkout one, else None.
 
     Anything else (agent orders, unknown receipts, Razorpay unreachable) keeps
     the 503 so Razorpay retries rather than a real payment being dropped.
@@ -5668,7 +5668,7 @@ def _foreign_checkout_receipt(order_id):
     except Exception:
         return None
     if isinstance(receipt, str) and receipt.startswith(_FOREIGN_CHECKOUT_RECEIPTS):
-        return receipt
+        return order
     return None
 
 
@@ -5854,14 +5854,19 @@ def razorpay_webhook(request):
         # Single-agent insurance orders never bind a subscription row (the
         # agent is in the order notes), so they are recognised by receipt here
         # rather than with a Razorpay fetch on every agent webhook.
-        foreign_receipt = None if subscription else _foreign_checkout_receipt(order_id)
-        if foreign_receipt and foreign_receipt.startswith("agent_ins_"):
+        foreign_order = None if subscription else _foreign_checkout_order(order_id)
+        if foreign_order and foreign_order["receipt"].startswith("agent_ins_"):
+            from functools import partial
+
             from apps.insurance.views.payments import fulfil_insurance_agent_order
 
             return _fulfil_insurance_order_webhook(
-                fulfil_insurance_agent_order, order_id, payment_id, payment_entity
+                partial(fulfil_insurance_agent_order, order=foreign_order),
+                order_id,
+                payment_id,
+                payment_entity,
             )
-        if foreign_receipt:
+        if foreign_order:
             # Other insurance / event checkouts are verified by their own flows;
             # a 503 here made Razorpay retry them forever (and risk disabling
             # the webhook endpoint).
@@ -5961,7 +5966,7 @@ def _fulfil_insurance_order_webhook(fulfil, order_id, payment_id, payment_entity
     except InsurancePaymentRejected as exc:
         # 200: a rejected payment never becomes valid, so a retry cannot help.
         logger.error(
-            f"[Webhook] Insurance order {order_id} not fulfilled: payment {payment_id}: {exc}"
+            f"[Webhook] Insurance order {order_id} not fulfilled: payment {payment_id} rejected ({type(exc).__name__}; reason logged by the fulfil step / stored on the order)"
         )
         return HttpResponse("Webhook ignored: insurance payment rejected", status=200)
     except Exception:

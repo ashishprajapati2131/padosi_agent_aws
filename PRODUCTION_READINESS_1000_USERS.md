@@ -235,3 +235,11 @@ Full suite after the fixes: `manage.py test apps fastapi_app` ran 1026 tests, OK
 - ⚠️ `/events/` signup flow can't be reached: `urls_events.py` declares `register/` and `plans/` twice, so `register` and `select_plan` never run. Enabling it is a product decision.
 - ⚠️ Behaviour change: a new event agent's first password is their mobile number (invariant 3), not a random password.
 - Full suite: 1033 tests OK (2 skipped).
+
+### Update: insurance webhook (2026-11-01)
+- ✅ Single-agent insurance orders (`agent_ins_`): fulfilled by `fulfil_insurance_agent_order`, called from the webhook, the browser callback and recovery. The agent comes from the order's own notes.
+- ✅ Bulk-cart orders (`cart_ins_`): the cart is stored server-side in the new table `insurance_bulk_orders` (migration `insurance/0003`), so the webhook can create the agents. If a cart email is already registered, the order is marked `failed` with the reason stored, and the payment is not lost.
+- ✅ `recover_orphaned_payments` reports `INSURANCE_AGENT_NOT_FULFILLED` and `INSURANCE_BULK_NOT_FULFILLED`, and fulfils them with `--apply`.
+- ⚠️ Bulk orders created before the deploy have no table row, so the webhook can't fulfil them; the browser path still can.
+- ⚠️ Insurance orders send no invoice or welcome email; they never did.
+- Full suite: 1046 tests OK (2 skipped). Migrations to deploy: `agents/0040` and `insurance/0003`.

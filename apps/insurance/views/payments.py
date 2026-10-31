@@ -238,23 +238,25 @@ def _complete_insurance_agent_payment(agent_id, payment_ref, recorded_by):
     return True
 
 
-def fulfil_insurance_agent_order(order_id, payment_id, payment=None, agent_id=None):
+def fulfil_insurance_agent_order(order_id, payment_id, payment=None, agent_id=None, order=None):
     """Record a captured single-agent (``agent_ins_``) order exactly once.
 
     Shared by the browser callback, the Razorpay webhook and
     recover_orphaned_payments. The agent comes from the order's own notes
     (written by create_razorpay_order), never from the client; ``agent_id``
-    (browser) must match them. Returns (agent, fulfilled): fulfilled is False
+    (browser) must match them; ``order`` is the Razorpay order when the caller
+    already fetched it. Returns (agent, fulfilled): fulfilled is False
     when the payment was already recorded. Raises InsurancePaymentRejected.
     """
     from django.contrib.auth.models import User
     from apps.agents.views.registration import _expected_amount_paise, _paise_amounts_match
 
     client = _insurance_razorpay_client()
-    if client is None:
-        logger.error('Insurance payment - Razorpay keys not configured.')
-        raise InsurancePaymentRejected(USER_PAYMENT_UNAVAILABLE)
-    order = client.order.fetch(order_id)  # network errors propagate: the webhook retries
+    if order is None:
+        if client is None:
+            logger.error('Insurance payment - Razorpay keys not configured.')
+            raise InsurancePaymentRejected(USER_PAYMENT_UNAVAILABLE)
+        order = client.order.fetch(order_id)  # network errors propagate: the webhook retries
     notes = order.get('notes') if isinstance(order.get('notes'), dict) else {}
     order_agent_id = str(notes.get('agent_id') or '')
     if not str(order.get('receipt') or '').startswith('agent_ins_') or not order_agent_id.isdigit():

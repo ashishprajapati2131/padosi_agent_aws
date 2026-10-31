@@ -18,6 +18,7 @@ portal orders (single agent / bulk cart) with fulfil_insurance_agent_order /
 fulfil_insurance_bulk_order.
 """
 import time
+from functools import partial
 
 from django.core.management.base import BaseCommand
 
@@ -147,7 +148,7 @@ class Command(BaseCommand):
         if agent and agent.status in INSURANCE_PAID_STATUSES:
             detail += '  <- already paid another way: possible DOUBLE CHARGE, refund manually'
         return self._insurance_order(
-            'INSURANCE_AGENT_NOT_FULFILLED', detail, fulfil_insurance_agent_order, payment, apply,
+            'INSURANCE_AGENT_NOT_FULFILLED', detail, partial(fulfil_insurance_agent_order, order=order), payment, apply,
         )
 
     def _insurance_order(self, kind, detail, fulfil, payment, apply):
