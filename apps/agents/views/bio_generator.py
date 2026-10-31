@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 import time
 
@@ -7,9 +8,20 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
 from apps.agents.models import Agent, AgentProfile, AgentBioGenerationLog
-from apps.chatbot.llm_client import call_llm_with_fallback
+from apps.chatbot.llm_client import call_llm_with_fallback, incr_daily_counter
 
 logger = logging.getLogger(__name__)
+
+# Each generation is up to 3 LLM calls; cap per agent per day.
+BIO_DAILY_AGENT_LIMIT = int(os.environ.get("BIO_DAILY_AGENT_LIMIT", "10"))
+BIO_DAILY_LIMIT_MESSAGE = (
+    "You've reached today's limit for AI bio generation. Please try again tomorrow."
+)
+
+
+class BioDailyLimitExceeded(Exception):
+    pass
+
 
 BIO_MAX_CHARS = 500
 BIO_MIN_CHARS = 180
@@ -38,7 +50,10 @@ def generate_professional_bio(request):
 
         if not is_admin and not request.user.is_authenticated:
             return JsonResponse(
-                {"status": "error", "message": "Authentication required. Please log in."},
+                {
+                    "status": "error",
+                    "message": "Authentication required. Please log in.",
+                },
                 status=401,
             )
 
@@ -66,14 +81,17 @@ def generate_professional_bio(request):
             "full_name": request.POST.get("full_name"),
             "agency_name": request.POST.get("agency_name"),
             "experience_years": request.POST.get("experience_years"),
-            "serviceable_cities": request.POST.get("serviceable_cities[]") or request.POST.get("serviceable_cities"),
+            "serviceable_cities": request.POST.get("serviceable_cities[]")
+            or request.POST.get("serviceable_cities"),
             "languages": request.POST.get("languages"),
             "service_pincode": request.POST.get("service_pincode"),
-            "investment_types": request.POST.getlist("investment_types[]") or request.POST.getlist("investment_types"),
+            "investment_types": request.POST.getlist("investment_types[]")
+            or request.POST.getlist("investment_types"),
             "license_number": request.POST.get("license_number"),
             "client_base": request.POST.get("client_base"),
             "success_rate": request.POST.get("success_rate"),
-            "segments": request.POST.getlist("segments[]") or request.POST.getlist("segments"),
+            "segments": request.POST.getlist("segments[]")
+            or request.POST.getlist("segments"),
         }
 
         generated_bio = generate_agent_bio_logic(agent, profile, payload)
@@ -87,6 +105,10 @@ def generate_professional_bio(request):
             )
         return JsonResponse({"status": "success", "bio": generated_bio})
 
+    except BioDailyLimitExceeded:
+        return JsonResponse(
+            {"status": "error", "message": BIO_DAILY_LIMIT_MESSAGE}, status=429
+        )
     except Exception as e:
         logger.error("Bio generation failed: %s", str(e), exc_info=True)
         if "agent" in locals() and agent:
@@ -110,22 +132,40 @@ def generate_professional_bio(request):
 def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict) -> str:
     """
     Core logic to generate professional bio using agent profile and provided payload data.
+    Raises BioDailyLimitExceeded once the agent has used today's quota.
     """
-    fullname = payload.get("full_name") or agent.fullname or ""
-    agency_name = payload.get("agency_name") or getattr(profile, "agency_name", "") or ""
-    experience = payload.get("experience_years") or str(
-        getattr(profile, "experience_years", "") or getattr(agent, "experience_range", "") or ""
-    )
+    if incr_daily_counter(f"bio_agent_{agent.pk}") > BIO_DAILY_AGENT_LIMIT:
+        raise BioDailyLimitExceeded(BIO_DAILY_LIMIT_MESSAGE)
 
-    city_post = payload.get("serviceable_cities")
-    city = city_post if city_post else (
-        getattr(agent, "city", "")
-        or (profile.address.split(",")[0].strip() if getattr(profile, "address", None) else "")
+    fullname = payload.get("full_name") or agent.fullname or ""
+    agency_name = (
+        payload.get("agency_name") or getattr(profile, "agency_name", "") or ""
+    )
+    experience = payload.get("experience_years") or str(
+        getattr(profile, "experience_years", "")
+        or getattr(agent, "experience_range", "")
         or ""
     )
 
+    city_post = payload.get("serviceable_cities")
+    city = (
+        city_post
+        if city_post
+        else (
+            getattr(agent, "city", "")
+            or (
+                profile.address.split(",")[0].strip()
+                if getattr(profile, "address", None)
+                else ""
+            )
+            or ""
+        )
+    )
+
     state = getattr(profile, "state", "") or ""
-    languages = payload.get("languages") or getattr(profile, "formatted_languages", "") or ""
+    languages = (
+        payload.get("languages") or getattr(profile, "formatted_languages", "") or ""
+    )
     pincode = payload.get("service_pincode") or agent.get_effective_pincode() or ""
 
     investments_post = payload.get("investment_types")
@@ -142,12 +182,18 @@ def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict)
     )
 
     client_base_post = payload.get("client_base")
-    client_base = client_base_post if client_base_post else getattr(agent, "client_base", "")
+    client_base = (
+        client_base_post if client_base_post else getattr(agent, "client_base", "")
+    )
 
     perf_stat = getattr(agent, "performanceStats", None)
     success_rate_post = payload.get("success_rate")
     if success_rate_post:
-        success_rate = f"{success_rate_post}%" if not str(success_rate_post).endswith("%") else str(success_rate_post)
+        success_rate = (
+            f"{success_rate_post}%"
+            if not str(success_rate_post).endswith("%")
+            else str(success_rate_post)
+        )
     elif perf_stat and getattr(perf_stat, "success_rate", None):
         val_str = str(perf_stat.success_rate).strip().rstrip("%")
         try:
@@ -162,7 +208,9 @@ def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict)
 
     segments_post = payload.get("segments")
     if segments_post:
-        all_insurance = list(dict.fromkeys([str(s).strip() for s in segments_post if s]))
+        all_insurance = list(
+            dict.fromkeys([str(s).strip() for s in segments_post if s])
+        )
     else:
         segments = getattr(agent, "ordered_insurance_segments", None) or []
         insurance_types = []
@@ -181,7 +229,9 @@ def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict)
         agent_details["company"] = str(agency_name)
     if experience:
         exp_text = str(experience).strip()
-        agent_details["experience"] = exp_text if "year" in exp_text.lower() else f"{exp_text} years"
+        agent_details["experience"] = (
+            exp_text if "year" in exp_text.lower() else f"{exp_text} years"
+        )
     if city:
         agent_details["city"] = str(city)
     if state:
@@ -202,7 +252,9 @@ def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict)
         agent_details["claim_success_rate"] = str(success_rate)
     agent_details["claim_support"] = "Yes"
 
-    agent_details_json = json.dumps(agent_details, ensure_ascii=False, indent=2, default=str)
+    agent_details_json = json.dumps(
+        agent_details, ensure_ascii=False, indent=2, default=str
+    )
 
     system_prompt = (
         "You are a senior SEO copywriter and insurance branding expert with 15+ years of experience "
@@ -239,7 +291,7 @@ def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict)
         "'Leading Expert'. Never make false promises.\n\n"
         "## Output Format\n"
         "Return ONLY valid JSON with a single key 'bio'.\n"
-        "Example: {\"bio\": \"I specialize in...\"}\n"
+        'Example: {"bio": "I specialize in..."}\n'
         "Do NOT add any explanation, notes, or extra text outside the JSON object."
     )
 
@@ -251,7 +303,7 @@ def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict)
         "- First person only (I / We / My / Our). Do not use He / She / Name.\n"
         "- Single paragraph, no formatting.\n"
         "- Natural SEO keywords where applicable.\n"
-        "- Return ONLY: {\"bio\": \"<bio text>\"}"
+        '- Return ONLY: {"bio": "<bio text>"}'
     )
 
     plain_system_prompt = (
@@ -311,7 +363,9 @@ def generate_agent_bio_logic(agent: Agent, profile: AgentProfile, payload: dict)
     return generated_bio
 
 
-def _generate_bio_with_retries(system_prompt, user_prompt, plain_system_prompt, plain_user_prompt):
+def _generate_bio_with_retries(
+    system_prompt, user_prompt, plain_system_prompt, plain_user_prompt
+):
     """
     Call the LLM with retries tuned for reasoning models (e.g. Groq gpt-oss-120b)
     that can exhaust max_tokens on internal reasoning and return empty content.
@@ -351,11 +405,7 @@ def _generate_bio_with_retries(system_prompt, user_prompt, plain_system_prompt, 
     last_provider = ""
 
     for attempt in attempts:
-        llm_kwargs = {
-            key: value
-            for key, value in attempt.items()
-            if key != "messages"
-        }
+        llm_kwargs = {key: value for key, value in attempt.items() if key != "messages"}
         try:
             response, provider = call_llm_with_fallback(
                 messages=attempt["messages"],
@@ -370,7 +420,11 @@ def _generate_bio_with_retries(system_prompt, user_prompt, plain_system_prompt, 
         generated_bio = _extract_bio(raw_output)
         last_raw = raw_output or last_raw
         last_response = response
-        last_provider = provider.get("name", "") if isinstance(provider, dict) else str(provider or "")
+        last_provider = (
+            provider.get("name", "")
+            if isinstance(provider, dict)
+            else str(provider or "")
+        )
 
         if generated_bio:
             return generated_bio, raw_output, response, last_provider
@@ -410,7 +464,11 @@ def _read_message_text(response) -> str:
             if isinstance(block, dict):
                 text = block.get("text") or block.get("content") or ""
             else:
-                text = getattr(block, "text", None) or getattr(block, "content", None) or ""
+                text = (
+                    getattr(block, "text", None)
+                    or getattr(block, "content", None)
+                    or ""
+                )
             if text and str(text).strip():
                 parts.append(str(text).strip())
 
@@ -465,7 +523,9 @@ def _extract_bio(raw: str) -> str:
         return ""
 
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.MULTILINE).strip()
-    cleaned = re.sub(r"^(?:here is|here's|output:|response:)\s*", "", cleaned, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(
+        r"^(?:here is|here's|output:|response:)\s*", "", cleaned, flags=re.IGNORECASE
+    ).strip()
 
     parsed = None
     try:
@@ -494,7 +554,9 @@ def _extract_bio(raw: str) -> str:
 
     if not bio:
         bio = cleaned
-        if bio.startswith("{") and re.search(r'"(?:bio|professional_bio)"', bio, flags=re.IGNORECASE):
+        if bio.startswith("{") and re.search(
+            r'"(?:bio|professional_bio)"', bio, flags=re.IGNORECASE
+        ):
             bio = ""
 
     if not isinstance(bio, str):
@@ -504,8 +566,14 @@ def _extract_bio(raw: str) -> str:
     bio = re.sub(r"[*#>`]", "", bio)
     bio = " ".join(bio.split()).strip()
 
-    if bio.lower().startswith("{") and re.search(r'"(?:bio|professional_bio)"', bio, flags=re.IGNORECASE):
-        inner = re.search(r'"(?:bio|professional_bio)"\s*:\s*"((?:\\.|[^"\\])*)"', bio, flags=re.IGNORECASE)
+    if bio.lower().startswith("{") and re.search(
+        r'"(?:bio|professional_bio)"', bio, flags=re.IGNORECASE
+    ):
+        inner = re.search(
+            r'"(?:bio|professional_bio)"\s*:\s*"((?:\\.|[^"\\])*)"',
+            bio,
+            flags=re.IGNORECASE,
+        )
         if inner:
             bio = " ".join(inner.group(1).replace("\\n", " ").split())
 

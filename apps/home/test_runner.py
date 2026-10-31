@@ -12,6 +12,7 @@ def _configure_test_settings():
     db_config = dict(settings.DATABASES['default'])
     db_config['ENGINE'] = 'django.db.backends.sqlite3'
     db_config['NAME'] = ':memory:'
+    db_config['OPTIONS'] = {}
     
     if 'TEST' not in db_config or not isinstance(db_config['TEST'], dict):
         db_config['TEST'] = {}

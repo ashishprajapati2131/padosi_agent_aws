@@ -12,6 +12,22 @@ from apps.referral_championship.services.attribution_service import validate_ref
 logger = logging.getLogger(__name__)
 
 
+def _schedule_leaderboard_refresh(campaign):
+    """Re-rank after the surrounding (payment) transaction commits.
+
+    The refresh writes every participant row; doing it while the referrer row
+    lock is held deadlocked, and the savepoint rollback dropped the credit.
+    """
+    def _run():
+        from apps.referral_championship.services.leaderboard_service import refresh_leaderboard_cache
+        try:
+            refresh_leaderboard_cache(campaign)
+        except Exception:
+            logger.exception("Championship leaderboard refresh failed for campaign %s", campaign.pk)
+
+    transaction.on_commit(_run)
+
+
 def _championship_participant_for_event_code(code, campaign):
     """Championship participant of the Paldi (EV-) challenger owning `code`.
 
@@ -119,8 +135,7 @@ def process_championship_qualification(new_agent, subscription):
         evaluate_participant_rewards(referrer_participant)
 
         # Update leaderboard ranks
-        from apps.referral_championship.services.leaderboard_service import refresh_leaderboard_cache
-        refresh_leaderboard_cache(campaign)
+        _schedule_leaderboard_refresh(campaign)
 
     logger.info(
         f"Championship qualification complete: Referrer {referrer_participant.referral_id} "
@@ -174,8 +189,7 @@ def revert_championship_qualification(agent, reason="refund"):
             reason=f"Agent payment was {reason}ed."
         )
 
-        from apps.referral_championship.services.leaderboard_service import refresh_leaderboard_cache
-        refresh_leaderboard_cache(campaign)
+        _schedule_leaderboard_refresh(campaign)
 
     logger.info(f"Reverted qualification for referrer {referrer.referral_id}. Count adjusted from {old_count} to {actual_count}.")
     return True

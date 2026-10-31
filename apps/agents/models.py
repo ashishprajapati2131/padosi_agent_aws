@@ -1,16 +1,20 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+
 @property
 def user_fullname(self):
     return f"{self.first_name} {self.last_name}".strip() or self.username
 
-User.add_to_class('fullname', user_fullname)
+
+User.add_to_class("fullname", user_fullname)
+
+
 def format_indian_number(num):
     try:
         num = float(num)
     except (ValueError, TypeError):
-        return '0'
+        return "0"
     if num >= 10000000:
         val = num / 10000000
         return f"{int(val) if val.is_integer() else round(val, 2)} Cr"
@@ -28,17 +32,19 @@ class InvestmentType(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'investment_types'
-        ordering = ['name']
+        db_table = "investment_types"
+        ordering = ["name"]
 
     def __str__(self):
         return self.name
+
 
 def clean_investment_types(types):
     if not types:
         return []
     if isinstance(types, str):
         import json
+
         try:
             types = json.loads(types)
         except Exception:
@@ -51,72 +57,72 @@ def clean_investment_types(types):
         if not t:
             continue
         t_lower = str(t).strip().lower()
-        if t_lower in ['sip', 'stp', 'swp', 'sip/stp/swp']:
+        if t_lower in ["sip", "stp", "swp", "sip/stp/swp"]:
             if not has_sip_stp_swp:
-                normalized.append('SIP/STP/SWP')
+                normalized.append("SIP/STP/SWP")
                 has_sip_stp_swp = True
-        elif t_lower == 'bonds':
+        elif t_lower == "bonds":
             continue
         else:
-            if t_lower == 'lumpsum':
-                normalized.append('Lumpsum')
-            elif t_lower == 'elss':
-                normalized.append('ELSS')
-            elif t_lower == 'pms':
-                normalized.append('PMS')
-            elif t_lower == 'nps':
-                normalized.append('NPS')
-            elif t_lower == 'aif':
-                normalized.append('AIF')
+            if t_lower == "lumpsum":
+                normalized.append("Lumpsum")
+            elif t_lower == "elss":
+                normalized.append("ELSS")
+            elif t_lower == "pms":
+                normalized.append("PMS")
+            elif t_lower == "nps":
+                normalized.append("NPS")
+            elif t_lower == "aif":
+                normalized.append("AIF")
             else:
                 normalized.append(str(t).strip())
     return normalized
 
 
 STATE_CODE_MAP = {
-    'andaman and nicobar islands': 'an',
-    'andhra pradesh': 'ap',
-    'arunachal pradesh': 'ar',
-    'assam': 'as',
-    'bihar': 'br',
-    'chandigarh': 'ch',
-    'chhattisgarh': 'cg',
-    'dadra and nagar haveli': 'dn',
-    'daman and diu': 'dd',
-    'dadra and nagar haveli and daman and diu': 'dn',
-    'delhi': 'dl',
-    'national capital territory of delhi': 'dl',
-    'nct of delhi': 'dl',
-    'goa': 'ga',
-    'gujarat': 'gj',
-    'haryana': 'hr',
-    'himachal pradesh': 'hp',
-    'jammu and kashmir': 'jk',
-    'jharkhand': 'jh',
-    'karnataka': 'ka',
-    'kerala': 'kl',
-    'ladakh': 'la',
-    'lakshadweep': 'ld',
-    'madhya pradesh': 'mp',
-    'maharashtra': 'mh',
-    'manipur': 'mn',
-    'meghalaya': 'ml',
-    'mizoram': 'mz',
-    'nagaland': 'nl',
-    'odisha': 'od',
-    'orissa': 'od',
-    'puducherry': 'py',
-    'pondicherry': 'py',
-    'punjab': 'pb',
-    'rajasthan': 'rj',
-    'sikkim': 'sk',
-    'tamil nadu': 'tn',
-    'telangana': 'ts',
-    'tripura': 'tr',
-    'uttar pradesh': 'up',
-    'uttarakhand': 'uk',
-    'uttaranchal': 'uk',
-    'west bengal': 'wb'
+    "andaman and nicobar islands": "an",
+    "andhra pradesh": "ap",
+    "arunachal pradesh": "ar",
+    "assam": "as",
+    "bihar": "br",
+    "chandigarh": "ch",
+    "chhattisgarh": "cg",
+    "dadra and nagar haveli": "dn",
+    "daman and diu": "dd",
+    "dadra and nagar haveli and daman and diu": "dn",
+    "delhi": "dl",
+    "national capital territory of delhi": "dl",
+    "nct of delhi": "dl",
+    "goa": "ga",
+    "gujarat": "gj",
+    "haryana": "hr",
+    "himachal pradesh": "hp",
+    "jammu and kashmir": "jk",
+    "jharkhand": "jh",
+    "karnataka": "ka",
+    "kerala": "kl",
+    "ladakh": "la",
+    "lakshadweep": "ld",
+    "madhya pradesh": "mp",
+    "maharashtra": "mh",
+    "manipur": "mn",
+    "meghalaya": "ml",
+    "mizoram": "mz",
+    "nagaland": "nl",
+    "odisha": "od",
+    "orissa": "od",
+    "puducherry": "py",
+    "pondicherry": "py",
+    "punjab": "pb",
+    "rajasthan": "rj",
+    "sikkim": "sk",
+    "tamil nadu": "tn",
+    "telangana": "ts",
+    "tripura": "tr",
+    "uttar pradesh": "up",
+    "uttarakhand": "uk",
+    "uttaranchal": "uk",
+    "west bengal": "wb",
 }
 
 
@@ -126,6 +132,7 @@ class AgentDraft(models.Model):
     Matches the Laravel flow where Agent record is created at Step 1
     and updated through Step 2 before payment.
     """
+
     session_key = models.CharField(max_length=40, db_index=True)
 
     # OTP / Email verification
@@ -133,35 +140,35 @@ class AgentDraft(models.Model):
     email_verified = models.BooleanField(default=False)
 
     # Step 1 — Basic Information
-    fullname = models.CharField(max_length=70, blank=True, default='')
-    mobile = models.CharField(max_length=15, blank=True, default='')
-    agent_pincode = models.CharField(max_length=6, blank=True, default='')
-    state = models.CharField(max_length=100, blank=True, default='')
-    experience_range = models.CharField(max_length=50, blank=True, default='')
+    fullname = models.CharField(max_length=70, blank=True, default="")
+    mobile = models.CharField(max_length=15, blank=True, default="")
+    agent_pincode = models.CharField(max_length=6, blank=True, default="")
+    state = models.CharField(max_length=100, blank=True, default="")
+    experience_range = models.CharField(max_length=50, blank=True, default="")
     segments = models.JSONField(default=list, blank=True)  # e.g. ["health","life"]
-    promo_code = models.CharField(max_length=30, blank=True, default='')
+    promo_code = models.CharField(max_length=30, blank=True, default="")
     insurance_companies = models.JSONField(default=list, blank=True)
-    address = models.CharField(max_length=255, blank=True, default='')
-    client_base = models.CharField(max_length=50, blank=True, default='')
-    slug = models.CharField(max_length=255, blank=True, default='')
-    whatsapp = models.CharField(max_length=20, blank=True, default='')
+    address = models.CharField(max_length=255, blank=True, default="")
+    client_base = models.CharField(max_length=50, blank=True, default="")
+    slug = models.CharField(max_length=255, blank=True, default="")
+    whatsapp = models.CharField(max_length=20, blank=True, default="")
     claims_settled = models.IntegerField(default=0)
-    claim_amount = models.CharField(max_length=20, blank=True, default='')
+    claim_amount = models.CharField(max_length=20, blank=True, default="")
 
     # Step 2 — Profile Details / Professional Details
-    photo = models.ImageField(upload_to='agent_photos/', null=True, blank=True)
-    about = models.TextField(blank=True, default='')
+    photo = models.ImageField(upload_to="agent_photos/", null=True, blank=True)
+    about = models.TextField(blank=True, default="")
     languages = models.JSONField(default=list, blank=True)  # e.g. ["Hindi","English"]
-    certifications = models.CharField(max_length=200, blank=True, default='')
+    certifications = models.CharField(max_length=200, blank=True, default="")
 
     # Step 2 Professional Details matching RegisterStep2Request
-    license_number = models.CharField(max_length=255, blank=True, default='')
+    license_number = models.CharField(max_length=255, blank=True, default="")
     license_valid_till = models.DateField(null=True, blank=True)
-    arn_number = models.CharField(max_length=255, blank=True, default='')
-    euin_number = models.CharField(max_length=255, blank=True, default='')
+    arn_number = models.CharField(max_length=255, blank=True, default="")
+    euin_number = models.CharField(max_length=255, blank=True, default="")
     investment_valid_till = models.DateField(null=True, blank=True)
     investment_types = models.JSONField(default=list, blank=True)
-    pan_number = models.CharField(max_length=20, blank=True, default='')
+    pan_number = models.CharField(max_length=20, blank=True, default="")
     date_of_birth = models.DateField(null=True, blank=True)
 
     # Step 3 — Registration Mode
@@ -171,7 +178,7 @@ class AgentDraft(models.Model):
     motor = models.IntegerField(null=True, blank=True)
     desired_services = models.JSONField(default=list, blank=True)
     software_services = models.JSONField(default=list, blank=True)
-    software_name = models.CharField(max_length=255, blank=True, default='')
+    software_name = models.CharField(max_length=255, blank=True, default="")
 
     # Registration tracking
     registration_step = models.PositiveSmallIntegerField(default=0)
@@ -180,14 +187,14 @@ class AgentDraft(models.Model):
     # Referral / Distributor tracking
     distributor_id = models.IntegerField(null=True, blank=True)
     sub_distributor_id = models.IntegerField(null=True, blank=True)
-    referred_by_code = models.CharField(max_length=50, blank=True, default='')
+    referred_by_code = models.CharField(max_length=50, blank=True, default="")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_drafts'
-        ordering = ['-created_at']
+        db_table = "agent_drafts"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"AgentDraft({self.email}, step={self.registration_step})"
@@ -203,13 +210,13 @@ class AgentDraft(models.Model):
     @property
     def state_code(self):
         if not self.state:
-            return 'gj'
+            return "gj"
         key = str(self.state).strip().lower()
         if key in STATE_CODE_MAP:
             return STATE_CODE_MAP[key]
         if len(key) == 2 and key.isalpha():
             return key.lower()
-        return 'gj'
+        return "gj"
 
 
 class PromoCode(models.Model):
@@ -217,22 +224,29 @@ class PromoCode(models.Model):
     Django representation of Laravel's promo_codes table.
     Set to managed = True because the table is managed by Laravel/migrations.
     """
+
     code = models.CharField(max_length=255, unique=True)
-    discount_type = models.CharField(max_length=20, default='percentage')  # percentage, fixed
+    discount_type = models.CharField(
+        max_length=20, default="percentage"
+    )  # percentage, fixed
     discount_value = models.DecimalField(max_digits=10, decimal_places=2)
     is_active = models.BooleanField(default=True)
     max_uses = models.IntegerField(null=True, blank=True)
     times_used = models.IntegerField(default=0)
-    applicable_plan = models.CharField(max_length=50, null=True, blank=True)  # all, basic, professional
+    applicable_plan = models.CharField(
+        max_length=50, null=True, blank=True
+    )  # all, basic, professional
     expires_at = models.DateTimeField(null=True, blank=True)
     is_free_trial = models.BooleanField(default=False)
     trial_plan_name = models.CharField(max_length=255, null=True, blank=True)
     trial_duration_days = models.IntegerField(null=True, blank=True)
-    trial_price_override = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    notes = models.TextField(blank=True, default='')
+    trial_price_override = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    notes = models.TextField(blank=True, default="")
 
     class Meta:
-        db_table = 'promo_codes'
+        db_table = "promo_codes"
         managed = True
 
     def __str__(self):
@@ -240,6 +254,7 @@ class PromoCode(models.Model):
 
     def is_valid(self, plan_type=None):
         from django.utils import timezone
+
         if not self.is_active:
             return False
         if self.expires_at and self.expires_at < timezone.now():
@@ -247,18 +262,18 @@ class PromoCode(models.Model):
         if self.max_uses is not None and self.times_used >= self.max_uses:
             return False
         if plan_type is not None:
-            app_plan = (self.applicable_plan or '').strip().lower()
+            app_plan = (self.applicable_plan or "").strip().lower()
             p_type = str(plan_type).strip().lower()
-            if app_plan and app_plan != 'all':
+            if app_plan and app_plan != "all":
                 # Treat 'basic' and 'starter' as equivalent plan aliases
-                if app_plan in ('basic', 'starter') and p_type in ('basic', 'starter'):
+                if app_plan in ("basic", "starter") and p_type in ("basic", "starter"):
                     pass
                 elif app_plan != p_type:
                     return False
         return True
 
     def calculate_discount(self, amount):
-        if self.discount_type == 'percentage':
+        if self.discount_type == "percentage":
             return (float(amount) * float(self.discount_value)) / 100
         return min(float(self.discount_value), float(amount))
 
@@ -267,7 +282,9 @@ class PromoCode(models.Model):
 
 
 class Agent(models.Model):
-    user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey(
+        "auth.User", on_delete=models.SET_NULL, null=True, blank=True
+    )
     fullname = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
     google_id = models.CharField(max_length=255, blank=True, null=True)
@@ -275,22 +292,34 @@ class Agent(models.Model):
     mobile = models.CharField(max_length=20, db_index=True)
     user_types = models.JSONField(default=list, blank=True)
     insurance_companies = models.JSONField(default=list, blank=True)
-    onboarded_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='onboarded_agents')
-    experience_range = models.CharField(max_length=50, blank=True, default='')
-    client_base = models.CharField(max_length=50, blank=True, default='')
+    onboarded_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="onboarded_agents",
+    )
+    experience_range = models.CharField(max_length=50, blank=True, default="")
+    client_base = models.CharField(max_length=50, blank=True, default="")
     registration_step = models.IntegerField(default=1)
-    status = models.CharField(max_length=50, default='incomplete', db_index=True)
-    plan_type = models.CharField(max_length=50, blank=True, default='')
+    status = models.CharField(max_length=50, default="incomplete", db_index=True)
+    plan_type = models.CharField(max_length=50, blank=True, default="")
     trial_ends_at = models.DateTimeField(null=True, blank=True)
     upgrade_discount_percent = models.IntegerField(default=0)
-    referred_by_code = models.CharField(max_length=50, blank=True, default='', db_index=True)
-    referral_reward_type = models.CharField(max_length=50, blank=True, default='')
+    referred_by_code = models.CharField(
+        max_length=50, blank=True, default="", db_index=True
+    )
+    referral_reward_type = models.CharField(max_length=50, blank=True, default="")
     referral_reward_claimed = models.BooleanField(default=False)
-    agent_pincode = models.CharField(max_length=6, blank=True, default='')
-    latitude = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
-    longitude = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
-    badge = models.CharField(max_length=255, blank=True, default='')
-    admin_notes = models.TextField(blank=True, default='')
+    agent_pincode = models.CharField(max_length=6, blank=True, default="")
+    latitude = models.DecimalField(
+        max_digits=10, decimal_places=8, null=True, blank=True
+    )
+    longitude = models.DecimalField(
+        max_digits=11, decimal_places=8, null=True, blank=True
+    )
+    badge = models.CharField(max_length=255, blank=True, default="")
+    admin_notes = models.TextField(blank=True, default="")
     event_id = models.IntegerField(null=True, blank=True, db_index=True)
     registration_draft = models.JSONField(null=True, blank=True)
     distributor_id = models.IntegerField(null=True, blank=True)
@@ -301,22 +330,30 @@ class Agent(models.Model):
     is_approved = models.BooleanField(default=False)
     approved_at = models.DateTimeField(null=True, blank=True)
     achievement_photo_limit = models.PositiveSmallIntegerField(null=True, blank=True)
-    profession = models.CharField(max_length=255, null=True, blank=True, default='')
+    profession = models.CharField(max_length=255, null=True, blank=True, default="")
 
-    serviceableCities = models.ManyToManyField('City', db_table='agent_serviceable_cities', blank=True, related_name='agents')
+    serviceableCities = models.ManyToManyField(
+        "City", db_table="agent_serviceable_cities", blank=True, related_name="agents"
+    )
 
     is_blacklisted = models.BooleanField(default=False)
     blacklist_reason = models.TextField(blank=True, null=True)
     blacklisted_at = models.DateTimeField(blank=True, null=True)
     blacklist_source = models.CharField(max_length=50, blank=True, null=True)
 
-    payment_method = models.CharField(max_length=100, blank=True, default='')
-    payment_reference = models.CharField(max_length=255, blank=True, default='')
+    payment_method = models.CharField(max_length=100, blank=True, default="")
+    payment_reference = models.CharField(max_length=255, blank=True, default="")
     payment_recorded_at = models.DateTimeField(null=True, blank=True)
-    payment_recorded_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='recorded_agent_payments')
+    payment_recorded_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_agent_payments",
+    )
 
     class Meta:
-        db_table = 'agents'
+        db_table = "agents"
         managed = True
 
     def __str__(self):
@@ -324,7 +361,12 @@ class Agent(models.Model):
 
     def isOnFreeTrial(self):
         from django.utils import timezone
-        return self.plan_type == 'free_trial' and self.trial_ends_at and self.trial_ends_at > timezone.now()
+
+        return (
+            self.plan_type == "free_trial"
+            and self.trial_ends_at
+            and self.trial_ends_at > timezone.now()
+        )
 
     def get_primary_profile(self):
         try:
@@ -334,14 +376,20 @@ class Agent(models.Model):
 
     def isTrialExpired(self):
         from django.utils import timezone
-        return self.plan_type == 'free_trial' and self.trial_ends_at and self.trial_ends_at <= timezone.now()
+
+        return (
+            self.plan_type == "free_trial"
+            and self.trial_ends_at
+            and self.trial_ends_at <= timezone.now()
+        )
 
     @property
     def activeSubscription(self):
         from django.utils import timezone
+
         return (
-            self.subscriptions.filter(status='active', expires_at__gt=timezone.now())
-            .order_by('-starts_at', '-created_at', '-id')
+            self.subscriptions.filter(status="active", expires_at__gt=timezone.now())
+            .order_by("-starts_at", "-created_at", "-id")
             .first()
         )
 
@@ -350,25 +398,30 @@ class Agent(models.Model):
         if not self.sub_distributor_id:
             return None
         from apps.distributors.models import SubDistributor
+
         return SubDistributor.objects.filter(id=self.sub_distributor_id).first()
 
     @property
     def average_rating(self):
-        if hasattr(self, '_avg_rating'):
+        if hasattr(self, "_avg_rating"):
             return self._avg_rating
-        if hasattr(self, '_cached_avg_rating'):
+        if hasattr(self, "_cached_avg_rating"):
             return self._cached_avg_rating
-        if 'reviews' in getattr(self, '_prefetched_objects_cache', {}):
-            approved = [r for r in self.reviews.all() if getattr(r, 'is_approved', False)]
+        if "reviews" in getattr(self, "_prefetched_objects_cache", {}):
+            approved = [
+                r for r in self.reviews.all() if getattr(r, "is_approved", False)
+            ]
             if approved:
-                val = sum(r.rating for r in approved if r.rating is not None) / len(approved)
+                val = sum(r.rating for r in approved if r.rating is not None) / len(
+                    approved
+                )
             else:
                 val = 0.0
             self._cached_avg_rating = val
             return val
         approved_reviews = self.reviews.filter(is_approved=True)
         if approved_reviews.exists():
-            val = approved_reviews.aggregate(models.Avg('rating'))['rating__avg'] or 0.0
+            val = approved_reviews.aggregate(models.Avg("rating"))["rating__avg"] or 0.0
         else:
             val = 0.0
         self._cached_avg_rating = val
@@ -376,12 +429,12 @@ class Agent(models.Model):
 
     @property
     def review_count(self):
-        if hasattr(self, '_review_count'):
+        if hasattr(self, "_review_count"):
             return self._review_count
-        if hasattr(self, '_cached_review_count'):
+        if hasattr(self, "_cached_review_count"):
             return self._cached_review_count
-        if 'reviews' in getattr(self, '_prefetched_objects_cache', {}):
-            val = sum(1 for r in self.reviews.all() if getattr(r, 'is_approved', False))
+        if "reviews" in getattr(self, "_prefetched_objects_cache", {}):
+            val = sum(1 for r in self.reviews.all() if getattr(r, "is_approved", False))
             self._cached_review_count = val
             return val
         val = self.reviews.filter(is_approved=True).count()
@@ -391,32 +444,33 @@ class Agent(models.Model):
     @property
     def star_rating_list(self):
         import math
+
         rating = self.average_rating
         full_stars = int(math.floor(rating))
         has_half = (rating - full_stars) >= 0.5
         stars = []
         for i in range(5):
             if i < full_stars:
-                stars.append('full')
+                stars.append("full")
             elif i == full_stars and has_half:
-                stars.append('half')
+                stars.append("half")
             else:
-                stars.append('empty')
+                stars.append("empty")
         return stars
-
 
     @property
     def experience_years(self):
         import re
-        range_val = self.experience_range or ''
-        match = re.search(r'(\d+)', range_val)
+
+        range_val = self.experience_range or ""
+        match = re.search(r"(\d+)", range_val)
         if match:
             return int(match.group(1))
-        if hasattr(self, 'profile') and self.profile and self.profile.experience_years:
+        if hasattr(self, "profile") and self.profile and self.profile.experience_years:
             return self.profile.experience_years
         return 0
 
-    def get_match_percent(self, user_pincode='', user_city=''):
+    def get_match_percent(self, user_pincode="", user_city=""):
         # Experience score
         exp_years = self.experience_years
         exp_score = min(20.0, (exp_years / 15.0) * 20.0)
@@ -429,7 +483,7 @@ class Agent(models.Model):
         policy_score = min(20.0, (client_base / 500.0) * 20.0)
 
         # Achievement score
-        perf = getattr(self, 'performanceStats', None)
+        perf = getattr(self, "performanceStats", None)
         claims_processed_val = perf.claims_processed if perf else 0
         try:
             claims_processed = float(claims_processed_val or 0)
@@ -438,10 +492,14 @@ class Agent(models.Model):
         achievement_score = min(20.0, (claims_processed / 100.0) * 20.0)
 
         # Location score
-        profile = getattr(self, 'profile', None)
-        agent_pincode = self.agent_pincode or (profile.service_pincodes[0] if (profile and profile.service_pincodes) else '')
-        agent_city = (profile.office_address or '') if profile else ''
-        
+        profile = getattr(self, "profile", None)
+        agent_pincode = self.agent_pincode or (
+            profile.service_pincodes[0]
+            if (profile and profile.service_pincodes)
+            else ""
+        )
+        agent_city = (profile.office_address or "") if profile else ""
+
         user_pincode = str(user_pincode).strip()
         user_city = str(user_city).strip().lower()
         agent_pincode = str(agent_pincode).strip()
@@ -456,13 +514,13 @@ class Agent(models.Model):
 
         # Badge score
         badge_score = 0.0
-        if self.email_verified_at or self.status == 'active':
+        if self.email_verified_at or self.status == "active":
             badge_score += 5.0
-        if self.status == 'active':
+        if self.status == "active":
             badge_score += 5.0
         active_sub = self.activeSubscription
-        plan_label = active_sub.selected_plan.lower() if active_sub else ''
-        is_trusted = 'professional' in plan_label or 'pro' in plan_label
+        plan_label = active_sub.selected_plan.lower() if active_sub else ""
+        is_trusted = "professional" in plan_label or "pro" in plan_label
         if is_trusted:
             badge_score += 5.0
 
@@ -470,11 +528,20 @@ class Agent(models.Model):
         rating = self.average_rating
         rating_score = min(10.0, (rating / 5.0) * 10.0)
 
-        raw_total = exp_score + policy_score + achievement_score + location_score + badge_score + rating_score
-        
-        smart_rank = getattr(self, 'padosi_smart_rank', None)
+        raw_total = (
+            exp_score
+            + policy_score
+            + achievement_score
+            + location_score
+            + badge_score
+            + rating_score
+        )
+
+        smart_rank = getattr(self, "padosi_smart_rank", None)
         if smart_rank is not None:
-            match_percent = int(min(99.0, max(80.0, 80.0 + (smart_rank / 165.0) * 19.0)))
+            match_percent = int(
+                min(99.0, max(80.0, 80.0 + (smart_rank / 165.0) * 19.0))
+            )
         else:
             match_percent = int(min(99.0, max(80.0, 80.0 + (raw_total / 100.0) * 19.0)))
 
@@ -490,10 +557,10 @@ class Agent(models.Model):
 
     @property
     def ordered_insurance_segments(self):
-        segments = list(self.insuranceSegments.values_list('segment_type', flat=True))
-        segments = [s.strip().lower() for s in segments if s and s.strip() != '-']
+        segments = list(self.insuranceSegments.values_list("segment_type", flat=True))
+        segments = [s.strip().lower() for s in segments if s and s.strip() != "-"]
         segments = list(set(segments))
-        priority = ['health', 'life', 'motor', 'sme']
+        priority = ["health", "life", "motor", "sme"]
         ordered = []
         for p in priority:
             if p in segments:
@@ -505,23 +572,24 @@ class Agent(models.Model):
 
     @property
     def display_name(self):
-        if hasattr(self, 'profile') and self.profile and self.profile.display_name:
+        if hasattr(self, "profile") and self.profile and self.profile.display_name:
             return self.profile.display_name
         return self.fullname
 
     def get_effective_pincode(self):
         import re
-        pincode = str(self.agent_pincode or '').strip()
-        if pincode and re.match(r'^[1-9]\d{5}$', pincode):
+
+        pincode = str(self.agent_pincode or "").strip()
+        if pincode and re.match(r"^[1-9]\d{5}$", pincode):
             return pincode
-            
-        profile = getattr(self, 'profile', None)
+
+        profile = getattr(self, "profile", None)
         if profile:
             service_pincodes = profile.service_pincodes
             if isinstance(service_pincodes, list) and service_pincodes:
                 for pin in service_pincodes:
-                    pin = str(pin or '').strip()
-                    if re.match(r'^[1-9]\d{5}$', pin):
+                    pin = str(pin or "").strip()
+                    if re.match(r"^[1-9]\d{5}$", pin):
                         return pin
         return None
 
@@ -529,7 +597,9 @@ class Agent(models.Model):
         self.agent_pincode = pincode
         self.latitude = lat
         self.longitude = lng
-        self.save(update_fields=['agent_pincode', 'latitude', 'longitude', 'updated_at'])
+        self.save(
+            update_fields=["agent_pincode", "latitude", "longitude", "updated_at"]
+        )
         return True
 
     @property
@@ -551,38 +621,38 @@ class Agent(models.Model):
     @property
     def agent_slug(self):
         # Only values agent_public_profile can resolve: profile slug or numeric id.
-        if hasattr(self, 'profile') and self.profile and self.profile.slug:
+        if hasattr(self, "profile") and self.profile and self.profile.slug:
             return self.profile.slug
         return str(self.id)
 
     @property
     def state_code(self):
-        state_val = getattr(self, 'state', None)
-        if not state_val and hasattr(self, 'profile') and self.profile:
-            state_val = getattr(self.profile, 'state', None)
+        state_val = getattr(self, "state", None)
+        if not state_val and hasattr(self, "profile") and self.profile:
+            state_val = getattr(self.profile, "state", None)
         if not state_val:
-            return 'gj'
+            return "gj"
         key = str(state_val).strip().lower()
         if key in STATE_CODE_MAP:
             return STATE_CODE_MAP[key]
         if len(key) == 2 and key.isalpha():
             return key.lower()
-        return 'gj'
+        return "gj"
 
     @property
     def whatsapp_raw(self):
-        if hasattr(self, 'profile') and self.profile and self.profile.whatsapp:
+        if hasattr(self, "profile") and self.profile and self.profile.whatsapp:
             return self.profile.whatsapp
         return self.mobile
 
     @property
     def has_distance(self):
-        dist = getattr(self, 'distance', None)
+        dist = getattr(self, "distance", None)
         return dist is not None and 0 <= dist < 5000
 
     @property
     def formatted_distance(self):
-        dist = getattr(self, 'distance', None)
+        dist = getattr(self, "distance", None)
         if dist is None:
             return ""
         if dist < 1:
@@ -593,7 +663,7 @@ class Agent(models.Model):
 
     @property
     def calculated_match_percent(self):
-        val = getattr(self, 'match_percent', None)
+        val = getattr(self, "match_percent", None)
         if val is None:
             val = self.get_match_percent()
         return val
@@ -602,25 +672,38 @@ class Agent(models.Model):
     def match_color_class(self):
         pct = self.calculated_match_percent
         if pct > 90:
-            return 'rac-match--green'
+            return "rac-match--green"
         elif pct >= 51:
-            return 'rac-match--amber'
-        return 'rac-match--red'
+            return "rac-match--amber"
+        return "rac-match--red"
 
     @property
     def agent_city_display(self):
         from apps.agents.services.agent_city import agent_city_label
+
         return agent_city_label(self)
 
     @property
     def badge_list(self):
-        if not self.badge or self.badge.lower() == 'none':
+        if not self.badge or self.badge.lower() == "none":
             return []
-        all_badges = [b.strip() for b in self.badge.split(',') if b.strip()]
+        all_badges = [b.strip() for b in self.badge.split(",") if b.strip()]
         badge_map = {
-            'verified': {'class': 'badge-verified-official', 'icon': 'fa-circle-check', 'label': 'Verified'},
-            'irdai': {'class': 'badge-irdai-official', 'icon': 'fa-medal', 'label': 'Licensed'},
-            'trusted': {'class': 'badge-trusted-official', 'icon': 'fa-award', 'label': 'Trusted'},
+            "verified": {
+                "class": "badge-verified-official",
+                "icon": "fa-circle-check",
+                "label": "Verified",
+            },
+            "irdai": {
+                "class": "badge-irdai-official",
+                "icon": "fa-medal",
+                "label": "Licensed",
+            },
+            "trusted": {
+                "class": "badge-trusted-official",
+                "icon": "fa-award",
+                "label": "Trusted",
+            },
         }
         res = []
         for b in all_badges:
@@ -628,85 +711,123 @@ class Agent(models.Model):
             if key in badge_map:
                 res.append(badge_map[key])
             else:
-                res.append({'class': 'badge-verified-official', 'icon': 'fa-check-circle', 'label': b.capitalize()})
+                res.append(
+                    {
+                        "class": "badge-verified-official",
+                        "icon": "fa-check-circle",
+                        "label": b.capitalize(),
+                    }
+                )
         return res
 
     @property
     def sorted_career_timelines(self):
         timelines = list(self.careerTimelines.all())
         month_map = {
-            'january': 1, 'jan': 1,
-            'february': 2, 'feb': 2,
-            'march': 3, 'mar': 3,
-            'april': 4, 'apr': 4,
-            'may': 5,
-            'june': 6, 'jun': 6,
-            'july': 7, 'jul': 7,
-            'august': 8, 'aug': 8,
-            'september': 9, 'sep': 9,
-            'october': 10, 'oct': 10,
-            'november': 11, 'nov': 11,
-            'december': 12, 'dec': 12
+            "january": 1,
+            "jan": 1,
+            "february": 2,
+            "feb": 2,
+            "march": 3,
+            "mar": 3,
+            "april": 4,
+            "apr": 4,
+            "may": 5,
+            "june": 6,
+            "jun": 6,
+            "july": 7,
+            "jul": 7,
+            "august": 8,
+            "aug": 8,
+            "september": 9,
+            "sep": 9,
+            "october": 10,
+            "oct": 10,
+            "november": 11,
+            "nov": 11,
+            "december": 12,
+            "dec": 12,
         }
-        
+
         def sort_key(t):
             try:
                 y = int(t.year) if t.year and str(t.year).isdigit() else 0
             except ValueError:
                 y = 0
-            
-            m_str = (t.month or '').strip().lower()
+
+            m_str = (t.month or "").strip().lower()
             m = month_map.get(m_str, 0)
-            
-            return (y, m, getattr(t, 'id', 0))
-            
+
+            return (y, m, getattr(t, "id", 0))
+
         return sorted(timelines, key=sort_key, reverse=False)
 
     @property
     def certification_entries(self):
-        return self.careerTimelines.filter(event_type__iexact='certification').order_by('-year')
+        return self.careerTimelines.filter(event_type__iexact="certification").order_by(
+            "-year"
+        )
 
     @property
     def achievement_entries(self):
-        return self.careerTimelines.filter(event_type__in=['Achievement', 'Award', 'Milestone', 'achievement', 'award', 'milestone']).order_by('-year')
-
-
-
-
+        return self.careerTimelines.filter(
+            event_type__in=[
+                "Achievement",
+                "Award",
+                "Milestone",
+                "achievement",
+                "award",
+                "milestone",
+            ]
+        ).order_by("-year")
 
 
 class AgentSubscription(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='subscriptions', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name="subscriptions",
+        db_constraint=False,
+    )
     selected_plan = models.CharField(max_length=255)
     promo_code = models.CharField(max_length=255, null=True, blank=True)
     registration_amount = models.DecimalField(max_digits=10, decimal_places=2)
     # Indexed: every checkout callback, webhook and recovery looks rows up by these.
-    razorpay_order_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
-    razorpay_payment_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    razorpay_order_id = models.CharField(
+        max_length=255, null=True, blank=True, db_index=True
+    )
+    razorpay_payment_id = models.CharField(
+        max_length=255, null=True, blank=True, db_index=True
+    )
     razorpay_signature = models.CharField(max_length=255, null=True, blank=True)
-    payment_status = models.CharField(max_length=50, default='pending')  # pending, completed, failed
+    payment_status = models.CharField(
+        max_length=50, default="pending"
+    )  # pending, completed, failed
     starts_at = models.DateTimeField(null=True, blank=True)
     expires_at = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=50, default='inactive')  # active, inactive, expired
+    status = models.CharField(
+        max_length=50, default="inactive"
+    )  # active, inactive, expired
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_subscriptions'
+        db_table = "agent_subscriptions"
         managed = True
 
     @property
     def is_active(self):
-        return self.status == 'active'
+        return self.status == "active"
 
     @property
     def is_expired(self):
         from django.utils import timezone
+
         return self.expires_at is not None and self.expires_at < timezone.now()
 
     @property
     def is_professional(self):
-        return 'professional' in (self.selected_plan or '').lower()
+        return "professional" in (self.selected_plan or "").lower()
 
     def __str__(self):
         return f"Subscription({self.selected_plan}, status={self.status})"
@@ -715,49 +836,52 @@ class AgentSubscription(models.Model):
 class ProfileBannerPreset(models.Model):
     title = models.CharField(max_length=255)
     image_path = models.CharField(max_length=255)
-    category = models.CharField(max_length=100, default='General', blank=True)
+    category = models.CharField(max_length=100, default="General", blank=True)
     is_active = models.BooleanField(default=True)
     display_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'profile_banner_presets'
-        ordering = ['display_order', '-created_at']
+        db_table = "profile_banner_presets"
+        ordering = ["display_order", "-created_at"]
 
     def __str__(self):
         return self.title
 
     @property
     def image_url(self):
-        path = (self.image_path or '').strip()
+        path = (self.image_path or "").strip()
         if not path:
-            return ''
+            return ""
         import re
-        path_clean = re.sub(r'[\'\"<>\(\)\s;]', '', path)
+
+        path_clean = re.sub(r"[\'\"<>\(\)\s;]", "", path)
         if not path_clean:
-            return ''
-        if path_clean.startswith(('http://', 'https://')):
+            return ""
+        if path_clean.startswith(("http://", "https://")):
             return path_clean
-        path_norm = path_clean.replace('\\', '/').lstrip('/')
-        if path_norm.startswith('static/'):
+        path_norm = path_clean.replace("\\", "/").lstrip("/")
+        if path_norm.startswith("static/"):
             return f"/{path_norm}"
-        if path_norm.startswith('media/'):
+        if path_norm.startswith("media/"):
             return f"/{path_norm}"
         return f"/media/{path_norm}"
 
 
 class AgentProfile(models.Model):
-    agent = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='profile', db_constraint=False)
+    agent = models.OneToOneField(
+        Agent, on_delete=models.CASCADE, related_name="profile", db_constraint=False
+    )
     slug = models.CharField(max_length=255, unique=True, blank=True)
     profile_photo_path = models.CharField(max_length=255, blank=True, null=True)
     banner_preset = models.ForeignKey(
-        'ProfileBannerPreset',
+        "ProfileBannerPreset",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name='agent_profiles',
-        db_constraint=False
+        related_name="agent_profiles",
+        db_constraint=False,
     )
     custom_banner_path = models.CharField(max_length=255, blank=True, null=True)
     agency_logo_path = models.CharField(max_length=255, blank=True, null=True)
@@ -769,14 +893,14 @@ class AgentProfile(models.Model):
     address = models.CharField(max_length=255, blank=True, null=True)
     state = models.CharField(max_length=100, blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
-    pan_number = models.CharField(max_length=20, blank=True, default='')
-    license_number = models.CharField(max_length=255, blank=True, default='')
+    pan_number = models.CharField(max_length=20, blank=True, default="")
+    license_number = models.CharField(max_length=255, blank=True, default="")
     license_valid_till = models.DateField(null=True, blank=True)
-    arn_number = models.CharField(max_length=255, blank=True, default='')
-    euin_number = models.CharField(max_length=255, blank=True, default='')
+    arn_number = models.CharField(max_length=255, blank=True, default="")
+    euin_number = models.CharField(max_length=255, blank=True, default="")
     investment_valid_till = models.DateField(null=True, blank=True)
     investment_types = models.JSONField(default=list, blank=True)
-    software_name = models.CharField(max_length=255, blank=True, default='')
+    software_name = models.CharField(max_length=255, blank=True, default="")
     portfolio_breakdown = models.JSONField(null=True, blank=True)
     desired_services = models.JSONField(null=True, blank=True)
     agency_name = models.CharField(max_length=255, blank=True, null=True)
@@ -789,13 +913,17 @@ class AgentProfile(models.Model):
     career_highlights = models.CharField(max_length=500, blank=True, null=True)
 
     # Google Business Profile OAuth tokens
-    gbp_access_token      = models.TextField(blank=True, null=True)
-    gbp_refresh_token     = models.TextField(blank=True, null=True)
-    gbp_token_expires_at  = models.DateTimeField(null=True, blank=True)
+    gbp_access_token = models.TextField(blank=True, null=True)
+    gbp_refresh_token = models.TextField(blank=True, null=True)
+    gbp_token_expires_at = models.DateTimeField(null=True, blank=True)
 
     # Professional License Document uploads
-    irdai_license_doc = models.FileField(upload_to='app/public/insurance/', null=True, blank=True)
-    amfi_license_doc  = models.FileField(upload_to='app/public/investment/', null=True, blank=True)
+    irdai_license_doc = models.FileField(
+        upload_to="app/public/insurance/", null=True, blank=True
+    )
+    amfi_license_doc = models.FileField(
+        upload_to="app/public/investment/", null=True, blank=True
+    )
 
     is_profile_visible = models.BooleanField(default=True)
     show_certificates = models.BooleanField(default=True)
@@ -817,7 +945,7 @@ class AgentProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_profiles'
+        db_table = "agent_profiles"
         managed = True
 
     def __str__(self):
@@ -826,9 +954,10 @@ class AgentProfile(models.Model):
     def save(self, *args, **kwargs):
         self.investment_types = clean_investment_types(self.investment_types)
         if not self.slug:
-            name = self.display_name or (self.agent.fullname if self.agent else 'agent')
+            name = self.display_name or (self.agent.fullname if self.agent else "agent")
             from django.utils.text import slugify
-            base_slug = slugify(name) or 'agent'
+
+            base_slug = slugify(name) or "agent"
             slug = base_slug
             count = 1
             while self.__class__.objects.filter(slug=slug).exclude(pk=self.pk).exists():
@@ -844,55 +973,56 @@ class AgentProfile(models.Model):
     @property
     def state_code(self):
         state_val = self.state
-        if not state_val and hasattr(self, 'agent') and self.agent:
-            state_val = getattr(self.agent, 'state', None)
+        if not state_val and hasattr(self, "agent") and self.agent:
+            state_val = getattr(self.agent, "state", None)
         if not state_val:
-            return 'gj'
+            return "gj"
         key = str(state_val).strip().lower()
         if key in STATE_CODE_MAP:
             return STATE_CODE_MAP[key]
         if len(key) == 2 and key.isalpha():
             return key.lower()
-        return 'gj'
+        return "gj"
 
     @property
     def profile_photo_url(self):
-        path = (self.profile_photo_path or '').strip()
+        path = (self.profile_photo_path or "").strip()
         if not path:
-            return '/static/img/avatar-icon.jpg'
-        if path.startswith(('http://', 'https://')):
-            if any(k in path.lower() for k in ['ngrok', 'localhost', '127.0.0.1']):
+            return "/static/img/avatar-icon.jpg"
+        if path.startswith(("http://", "https://")):
+            if any(k in path.lower() for k in ["ngrok", "localhost", "127.0.0.1"]):
                 from urllib.parse import urlparse
                 import os
                 from django.conf import settings
+
                 parsed = urlparse(path)
-                rel_path = parsed.path.lstrip('/')
-                if rel_path.startswith('static/'):
+                rel_path = parsed.path.lstrip("/")
+                if rel_path.startswith("static/"):
                     check_path = os.path.join(settings.BASE_DIR, rel_path)
                     if os.path.exists(check_path):
                         return f"/{rel_path}"
-                elif rel_path.startswith('media/'):
+                elif rel_path.startswith("media/"):
                     check_path = os.path.join(settings.MEDIA_ROOT, rel_path[6:])
                     if os.path.exists(check_path):
                         return f"/{rel_path}"
-                return '/static/img/avatar-icon.jpg'
+                return "/static/img/avatar-icon.jpg"
             return path
 
         import os
         import shutil
         from django.conf import settings
 
-        normalized_path = path.replace('\\', '/').lstrip('/')
+        normalized_path = path.replace("\\", "/").lstrip("/")
 
         # ── 1. Direct match under MEDIA_ROOT ──────────────────────────────────
         if os.path.exists(os.path.join(settings.MEDIA_ROOT, normalized_path)):
             return f"/media/{normalized_path}"
 
         # ── 2. Strip known prefixes and check again ───────────────────────────
-        for prefix in ['app/public/', 'public/storage/', 'public/', 'storage/']:
+        for prefix in ["app/public/", "public/storage/", "public/", "storage/"]:
             if normalized_path.startswith(prefix):
-                stripped = normalized_path[len(prefix):]
-                for sub in ['', 'app/public/']:
+                stripped = normalized_path[len(prefix) :]
+                for sub in ["", "app/public/"]:
                     candidate = os.path.join(settings.MEDIA_ROOT, sub, stripped)
                     if os.path.exists(candidate):
                         return f"/media/{sub}{stripped}"
@@ -901,7 +1031,7 @@ class AgentProfile(models.Model):
         # ── 3. agent/profiles/FILENAME → media/app/public/profile/FILENAME ───
         #       These files come from the Laravel storage and need remapping.
         filename = os.path.basename(normalized_path)
-        target_dir = os.path.join(settings.MEDIA_ROOT, 'app', 'public', 'profile')
+        target_dir = os.path.join(settings.MEDIA_ROOT, "app", "public", "profile")
         target_path = os.path.join(target_dir, filename)
 
         # If already copied to the target dir, serve it
@@ -912,14 +1042,18 @@ class AgentProfile(models.Model):
         #       Walk up from MEDIA_ROOT to find the Laravel project root.
         base_dir = settings.BASE_DIR  # …/django/padosi_agent
         # Laravel root is two levels up: …/10_6
-        laravel_root = os.path.abspath(os.path.join(base_dir, '..', '..'))
+        laravel_root = os.path.abspath(os.path.join(base_dir, "..", ".."))
 
         source_candidates = [
             # agent/profiles/FILENAME from Laravel storage
-            os.path.join(laravel_root, 'storage', 'app', 'public', normalized_path),
-            os.path.join(laravel_root, 'storage', 'app', 'public', 'agent', 'profiles', filename),
-            os.path.join(laravel_root, 'public', 'storage', normalized_path),
-            os.path.join(laravel_root, 'public', 'storage', 'agent', 'profiles', filename),
+            os.path.join(laravel_root, "storage", "app", "public", normalized_path),
+            os.path.join(
+                laravel_root, "storage", "app", "public", "agent", "profiles", filename
+            ),
+            os.path.join(laravel_root, "public", "storage", normalized_path),
+            os.path.join(
+                laravel_root, "public", "storage", "agent", "profiles", filename
+            ),
         ]
 
         for src in source_candidates:
@@ -932,11 +1066,15 @@ class AgentProfile(models.Model):
                     pass
 
         # ── 5. Return the default avatar if the file is completely missing ───
-        return '/static/img/avatar-icon.jpg'
+        return "/static/img/avatar-icon.jpg"
 
     @property
     def service_pincode(self):
-        if self.service_pincodes and isinstance(self.service_pincodes, list) and len(self.service_pincodes) > 0:
+        if (
+            self.service_pincodes
+            and isinstance(self.service_pincodes, list)
+            and len(self.service_pincodes) > 0
+        ):
             return self.service_pincodes[0]
         return ""
 
@@ -950,38 +1088,43 @@ class AgentProfile(models.Model):
     @property
     def whatsapp_digits(self):
         import re
-        val = self.whatsapp or (self.agent.mobile if self.agent else '') or ''
-        return re.sub(r'[^0-9]', '', str(val))
+
+        val = self.whatsapp or (self.agent.mobile if self.agent else "") or ""
+        return re.sub(r"[^0-9]", "", str(val))
 
     @property
     def formatted_languages(self):
         if not self.languages:
             return "English, Hindi"
-        langs = [l.strip().capitalize() for l in self.languages.split(',') if l.strip()]
+        langs = [l.strip().capitalize() for l in self.languages.split(",") if l.strip()]
         return ", ".join(langs)
 
     @property
     def banner_image_url(self):
         from apps.home.models.site_setting import SiteSetting
-        enabled_val = SiteSetting.get_value('profile_banner_enabled', '1')
-        if str(enabled_val).lower() not in ('1', 'true', 'yes'):
+
+        enabled_val = SiteSetting.get_value("profile_banner_enabled", "1")
+        if str(enabled_val).lower() not in ("1", "true", "yes"):
             return None
 
-        allow_custom_val = SiteSetting.get_value('profile_banner_allow_custom_upload', '1')
-        allow_custom = str(allow_custom_val).lower() in ('1', 'true', 'yes')
+        allow_custom_val = SiteSetting.get_value(
+            "profile_banner_allow_custom_upload", "1"
+        )
+        allow_custom = str(allow_custom_val).lower() in ("1", "true", "yes")
 
         if allow_custom and self.custom_banner_path:
-            path = (self.custom_banner_path or '').strip()
+            path = (self.custom_banner_path or "").strip()
             import re
-            path_clean = re.sub(r'[\'\"<>\(\)\s;]', '', path)
+
+            path_clean = re.sub(r"[\'\"<>\(\)\s;]", "", path)
             if not path_clean:
                 return None
-            if path_clean.startswith(('http://', 'https://')):
+            if path_clean.startswith(("http://", "https://")):
                 return path_clean
-            path_norm = path_clean.replace('\\', '/').lstrip('/')
-            if path_norm.startswith('static/'):
+            path_norm = path_clean.replace("\\", "/").lstrip("/")
+            if path_norm.startswith("static/"):
                 return f"/{path_norm}"
-            if path_norm.startswith('media/'):
+            if path_norm.startswith("media/"):
                 return f"/{path_norm}"
             return f"/media/{path_norm}"
 
@@ -992,77 +1135,85 @@ class AgentProfile(models.Model):
 
     @property
     def agency_logo_url(self):
-        path = (self.agency_logo_path or '').strip()
+        path = (self.agency_logo_path or "").strip()
         if not path:
             return None
         import re
-        path_clean = re.sub(r'[\'\"<>\(\)\s;]', '', path)
+
+        path_clean = re.sub(r"[\'\"<>\(\)\s;]", "", path)
         if not path_clean:
             return None
-        if path_clean.startswith(('http://', 'https://')):
+        if path_clean.startswith(("http://", "https://")):
             return path_clean
-        path_norm = path_clean.replace('\\', '/').lstrip('/')
-        if path_norm.startswith('static/'):
+        path_norm = path_clean.replace("\\", "/").lstrip("/")
+        if path_norm.startswith("static/"):
             return f"/{path_norm}"
-        if path_norm.startswith('media/'):
+        if path_norm.startswith("media/"):
             return f"/{path_norm}"
         return f"/media/{path_norm}"
 
     def get_card_config(self):
         cfg = dict(self.card_config) if isinstance(self.card_config, dict) else {}
-        agent_name = (self.display_name or (self.agent.fullname if self.agent else 'Advisor')).strip()
+        agent_name = (
+            self.display_name or (self.agent.fullname if self.agent else "Advisor")
+        ).strip()
         defaults = {
-            'agency_name': (self.agency_name or '').strip(),
-            'tagline': (self.card_tagline or '').strip(),
-            'bio': '',
-            'theme_color': '#0B1F3A',
-            'banner_style': 'profile',
-            'custom_banner_path': '',
-            'whatsapp_msg': f"Hello {agent_name}, I viewed your Digital Visiting Card and would like consultation regarding insurance plans.",
-            'show_call': True,
-            'show_whatsapp': True,
-            'show_email': True,
-            'show_address': True,
-            'show_save_contact': True,
-            'show_lead_form': True,
-            'show_services': True,
-            'show_reviews': True,
-            'show_qr_card': True,
-            'custom_button_label': '',
-            'custom_button_url': '',
+            "agency_name": (self.agency_name or "").strip(),
+            "tagline": (self.card_tagline or "").strip(),
+            "bio": "",
+            "theme_color": "#0B1F3A",
+            "banner_style": "profile",
+            "custom_banner_path": "",
+            "whatsapp_msg": f"Hello {agent_name}, I viewed your Digital Visiting Card and would like consultation regarding insurance plans.",
+            "show_call": True,
+            "show_whatsapp": True,
+            "show_email": True,
+            "show_address": True,
+            "show_save_contact": True,
+            "show_lead_form": True,
+            "show_services": True,
+            "show_reviews": True,
+            "show_qr_card": True,
+            "custom_button_label": "",
+            "custom_button_url": "",
         }
         for k, v in defaults.items():
             if k not in cfg:
                 cfg[k] = v
-        if self.card_tagline and not cfg.get('tagline'):
-            cfg['tagline'] = self.card_tagline
-        if self.agency_name and not cfg.get('agency_name'):
-            cfg['agency_name'] = self.agency_name
+        if self.card_tagline and not cfg.get("tagline"):
+            cfg["tagline"] = self.card_tagline
+        if self.agency_name and not cfg.get("agency_name"):
+            cfg["agency_name"] = self.agency_name
         return cfg
 
     @property
     def card_banner_css(self):
         cfg = self.get_card_config()
-        style = cfg.get('banner_style', 'profile')
+        style = cfg.get("banner_style", "profile")
         gradients = {
-            'gradient_navy': 'linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)',
-            'gradient_emerald': 'linear-gradient(135deg, #064E3B 0%, #059669 50%, #10B981 100%)',
-            'gradient_indigo': 'linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6366F1 100%)',
-            'gradient_sunset': 'linear-gradient(135deg, #7C2D12 0%, #C2410C 50%, #F59E0B 100%)',
-            'gradient_purple': 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 50%, #A855F7 100%)',
+            "gradient_navy": "linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)",
+            "gradient_emerald": "linear-gradient(135deg, #064E3B 0%, #059669 50%, #10B981 100%)",
+            "gradient_indigo": "linear-gradient(135deg, #1E1B4B 0%, #4338CA 50%, #6366F1 100%)",
+            "gradient_sunset": "linear-gradient(135deg, #7C2D12 0%, #C2410C 50%, #F59E0B 100%)",
+            "gradient_purple": "linear-gradient(135deg, #4C1D95 0%, #7C3AED 50%, #A855F7 100%)",
         }
         if style in gradients:
             return gradients[style]
-        if style == 'custom' and cfg.get('custom_banner_path'):
-            path = (cfg.get('custom_banner_path') or '').strip()
+        if style == "custom" and cfg.get("custom_banner_path"):
+            path = (cfg.get("custom_banner_path") or "").strip()
             import re
-            path_clean = re.sub(r'[\'\"<>\(\)\s;]', '', path)
+
+            path_clean = re.sub(r"[\'\"<>\(\)\s;]", "", path)
             if path_clean:
-                url = f"/media/{path_clean.lstrip('/')}" if not path_clean.startswith(('http://', 'https://', '/')) else path_clean
+                url = (
+                    f"/media/{path_clean.lstrip('/')}"
+                    if not path_clean.startswith(("http://", "https://", "/"))
+                    else path_clean
+                )
                 return f"url('{url}') center/cover no-repeat"
         if self.banner_image_url:
             return f"url('{self.banner_image_url}') center/cover no-repeat"
-        return gradients['gradient_navy']
+        return gradients["gradient_navy"]
 
     @property
     def banner_url(self):
@@ -1073,8 +1224,6 @@ class AgentProfile(models.Model):
         return self.career_highlights or ""
 
 
-
-
 class City(models.Model):
     name = models.CharField(max_length=255)
     state = models.CharField(max_length=255, blank=True, null=True)
@@ -1082,23 +1231,33 @@ class City(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        db_table = 'cities'
+        db_table = "cities"
         managed = True
 
 
 class AgentInsuranceSegment(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='insuranceSegments', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name="insuranceSegments",
+        db_constraint=False,
+    )
     segment_type = models.CharField(max_length=100)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_insurance_segments'
+        db_table = "agent_insurance_segments"
         managed = True
 
 
 class AgentPerformanceStat(models.Model):
-    agent = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='performanceStats', db_constraint=False)
+    agent = models.OneToOneField(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name="performanceStats",
+        db_constraint=False,
+    )
     claims_processed = models.IntegerField(default=0)
     claims_settled = models.IntegerField(default=0)
     claims_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0.0)
@@ -1108,7 +1267,7 @@ class AgentPerformanceStat(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_performance_stats'
+        db_table = "agent_performance_stats"
         managed = True
 
     @property
@@ -1120,15 +1279,16 @@ class AgentPerformanceStat(models.Model):
         return format_indian_number(self.claims_amount)
 
 
-
 class AgentLead(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='leads', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent, on_delete=models.CASCADE, related_name="leads", db_constraint=False
+    )
     customer_name = models.CharField(max_length=255, blank=True, null=True)
     customer_email = models.EmailField(blank=True, null=True)
     customer_mobile = models.CharField(max_length=20, blank=True, null=True)
     customer_pincode = models.CharField(max_length=10, blank=True, null=True)
     interaction_type = models.CharField(max_length=50, blank=True, null=True)
-    lead_status = models.CharField(max_length=50, default='new')
+    lead_status = models.CharField(max_length=50, default="new")
     service_type = models.CharField(max_length=255, blank=True, null=True)
     insurance_type = models.CharField(max_length=255, blank=True, null=True)
     insurance_company = models.CharField(max_length=255, blank=True, null=True)
@@ -1139,30 +1299,54 @@ class AgentLead(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_leads'
+        db_table = "agent_leads"
         managed = True
 
     @property
     def message(self):
         """Backward-compatibility property returning enquiry_requirements."""
-        return self.enquiry_requirements or ''
+        return self.enquiry_requirements or ""
 
 
 class AgentProfileView(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='profile_views', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name="profile_views",
+        db_constraint=False,
+    )
     view_date = models.DateField()
     view_count = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_profile_views'
+        db_table = "agent_profile_views"
         managed = True
+        unique_together = ("agent", "view_date")
+
+    @classmethod
+    def record_view(cls, agent):
+        """Add one view to today's row. Safe under concurrent first views:
+        the unique index makes get_or_create fall back to get() on IntegrityError."""
+        import datetime
+
+        row, created = cls.objects.get_or_create(
+            agent=agent, view_date=datetime.date.today(), defaults={"view_count": 1}
+        )
+        if not created:
+            cls.objects.filter(pk=row.pk).update(view_count=models.F("view_count") + 1)
 
 
 class AgentCardImpression(models.Model):
     """Tracks every time an agent's card appears in a find-agents search result page."""
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='card_impressions', db_constraint=False)
+
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name="card_impressions",
+        db_constraint=False,
+    )
     impression_date = models.DateField()
     search_pincode = models.CharField(max_length=10, blank=True, null=True)
     impression_count = models.IntegerField(default=1)
@@ -1170,13 +1354,14 @@ class AgentCardImpression(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_card_impressions'
+        db_table = "agent_card_impressions"
         managed = True
-        unique_together = ('agent', 'impression_date', 'search_pincode')
+        unique_together = ("agent", "impression_date", "search_pincode")
 
 
 class AgentSearchEvent(models.Model):
     """Tracks every time the find-agents page is loaded with a pincode (global, not per-agent)."""
+
     search_date = models.DateField()
     pincode = models.CharField(max_length=10, blank=True, null=True)
     event_count = models.IntegerField(default=1)
@@ -1184,14 +1369,18 @@ class AgentSearchEvent(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_search_events'
+        db_table = "agent_search_events"
         managed = True
-        unique_together = ('search_date', 'pincode')
+        unique_together = ("search_date", "pincode")
 
 
 class AgentReview(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='reviews', db_constraint=False)
-    user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
+    agent = models.ForeignKey(
+        Agent, on_delete=models.CASCADE, related_name="reviews", db_constraint=False
+    )
+    user = models.ForeignKey(
+        "auth.User", on_delete=models.SET_NULL, null=True, blank=True
+    )
     reviewer_name = models.CharField(max_length=255, blank=True, null=True)
     reviewer_email = models.EmailField(blank=True, null=True)
     reviewer_mobile = models.CharField(max_length=20, blank=True, null=True)
@@ -1202,7 +1391,7 @@ class AgentReview(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_reviews'
+        db_table = "agent_reviews"
         managed = True
 
     @property
@@ -1210,12 +1399,17 @@ class AgentReview(models.Model):
         if self.reviewer_name:
             return self.reviewer_name
         if self.user:
-            return getattr(self.user, 'fullname', '') or self.user.get_full_name() or self.user.username
-        return 'User'
+            return (
+                getattr(self.user, "fullname", "")
+                or self.user.get_full_name()
+                or self.user.username
+            )
+        return "User"
+
 
 class AgentBackup(models.Model):
     # This id corresponds to the old agent's ID when they are deleted.
-    # It acts as the primary key here, but it's not auto-incrementing in the context of inserts 
+    # It acts as the primary key here, but it's not auto-incrementing in the context of inserts
     # from the trigger, although Django will make it a bigserial PK by default.
     user_id = models.IntegerField(null=True, blank=True)
     event_id = models.IntegerField(null=True, blank=True)
@@ -1227,8 +1421,12 @@ class AgentBackup(models.Model):
     mobile = models.CharField(max_length=20, null=True, blank=True)
     registration_step = models.IntegerField(null=True, blank=True)
     agent_pincode = models.CharField(max_length=6, blank=True, null=True)
-    latitude = models.DecimalField(max_digits=10, decimal_places=8, null=True, blank=True)
-    longitude = models.DecimalField(max_digits=11, decimal_places=8, null=True, blank=True)
+    latitude = models.DecimalField(
+        max_digits=10, decimal_places=8, null=True, blank=True
+    )
+    longitude = models.DecimalField(
+        max_digits=11, decimal_places=8, null=True, blank=True
+    )
     plan_type = models.CharField(max_length=50, blank=True, null=True)
     trial_ends_at = models.DateTimeField(null=True, blank=True)
     upgrade_discount_percent = models.IntegerField(null=True, blank=True)
@@ -1251,25 +1449,33 @@ class AgentBackup(models.Model):
     updated_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        db_table = 'agent_backup'
+        db_table = "agent_backup"
         managed = True
-
 
     @property
     def star_display(self):
-        return '⭐' * min(5, max(0, int(self.rating or 0)))
+        return "⭐" * min(5, max(0, int(self.rating or 0)))
 
     @property
     def author_display(self):
         if self.reviewer_name:
             return self.reviewer_name
         if self.user:
-            return getattr(self.user, 'fullname', '') or self.user.get_full_name() or self.user.username
-        return 'User'
+            return (
+                getattr(self.user, "fullname", "")
+                or self.user.get_full_name()
+                or self.user.username
+            )
+        return "User"
 
 
 class AgentFamilyLicense(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='familyLicenses', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name="familyLicenses",
+        db_constraint=False,
+    )
     full_name = models.CharField(max_length=255)
     relationship = models.CharField(max_length=255)
     license_number = models.CharField(max_length=255)
@@ -1277,12 +1483,14 @@ class AgentFamilyLicense(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_family_licenses'
+        db_table = "agent_family_licenses"
         managed = True
 
 
 class AgentPortfolio(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='portfolios', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent, on_delete=models.CASCADE, related_name="portfolios", db_constraint=False
+    )
     segment_type = models.CharField(max_length=255)
     primary_companies = models.JSONField(null=True, blank=True)
     secondary_companies = models.JSONField(null=True, blank=True)
@@ -1290,26 +1498,29 @@ class AgentPortfolio(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_portfolios'
+        db_table = "agent_portfolios"
         managed = True
 
 
-def resolve_stored_file_url(path, fallback_subdirs=None, missing='/static/img/avatar-icon.jpg'):
-    path = (path or '').strip()
+def resolve_stored_file_url(
+    path, fallback_subdirs=None, missing="/static/img/avatar-icon.jpg"
+):
+    path = (path or "").strip()
     if not path:
         return missing
-    if path.startswith(('http://', 'https://')):
-        if any(k in path.lower() for k in ['ngrok', 'localhost', '127.0.0.1']):
+    if path.startswith(("http://", "https://")):
+        if any(k in path.lower() for k in ["ngrok", "localhost", "127.0.0.1"]):
             from urllib.parse import urlparse
             import os
             from django.conf import settings
+
             parsed = urlparse(path)
-            rel_path = parsed.path.lstrip('/')
-            if rel_path.startswith('static/'):
+            rel_path = parsed.path.lstrip("/")
+            if rel_path.startswith("static/"):
                 check_path = os.path.join(settings.BASE_DIR, rel_path)
                 if os.path.exists(check_path):
                     return f"/{rel_path}"
-            elif rel_path.startswith('media/'):
+            elif rel_path.startswith("media/"):
                 check_path = os.path.join(settings.MEDIA_ROOT, rel_path[6:])
                 if os.path.exists(check_path):
                     return f"/{rel_path}"
@@ -1319,7 +1530,7 @@ def resolve_stored_file_url(path, fallback_subdirs=None, missing='/static/img/av
     import os
     from django.conf import settings
 
-    normalized_path = path.replace('\\', '/').lstrip('/')
+    normalized_path = path.replace("\\", "/").lstrip("/")
 
     # 1. Direct match under MEDIA_ROOT
     if os.path.exists(os.path.join(settings.MEDIA_ROOT, normalized_path)):
@@ -1327,28 +1538,37 @@ def resolve_stored_file_url(path, fallback_subdirs=None, missing='/static/img/av
 
     subdirs = list(fallback_subdirs) if fallback_subdirs else []
     default_subdirs = [
-        'app/public/achievement',
-        'app/public/photo/achievements',
-        'app/public/profile',
-        'app/public/photo/profiles',
-        'app/public/insurance',
-        'app/public/investment',
-        'app/public',
-        'uploads/achievements',
-        'agent/achievements',
-        'agent/profiles',
+        "app/public/achievement",
+        "app/public/photo/achievements",
+        "app/public/profile",
+        "app/public/photo/profiles",
+        "app/public/insurance",
+        "app/public/investment",
+        "app/public",
+        "uploads/achievements",
+        "agent/achievements",
+        "agent/profiles",
     ]
     for s in default_subdirs:
         if s not in subdirs:
             subdirs.append(s)
 
     # 2. Strip known prefixes and test
-    for prefix in ['app/public/', 'public/storage/', 'public/', 'storage/', 'agent/achievements/', 'agent/profiles/']:
+    for prefix in [
+        "app/public/",
+        "public/storage/",
+        "public/",
+        "storage/",
+        "agent/achievements/",
+        "agent/profiles/",
+    ]:
         if normalized_path.startswith(prefix):
-            stripped = normalized_path[len(prefix):]
+            stripped = normalized_path[len(prefix) :]
             if os.path.exists(os.path.join(settings.MEDIA_ROOT, stripped)):
                 return f"/media/{stripped}"
-            if os.path.exists(os.path.join(settings.MEDIA_ROOT, 'app/public', stripped)):
+            if os.path.exists(
+                os.path.join(settings.MEDIA_ROOT, "app/public", stripped)
+            ):
                 return f"/media/app/public/{stripped}"
             for subdir in subdirs:
                 candidate = os.path.join(settings.MEDIA_ROOT, subdir, stripped)
@@ -1367,13 +1587,18 @@ def resolve_stored_file_url(path, fallback_subdirs=None, missing='/static/img/av
 
 
 class AgentAchievementPhoto(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='achievementPhotos', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name="achievementPhotos",
+        db_constraint=False,
+    )
     photo_path = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_achievement_photos'
+        db_table = "agent_achievement_photos"
         managed = True
 
     @property
@@ -1381,35 +1606,47 @@ class AgentAchievementPhoto(models.Model):
         return resolve_stored_file_url(
             self.photo_path,
             fallback_subdirs=(
-                'app/public/achievement',
-                'app/public/photo/achievements',
-                'uploads/achievements',
-                'agent/achievements',
+                "app/public/achievement",
+                "app/public/photo/achievements",
+                "uploads/achievements",
+                "agent/achievements",
             ),
-            missing='/static/img/avatar-icon.jpg',
+            missing="/static/img/avatar-icon.jpg",
         )
 
 
 class AgentLeadPreference(models.Model):
-    agent = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='leadPreferences', db_constraint=False)
+    agent = models.OneToOneField(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name="leadPreferences",
+        db_constraint=False,
+    )
     leads_new_business = models.BooleanField(default=True)
     leads_portfolio_analysis = models.BooleanField(default=True)
-    portfolio_charging = models.CharField(max_length=50, blank=True, default='free')
+    portfolio_charging = models.CharField(max_length=50, blank=True, default="free")
     portfolio_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     leads_claims_support = models.BooleanField(default=True)
-    claims_charging = models.CharField(max_length=50, blank=True, default='free')
-    claims_fee_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    claims_charging = models.CharField(max_length=50, blank=True, default="free")
+    claims_fee_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00
+    )
     claims_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_lead_preferences'
+        db_table = "agent_lead_preferences"
         managed = True
 
 
 class AgentProductExpertise(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='productExpertise', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name="productExpertise",
+        db_constraint=False,
+    )
     segment_type = models.CharField(max_length=100)
     product_name = models.CharField(max_length=255)
     expertise_level = models.IntegerField(default=0)
@@ -1418,30 +1655,43 @@ class AgentProductExpertise(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_product_expertise'
+        db_table = "agent_product_expertise"
         managed = True
 
 
 class AgentCareerTimeline(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='careerTimelines', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name="careerTimelines",
+        db_constraint=False,
+    )
     event_type = models.CharField(max_length=255)
     event_text = models.TextField()
-    month = models.CharField(max_length=50, blank=True, default='')
+    month = models.CharField(max_length=50, blank=True, default="")
     year = models.CharField(max_length=4)
     # Stable key linking this row to an auto-detected suggestion.
     # Set when an entry is created via the "Auto-detected" suggestions panel.
     # NULL for all manually-created entries (existing rows unaffected).
-    suggestion_key = models.CharField(max_length=50, null=True, blank=True, db_index=True)
+    suggestion_key = models.CharField(
+        max_length=50, null=True, blank=True, db_index=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_career_timelines'
+        db_table = "agent_career_timelines"
         managed = True
 
 
 class AgentDeviceToken(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, db_column='agent_id', related_name='device_tokens', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        db_column="agent_id",
+        related_name="device_tokens",
+        db_constraint=False,
+    )
     token = models.CharField(max_length=512, unique=True)
     platform = models.CharField(max_length=50, null=True, blank=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
@@ -1449,7 +1699,7 @@ class AgentDeviceToken(models.Model):
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
-        db_table = 'agent_device_tokens'
+        db_table = "agent_device_tokens"
         managed = True
 
     def __str__(self):
@@ -1458,11 +1708,11 @@ class AgentDeviceToken(models.Model):
 
 class Event(models.Model):
     name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, default='')
+    description = models.TextField(blank=True, default="")
     event_date = models.DateField()
 
     class Meta:
-        db_table = 'events'
+        db_table = "events"
         managed = True
 
     def __str__(self):
@@ -1470,7 +1720,9 @@ class Event(models.Model):
 
 
 class AgentProfileEditLog(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='edit_logs', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent, on_delete=models.CASCADE, related_name="edit_logs", db_constraint=False
+    )
     edited_by = models.CharField(max_length=50)
     edited_by_id = models.IntegerField(null=True, blank=True)
     step = models.IntegerField(null=True, blank=True)
@@ -1483,7 +1735,7 @@ class AgentProfileEditLog(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_profile_edit_logs'
+        db_table = "agent_profile_edit_logs"
         managed = True
 
     def __str__(self):
@@ -1497,7 +1749,7 @@ class BlockedIp(models.Model):
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
-        db_table = 'blocked_ips'
+        db_table = "blocked_ips"
         managed = True
 
     def __str__(self):
@@ -1505,14 +1757,14 @@ class BlockedIp(models.Model):
 
 
 class Client(models.Model):
-    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    user = models.ForeignKey("auth.User", on_delete=models.CASCADE)
     mobile = models.CharField(max_length=15, null=True, blank=True)
     pincode = models.CharField(max_length=10, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'clients'
+        db_table = "clients"
         managed = True
 
     def __str__(self):
@@ -1521,7 +1773,9 @@ class Client(models.Model):
 
 class Invoice(models.Model):
     invoice_number = models.CharField(max_length=255, unique=True)
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='invoices', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent, on_delete=models.CASCADE, related_name="invoices", db_constraint=False
+    )
     agent_name = models.CharField(max_length=255)
     agent_email = models.EmailField(db_index=True)
     agent_mobile = models.CharField(max_length=20, null=True, blank=True)
@@ -1535,9 +1789,13 @@ class Invoice(models.Model):
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
     discount_folder = models.CharField(max_length=255)
     promo_code = models.CharField(max_length=255, null=True, blank=True)
-    razorpay_payment_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
-    razorpay_order_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
-    payment_status = models.CharField(max_length=50, default='paid')
+    razorpay_payment_id = models.CharField(
+        max_length=255, null=True, blank=True, db_index=True
+    )
+    razorpay_order_id = models.CharField(
+        max_length=255, null=True, blank=True, db_index=True
+    )
+    payment_status = models.CharField(max_length=50, default="paid")
     pdf_path = models.CharField(max_length=255, null=True, blank=True)
     synced_to_sheet = models.BooleanField(default=False)
     synced_at = models.DateTimeField(null=True, blank=True)
@@ -1545,7 +1803,7 @@ class Invoice(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'invoices'
+        db_table = "invoices"
         managed = True
 
     def __str__(self):
@@ -1554,41 +1812,50 @@ class Invoice(models.Model):
     @staticmethod
     def resolve_discount_folder(discount_percent, total_amount):
         if float(total_amount) <= 1.00:
-            return '1re'
+            return "1re"
         discount_percent = float(discount_percent)
-        if discount_percent == 0:  return 'no_discount'
-        if discount_percent == 10: return '10_percent'
-        if discount_percent == 25: return '25_percent'
-        if discount_percent == 50: return '50_percent'
-        return 'others'
+        if discount_percent == 0:
+            return "no_discount"
+        if discount_percent == 10:
+            return "10_percent"
+        if discount_percent == 25:
+            return "25_percent"
+        if discount_percent == 50:
+            return "50_percent"
+        return "others"
 
     @staticmethod
     def folder_label(folder):
         labels = {
-            'no_discount': 'No Discount',
-            '10_percent': '10%',
-            '25_percent': '25%',
-            '50_percent': '50%',
-            '1re': '₹1 (Special)',
+            "no_discount": "No Discount",
+            "10_percent": "10%",
+            "25_percent": "25%",
+            "50_percent": "50%",
+            "1re": "₹1 (Special)",
         }
-        return labels.get(folder, 'Others')
+        return labels.get(folder, "Others")
 
 
 class AgentBioGenerationLog(models.Model):
     objects = models.Manager()
 
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='bio_generation_logs', db_constraint=False)
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name="bio_generation_logs",
+        db_constraint=False,
+    )
     generated_at = models.DateTimeField(auto_now_add=True)
-    prompt_version = models.CharField(max_length=50, default='v1.0')
-    llm_model = models.CharField(max_length=100, default='llama-3.3-70b-versatile')
+    prompt_version = models.CharField(max_length=50, default="v1.0")
+    llm_model = models.CharField(max_length=100, default="llama-3.3-70b-versatile")
     generation_time = models.FloatField(null=True, blank=True)
     tokens_used = models.IntegerField(null=True, blank=True)
-    status = models.CharField(max_length=50, default='success')  # success, failure
+    status = models.CharField(max_length=50, default="success")  # success, failure
     error_message = models.TextField(blank=True, null=True)
 
     class Meta:
-        db_table = 'agent_bio_generation_logs'
-        ordering = ['-generated_at']
+        db_table = "agent_bio_generation_logs"
+        ordering = ["-generated_at"]
 
 
 class AgentNotification(models.Model):
@@ -1598,7 +1865,14 @@ class AgentNotification(models.Model):
     managed=False: the table is owned by the Laravel schema (shared MySQL DB),
     exactly like the admin_panel mirror models.
     """
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, db_column='agent_id', related_name='notifications', db_constraint=False)
+
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        db_column="agent_id",
+        related_name="notifications",
+        db_constraint=False,
+    )
     title = models.CharField(max_length=191)
     body = models.TextField()
     is_read = models.BooleanField(default=False)
@@ -1606,9 +1880,9 @@ class AgentNotification(models.Model):
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
-        db_table = 'agent_notifications'
+        db_table = "agent_notifications"
         managed = False
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"Notification({self.title}, agent={self.agent_id}, read={self.is_read})"
@@ -1622,15 +1896,27 @@ class FavoriteAgent(models.Model):
     for the same person (see admin_panel.views.insurance), so ids align with
     the Laravel-side user space.
     """
-    user = models.ForeignKey('auth.User', on_delete=models.CASCADE, db_column='user_id', related_name='favorite_agents')
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, db_column='agent_id', related_name='favorited_by', db_constraint=False)
+
+    user = models.ForeignKey(
+        "auth.User",
+        on_delete=models.CASCADE,
+        db_column="user_id",
+        related_name="favorite_agents",
+    )
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        db_column="agent_id",
+        related_name="favorited_by",
+        db_constraint=False,
+    )
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
-        db_table = 'favorite_agents'
+        db_table = "favorite_agents"
         managed = False
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"Favorite(user={self.user_id}, agent={self.agent_id})"
@@ -1641,7 +1927,13 @@ class EventRegistration(models.Model):
     Public event registration funnel — mirrors Laravel's event_registrations table.
     Session-driven: current_step 1 = form, 2 = plan chosen, 3 = payment done.
     """
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, db_column='event_id', related_name='event_registrations')
+
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        db_column="event_id",
+        related_name="event_registrations",
+    )
     fullname = models.CharField(max_length=255)
     email = models.EmailField(max_length=255)
     mobile = models.CharField(max_length=255)
@@ -1651,17 +1943,21 @@ class EventRegistration(models.Model):
     promocode = models.CharField(max_length=255, null=True, blank=True)
     current_step = models.PositiveSmallIntegerField(default=1)
     selected_plan = models.CharField(max_length=255, null=True, blank=True)
-    status = models.CharField(max_length=20, default='incomplete')  # incomplete, completed
-    payment_status = models.CharField(max_length=255, default='pending')  # pending, success, failed
+    status = models.CharField(
+        max_length=20, default="incomplete"
+    )  # incomplete, completed
+    payment_status = models.CharField(
+        max_length=255, default="pending"
+    )  # pending, success, failed
     razorpay_order_id = models.CharField(max_length=255, null=True, blank=True)
     razorpay_payment_id = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
-        db_table = 'event_registrations'
+        db_table = "event_registrations"
         managed = False
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"EventRegistration({self.email}, {self.payment_status})"
@@ -1673,17 +1969,18 @@ class Participant(models.Model):
     Mirrors Laravel's participants table (plus the Facebook connection columns
     the Laravel FacebookPostController writes to — added via migration 0014).
     """
+
     full_name = models.CharField(max_length=191)
     email = models.EmailField(max_length=191, unique=True)
     phone_number = models.CharField(max_length=191)
-    have_insurance = models.CharField(max_length=5, null=True, blank=True)   # yes / no
+    have_insurance = models.CharField(max_length=5, null=True, blank=True)  # yes / no
     insurance_products = models.JSONField(null=True, blank=True)
     insurance_planning = models.CharField(max_length=191, null=True, blank=True)
-    mutual_fund = models.CharField(max_length=5, null=True, blank=True)      # yes / no
+    mutual_fund = models.CharField(max_length=5, null=True, blank=True)  # yes / no
     mf_plan = models.CharField(max_length=191, null=True, blank=True)
     thank_my_padosi = models.CharField(max_length=191, null=True, blank=True)
     thank_my_padosi_for = models.TextField(null=True, blank=True)
-    participant_shared = models.CharField(max_length=5, default='No')        # Yes / No
+    participant_shared = models.CharField(max_length=5, default="No")  # Yes / No
     shareable_id = models.CharField(max_length=191, null=True, blank=True)
     registration_completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
@@ -1694,23 +1991,23 @@ class Participant(models.Model):
     facebook_user_id = models.CharField(max_length=191, null=True, blank=True)
     facebook_post_id = models.CharField(max_length=191, null=True, blank=True)
     facebook_post_url = models.CharField(max_length=500, null=True, blank=True)
-    status = models.CharField(max_length=50, default='registered')
+    status = models.CharField(max_length=50, default="registered")
     manual_share = models.BooleanField(default=False)
     screenshot_path = models.CharField(max_length=500, null=True, blank=True)
 
     class Meta:
-        db_table = 'participants'
+        db_table = "participants"
         managed = False
 
     def __str__(self):
         return f"Participant({self.email}, shared={self.participant_shared})"
 
     def mark_as_shared(self):
-        self.participant_shared = 'Yes'
-        self.save(update_fields=['participant_shared', 'updated_at'])
+        self.participant_shared = "Yes"
+        self.save(update_fields=["participant_shared", "updated_at"])
 
     def is_shared(self):
-        return self.participant_shared == 'Yes'
+        return self.participant_shared == "Yes"
 
 
 # Open Graph image cache invalidation signals
@@ -1718,11 +2015,11 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.cache import cache
 
-OG_IMAGE_CACHE_VERSION = 'v10'  # v10: card shows only what the agent filled in
+OG_IMAGE_CACHE_VERSION = "v10"  # v10: card shows only what the agent filled in
 
 
 def og_image_cache_key(agent_id):
-    return f'og_image_agent_card_{OG_IMAGE_CACHE_VERSION}_{agent_id}'
+    return f"og_image_agent_card_{OG_IMAGE_CACHE_VERSION}_{agent_id}"
 
 
 @receiver(post_save, sender=AgentProfile)
@@ -1731,17 +2028,20 @@ def clear_og_image_on_profile_change(sender, instance, **kwargs):
     if instance.agent_id:
         cache.delete(og_image_cache_key(instance.agent_id))
 
+
 @receiver(post_save, sender=AgentPerformanceStat)
 @receiver(post_delete, sender=AgentPerformanceStat)
 def clear_og_image_on_performance_change(sender, instance, **kwargs):
     if instance.agent_id:
         cache.delete(og_image_cache_key(instance.agent_id))
 
+
 @receiver(post_save, sender=AgentReview)
 @receiver(post_delete, sender=AgentReview)
 def clear_og_image_on_review_change(sender, instance, **kwargs):
     if instance.agent_id:
         cache.delete(og_image_cache_key(instance.agent_id))
+
 
 @receiver(post_save, sender=Agent)
 @receiver(post_delete, sender=Agent)
@@ -1751,10 +2051,12 @@ def clear_og_image_on_agent_change(sender, instance, **kwargs):
 
 @receiver(post_save, sender=AgentInsuranceSegment)
 @receiver(post_delete, sender=AgentInsuranceSegment)
-@receiver(post_save, sender='admin_panel.AgentServicePincode')  # service pincodes decide the card's city
-@receiver(post_delete, sender='admin_panel.AgentServicePincode')
+@receiver(
+    post_save, sender="admin_panel.AgentServicePincode"
+)  # service pincodes decide the card's city
+@receiver(post_delete, sender="admin_panel.AgentServicePincode")
 def clear_og_image_on_segment_change(sender, instance, **kwargs):
-    agent_id = getattr(instance, 'agent_id', None)
+    agent_id = getattr(instance, "agent_id", None)
     if agent_id:
         cache.delete(og_image_cache_key(agent_id))
 
@@ -1762,15 +2064,17 @@ def clear_og_image_on_segment_change(sender, instance, **kwargs):
 class SubscriptionPlan(models.Model):
     name = models.CharField(max_length=255, unique=True)
     slug = models.SlugField(max_length=50, unique=True, null=True, blank=True)
-    description = models.TextField(blank=True, default='')
-    color_theme = models.CharField(max_length=50, default='starter-theme')
+    description = models.TextField(blank=True, default="")
+    color_theme = models.CharField(max_length=50, default="starter-theme")
     badge_text = models.CharField(max_length=50, blank=True, null=True)
     sort_order = models.IntegerField(default=0)
-    
-    html_code = models.TextField(blank=True, default='')
+
+    html_code = models.TextField(blank=True, default="")
     actual_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    discounted_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    
+    discounted_price = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00
+    )
+
     # Visibility toggles for agent features
     show_profile_section = models.BooleanField(default=True)
     show_agent_certificate = models.BooleanField(default=True)
@@ -1785,7 +2089,7 @@ class SubscriptionPlan(models.Model):
     show_lead_status = models.BooleanField(default=True)
     show_sales_insights = models.BooleanField(default=True)
     show_recent_leads = models.BooleanField(default=True)
-    
+
     # New Plan-Based Feature Access Control fields
     show_performance_stats = models.BooleanField(default=True)
     show_rank_boost_tips = models.BooleanField(default=True)
@@ -1798,28 +2102,33 @@ class SubscriptionPlan(models.Model):
     show_review_management = models.BooleanField(default=True)
     is_listed_in_directory = models.BooleanField(default=True)
     premium_priority_support = models.BooleanField(default=True)
-    
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'subscription_plans'
+        db_table = "subscription_plans"
         managed = True
-        
+
     def __str__(self):
         return self.name
 
+
 class UserPlanProgress(models.Model):
-    draft = models.ForeignKey(AgentDraft, on_delete=models.CASCADE, null=True, blank=True)
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, null=True, blank=True, db_constraint=False)
-    plan_key = models.CharField(max_length=50) # e.g., 'exclusive_gamified'
+    draft = models.ForeignKey(
+        AgentDraft, on_delete=models.CASCADE, null=True, blank=True
+    )
+    agent = models.ForeignKey(
+        Agent, on_delete=models.CASCADE, null=True, blank=True, db_constraint=False
+    )
+    plan_key = models.CharField(max_length=50)  # e.g., 'exclusive_gamified'
     discount_unlocked = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'user_plan_progress'
+        db_table = "user_plan_progress"
         managed = True
 
     def __str__(self):
@@ -1829,6 +2138,7 @@ class UserPlanProgress(models.Model):
 # ── Registration Activity Logging ─────────────────────────────────────────────
 # Tracks key events in the agent registration funnel:
 #   FORM_SUBMIT, PENDING_FOR_REGISTRATION, DISTRIBUTION, CLAIM_BUTTON, PAYMENT_BUTTON
+
 
 class RegistrationActivityLog(models.Model):
     """
@@ -1842,17 +2152,19 @@ class RegistrationActivityLog(models.Model):
         CLAIM_BUTTON            – Agent initiates checkout (claim/pay button clicked)
         PAYMENT_BUTTON          – Payment verified and registration activated
     """
-    EVENT_FORM_SUBMIT             = 'FORM_SUBMIT'
-    EVENT_PENDING_REGISTRATION    = 'PENDING_FOR_REGISTRATION'
-    EVENT_DISTRIBUTION            = 'DISTRIBUTION'
-    EVENT_CLAIM_BUTTON            = 'CLAIM_BUTTON'
-    EVENT_PAYMENT_BUTTON          = 'PAYMENT_BUTTON'
+
+    EVENT_FORM_SUBMIT = "FORM_SUBMIT"
+    EVENT_PENDING_REGISTRATION = "PENDING_FOR_REGISTRATION"
+    EVENT_DISTRIBUTION = "DISTRIBUTION"
+    EVENT_CLAIM_BUTTON = "CLAIM_BUTTON"
+    EVENT_PAYMENT_BUTTON = "PAYMENT_BUTTON"
 
     agent = models.ForeignKey(
         Agent,
         on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name='registration_activity_logs',
+        null=True,
+        blank=True,
+        related_name="registration_activity_logs",
         db_constraint=False,
     )
     draft_id = models.IntegerField(null=True, blank=True, db_index=True)
@@ -1863,16 +2175,26 @@ class RegistrationActivityLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
-        db_table = 'registration_activity_logs'
+        db_table = "registration_activity_logs"
         managed = True
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     def __str__(self):
-        agent_info = f"agent={self.agent_id}" if self.agent_id else f"draft={self.draft_id}"
+        agent_info = (
+            f"agent={self.agent_id}" if self.agent_id else f"draft={self.draft_id}"
+        )
         return f"RegistrationActivityLog({self.event_name}, {agent_info}, {self.created_at})"
 
     @classmethod
-    def log(cls, event_name, request=None, agent=None, draft_id=None, subscription_id=None, extra_details=None):
+    def log(
+        cls,
+        event_name,
+        request=None,
+        agent=None,
+        draft_id=None,
+        subscription_id=None,
+        extra_details=None,
+    ):
         """
         Convenience method to capture a registration event.
         Silently swallows exceptions so it never breaks the main flow.
@@ -1881,13 +2203,14 @@ class RegistrationActivityLog(models.Model):
             ip = None
             if request:
                 from apps.admin_panel.middleware import ThreatMonitorMiddleware
+
                 ip = ThreatMonitorMiddleware.get_client_ip(request)
 
             details = {}
             if agent:
-                details['agent_email'] = agent.email
-                details['agent_status'] = agent.status
-                details['plan_type'] = agent.plan_type or ''
+                details["agent_email"] = agent.email
+                details["agent_status"] = agent.status
+                details["plan_type"] = agent.plan_type or ""
             if extra_details and isinstance(extra_details, dict):
                 details.update(extra_details)
 
@@ -1895,6 +2218,7 @@ class RegistrationActivityLog(models.Model):
             # must not mark the caller's transaction (e.g. payment activation)
             # for rollback.
             from django.db import transaction
+
             with transaction.atomic():
                 cls.objects.create(
                     agent=agent,
@@ -1906,8 +2230,9 @@ class RegistrationActivityLog(models.Model):
                 )
         except Exception:
             import logging
+
             logging.getLogger(__name__).exception(
-                'RegistrationActivityLog.log failed for event=%s', event_name
+                "RegistrationActivityLog.log failed for event=%s", event_name
             )
 
 
@@ -1918,7 +2243,7 @@ class PlanUpgradeHandoff(models.Model):
     agent = models.ForeignKey(
         Agent,
         on_delete=models.CASCADE,
-        related_name='plan_upgrade_handoffs',
+        related_name="plan_upgrade_handoffs",
     )
     plan_slug = models.CharField(max_length=32)
     expires_at = models.DateTimeField()
@@ -1926,7 +2251,7 @@ class PlanUpgradeHandoff(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = 'plan_upgrade_handoffs'
+        db_table = "plan_upgrade_handoffs"
 
     def __str__(self):
         return f"PlanUpgradeHandoff(agent={self.agent_id}, plan={self.plan_slug})"
@@ -1938,7 +2263,7 @@ class AgentPlanOffer(models.Model):
     agent = models.OneToOneField(
         Agent,
         on_delete=models.CASCADE,
-        related_name='plan_offer',
+        related_name="plan_offer",
         # Production's legacy agents.id type does not match a Django FK
         # (MariaDB errno 150), like the other Agent FKs here.
         db_constraint=False,
@@ -1950,7 +2275,7 @@ class AgentPlanOffer(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'agent_plan_offers'
+        db_table = "agent_plan_offers"
 
     def __str__(self):
         return f"AgentPlanOffer(agent={self.agent_id})"
@@ -1962,35 +2287,40 @@ class AccountDeletionRequest(models.Model):
     Supports OTP email verification, DPDP compliance review,
     and administrative termination audit trail.
     """
+
     STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
-        ('PROCESSING', 'Processing'),
-        ('COMPLETED', 'Completed'),
-        ('REJECTED', 'Rejected'),
+        ("PENDING", "Pending"),
+        ("PROCESSING", "Processing"),
+        ("COMPLETED", "Completed"),
+        ("REJECTED", "Rejected"),
     ]
     VERIFICATION_METHOD_CHOICES = [
-        ('otp_email', 'Email OTP'),
-        ('otp_sms', 'SMS OTP'),
-        ('auth_token', 'Authenticated Token / Session'),
+        ("otp_email", "Email OTP"),
+        ("otp_sms", "SMS OTP"),
+        ("auth_token", "Authenticated Token / Session"),
     ]
 
     reference_id = models.CharField(max_length=50, unique=True, db_index=True)
     identifier = models.CharField(max_length=255, db_index=True)
-    email = models.EmailField(max_length=254, blank=True, default='')
-    mobile = models.CharField(max_length=20, blank=True, default='')
-    account_type = models.CharField(max_length=50, default='agent')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, db_index=True, default='PENDING')
-    verification_method = models.CharField(max_length=30, choices=VERIFICATION_METHOD_CHOICES, default='otp_email')
+    email = models.EmailField(max_length=254, blank=True, default="")
+    mobile = models.CharField(max_length=20, blank=True, default="")
+    account_type = models.CharField(max_length=50, default="agent")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, db_index=True, default="PENDING"
+    )
+    verification_method = models.CharField(
+        max_length=30, choices=VERIFICATION_METHOD_CHOICES, default="otp_email"
+    )
     is_verified = models.BooleanField(default=False)
-    reason = models.TextField(blank=True, default='')
-    rejection_reason = models.TextField(blank=True, default='')
+    reason = models.TextField(blank=True, default="")
+    rejection_reason = models.TextField(blank=True, default="")
     scheduled_purge_date = models.DateField(null=True, blank=True)
-    admin_notes = models.TextField(blank=True, default='')
-    processed_by_admin_name = models.CharField(max_length=150, blank=True, default='')
+    admin_notes = models.TextField(blank=True, default="")
+    processed_by_admin_name = models.CharField(max_length=150, blank=True, default="")
     processed_at = models.DateTimeField(null=True, blank=True)
     data_retention_summary = models.JSONField(default=dict, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
-    user_agent = models.TextField(blank=True, default='')
+    user_agent = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1999,7 +2329,7 @@ class AccountDeletionRequest(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='deletion_requests',
+        related_name="deletion_requests",
         db_constraint=False,
     )
     user = models.ForeignKey(
@@ -2007,7 +2337,7 @@ class AccountDeletionRequest(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='account_deletion_requests',
+        related_name="account_deletion_requests",
         db_constraint=False,
     )
     processed_by = models.ForeignKey(
@@ -2015,13 +2345,13 @@ class AccountDeletionRequest(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='processed_account_deletions',
+        related_name="processed_account_deletions",
         db_constraint=False,
     )
 
     class Meta:
-        db_table = 'account_deletion_requests'
-        ordering = ['-created_at']
+        db_table = "account_deletion_requests"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"AccountDeletionRequest({self.reference_id}, {self.email}, status={self.status})"
@@ -2029,24 +2359,27 @@ class AccountDeletionRequest(models.Model):
     def to_dict(self):
         summary = self.data_retention_summary or {}
         return {
-            'id': self.id,
-            'reference_id': self.reference_id,
-            'fullname': summary.get('fullname') or (self.agent.fullname if self.agent else self.identifier),
-            'email': self.email,
-            'mobile': self.mobile,
-            'pan_number': summary.get('pan_number') or self.identifier,
-            'reason_category': summary.get('reason_category', ''),
-            'reason_details': summary.get('reason_details', '') or self.reason,
-            'status': self.status,
-            'is_verified': self.is_verified,
-            'rejection_reason': self.rejection_reason or '',
-            'admin_notes': self.admin_notes or '',
-            'processed_by': self.processed_by_admin_name or '',
-            'created_at': self.created_at.strftime('%d %b %Y, %I:%M %p') if self.created_at else '',
-            'processed_at': self.processed_at.strftime('%d %b %Y, %I:%M %p') if self.processed_at else '',
-            'ip_address': self.ip_address or '',
-            'agent_id': self.agent_id or (self.agent.id if self.agent else None),
-            'agent_status': self.agent.status if self.agent else '',
+            "id": self.id,
+            "reference_id": self.reference_id,
+            "fullname": summary.get("fullname")
+            or (self.agent.fullname if self.agent else self.identifier),
+            "email": self.email,
+            "mobile": self.mobile,
+            "pan_number": summary.get("pan_number") or self.identifier,
+            "reason_category": summary.get("reason_category", ""),
+            "reason_details": summary.get("reason_details", "") or self.reason,
+            "status": self.status,
+            "is_verified": self.is_verified,
+            "rejection_reason": self.rejection_reason or "",
+            "admin_notes": self.admin_notes or "",
+            "processed_by": self.processed_by_admin_name or "",
+            "created_at": self.created_at.strftime("%d %b %Y, %I:%M %p")
+            if self.created_at
+            else "",
+            "processed_at": self.processed_at.strftime("%d %b %Y, %I:%M %p")
+            if self.processed_at
+            else "",
+            "ip_address": self.ip_address or "",
+            "agent_id": self.agent_id or (self.agent.id if self.agent else None),
+            "agent_status": self.agent.status if self.agent else "",
         }
-
-

@@ -7,8 +7,8 @@ Repair PHP → Django import conflicts:
 - investment_types stored as {} instead of []
 
 Usage:
-    python manage.py repair_imported_agent_data
-    python manage.py repair_imported_agent_data --dry-run
+    python manage.py repair_imported_agent_data            # dry run (default)
+    python manage.py repair_imported_agent_data --apply    # write changes
 """
 from django.core.management.base import BaseCommand
 from django.db import connection, transaction
@@ -66,10 +66,12 @@ class Command(BaseCommand):
     help = "Fix PHP-imported agent duplicates and broken Django user FKs"
 
     def add_arguments(self, parser):
-        parser.add_argument("--dry-run", action="store_true")
+        parser.add_argument("--apply", action="store_true", help="Write the changes (default is a dry run).")
+        # Kept so old invocations still work; dry run is now the default.
+        parser.add_argument("--dry-run", action="store_true", help="Dry run (the default).")
 
     def handle(self, *args, **options):
-        dry = options["dry_run"]
+        dry = not options["apply"] or options["dry_run"]
         self.stdout.write(f"Mode: {'dry-run' if dry else 'apply'}")
 
         with transaction.atomic():

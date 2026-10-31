@@ -4,8 +4,17 @@ from sqlalchemy.orm import Session
 from fastapi_app.schemas.auth import LoginRequest
 from fastapi_app.repositories.user_repository import UserRepository
 from fastapi_app.repositories.agent_repository import AgentRepository
-from fastapi_app.utils.auth import verify_password, generate_and_register_token, get_password_hash
+from fastapi_app.utils.auth import (
+    verify_password,
+    generate_and_register_token,
+    get_password_hash,
+)
 from fastapi_app.config import settings
+from fastapi_app.middleware.rate_limiter import (
+    incr_window_counter,
+    shared_cache,
+    window_key,
+)
 from datetime import datetime
 import time
 
@@ -13,9 +22,26 @@ import time
 login_attempts_store = {}
 
 # Mirrors apps/agents/views/auth.py: the only agent statuses that deny a session.
-BLOCKED_AGENT_STATUSES = ('suspended', 'blacklisted', 'rejected', 'deleted')
+BLOCKED_AGENT_STATUSES = ("suspended", "blacklisted", "rejected", "deleted")
 
+LOGIN_IP_MAX_ATTEMPTS = 6
+LOGIN_IP_WINDOW_SECONDS = 60
+
+
+def _login_counter_name(ip: str) -> str:
+    return f"api_login_ip_{ip}"
+
+
+# The Django cache (shared by all processes) is used when available; the
+# in-memory store is the fallback for standalone FastAPI / cache errors.
 def check_login_throttle(ip: str) -> bool:
+    cache = shared_cache()
+    if cache is not None:
+        try:
+            key = window_key(_login_counter_name(ip), LOGIN_IP_WINDOW_SECONDS)
+            return (cache.get(key) or 0) < LOGIN_IP_MAX_ATTEMPTS
+        except Exception:
+            pass
     record = login_attempts_store.get(ip)
     if record:
         if time.time() > record["expires_at"]:
@@ -25,7 +51,15 @@ def check_login_throttle(ip: str) -> bool:
             return False
     return True
 
+
 def record_login_attempt(ip: str):
+    cache = shared_cache()
+    if cache is not None:
+        try:
+            incr_window_counter(cache, _login_counter_name(ip), LOGIN_IP_WINDOW_SECONDS)
+            return
+        except Exception:
+            pass
     record = login_attempts_store.get(ip)
     now = time.time()
     if not record or now > record["expires_at"]:
@@ -33,16 +67,24 @@ def record_login_attempt(ip: str):
     else:
         login_attempts_store[ip]["attempts"] += 1
 
+
 def clear_login_throttle(ip: str):
+    cache = shared_cache()
+    if cache is not None:
+        try:
+            cache.delete(window_key(_login_counter_name(ip), LOGIN_IP_WINDOW_SECONDS))
+        except Exception:
+            pass
     login_attempts_store.pop(ip, None)
 
 
 # Per-account limit shared with the website login (Django cache, 10 failures
-# per 15 minutes per email). The per-IP limit above is in-process only and is
-# defeated by changing IP; guessing one account's password is not.
+# per 15 minutes per email). The per-IP limit above is defeated by changing
+# IP; guessing one account's password is not.
 def account_login_allowed(email: str) -> bool:
     try:
         from apps.agents.views.auth import check_email_login_throttle
+
         return check_email_login_throttle(email)
     except Exception:
         return True
@@ -51,6 +93,7 @@ def account_login_allowed(email: str) -> bool:
 def record_account_login_failure(email: str):
     try:
         from apps.agents.views.auth import record_email_login_failure
+
         record_email_login_failure(email)
     except Exception:
         pass
@@ -60,12 +103,16 @@ def clear_account_login_failures(email: str):
     try:
         from django.core.cache import cache
         from apps.agents.views.auth import _email_throttle_key
+
         cache.delete(_email_throttle_key(email))
     except Exception:
         pass
 
+
 class AuthService:
-    def __init__(self, user_repo: UserRepository, agent_repo: AgentRepository, db: Session):
+    def __init__(
+        self, user_repo: UserRepository, agent_repo: AgentRepository, db: Session
+    ):
         self.user_repo = user_repo
         self.agent_repo = agent_repo
         self.db = db
@@ -75,13 +122,17 @@ class AuthService:
         # Trusted-proxy rule: a raw X-Forwarded-For let clients reset the
         # login throttle on every attempt.
         from fastapi_app.utils.client_ip import get_client_ip
+
         ip = get_client_ip(req)
 
         # Rate Limit check
         if not check_login_throttle(ip):
             return JSONResponse(
                 status_code=429,
-                content={"success": False, "message": "Too many login attempts. Please try again after 1 minute."}
+                content={
+                    "success": False,
+                    "message": "Too many login attempts. Please try again after 1 minute.",
+                },
             )
 
         # Check for empty credentials
@@ -89,13 +140,19 @@ class AuthService:
             record_login_attempt(ip)
             return JSONResponse(
                 status_code=400,
-                content={"success": False, "message": "Please enter both email and password."}
+                content={
+                    "success": False,
+                    "message": "Please enter both email and password.",
+                },
             )
 
         if not account_login_allowed(request.email):
             return JSONResponse(
                 status_code=429,
-                content={"success": False, "message": "Too many failed attempts for this account. Please wait 15 minutes or reset your password."}
+                content={
+                    "success": False,
+                    "message": "Too many failed attempts for this account. Please wait 15 minutes or reset your password.",
+                },
             )
 
         # 1. Fetch User by email from primary `users` table
@@ -110,13 +167,18 @@ class AuthService:
         # Fallback: check Django `auth_user` table if user is missing or password mismatch in `users` table
         if not password_valid:
             from sqlalchemy import text
+
             auth_user_row = self.db.execute(
-                text("SELECT id, username, email, password, is_active FROM auth_user WHERE LOWER(email) = LOWER(:email)"),
-                {"email": request.email}
+                text(
+                    "SELECT id, username, email, password, is_active FROM auth_user WHERE LOWER(email) = LOWER(:email)"
+                ),
+                {"email": request.email},
             ).fetchone()
 
             if auth_user_row:
-                auth_id, auth_username, auth_email, auth_password, auth_is_active = auth_user_row
+                auth_id, auth_username, auth_email, auth_password, auth_is_active = (
+                    auth_user_row
+                )
                 if verify_password(request.password, auth_password):
                     password_valid = True
                     if user:
@@ -130,12 +192,13 @@ class AuthService:
                         # Create missing user entry in users table based on auth_user
                         try:
                             from fastapi_app.models.user import User as UserModel
+
                             user = UserModel(
                                 fullname=auth_username,
                                 email=auth_email,
                                 password=auth_password,
-                                role='agent',
-                                status='active' if auth_is_active else 'inactive'
+                                role="agent",
+                                status="active" if auth_is_active else "inactive",
                             )
                             self.db.add(user)
                             self.db.commit()
@@ -143,27 +206,33 @@ class AuthService:
                             self.db.rollback()
 
         # Orphan incomplete/pending_payment agents may have no users row yet.
-        if not password_valid and agent and agent.status in ('incomplete', 'pending_payment'):
+        if (
+            not password_valid
+            and agent
+            and agent.status in ("incomplete", "pending_payment")
+        ):
             stored = user.password if user and user.password else None
             if not stored and request.password:
-                from apps.agents.services.account_auth import default_agent_temp_password
+                from apps.agents.services.account_auth import (
+                    default_agent_temp_password,
+                )
 
                 temp_password = default_agent_temp_password(agent)
                 legacy_email_password = (
-                    agent.email
-                    and request.password.lower() == agent.email.lower()
+                    agent.email and request.password.lower() == agent.email.lower()
                 )
                 if request.password == temp_password or legacy_email_password:
                     password_valid = True
                     if not user:
                         try:
                             from fastapi_app.models.user import UserModel
+
                             user = UserModel(
                                 fullname=agent.fullname or agent.email,
                                 email=agent.email,
                                 password=get_password_hash(request.password),
-                                role='agent',
-                                status='active',
+                                role="agent",
+                                status="active",
                                 email_verified_at=datetime.now(),
                             )
                             self.db.add(user)
@@ -180,16 +249,21 @@ class AuthService:
             record_account_login_failure(request.email)
             return JSONResponse(
                 status_code=401,
-                content={"success": False, "message": "Please Enter Valid Login Details"}
+                content={
+                    "success": False,
+                    "message": "Please Enter Valid Login Details",
+                },
             )
 
-
         # 3. Check role
-        if user.role != 'agent':
+        if user.role != "agent":
             record_login_attempt(ip)
             return JSONResponse(
                 status_code=401,
-                content={"success": False, "message": "Please use the correct login page for your account type."}
+                content={
+                    "success": False,
+                    "message": "Please use the correct login page for your account type.",
+                },
             )
 
         # 4. Check linked agent exists
@@ -198,22 +272,28 @@ class AuthService:
             record_login_attempt(ip)
             return JSONResponse(
                 status_code=200,
-                content={"success": False, "message": "Agent profile not found."}
+                content={"success": False, "message": "Agent profile not found."},
             )
 
         # 5. Check account status matching Django/Laravel
-        if user.status == 'suspended':
+        if user.status == "suspended":
             record_login_attempt(ip)
             return JSONResponse(
                 status_code=200,
-                content={"success": False, "message": "Your account has been suspended."}
+                content={
+                    "success": False,
+                    "message": "Your account has been suspended.",
+                },
             )
-            
-        if user.status == 'inactive':
+
+        if user.status == "inactive":
             record_login_attempt(ip)
             return JSONResponse(
                 status_code=200,
-                content={"success": False, "message": "Your account is currently inactive."}
+                content={
+                    "success": False,
+                    "message": "Your account is currently inactive.",
+                },
             )
 
         # Check Agent status specifically matching Django.
@@ -224,13 +304,23 @@ class AuthService:
             record_login_attempt(ip)
             return JSONResponse(
                 status_code=200,
-                content={"success": False, "message": f"Your account is currently {agent.status}."}
+                content={
+                    "success": False,
+                    "message": f"Your account is currently {agent.status}.",
+                },
             )
-        elif agent.status in ('incomplete', 'pending_payment', 'pending_accounts_payment'):
+        elif agent.status in (
+            "incomplete",
+            "pending_payment",
+            "pending_accounts_payment",
+        ):
             record_login_attempt(ip)
             return JSONResponse(
                 status_code=200,
-                content={"success": False, "message": "Please complete plan selection and payment to activate your account."}
+                content={
+                    "success": False,
+                    "message": "Please complete plan selection and payment to activate your account.",
+                },
             )
 
         # Clear login throttle on successful auth
@@ -242,17 +332,17 @@ class AuthService:
         # 6. Generate and register unique JWT token in DB transactionally
         try:
             access_token = generate_and_register_token(
-                db=self.db,
-                email=user.email,
-                role=user.role,
-                user_id=user.id
+                db=self.db, email=user.email, role=user.role, user_id=user.id
             )
             self.db.commit()
         except Exception:
             self.db.rollback()
             return JSONResponse(
                 status_code=500,
-                content={"success": False, "message": "Authentication failed due to database transaction error."}
+                content={
+                    "success": False,
+                    "message": "Authentication failed due to database transaction error.",
+                },
             )
         clear_account_login_failures(request.email)
 
@@ -264,6 +354,6 @@ class AuthService:
                 "access_token": access_token,
                 "token_type": "bearer",
                 "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-                "agent_status": agent.status
-            }
+                "agent_status": agent.status,
+            },
         )

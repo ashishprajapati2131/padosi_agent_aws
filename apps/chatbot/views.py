@@ -4,17 +4,37 @@ from django.views.decorators.http import require_POST, require_GET
 from django.core.cache import cache
 import json
 import logging
+import os
 import re
-from .llm_client import generate_suggestion_chips, get_chat_completion, extract_agent_links, stream_plain_text_completion
+from datetime import date
+from .llm_client import (
+    DAILY_COUNTER_TIMEOUT,
+    generate_suggestion_chips,
+    get_chat_completion,
+    extract_agent_links,
+    incr_daily_counter,
+    stream_plain_text_completion,
+)
 from .models import ChatMessage
 import uuid
 
 logger = logging.getLogger(__name__)
 
 MAX_CHAT_MESSAGE_CHARS = 2000
+# LLM spend caps: messages per IP per day, and across all visitors per day.
+CHATBOT_DAILY_IP_LIMIT = int(os.environ.get("CHATBOT_DAILY_IP_LIMIT", "100"))
+CHATBOT_DAILY_GLOBAL_LIMIT = int(os.environ.get("CHATBOT_DAILY_GLOBAL_LIMIT", "5000"))
+CHAT_IP_LIMIT_REPLY = (
+    "You've reached today's chat limit. Please use the agent search on our site, "
+    "or contact us and we'll be happy to help."
+)
+CHAT_UNAVAILABLE_REPLY = (
+    "Our assistant is temporarily unavailable. Please use the agent search on our site, "
+    "or contact us and we'll be happy to help."
+)
 # Chat ids are issued by the server and remembered in the visitor's Django
 # session; history is only served for ids this browser was issued.
-CHAT_IDS_SESSION_KEY = 'chatbot_session_ids'
+CHAT_IDS_SESSION_KEY = "chatbot_session_ids"
 MAX_CHAT_IDS_PER_SESSION = 20
 
 
@@ -24,90 +44,137 @@ def _issued_chat_ids(request):
 
 def _issue_chat_id(request):
     chat_id = uuid.uuid4().hex
-    request.session[CHAT_IDS_SESSION_KEY] = (_issued_chat_ids(request) + [chat_id])[-MAX_CHAT_IDS_PER_SESSION:]
+    request.session[CHAT_IDS_SESSION_KEY] = (_issued_chat_ids(request) + [chat_id])[
+        -MAX_CHAT_IDS_PER_SESSION:
+    ]
     return chat_id
+
+
+def _canned_reply(session_id, reply):
+    """Answer in the widget's SSE format without calling the LLM."""
+    payload = {
+        "type": "full_response",
+        "success": True,
+        "session_id": session_id,
+        "reply": reply,
+        "quick_options": [],
+        "quick_option_groups": [],
+        "agent_links": [],
+        "agent_cards": [],
+        "total_time": 0.0,
+    }
+    response = StreamingHttpResponse(
+        iter([f"data: {json.dumps(payload)}\n\n"]),
+        content_type="text/event-stream; charset=utf-8",
+    )
+    response["Cache-Control"] = "no-cache"
+    return response
+
 
 @require_GET
 def get_history(request, session_id):
-    if not session_id or not re.match(r'^[a-zA-Z0-9_\-]+$', session_id) or len(session_id) > 100:
-        return JsonResponse({"success": False, "error": "Invalid session identifier.", "data": []}, status=400)
+    if (
+        not session_id
+        or not re.match(r"^[a-zA-Z0-9_\-]+$", session_id)
+        or len(session_id) > 100
+    ):
+        return JsonResponse(
+            {"success": False, "error": "Invalid session identifier.", "data": []},
+            status=400,
+        )
     if session_id not in _issued_chat_ids(request):
-        return JsonResponse({"success": False, "error": "Chat not found.", "data": []}, status=404)
+        return JsonResponse(
+            {"success": False, "error": "Chat not found.", "data": []}, status=404
+        )
 
-    messages = ChatMessage.objects.filter(
-        session__session_id=session_id,
-        role__in=['user', 'assistant']
-    ).exclude(content__startswith='__TOOL_CALLS__').order_by('timestamp')
-    
+    messages = (
+        ChatMessage.objects.filter(
+            session__session_id=session_id, role__in=["user", "assistant"]
+        )
+        .exclude(content__startswith="__TOOL_CALLS__")
+        .order_by("timestamp")
+    )
+
     data = []
     for m in messages:
-        if m.role == 'assistant':
+        if m.role == "assistant":
             cleaned, agent_links = extract_agent_links(m.content)
-            data.append({
-                "role": m.role,
-                "content": cleaned,
-                "agent_links": agent_links,
-                "agent_cards": m.agent_cards or [],
-                "timestamp": m.timestamp.isoformat()
-            })
+            data.append(
+                {
+                    "role": m.role,
+                    "content": cleaned,
+                    "agent_links": agent_links,
+                    "agent_cards": m.agent_cards or [],
+                    "timestamp": m.timestamp.isoformat(),
+                }
+            )
         else:
-            data.append({
-                "role": m.role,
-                "content": m.content,
-                "timestamp": m.timestamp.isoformat()
-            })
-        
-    return JsonResponse({
-        "success": True,
-        "data": data
-    })
+            data.append(
+                {
+                    "role": m.role,
+                    "content": m.content,
+                    "timestamp": m.timestamp.isoformat(),
+                }
+            )
+
+    return JsonResponse({"success": True, "data": data})
+
 
 @require_GET
 def get_chips(request):
     chips = cache.get("suggestion_chips")
     if not chips:
         chips = generate_suggestion_chips()
-        cache.set("suggestion_chips", chips, timeout=46800) # 13 hours
-    
-    return JsonResponse({
-        "success": True,
-        "data": chips
-    })
+        cache.set("suggestion_chips", chips, timeout=46800)  # 13 hours
+
+    return JsonResponse({"success": True, "data": chips})
+
 
 @csrf_exempt
 @require_POST
 def send_message(request):
     # Cross-origin protection: exact host match ("host in origin" accepted
-    # e.g. https://padosiagent.com.evil.example).
+    # e.g. https://padosiagent.com.evil.example). Browsers send Origin on POST
+    # fetch; fall back to Referer, and reject requests that carry neither.
     from urllib.parse import urlparse
-    origin = request.headers.get('origin', '')
+
+    origin = request.headers.get("origin", "") or request.headers.get("referer", "")
     host = request.get_host()
-    if origin and urlparse(origin).netloc.lower() != host.lower():
-        logger.warning(f"Blocked unauthorized cross-origin chatbot request from origin: {origin}")
-        return JsonResponse({"success": False, "error": "Forbidden cross-origin request."}, status=403)
+    if urlparse(origin).netloc.lower() != host.lower():
+        logger.warning(
+            f"Blocked unauthorized cross-origin chatbot request from origin: {origin!r}"
+        )
+        return JsonResponse(
+            {"success": False, "error": "Forbidden cross-origin request."}, status=403
+        )
     # Behind the local reverse proxy REMOTE_ADDR is 127.0.0.1 for everyone, which
     # made this a single global bucket; use the trusted-proxy client IP.
     from apps.admin_panel.middleware import ThreatMonitorMiddleware
+
     client_ip = ThreatMonitorMiddleware.get_client_ip(request)
-    
+
     # Rate limit: 20 messages per minute per IP using a rolling window
     rl_key = f"ratelimit_chat_{client_ip}"
-    
+
     # FileBasedCache incr() destroys custom TTLs and lacks atomicity anyway.
     # We use a timestamp list to implement a true rolling window.
     import time
+
     now = time.time()
-    
+
     timestamps = cache.get(rl_key, [])
     # Prune timestamps older than 60 seconds
     timestamps = [t for t in timestamps if t > now - 60]
-    
+
     if len(timestamps) >= 20:
-        return JsonResponse({"success": False, "error": "Too many requests. Please slow down."}, status=429)
-        
+        return JsonResponse(
+            {"success": False, "error": "Too many requests. Please slow down."},
+            status=429,
+        )
+
     timestamps.append(now)
     cache.set(rl_key, timestamps, timeout=60)
-    
+
     try:
         data = json.loads(request.body)
         if not isinstance(data, dict):
@@ -115,18 +182,38 @@ def send_message(request):
         user_message = str(data.get("message") or "").strip()
         session_id = str(data.get("session_id") or "").strip()
 
-        if session_id and (len(session_id) > 100 or not re.match(r'^[a-zA-Z0-9_\-]+$', session_id)):
-            return JsonResponse({"success": False, "error": "Invalid session identifier."}, status=400)
+        if session_id and (
+            len(session_id) > 100 or not re.match(r"^[a-zA-Z0-9_\-]+$", session_id)
+        ):
+            return JsonResponse(
+                {"success": False, "error": "Invalid session identifier."}, status=400
+            )
         if session_id not in _issued_chat_ids(request):
             # Unknown or client-made id: start a fresh server-issued chat rather
             # than appending to (and later reading) someone else's transcript.
             session_id = _issue_chat_id(request)
 
         if not user_message:
-            return JsonResponse({"success": False, "error": "Message is required."}, status=400)
+            return JsonResponse(
+                {"success": False, "error": "Message is required."}, status=400
+            )
         if len(user_message) > MAX_CHAT_MESSAGE_CHARS:
             # Every character is billed LLM input; cap it.
-            return JsonResponse({"success": False, "error": "Message is too long."}, status=400)
+            return JsonResponse(
+                {"success": False, "error": "Message is too long."}, status=400
+            )
+
+        # Daily spend caps; per-IP first so a capped IP doesn't use up the global budget.
+        if incr_daily_counter(f"chat_ip_{client_ip}") > CHATBOT_DAILY_IP_LIMIT:
+            return _canned_reply(session_id, CHAT_IP_LIMIT_REPLY)
+        if incr_daily_counter("chat_global") > CHATBOT_DAILY_GLOBAL_LIMIT:
+            alert_key = f"chatbot_global_cap_alerted_{date.today().isoformat()}"
+            if cache.add(alert_key, 1, DAILY_COUNTER_TIMEOUT):
+                logger.error(
+                    "Chatbot global daily ceiling reached (%s messages); LLM replies paused until tomorrow.",
+                    CHATBOT_DAILY_GLOBAL_LIMIT,
+                )
+            return _canned_reply(session_id, CHAT_UNAVAILABLE_REPLY)
 
         def event_stream():
             """SSE generator — wraps stream_plain_text_completion and handles the use_full_flow fallback."""
@@ -139,10 +226,10 @@ def send_message(request):
                     # The user_message was already saved to DB by stream_plain_text_completion,
                     # so pass user_message=None to get_chat_completion to avoid double-saving.
                     result = get_chat_completion(
-                        session_id, 
+                        session_id,
                         user_message=None,
                         prefilled_response_message=first.get("response_message"),
-                        prefilled_tool_calls=first.get("tool_calls")
+                        prefilled_tool_calls=first.get("tool_calls"),
                     )
                     payload = {
                         "type": "full_response",
@@ -153,7 +240,7 @@ def send_message(request):
                         "quick_option_groups": result.get("quick_option_groups", []),
                         "agent_links": result.get("agent_links", []),
                         "agent_cards": result.get("agent_cards", []),
-                        "total_time": result.get("total_time", 0.0)
+                        "total_time": result.get("total_time", 0.0),
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
                     return
@@ -165,13 +252,16 @@ def send_message(request):
 
             except Exception as e:
                 import traceback
+
                 traceback.print_exc()
                 logger.error(f"Error in SSE event_stream: {e}")
                 yield f"data: {json.dumps({'type': 'error', 'message': 'I am having trouble connecting right now. Please try again later.'})}\n\n"
 
-        response = StreamingHttpResponse(event_stream(), content_type='text/event-stream; charset=utf-8')
-        response['Cache-Control'] = 'no-cache'
-        response['X-Accel-Buffering'] = 'no'  # Prevent nginx/proxy buffering
+        response = StreamingHttpResponse(
+            event_stream(), content_type="text/event-stream; charset=utf-8"
+        )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"  # Prevent nginx/proxy buffering
         return response
 
     except json.JSONDecodeError:
@@ -179,19 +269,22 @@ def send_message(request):
     except Exception as e:
         error_msg = str(e)
         logger.error(f"Error in send_message view: {e}")
-        
+
         # Graceful handler for MySQL emoji/encoding issues
         if "Incorrect string value" in error_msg or "utf8mb4" in error_msg:
             friendly_reply = "I'm sorry, I couldn't process some of the characters (like emojis) in your message. Could you try sending it again as plain text?"
-            return JsonResponse({
-                "success": True,
-                "session_id": session_id,
-                "data": {
-                    "reply": friendly_reply,
-                    "quick_options": [],
-                    "agent_links": []
+            return JsonResponse(
+                {
+                    "success": True,
+                    "session_id": session_id,
+                    "data": {
+                        "reply": friendly_reply,
+                        "quick_options": [],
+                        "agent_links": [],
+                    },
                 }
-            })
-            
-        return JsonResponse({"success": False, "error": "Internal server error"}, status=500)
+            )
 
+        return JsonResponse(
+            {"success": False, "error": "Internal server error"}, status=500
+        )

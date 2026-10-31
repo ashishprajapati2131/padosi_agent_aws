@@ -38,7 +38,9 @@ def _get_client_ip(request: Request) -> str:
     return request.client.host if request.client else ""
 
 
-def _send_deletion_otp_email(to_email: str, fullname: str, otp: str, reference_id: str) -> bool:
+def _send_deletion_otp_email(
+    to_email: str, fullname: str, otp: str, reference_id: str
+) -> bool:
     """Sends OTP verification email for account deletion using Brevo/SMTP."""
     subject = f"Your PadosiAgent Account Deletion Code: {otp}"
     html_content = f"""
@@ -94,6 +96,7 @@ def _send_deletion_otp_email(to_email: str, fullname: str, otp: str, reference_i
     # 1. Try BrevoEmailService from apps.agents.services.brevo
     try:
         from apps.agents.services.brevo import email_service
+
         sent = email_service.send_generic(to_email, fullname, subject, html_content)
         if sent:
             return True
@@ -103,7 +106,10 @@ def _send_deletion_otp_email(to_email: str, fullname: str, otp: str, reference_i
     # 2. Try FastAPI EmailService HTTP Brevo / SMTP
     try:
         from fastapi_app.services.email_service import EmailService
-        sent = EmailService._send_brevo_http_sync(to_email, subject, html_content, fullname)
+
+        sent = EmailService._send_brevo_http_sync(
+            to_email, subject, html_content, fullname
+        )
         if sent:
             return True
     except Exception as ex:
@@ -156,7 +162,6 @@ def request_deletion_otp(
 
     agent_id = agent.id
     user_id = agent.user_id
-
 
     # Generate 6-digit OTP and Reference ID
     otp_code = str(secrets.randbelow(900000) + 100000)
@@ -224,10 +229,16 @@ def verify_deletion_otp(
     email_clean = payload.email.strip().lower()
     otp_input = payload.otp.strip()
 
-    del_req = db.query(AccountDeletionRequest).filter(
-        AccountDeletionRequest.reference_id == ref_id,
-        AccountDeletionRequest.email == email_clean,
-    ).first()
+    # Row lock: the attempt counter below is a read-modify-write of a JSON column.
+    del_req = (
+        db.query(AccountDeletionRequest)
+        .filter(
+            AccountDeletionRequest.reference_id == ref_id,
+            AccountDeletionRequest.email == email_clean,
+        )
+        .with_for_update()
+        .first()
+    )
 
     if not del_req:
         raise HTTPException(
@@ -252,17 +263,16 @@ def verify_deletion_otp(
             detail="Maximum verification attempts exceeded. Please submit a new request.",
         )
 
-    expires_str = summary.get("otp_expires_at")
-    if expires_str:
-        try:
-            expires_at = datetime.fromisoformat(expires_str)
-            if datetime.utcnow() > expires_at:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Verification code has expired. Please request a new code.",
-                )
-        except Exception:
-            pass
+    # A missing or unparseable expiry counts as expired.
+    try:
+        expires_at = datetime.fromisoformat(summary.get("otp_expires_at"))
+    except (TypeError, ValueError):
+        expires_at = None
+    if expires_at is None or datetime.utcnow() > expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code has expired. Please request a new code.",
+        )
 
     expected_hash = summary.get("otp_hash")
     input_hash = _hash_otp(otp_input)
@@ -312,9 +322,11 @@ def get_deletion_status(
     Allows user or admin to check the detailed status of an account deletion request.
     Returns submission time, processed time, rejection reason (if any), and current status.
     """
-    del_req = db.query(AccountDeletionRequest).filter(
-        AccountDeletionRequest.reference_id == reference_id.strip()
-    ).first()
+    del_req = (
+        db.query(AccountDeletionRequest)
+        .filter(AccountDeletionRequest.reference_id == reference_id.strip())
+        .first()
+    )
 
     if not del_req:
         raise HTTPException(
@@ -323,20 +335,31 @@ def get_deletion_status(
         )
 
     summary = dict(del_req.data_retention_summary or {})
-    
+
     # Format submitted_at and processed_at
-    sub_at_str = del_req.created_at.strftime('%d %b %Y, %I:%M %p') if del_req.created_at else "-"
-    proc_at_str = del_req.processed_at.strftime('%d %b %Y, %I:%M %p') if del_req.processed_at else "Pending Action"
+    sub_at_str = (
+        del_req.created_at.strftime("%d %b %Y, %I:%M %p") if del_req.created_at else "-"
+    )
+    proc_at_str = (
+        del_req.processed_at.strftime("%d %b %Y, %I:%M %p")
+        if del_req.processed_at
+        else "Pending Action"
+    )
 
     if del_req.status == "COMPLETED":
         status_display = "Terminated"
         msg = f"Your account has been terminated by administration. Request status is COMPLETED. (Verified: {del_req.is_verified})"
     elif del_req.status == "REJECTED":
         status_display = "Rejected"
-        rej_msg = del_req.rejection_reason or "Account details mismatch or policy criteria not met."
+        rej_msg = (
+            del_req.rejection_reason
+            or "Account details mismatch or policy criteria not met."
+        )
         msg = f"Your deletion request was rejected. Reason: {rej_msg}"
     else:
-        status_display = "Pending Review" if del_req.is_verified else "Awaiting OTP Verification"
+        status_display = (
+            "Pending Review" if del_req.is_verified else "Awaiting OTP Verification"
+        )
         msg = f"Request status is PENDING. (Verified: {del_req.is_verified})"
 
     return DeletionStatusDetailSchema(
@@ -355,4 +378,3 @@ def get_deletion_status(
         rejection_reason=del_req.rejection_reason or "",
         admin_notes=del_req.admin_notes or "",
     )
-

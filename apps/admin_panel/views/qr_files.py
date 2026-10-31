@@ -1,3 +1,4 @@
+import datetime
 import os
 import random
 import string
@@ -5,7 +6,7 @@ import time
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, FileResponse, Http404
 from django.core.paginator import Paginator
-from django.db.models import Sum
+from django.db.models import F, Sum
 from django.conf import settings
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.models.qr_file import QrFile
@@ -203,9 +204,10 @@ def qr_files_download(request, code):
     except QrFile.DoesNotExist:
         raise Http404("File not found.")
 
-    # Increment download count
-    qr_file.download_count += 1
-    qr_file.save()
+    # Increment download count atomically (read-modify-save lost concurrent downloads)
+    QrFile.objects.filter(pk=qr_file.pk).update(
+        download_count=F('download_count') + 1, updated_at=datetime.datetime.now()
+    )
 
     file_path = os.path.join(settings.MEDIA_ROOT, qr_file.file_path)
     if os.path.exists(file_path):

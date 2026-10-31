@@ -45,39 +45,31 @@ def insurance_approvals_index(request):
     pending_count = AgentApprovalRequest.objects.filter(status='pending').count()
 
     # Query new agent onboarding applications awaiting admin approval
-    pending_onboardings = Agent.objects.filter(status='pending_admin_approval').order_by('-created_at')
+    pending_onboardings = list(Agent.objects.filter(status='pending_admin_approval').order_by('-created_at'))
 
-    # Load associated details for onboarding agents
+    # Load associated details for onboarding agents in 3 batched queries (was ~4 per agent).
+    from django.db.models.functions import Lower
+    from apps.admin_panel.models.agent_subscription import AgentSubscription
+    # By email: agents.user_id is the Django auth_user id, not users.id.
+    emails = {agent.email.lower() for agent in pending_onboardings if agent.email}
+    users_by_email = {}
+    for user in User.objects.annotate(email_lc=Lower('email')).filter(email_lc__in=emails).order_by('id'):
+        users_by_email.setdefault(user.email_lc, user)
+    user_ids = {agent.insurance_id for agent in pending_onboardings if agent.insurance_id}
+    user_ids |= {agent.onboarded_by_id for agent in pending_onboardings if agent.onboarded_by_id}
+    users_by_id = User.objects.in_bulk(user_ids) if user_ids else {}
+    completed_subs = {}
+    for sub in AgentSubscription.objects.filter(
+        agent_id__in=[agent.id for agent in pending_onboardings], payment_status='completed'
+    ).order_by('id'):
+        completed_subs.setdefault(sub.agent_id, sub)
+
     for agent in pending_onboardings:
-        # Load user
-        try:
-            # By email: agents.user_id is the Django auth_user id, not users.id.
-            agent.associated_user = User.objects.filter(email__iexact=agent.email).first()
-        except Exception:
-            agent.associated_user = None
-
-        # Load insurance company user
-        if agent.insurance_id:
-            try:
-                agent.insurance_company_user = User.objects.get(id=agent.insurance_id, role='insurance')
-            except User.DoesNotExist:
-                agent.insurance_company_user = None
-        else:
-            agent.insurance_company_user = None
-
-        # Load onboarded_by
-        onboarded_by_id = getattr(agent, 'onboarded_by_id', None)
-        if onboarded_by_id:
-            try:
-                agent.onboarder = User.objects.get(id=onboarded_by_id)
-            except User.DoesNotExist:
-                agent.onboarder = None
-        else:
-            agent.onboarder = None
-
-        # Load subscription details
-        from apps.admin_panel.models.agent_subscription import AgentSubscription
-        agent.completed_sub = AgentSubscription.objects.filter(agent=agent, payment_status='completed').first()
+        agent.associated_user = users_by_email.get((agent.email or '').lower())
+        insurance_user = users_by_id.get(agent.insurance_id) if agent.insurance_id else None
+        agent.insurance_company_user = insurance_user if insurance_user and insurance_user.role == 'insurance' else None
+        agent.onboarder = users_by_id.get(agent.onboarded_by_id) if agent.onboarded_by_id else None
+        agent.completed_sub = completed_subs.get(agent.id)
 
     return render(request, 'admin/insurance_approvals.html', {
         'requests': page_obj,

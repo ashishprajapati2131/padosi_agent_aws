@@ -4,7 +4,7 @@ set -e
 # ==============================================================================
 # PadosiAgent Instant One-Click Rollback Script (GoDaddy cPanel / Passenger WSGI)
 # Usage:
-#   ./scripts/rollback_godaddy.sh               # Rolls back to previous commit
+#   ./scripts/rollback_godaddy.sh               # Rolls back to the commit live before the last deploy
 #   ./scripts/rollback_godaddy.sh <commit_sha>  # Rolls back to specific commit
 # ==============================================================================
 
@@ -22,11 +22,18 @@ echo " Project Directory: $PROJECT_DIR"
 echo "===================================================="
 
 # 1. Determine target rollback commit
+CURRENT_HEAD="$(git rev-parse HEAD)"
+if [ -z "$TARGET_COMMIT" ]; then
+    # Written by deploy_godaddy.sh just before it pulls.
+    PREV_SAVED="$(cat tmp/.previous_deployed_commit 2>/dev/null || true)"
+    if [ -n "$PREV_SAVED" ] && [ "$PREV_SAVED" != "$CURRENT_HEAD" ]             && git cat-file -e "${PREV_SAVED}^{commit}" 2>/dev/null; then
+        TARGET_COMMIT="$PREV_SAVED"
+    fi
+fi
 if [ -z "$TARGET_COMMIT" ]; then
     STATE_FILE="tmp/.last_deployed_commit"
     if [ -f "$STATE_FILE" ]; then
         LAST_SAVED="$(cat "$STATE_FILE" 2>/dev/null || true)"
-        CURRENT_HEAD="$(git rev-parse HEAD)"
         if [ "$LAST_SAVED" != "$CURRENT_HEAD" ] && [ -n "$LAST_SAVED" ]; then
             TARGET_COMMIT="$LAST_SAVED"
         fi
@@ -59,11 +66,31 @@ echo "==> Checking out target commit $TARGET_COMMIT..."
 git checkout "$TARGET_COMMIT"
 ROLLED_COMMIT="$(git rev-parse HEAD)"
 
-# 4. Collect static files
+# 4. Dependencies: reinstall only if requirements.txt differs between the two commits.
+if ! git diff --quiet "$ROLLED_COMMIT" "$CURRENT_HEAD" -- requirements.txt; then
+    echo "==> requirements.txt differs: reinstalling dependencies..."
+    "$PIP_BIN" install --disable-pip-version-check -r requirements.txt
+else
+    echo "==> requirements.txt unchanged: skipping pip install."
+fi
+
+# Migrations are NOT reversed automatically (a reverse can drop data). List them for a human.
+MIGRATION_DIFF="$(git diff --name-status "$ROLLED_COMMIT" "$CURRENT_HEAD" -- '*/migrations/*.py' || true)"
+if [ -n "$MIGRATION_DIFF" ]; then
+    echo "===================================================="
+    echo " WARNING: migrations differ between $ROLLED_COMMIT and $CURRENT_HEAD"
+    echo " The database schema was NOT rolled back. Review these and, if needed,"
+    echo " reverse them by hand (manage.py migrate <app> <previous_migration>)"
+    echo " after checking for data loss; restore_database is the last resort."
+    echo "$MIGRATION_DIFF"
+    echo "===================================================="
+fi
+
+# 5. Collect static files
 echo "==> Re-collecting static files..."
 $PY_BIN manage.py collectstatic --noinput
 
-# 5. Restart Passenger WSGI
+# 6. Restart Passenger WSGI
 echo "==> Restarting Passenger WSGI application..."
 mkdir -p tmp
 touch tmp/restart.txt

@@ -13,7 +13,8 @@ def _agent_city(agent):
     if not agent:
         return ''
     try:
-        city = agent.serviceableCities.first()
+        # .all() uses the prefetch; .first() re-queried per row. City has no Meta.ordering, so pk order == .first().
+        city = min(agent.serviceableCities.all(), key=lambda c: c.pk, default=None)
         if city and getattr(city, 'name', None):
             return capfirst(str(city.name).strip())
     except Exception:

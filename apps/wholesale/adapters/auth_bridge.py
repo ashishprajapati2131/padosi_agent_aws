@@ -100,9 +100,12 @@ def is_wholesale_admin(request):
     if admin_session_has_permission(request, 'wholesale'):
         return True
 
-    # 3. Standard Django superuser / staff
+    # 3. Standard Django superuser or staff with wholesale permission
     if hasattr(request, 'user') and request.user.is_authenticated:
-        return bool(request.user.is_staff or request.user.is_superuser)
+        if request.user.is_superuser:
+            return True
+        if request.user.is_staff and request.user.has_perm('wholesale.manage_wholesale'):
+            return True
 
     return False
 

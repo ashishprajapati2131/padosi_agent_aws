@@ -49,173 +49,406 @@ logger = logging.getLogger(__name__)
 # ─── Constants ──────────────────────────────────────────────────────────────────
 OTP_EXPIRY_SECONDS = 600  # 10 minutes
 ALL_INDIAN_STATES = [
-    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand',
-    'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
-    'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
-    'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
-    'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
-    'Andaman and Nicobar Islands', 'Chandigarh',
-    'Dadra and Nagar Haveli and Daman and Diu',
-    'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
+    "Andhra Pradesh",
+    "Arunachal Pradesh",
+    "Assam",
+    "Bihar",
+    "Chhattisgarh",
+    "Goa",
+    "Gujarat",
+    "Haryana",
+    "Himachal Pradesh",
+    "Jharkhand",
+    "Karnataka",
+    "Kerala",
+    "Madhya Pradesh",
+    "Maharashtra",
+    "Manipur",
+    "Meghalaya",
+    "Mizoram",
+    "Nagaland",
+    "Odisha",
+    "Punjab",
+    "Rajasthan",
+    "Sikkim",
+    "Tamil Nadu",
+    "Telangana",
+    "Tripura",
+    "Uttar Pradesh",
+    "Uttarakhand",
+    "West Bengal",
+    "Andaman and Nicobar Islands",
+    "Chandigarh",
+    "Dadra and Nagar Haveli and Daman and Diu",
+    "Delhi",
+    "Jammu and Kashmir",
+    "Ladakh",
+    "Lakshadweep",
+    "Puducherry",
 ]
 
 INSURANCE_SEGMENTS = [
-    {'id': 'health', 'label': 'Health',  'icon': 'fas fa-heartbeat'},
-    {'id': 'life',   'label': 'Life',    'icon': 'fas fa-user-shield'},
-    {'id': 'motor',  'label': 'Motor',   'icon': 'fas fa-car'},
-    {'id': 'sme',    'label': 'SME',     'icon': 'fas fa-building'},
+    {"id": "health", "label": "Health", "icon": "fas fa-heartbeat"},
+    {"id": "life", "label": "Life", "icon": "fas fa-user-shield"},
+    {"id": "motor", "label": "Motor", "icon": "fas fa-car"},
+    {"id": "sme", "label": "SME", "icon": "fas fa-building"},
 ]
-ALLOWED_SEGMENT_IDS = frozenset(item['id'] for item in INSURANCE_SEGMENTS)
-ALLOWED_INVESTMENT_TYPES = frozenset({'sip', 'lumpsum', 'elss'})
-_RESERVED_PROFILE_SLUGS = frozenset({
-    'admin', 'django-admin', 'about', 'contact', 'terms', 'privacy', 'faq',
-    'find-agents', 'calculators', 'calculator', 'coming-soon', 'lic-agent',
-    'cancellation-refund-policy', 'blacklisted-agents', 'marketing', 'media',
-    'static', 'agent-registration', 'agent-register-step1', 'agent-register-step2',
-    'agent-login', 'forgot-password', 'reset-password', 'agent-logout', 'logout',
-    'profile', 'card', 'review', 'review-card', 'join', 'auth', 'events',
-    'chatbot-api', 'championship', 'insurance', 'insurance-login', 'api',
-    'manifest.webmanifest', 'sw.js', 'offline.html', 'sitemap.xml', 'robots.txt',
-})
+ALLOWED_SEGMENT_IDS = frozenset(item["id"] for item in INSURANCE_SEGMENTS)
+ALLOWED_INVESTMENT_TYPES = frozenset({"sip", "lumpsum", "elss"})
+_RESERVED_PROFILE_SLUGS = frozenset(
+    {
+        "admin",
+        "django-admin",
+        "about",
+        "contact",
+        "terms",
+        "privacy",
+        "faq",
+        "find-agents",
+        "calculators",
+        "calculator",
+        "coming-soon",
+        "lic-agent",
+        "cancellation-refund-policy",
+        "blacklisted-agents",
+        "marketing",
+        "media",
+        "static",
+        "agent-registration",
+        "agent-register-step1",
+        "agent-register-step2",
+        "agent-login",
+        "forgot-password",
+        "reset-password",
+        "agent-logout",
+        "logout",
+        "profile",
+        "card",
+        "review",
+        "review-card",
+        "join",
+        "auth",
+        "events",
+        "chatbot-api",
+        "championship",
+        "insurance",
+        "insurance-login",
+        "api",
+        "manifest.webmanifest",
+        "sw.js",
+        "offline.html",
+        "sitemap.xml",
+        "robots.txt",
+    }
+)
 
 LANGUAGE_OPTIONS = [
-    'Hindi', 'English', 'Gujarati', 'Marathi', 'Tamil',
-    'Telugu', 'Kannada', 'Bengali', 'Punjabi', 'Malayalam',
-    'Odia', 'Urdu', 'Assamese', 'Rajasthani',
+    "Hindi",
+    "English",
+    "Gujarati",
+    "Marathi",
+    "Tamil",
+    "Telugu",
+    "Kannada",
+    "Bengali",
+    "Punjabi",
+    "Malayalam",
+    "Odia",
+    "Urdu",
+    "Assamese",
+    "Rajasthani",
 ]
 
 _DEFAULT_PRICING = {
-    'scratch_card_enabled': True,
-    'social_discount_active': True,
-    'social_discount_amount': 200,
-    'starter': {
-        'name': PLAN_LABELS['starter'],
-        'full_price': 1999,
-        'promo_price': 1499,
-        'scratch_price': 1299,
-        'description': 'Perfect for New Agents',
-        'badge': 'STANDARD',
-        'scratch_text': 'SCRATCH',
-        'scratch_enabled': True,
+    "scratch_card_enabled": True,
+    "social_discount_active": True,
+    "social_discount_amount": 200,
+    "starter": {
+        "name": PLAN_LABELS["starter"],
+        "full_price": 1999,
+        "promo_price": 1499,
+        "scratch_price": 1299,
+        "description": "Perfect for New Agents",
+        "badge": "STANDARD",
+        "scratch_text": "SCRATCH",
+        "scratch_enabled": True,
     },
-    'professional': {
-        'name': PLAN_LABELS['professional'],
-        'full_price': 9999,
-        'promo_price': 7999,
-        'scratch_price': 7799,
-        'description': 'For Established Professionals',
-        'badge': 'RECOMMENDED',
-        'scratch_text': 'SCRATCH',
-        'scratch_enabled': True,
+    "professional": {
+        "name": PLAN_LABELS["professional"],
+        "full_price": 9999,
+        "promo_price": 7999,
+        "scratch_price": 7799,
+        "description": "For Established Professionals",
+        "badge": "RECOMMENDED",
+        "scratch_text": "SCRATCH",
+        "scratch_enabled": True,
     },
-    'promo_discount_label': 'Partner Promo Applied! Once in a lifetime offer!',
-    'standard_label': 'Get started with our standard partner plans',
-    'choose_plan_heading': 'Start your digital journey',
-    'comparison_price_display': 'original',
-    'social_links': [
-        {'platform': 'Instagram', 'url': 'https://instagram.com/padosiagent', 'icon': 'fa-instagram'},
-        {'platform': 'Facebook', 'url': 'https://facebook.com/padosiagent', 'icon': 'fa-facebook'},
-        {'platform': 'YouTube', 'url': 'https://youtube.com/@padosiagent', 'icon': 'fa-youtube'},
-        {'platform': 'LinkedIn', 'url': 'https://linkedin.com/company/padosiagent', 'icon': 'fa-linkedin'},
+    "promo_discount_label": "Partner Promo Applied! Once in a lifetime offer!",
+    "standard_label": "Get started with our standard partner plans",
+    "choose_plan_heading": "Start your digital journey",
+    "comparison_price_display": "original",
+    "social_links": [
+        {
+            "platform": "Instagram",
+            "url": "https://instagram.com/padosiagent",
+            "icon": "fa-instagram",
+        },
+        {
+            "platform": "Facebook",
+            "url": "https://facebook.com/padosiagent",
+            "icon": "fa-facebook",
+        },
+        {
+            "platform": "YouTube",
+            "url": "https://youtube.com/@padosiagent",
+            "icon": "fa-youtube",
+        },
+        {
+            "platform": "LinkedIn",
+            "url": "https://linkedin.com/company/padosiagent",
+            "icon": "fa-linkedin",
+        },
     ],
-    'follow_tiers': [
-        {'follows': 1, 'discount_amount': 100, 'starter_discount': 100, 'prof_discount': 100, 'starter_price': 1399, 'prof_price': 7899},
-        {'follows': 2, 'discount_amount': 200, 'starter_discount': 200, 'prof_discount': 200, 'starter_price': 1299, 'prof_price': 7799},
-        {'follows': 3, 'discount_amount': 300, 'starter_discount': 300, 'prof_discount': 300, 'starter_price': 1199, 'prof_price': 7699},
-        {'follows': 4, 'discount_amount': 500, 'starter_discount': 500, 'prof_discount': 500, 'starter_price': 999, 'prof_price': 7499},
+    "follow_tiers": [
+        {
+            "follows": 1,
+            "discount_amount": 100,
+            "starter_discount": 100,
+            "prof_discount": 100,
+            "starter_price": 1399,
+            "prof_price": 7899,
+        },
+        {
+            "follows": 2,
+            "discount_amount": 200,
+            "starter_discount": 200,
+            "prof_discount": 200,
+            "starter_price": 1299,
+            "prof_price": 7799,
+        },
+        {
+            "follows": 3,
+            "discount_amount": 300,
+            "starter_discount": 300,
+            "prof_discount": 300,
+            "starter_price": 1199,
+            "prof_price": 7699,
+        },
+        {
+            "follows": 4,
+            "discount_amount": 500,
+            "starter_discount": 500,
+            "prof_discount": 500,
+            "starter_price": 999,
+            "prof_price": 7499,
+        },
     ],
 }
 
 _STARTER_PLAN_UI_FEATURES = [
-    {'name': 'Permanent<br>Webpage', 'icon': 'fa-globe', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
-    {'name': 'Professional<br>Digital Card', 'icon': 'fa-id-card-clip', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
-    {'name': 'Licensed<br>Badge', 'icon': 'fa-shield-halved', 'color': '#f59e0b', 'bg_color': '#fffbeb'},
-    {'name': 'Call & WhatsApp<br>Buttons', 'icon': 'fa-phone', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
-    {'name': 'Customer Review<br>& Rating', 'icon': 'fa-star', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
-    {'name': 'Profile<br>QR', 'icon': 'fa-qrcode', 'color': '#3b82f6', 'bg_color': '#eff6ff'},
-    {'name': 'Review & Rating<br>QR', 'icon': 'fa-comment-dots', 'color': '#0d9488', 'bg_color': '#f0fdfa'},
-    {'name': 'Product<br>Showcase', 'icon': 'fa-store', 'color': '#3b82f6', 'bg_color': '#eff6ff'},
-    {'name': 'Visibility in Your<br>Pin Code', 'icon': 'fa-location-dot', 'color': '#e11d48', 'bg_color': '#fff1f2'},
-    {'name': 'Downloadable<br>Digital Card', 'icon': 'fa-download', 'color': '#6366f1', 'bg_color': '#eef2ff'},
-    {'name': 'New Business<br>Leads', 'icon': 'fa-user-plus', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
+    {
+        "name": "Permanent<br>Webpage",
+        "icon": "fa-globe",
+        "color": "#16a34a",
+        "bg_color": "#f0fdf4",
+    },
+    {
+        "name": "Professional<br>Digital Card",
+        "icon": "fa-id-card-clip",
+        "color": "#6d28d9",
+        "bg_color": "#f3e8ff",
+    },
+    {
+        "name": "Licensed<br>Badge",
+        "icon": "fa-shield-halved",
+        "color": "#f59e0b",
+        "bg_color": "#fffbeb",
+    },
+    {
+        "name": "Call & WhatsApp<br>Buttons",
+        "icon": "fa-phone",
+        "color": "#16a34a",
+        "bg_color": "#f0fdf4",
+    },
+    {
+        "name": "Customer Review<br>& Rating",
+        "icon": "fa-star",
+        "color": "#6d28d9",
+        "bg_color": "#f3e8ff",
+    },
+    {
+        "name": "Profile<br>QR",
+        "icon": "fa-qrcode",
+        "color": "#3b82f6",
+        "bg_color": "#eff6ff",
+    },
+    {
+        "name": "Review & Rating<br>QR",
+        "icon": "fa-comment-dots",
+        "color": "#0d9488",
+        "bg_color": "#f0fdfa",
+    },
+    {
+        "name": "Product<br>Showcase",
+        "icon": "fa-store",
+        "color": "#3b82f6",
+        "bg_color": "#eff6ff",
+    },
+    {
+        "name": "Visibility in Your<br>Pin Code",
+        "icon": "fa-location-dot",
+        "color": "#e11d48",
+        "bg_color": "#fff1f2",
+    },
+    {
+        "name": "Downloadable<br>Digital Card",
+        "icon": "fa-download",
+        "color": "#6366f1",
+        "bg_color": "#eef2ff",
+    },
+    {
+        "name": "New Business<br>Leads",
+        "icon": "fa-user-plus",
+        "color": "#16a34a",
+        "bg_color": "#f0fdf4",
+    },
 ]
 
 _PROFESSIONAL_PLAN_UI_FEATURES = [
-    {'name': 'Trusted<br>Badge', 'icon': 'fa-award', 'color': '#f59e0b', 'bg_color': '#fffbeb'},
-    {'name': 'Lead<br>Preferences', 'icon': 'fa-filter', 'color': '#6366f1', 'bg_color': '#eef2ff'},
-    {'name': 'SEO - Google<br>will know you', 'icon': 'fa-magnifying-glass', 'color': '#3b82f6', 'bg_color': '#eff6ff'},
-    {'name': 'AIO &<br>GEO', 'icon': 'fa-robot', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
-    {'name': 'Profile<br>Analytics', 'icon': 'fa-chart-column', 'color': '#0d9488', 'bg_color': '#f0fdfa'},
-    {'name': 'Gallery', 'icon': 'fa-images', 'color': '#e11d48', 'bg_color': '#fff1f2'},
-    {'name': 'AI Auto-fill &<br>Suggestions', 'icon': 'fa-wand-magic-sparkles', 'color': '#8b5cf6', 'bg_color': '#f5f3ff'},
+    {
+        "name": "Trusted<br>Badge",
+        "icon": "fa-award",
+        "color": "#f59e0b",
+        "bg_color": "#fffbeb",
+    },
+    {
+        "name": "Lead<br>Preferences",
+        "icon": "fa-filter",
+        "color": "#6366f1",
+        "bg_color": "#eef2ff",
+    },
+    {
+        "name": "SEO - Google<br>will know you",
+        "icon": "fa-magnifying-glass",
+        "color": "#3b82f6",
+        "bg_color": "#eff6ff",
+    },
+    {
+        "name": "AIO &<br>GEO",
+        "icon": "fa-robot",
+        "color": "#6d28d9",
+        "bg_color": "#f3e8ff",
+    },
+    {
+        "name": "Profile<br>Analytics",
+        "icon": "fa-chart-column",
+        "color": "#0d9488",
+        "bg_color": "#f0fdfa",
+    },
+    {"name": "Gallery", "icon": "fa-images", "color": "#e11d48", "bg_color": "#fff1f2"},
+    {
+        "name": "AI Auto-fill &<br>Suggestions",
+        "icon": "fa-wand-magic-sparkles",
+        "color": "#8b5cf6",
+        "bg_color": "#f5f3ff",
+    },
 ]
 
 _PLAN_COMPARISON_ROWS = [
-    {'name': 'Permanent Webpage', 'starter': True, 'professional': True},
-    {'name': 'Professional Digital Card', 'starter': True, 'professional': True},
-    {'name': 'Licensed Badge', 'starter': True, 'professional': True},
-    {'name': 'Call & WhatsApp Buttons', 'starter': True, 'professional': True},
-    {'name': 'Customer Review & Rating', 'starter': True, 'professional': True},
-    {'name': 'Profile QR', 'starter': True, 'professional': True},
-    {'name': 'Review & Rating QR', 'starter': True, 'professional': True},
-    {'name': 'Product Showcase', 'starter': True, 'professional': True},
-    {'name': 'Visibility in Your Pin Code', 'starter': True, 'professional': True},
-    {'name': 'Downloadable Digital Card', 'starter': True, 'professional': True},
-    {'name': 'New Business Leads', 'starter': True, 'professional': 'priority'},
-    {'name': 'Trusted Badge', 'starter': False, 'professional': True},
-    {'name': 'Lead Preferences', 'starter': False, 'professional': True},
-    {'name': 'SEO – Google will know you', 'starter': False, 'professional': True},
-    {'name': 'AIO & GEO', 'starter': False, 'professional': True},
-    {'name': 'Profile Analytics', 'starter': False, 'professional': True},
-    {'name': 'Gallery', 'starter': False, 'professional': True},
-    {'name': 'AI Auto-fill & Suggestions', 'starter': False, 'professional': True},
+    {"name": "Permanent Webpage", "starter": True, "professional": True},
+    {"name": "Professional Digital Card", "starter": True, "professional": True},
+    {"name": "Licensed Badge", "starter": True, "professional": True},
+    {"name": "Call & WhatsApp Buttons", "starter": True, "professional": True},
+    {"name": "Customer Review & Rating", "starter": True, "professional": True},
+    {"name": "Profile QR", "starter": True, "professional": True},
+    {"name": "Review & Rating QR", "starter": True, "professional": True},
+    {"name": "Product Showcase", "starter": True, "professional": True},
+    {"name": "Visibility in Your Pin Code", "starter": True, "professional": True},
+    {"name": "Downloadable Digital Card", "starter": True, "professional": True},
+    {"name": "New Business Leads", "starter": True, "professional": "priority"},
+    {"name": "Trusted Badge", "starter": False, "professional": True},
+    {"name": "Lead Preferences", "starter": False, "professional": True},
+    {"name": "SEO – Google will know you", "starter": False, "professional": True},
+    {"name": "AIO & GEO", "starter": False, "professional": True},
+    {"name": "Profile Analytics", "starter": False, "professional": True},
+    {"name": "Gallery", "starter": False, "professional": True},
+    {"name": "AI Auto-fill & Suggestions", "starter": False, "professional": True},
 ]
 
 _DEFAULT_SCRATCH_POPUP = {
-    'overlay_bg': 'rgba(15, 23, 42, 0.85)',
-    'overlay_blur_px': 4,
-    'modal_bg': '#ffffff',
-    'modal_border_color': '#7c3aed',
-    'modal_border_width_px': 3,
-    'modal_radius_px': 28,
-    'modal_shadow': '0 18px 50px rgba(88, 28, 135, 0.22)',
-    'close_btn_bg': '#f1f5f9',
-    'close_btn_color': '#64748b',
-    'close_btn_hover_bg': '#e2e8f0',
-    'close_btn_hover_color': '#0f172a',
-    'urgency_line_1': '🔥 Hurry! Offer valid only for the first {total_seats} users!',
-    'urgency_line_2': '🔥 {claimed_seats}/{total_seats} Claimed',
-    'urgency_top_color': '#9f1239',
-    'urgency_count_color': '#e11d48',
-    'total_seats': 1000,
-    'claimed_seats': 874,
-    'strike_price_color': '#94a3b8',
-    'current_price_color': '#16a34a',
-    'discount_sticker_bg': '#e11d48',
-    'discount_label': 'OFF',
-    'follower_discount_text': 'Extra Follower Discount Applied!',
-    'follower_discount_bg': '#d1fae5',
-    'follower_discount_color': '#059669',
-    'follower_discount_border': '#6ee7b7',
-    'show_follower_discount_badge': True,
-    'features_section_title': "What You'll Get",
-    'features_section_accent': '#8b5cf6',
-    'features_section_line': '#7c3aed',
-    'social_section_title': 'Follow on',
-    'show_features_section': True,
-    'show_social_section': True,
-    'claim_btn_text': 'Claim Offer',
-    'claim_btn_bg': '#6d28d9',
-    'claim_btn_color': '#ffffff',
-    'claim_btn_hover_bg': '#5b21b6',
-    'features': [
-        {'name': 'Permanent<br>Website', 'icon': 'fa-globe', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
-        {'name': 'Digital<br>Card', 'icon': 'fa-id-card-clip', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
-        {'name': 'Licensed<br>Badge', 'icon': 'fa-shield-halved', 'color': '#f97316', 'bg_color': '#fff7ed'},
-        {'name': 'Call &<br>WhatsApp', 'icon': 'fa-phone', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
-        {'name': 'Customer<br>Reviews', 'icon': 'fa-star', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
-        {'name': 'Product<br>Showcase', 'icon': 'fa-store', 'color': '#3b82f6', 'bg_color': '#eff6ff'},
+    "overlay_bg": "rgba(15, 23, 42, 0.85)",
+    "overlay_blur_px": 4,
+    "modal_bg": "#ffffff",
+    "modal_border_color": "#7c3aed",
+    "modal_border_width_px": 3,
+    "modal_radius_px": 28,
+    "modal_shadow": "0 18px 50px rgba(88, 28, 135, 0.22)",
+    "close_btn_bg": "#f1f5f9",
+    "close_btn_color": "#64748b",
+    "close_btn_hover_bg": "#e2e8f0",
+    "close_btn_hover_color": "#0f172a",
+    "urgency_line_1": "🔥 Hurry! Offer valid only for the first {total_seats} users!",
+    "urgency_line_2": "🔥 {claimed_seats}/{total_seats} Claimed",
+    "urgency_top_color": "#9f1239",
+    "urgency_count_color": "#e11d48",
+    "total_seats": 1000,
+    "claimed_seats": 874,
+    "strike_price_color": "#94a3b8",
+    "current_price_color": "#16a34a",
+    "discount_sticker_bg": "#e11d48",
+    "discount_label": "OFF",
+    "follower_discount_text": "Extra Follower Discount Applied!",
+    "follower_discount_bg": "#d1fae5",
+    "follower_discount_color": "#059669",
+    "follower_discount_border": "#6ee7b7",
+    "show_follower_discount_badge": True,
+    "features_section_title": "What You'll Get",
+    "features_section_accent": "#8b5cf6",
+    "features_section_line": "#7c3aed",
+    "social_section_title": "Follow on",
+    "show_features_section": True,
+    "show_social_section": True,
+    "claim_btn_text": "Claim Offer",
+    "claim_btn_bg": "#6d28d9",
+    "claim_btn_color": "#ffffff",
+    "claim_btn_hover_bg": "#5b21b6",
+    "features": [
+        {
+            "name": "Permanent<br>Website",
+            "icon": "fa-globe",
+            "color": "#16a34a",
+            "bg_color": "#f0fdf4",
+        },
+        {
+            "name": "Digital<br>Card",
+            "icon": "fa-id-card-clip",
+            "color": "#6d28d9",
+            "bg_color": "#f3e8ff",
+        },
+        {
+            "name": "Licensed<br>Badge",
+            "icon": "fa-shield-halved",
+            "color": "#f97316",
+            "bg_color": "#fff7ed",
+        },
+        {
+            "name": "Call &<br>WhatsApp",
+            "icon": "fa-phone",
+            "color": "#16a34a",
+            "bg_color": "#f0fdf4",
+        },
+        {
+            "name": "Customer<br>Reviews",
+            "icon": "fa-star",
+            "color": "#6d28d9",
+            "bg_color": "#f3e8ff",
+        },
+        {
+            "name": "Product<br>Showcase",
+            "icon": "fa-store",
+            "color": "#3b82f6",
+            "bg_color": "#eff6ff",
+        },
     ],
 }
 
@@ -225,34 +458,43 @@ def _normalize_scratch_popup(raw=None, *, format_urgency=True):
     cfg = dict(_DEFAULT_SCRATCH_POPUP)
     if isinstance(raw, dict):
         for key, val in raw.items():
-            if key == 'features':
+            if key == "features":
                 continue
-            if val is not None and val != '':
+            if val is not None and val != "":
                 cfg[key] = val
 
     features = None
-    if isinstance(raw, dict) and isinstance(raw.get('features'), list) and raw['features']:
-        features = raw['features']
-    cfg['features'] = features or list(_DEFAULT_SCRATCH_POPUP['features'])
+    if (
+        isinstance(raw, dict)
+        and isinstance(raw.get("features"), list)
+        and raw["features"]
+    ):
+        features = raw["features"]
+    cfg["features"] = features or list(_DEFAULT_SCRATCH_POPUP["features"])
 
     try:
-        total_seats = int(cfg.get('total_seats') or 1000)
+        total_seats = int(cfg.get("total_seats") or 1000)
     except (TypeError, ValueError):
         total_seats = 1000
     try:
-        claimed_seats = int(cfg.get('claimed_seats') or 874)
+        claimed_seats = int(cfg.get("claimed_seats") or 874)
     except (TypeError, ValueError):
         claimed_seats = 874
     spots_left = max(0, total_seats - claimed_seats)
-    cfg['total_seats'] = total_seats
-    cfg['claimed_seats'] = claimed_seats
-    cfg['spots_left'] = spots_left
+    cfg["total_seats"] = total_seats
+    cfg["claimed_seats"] = claimed_seats
+    cfg["spots_left"] = spots_left
 
-    cfg['show_features_section'] = _parse_json_flag(cfg.get('show_features_section', True))
-    cfg['show_social_section'] = _parse_json_flag(cfg.get('show_social_section', True))
-    cfg['show_follower_discount_badge'] = _parse_json_flag(cfg.get('show_follower_discount_badge', True))
+    cfg["show_features_section"] = _parse_json_flag(
+        cfg.get("show_features_section", True)
+    )
+    cfg["show_social_section"] = _parse_json_flag(cfg.get("show_social_section", True))
+    cfg["show_follower_discount_badge"] = _parse_json_flag(
+        cfg.get("show_follower_discount_badge", True)
+    )
 
     if format_urgency:
+
         def _fmt(template, fallback):
             text = template or fallback
             try:
@@ -264,38 +506,49 @@ def _normalize_scratch_popup(raw=None, *, format_urgency=True):
             except (KeyError, ValueError, IndexError):
                 return text
 
-        cfg['urgency_line_1_display'] = _fmt(
-            cfg.get('urgency_line_1'),
-            _DEFAULT_SCRATCH_POPUP['urgency_line_1'],
+        cfg["urgency_line_1_display"] = _fmt(
+            cfg.get("urgency_line_1"),
+            _DEFAULT_SCRATCH_POPUP["urgency_line_1"],
         )
-        cfg['urgency_line_2_display'] = _fmt(
-            cfg.get('urgency_line_2'),
-            _DEFAULT_SCRATCH_POPUP['urgency_line_2'],
+        cfg["urgency_line_2_display"] = _fmt(
+            cfg.get("urgency_line_2"),
+            _DEFAULT_SCRATCH_POPUP["urgency_line_2"],
         )
     else:
-        cfg['urgency_line_1_display'] = cfg.get('urgency_line_1') or _DEFAULT_SCRATCH_POPUP['urgency_line_1']
-        cfg['urgency_line_2_display'] = cfg.get('urgency_line_2') or _DEFAULT_SCRATCH_POPUP['urgency_line_2']
+        cfg["urgency_line_1_display"] = (
+            cfg.get("urgency_line_1") or _DEFAULT_SCRATCH_POPUP["urgency_line_1"]
+        )
+        cfg["urgency_line_2_display"] = (
+            cfg.get("urgency_line_2") or _DEFAULT_SCRATCH_POPUP["urgency_line_2"]
+        )
 
     return cfg
 
 
 def _parse_scratch_popup_from_post(post):
     """Build scratch_popup dict from admin plans form POST."""
-    pf_names = post.getlist('sp_feature_name[]')
-    pf_icons = post.getlist('sp_feature_icon[]')
-    pf_colors = post.getlist('sp_feature_color[]')
-    pf_bg_colors = post.getlist('sp_feature_bg_color[]')
+    pf_names = post.getlist("sp_feature_name[]")
+    pf_icons = post.getlist("sp_feature_icon[]")
+    pf_colors = post.getlist("sp_feature_color[]")
+    pf_bg_colors = post.getlist("sp_feature_bg_color[]")
     features = []
     for i, name in enumerate(pf_names):
-        name = (name or '').strip()
+        name = (name or "").strip()
         if not name:
             continue
-        features.append({
-            'name': name,
-            'icon': (pf_icons[i] if i < len(pf_icons) else 'fa-star').strip() or 'fa-star',
-            'color': (pf_colors[i] if i < len(pf_colors) else '#16a34a').strip() or '#16a34a',
-            'bg_color': (pf_bg_colors[i] if i < len(pf_bg_colors) else '#f0fdf4').strip() or '#f0fdf4',
-        })
+        features.append(
+            {
+                "name": name,
+                "icon": (pf_icons[i] if i < len(pf_icons) else "fa-star").strip()
+                or "fa-star",
+                "color": (pf_colors[i] if i < len(pf_colors) else "#16a34a").strip()
+                or "#16a34a",
+                "bg_color": (
+                    pf_bg_colors[i] if i < len(pf_bg_colors) else "#f0fdf4"
+                ).strip()
+                or "#f0fdf4",
+            }
+        )
 
     def _int(key, default):
         try:
@@ -304,51 +557,135 @@ def _parse_scratch_popup_from_post(post):
             return default
 
     return {
-        'overlay_bg': (post.get('sp_overlay_bg') or _DEFAULT_SCRATCH_POPUP['overlay_bg']).strip(),
-        'overlay_blur_px': _int('sp_overlay_blur_px', _DEFAULT_SCRATCH_POPUP['overlay_blur_px']),
-        'modal_bg': (post.get('sp_modal_bg') or _DEFAULT_SCRATCH_POPUP['modal_bg']).strip(),
-        'modal_border_color': (post.get('sp_modal_border_color') or _DEFAULT_SCRATCH_POPUP['modal_border_color']).strip(),
-        'modal_border_width_px': _int('sp_modal_border_width_px', _DEFAULT_SCRATCH_POPUP['modal_border_width_px']),
-        'modal_radius_px': _int('sp_modal_radius_px', _DEFAULT_SCRATCH_POPUP['modal_radius_px']),
-        'modal_shadow': (post.get('sp_modal_shadow') or _DEFAULT_SCRATCH_POPUP['modal_shadow']).strip(),
-        'close_btn_bg': (post.get('sp_close_btn_bg') or _DEFAULT_SCRATCH_POPUP['close_btn_bg']).strip(),
-        'close_btn_color': (post.get('sp_close_btn_color') or _DEFAULT_SCRATCH_POPUP['close_btn_color']).strip(),
-        'close_btn_hover_bg': (post.get('sp_close_btn_hover_bg') or _DEFAULT_SCRATCH_POPUP['close_btn_hover_bg']).strip(),
-        'close_btn_hover_color': (post.get('sp_close_btn_hover_color') or _DEFAULT_SCRATCH_POPUP['close_btn_hover_color']).strip(),
-        'urgency_line_1': (post.get('sp_urgency_line_1') or _DEFAULT_SCRATCH_POPUP['urgency_line_1']).strip(),
-        'urgency_line_2': (post.get('sp_urgency_line_2') or _DEFAULT_SCRATCH_POPUP['urgency_line_2']).strip(),
-        'urgency_top_color': (post.get('sp_urgency_top_color') or _DEFAULT_SCRATCH_POPUP['urgency_top_color']).strip(),
-        'urgency_count_color': (post.get('sp_urgency_count_color') or _DEFAULT_SCRATCH_POPUP['urgency_count_color']).strip(),
-        'total_seats': _int('sp_total_seats', _DEFAULT_SCRATCH_POPUP['total_seats']),
-        'claimed_seats': _int('sp_claimed_seats', _DEFAULT_SCRATCH_POPUP['claimed_seats']),
-        'strike_price_color': (post.get('sp_strike_price_color') or _DEFAULT_SCRATCH_POPUP['strike_price_color']).strip(),
-        'current_price_color': (post.get('sp_current_price_color') or _DEFAULT_SCRATCH_POPUP['current_price_color']).strip(),
-        'discount_sticker_bg': (post.get('sp_discount_sticker_bg') or _DEFAULT_SCRATCH_POPUP['discount_sticker_bg']).strip(),
-        'discount_label': (post.get('sp_discount_label') or _DEFAULT_SCRATCH_POPUP['discount_label']).strip()[:12] or 'OFF',
-        'follower_discount_text': (post.get('sp_follower_discount_text') or _DEFAULT_SCRATCH_POPUP['follower_discount_text']).strip(),
-        'follower_discount_bg': (post.get('sp_follower_discount_bg') or _DEFAULT_SCRATCH_POPUP['follower_discount_bg']).strip(),
-        'follower_discount_color': (post.get('sp_follower_discount_color') or _DEFAULT_SCRATCH_POPUP['follower_discount_color']).strip(),
-        'follower_discount_border': (post.get('sp_follower_discount_border') or _DEFAULT_SCRATCH_POPUP['follower_discount_border']).strip(),
-        'show_follower_discount_badge': 'sp_show_follower_discount_badge' in post,
-        'features_section_title': (post.get('sp_features_section_title') or _DEFAULT_SCRATCH_POPUP['features_section_title']).strip(),
-        'features_section_accent': (post.get('sp_features_section_accent') or _DEFAULT_SCRATCH_POPUP['features_section_accent']).strip(),
-        'features_section_line': (post.get('sp_features_section_line') or _DEFAULT_SCRATCH_POPUP['features_section_line']).strip(),
-        'social_section_title': (post.get('sp_social_section_title') or _DEFAULT_SCRATCH_POPUP['social_section_title']).strip(),
-        'show_features_section': 'sp_show_features_section' in post,
-        'show_social_section': 'sp_show_social_section' in post,
-        'claim_btn_text': (post.get('sp_claim_btn_text') or _DEFAULT_SCRATCH_POPUP['claim_btn_text']).strip()[:40] or 'Claim Offer',
-        'claim_btn_bg': (post.get('sp_claim_btn_bg') or _DEFAULT_SCRATCH_POPUP['claim_btn_bg']).strip(),
-        'claim_btn_color': (post.get('sp_claim_btn_color') or _DEFAULT_SCRATCH_POPUP['claim_btn_color']).strip(),
-        'claim_btn_hover_bg': (post.get('sp_claim_btn_hover_bg') or _DEFAULT_SCRATCH_POPUP['claim_btn_hover_bg']).strip(),
-        'features': features or list(_DEFAULT_SCRATCH_POPUP['features']),
+        "overlay_bg": (
+            post.get("sp_overlay_bg") or _DEFAULT_SCRATCH_POPUP["overlay_bg"]
+        ).strip(),
+        "overlay_blur_px": _int(
+            "sp_overlay_blur_px", _DEFAULT_SCRATCH_POPUP["overlay_blur_px"]
+        ),
+        "modal_bg": (
+            post.get("sp_modal_bg") or _DEFAULT_SCRATCH_POPUP["modal_bg"]
+        ).strip(),
+        "modal_border_color": (
+            post.get("sp_modal_border_color")
+            or _DEFAULT_SCRATCH_POPUP["modal_border_color"]
+        ).strip(),
+        "modal_border_width_px": _int(
+            "sp_modal_border_width_px", _DEFAULT_SCRATCH_POPUP["modal_border_width_px"]
+        ),
+        "modal_radius_px": _int(
+            "sp_modal_radius_px", _DEFAULT_SCRATCH_POPUP["modal_radius_px"]
+        ),
+        "modal_shadow": (
+            post.get("sp_modal_shadow") or _DEFAULT_SCRATCH_POPUP["modal_shadow"]
+        ).strip(),
+        "close_btn_bg": (
+            post.get("sp_close_btn_bg") or _DEFAULT_SCRATCH_POPUP["close_btn_bg"]
+        ).strip(),
+        "close_btn_color": (
+            post.get("sp_close_btn_color") or _DEFAULT_SCRATCH_POPUP["close_btn_color"]
+        ).strip(),
+        "close_btn_hover_bg": (
+            post.get("sp_close_btn_hover_bg")
+            or _DEFAULT_SCRATCH_POPUP["close_btn_hover_bg"]
+        ).strip(),
+        "close_btn_hover_color": (
+            post.get("sp_close_btn_hover_color")
+            or _DEFAULT_SCRATCH_POPUP["close_btn_hover_color"]
+        ).strip(),
+        "urgency_line_1": (
+            post.get("sp_urgency_line_1") or _DEFAULT_SCRATCH_POPUP["urgency_line_1"]
+        ).strip(),
+        "urgency_line_2": (
+            post.get("sp_urgency_line_2") or _DEFAULT_SCRATCH_POPUP["urgency_line_2"]
+        ).strip(),
+        "urgency_top_color": (
+            post.get("sp_urgency_top_color")
+            or _DEFAULT_SCRATCH_POPUP["urgency_top_color"]
+        ).strip(),
+        "urgency_count_color": (
+            post.get("sp_urgency_count_color")
+            or _DEFAULT_SCRATCH_POPUP["urgency_count_color"]
+        ).strip(),
+        "total_seats": _int("sp_total_seats", _DEFAULT_SCRATCH_POPUP["total_seats"]),
+        "claimed_seats": _int(
+            "sp_claimed_seats", _DEFAULT_SCRATCH_POPUP["claimed_seats"]
+        ),
+        "strike_price_color": (
+            post.get("sp_strike_price_color")
+            or _DEFAULT_SCRATCH_POPUP["strike_price_color"]
+        ).strip(),
+        "current_price_color": (
+            post.get("sp_current_price_color")
+            or _DEFAULT_SCRATCH_POPUP["current_price_color"]
+        ).strip(),
+        "discount_sticker_bg": (
+            post.get("sp_discount_sticker_bg")
+            or _DEFAULT_SCRATCH_POPUP["discount_sticker_bg"]
+        ).strip(),
+        "discount_label": (
+            post.get("sp_discount_label") or _DEFAULT_SCRATCH_POPUP["discount_label"]
+        ).strip()[:12]
+        or "OFF",
+        "follower_discount_text": (
+            post.get("sp_follower_discount_text")
+            or _DEFAULT_SCRATCH_POPUP["follower_discount_text"]
+        ).strip(),
+        "follower_discount_bg": (
+            post.get("sp_follower_discount_bg")
+            or _DEFAULT_SCRATCH_POPUP["follower_discount_bg"]
+        ).strip(),
+        "follower_discount_color": (
+            post.get("sp_follower_discount_color")
+            or _DEFAULT_SCRATCH_POPUP["follower_discount_color"]
+        ).strip(),
+        "follower_discount_border": (
+            post.get("sp_follower_discount_border")
+            or _DEFAULT_SCRATCH_POPUP["follower_discount_border"]
+        ).strip(),
+        "show_follower_discount_badge": "sp_show_follower_discount_badge" in post,
+        "features_section_title": (
+            post.get("sp_features_section_title")
+            or _DEFAULT_SCRATCH_POPUP["features_section_title"]
+        ).strip(),
+        "features_section_accent": (
+            post.get("sp_features_section_accent")
+            or _DEFAULT_SCRATCH_POPUP["features_section_accent"]
+        ).strip(),
+        "features_section_line": (
+            post.get("sp_features_section_line")
+            or _DEFAULT_SCRATCH_POPUP["features_section_line"]
+        ).strip(),
+        "social_section_title": (
+            post.get("sp_social_section_title")
+            or _DEFAULT_SCRATCH_POPUP["social_section_title"]
+        ).strip(),
+        "show_features_section": "sp_show_features_section" in post,
+        "show_social_section": "sp_show_social_section" in post,
+        "claim_btn_text": (
+            post.get("sp_claim_btn_text") or _DEFAULT_SCRATCH_POPUP["claim_btn_text"]
+        ).strip()[:40]
+        or "Claim Offer",
+        "claim_btn_bg": (
+            post.get("sp_claim_btn_bg") or _DEFAULT_SCRATCH_POPUP["claim_btn_bg"]
+        ).strip(),
+        "claim_btn_color": (
+            post.get("sp_claim_btn_color") or _DEFAULT_SCRATCH_POPUP["claim_btn_color"]
+        ).strip(),
+        "claim_btn_hover_bg": (
+            post.get("sp_claim_btn_hover_bg")
+            or _DEFAULT_SCRATCH_POPUP["claim_btn_hover_bg"]
+        ).strip(),
+        "features": features or list(_DEFAULT_SCRATCH_POPUP["features"]),
     }
+
 
 def _tier_optional_float(tier, key):
     """Return a float from a tier field, or None if missing/blank."""
     if not isinstance(tier, dict) or key not in tier:
         return None
     val = tier.get(key)
-    if val in (None, ''):
+    if val in (None, ""):
         return None
     try:
         return float(val)
@@ -358,11 +695,11 @@ def _tier_optional_float(tier, key):
 
 def _tier_plan_discount(tier, plan_key, default_discount=0):
     """Extra ₹ OFF for starter or professional. Per-plan fields win over shared discount_amount."""
-    specific_key = 'starter_discount' if plan_key == 'starter' else 'prof_discount'
+    specific_key = "starter_discount" if plan_key == "starter" else "prof_discount"
     specific = _tier_optional_float(tier, specific_key)
     if specific is not None:
         return specific
-    shared = _tier_optional_float(tier, 'discount_amount')
+    shared = _tier_optional_float(tier, "discount_amount")
     if shared is not None:
         return shared
     try:
@@ -373,7 +710,7 @@ def _tier_plan_discount(tier, plan_key, default_discount=0):
 
 def _tier_plan_charged_price(tier, plan_key, initial_price, default_discount=0):
     """Price charged for a plan at this follow tier (excl. GST)."""
-    price_key = 'starter_price' if plan_key == 'starter' else 'prof_price'
+    price_key = "starter_price" if plan_key == "starter" else "prof_price"
     saved = _tier_optional_float(tier, price_key)
     if saved is not None and saved > 0:
         return saved
@@ -389,25 +726,29 @@ def _get_tier_prices(pricing_config, follow_count):
     if not isinstance(pricing_config, dict):
         pricing_config = dict(_DEFAULT_PRICING)
 
-    starter_cfg = pricing_config.get('starter', _DEFAULT_PRICING['starter'])
-    prof_cfg = pricing_config.get('professional', _DEFAULT_PRICING['professional'])
+    starter_cfg = pricing_config.get("starter", _DEFAULT_PRICING["starter"])
+    prof_cfg = pricing_config.get("professional", _DEFAULT_PRICING["professional"])
 
-    starter_full = float(starter_cfg.get('full_price', 1999) or 1999)
-    starter_promo = float(starter_cfg.get('promo_price', 1499) or 1499)
-    starter_scratch = float(starter_cfg.get('scratch_price', starter_promo) or starter_promo)
+    starter_full = float(starter_cfg.get("full_price", 1999) or 1999)
+    starter_promo = float(starter_cfg.get("promo_price", 1499) or 1499)
+    starter_scratch = float(
+        starter_cfg.get("scratch_price", starter_promo) or starter_promo
+    )
     starter_scratch_enabled = _is_scratch_enabled(starter_cfg)
 
-    prof_full = float(prof_cfg.get('full_price', 9999) or 9999)
-    prof_promo = float(prof_cfg.get('promo_price', 7999) or 7999)
-    prof_scratch = float(prof_cfg.get('scratch_price', prof_promo) or prof_promo)
+    prof_full = float(prof_cfg.get("full_price", 9999) or 9999)
+    prof_promo = float(prof_cfg.get("promo_price", 7999) or 7999)
+    prof_scratch = float(prof_cfg.get("scratch_price", prof_promo) or prof_promo)
     prof_scratch_enabled = _is_scratch_enabled(prof_cfg)
 
     starter_initial = starter_scratch if starter_scratch_enabled else starter_promo
     prof_initial = prof_scratch if prof_scratch_enabled else prof_promo
 
-    social_active = pricing_config.get('social_discount_active', True)
-    default_discount = float(pricing_config.get('social_discount_amount', 200) or 200)
-    follow_tiers = [t for t in (pricing_config.get('follow_tiers') or []) if isinstance(t, dict)]
+    social_active = pricing_config.get("social_discount_active", True)
+    default_discount = float(pricing_config.get("social_discount_amount", 200) or 200)
+    follow_tiers = [
+        t for t in (pricing_config.get("follow_tiers") or []) if isinstance(t, dict)
+    ]
 
     starter_price = starter_initial
     prof_price = prof_initial
@@ -421,10 +762,18 @@ def _get_tier_prices(pricing_config, follow_count):
             matched = False
             for tier in sorted_tiers:
                 if follow_count >= _tier_follow_count(tier):
-                    starter_applied_discount = _tier_plan_discount(tier, 'starter', default_discount)
-                    prof_applied_discount = _tier_plan_discount(tier, 'professional', default_discount)
-                    starter_price = _tier_plan_charged_price(tier, 'starter', starter_initial, default_discount)
-                    prof_price = _tier_plan_charged_price(tier, 'professional', prof_initial, default_discount)
+                    starter_applied_discount = _tier_plan_discount(
+                        tier, "starter", default_discount
+                    )
+                    prof_applied_discount = _tier_plan_discount(
+                        tier, "professional", default_discount
+                    )
+                    starter_price = _tier_plan_charged_price(
+                        tier, "starter", starter_initial, default_discount
+                    )
+                    prof_price = _tier_plan_charged_price(
+                        tier, "professional", prof_initial, default_discount
+                    )
                     applied_discount = starter_applied_discount
                     matched = True
                     break
@@ -450,53 +799,55 @@ def _get_tier_prices(pricing_config, follow_count):
     prof_total = int(round(prof_base + prof_gst))
 
     return {
-        'starter_full': starter_full,
-        'starter_price': starter_price,
-        'starter_base': starter_base,
-        'starter_gst': starter_gst,
-        'starter_total': starter_total,
-        'starter_scratch_price': starter_scratch,
-        'prof_full': prof_full,
-        'prof_price': prof_price,
-        'prof_base': prof_base,
-        'prof_gst': prof_gst,
-        'prof_total': prof_total,
-        'prof_scratch_price': prof_scratch,
-        'applied_discount': applied_discount,
-        'starter_applied_discount': starter_applied_discount,
-        'prof_applied_discount': prof_applied_discount,
-        'follow_count': follow_count,
+        "starter_full": starter_full,
+        "starter_price": starter_price,
+        "starter_base": starter_base,
+        "starter_gst": starter_gst,
+        "starter_total": starter_total,
+        "starter_scratch_price": starter_scratch,
+        "prof_full": prof_full,
+        "prof_price": prof_price,
+        "prof_base": prof_base,
+        "prof_gst": prof_gst,
+        "prof_total": prof_total,
+        "prof_scratch_price": prof_scratch,
+        "applied_discount": applied_discount,
+        "starter_applied_discount": starter_applied_discount,
+        "prof_applied_discount": prof_applied_discount,
+        "follow_count": follow_count,
     }
-
-
 
 
 def _exclusive_base_price(exclusive_config, follow_count=0, discount_unlocked=False):
     """Price shown/charged for the exclusive plan. Matches social-follow + discount-status."""
     config = exclusive_config or {}
-    base_price = float(config.get('base_price', 0) or 0)
-    follow_tiers = list(config.get('follow_tiers') or [])
+    base_price = float(config.get("base_price", 0) or 0)
+    follow_tiers = list(config.get("follow_tiers") or [])
     if follow_tiers:
-        follow_tiers.sort(key=lambda t: int(t.get('follows', 0) or 0), reverse=True)
+        follow_tiers.sort(key=lambda t: int(t.get("follows", 0) or 0), reverse=True)
         for tier in follow_tiers:
-            if follow_count >= int(tier.get('follows', 0) or 0):
-                return float(tier.get('price', base_price) or base_price)
+            if follow_count >= int(tier.get("follows", 0) or 0):
+                return float(tier.get("price", base_price) or base_price)
         if discount_unlocked:
             easiest = follow_tiers[-1]
-            return float(easiest.get('price', config.get('discounted_price', base_price)) or base_price)
+            return float(
+                easiest.get("price", config.get("discounted_price", base_price))
+                or base_price
+            )
         return base_price
     if discount_unlocked:
-        return float(config.get('discounted_price', base_price) or base_price)
+        return float(config.get("discounted_price", base_price) or base_price)
     return base_price
 
 
 def _resolve_registration_pincode(pincode):
     """Return a Pincode row from cache, local table, or fallback postal API (cached 24h)."""
-    pin = str(pincode or '').strip()
-    if not re.match(r'^[1-9]\d{5}$', pin):
+    pin = str(pincode or "").strip()
+    if not re.match(r"^[1-9]\d{5}$", pin):
         return None
-    cache_key = f'pincode_row_{pin}'
+    cache_key = f"pincode_row_{pin}"
     from django.core.cache import cache
+
     try:
         cached = cache.get(cache_key)
         if cached:
@@ -505,9 +856,11 @@ def _resolve_registration_pincode(pincode):
         pass
 
     from apps.home.services.distance import DistanceService
+
     exact = DistanceService.get_precise_pincode_coordinates(pin)
     if exact:
         from apps.home.views.pages import _get_or_create_pincode
+
         row = _get_or_create_pincode(pin)
         if row:
             try:
@@ -525,6 +878,7 @@ def _resolve_registration_pincode(pincode):
         return row
     try:
         from apps.home.views.pages import _get_or_create_pincode
+
         row = _get_or_create_pincode(pin)
         if row:
             try:
@@ -533,16 +887,16 @@ def _resolve_registration_pincode(pincode):
                 pass
         return row
     except Exception:
-        logger.exception('Pincode lookup failed for %s', pin)
+        logger.exception("Pincode lookup failed for %s", pin)
         return None
 
 
 def _to_money(value):
-    return Decimal(str(value or 0)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return Decimal(str(value or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def _to_paise(value):
-    return int((_to_money(value) * 100).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    return int((_to_money(value) * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
 def _gst_bundle_from_base(base_amount):
@@ -555,13 +909,13 @@ def _gst_bundle_from_base(base_amount):
 
 def _tier_follow_count(tier):
     try:
-        return int((tier or {}).get('follows', 0) or 0)
+        return int((tier or {}).get("follows", 0) or 0)
     except (TypeError, ValueError, AttributeError):
         return 0
 
 
 def _scratch_session_key(plan_type):
-    return f'scratch_revealed_{plan_type}'
+    return f"scratch_revealed_{plan_type}"
 
 
 def _parse_json_flag(value):
@@ -569,7 +923,7 @@ def _parse_json_flag(value):
         return value
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return value == 1
-    return str(value or '').strip().lower() in ('1', 'true', 'yes', 'on')
+    return str(value or "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def _parse_displayed_total(value):
@@ -580,9 +934,9 @@ def _parse_displayed_total(value):
 
 
 def _is_scratch_enabled(cfg, default=True):
-    if not isinstance(cfg, dict) or 'scratch_enabled' not in cfg:
+    if not isinstance(cfg, dict) or "scratch_enabled" not in cfg:
         return default
-    return _parse_json_flag(cfg.get('scratch_enabled'))
+    return _parse_json_flag(cfg.get("scratch_enabled"))
 
 
 def _amounts_match(left, right, tolerance=1):
@@ -595,7 +949,7 @@ def _amounts_match(left, right, tolerance=1):
 def _clear_scratch_reveal_session(request):
     """Plans page always starts at full price until the ribbon is scratched again."""
     changed = False
-    for plan_type in ('starter', 'professional'):
+    for plan_type in ("starter", "professional"):
         key = _scratch_session_key(plan_type)
         if key in request.session:
             request.session.pop(key, None)
@@ -604,16 +958,18 @@ def _clear_scratch_reveal_session(request):
         request.session.modified = True
 
 
-def _scratch_revealed_for_checkout(request, data, plan_type, full_total, discounted_total=None):
+def _scratch_revealed_for_checkout(
+    request, data, plan_type, full_total, discounted_total=None
+):
     """
     Apply the scratch discount only when this page actually revealed it
     and the order summary is showing that discounted total.
     """
-    displayed = _parse_displayed_total((data or {}).get('displayed_total'))
+    displayed = _parse_displayed_total((data or {}).get("displayed_total"))
     if displayed is not None and full_total and _amounts_match(displayed, full_total):
         return False
     session_revealed = bool(request.session.get(_scratch_session_key(plan_type)))
-    client_revealed = _parse_json_flag((data or {}).get('scratch_revealed'))
+    client_revealed = _parse_json_flag((data or {}).get("scratch_revealed"))
     if not (session_revealed and client_revealed):
         return False
     if discounted_total is not None and displayed is not None:
@@ -621,51 +977,76 @@ def _scratch_revealed_for_checkout(request, data, plan_type, full_total, discoun
     return True
 
 
-def _plan_payable_total(pricing_config, follow_count, plan_type, scratch_revealed=False, promo_obj=None):
+def _plan_payable_total(
+    pricing_config, follow_count, plan_type, scratch_revealed=False, promo_obj=None
+):
     """
     Charge the amount shown on the card.
     Scratch-enabled plans stay at full_price + GST until the ribbon is revealed.
     """
     if not isinstance(pricing_config, dict):
         pricing_config = dict(_DEFAULT_PRICING)
-    starter_cfg = pricing_config.get('starter') or _DEFAULT_PRICING['starter']
-    prof_cfg = pricing_config.get('professional') or _DEFAULT_PRICING['professional']
-    starter_full = float(starter_cfg.get('full_price', 1999) or 1999)
-    prof_full = float(prof_cfg.get('full_price', 9999) or 9999)
+    starter_cfg = pricing_config.get("starter") or _DEFAULT_PRICING["starter"]
+    prof_cfg = pricing_config.get("professional") or _DEFAULT_PRICING["professional"]
+    starter_full = float(starter_cfg.get("full_price", 1999) or 1999)
+    prof_full = float(prof_cfg.get("full_price", 9999) or 9999)
     tier_info = _get_tier_prices(pricing_config, follow_count)
 
-    if plan_type == 'starter':
-        if promo_obj and not promo_obj.is_free_trial_code() and promo_obj.is_valid('basic'):
+    if plan_type == "starter":
+        if (
+            promo_obj
+            and not promo_obj.is_free_trial_code()
+            and promo_obj.is_valid("basic")
+        ):
             base = max(0.0, starter_full - promo_obj.calculate_discount(starter_full))
             return _gst_bundle_from_base(base)[2]
         if _is_scratch_enabled(starter_cfg) and not scratch_revealed:
             return _gst_bundle_from_base(starter_full)[2]
-        return tier_info['starter_total']
+        return tier_info["starter_total"]
 
-    if plan_type == 'professional':
-        if promo_obj and not promo_obj.is_free_trial_code() and promo_obj.is_valid('professional'):
+    if plan_type == "professional":
+        if (
+            promo_obj
+            and not promo_obj.is_free_trial_code()
+            and promo_obj.is_valid("professional")
+        ):
             base = max(0.0, prof_full - promo_obj.calculate_discount(prof_full))
             return _gst_bundle_from_base(base)[2]
         if _is_scratch_enabled(prof_cfg) and not scratch_revealed:
             return _gst_bundle_from_base(prof_full)[2]
-        return tier_info['prof_total']
+        return tier_info["prof_total"]
 
     return 0
 
 
-def _checkout_total_for_plan(pricing_config, follow_count, plan_type, request, data, promo_obj=None):
+def _checkout_total_for_plan(
+    pricing_config, follow_count, plan_type, request, data, promo_obj=None
+):
     """Razorpay amount must match the on-screen order summary."""
     revealed_total = _plan_payable_total(
-        pricing_config, follow_count, plan_type, scratch_revealed=True, promo_obj=promo_obj,
+        pricing_config,
+        follow_count,
+        plan_type,
+        scratch_revealed=True,
+        promo_obj=promo_obj,
     )
     unrevealed_total = _plan_payable_total(
-        pricing_config, follow_count, plan_type, scratch_revealed=False, promo_obj=promo_obj,
+        pricing_config,
+        follow_count,
+        plan_type,
+        scratch_revealed=False,
+        promo_obj=promo_obj,
     )
-    cfg_key = 'starter' if plan_type == 'starter' else 'professional'
-    default_full = 1999 if plan_type == 'starter' else 9999
-    full = float((pricing_config.get(cfg_key) or {}).get('full_price', default_full) or default_full)
+    cfg_key = "starter" if plan_type == "starter" else "professional"
+    default_full = 1999 if plan_type == "starter" else 9999
+    full = float(
+        (pricing_config.get(cfg_key) or {}).get("full_price", default_full)
+        or default_full
+    )
     full_total = _gst_bundle_from_base(full)[2]
-    if _scratch_revealed_for_checkout(request, data, plan_type, full_total, revealed_total):
+    if _scratch_revealed_for_checkout(
+        request, data, plan_type, full_total, revealed_total
+    ):
         return revealed_total
     return unrevealed_total
 
@@ -682,11 +1063,16 @@ def _is_in_progress_razorpay_error(error):
     """Netbanking/UPI redirects fire payment.failed before the bank returns."""
     if not isinstance(error, dict):
         return False
-    step = str(error.get('step') or '').strip().lower()
-    reason = str(error.get('reason') or '').strip().lower()
-    if step in ('payment_authentication', 'payment_capture', 'payment_redirect', 'redirect'):
+    step = str(error.get("step") or "").strip().lower()
+    reason = str(error.get("reason") or "").strip().lower()
+    if step in (
+        "payment_authentication",
+        "payment_capture",
+        "payment_redirect",
+        "redirect",
+    ):
         return True
-    if reason in ('payment_pending', 'payment_redirect'):
+    if reason in ("payment_pending", "payment_redirect"):
         return True
     return False
 
@@ -698,13 +1084,13 @@ def _session_owns_agent(request, agent):
     request payload — only the agent this session started checkout for (or is
     already signed in as) may be logged in after payment verification.
     """
-    if not agent or not getattr(agent, 'pk', None):
+    if not agent or not getattr(agent, "pk", None):
         return False
-    pending = request.session.get('pending_checkout') or {}
-    candidates = (pending.get('agent_id'), request.session.get('agent_id'))
+    pending = request.session.get("pending_checkout") or {}
+    candidates = (pending.get("agent_id"), request.session.get("agent_id"))
     if any(str(c) == str(agent.pk) for c in candidates if c):
         return True
-    user = getattr(request, 'user', None)
+    user = getattr(request, "user", None)
     return bool(
         user is not None
         and user.is_authenticated
@@ -718,12 +1104,12 @@ def _recover_pending_razorpay_checkout(request, payload=None, retry=False):
     After netbanking the browser often reloads /chooseplan/ instead of
     calling verify-payment. If Razorpay already captured the payment, finish it.
     """
-    pending = request.session.get('pending_checkout') or {}
+    pending = request.session.get("pending_checkout") or {}
     payload = payload or {}
     # Only the server-side checkout session may choose the agent. A client
     # supplied agent_id/order_id previously let anyone log in as any paid agent.
-    agent_id = pending.get('agent_id')
-    order_id = pending.get('order_id') or payload.get('razorpay_order_id')
+    agent_id = pending.get("agent_id")
+    order_id = pending.get("order_id") or payload.get("razorpay_order_id")
     from apps.agents.models import Agent, AgentSubscription
 
     agent = Agent.objects.filter(pk=agent_id).first() if agent_id else None
@@ -744,11 +1130,12 @@ def _recover_pending_razorpay_checkout(request, payload=None, retry=False):
             return None
 
     from apps.agents.services.account_auth import agent_can_access_dashboard
+
     agent.refresh_from_db()
     if not agent_can_access_dashboard(agent):
         logger.warning(
-            'Pending checkout recovery aborted for agent #%s: payment not captured.',
-            getattr(agent, 'id', None),
+            "Pending checkout recovery aborted for agent #%s: payment not captured.",
+            getattr(agent, "id", None),
         )
         return None
 
@@ -756,26 +1143,31 @@ def _recover_pending_razorpay_checkout(request, payload=None, retry=False):
         # Payment is verified and activated, but this browser did not start the
         # checkout — send it to the normal login page instead of signing it in.
         logger.warning(
-            'Pending checkout recovery for agent #%s from a session that does not own it; login skipped.',
-            getattr(agent, 'id', None),
+            "Pending checkout recovery for agent #%s from a session that does not own it; login skipped.",
+            getattr(agent, "id", None),
         )
-        return reverse('agents:agent_login')
+        return reverse("agents:agent_login")
 
     try:
         user = create_or_link_django_user(agent)
         login_agent_user(request, user)
     except Exception as login_err:
-        logger.error('Pending checkout login failed for agent %s: %s', getattr(agent, 'id', None), login_err)
+        logger.error(
+            "Pending checkout login failed for agent %s: %s",
+            getattr(agent, "id", None),
+            login_err,
+        )
 
-    request.session.pop('current_draft_id', None)
-    request.session.pop('reg_step', None)
-    request.session.pop('ref_code', None)
-    request.session.pop('pending_checkout', None)
+    request.session.pop("current_draft_id", None)
+    request.session.pop("reg_step", None)
+    request.session.pop("ref_code", None)
+    request.session.pop("pending_checkout", None)
 
     from apps.distributors.views.dashboard import is_distributor
+
     if request.user.is_authenticated and is_distributor(request.user):
-        return reverse('distributors:agents_index')
-    return reverse('agents:payment_complete')
+        return reverse("distributors:agents_index")
+    return reverse("agents:payment_complete")
 
 
 def _is_plan_upgrade_payment(agent, order_id=None):
@@ -783,7 +1175,8 @@ def _is_plan_upgrade_payment(agent, order_id=None):
     if not agent:
         return False
     from apps.agents.models import AgentSubscription
-    qs = AgentSubscription.objects.filter(agent=agent, payment_status='completed')
+
+    qs = AgentSubscription.objects.filter(agent=agent, payment_status="completed")
     if order_id:
         qs = qs.exclude(razorpay_order_id=order_id)
     return qs.exists()
@@ -794,24 +1187,25 @@ def _deactivate_superseded_subscriptions(agent, keep_subscription_id):
     if not agent or not keep_subscription_id:
         return
     from apps.agents.models import AgentSubscription
+
     AgentSubscription.objects.filter(
         agent=agent,
-        status='active',
-    ).exclude(pk=keep_subscription_id).update(status='inactive')
+        status="active",
+    ).exclude(pk=keep_subscription_id).update(status="inactive")
 
 
 def _display_plan_name(agent, pricing_config):
     """Dashboard header plan label — checks active subscription selected_plan first to match admin listing, falling back to agent.plan_type slug."""
     from apps.agents.services.feature_unlock import normalize_plan_slug
 
-    active_sub = getattr(agent, 'activeSubscription', None)
-    if not active_sub and hasattr(agent, 'subscriptions'):
+    active_sub = getattr(agent, "activeSubscription", None)
+    if not active_sub and hasattr(agent, "subscriptions"):
         try:
             active_sub = (
-                agent.subscriptions.filter(status='active')
-                .order_by('-starts_at', '-created_at', '-id')
+                agent.subscriptions.filter(status="active")
+                .order_by("-starts_at", "-created_at", "-id")
                 .first()
-            ) or agent.subscriptions.order_by('-id').first()
+            ) or agent.subscriptions.order_by("-id").first()
         except Exception:
             active_sub = None
 
@@ -819,55 +1213,58 @@ def _display_plan_name(agent, pricing_config):
         raw_plan = str(active_sub.selected_plan).strip()
         try:
             decoded = json.loads(raw_plan)
-            if isinstance(decoded, dict) and decoded.get('name'):
-                raw_plan = str(decoded['name']).strip()
+            if isinstance(decoded, dict) and decoded.get("name"):
+                raw_plan = str(decoded["name"]).strip()
         except (json.JSONDecodeError, TypeError, ValueError):
             pass
         if raw_plan:
             label = paid_plan_label(raw_plan)
-            if label in (PLAN_LABELS['starter'], PLAN_LABELS['professional']):
+            if label in (PLAN_LABELS["starter"], PLAN_LABELS["professional"]):
                 return label
             return raw_plan
 
-    slug = normalize_plan_slug(getattr(agent, 'plan_type', '') or '')
-    if slug == 'free_trial':
-        return 'Free Trial'
-    if slug == 'exclusive':
+    slug = normalize_plan_slug(getattr(agent, "plan_type", "") or "")
+    if slug == "free_trial":
+        return "Free Trial"
+    if slug == "exclusive":
         from apps.home.models import SiteSetting
-        ex_cfg = SiteSetting.get_value('exclusive_plan_config') or {}
-        return ex_cfg.get('name') or 'Exclusive Plan'
 
-    return paid_plan_label(slug or 'starter')
+        ex_cfg = SiteSetting.get_value("exclusive_plan_config") or {}
+        return ex_cfg.get("name") or "Exclusive Plan"
+
+    return paid_plan_label(slug or "starter")
 
 
 def _razorpay_callback_payload(request):
     data = {}
-    if request.method == 'POST':
-        content_type = (request.content_type or '').lower()
-        if 'json' in content_type:
+    if request.method == "POST":
+        content_type = (request.content_type or "").lower()
+        if "json" in content_type:
             try:
-                data = json.loads(request.body or '{}')
+                data = json.loads(request.body or "{}")
             except json.JSONDecodeError:
                 data = request.POST.dict()
         else:
             data = request.POST.dict()
     else:
         data = request.GET.dict()
-    pending = request.session.get('pending_checkout') or {}
+    pending = request.session.get("pending_checkout") or {}
     return {
-        'razorpay_payment_id': data.get('razorpay_payment_id'),
-        'razorpay_order_id': data.get('razorpay_order_id') or pending.get('order_id'),
-        'razorpay_signature': data.get('razorpay_signature'),
+        "razorpay_payment_id": data.get("razorpay_payment_id"),
+        "razorpay_order_id": data.get("razorpay_order_id") or pending.get("order_id"),
+        "razorpay_signature": data.get("razorpay_signature"),
         # Never trust a client-supplied agent_id: it selects whose session gets
         # logged in. Only the server-side checkout session may name the agent.
-        'agent_id': pending.get('agent_id'),
-        'plan_type': data.get('plan_type') or pending.get('plan_type'),
-        'plan_name': data.get('plan_name') or pending.get('plan_name'),
-        'error': data.get('error') or {
-            'code': data.get('error[code]') or data.get('error_code'),
-            'description': data.get('error[description]') or data.get('error_description'),
-            'step': data.get('error[step]'),
-            'reason': data.get('error[reason]'),
+        "agent_id": pending.get("agent_id"),
+        "plan_type": data.get("plan_type") or pending.get("plan_type"),
+        "plan_name": data.get("plan_name") or pending.get("plan_name"),
+        "error": data.get("error")
+        or {
+            "code": data.get("error[code]") or data.get("error_code"),
+            "description": data.get("error[description]")
+            or data.get("error_description"),
+            "step": data.get("error[step]"),
+            "reason": data.get("error[reason]"),
         },
     }
 
@@ -881,151 +1278,174 @@ def _get_client_ip(request):
     # hop is client-controlled, so the step-1 rate limit could be bypassed or
     # aimed at someone else's IP.
     from apps.admin_panel.middleware import ThreatMonitorMiddleware
-    return ThreatMonitorMiddleware.get_client_ip(request) or request.META.get('REMOTE_ADDR', '')
+
+    return ThreatMonitorMiddleware.get_client_ip(request) or request.META.get(
+        "REMOTE_ADDR", ""
+    )
+
 
 # ─── Helper ─────────────────────────────────────────────────────────────────────
 
 
-REG_FORM_SHOWN_AT_KEY = 'reg_form_shown_at'
+REG_FORM_SHOWN_AT_KEY = "reg_form_shown_at"
 
 
 def _registration_min_fill_seconds():
     # Bots post the form instantly after loading it; people need longer.
-    if getattr(settings, 'TESTING', False):
+    if getattr(settings, "TESTING", False):
         return 0
-    return getattr(settings, 'REGISTRATION_MIN_FILL_SECONDS', 3)
+    return getattr(settings, "REGISTRATION_MIN_FILL_SECONDS", 3)
 
 
 def _get_registration_context(request):
     """Build the template context based on current session state."""
     session = request.session
     session[REG_FORM_SHOWN_AT_KEY] = int(time.time())
-    reg_step = session.get('reg_step', 0)
-    email_verified = session.get('email_verified', False)
-    verified_email = session.get('verified_email', '')
+    reg_step = session.get("reg_step", 0)
+    email_verified = session.get("email_verified", False)
+    verified_email = session.get("verified_email", "")
 
     # Load draft if exists
     draft = None
-    draft_id = session.get('current_draft_id')
+    draft_id = session.get("current_draft_id")
     if draft_id:
         try:
             draft = AgentDraft.objects.get(pk=draft_id)
         except AgentDraft.DoesNotExist:
             pass
 
-    layout_template = 'base.html'
+    layout_template = "base.html"
     try:
         from apps.distributors.views.dashboard import is_distributor
+
         if request.user.is_authenticated and is_distributor(request.user):
-            layout_template = 'distributors/layout.html'
+            layout_template = "distributors/layout.html"
     except Exception:
         pass
 
     active_investment_types = []
     try:
         from apps.agents.models import InvestmentType
+
         active_investment_types = list(InvestmentType.objects.filter(is_active=True))
     except Exception as e:
         logger.warning(f"Error fetching active_investment_types: {e}")
 
-    prefilled_promo = ''
+    prefilled_promo = ""
     try:
         from apps.agents.models import PromoCode
-        promo_param = (request.GET.get('promo') or '').strip().upper()
+
+        promo_param = (request.GET.get("promo") or "").strip().upper()
         if promo_param:
             p_obj = PromoCode.objects.filter(code__iexact=promo_param).first()
             if p_obj and p_obj.is_valid():
                 prefilled_promo = p_obj.code
-                request.session['applied_promo_code'] = p_obj.code
-        elif request.session.get('applied_promo_code'):
-            p_obj = PromoCode.objects.filter(code__iexact=request.session.get('applied_promo_code')).first()
+                request.session["applied_promo_code"] = p_obj.code
+        elif request.session.get("applied_promo_code"):
+            p_obj = PromoCode.objects.filter(
+                code__iexact=request.session.get("applied_promo_code")
+            ).first()
             if p_obj and p_obj.is_valid():
                 prefilled_promo = p_obj.code
             else:
-                request.session.pop('applied_promo_code', None)
+                request.session.pop("applied_promo_code", None)
     except Exception as e:
         logger.warning(f"Error resolving promo code in registration context: {e}")
 
     lead = None
     try:
         from apps.agents.services.registration_leads import session_lead
+
         lead = session_lead(request)
     except Exception:
         lead = None
-    quick_name = ((lead.name if lead else '') or session.get('quick_reg_name') or '').strip()
-    quick_phone = ((lead.phone if lead else '') or session.get('quick_reg_phone') or '').strip()
-    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9 ._\-]{1,69}', quick_name):
-        quick_name = ''
-    if not re.fullmatch(r'[6-9]\d{9}', quick_phone):
-        quick_phone = ''
-    draft_phone = (getattr(draft, 'mobile', '') or '').strip()
+    quick_name = (
+        (lead.name if lead else "") or session.get("quick_reg_name") or ""
+    ).strip()
+    quick_phone = (
+        (lead.phone if lead else "") or session.get("quick_reg_phone") or ""
+    ).strip()
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 ._\-]{1,69}", quick_name):
+        quick_name = ""
+    if not re.fullmatch(r"[6-9]\d{9}", quick_phone):
+        quick_phone = ""
+    draft_phone = (getattr(draft, "mobile", "") or "").strip()
     require_quick_reg_gate = not bool(
-        lead or quick_phone or re.fullmatch(r'[6-9]\d{9}', draft_phone)
+        lead or quick_phone or re.fullmatch(r"[6-9]\d{9}", draft_phone)
     )
 
     swipe = {}
     try:
         from apps.admin_panel.views.content import get_registration_swipe_config
+
         swipe = get_registration_swipe_config(visible_only=True)
     except Exception as e:
         logger.warning(f"Error resolving registration swipe config: {e}")
-        swipe = {'enabled': False, 'slides': []}
+        swipe = {"enabled": False, "slides": []}
 
     default_states = ALL_INDIAN_STATES
     try:
-        fetched_states = list(Pincode.objects.values_list('state', flat=True).distinct().order_by('state'))
+        fetched_states = list(
+            Pincode.objects.values_list("state", flat=True).distinct().order_by("state")
+        )
         if fetched_states:
             default_states = fetched_states
     except Exception as e:
         logger.warning(f"Error fetching pincodes table/states: {e}")
 
     return {
-        'layout_template': layout_template,
-        'reg_step': reg_step,
-        'email_verified': email_verified,
-        'verified_email': verified_email,
-        'draft': draft,
-        'default_states': default_states,
-        'segments': INSURANCE_SEGMENTS,
-        'language_options': LANGUAGE_OPTIONS,
-        'agent_segments': getattr(draft, 'segments', []) if draft else [],
-        'agent_languages': getattr(draft, 'languages', []) if draft else [],
-        'active_investment_types': active_investment_types,
-        'prefilledPromo': prefilled_promo,
-        'prefilled_name': quick_name or getattr(draft, 'fullname', '') or '',
-        'prefilled_phone': quick_phone or draft_phone,
-        'prefilled_whatsapp': quick_phone or getattr(draft, 'whatsapp', '') or draft_phone,
-        'prefilled_state': getattr(draft, 'state', '') or '',
-        'agent_segments_json': [
-            s for s in (getattr(draft, 'segments', None) or [])
+        "layout_template": layout_template,
+        "reg_step": reg_step,
+        "email_verified": email_verified,
+        "verified_email": verified_email,
+        "draft": draft,
+        "default_states": default_states,
+        "segments": INSURANCE_SEGMENTS,
+        "language_options": LANGUAGE_OPTIONS,
+        "agent_segments": getattr(draft, "segments", []) if draft else [],
+        "agent_languages": getattr(draft, "languages", []) if draft else [],
+        "active_investment_types": active_investment_types,
+        "prefilledPromo": prefilled_promo,
+        "prefilled_name": quick_name or getattr(draft, "fullname", "") or "",
+        "prefilled_phone": quick_phone or draft_phone,
+        "prefilled_whatsapp": quick_phone
+        or getattr(draft, "whatsapp", "")
+        or draft_phone,
+        "prefilled_state": getattr(draft, "state", "") or "",
+        "agent_segments_json": [
+            s
+            for s in (getattr(draft, "segments", None) or [])
             if s in ALLOWED_SEGMENT_IDS
         ],
-        'require_quick_reg_gate': require_quick_reg_gate,
-        'registration_swipe_enabled': bool(swipe.get('enabled')) and bool(swipe.get('slides')),
-        'registration_swipe_slides': swipe.get('slides') or [],
-        'preview_auto_advance_ms': int(swipe.get('preview_auto_advance_seconds') or 2) * 1000,
-        'hide_site_nav': True,
-        'hide_footer': True,
-        'hide_chatbot': True,
-        'hide_eligibility_popup': True,
-        'event_referral_mode': False,
-        'welcome_preview_mode': False,
-        'registration_popup_only': False,
-        'register_step1_url': reverse('agents:agent_register_step1'),
+        "require_quick_reg_gate": require_quick_reg_gate,
+        "registration_swipe_enabled": bool(swipe.get("enabled"))
+        and bool(swipe.get("slides")),
+        "registration_swipe_slides": swipe.get("slides") or [],
+        "preview_auto_advance_ms": int(swipe.get("preview_auto_advance_seconds") or 2)
+        * 1000,
+        "hide_site_nav": True,
+        "hide_footer": True,
+        "hide_chatbot": True,
+        "hide_eligibility_popup": True,
+        "event_referral_mode": False,
+        "welcome_preview_mode": False,
+        "registration_popup_only": False,
+        "register_step1_url": reverse("agents:agent_register_step1"),
     }
 
 
 # ─── Views ──────────────────────────────────────────────────────────────────────
+
 
 def _build_referring_agent_data(referring_agent, is_championship=False):
     """Build standardized dictionary for referring agent card and OG preview."""
     if not referring_agent:
         return None
 
-    photo_url = '/static/img/avatar-icon.jpg'
+    photo_url = "/static/img/avatar-icon.jpg"
     try:
-        profile = getattr(referring_agent, 'profile', None)
-        if profile and hasattr(profile, 'profile_photo_url'):
+        profile = getattr(referring_agent, "profile", None)
+        if profile and hasattr(profile, "profile_photo_url"):
             photo_url = profile.profile_photo_url or photo_url
         elif referring_agent.photo:
             photo_url = referring_agent.photo.url
@@ -1041,48 +1461,52 @@ def _build_referring_agent_data(referring_agent, is_championship=False):
         pass
 
     profile_slug = referring_agent.agent_slug
-    profile_url = f'/profile/{referring_agent.state_code}/{profile_slug}/' if profile_slug else ''
+    profile_url = (
+        f"/profile/{referring_agent.state_code}/{profile_slug}/" if profile_slug else ""
+    )
 
-    name = referring_agent.fullname or ''
-    initials = ''.join(word[0].upper() for word in name.split()[:2] if word) or 'A'
+    name = referring_agent.fullname or ""
+    initials = "".join(word[0].upper() for word in name.split()[:2] if word) or "A"
 
     segments = []
     try:
         raw_segs = referring_agent.ordered_insurance_segments
         for seg_item in raw_segs:
             s_lower = str(seg_item).strip().lower()
-            if s_lower == 'sme':
-                name_seg = 'SME'
-                badge_cls = 'bg-purple-50 text-purple-700 border-purple-200/80'
-            elif 'health' in s_lower:
-                name_seg = 'Health'
-                badge_cls = 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-            elif 'life' in s_lower:
-                name_seg = 'Life'
-                badge_cls = 'bg-blue-50 text-blue-700 border-blue-200/80'
-            elif 'motor' in s_lower:
-                name_seg = 'Motor'
-                badge_cls = 'bg-amber-50 text-amber-700 border-amber-200/80'
+            if s_lower == "sme":
+                name_seg = "SME"
+                badge_cls = "bg-purple-50 text-purple-700 border-purple-200/80"
+            elif "health" in s_lower:
+                name_seg = "Health"
+                badge_cls = "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+            elif "life" in s_lower:
+                name_seg = "Life"
+                badge_cls = "bg-blue-50 text-blue-700 border-blue-200/80"
+            elif "motor" in s_lower:
+                name_seg = "Motor"
+                badge_cls = "bg-amber-50 text-amber-700 border-amber-200/80"
             else:
-                name_seg = s_lower.replace('_', ' ').title()
-                badge_cls = 'bg-slate-100 text-slate-700 border-slate-200'
-            segments.append({'id': s_lower, 'name': name_seg, 'badge_cls': badge_cls})
+                name_seg = s_lower.replace("_", " ").title()
+                badge_cls = "bg-slate-100 text-slate-700 border-slate-200"
+            segments.append({"id": s_lower, "name": name_seg, "badge_cls": badge_cls})
     except Exception:
         pass
 
     return {
-        'id': referring_agent.id,
-        'name': name,
-        'fullname': referring_agent.fullname or name,
-        'initials': initials,
-        'photo_url': photo_url,
-        'avg_rating': avg_rating if avg_rating > 0 else 5.0,
-        'review_count': review_count,
-        'profile_url': profile_url,
-        'segments': segments,
-        'slug': profile_slug,
-        'is_championship': bool(is_championship),
-        'og_image_url': '/static/img/championship_og.jpg' if is_championship else reverse('agents:agent_og_image', kwargs={'agent_id': referring_agent.id}),
+        "id": referring_agent.id,
+        "name": name,
+        "fullname": referring_agent.fullname or name,
+        "initials": initials,
+        "photo_url": photo_url,
+        "avg_rating": avg_rating if avg_rating > 0 else 5.0,
+        "review_count": review_count,
+        "profile_url": profile_url,
+        "segments": segments,
+        "slug": profile_slug,
+        "is_championship": bool(is_championship),
+        "og_image_url": "/static/img/championship_og.jpg"
+        if is_championship
+        else reverse("agents:agent_og_image", kwargs={"agent_id": referring_agent.id}),
     }
 
 
@@ -1090,34 +1514,48 @@ def _build_referring_agent_data(referring_agent, is_championship=False):
 def agent_registration(request):
     """Render the registration page. Shows OTP, Step 1, or Step 2 based on session."""
     try:
-        request.session.pop('event_referral_registration', None)
+        request.session.pop("event_referral_registration", None)
         # A just-finished quick registration opens this form, even for a signed-in visitor.
-        from_quick_registration = bool(request.session.pop('quick_reg_continue', False))
+        from_quick_registration = bool(request.session.pop("quick_reg_continue", False))
         if request.user.is_authenticated and not from_quick_registration:
-            from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
+            from apps.agents.services.account_auth import (
+                resolve_agent_for_user,
+                agent_can_access_dashboard,
+            )
+
             if request.user.is_staff or request.user.is_superuser:
-                return redirect('agents:agent_dashboard')
+                return redirect("agents:agent_dashboard")
             agent = resolve_agent_for_user(request.user)
             if agent:
                 if agent_can_access_dashboard(agent):
-                    return redirect('agents:agent_dashboard')
-                return redirect('agents:chooseplan')
+                    return redirect("agents:agent_dashboard")
+                return redirect("agents:chooseplan")
 
         # Capture referral parameter if provided in GET query params (?ref= or ?refCode=)
-        ref_param = request.GET.get('ref') or request.GET.get('refCode')
+        ref_param = request.GET.get("ref") or request.GET.get("refCode")
         referring_agent_data = None
         if ref_param:
             ref_val = str(ref_param).strip().upper()
-            request.session['ref_code'] = ref_val
+            request.session["ref_code"] = ref_val
             referring_agent = None
             is_champ = False
 
-            if ref_val.startswith('PA-'):
+            if ref_val.startswith("PA-"):
                 try:
-                    from apps.referral_championship.services.attribution_service import bind_referral_session
+                    from apps.referral_championship.services.attribution_service import (
+                        bind_referral_session,
+                    )
+
                     bind_referral_session(request, ref_val)
-                    from apps.referral_championship.models import ChampionshipParticipant
-                    participant = ChampionshipParticipant.objects.filter(referral_id=ref_val).select_related('agent').first()
+                    from apps.referral_championship.models import (
+                        ChampionshipParticipant,
+                    )
+
+                    participant = (
+                        ChampionshipParticipant.objects.filter(referral_id=ref_val)
+                        .select_related("agent")
+                        .first()
+                    )
                     if participant and participant.agent:
                         referring_agent = participant.agent
                         is_champ = True
@@ -1127,83 +1565,114 @@ def agent_registration(request):
             if not referring_agent:
                 try:
                     from apps.distributors.models import SubDistributor
-                    sub_dist = SubDistributor.objects.filter(code=ref_val, status='active').first()
+
+                    sub_dist = SubDistributor.objects.filter(
+                        code=ref_val, status="active"
+                    ).first()
                     if sub_dist:
-                        request.session['sub_distributor_id'] = sub_dist.id
-                        request.session['distributor_id'] = sub_dist.distributor_id
-                        request.session['distributor_led_registration'] = True
-                        request.session['ref_code'] = sub_dist.code
+                        request.session["sub_distributor_id"] = sub_dist.id
+                        request.session["distributor_id"] = sub_dist.distributor_id
+                        request.session["distributor_led_registration"] = True
+                        request.session["ref_code"] = sub_dist.code
                 except Exception:
                     pass
 
-            if not referring_agent and not request.session.get('sub_distributor_id'):
+            if not referring_agent and not request.session.get("sub_distributor_id"):
                 try:
                     from apps.admin_panel.models.referral_code import ReferralCode
-                    ref_obj = ReferralCode.objects.filter(code=ref_val, is_active=True).select_related('agent').first()
+
+                    ref_obj = (
+                        ReferralCode.objects.filter(code=ref_val, is_active=True)
+                        .select_related("agent")
+                        .first()
+                    )
                     if ref_obj:
                         if ref_obj.distributor_id:
-                            request.session['distributor_id'] = ref_obj.distributor_id
-                            request.session['distributor_led_registration'] = True
+                            request.session["distributor_id"] = ref_obj.distributor_id
+                            request.session["distributor_led_registration"] = True
                         if ref_obj.agent:
                             referring_agent = ref_obj.agent
                 except Exception:
                     pass
 
             if referring_agent:
-                referring_agent_data = _build_referring_agent_data(referring_agent, is_championship=is_champ)
+                referring_agent_data = _build_referring_agent_data(
+                    referring_agent, is_championship=is_champ
+                )
 
         context = _get_registration_context(request)
-        context['registration_popup_only'] = True
-        context['require_quick_reg_gate'] = False
+        context["registration_popup_only"] = True
+        context["require_quick_reg_gate"] = False
         if referring_agent_data:
-            context['referring_agent'] = referring_agent_data
+            context["referring_agent"] = referring_agent_data
 
-        if not context.get('event_referral_mode'):
+        if not context.get("event_referral_mode"):
             try:
                 from apps.agents.services.registration_leads import (
                     capture_quick_lead,
                     session_lead,
                 )
+
                 lead = session_lead(request)
-                draft = context.get('draft')
-                if lead is None and draft and re.fullmatch(r'[6-9]\d{9}', (draft.mobile or '').strip() or ''):
+                draft = context.get("draft")
+                if (
+                    lead is None
+                    and draft
+                    and re.fullmatch(r"[6-9]\d{9}", (draft.mobile or "").strip() or "")
+                ):
                     lead, _blocked = capture_quick_lead(
                         request,
-                        name=draft.fullname or '',
+                        name=draft.fullname or "",
                         phone=draft.mobile,
-                        ref_code=request.session.get('ref_code') or '',
+                        ref_code=request.session.get("ref_code") or "",
                         source_url=request.build_absolute_uri()[:500],
                     )
                 if lead:
-                    context['require_quick_reg_gate'] = False
+                    context["require_quick_reg_gate"] = False
             except Exception:
-                logger.exception('Quick-registration gate status update failed')
+                logger.exception("Quick-registration gate status update failed")
 
         if ref_param:
             from apps.agents.services.og_urls import build_og_absolute_url
 
             ref_val = str(ref_param).strip().upper()
-            if ref_val.startswith('EV-'):
+            if ref_val.startswith("EV-"):
                 from apps.event_referral.services.og_meta import paldi_og_context
 
-                ref_name = (referring_agent_data or {}).get('name') if referring_agent_data else None
+                ref_name = (
+                    (referring_agent_data or {}).get("name")
+                    if referring_agent_data
+                    else None
+                )
                 context.update(paldi_og_context(request, referring_agent_name=ref_name))
-                context['og_page_absolute_url'] = build_og_absolute_url(request, request.get_full_path())
-                context['og_image_absolute_url'] = context.get('paldi_og_image_url')
-            elif ref_val.startswith('PA-'):
-                from apps.referral_championship.services.og_meta import championship_og_context
+                context["og_page_absolute_url"] = build_og_absolute_url(
+                    request, request.get_full_path()
+                )
+                context["og_image_absolute_url"] = context.get("paldi_og_image_url")
+            elif ref_val.startswith("PA-"):
+                from apps.referral_championship.services.og_meta import (
+                    championship_og_context,
+                )
 
-                ref_name = (referring_agent_data or {}).get('name') if referring_agent_data else None
-                context.update(championship_og_context(request, referring_agent_name=ref_name))
-                context['og_page_absolute_url'] = build_og_absolute_url(request, request.get_full_path())
+                ref_name = (
+                    (referring_agent_data or {}).get("name")
+                    if referring_agent_data
+                    else None
+                )
+                context.update(
+                    championship_og_context(request, referring_agent_name=ref_name)
+                )
+                context["og_page_absolute_url"] = build_og_absolute_url(
+                    request, request.get_full_path()
+                )
 
-        return render(request, 'agents/registration.html', context)
+        return render(request, "agents/registration.html", context)
     except Exception as e:
         logger.exception(f"Error in agent_registration view: {e}")
         context = _get_registration_context(request)
-        context['registration_popup_only'] = True
-        context['require_quick_reg_gate'] = False
-        return render(request, 'agents/registration.html', context)
+        context["registration_popup_only"] = True
+        context["require_quick_reg_gate"] = False
+        return render(request, "agents/registration.html", context)
 
 
 @require_http_methods(["GET"])
@@ -1215,51 +1684,61 @@ def welcome_preview(request):
     """
     draft_id = _resolve_chooseplan_draft_id(request)
     if not draft_id:
-        return redirect('home:home')
+        return redirect("home:home")
     context = _get_registration_context(request)
-    if not context.get('draft'):
-        return redirect('home:home')
-    context['welcome_preview_mode'] = True
-    context['require_quick_reg_gate'] = False
-    context['hide_eligibility_popup'] = True
-    return render(request, 'agents/registration.html', context)
+    if not context.get("draft"):
+        return redirect("home:home")
+    context["welcome_preview_mode"] = True
+    context["require_quick_reg_gate"] = False
+    context["hide_eligibility_popup"] = True
+    return render(request, "agents/registration.html", context)
 
 
 @require_POST
 @csrf_protect
 def agent_registration_progress(request):
     """Mark the open lead as form started once the visitor types into the form."""
-    if request.session.get('event_referral_registration'):
-        return JsonResponse({'ok': True})
+    if request.session.get("event_referral_registration"):
+        return JsonResponse({"ok": True})
     from apps.admin_panel.models import RegistrationLead
-    from apps.agents.services.registration_leads import mark_form_started, session_lead, normalize_phone, bind_session
+    from apps.agents.services.registration_leads import (
+        mark_form_started,
+        session_lead,
+        normalize_phone,
+        bind_session,
+    )
+
     lead = session_lead(request)
     if lead is None:
-        phone = ''
-        if request.content_type == 'application/json' and request.body:
+        phone = ""
+        if request.content_type == "application/json" and request.body:
             try:
                 import json
-                payload = json.loads(request.body.decode('utf-8'))
-                phone = normalize_phone(payload.get('phone'))
+
+                payload = json.loads(request.body.decode("utf-8"))
+                phone = normalize_phone(payload.get("phone"))
             except Exception:
                 pass
         if not phone:
-            phone = normalize_phone(request.POST.get('phone'))
+            phone = normalize_phone(request.POST.get("phone"))
         if phone:
             lead = RegistrationLead.objects.filter(phone=phone).first()
             if lead:
                 bind_session(request, lead)
     if lead is None:
-        return JsonResponse({'ok': False}, status=403)
+        return JsonResponse({"ok": False}, status=403)
     mark_form_started(request, lead)
-    return JsonResponse({'ok': True})
+    return JsonResponse({"ok": True})
 
 
 def _bump_clicks(obj):
     """Atomic clicks + 1 in the database (concurrent visits lost updates)."""
     from django.db.models import F, Value
     from django.db.models.functions import Coalesce
-    type(obj).objects.filter(pk=obj.pk).update(clicks=Coalesce(F('clicks'), Value(0)) + 1)
+
+    type(obj).objects.filter(pk=obj.pk).update(
+        clicks=Coalesce(F("clicks"), Value(0)) + 1
+    )
 
 
 @require_http_methods(["GET"])
@@ -1273,46 +1752,63 @@ def agent_registration_referral(request, ref_code):
     try:
         # If already logged in, redirect same as normal registration
         if request.user.is_authenticated:
-            from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
+            from apps.agents.services.account_auth import (
+                resolve_agent_for_user,
+                agent_can_access_dashboard,
+            )
+
             if request.user.is_staff or request.user.is_superuser:
-                return redirect('agents:agent_dashboard')
+                return redirect("agents:agent_dashboard")
             agent = resolve_agent_for_user(request.user)
             if agent:
                 if agent_can_access_dashboard(agent):
-                    return redirect('agents:agent_dashboard')
-                return redirect('agents:chooseplan')
+                    return redirect("agents:agent_dashboard")
+                return redirect("agents:chooseplan")
 
         code_val = str(ref_code).strip().upper()
 
         # ── Store ref code in session for the existing flow to pick up ──
-        request.session['ref_code'] = code_val
+        request.session["ref_code"] = code_val
         # A referral page is the normal paid signup: drop a Paldi flag left on
         # a shared stall device (audit 2026-10-01 F-17d).
-        request.session.pop('event_referral_registration', None)
+        request.session.pop("event_referral_registration", None)
 
         # ── Look up the referring agent ──
         referring_agent = None
         is_champ = False
 
         # 1. Event referral challenge (EV-XXXXXX)
-        if code_val.startswith('EV-'):
+        if code_val.startswith("EV-"):
             try:
                 from apps.event_referral.models import EventReferralParticipant
-                ev_part = EventReferralParticipant.objects.filter(
-                    referral_code=code_val,
-                ).select_related('agent').first()
+
+                ev_part = (
+                    EventReferralParticipant.objects.filter(
+                        referral_code=code_val,
+                    )
+                    .select_related("agent")
+                    .first()
+                )
                 if ev_part and ev_part.agent:
                     referring_agent = ev_part.agent
             except Exception:
                 pass
 
         # 2. Try Championship participant code (PA-XXXXXX)
-        if not referring_agent and code_val.startswith('PA-'):
+        if not referring_agent and code_val.startswith("PA-"):
             try:
-                from apps.referral_championship.services.attribution_service import bind_referral_session
+                from apps.referral_championship.services.attribution_service import (
+                    bind_referral_session,
+                )
+
                 bind_referral_session(request, code_val)
                 from apps.referral_championship.models import ChampionshipParticipant
-                participant = ChampionshipParticipant.objects.filter(referral_id=code_val).select_related('agent').first()
+
+                participant = (
+                    ChampionshipParticipant.objects.filter(referral_id=code_val)
+                    .select_related("agent")
+                    .first()
+                )
                 if participant and participant.agent:
                     referring_agent = participant.agent
                     is_champ = True
@@ -1323,86 +1819,122 @@ def agent_registration_referral(request, ref_code):
         if not referring_agent:
             try:
                 from apps.distributors.models import SubDistributor
-                sub_dist = SubDistributor.objects.filter(code=code_val, status='active').first()
+
+                sub_dist = SubDistributor.objects.filter(
+                    code=code_val, status="active"
+                ).first()
                 if sub_dist:
                     _bump_clicks(sub_dist)
-                    request.session['sub_distributor_id'] = sub_dist.id
-                    request.session['distributor_id'] = sub_dist.distributor_id
-                    request.session['distributor_led_registration'] = True
-                    request.session['ref_code'] = sub_dist.code
+                    request.session["sub_distributor_id"] = sub_dist.id
+                    request.session["distributor_id"] = sub_dist.distributor_id
+                    request.session["distributor_led_registration"] = True
+                    request.session["ref_code"] = sub_dist.code
             except Exception:
                 pass
 
         # 4. Try legacy ReferralCode
-        if not referring_agent and not request.session.get('sub_distributor_id'):
+        if not referring_agent and not request.session.get("sub_distributor_id"):
             try:
                 from apps.admin_panel.models.referral_code import ReferralCode
-                ref_obj = ReferralCode.objects.filter(code=code_val, is_active=True).select_related('agent').first()
+
+                ref_obj = (
+                    ReferralCode.objects.filter(code=code_val, is_active=True)
+                    .select_related("agent")
+                    .first()
+                )
                 if ref_obj:
                     # Increment clicks for tracking
                     _bump_clicks(ref_obj)
                     if ref_obj.distributor_id:
-                        request.session['distributor_id'] = ref_obj.distributor_id
-                        request.session['distributor_led_registration'] = True
+                        request.session["distributor_id"] = ref_obj.distributor_id
+                        request.session["distributor_led_registration"] = True
                     if ref_obj.agent:
                         referring_agent = ref_obj.agent
             except Exception:
                 pass
 
         # ── Build referring agent context for the card ──
-        referring_agent_data = _build_referring_agent_data(referring_agent, is_championship=is_champ) if referring_agent else None
+        referring_agent_data = (
+            _build_referring_agent_data(referring_agent, is_championship=is_champ)
+            if referring_agent
+            else None
+        )
 
         # ── Build normal registration context + referring agent ──
         context = _get_registration_context(request)
-        context['referring_agent'] = referring_agent_data
-        context['og_share_title'] = 'PadosiAgent'
-        from apps.agents.services.og_urls import agent_og_image_absolute_url, build_og_absolute_url
+        context["referring_agent"] = referring_agent_data
+        context["og_share_title"] = "PadosiAgent"
+        from apps.agents.services.og_urls import (
+            agent_og_image_absolute_url,
+            build_og_absolute_url,
+        )
 
-        if code_val.startswith('EV-'):
+        if code_val.startswith("EV-"):
             from apps.event_referral.services.og_meta import paldi_og_context
 
-            ref_name = (referring_agent_data or {}).get('name') if referring_agent_data else None
-            context.update(paldi_og_context(request, referring_agent_name=ref_name))
-            context['event_referral_share_landing'] = True
-            context['og_page_absolute_url'] = build_og_absolute_url(request, request.get_full_path())
-        elif code_val.startswith('PA-'):
-            from apps.referral_championship.services.og_meta import championship_og_context
-
-            ref_name = (referring_agent_data or {}).get('name') if referring_agent_data else None
-            context.update(championship_og_context(request, referring_agent_name=ref_name))
-            context['og_page_absolute_url'] = build_og_absolute_url(request, request.get_full_path())
-        elif referring_agent_data and referring_agent_data.get('id'):
-            context['og_image_absolute_url'] = agent_og_image_absolute_url(
-                request, referring_agent_data['id'],
+            ref_name = (
+                (referring_agent_data or {}).get("name")
+                if referring_agent_data
+                else None
             )
-            context['og_page_absolute_url'] = build_og_absolute_url(request, request.get_full_path())
-        return render(request, 'agents/registration.html', context)
+            context.update(paldi_og_context(request, referring_agent_name=ref_name))
+            context["event_referral_share_landing"] = True
+            context["og_page_absolute_url"] = build_og_absolute_url(
+                request, request.get_full_path()
+            )
+        elif code_val.startswith("PA-"):
+            from apps.referral_championship.services.og_meta import (
+                championship_og_context,
+            )
+
+            ref_name = (
+                (referring_agent_data or {}).get("name")
+                if referring_agent_data
+                else None
+            )
+            context.update(
+                championship_og_context(request, referring_agent_name=ref_name)
+            )
+            context["og_page_absolute_url"] = build_og_absolute_url(
+                request, request.get_full_path()
+            )
+        elif referring_agent_data and referring_agent_data.get("id"):
+            context["og_image_absolute_url"] = agent_og_image_absolute_url(
+                request,
+                referring_agent_data["id"],
+            )
+            context["og_page_absolute_url"] = build_og_absolute_url(
+                request, request.get_full_path()
+            )
+        return render(request, "agents/registration.html", context)
     except Exception as e:
-        logger.exception(f"Error in agent_registration_referral view for ref_code {ref_code}: {e}")
+        logger.exception(
+            f"Error in agent_registration_referral view for ref_code {ref_code}: {e}"
+        )
         context = _get_registration_context(request)
-        return render(request, 'agents/registration.html', context)
+        return render(request, "agents/registration.html", context)
 
 
 def _int_or_zero(value):
     try:
-        digits = re.sub(r'\D', '', str(value or ''))
+        digits = re.sub(r"\D", "", str(value or ""))
         return int(digits) if digits else 0
     except (TypeError, ValueError):
         return 0
 
 
 def _public_profile_path(agent):
-    slug = ''
+    slug = ""
     try:
-        profile = getattr(agent, 'profile', None)
-        slug = (profile.slug or '') if profile else ''
+        profile = getattr(agent, "profile", None)
+        slug = (profile.slug or "") if profile else ""
     except Exception:
-        slug = ''
+        slug = ""
     if not slug:
-        slug = getattr(agent, 'agent_slug', '') or ''
+        slug = getattr(agent, "agent_slug", "") or ""
     if not slug:
-        return reverse('agents:agent_dashboard')
-    
+        return reverse("agents:agent_dashboard")
+
     return f"/{slug}/"
 
 
@@ -1412,35 +1944,47 @@ def _post_payment_redirect_url(request, agent=None):
 
     try:
         if request.user.is_authenticated and is_distributor(request.user):
-            return reverse('distributors:agents_index')
+            return reverse("distributors:agents_index")
     except Exception:
         pass
-    if request.session.get('app_upgrade_handoff_plan'):
-        return reverse('agents:agent_dashboard') + '?upgrade_success=1'
-    if agent is not None and getattr(agent, 'pk', None):
+    if request.session.get("app_upgrade_handoff_plan"):
+        return reverse("agents:agent_dashboard") + "?upgrade_success=1"
+    if agent is not None and getattr(agent, "pk", None):
         from apps.agents.models import AgentSubscription
+
         # Renewal / repeat payment: an earlier paid order exists.
-        if AgentSubscription.objects.filter(agent=agent, payment_status='completed').count() > 1:
-            return reverse('agents:agent_dashboard')
-    return reverse('agents:agent_edit_profile') + '?welcome=1'
+        if (
+            AgentSubscription.objects.filter(
+                agent=agent, payment_status="completed"
+            ).count()
+            > 1
+        ):
+            return reverse("agents:agent_dashboard")
+    return reverse("agents:agent_edit_profile") + "?welcome=1"
 
 
-def _activation_success_payload(request, agent, message='Payment successful and account activated.'):
+def _activation_success_payload(
+    request, agent, message="Payment successful and account activated."
+):
     redirect_url = _post_payment_redirect_url(request, agent)
     profile_path = _public_profile_path(agent)
     return {
-        'success': True,
-        'message': message,
-        'redirect_url': redirect_url,
-        'agent_name': (getattr(agent, 'fullname', '') or '').strip(),
-        'profile_url': request.build_absolute_uri(profile_path),
+        "success": True,
+        "message": message,
+        "redirect_url": redirect_url,
+        "agent_name": (getattr(agent, "fullname", "") or "").strip(),
+        "profile_url": request.build_absolute_uri(profile_path),
     }
 
 
 # Real image format (detected from the file bytes) -> extension it is saved with.
 _PHOTO_FORMAT_EXTENSIONS = {
-    'JPEG': '.jpg', 'MPO': '.jpg', 'PNG': '.png', 'GIF': '.gif',
-    'WEBP': '.webp', 'BMP': '.bmp',
+    "JPEG": ".jpg",
+    "MPO": ".jpg",
+    "PNG": ".png",
+    "GIF": ".gif",
+    "WEBP": ".webp",
+    "BMP": ".bmp",
 }
 
 
@@ -1460,13 +2004,15 @@ def _validated_photo_upload(upload):
     if upload.size > 5 * 1024 * 1024:
         return None
     from apps.agents.utils.file_validation import has_dangerous_extra_extension
+
     if has_dangerous_extra_extension(upload.name):
         return None
     try:
         from PIL import Image
+
         upload.seek(0)
         img = Image.open(upload)
-        fmt = (img.format or '').upper()
+        fmt = (img.format or "").upper()
         img.verify()
         upload.seek(0)
     except Exception:
@@ -1474,70 +2020,97 @@ def _validated_photo_upload(upload):
     ext = _PHOTO_FORMAT_EXTENSIONS.get(fmt)
     if not ext:
         return None
-    base = os.path.splitext(os.path.basename(upload.name or ''))[0]
-    base = re.sub(r'[^A-Za-z0-9_-]+', '_', base).strip('_')[:80] or 'photo'
-    upload.name = f'{base}{ext}'
+    base = os.path.splitext(os.path.basename(upload.name or ""))[0]
+    base = re.sub(r"[^A-Za-z0-9_-]+", "_", base).strip("_")[:80] or "photo"
+    upload.name = f"{base}{ext}"
     return upload
 
 
 def _assign_step1_draft_fields(draft, request, extra=None):
     extra = extra or {}
-    draft.fullname = extra.get('fullname', request.POST.get('fullname', '').strip())
-    draft.mobile = extra.get('mobile', request.POST.get('mobile', '').strip())
-    draft.agent_pincode = extra.get('agent_pincode', request.POST.get('agent_pincode', '').strip())
-    draft.state = extra.get('state', request.POST.get('state', '').strip())
-    exp_raw = extra.get('experience', request.POST.get('experience_range', ''))
+    draft.fullname = extra.get("fullname", request.POST.get("fullname", "").strip())
+    draft.mobile = extra.get("mobile", request.POST.get("mobile", "").strip())
+    draft.agent_pincode = extra.get(
+        "agent_pincode", request.POST.get("agent_pincode", "").strip()
+    )
+    draft.state = extra.get("state", request.POST.get("state", "").strip())
+    exp_raw = extra.get("experience", request.POST.get("experience_range", ""))
     if exp_raw:
         try:
-            exp_digits = re.sub(r'\D', '', str(exp_raw))
+            exp_digits = re.sub(r"\D", "", str(exp_raw))
             if exp_digits and int(exp_digits) > 60:
-                exp_raw = '60'
+                exp_raw = "60"
         except (TypeError, ValueError):
             pass
     draft.experience_range = exp_raw
-    draft.segments = extra.get('segments', request.POST.getlist('segments[]') or request.POST.getlist('segments'))
-    draft.investment_types = extra.get(
-        'investment_types',
-        request.POST.getlist('investment_types[]') or request.POST.getlist('investment_types'),
+    draft.segments = extra.get(
+        "segments",
+        request.POST.getlist("segments[]") or request.POST.getlist("segments"),
     )
-    draft.promo_code = extra.get('promo_code', request.POST.get('promo_code', '').strip())
-    draft.address = extra.get('address', request.POST.get('address', '').strip())
-    draft.client_base = extra.get('client_base', request.POST.get('client_base', '').strip())
-    draft.slug = extra.get('slug', request.POST.get('slug', '').strip())
-    draft.whatsapp = extra.get('whatsapp', request.POST.get('whatsapp', '').strip())
-    draft.pan_number = extra.get('pan_number', request.POST.get('pan_number', '').strip().upper())
-    draft.claims_settled = extra.get('claims_settled', _int_or_zero(request.POST.get('claims_settled')))
-    draft.claim_amount = extra.get('claim_amount', request.POST.get('claim_amount', '').strip())
-    photo = _validated_photo_upload(request.FILES.get('photo'))
+    draft.investment_types = extra.get(
+        "investment_types",
+        request.POST.getlist("investment_types[]")
+        or request.POST.getlist("investment_types"),
+    )
+    draft.promo_code = extra.get(
+        "promo_code", request.POST.get("promo_code", "").strip()
+    )
+    draft.address = extra.get("address", request.POST.get("address", "").strip())
+    draft.client_base = extra.get(
+        "client_base", request.POST.get("client_base", "").strip()
+    )
+    draft.slug = extra.get("slug", request.POST.get("slug", "").strip())
+    draft.whatsapp = extra.get("whatsapp", request.POST.get("whatsapp", "").strip())
+    draft.pan_number = extra.get(
+        "pan_number", request.POST.get("pan_number", "").strip().upper()
+    )
+    draft.claims_settled = extra.get(
+        "claims_settled", _int_or_zero(request.POST.get("claims_settled"))
+    )
+    draft.claim_amount = extra.get(
+        "claim_amount", request.POST.get("claim_amount", "").strip()
+    )
+    photo = _validated_photo_upload(request.FILES.get("photo"))
     if photo:
         draft.photo = photo
 
     # Capture sub-distributor / distributor binding from session
-    sub_dist_id_from_session = request.session.get('sub_distributor_id')
+    sub_dist_id_from_session = request.session.get("sub_distributor_id")
     if sub_dist_id_from_session:
         draft.sub_distributor_id = sub_dist_id_from_session
 
-    dist_id_from_session = request.session.get('distributor_id')
+    dist_id_from_session = request.session.get("distributor_id")
     if dist_id_from_session:
         draft.distributor_id = dist_id_from_session
         from apps.admin_panel.models.referral_code import ReferralCode
-        ref_obj = ReferralCode.objects.filter(distributor_id=dist_id_from_session, is_active=True).first()
+
+        ref_obj = ReferralCode.objects.filter(
+            distributor_id=dist_id_from_session, is_active=True
+        ).first()
         if ref_obj:
             draft.referred_by_code = ref_obj.code
     else:
-        ref_code = request.session.get('ref_code') or request.session.get('championship_ref_id')
+        ref_code = request.session.get("ref_code") or request.session.get(
+            "championship_ref_id"
+        )
         if ref_code:
             from apps.distributors.models import SubDistributor
-            sub_dist = SubDistributor.objects.filter(code=ref_code, status='active').first()
+
+            sub_dist = SubDistributor.objects.filter(
+                code=ref_code, status="active"
+            ).first()
             if sub_dist:
                 draft.sub_distributor_id = sub_dist.id
                 draft.distributor_id = sub_dist.distributor_id
                 draft.referred_by_code = sub_dist.code
-            elif str(ref_code).startswith('PA-') or str(ref_code).startswith('EV-'):
+            elif str(ref_code).startswith("PA-") or str(ref_code).startswith("EV-"):
                 draft.referred_by_code = ref_code
             else:
                 from apps.admin_panel.models.referral_code import ReferralCode
-                ref_obj = ReferralCode.objects.filter(code=ref_code, is_active=True).first()
+
+                ref_obj = ReferralCode.objects.filter(
+                    code=ref_code, is_active=True
+                ).first()
                 if ref_obj:
                     draft.referred_by_code = ref_code
                     if ref_obj.distributor_id:
@@ -1552,34 +2125,45 @@ def _registration_slug_status(raw_slug):
     from apps.agents.models import AgentProfile
     from apps.home.models.page import Page
 
-    slug = slugify((raw_slug or '').strip())
+    slug = slugify((raw_slug or "").strip())
     if (
         not slug
         or len(slug) < 3
         or len(slug) > 50
-        or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', slug)
+        or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug)
         or slug in _RESERVED_PROFILE_SLUGS
     ):
-        return False, 'Profile URL must be 3–50 characters and use only letters, numbers, and hyphens.', slug
-    if Page.objects.filter(slug=slug).exists() or AgentProfile.objects.filter(slug=slug).exists():
-        return False, 'This URL is already taken. Please choose another.', slug
-    return True, 'URL is available!', slug
+        return (
+            False,
+            "Profile URL must be 3–50 characters and use only letters, numbers, and hyphens.",
+            slug,
+        )
+    if (
+        Page.objects.filter(slug=slug).exists()
+        or AgentProfile.objects.filter(slug=slug).exists()
+    ):
+        return False, "This URL is already taken. Please choose another.", slug
+    return True, "URL is available!", slug
 
 
 @require_http_methods(["GET"])
 def check_slug_availability(request):
     """Check if a custom slug is available for an agent profile."""
-    raw_slug = request.GET.get('slug', '').strip()
+    raw_slug = request.GET.get("slug", "").strip()
     if not raw_slug:
-        return JsonResponse({'success': False, 'available': False, 'message': 'Slug is required.'})
+        return JsonResponse(
+            {"success": False, "available": False, "message": "Slug is required."}
+        )
 
     available, message, slug = _registration_slug_status(raw_slug)
-    return JsonResponse({
-        'success': True,
-        'available': available,
-        'slug': slug,
-        'message': message,
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "available": available,
+            "slug": slug,
+            "message": message,
+        }
+    )
 
 
 @require_http_methods(["GET"])
@@ -1587,48 +2171,66 @@ def check_email_availability(request):
     """Tell the registration form if this email already belongs to an active/paid agent."""
     from apps.agents.models import Agent, Invoice
 
-    email = (request.GET.get('email') or '').strip().lower()
-    if not email or '@' not in email:
-        return JsonResponse({
-            'success': False,
-            'registered': False,
-            'valid': False,
-            'message': 'Please enter a valid email address.',
-        })
+    email = (request.GET.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return JsonResponse(
+            {
+                "success": False,
+                "registered": False,
+                "valid": False,
+                "message": "Please enter a valid email address.",
+            }
+        )
 
     registered = (
-        Invoice.objects.filter(agent_email__iexact=email, payment_status='paid').exists()
-        or Agent.objects.filter(email__iexact=email, status__in=['active', 'pending_approval']).exists()
+        Invoice.objects.filter(
+            agent_email__iexact=email, payment_status="paid"
+        ).exists()
+        or Agent.objects.filter(
+            email__iexact=email, status__in=["active", "pending_approval"]
+        ).exists()
     )
-    message = f'You are already registered with {email}. Please login to access your dashboard.'
+    message = f"You are already registered with {email}. Please login to access your dashboard."
     if not registered:
         # Same rule as register_step1: step 1 only reuses a registration still
         # in progress, so say so before the preview opens instead of failing
         # on "Claim" (e.g. a Paldi challenger signing up again from another
         # device; they must log in).
-        existing = Agent.objects.filter(email__iexact=email).only('status', 'user_id').first()
+        existing = (
+            Agent.objects.filter(email__iexact=email).only("status", "user_id").first()
+        )
         if existing and existing.status not in STEP1_REUSABLE_STATUSES:
-            owns = bool(request.user.is_authenticated and existing.user_id
-                        and existing.user_id == request.user.pk)
-            if not (owns and existing.status == 'event_challenge'):
+            owns = bool(
+                request.user.is_authenticated
+                and existing.user_id
+                and existing.user_id == request.user.pk
+            )
+            if not (owns and existing.status == "event_challenge"):
                 registered = True
                 from apps.agents.services.account_auth import BLOCKED_DASHBOARD_STATUSES
+
                 if existing.status in BLOCKED_DASHBOARD_STATUSES:
-                    message = 'This email cannot be used to register. Please contact support.'
+                    message = (
+                        "This email cannot be used to register. Please contact support."
+                    )
     if registered:
-        return JsonResponse({
-            'success': True,
-            'registered': True,
-            'valid': True,
-            'message': message,
-            'login_url': reverse('agents:agent_login'),
-        })
-    return JsonResponse({
-        'success': True,
-        'registered': False,
-        'valid': True,
-        'message': '',
-    })
+        return JsonResponse(
+            {
+                "success": True,
+                "registered": True,
+                "valid": True,
+                "message": message,
+                "login_url": reverse("agents:agent_login"),
+            }
+        )
+    return JsonResponse(
+        {
+            "success": True,
+            "registered": False,
+            "valid": True,
+            "message": "",
+        }
+    )
 
 
 @require_POST
@@ -1639,132 +2241,160 @@ def register_step1(request):
     client_ip = _get_client_ip(request)
     ip_rate_key = f"reg_ip_rate_{client_ip}"
     from django.core.cache import cache
+
     try:
         req_count = cache.get(ip_rate_key, 0)
         if req_count and req_count >= 20:
             logger.warning(f"Registration rate limit exceeded for IP: {client_ip}")
-            return JsonResponse({
-                'success': False,
-                'message': 'Too many registration requests from your network. Please wait a minute and try again.',
-            }, status=429)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Too many registration requests from your network. Please wait a minute and try again.",
+                },
+                status=429,
+            )
         cache.set(ip_rate_key, (req_count or 0) + 1, timeout=60)
     except Exception:
-        pass
+        logger.exception(
+            "[register_step1] Signup rate limit check failed (cache error); allowing request"
+        )
 
     # Bot checks (security audit 2026-10-02 M2): the hidden "website" field
     # is invisible to people, and a form posted within a few seconds of
     # being shown was not filled in by hand.
-    if (request.POST.get('website') or '').strip():
-        logger.warning('Registration honeypot filled from IP %s', client_ip)
-        return JsonResponse({'success': False, 'message': 'Please try again.'}, status=400)
+    if (request.POST.get("website") or "").strip():
+        logger.warning("Registration honeypot filled from IP %s", client_ip)
+        return JsonResponse(
+            {"success": False, "message": "Please try again."}, status=400
+        )
     shown_at = request.session.get(REG_FORM_SHOWN_AT_KEY)
     min_secs = _registration_min_fill_seconds()
     if min_secs and shown_at and time.time() - float(shown_at) < min_secs:
-        logger.warning('Registration posted too fast from IP %s', client_ip)
-        return JsonResponse({
-            'success': False,
-            'message': 'Please take a moment to check your details and try again.',
-        }, status=429)
+        logger.warning("Registration posted too fast from IP %s", client_ip)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Please take a moment to check your details and try again.",
+            },
+            status=429,
+        )
 
     # Extract form data
-    fullname = request.POST.get('fullname', '').strip()
-    email = request.POST.get('email', '').strip().lower()
-    mobile = request.POST.get('mobile', '').strip()
-    agent_pincode = request.POST.get('agent_pincode', '').strip()
-    state = request.POST.get('state', '').strip()
-    experience = (request.POST.get('experience_range', '') or '').strip()
-    segments = request.POST.getlist('segments[]') or request.POST.getlist('segments')
-    investment_types = request.POST.getlist('investment_types[]') or request.POST.getlist('investment_types')
-    client_base = request.POST.get('client_base', '').strip()
-    slug = request.POST.get('slug', '').strip()
+    fullname = request.POST.get("fullname", "").strip()
+    email = request.POST.get("email", "").strip().lower()
+    mobile = request.POST.get("mobile", "").strip()
+    agent_pincode = request.POST.get("agent_pincode", "").strip()
+    state = request.POST.get("state", "").strip()
+    experience = (request.POST.get("experience_range", "") or "").strip()
+    segments = request.POST.getlist("segments[]") or request.POST.getlist("segments")
+    investment_types = request.POST.getlist(
+        "investment_types[]"
+    ) or request.POST.getlist("investment_types")
+    client_base = request.POST.get("client_base", "").strip()
+    slug = request.POST.get("slug", "").strip()
 
     distributor_id = None
     from apps.distributors.views.dashboard import is_distributor
+
     if request.user.is_authenticated and is_distributor(request.user):
         from apps.admin_panel.models import User as LaravelUser
+
         l_user = LaravelUser.objects.filter(email=request.user.email).first()
         distributor_id = l_user.id if l_user else request.user.id
-        request.session['distributor_id'] = distributor_id
+        request.session["distributor_id"] = distributor_id
 
     # Validation
     errors = []
     field_errors = {}
     if not fullname:
-        errors.append('Full name is required.')
+        errors.append("Full name is required.")
     elif (
         len(fullname) > 70
-        or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9 ._\-]{1,69}', fullname)
-        or not re.search(r'[A-Za-z].*[A-Za-z]|[A-Za-z]{2}', fullname)
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 ._\-]{1,69}", fullname)
+        or not re.search(r"[A-Za-z].*[A-Za-z]|[A-Za-z]{2}", fullname)
     ):
         # Names are rendered on public pages and stored in a 70-character field.
         # Underscores stay allowed because batch signups use them in the name.
-        errors.append('Please enter a valid full name (2–70 characters).')
+        errors.append("Please enter a valid full name (2–70 characters).")
     if not email or len(email) > 254:
-        errors.append('Please enter a valid email address.')
+        errors.append("Please enter a valid email address.")
     else:
         from django.core.validators import validate_email
         from django.core.exceptions import ValidationError
+
         try:
             validate_email(email)
         except ValidationError:
-            errors.append('Please enter a valid email address.')
-    if not mobile or not re.match(r'^[6-9]\d{9}$', mobile):
-        errors.append('Please enter a valid 10-digit mobile number starting with 6-9.')
-    whatsapp = request.POST.get('whatsapp', '').strip()
-    if whatsapp and not re.match(r'^[6-9]\d{9}$', whatsapp):
-        errors.append('Please enter a valid 10-digit WhatsApp number starting with 6-9.')
-    if experience and (not re.fullmatch(r'\d{1,2}', str(experience)) or int(experience) > 60):
-        errors.append('Experience must be a whole number from 0 to 60.')
-    if client_base and not re.fullmatch(r'\d{1,4}', client_base):
-        errors.append('Client count must be a number up to 4 digits.')
-    claims_raw = request.POST.get('claims_settled', '').strip()
-    if claims_raw and not re.fullmatch(r'\d{1,4}', claims_raw):
-        errors.append('Claims settled must be a number up to 4 digits.')
-    claim_amount_raw = request.POST.get('claim_amount', '').strip()
-    if claim_amount_raw and not re.fullmatch(r'\d{1,3}', claim_amount_raw):
-        errors.append('Claim amount must be a number up to 3 digits.')
-    if not agent_pincode or not re.match(r'^[1-9]\d{5}$', agent_pincode):
-        msg = 'Please enter a valid 6-digit pincode.'
+            errors.append("Please enter a valid email address.")
+    if not mobile or not re.match(r"^[6-9]\d{9}$", mobile):
+        errors.append("Please enter a valid 10-digit mobile number starting with 6-9.")
+    whatsapp = request.POST.get("whatsapp", "").strip()
+    if whatsapp and not re.match(r"^[6-9]\d{9}$", whatsapp):
+        errors.append(
+            "Please enter a valid 10-digit WhatsApp number starting with 6-9."
+        )
+    if experience and (
+        not re.fullmatch(r"\d{1,2}", str(experience)) or int(experience) > 60
+    ):
+        errors.append("Experience must be a whole number from 0 to 60.")
+    if client_base and not re.fullmatch(r"\d{1,4}", client_base):
+        errors.append("Client count must be a number up to 4 digits.")
+    claims_raw = request.POST.get("claims_settled", "").strip()
+    if claims_raw and not re.fullmatch(r"\d{1,4}", claims_raw):
+        errors.append("Claims settled must be a number up to 4 digits.")
+    claim_amount_raw = request.POST.get("claim_amount", "").strip()
+    if claim_amount_raw and not re.fullmatch(r"\d{1,3}", claim_amount_raw):
+        errors.append("Claim amount must be a number up to 3 digits.")
+    if not agent_pincode or not re.match(r"^[1-9]\d{5}$", agent_pincode):
+        msg = "Please enter a valid 6-digit pincode."
         errors.append(msg)
-        field_errors['agent_pincode'] = [msg]
+        field_errors["agent_pincode"] = [msg]
     else:
         pin_row = _resolve_registration_pincode(agent_pincode)
         if not pin_row:
-            msg = 'This pincode was not found. Please enter a valid pincode.'
+            msg = "This pincode was not found. Please enter a valid pincode."
             errors.append(msg)
-            field_errors['agent_pincode'] = [msg]
+            field_errors["agent_pincode"] = [msg]
         elif not state:
-            state = (pin_row.state or '').strip()
+            state = (pin_row.state or "").strip()
     if not state:
-        errors.append('Please select a state.')
+        errors.append("Please select a state.")
     if any(seg not in ALLOWED_SEGMENT_IDS for seg in segments):
-        errors.append('Please select a valid insurance segment.')
+        errors.append("Please select a valid insurance segment.")
     if any(item not in ALLOWED_INVESTMENT_TYPES for item in investment_types):
-        errors.append('Please select a valid investment type.')
+        errors.append("Please select a valid investment type.")
     if not segments and not investment_types:
-        errors.append('Please select at least one insurance segment or investment type.')
+        errors.append(
+            "Please select at least one insurance segment or investment type."
+        )
     if slug:
         slug_ok, slug_message, _normalized = _registration_slug_status(slug)
         if not slug_ok:
             errors.append(slug_message)
-            field_errors['slug'] = [slug_message]
-    pan_number = request.POST.get('pan_number', '').strip().upper()
-    if pan_number and not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', pan_number):
-        errors.append('PAN must be 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F).')
+            field_errors["slug"] = [slug_message]
+    pan_number = request.POST.get("pan_number", "").strip().upper()
+    if pan_number and not re.match(r"^[A-Z]{5}[0-9]{4}[A-Z]$", pan_number):
+        errors.append(
+            "PAN must be 5 letters, 4 digits, then 1 letter (e.g. ABCDE1234F)."
+        )
 
     if errors:
-        payload = {'success': False, 'message': ' '.join(errors)}
+        payload = {"success": False, "message": " ".join(errors)}
         if field_errors:
-            payload['errors'] = field_errors
+            payload["errors"] = field_errors
         return JsonResponse(payload, status=400)
 
     # The registration page stays behind the name+phone gate. Event signup
     # does not use that gate and must keep its own path.
-    if not request.session.get('event_referral_registration'):
-        from apps.agents.services.registration_leads import session_lead, capture_quick_lead
+    if not request.session.get("event_referral_registration"):
+        from apps.agents.services.registration_leads import (
+            session_lead,
+            capture_quick_lead,
+        )
         from apps.admin_panel.models import RegistrationLead
+
         gate_lead = session_lead(request)
-        if gate_lead is None and re.match(r'^[6-9]\d{9}$', mobile):
+        if gate_lead is None and re.match(r"^[6-9]\d{9}$", mobile):
             gate_lead, blocked_msg = capture_quick_lead(
                 request,
                 name=fullname,
@@ -1772,16 +2402,22 @@ def register_step1(request):
                 source_url=request.build_absolute_uri()[:500],
             )
             if blocked_msg:
-                return JsonResponse({
-                    'success': False,
-                    'message': blocked_msg,
-                    'errors': {'mobile': [blocked_msg]},
-                }, status=422)
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": blocked_msg,
+                        "errors": {"mobile": [blocked_msg]},
+                    },
+                    status=422,
+                )
         if gate_lead is None:
-            return JsonResponse({
-                'success': False,
-                'message': 'Please share your name and mobile number to start registration.',
-            }, status=403)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Please share your name and mobile number to start registration.",
+                },
+                status=403,
+            )
         other_lead = (
             RegistrationLead.objects.filter(phone=mobile)
             .exclude(pk=gate_lead.pk)
@@ -1789,109 +2425,161 @@ def register_step1(request):
         )
         if other_lead is not None:
             msg = (
-                'This mobile number is already registered. '
-                'Please continue with your original number or login with that account.'
+                "This mobile number is already registered. "
+                "Please continue with your original number or login with that account."
             )
-            return JsonResponse({
-                'success': False,
-                'message': msg,
-                'errors': {'mobile': [msg]},
-            }, status=422)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": msg,
+                    "errors": {"mobile": [msg]},
+                },
+                status=422,
+            )
 
-    raw_photo = request.FILES.get('photo')
+    raw_photo = request.FILES.get("photo")
     if raw_photo and _validated_photo_upload(raw_photo) is None:
-        return JsonResponse({
-            'success': False,
-            'message': 'Profile photo must be a real JPG, PNG, WEBP, or GIF image under 5MB. Renamed code files are not allowed.',
-            'errors': {'photo': ['Profile photo must be a real JPG, PNG, WEBP, or GIF image under 5MB.']},
-        }, status=422)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Profile photo must be a real JPG, PNG, WEBP, or GIF image under 5MB. Renamed code files are not allowed.",
+                "errors": {
+                    "photo": [
+                        "Profile photo must be a real JPG, PNG, WEBP, or GIF image under 5MB."
+                    ]
+                },
+            },
+            status=422,
+        )
 
     from apps.agents.models import Agent, Invoice, AgentDraft
 
     # Check if an Agent record already exists for the email
-    existing_agent = Agent.objects.filter(email__iexact=email).first() if email else None
+    existing_agent = (
+        Agent.objects.filter(email__iexact=email).first() if email else None
+    )
 
     # Check if a paid invoice or active agent exists matching this email
-    paid_agent_exists = (
-        Invoice.objects.filter(agent_email__iexact=email, payment_status='paid').exists()
-        or bool(existing_agent and existing_agent.status in ['active', 'pending_approval'])
+    paid_agent_exists = Invoice.objects.filter(
+        agent_email__iexact=email, payment_status="paid"
+    ).exists() or bool(
+        existing_agent and existing_agent.status in ["active", "pending_approval"]
     )
     if paid_agent_exists:
-        return JsonResponse({
-            'success': False,
-            'message': f'You are already registered with {email}. Please login to access your dashboard.',
-            'redirect': '/agent-login/'
-        }, status=422)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": f"You are already registered with {email}. Please login to access your dashboard.",
+                "redirect": "/agent-login/",
+            },
+            status=422,
+        )
 
     # One mobile number, one account: a number already used by an agent with
     # a different email cannot start another registration (several accounts
     # or Paldi challenges per person). The other email is not revealed.
     # Security audit 2026-10-02 L3.
-    if Agent.objects.filter(mobile=mobile).exclude(email__iexact=email).exclude(status='deleted').exists():
-        msg = ('This mobile number is already registered with another account. '
-               'Please login with that account, or use a different mobile number.')
-        return JsonResponse({
-            'success': False,
-            'message': msg,
-            'errors': {'mobile': [msg]},
-        }, status=422)
+    if (
+        Agent.objects.filter(mobile=mobile)
+        .exclude(email__iexact=email)
+        .exclude(status="deleted")
+        .exists()
+    ):
+        msg = (
+            "This mobile number is already registered with another account. "
+            "Please login with that account, or use a different mobile number."
+        )
+        return JsonResponse(
+            {
+                "success": False,
+                "message": msg,
+                "errors": {"mobile": [msg]},
+            },
+            status=422,
+        )
 
     # An agent is resolved by email, so registering a staff / insurance /
     # distributor email would hand that account's session to the payer.
     from apps.agents.services.account_auth import email_owned_by_non_agent_account
+
     if email_owned_by_non_agent_account(email):
-        logger.warning('Agent registration refused for portal-account email %s', email)
-        return JsonResponse({
-            'success': False,
-            'message': 'This email is already used by a PadosiAgent partner or staff account. '
-                       'Please register with a different email.',
-            'errors': {'email': ['This email is already used by a PadosiAgent partner or staff account. '
-                                 'Please register with a different email.']},
-        }, status=422)
+        logger.warning("Agent registration refused for portal-account email %s", email)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "This email is already used by a PadosiAgent partner or staff account. "
+                "Please register with a different email.",
+                "errors": {
+                    "email": [
+                        "This email is already used by a PadosiAgent partner or staff account. "
+                        "Please register with a different email."
+                    ]
+                },
+            },
+            status=422,
+        )
 
     # Check if an Agent record already exists for the email but has NO paid invoice
     owns_existing = bool(
-        existing_agent and request.user.is_authenticated
-        and existing_agent.user_id and existing_agent.user_id == request.user.pk
+        existing_agent
+        and request.user.is_authenticated
+        and existing_agent.user_id
+        and existing_agent.user_id == request.user.pk
     )
     if (
         existing_agent
         and existing_agent.status not in STEP1_REUSABLE_STATUSES
         # A Paldi challenger re-submitting from their own session (double
         # click right after the challenge signed them in) is still allowed.
-        and not (owns_existing and existing_agent.status == 'event_challenge')
+        and not (owns_existing and existing_agent.status == "event_challenge")
     ):
         # Step 1 needs no login, so it may only reuse a registration that is
         # still in progress. Re-submitting it for a suspended / blacklisted
         # agent (or one awaiting approval) let anyone overwrite their name
         # and mobile and, on "Pay", reset their status.
         from apps.agents.services.account_auth import BLOCKED_DASHBOARD_STATUSES
+
         if existing_agent.status in BLOCKED_DASHBOARD_STATUSES:
-            return JsonResponse({
-                'success': False,
-                'message': 'This email cannot be used to register. Please contact support.',
-            }, status=422)
-        return JsonResponse({
-            'success': False,
-            'message': f'You are already registered with {email}. Please login to access your dashboard.',
-            'redirect': '/agent-login/',
-        }, status=422)
-    if existing_agent and request.session.get('event_referral_registration') and not owns_existing:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "This email cannot be used to register. Please contact support.",
+                },
+                status=422,
+            )
+        return JsonResponse(
+            {
+                "success": False,
+                "message": f"You are already registered with {email}. Please login to access your dashboard.",
+                "redirect": "/agent-login/",
+            },
+            status=422,
+        )
+    if (
+        existing_agent
+        and request.session.get("event_referral_registration")
+        and not owns_existing
+    ):
         # The Paldi signup signs the person in, so it must never continue an
         # existing account for someone who is not signed in as it.
-        return JsonResponse({
-            'success': False,
-            'message': f'You are already registered with {email}. Please login to access your dashboard.',
-            'redirect': '/agent-login/',
-        }, status=422)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": f"You are already registered with {email}. Please login to access your dashboard.",
+                "redirect": "/agent-login/",
+            },
+            status=422,
+        )
     if existing_agent:
         # Case 4 (network lost): try to verify Razorpay payment directly first!
         if verify_and_activate_pending_payment(existing_agent):
-            return JsonResponse({
-                'success': True,
-                'message': 'Payment verified successfully! Redirecting to dashboard...',
-                'redirect': reverse('agents:agent_dashboard'),
-            })
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": "Payment verified successfully! Redirecting to dashboard...",
+                    "redirect": reverse("agents:agent_dashboard"),
+                }
+            )
 
         # Reuse existing registration (Agent and AgentDraft)
         draft = AgentDraft.objects.filter(email=email).first()
@@ -1907,13 +2595,15 @@ def register_step1(request):
         draft.email_verified = True
         draft.registration_step = 1
         if draft.promo_code:
-            request.session['applied_promo_code'] = draft.promo_code
-        elif not request.session.get('distributor_led_registration') and not request.session.get('distributor_id'):
-            request.session.pop('applied_promo_code', None)
+            request.session["applied_promo_code"] = draft.promo_code
+        elif not request.session.get(
+            "distributor_led_registration"
+        ) and not request.session.get("distributor_id"):
+            request.session.pop("applied_promo_code", None)
         draft.save()
 
-        request.session['current_draft_id'] = draft.pk
-        request.session['reg_step'] = 2
+        request.session["current_draft_id"] = draft.pk
+        request.session["reg_step"] = 2
 
         # Update the existing Agent record to prevent stale data
         existing_agent.fullname = draft.fullname
@@ -1923,7 +2613,7 @@ def register_step1(request):
         existing_agent.client_base = draft.client_base
         existing_agent.save()
 
-        logger.info(f'Agent Step 1 reused & updated — draft #{draft.pk}, email={email}')
+        logger.info(f"Agent Step 1 reused & updated — draft #{draft.pk}, email={email}")
 
         # ── Event: FORM_SUBMIT (existing agent reuse) ───────────────────────
         RegistrationActivityLog.log(
@@ -1932,42 +2622,52 @@ def register_step1(request):
             agent=existing_agent,
             draft_id=draft.pk,
             extra_details={
-                'email': email,
-                'fullname': draft.fullname,
-                'agent_pincode': draft.agent_pincode,
-                'state': draft.state,
-                'promo_code': draft.promo_code or '',
-                'reuse': True,
+                "email": email,
+                "fullname": draft.fullname,
+                "agent_pincode": draft.agent_pincode,
+                "state": draft.state,
+                "promo_code": draft.promo_code or "",
+                "reuse": True,
             },
         )
 
-        if getattr(draft, 'distributor_id', None) or getattr(draft, 'referred_by_code', None):
+        if getattr(draft, "distributor_id", None) or getattr(
+            draft, "referred_by_code", None
+        ):
             RegistrationActivityLog.log(
                 RegistrationActivityLog.EVENT_DISTRIBUTION,
                 request=request,
                 agent=existing_agent,
                 draft_id=draft.pk,
                 extra_details={
-                    'distributor_id': draft.distributor_id,
-                    'referred_by_code': draft.referred_by_code,
-                    'via_ref_code': True if getattr(draft, 'referred_by_code', None) and not getattr(draft, 'distributor_id', None) else False,
-                    'reuse': True,
+                    "distributor_id": draft.distributor_id,
+                    "referred_by_code": draft.referred_by_code,
+                    "via_ref_code": True
+                    if getattr(draft, "referred_by_code", None)
+                    and not getattr(draft, "distributor_id", None)
+                    else False,
+                    "reuse": True,
                 },
             )
 
+        if request.session.get("event_referral_registration"):
+            from apps.event_referral.services.registration_service import (
+                finalize_event_referral_registration,
+            )
 
-        if request.session.get('event_referral_registration'):
-            from apps.event_referral.services.registration_service import finalize_event_referral_registration
             return finalize_event_referral_registration(request, draft)
 
         from apps.agents.services.registration_leads import mark_form_completed
+
         mark_form_completed(request, draft=draft, agent=existing_agent)
 
-        return JsonResponse({
-            'success': True,
-            'message': 'Basic information updated!',
-            'redirect': '/chooseplan/',
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "Basic information updated!",
+                "redirect": "/chooseplan/",
+            }
+        )
 
     # Create new draft
     session_key = request.session.session_key
@@ -1976,9 +2676,10 @@ def register_step1(request):
         session_key = request.session.session_key
 
     from django.db import connection, transaction
+
     lock_name = f"reg_draft_{email}"
     has_lock = False
-    if connection.vendor == 'mysql':
+    if connection.vendor == "mysql":
         try:
             with connection.cursor() as cur:
                 cur.execute("SELECT GET_LOCK(%s, 5)", [lock_name])
@@ -1990,11 +2691,18 @@ def register_step1(request):
     try:
         with transaction.atomic():
             draft = None
-            draft_id = request.session.get('current_draft_id')
+            draft_id = request.session.get("current_draft_id")
             if draft_id:
-                draft = AgentDraft.objects.select_for_update().filter(pk=draft_id).first()
+                draft = (
+                    AgentDraft.objects.select_for_update().filter(pk=draft_id).first()
+                )
             if not draft and email:
-                draft = AgentDraft.objects.select_for_update().filter(email=email).order_by('-pk').first()
+                draft = (
+                    AgentDraft.objects.select_for_update()
+                    .filter(email=email)
+                    .order_by("-pk")
+                    .first()
+                )
             if not draft:
                 draft = AgentDraft(session_key=session_key, email=email)
 
@@ -2004,22 +2712,24 @@ def register_step1(request):
             draft.email_verified = True
             draft.registration_step = 1
             if draft.promo_code:
-                request.session['applied_promo_code'] = draft.promo_code
-            elif not request.session.get('distributor_led_registration') and not request.session.get('distributor_id'):
-                request.session.pop('applied_promo_code', None)
+                request.session["applied_promo_code"] = draft.promo_code
+            elif not request.session.get(
+                "distributor_led_registration"
+            ) and not request.session.get("distributor_id"):
+                request.session.pop("applied_promo_code", None)
             draft.save()
 
-            request.session['current_draft_id'] = draft.pk
-            request.session['reg_step'] = 2
+            request.session["current_draft_id"] = draft.pk
+            request.session["reg_step"] = 2
     finally:
-        if has_lock and connection.vendor == 'mysql':
+        if has_lock and connection.vendor == "mysql":
             try:
                 with connection.cursor() as cur:
                     cur.execute("SELECT RELEASE_LOCK(%s)", [lock_name])
             except Exception:
                 pass
 
-    logger.info(f'Agent Step 1 saved — draft #{draft.pk}, email={email}')
+    logger.info(f"Agent Step 1 saved — draft #{draft.pk}, email={email}")
 
     # ── Event: FORM_SUBMIT ──────────────────────────────────────────────────
     RegistrationActivityLog.log(
@@ -2027,67 +2737,89 @@ def register_step1(request):
         request=request,
         draft_id=draft.pk,
         extra_details={
-            'email': email,
-            'fullname': draft.fullname,
-            'agent_pincode': draft.agent_pincode,
-            'state': draft.state,
-            'plan_type': '',
-            'promo_code': draft.promo_code or '',
+            "email": email,
+            "fullname": draft.fullname,
+            "agent_pincode": draft.agent_pincode,
+            "state": draft.state,
+            "plan_type": "",
+            "promo_code": draft.promo_code or "",
         },
     )
 
-    if getattr(draft, 'distributor_id', None) or getattr(draft, 'referred_by_code', None):
+    if getattr(draft, "distributor_id", None) or getattr(
+        draft, "referred_by_code", None
+    ):
         RegistrationActivityLog.log(
             RegistrationActivityLog.EVENT_DISTRIBUTION,
             request=request,
             draft_id=draft.pk,
             extra_details={
-                'distributor_id': draft.distributor_id,
-                'referred_by_code': draft.referred_by_code,
-                'via_ref_code': True if getattr(draft, 'referred_by_code', None) and not getattr(draft, 'distributor_id', None) else False,
+                "distributor_id": draft.distributor_id,
+                "referred_by_code": draft.referred_by_code,
+                "via_ref_code": True
+                if getattr(draft, "referred_by_code", None)
+                and not getattr(draft, "distributor_id", None)
+                else False,
             },
         )
 
-    if request.session.get('event_referral_registration'):
-        from apps.event_referral.services.registration_service import finalize_event_referral_registration
+    if request.session.get("event_referral_registration"):
+        from apps.event_referral.services.registration_service import (
+            finalize_event_referral_registration,
+        )
+
         return finalize_event_referral_registration(request, draft)
 
     from apps.agents.services.registration_leads import mark_form_completed
+
     mark_form_completed(request, draft=draft)
 
-    return JsonResponse({
-        'success': True,
-        'message': 'Basic information saved!',
-        'redirect': '/chooseplan/',
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "message": "Basic information saved!",
+            "redirect": "/chooseplan/",
+        }
+    )
 
 
 @require_POST
 @csrf_protect
 def register_step2(request):
     """Save Step 2 (profile details) → advance to plan selection."""
-    draft_id = request.session.get('current_draft_id')
+    draft_id = request.session.get("current_draft_id")
     if not draft_id:
-        return JsonResponse({'success': False, 'message': 'Registration session not found. Please start over.'}, status=400)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Registration session not found. Please start over.",
+            },
+            status=400,
+        )
 
     try:
         draft = AgentDraft.objects.get(pk=draft_id)
     except AgentDraft.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'Registration data not found.'}, status=400)
+        return JsonResponse(
+            {"success": False, "message": "Registration data not found."}, status=400
+        )
 
     # Extract form data
-    about = request.POST.get('about', '').strip()
-    languages = request.POST.getlist('languages[]') or request.POST.getlist('languages')
-    certifications = request.POST.get('certifications', '').strip()
+    about = request.POST.get("about", "").strip()
+    languages = request.POST.getlist("languages[]") or request.POST.getlist("languages")
+    certifications = request.POST.get("certifications", "").strip()
 
     # Handle photo upload
-    raw_photo = request.FILES.get('photo')
+    raw_photo = request.FILES.get("photo")
     photo = _validated_photo_upload(raw_photo)
     if raw_photo and not photo:
-        return JsonResponse({
-            'success': False,
-            'message': 'Profile photo must be a JPG, PNG, GIF or WEBP image under 5MB.',
-        }, status=422)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Profile photo must be a JPG, PNG, GIF or WEBP image under 5MB.",
+            },
+            status=422,
+        )
     if photo:
         draft.photo = photo
 
@@ -2097,78 +2829,96 @@ def register_step2(request):
     draft.registration_step = 2
     draft.save()
 
-    request.session['reg_step'] = 3  # Ready for payment/plans
+    request.session["reg_step"] = 3  # Ready for payment/plans
 
-    logger.info(f'Agent Step 2 saved — draft #{draft.pk}')
+    logger.info(f"Agent Step 2 saved — draft #{draft.pk}")
 
-    return JsonResponse({
-        'success': True,
-        'message': 'Profile saved! Redirecting to plans...',
-        'redirect': '/chooseplan/',
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "message": "Profile saved! Redirecting to plans...",
+            "redirect": "/chooseplan/",
+        }
+    )
 
 
-_SOCIAL_FOLLOW_PLATFORMS = frozenset({
-    'instagram', 'facebook', 'x', 'twitter', 'linkedin', 'youtube',
-    'whatsapp', 'telegram', 'threads', 'pinterest',
-})
+_SOCIAL_FOLLOW_PLATFORMS = frozenset(
+    {
+        "instagram",
+        "facebook",
+        "x",
+        "twitter",
+        "linkedin",
+        "youtube",
+        "whatsapp",
+        "telegram",
+        "threads",
+        "pinterest",
+    }
+)
 
 
 @require_POST
 def record_social_follow(request):
     """Record that the user successfully followed social accounts and compute plan discounts."""
     import json
+
     try:
         data = json.loads(request.body)
-        platform = str(data.get('platform') or '').strip().lower()[:50]
-        agent_id = data.get('agent_id')  # draft_id
+        platform = str(data.get("platform") or "").strip().lower()[:50]
+        agent_id = data.get("agent_id")  # draft_id
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON.'}, status=400)
+        return JsonResponse({"success": False, "message": "Invalid JSON."}, status=400)
 
     if not agent_id or not platform:
-        return JsonResponse({'success': False, 'message': 'Missing data.'}, status=400)
+        return JsonResponse({"success": False, "message": "Missing data."}, status=400)
     from apps.home.models import SiteSetting
-    pricing_config = SiteSetting.get_value('pricing_config', _DEFAULT_PRICING)
+
+    pricing_config = SiteSetting.get_value("pricing_config", _DEFAULT_PRICING)
 
     # Each distinct platform raises the discount tier, so only real/configured
     # networks count — arbitrary strings ("a","b","c",...) unlocked the top tier.
     allowed_platforms = set(_SOCIAL_FOLLOW_PLATFORMS)
-    exclusive_cfg = SiteSetting.get_value('exclusive_plan_config') or {}
+    exclusive_cfg = SiteSetting.get_value("exclusive_plan_config") or {}
     for cfg in (pricing_config, exclusive_cfg):
-        links = cfg.get('social_links') if isinstance(cfg, dict) else None
+        links = cfg.get("social_links") if isinstance(cfg, dict) else None
         for link in links or []:
-            if isinstance(link, dict) and link.get('platform'):
-                allowed_platforms.add(str(link['platform']).strip().lower())
+            if isinstance(link, dict) and link.get("platform"):
+                allowed_platforms.add(str(link["platform"]).strip().lower())
     if platform not in allowed_platforms:
-        return JsonResponse({'success': False, 'message': 'Unknown platform.'}, status=400)
+        return JsonResponse(
+            {"success": False, "message": "Unknown platform."}, status=400
+        )
 
-    session_key = f'followed_platforms_{agent_id}'
+    session_key = f"followed_platforms_{agent_id}"
     followed = request.session.get(session_key, [])
     if platform not in followed:
         followed.append(platform)
         request.session[session_key] = followed
-        if hasattr(request.session, 'modified'):
+        if hasattr(request.session, "modified"):
             request.session.modified = True
 
     follow_count = len(followed)
     tier_info = _get_tier_prices(pricing_config, follow_count)
 
-    return JsonResponse({
-        'success': True,
-        'message': 'Follow recorded successfully!',
-        'discount_unlocked': follow_count > 0,
-        'follow_count': follow_count,
-        'applied_discount': tier_info['applied_discount'],
-        'starter_applied_discount': tier_info.get('starter_applied_discount', 0),
-        'prof_applied_discount': tier_info.get('prof_applied_discount', 0),
-        'starter_price': tier_info['starter_price'],
-        'starter_base': tier_info['starter_base'],
-        'starter_total': tier_info['starter_total'],
-        'prof_price': tier_info['prof_price'],
-        'prof_base': tier_info['prof_base'],
-        'prof_total': tier_info['prof_total'],
-        'followed_platforms': followed,
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "message": "Follow recorded successfully!",
+            "discount_unlocked": follow_count > 0,
+            "follow_count": follow_count,
+            "applied_discount": tier_info["applied_discount"],
+            "starter_applied_discount": tier_info.get("starter_applied_discount", 0),
+            "prof_applied_discount": tier_info.get("prof_applied_discount", 0),
+            "starter_price": tier_info["starter_price"],
+            "starter_base": tier_info["starter_base"],
+            "starter_total": tier_info["starter_total"],
+            "prof_price": tier_info["prof_price"],
+            "prof_base": tier_info["prof_base"],
+            "prof_total": tier_info["prof_total"],
+            "followed_platforms": followed,
+        }
+    )
 
 
 @require_POST
@@ -2179,52 +2929,62 @@ def record_scratch_reveal(request):
         data = json.loads(request.body)
     except json.JSONDecodeError:
         data = request.POST
-    plan_type = resolve_checkout_plan_slug(data.get('plan_type'))
-    if plan_type not in ('starter', 'professional'):
-        return JsonResponse({'success': False, 'message': 'Invalid plan.'}, status=400)
+    plan_type = resolve_checkout_plan_slug(data.get("plan_type"))
+    if plan_type not in ("starter", "professional"):
+        return JsonResponse({"success": False, "message": "Invalid plan."}, status=400)
     request.session[_scratch_session_key(plan_type)] = True
     request.session.modified = True
-    return JsonResponse({'success': True, 'plan_type': plan_type})
+    return JsonResponse({"success": True, "plan_type": plan_type})
 
 
 def exclusive_discount_status(request):
     """Get the current discount status and followed platforms."""
-    agent_id = request.GET.get('agent_id')
+    agent_id = request.GET.get("agent_id")
     if not agent_id:
-        return JsonResponse({'success': False, 'message': 'Missing agent_id'}, status=400)
-    
-    session_key = f'followed_platforms_{agent_id}'
+        return JsonResponse(
+            {"success": False, "message": "Missing agent_id"}, status=400
+        )
+
+    session_key = f"followed_platforms_{agent_id}"
     followed = request.session.get(session_key, [])
     discount_unlocked = len(followed) > 0
-    
+
     from apps.home.models import SiteSetting
-    exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
-    
+
+    exclusive_config = SiteSetting.get_value("exclusive_plan_config") or {}
+
     follow_count = len(followed)
-    current_price = _exclusive_base_price(exclusive_config, follow_count, discount_unlocked)
-        
+    current_price = _exclusive_base_price(
+        exclusive_config, follow_count, discount_unlocked
+    )
+
     # Only heal the draft this session owns — this is a GET and must not let a
     # caller flip discount state on arbitrary draft ids.
-    if discount_unlocked and str(agent_id) == str(request.session.get('current_draft_id') or ''):
-
+    if discount_unlocked and str(agent_id) == str(
+        request.session.get("current_draft_id") or ""
+    ):
         # Sync session state to database to heal any mismatched states
         from apps.agents.models import AgentDraft, UserPlanProgress
+
         try:
             draft = AgentDraft.objects.get(pk=agent_id)
-            progress, _ = UserPlanProgress.objects.get_or_create(draft=draft, plan_key='exclusive_gamified')
+            progress, _ = UserPlanProgress.objects.get_or_create(
+                draft=draft, plan_key="exclusive_gamified"
+            )
             progress.discount_unlocked = True
             progress.save()
             logger.info(f"Healed and saved discount_unlocked=True for draft {draft.id}")
         except Exception as e:
             logger.error(f"Failed to heal UserPlanProgress in discount_status: {e}")
 
-    return JsonResponse({
-        'success': True,
-        'discount_unlocked': discount_unlocked,
-        'current_price': current_price,
-        'followed_platforms': followed
-    })
-
+    return JsonResponse(
+        {
+            "success": True,
+            "discount_unlocked": discount_unlocked,
+            "current_price": current_price,
+            "followed_platforms": followed,
+        }
+    )
 
 
 def _resolve_chooseplan_draft_id(request):
@@ -2233,22 +2993,29 @@ def _resolve_chooseplan_draft_id(request):
     Never by phone (cookie or lead): a phone number does not prove ownership
     of the draft's name/email.
     """
-    draft_id = request.session.get('current_draft_id')
+    draft_id = request.session.get("current_draft_id")
     if draft_id:
         return draft_id
     if not request.user.is_authenticated:
         return None
     try:
         from apps.agents.services.account_auth import resolve_agent_for_user
+
         logged_in = resolve_agent_for_user(request.user)
     except Exception:
         return None
     if not logged_in:
         return None
     from apps.agents.models import AgentDraft
-    draft = AgentDraft.objects.filter(email__iexact=logged_in.email).order_by('-updated_at').first()
+
+    draft = (
+        AgentDraft.objects.filter(email__iexact=logged_in.email)
+        .order_by("-updated_at")
+        .first()
+    )
     if not draft:
         from apps.agents.services.subscription_expiry import expiry_enforced
+
         if expiry_enforced() and logged_in.status not in STEP1_REUSABLE_STATUSES:
             # Renewal after expiry for an agent who never had a draft.
             if not request.session.session_key:
@@ -2257,14 +3024,14 @@ def _resolve_chooseplan_draft_id(request):
                 session_key=request.session.session_key,
                 email=logged_in.email,
                 email_verified=True,
-                fullname=(logged_in.fullname or '')[:70],
-                mobile=(logged_in.mobile or '')[:15],
-                agent_pincode=(logged_in.agent_pincode or '')[:6],
-                experience_range=logged_in.experience_range or '',
+                fullname=(logged_in.fullname or "")[:70],
+                mobile=(logged_in.mobile or "")[:15],
+                agent_pincode=(logged_in.agent_pincode or "")[:6],
+                experience_range=logged_in.experience_range or "",
                 registration_step=2,
             )
     if draft:
-        request.session['current_draft_id'] = draft.pk
+        request.session["current_draft_id"] = draft.pk
         return draft.pk
     return None
 
@@ -2272,7 +3039,11 @@ def _resolve_chooseplan_draft_id(request):
 def chooseplan(request):
     """Render the plan selection page."""
     if request.user.is_authenticated:
-        from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
+        from apps.agents.services.account_auth import (
+            resolve_agent_for_user,
+            agent_can_access_dashboard,
+        )
+
         try:
             logged_in_agent = resolve_agent_for_user(request.user)
         except Exception:
@@ -2281,10 +3052,11 @@ def chooseplan(request):
             from apps.event_referral.services.participant_service import (
                 event_referral_expired_needs_plan_payment,
             )
+
             if not event_referral_expired_needs_plan_payment(logged_in_agent):
-                return redirect('agents:agent_dashboard')
+                return redirect("agents:agent_dashboard")
         elif request.user.is_staff or request.user.is_superuser:
-            return redirect('agents:agent_dashboard')
+            return redirect("agents:agent_dashboard")
 
     recovered_url = _recover_pending_razorpay_checkout(request)
     if recovered_url:
@@ -2293,14 +3065,15 @@ def chooseplan(request):
     draft_id = _resolve_chooseplan_draft_id(request)
 
     if not draft_id:
-        return redirect('agents:agent_registration')
+        return redirect("agents:agent_registration")
 
     try:
         from apps.agents.models import AgentDraft
+
         agent = AgentDraft.objects.get(pk=draft_id)
     except AgentDraft.DoesNotExist:
-        request.session.pop('current_draft_id', None)
-        return redirect('agents:agent_registration')
+        request.session.pop("current_draft_id", None)
+        return redirect("agents:agent_registration")
 
     # ── Mark as CLAIM stage: user is now viewing plans ──────────────────────
     # This runs BEFORE any agent is created, so the draft entry in admin
@@ -2308,43 +3081,53 @@ def chooseplan(request):
     if (agent.registration_step or 1) < 2:
         try:
             agent.registration_step = 2
-            agent.save(update_fields=['registration_step'])
+            agent.save(update_fields=["registration_step"])
             RegistrationActivityLog.log(
                 RegistrationActivityLog.EVENT_CLAIM_BUTTON,
                 draft_id=agent.pk,
                 request=request,
-                email=agent.email or '',
+                email=agent.email or "",
             )
         except Exception as _e:
-            import logging as _lg; _lg.getLogger(__name__).warning(f'CLAIM stage update failed: {_e}')
+            import logging as _lg
+
+            _lg.getLogger(__name__).warning(f"CLAIM stage update failed: {_e}")
     # ─────────────────────────────────────────────────────────────────────────
 
     _clear_scratch_reveal_session(request)
 
     # Load site settings pricing config from DB only
-    pricing_config = SiteSetting.get_value('pricing_config', _DEFAULT_PRICING)
+    pricing_config = SiteSetting.get_value("pricing_config", _DEFAULT_PRICING)
     if not isinstance(pricing_config, dict):
         pricing_config = dict(_DEFAULT_PRICING)
-    pricing_config.setdefault('choose_plan_heading', _DEFAULT_PRICING['choose_plan_heading'])
-    comparison_price_mode = (pricing_config.get('comparison_price_display') or 'original').strip().lower()
-    if comparison_price_mode not in ('original', 'discounted'):
-        comparison_price_mode = 'original'
+    pricing_config.setdefault(
+        "choose_plan_heading", _DEFAULT_PRICING["choose_plan_heading"]
+    )
+    comparison_price_mode = (
+        (pricing_config.get("comparison_price_display") or "original").strip().lower()
+    )
+    if comparison_price_mode not in ("original", "discounted"):
+        comparison_price_mode = "original"
 
-    starter_cfg = pricing_config.get('starter', _DEFAULT_PRICING['starter'])
-    prof_cfg = pricing_config.get('professional', _DEFAULT_PRICING['professional'])
+    starter_cfg = pricing_config.get("starter", _DEFAULT_PRICING["starter"])
+    prof_cfg = pricing_config.get("professional", _DEFAULT_PRICING["professional"])
     if not starter_cfg or not prof_cfg:
-        return render(request, '500.html', status=500)
+        return render(request, "500.html", status=500)
 
-    trial_config = SiteSetting.get_value('trial_plan_config')
-    if not trial_config or not isinstance(trial_config, dict) or not trial_config.get('price'):
-        trial_config = {'price': 1, 'is_active': True, 'duration_days': 30}
+    trial_config = SiteSetting.get_value("trial_plan_config")
+    if (
+        not trial_config
+        or not isinstance(trial_config, dict)
+        or not trial_config.get("price")
+    ):
+        trial_config = {"price": 1, "is_active": True, "duration_days": 30}
 
-    trial_active = trial_config.get('is_active', True)
-    trial_base_price = float(trial_config.get('price', 1))
-    trial_duration = trial_config.get('duration_days', 30)
+    trial_active = trial_config.get("is_active", True)
+    trial_base_price = float(trial_config.get("price", 1))
+    trial_duration = trial_config.get("duration_days", 30)
 
     # Promo codes
-    applied_promo_code = request.session.get('applied_promo_code') or ''
+    applied_promo_code = request.session.get("applied_promo_code") or ""
     applied_promo_code = applied_promo_code.strip().upper()
 
     has_promo = False
@@ -2383,25 +3166,34 @@ def chooseplan(request):
     starter_scratch_enabled = _is_scratch_enabled(starter_cfg)
     prof_scratch_enabled = _is_scratch_enabled(prof_cfg)
     scratch_card_enabled = starter_scratch_enabled or prof_scratch_enabled
-    social_discount_active = pricing_config.get('social_discount_active', True)
-    social_discount_amount = float(pricing_config.get('social_discount_amount', 200) or 200)
-    social_links = pricing_config.get('social_links', _DEFAULT_PRICING['social_links'])
-    follow_tiers = pricing_config.get('follow_tiers', _DEFAULT_PRICING['follow_tiers'])
+    social_discount_active = pricing_config.get("social_discount_active", True)
+    social_discount_amount = float(
+        pricing_config.get("social_discount_amount", 200) or 200
+    )
+    social_links = pricing_config.get("social_links", _DEFAULT_PRICING["social_links"])
+    follow_tiers = pricing_config.get("follow_tiers", _DEFAULT_PRICING["follow_tiers"])
 
-    session_key = f'followed_platforms_{draft_id}'
+    session_key = f"followed_platforms_{draft_id}"
     followed = request.session.get(session_key, [])
     follow_count = len(followed)
     has_social_discount = social_discount_active and follow_count > 0
 
     tier_info = _get_tier_prices(pricing_config, follow_count)
-    starter_full = tier_info['starter_full']
-    starter_discounted = tier_info['starter_price']
-    starter_base = tier_info['starter_base']
-    starter_gst = tier_info['starter_gst']
-    starter_final = tier_info['starter_total']
+    starter_full = tier_info["starter_full"]
+    starter_discounted = tier_info["starter_price"]
+    starter_base = tier_info["starter_base"]
+    starter_gst = tier_info["starter_gst"]
+    starter_final = tier_info["starter_total"]
 
-    if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('starter'):
-        starter_base = int(round(max(0.0, starter_full - promo_obj.calculate_discount(starter_full))))
+    if (
+        not has_free_trial_promo
+        and has_promo
+        and promo_obj
+        and promo_obj.is_valid("starter")
+    ):
+        starter_base = int(
+            round(max(0.0, starter_full - promo_obj.calculate_discount(starter_full)))
+        )
         starter_gst = round(starter_base * 0.18, 2)
         starter_final = int(round(starter_base + starter_gst))
         has_starter_promo = True
@@ -2411,14 +3203,21 @@ def chooseplan(request):
     if starter_full > 0 and starter_base < starter_full:
         starter_discount_percent = round((1 - (starter_base / starter_full)) * 100)
 
-    prof_full = tier_info['prof_full']
-    prof_discounted = tier_info['prof_price']
-    prof_base = tier_info['prof_base']
-    prof_gst = tier_info['prof_gst']
-    prof_final = tier_info['prof_total']
+    prof_full = tier_info["prof_full"]
+    prof_discounted = tier_info["prof_price"]
+    prof_base = tier_info["prof_base"]
+    prof_gst = tier_info["prof_gst"]
+    prof_final = tier_info["prof_total"]
 
-    if not has_free_trial_promo and has_promo and promo_obj and promo_obj.is_valid('professional'):
-        prof_base = int(round(max(0.0, prof_full - promo_obj.calculate_discount(prof_full))))
+    if (
+        not has_free_trial_promo
+        and has_promo
+        and promo_obj
+        and promo_obj.is_valid("professional")
+    ):
+        prof_base = int(
+            round(max(0.0, prof_full - promo_obj.calculate_discount(prof_full)))
+        )
         prof_gst = round(prof_base * 0.18, 2)
         prof_final = int(round(prof_base + prof_gst))
         has_prof_promo = True
@@ -2431,14 +3230,19 @@ def chooseplan(request):
         prof_discount_percent = round((1 - (prof_base / prof_full)) * 100)
 
     # Apply Referral Championship 50% Campaign Offer if candidate is referred AND promo code does not give a lower price
-    championship_ref_id = request.session.get('championship_ref_id')
+    championship_ref_id = request.session.get("championship_ref_id")
     if championship_ref_id:
         try:
             from apps.referral_championship.models import ChampionshipCampaign
+
             champ = ChampionshipCampaign.get_current()
             champ_pricing = champ.pricing_config or {}
-            dig_camp = float(champ_pricing.get('digital', {}).get('campaign_price', 999))
-            prof_camp = float(champ_pricing.get('professional', {}).get('campaign_price', 4999))
+            dig_camp = float(
+                champ_pricing.get("digital", {}).get("campaign_price", 999)
+            )
+            prof_camp = float(
+                champ_pricing.get("professional", {}).get("campaign_price", 4999)
+            )
 
             if not has_starter_promo or starter_final > dig_camp:
                 starter_final = dig_camp
@@ -2454,7 +3258,7 @@ def chooseplan(request):
         except Exception:
             pass
 
-    if comparison_price_mode == 'discounted':
+    if comparison_price_mode == "discounted":
         compare_starter_price = int(starter_base)
         compare_prof_price = int(prof_base)
     else:
@@ -2462,108 +3266,150 @@ def chooseplan(request):
         compare_prof_price = int(round(prof_full))
 
     compare_starter_show_strike = (
-        comparison_price_mode == 'discounted' and compare_starter_price < int(round(starter_full))
+        comparison_price_mode == "discounted"
+        and compare_starter_price < int(round(starter_full))
     )
     compare_prof_show_strike = (
-        comparison_price_mode == 'discounted' and compare_prof_price < int(round(prof_full))
+        comparison_price_mode == "discounted"
+        and compare_prof_price < int(round(prof_full))
     )
 
-    starter_name = PLAN_LABELS['starter']
-    starter_desc = starter_cfg.get('description', 'Perfect for New Agents')
-    starter_scratch_text = (starter_cfg.get('scratch_text') or 'SCRATCH').strip() or 'SCRATCH'
-    prof_name = PLAN_LABELS['professional']
-    prof_desc = prof_cfg.get('description', 'For Established Professionals')
-    prof_scratch_text = (prof_cfg.get('scratch_text') or 'SCRATCH').strip() or 'SCRATCH'
+    starter_name = PLAN_LABELS["starter"]
+    starter_desc = starter_cfg.get("description", "Perfect for New Agents")
+    starter_scratch_text = (
+        starter_cfg.get("scratch_text") or "SCRATCH"
+    ).strip() or "SCRATCH"
+    prof_name = PLAN_LABELS["professional"]
+    prof_desc = prof_cfg.get("description", "For Established Professionals")
+    prof_scratch_text = (prof_cfg.get("scratch_text") or "SCRATCH").strip() or "SCRATCH"
 
     trial_gst = round(trial_base_price * 0.18, 2)
 
     # Fetch Gamification Config
-    exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
-    is_exclusive_active = exclusive_config.get('is_active', False)
-    session_key = f'followed_platforms_{draft_id}'
+    exclusive_config = SiteSetting.get_value("exclusive_plan_config") or {}
+    is_exclusive_active = exclusive_config.get("is_active", False)
+    session_key = f"followed_platforms_{draft_id}"
     followed = request.session.get(session_key, [])
     follow_count = len(followed)
     discount_unlocked = follow_count > 0
-    
-    exc_strikeout = float(exclusive_config.get('strikeout_price', 6999))
-    exc_base = float(exclusive_config.get('base_price', 1999))
-    exc_discounted = _exclusive_base_price(exclusive_config, follow_count, discount_unlocked)
-    
+
+    exc_strikeout = float(exclusive_config.get("strikeout_price", 6999))
+    exc_base = float(exclusive_config.get("base_price", 1999))
+    exc_discounted = _exclusive_base_price(
+        exclusive_config, follow_count, discount_unlocked
+    )
+
     if exc_strikeout > 0 and exc_base < exc_strikeout:
-        exclusive_config['before_discount_val'] = f"{int(round((exc_strikeout - exc_base) / exc_strikeout * 100))}%"
+        exclusive_config["before_discount_val"] = (
+            f"{int(round((exc_strikeout - exc_base) / exc_strikeout * 100))}%"
+        )
     else:
-        exclusive_config['before_discount_val'] = "0%"
-        
+        exclusive_config["before_discount_val"] = "0%"
+
     if exc_base > 0 and exc_discounted < exc_base:
-        exclusive_config['after_discount_val'] = f"{int(round((exc_base - exc_discounted) / exc_base * 100))}%"
+        exclusive_config["after_discount_val"] = (
+            f"{int(round((exc_base - exc_discounted) / exc_base * 100))}%"
+        )
     else:
-        exclusive_config['after_discount_val'] = "0%"
+        exclusive_config["after_discount_val"] = "0%"
 
     # Prepare Gamification UI Context Variables
     default_features = [
-        {'name': 'Permanent<br>Website', 'icon': 'fa-globe', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
-        {'name': 'Digital<br>Card', 'icon': 'fa-id-card-clip', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
-        {'name': 'Licensed<br>Badge', 'icon': 'fa-shield-halved', 'color': '#f59e0b', 'bg_color': '#fffbeb'},
-        {'name': 'Call &<br>WhatsApp', 'icon': 'fa-phone', 'color': '#16a34a', 'bg_color': '#f0fdf4'},
-        {'name': 'Customer<br>Reviews', 'icon': 'fa-star', 'color': '#6d28d9', 'bg_color': '#f3e8ff'},
-        {'name': 'Product<br>Showcase', 'icon': 'fa-store', 'color': '#3b82f6', 'bg_color': '#eff6ff'}
+        {
+            "name": "Permanent<br>Website",
+            "icon": "fa-globe",
+            "color": "#16a34a",
+            "bg_color": "#f0fdf4",
+        },
+        {
+            "name": "Digital<br>Card",
+            "icon": "fa-id-card-clip",
+            "color": "#6d28d9",
+            "bg_color": "#f3e8ff",
+        },
+        {
+            "name": "Licensed<br>Badge",
+            "icon": "fa-shield-halved",
+            "color": "#f59e0b",
+            "bg_color": "#fffbeb",
+        },
+        {
+            "name": "Call &<br>WhatsApp",
+            "icon": "fa-phone",
+            "color": "#16a34a",
+            "bg_color": "#f0fdf4",
+        },
+        {
+            "name": "Customer<br>Reviews",
+            "icon": "fa-star",
+            "color": "#6d28d9",
+            "bg_color": "#f3e8ff",
+        },
+        {
+            "name": "Product<br>Showcase",
+            "icon": "fa-store",
+            "color": "#3b82f6",
+            "bg_color": "#eff6ff",
+        },
     ]
-    premium_features = exclusive_config.get('premium_features', None)
+    premium_features = exclusive_config.get("premium_features", None)
     if premium_features is None:
         premium_features = default_features
-        
-    social_links = exclusive_config.get('social_links', [])
+
+    social_links = exclusive_config.get("social_links", [])
     social_labels = {
-        'instagram': 'Instagram',
-        'facebook': 'Facebook',
-        'x': 'X',
-        'twitter': 'X',
-        'linkedin': 'LinkedIn',
-        'youtube': 'YouTube',
-        'whatsapp': 'WhatsApp',
+        "instagram": "Instagram",
+        "facebook": "Facebook",
+        "x": "X",
+        "twitter": "X",
+        "linkedin": "LinkedIn",
+        "youtube": "YouTube",
+        "whatsapp": "WhatsApp",
     }
     for link in social_links:
-        platform = (link.get('platform') or '').lower()
-        link['platform_key'] = platform
-        link['label'] = social_labels.get(platform, (link.get('platform') or '').title())
-        user_icon = (link.get('icon') or '').strip()
-        if user_icon.startswith('fa-'):
-            link['iconClass'] = user_icon
-        elif platform in ('x', 'twitter'):
-            link['iconClass'] = 'fa-x-twitter'
-        elif platform == 'linkedin':
-            link['iconClass'] = 'fa-linkedin-in'
-        elif platform == 'facebook':
-            link['iconClass'] = 'fa-facebook-f'
-        elif platform == 'youtube':
-            link['iconClass'] = 'fa-youtube'
+        platform = (link.get("platform") or "").lower()
+        link["platform_key"] = platform
+        link["label"] = social_labels.get(
+            platform, (link.get("platform") or "").title()
+        )
+        user_icon = (link.get("icon") or "").strip()
+        if user_icon.startswith("fa-"):
+            link["iconClass"] = user_icon
+        elif platform in ("x", "twitter"):
+            link["iconClass"] = "fa-x-twitter"
+        elif platform == "linkedin":
+            link["iconClass"] = "fa-linkedin-in"
+        elif platform == "facebook":
+            link["iconClass"] = "fa-facebook-f"
+        elif platform == "youtube":
+            link["iconClass"] = "fa-youtube"
         else:
-            link['iconClass'] = 'fa-instagram'
+            link["iconClass"] = "fa-instagram"
 
-    checkout_label = (exclusive_config.get('checkout_btn_text') or 'Claim Now').strip()
-    if checkout_label.upper() in ('BUY', 'CLAIM OFFER'):
-        checkout_label = 'Claim Now'
-    exclusive_config['checkout_btn_text'] = checkout_label
+    checkout_label = (exclusive_config.get("checkout_btn_text") or "Claim Now").strip()
+    if checkout_label.upper() in ("BUY", "CLAIM OFFER"):
+        checkout_label = "Claim Now"
+    exclusive_config["checkout_btn_text"] = checkout_label
 
-    title_prefix = (exclusive_config.get('title_prefix') or 'Surprise!!!!').strip()
-    if title_prefix in ('Surprise!', 'Surprise'):
-        title_prefix = 'Surprise!!!!'
-    exclusive_config['title_prefix'] = title_prefix
+    title_prefix = (exclusive_config.get("title_prefix") or "Surprise!!!!").strip()
+    if title_prefix in ("Surprise!", "Surprise"):
+        title_prefix = "Surprise!!!!"
+    exclusive_config["title_prefix"] = title_prefix
 
-    gift_subtitle = (exclusive_config.get('gift_subtitle') or '').strip()
+    gift_subtitle = (exclusive_config.get("gift_subtitle") or "").strip()
     if gift_subtitle in (
-        '',
-        'For a limited time, get our best deal.',
-        'Follow our social handles to reveal your secret discounted price.',
+        "",
+        "For a limited time, get our best deal.",
+        "Follow our social handles to reveal your secret discounted price.",
     ):
-        exclusive_config['gift_subtitle'] = 'Follow us on Social Media...'
+        exclusive_config["gift_subtitle"] = "Follow us on Social Media..."
 
     try:
-        total_seats = int(exclusive_config.get('total_seats') or 1000)
+        total_seats = int(exclusive_config.get("total_seats") or 1000)
     except (TypeError, ValueError):
         total_seats = 1000
     try:
-        claimed_seats = int(exclusive_config.get('base_claimed_seats') or 874)
+        claimed_seats = int(exclusive_config.get("base_claimed_seats") or 874)
     except (TypeError, ValueError):
         claimed_seats = 874
     spots_left = max(0, total_seats - claimed_seats)
@@ -2580,146 +3426,151 @@ def chooseplan(request):
             return text
 
     urgency_line_1 = _format_urgency(
-        exclusive_config.get('urgency_line_1'),
-        '🔥 Hurry! Offer valid only for the first {total_seats} users!',
+        exclusive_config.get("urgency_line_1"),
+        "🔥 Hurry! Offer valid only for the first {total_seats} users!",
     )
     urgency_line_2 = _format_urgency(
-        exclusive_config.get('urgency_line_2'),
-        '🔥 {claimed_seats}/{total_seats} Claimed',
+        exclusive_config.get("urgency_line_2"),
+        "🔥 {claimed_seats}/{total_seats} Claimed",
     )
 
-    scratch_popup = _normalize_scratch_popup(pricing_config.get('scratch_popup'))
+    scratch_popup = _normalize_scratch_popup(pricing_config.get("scratch_popup"))
 
     context = {
-        'draft': agent,  # Pass agent as draft to avoid template changes
-        'agent': agent,
-        'pricing_config': pricing_config,
-        'scratch_card_enabled': scratch_card_enabled,
-        'starter_scratch_enabled': starter_scratch_enabled,
-        'prof_scratch_enabled': prof_scratch_enabled,
-        'starter_scratch_revealed': False,
-        'prof_scratch_revealed': False,
-        'starter_full_total': _gst_bundle_from_base(starter_full)[2],
-        'prof_full_total': _gst_bundle_from_base(prof_full)[2],
-        'social_discount_active': social_discount_active,
-        'social_discount_amount': social_discount_amount,
-        'social_links': social_links,
-        'follow_tiers': follow_tiers,
-        'follow_tiers_json': json.dumps(follow_tiers),
-        'has_social_discount': has_social_discount,
-        'followed_platforms': followed,
-        'trial_config': trial_config,
-        'trial_active': trial_active,
-        'trial_base_price': trial_base_price,
-        'trial_gst': trial_gst,
-        'trial_final': trial_final,
-        'trial_duration': trial_duration,
-        
-        'starter_name': starter_name,
-        'starter_desc': starter_desc,
-        'starter_scratch_text': starter_scratch_text,
-        'starter_full': starter_full,
-        'starter_discounted': starter_discounted,
-        'starter_final': starter_final,
-        'starter_gst': starter_gst,
-        'starter_base': starter_base,
-        'starter_scratch_price': tier_info['starter_scratch_price'],
-        'starter_discount_percent': starter_discount_percent,
-        
-        'prof_name': prof_name,
-        'prof_desc': prof_desc,
-        'prof_scratch_text': prof_scratch_text,
-        'prof_full': prof_full,
-        'prof_discounted': prof_discounted,
-        'prof_final': prof_final,
-        'prof_gst': prof_gst,
-        'prof_base': prof_base,
-        'prof_scratch_price': tier_info['prof_scratch_price'],
-        'prof_discount_percent': prof_discount_percent,
-
-        'applied_promo_code': applied_promo_code,
-        'promo_obj': promo_obj,
-        'has_promo': has_promo,
-        'has_free_trial_promo': has_free_trial_promo,
-        'has_starter_promo': has_starter_promo,
-        'has_prof_promo': has_prof_promo,
-
-        'is_upgrade_flow': False,
-        'exclusive_config': exclusive_config,
-        'is_exclusive_active': is_exclusive_active,
-        'discount_unlocked': discount_unlocked,
-        'premiumFeatures': premium_features,
-        'spots_left': spots_left,
-        'urgency_line_1': urgency_line_1,
-        'urgency_line_2': urgency_line_2,
-        'starter_plan_features': _STARTER_PLAN_UI_FEATURES,
-        'professional_plan_features': _PROFESSIONAL_PLAN_UI_FEATURES,
-        'plan_comparison_rows': _PLAN_COMPARISON_ROWS,
-        'comparison_price_mode': comparison_price_mode,
-        'compare_starter_price': compare_starter_price,
-        'compare_prof_price': compare_prof_price,
-        'compare_starter_show_strike': compare_starter_show_strike,
-        'compare_prof_show_strike': compare_prof_show_strike,
-        'scratch_popup': scratch_popup,
-        'scratch_popup_json': json.dumps(scratch_popup),
-        'hide_site_nav': True,
-        'hide_footer': True,
-        'hide_chatbot': True,
+        "draft": agent,  # Pass agent as draft to avoid template changes
+        "agent": agent,
+        "pricing_config": pricing_config,
+        "scratch_card_enabled": scratch_card_enabled,
+        "starter_scratch_enabled": starter_scratch_enabled,
+        "prof_scratch_enabled": prof_scratch_enabled,
+        "starter_scratch_revealed": False,
+        "prof_scratch_revealed": False,
+        "starter_full_total": _gst_bundle_from_base(starter_full)[2],
+        "prof_full_total": _gst_bundle_from_base(prof_full)[2],
+        "social_discount_active": social_discount_active,
+        "social_discount_amount": social_discount_amount,
+        "social_links": social_links,
+        "follow_tiers": follow_tiers,
+        "follow_tiers_json": json.dumps(follow_tiers),
+        "has_social_discount": has_social_discount,
+        "followed_platforms": followed,
+        "trial_config": trial_config,
+        "trial_active": trial_active,
+        "trial_base_price": trial_base_price,
+        "trial_gst": trial_gst,
+        "trial_final": trial_final,
+        "trial_duration": trial_duration,
+        "starter_name": starter_name,
+        "starter_desc": starter_desc,
+        "starter_scratch_text": starter_scratch_text,
+        "starter_full": starter_full,
+        "starter_discounted": starter_discounted,
+        "starter_final": starter_final,
+        "starter_gst": starter_gst,
+        "starter_base": starter_base,
+        "starter_scratch_price": tier_info["starter_scratch_price"],
+        "starter_discount_percent": starter_discount_percent,
+        "prof_name": prof_name,
+        "prof_desc": prof_desc,
+        "prof_scratch_text": prof_scratch_text,
+        "prof_full": prof_full,
+        "prof_discounted": prof_discounted,
+        "prof_final": prof_final,
+        "prof_gst": prof_gst,
+        "prof_base": prof_base,
+        "prof_scratch_price": tier_info["prof_scratch_price"],
+        "prof_discount_percent": prof_discount_percent,
+        "applied_promo_code": applied_promo_code,
+        "promo_obj": promo_obj,
+        "has_promo": has_promo,
+        "has_free_trial_promo": has_free_trial_promo,
+        "has_starter_promo": has_starter_promo,
+        "has_prof_promo": has_prof_promo,
+        "is_upgrade_flow": False,
+        "exclusive_config": exclusive_config,
+        "is_exclusive_active": is_exclusive_active,
+        "discount_unlocked": discount_unlocked,
+        "premiumFeatures": premium_features,
+        "spots_left": spots_left,
+        "urgency_line_1": urgency_line_1,
+        "urgency_line_2": urgency_line_2,
+        "starter_plan_features": _STARTER_PLAN_UI_FEATURES,
+        "professional_plan_features": _PROFESSIONAL_PLAN_UI_FEATURES,
+        "plan_comparison_rows": _PLAN_COMPARISON_ROWS,
+        "comparison_price_mode": comparison_price_mode,
+        "compare_starter_price": compare_starter_price,
+        "compare_prof_price": compare_prof_price,
+        "compare_starter_show_strike": compare_starter_show_strike,
+        "compare_prof_show_strike": compare_prof_show_strike,
+        "scratch_popup": scratch_popup,
+        "scratch_popup_json": json.dumps(scratch_popup),
+        "hide_site_nav": True,
+        "hide_footer": True,
+        "hide_chatbot": True,
     }
 
-    return render(request, 'agents/plans.html', context)
-
+    return render(request, "agents/plans.html", context)
 
 
 # Agent statuses a registration may still (re)start from. Any later status
 # (awaiting approval, active, suspended...) is never reset by a checkout.
-REGISTRATION_STAGE_STATUSES = ('incomplete', 'pending_payment', 'rejected', 'event_challenge')
+REGISTRATION_STAGE_STATUSES = (
+    "incomplete",
+    "pending_payment",
+    "rejected",
+    "event_challenge",
+)
 # Step 1 needs no login, so it reuses only these. A Paldi challenger
 # (event_challenge) continues from their own logged-in session instead.
-STEP1_REUSABLE_STATUSES = ('incomplete', 'pending_payment', 'rejected')
+STEP1_REUSABLE_STATUSES = ("incomplete", "pending_payment", "rejected")
 
 
-def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment'):
+def create_agent_from_draft(draft, plan_type, plan_name, status="pending_payment"):
     import re
     import time
     from decimal import Decimal, InvalidOperation
     from django.core.files.storage import default_storage
     from django.utils.text import slugify
-    from apps.agents.models import Agent, AgentProfile, AgentInsuranceSegment, AgentPerformanceStat
+    from apps.agents.models import (
+        Agent,
+        AgentProfile,
+        AgentInsuranceSegment,
+        AgentPerformanceStat,
+    )
 
     def _claim_amount_from_draft(raw):
         if not raw:
-            return Decimal('0')
-        cleaned = re.sub(r'[^\d.]', '', str(raw).strip())
+            return Decimal("0")
+        cleaned = re.sub(r"[^\d.]", "", str(raw).strip())
         if not cleaned:
-            return Decimal('0')
+            return Decimal("0")
         try:
-            return Decimal(cleaned) * Decimal('100000')
+            return Decimal(cleaned) * Decimal("100000")
         except InvalidOperation:
-            return Decimal('0')
+            return Decimal("0")
 
     now = timezone.now()
-    
+
     agent, created = Agent.objects.get_or_create(
         email=draft.email,
         defaults={
-            'fullname': draft.fullname,
-            'mobile': draft.mobile,
-            'user_types': ['insurance_agent'],
-            'insurance_companies': draft.insurance_companies or [],
-            'experience_range': draft.experience_range or '',
-            'client_base': draft.client_base or '',
-            'registration_step': 2,
-            'status': status,
-            'plan_type': plan_type,
-            'agent_pincode': draft.agent_pincode,
-            'email_verified_at': now,
-            'distributor_id': getattr(draft, 'distributor_id', None),
-            'sub_distributor_id': getattr(draft, 'sub_distributor_id', None),
-            'referred_by_code': getattr(draft, 'referred_by_code', '') or '',
-        }
+            "fullname": draft.fullname,
+            "mobile": draft.mobile,
+            "user_types": ["insurance_agent"],
+            "insurance_companies": draft.insurance_companies or [],
+            "experience_range": draft.experience_range or "",
+            "client_base": draft.client_base or "",
+            "registration_step": 2,
+            "status": status,
+            "plan_type": plan_type,
+            "agent_pincode": draft.agent_pincode,
+            "email_verified_at": now,
+            "distributor_id": getattr(draft, "distributor_id", None),
+            "sub_distributor_id": getattr(draft, "sub_distributor_id", None),
+            "referred_by_code": getattr(draft, "referred_by_code", "") or "",
+        },
     )
-    
+
     if not created and agent.status not in REGISTRATION_STAGE_STATUSES:
         # Paid / awaiting approval / blocked: a checkout must not rewrite the
         # agent (it used to reset a paid agent back to pending_payment).
@@ -2729,133 +3580,146 @@ def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment
         agent.fullname = draft.fullname
         agent.mobile = draft.mobile
         agent.insurance_companies = draft.insurance_companies or []
-        agent.experience_range = draft.experience_range or ''
-        agent.client_base = draft.client_base or ''
+        agent.experience_range = draft.experience_range or ""
+        agent.client_base = draft.client_base or ""
         agent.status = status
         agent.plan_type = plan_type
         agent.agent_pincode = draft.agent_pincode
         agent.email_verified_at = now
-        if getattr(draft, 'distributor_id', None):
+        if getattr(draft, "distributor_id", None):
             agent.distributor_id = draft.distributor_id
-        if getattr(draft, 'sub_distributor_id', None):
+        if getattr(draft, "sub_distributor_id", None):
             agent.sub_distributor_id = draft.sub_distributor_id
         # First-touch protection: never overwrite an already-set referral code
-        if getattr(draft, 'referred_by_code', None) and not agent.referred_by_code:
+        if getattr(draft, "referred_by_code", None) and not agent.referred_by_code:
             agent.referred_by_code = draft.referred_by_code
         agent.save()
 
     # ── Event: PENDING_FOR_REGISTRATION ─────────────────────────────────────
-    if status == 'pending_payment':
+    if status == "pending_payment":
         RegistrationActivityLog.log(
             RegistrationActivityLog.EVENT_PENDING_REGISTRATION,
             agent=agent,
             draft_id=draft.pk,
             extra_details={
-                'plan_type': plan_type,
-                'plan_name': plan_name,
-                'draft_email': draft.email,
-                'created_new': created,
+                "plan_type": plan_type,
+                "plan_name": plan_name,
+                "draft_email": draft.email,
+                "created_new": created,
             },
         )
 
     # Create insurance segments (delete + bulk insert)
     AgentInsuranceSegment.objects.filter(agent=agent).delete()
     if draft.segments:
-        AgentInsuranceSegment.objects.bulk_create([
-            AgentInsuranceSegment(agent=agent, segment_type=seg)
-            for seg in draft.segments
-        ])
-    
+        AgentInsuranceSegment.objects.bulk_create(
+            [
+                AgentInsuranceSegment(agent=agent, segment_type=seg)
+                for seg in draft.segments
+            ]
+        )
+
     # Write registration_draft JSON (matching PHP Step 2)
     agent.registration_draft = {
-        'license_number': draft.license_number or '',
-        'pan_number': draft.pan_number or '',
-        'software_name': draft.software_name or '',
-        'portfolio_breakdown': {
-            'life_insurance': draft.life_insurance or 0,
-            'health_insurance': draft.health_insurance or 0,
-            'general_insurance': draft.general_insurance or 0,
-            'motor': draft.motor or 0,
+        "license_number": draft.license_number or "",
+        "pan_number": draft.pan_number or "",
+        "software_name": draft.software_name or "",
+        "portfolio_breakdown": {
+            "life_insurance": draft.life_insurance or 0,
+            "health_insurance": draft.health_insurance or 0,
+            "general_insurance": draft.general_insurance or 0,
+            "motor": draft.motor or 0,
         },
-        'desired_services': draft.desired_services or [],
+        "desired_services": draft.desired_services or [],
     }
-    agent.save(update_fields=['registration_draft', 'updated_at'])
-    
+    agent.save(update_fields=["registration_draft", "updated_at"])
+
     profile, p_created = AgentProfile.objects.get_or_create(
         agent=agent,
         defaults={
-            'license_number': draft.license_number or '',
-            'license_valid_till': draft.license_valid_till,
-            'arn_number': draft.arn_number or '',
-            'euin_number': draft.euin_number or '',
-            'investment_valid_till': draft.investment_valid_till,
-            'investment_types': draft.investment_types or [],
-            'pan_number': draft.pan_number or '',
-            'software_name': draft.software_name or '',
-            'portfolio_breakdown': {
-                'life_insurance': draft.life_insurance or 0,
-                'health_insurance': draft.health_insurance or 0,
-                'general_insurance': draft.general_insurance or 0,
-                'motor': draft.motor or 0,
+            "license_number": draft.license_number or "",
+            "license_valid_till": draft.license_valid_till,
+            "arn_number": draft.arn_number or "",
+            "euin_number": draft.euin_number or "",
+            "investment_valid_till": draft.investment_valid_till,
+            "investment_types": draft.investment_types or [],
+            "pan_number": draft.pan_number or "",
+            "software_name": draft.software_name or "",
+            "portfolio_breakdown": {
+                "life_insurance": draft.life_insurance or 0,
+                "health_insurance": draft.health_insurance or 0,
+                "general_insurance": draft.general_insurance or 0,
+                "motor": draft.motor or 0,
             },
-            'desired_services': draft.desired_services or [],
-            'whatsapp': draft.whatsapp or '',
-            'address': draft.address or '',
-            'state': draft.state or '',
-            'service_pincodes': [draft.agent_pincode] if draft.agent_pincode else [],
-        }
+            "desired_services": draft.desired_services or [],
+            "whatsapp": draft.whatsapp or "",
+            "address": draft.address or "",
+            "state": draft.state or "",
+            "service_pincodes": [draft.agent_pincode] if draft.agent_pincode else [],
+        },
     )
     if not p_created:
-        profile.license_number = draft.license_number or ''
+        profile.license_number = draft.license_number or ""
         profile.license_valid_till = draft.license_valid_till
-        profile.arn_number = draft.arn_number or ''
-        profile.euin_number = draft.euin_number or ''
+        profile.arn_number = draft.arn_number or ""
+        profile.euin_number = draft.euin_number or ""
         profile.investment_valid_till = draft.investment_valid_till
         profile.investment_types = draft.investment_types or []
-        profile.pan_number = draft.pan_number or ''
-        profile.software_name = draft.software_name or ''
+        profile.pan_number = draft.pan_number or ""
+        profile.software_name = draft.software_name or ""
         profile.portfolio_breakdown = {
-            'life_insurance': draft.life_insurance or 0,
-            'health_insurance': draft.health_insurance or 0,
-            'general_insurance': draft.general_insurance or 0,
-            'motor': draft.motor or 0,
+            "life_insurance": draft.life_insurance or 0,
+            "health_insurance": draft.health_insurance or 0,
+            "general_insurance": draft.general_insurance or 0,
+            "motor": draft.motor or 0,
         }
         profile.desired_services = draft.desired_services or []
-        profile.whatsapp = draft.whatsapp or profile.whatsapp or ''
-        profile.address = draft.address or profile.address or ''
-        profile.state = draft.state or profile.state or ''
+        profile.whatsapp = draft.whatsapp or profile.whatsapp or ""
+        profile.address = draft.address or profile.address or ""
+        profile.state = draft.state or profile.state or ""
         if draft.agent_pincode:
             profile.service_pincodes = [draft.agent_pincode]
         profile.save()
 
     if not profile.slug or draft.slug:
-        base_slug = slugify(draft.slug) or slugify(draft.fullname) or slugify((draft.email or '').split('@')[0]) or 'agent'
+        base_slug = (
+            slugify(draft.slug)
+            or slugify(draft.fullname)
+            or slugify((draft.email or "").split("@")[0])
+            or "agent"
+        )
         unique_slug = base_slug
         count = 1
-        while AgentProfile.objects.filter(slug=unique_slug).exclude(pk=profile.pk).exists():
-            unique_slug = f'{base_slug}-{count}'
+        while (
+            AgentProfile.objects.filter(slug=unique_slug)
+            .exclude(pk=profile.pk)
+            .exists()
+        ):
+            unique_slug = f"{base_slug}-{count}"
             count += 1
         profile.slug = unique_slug
-        profile.save(update_fields=['slug', 'updated_at'])
+        profile.save(update_fields=["slug", "updated_at"])
 
     if draft.languages:
         langs = draft.languages
         if isinstance(langs, list):
-            profile.languages = ', '.join(str(l).strip() for l in langs if str(l).strip())
+            profile.languages = ", ".join(
+                str(l).strip() for l in langs if str(l).strip()
+            )
         elif langs:
             profile.languages = str(langs)
-        profile.save(update_fields=['languages', 'updated_at'])
+        profile.save(update_fields=["languages", "updated_at"])
 
     if draft.about:
         profile.career_highlights = draft.about
-        profile.save(update_fields=['career_highlights', 'updated_at'])
+        profile.save(update_fields=["career_highlights", "updated_at"])
 
     if draft.photo:
-        ext = os.path.splitext(draft.photo.name)[1].lower() or '.jpg'
-        file_name = f'app/public/profile/agent_{agent.id}_{int(time.time())}{ext}'
+        ext = os.path.splitext(draft.photo.name)[1].lower() or ".jpg"
+        file_name = f"app/public/profile/agent_{agent.id}_{int(time.time())}{ext}"
         saved_path = default_storage.save(file_name, draft.photo)
         profile.profile_photo_path = saved_path
-        profile.save(update_fields=['profile_photo_path', 'updated_at'])
+        profile.save(update_fields=["profile_photo_path", "updated_at"])
 
     claims_settled = int(draft.claims_settled or 0)
     claims_amount = _claim_amount_from_draft(draft.claim_amount)
@@ -2863,26 +3727,31 @@ def create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment
         AgentPerformanceStat.objects.update_or_create(
             agent=agent,
             defaults={
-                'claims_settled': claims_settled,
-                'claims_processed': claims_settled,
-                'claims_amount': claims_amount,
+                "claims_settled": claims_settled,
+                "claims_processed": claims_settled,
+                "claims_amount": claims_amount,
             },
         )
-    
+
     # Clear registration_draft after committing to profile (matching PHP)
     agent.registration_draft = None
-    agent.save(update_fields=['registration_draft', 'updated_at'])
+    agent.save(update_fields=["registration_draft", "updated_at"])
 
     try:
         _event_referral_register_hook(agent)
     except Exception as hook_err:
-        logger.warning('Event referral register hook failed for agent #%s: %s', agent.id, hook_err)
-    
+        logger.warning(
+            "Event referral register hook failed for agent #%s: %s", agent.id, hook_err
+        )
+
     return agent
 
 
 def create_or_link_django_user(agent, plain_password=None):
-    from apps.agents.services.account_auth import create_or_link_django_user as _create_or_link
+    from apps.agents.services.account_auth import (
+        create_or_link_django_user as _create_or_link,
+    )
+
     return _create_or_link(agent, plain_password=plain_password)
 
 
@@ -2896,11 +3765,12 @@ def _isolated(label, fn):
     failure to its own savepoint.
     """
     from django.db import transaction
+
     try:
         with transaction.atomic():
             return fn()
     except Exception as err:
-        logger.warning('%s failed (payment activation unaffected): %s', label, err)
+        logger.warning("%s failed (payment activation unaffected): %s", label, err)
         return None
 
 
@@ -2910,7 +3780,7 @@ def _trial_days_for(subscription, default_days):
     The plans page already shows promo.trial_duration_days, but activation
     always used the site-wide trial length.
     """
-    code = (getattr(subscription, 'promo_code', None) or '').strip()
+    code = (getattr(subscription, "promo_code", None) or "").strip()
     if code:
         promo = PromoCode.objects.filter(code=code).first()
         if promo and promo.is_free_trial_code() and promo.trial_duration_days:
@@ -2922,7 +3792,8 @@ def _increment_promo_usage(promo_code):
     if not promo_code:
         return
     from django.db.models import F
-    PromoCode.objects.filter(code=promo_code).update(times_used=F('times_used') + 1)
+
+    PromoCode.objects.filter(code=promo_code).update(times_used=F("times_used") + 1)
 
 
 def _credit_referral_conversion(agent):
@@ -2931,9 +3802,10 @@ def _credit_referral_conversion(agent):
         return
     # Skip ₹0 signups — they don't count as paid conversions for referral tiers
     from apps.agents.models import AgentSubscription
+
     paid = AgentSubscription.objects.filter(
         agent=agent,
-        payment_status='completed',
+        payment_status="completed",
         registration_amount__gt=0,
     ).exists()
     if not paid:
@@ -2947,20 +3819,21 @@ def _credit_referral_conversion(agent):
         return
     # Block self-referral abuse (an agent using their own referral code)
     if ref_code_obj.agent_id == agent.id:
-        logger.warning(f"[Referral] Self-referral attempt blocked for agent {agent.id} using own code {agent.referred_by_code}")
+        logger.warning(
+            f"[Referral] Self-referral attempt blocked for agent {agent.id} using own code {agent.referred_by_code}"
+        )
         return
     usage, u_created = ReferralUsage.objects.get_or_create(
         referral_code=ref_code_obj,
         referred_agent_id=agent.id,
-        defaults={'status': 'converted', 'signed_up_at': timezone.now()}
+        defaults={"status": "converted", "signed_up_at": timezone.now()},
     )
-    if not u_created and usage.status != 'converted':
-        usage.status = 'converted'
+    if not u_created and usage.status != "converted":
+        usage.status = "converted"
         usage.save()
 
     actual_conversions = ReferralUsage.objects.filter(
-        referral_code=ref_code_obj,
-        status='converted'
+        referral_code=ref_code_obj, status="converted"
     ).count()
     ref_code_obj.total_referrals = actual_conversions
     ref_code_obj.save()
@@ -2972,20 +3845,20 @@ def _credit_referral_conversion(agent):
     referring_agent = Agent.objects.filter(pk=ref_code_obj.agent_id).first()
     if not referring_agent:
         return
-    reward = current_tier['reward']
-    if reward == 'pro_plan_1rs' and referring_agent.plan_type == 'free_trial':
-        referring_agent.referral_reward_type = 'pro_plan_1rs'
+    reward = current_tier["reward"]
+    if reward == "pro_plan_1rs" and referring_agent.plan_type == "free_trial":
+        referring_agent.referral_reward_type = "pro_plan_1rs"
         referring_agent.referral_reward_earned_at = timezone.now()
         referring_agent.save()
-    elif reward == 'discount_50':
-        referring_agent.referral_reward_type = 'discount_50'
+    elif reward == "discount_50":
+        referring_agent.referral_reward_type = "discount_50"
         if not referring_agent.referral_reward_earned_at:
             referring_agent.referral_reward_earned_at = timezone.now()
         referring_agent.save()
-    elif reward == 'discount_25':
+    elif reward == "discount_25":
         # Only set if no better reward already exists
-        if referring_agent.referral_reward_type not in ('discount_50', 'pro_plan_1rs'):
-            referring_agent.referral_reward_type = 'discount_25'
+        if referring_agent.referral_reward_type not in ("discount_50", "pro_plan_1rs"):
+            referring_agent.referral_reward_type = "discount_25"
             if not referring_agent.referral_reward_earned_at:
                 referring_agent.referral_reward_earned_at = timezone.now()
             referring_agent.save()
@@ -2993,22 +3866,32 @@ def _credit_referral_conversion(agent):
 
 def _ensure_referral_code(agent):
     from apps.admin_panel.models.referral_code import ReferralCode
+
     if not ReferralCode.objects.filter(agent=agent).exists():
         ReferralCode.generateForAgent(agent)
 
 
 def _championship_qualification(agent, subscription):
-    from apps.referral_championship.services.qualification_service import process_championship_qualification
+    from apps.referral_championship.services.qualification_service import (
+        process_championship_qualification,
+    )
+
     process_championship_qualification(agent, subscription)
 
 
 def _event_referral_qualification(agent, subscription):
-    from apps.event_referral.services.qualification_service import qualify_event_referral
+    from apps.event_referral.services.qualification_service import (
+        qualify_event_referral,
+    )
+
     qualify_event_referral(agent, subscription)
 
 
 def _event_referral_register_hook(agent):
-    from apps.event_referral.services.qualification_service import register_referred_agent
+    from apps.event_referral.services.qualification_service import (
+        register_referred_agent,
+    )
+
     register_referred_agent(agent)
 
 
@@ -3020,14 +3903,17 @@ def _order_plan_slug(subscription, agent):
     an upgrade whenever a plan display name did not parse.
     """
     from apps.agents.services.feature_unlock import normalize_plan_slug, PLAN_SLUGS
-    slug = plan_slug_from_name(getattr(subscription, 'selected_plan', '') or '')
+
+    slug = plan_slug_from_name(getattr(subscription, "selected_plan", "") or "")
     if slug:
         return slug
-    current = normalize_plan_slug(getattr(agent, 'plan_type', '') or '')
-    return current if current in PLAN_SLUGS else 'starter'
+    current = normalize_plan_slug(getattr(agent, "plan_type", "") or "")
+    return current if current in PLAN_SLUGS else "starter"
 
 
-def _activate_paid_subscription(agent, subscription, payment, log_label='[activation]', queue_fulfilment=True):
+def _activate_paid_subscription(
+    agent, subscription, payment, log_label="[activation]", queue_fulfilment=True
+):
     """Activate one paid order's subscription (locked, idempotent).
 
     Shared by verify_and_activate_pending_payment and admin reconcile, so both
@@ -3042,23 +3928,24 @@ def _activate_paid_subscription(agent, subscription, payment, log_label='[activa
     from apps.home.models import SiteSetting
 
     with transaction.atomic():
-        subscription = AgentSubscription.objects.select_for_update().get(pk=subscription.pk)
-        if subscription.payment_status == 'completed':
+        subscription = AgentSubscription.objects.select_for_update().get(
+            pk=subscription.pk
+        )
+        if subscription.payment_status == "completed":
             return subscription, False
 
         plan_type = _order_plan_slug(subscription, agent)
-        is_trial = plan_type == 'free_trial'
+        is_trial = plan_type == "free_trial"
         is_upgrade = _is_plan_upgrade_payment(agent, subscription.razorpay_order_id)
         # A renewal is a same-plan re-payment from an already-paid agent.
         from apps.agents.services.feature_unlock import normalize_plan_slug as _nps
+
         is_renewal = (
-            is_upgrade
-            and not is_trial
-            and _nps(agent.plan_type or '') == plan_type
+            is_upgrade and not is_trial and _nps(agent.plan_type or "") == plan_type
         )
 
-        trial_config = SiteSetting.get_value('trial_plan_config', {'duration_days': 30})
-        trial_days = int(trial_config.get('duration_days', 30))
+        trial_config = SiteSetting.get_value("trial_plan_config", {"duration_days": 30})
+        trial_days = int(trial_config.get("duration_days", 30))
         trial_days = _trial_days_for(subscription, trial_days)
         sub_expiry = timezone.now() + timezone.timedelta(days=365)
 
@@ -3066,69 +3953,102 @@ def _activate_paid_subscription(agent, subscription, payment, log_label='[activa
             # Extend from the current active subscription's expiry so early
             # renewals don't lose remaining days.
             prev_sub = (
-                AgentSubscription.objects
-                .filter(agent=agent, status='active', payment_status='completed')
+                AgentSubscription.objects.filter(
+                    agent=agent, status="active", payment_status="completed"
+                )
                 .exclude(pk=subscription.pk)
-                .order_by('-expires_at')
+                .order_by("-expires_at")
                 .first()
             )
-            if prev_sub and prev_sub.expires_at and prev_sub.expires_at > timezone.now():
+            if (
+                prev_sub
+                and prev_sub.expires_at
+                and prev_sub.expires_at > timezone.now()
+            ):
                 sub_expiry = prev_sub.expires_at + timezone.timedelta(days=365)
 
         if is_trial:
-            agent.plan_type = 'free_trial'
+            agent.plan_type = "free_trial"
             agent.trial_ends_at = timezone.now() + timezone.timedelta(days=trial_days)
-            upgrade_discount = SiteSetting.get_value('trial_upgrade_discount', 20)
+            upgrade_discount = SiteSetting.get_value("trial_upgrade_discount", 20)
             agent.upgrade_discount_percent = int(upgrade_discount)
             sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
 
-        if is_upgrade and agent.status == 'active':
+        if is_upgrade and agent.status == "active":
             agent.plan_type = plan_type
         else:
-            agent.status = 'pending_approval'
+            agent.status = "pending_approval"
             agent.plan_type = plan_type
 
         agent.registration_step = 2
         agent.save()
 
-        subscription.payment_status = 'completed'
-        subscription.status = 'active'
-        subscription.razorpay_payment_id = payment.get('id')
-        subscription.razorpay_signature = payment.get('signature') or 'direct_verification'
+        subscription.payment_status = "completed"
+        subscription.status = "active"
+        subscription.razorpay_payment_id = payment.get("id")
+        subscription.razorpay_signature = (
+            payment.get("signature") or "direct_verification"
+        )
         subscription.starts_at = timezone.now()
         subscription.expires_at = sub_expiry
         subscription.save()
         _deactivate_superseded_subscriptions(agent, subscription.pk)
 
         # Best-effort side effects, each in its own savepoint.
-        _isolated(log_label + ' Promo usage increment',
-                  lambda: _increment_promo_usage(subscription.promo_code))
-        _isolated(log_label + ' Referral credit conversion',
-                  lambda: _credit_referral_conversion(agent))
-        _isolated(log_label + ' Championship qualification hook',
-                  lambda: _championship_qualification(agent, subscription))
-        _isolated(log_label + ' Event referral qualification hook',
-                  lambda: _event_referral_qualification(agent, subscription))
-        _isolated(log_label + ' Referral code generation',
-                  lambda: _ensure_referral_code(agent))
+        _isolated(
+            log_label + " Promo usage increment",
+            lambda: _increment_promo_usage(subscription.promo_code),
+        )
+        _isolated(
+            log_label + " Referral credit conversion",
+            lambda: _credit_referral_conversion(agent),
+        )
+        _isolated(
+            log_label + " Championship qualification hook",
+            lambda: _championship_qualification(agent, subscription),
+        )
+        _isolated(
+            log_label + " Event referral qualification hook",
+            lambda: _event_referral_qualification(agent, subscription),
+        )
+        _isolated(
+            log_label + " Referral code generation",
+            lambda: _ensure_referral_code(agent),
+        )
 
         # Link user (isolated so DB sync hiccups do not roll back payment)
-        _isolated(log_label + ' Link django user',
-                  lambda: create_or_link_django_user(agent))
+        _isolated(
+            log_label + " Link django user", lambda: create_or_link_django_user(agent)
+        )
 
         if queue_fulfilment:
-            _isolated(log_label + ' Queue invoice and welcome',
-                      lambda: queue_invoice_and_welcome(agent.id, subscription.id))
+            _isolated(
+                log_label + " Queue invoice and welcome",
+                lambda: queue_invoice_and_welcome(agent.id, subscription.id),
+            )
 
-        logger.info('%s Activated agent %s, subscription #%s.', log_label, agent.email, subscription.pk)
+        logger.info(
+            "%s Activated agent %s, subscription #%s.",
+            log_label,
+            agent.email,
+            subscription.pk,
+        )
 
     try:
-        from apps.agents.services.registration_leads import mark_payment_completed, sync_lead_for_agent
+        from apps.agents.services.registration_leads import (
+            mark_payment_completed,
+            sync_lead_for_agent,
+        )
+
         mark_payment_completed(agent)
-        if agent.status == 'active':
+        if agent.status == "active":
             sync_lead_for_agent(agent)
     except Exception:
-        logger.exception('%s Quick-registration lead sync failed for agent %s', log_label, getattr(agent, 'id', None))
+        logger.exception(
+            "%s Quick-registration lead sync failed for agent %s",
+            log_label,
+            getattr(agent, "id", None),
+        )
     return subscription, True
 
 
@@ -3145,11 +4065,14 @@ def verify_and_activate_pending_payment(agent, include_paid_agents=False):
     """
     from apps.agents.models import AgentSubscription
 
-    from apps.agents.services.account_auth import agent_has_completed_payment, is_real_razorpay_id
+    from apps.agents.services.account_auth import (
+        agent_has_completed_payment,
+        is_real_razorpay_id,
+    )
 
     if not include_paid_agents and agent_has_completed_payment(agent):
         logger.info(
-            '[verify_and_activate_pending_payment] Verified payment already exists for agent #%s.',
+            "[verify_and_activate_pending_payment] Verified payment already exists for agent #%s.",
             agent.id,
         )
         return True
@@ -3157,24 +4080,33 @@ def verify_and_activate_pending_payment(agent, include_paid_agents=False):
     # Every open order is checked, not only the newest: a customer may pay an
     # earlier checkout after opening a new one.
     open_orders = [
-        sub for sub in AgentSubscription.objects.filter(
+        sub
+        for sub in AgentSubscription.objects.filter(
             agent=agent,
-            payment_status__in=['pending', 'failed'],
-        ).exclude(razorpay_order_id__isnull=True).exclude(razorpay_order_id='')
-        .order_by('-created_at')[:5]
-        if is_real_razorpay_id(sub.razorpay_order_id, 'order_')
+            payment_status__in=["pending", "failed"],
+        )
+        .exclude(razorpay_order_id__isnull=True)
+        .exclude(razorpay_order_id="")
+        .order_by("-created_at")[:5]
+        if is_real_razorpay_id(sub.razorpay_order_id, "order_")
     ]
     if not open_orders:
-        logger.info(f"[verify_and_activate_pending_payment] No pending/failed Razorpay order for {agent.email}")
+        logger.info(
+            f"[verify_and_activate_pending_payment] No pending/failed Razorpay order for {agent.email}"
+        )
         return False
 
     try:
         client = razorpay_client()
     except Exception as err:
-        logger.error(f"[verify_and_activate_pending_payment] Razorpay client unavailable: {err}")
+        logger.error(
+            f"[verify_and_activate_pending_payment] Razorpay client unavailable: {err}"
+        )
         return False
     if client is None:
-        logger.error("[verify_and_activate_pending_payment] Razorpay keys not configured.")
+        logger.error(
+            "[verify_and_activate_pending_payment] Razorpay keys not configured."
+        )
         return False
 
     subscription = None
@@ -3183,12 +4115,15 @@ def verify_and_activate_pending_payment(agent, include_paid_agents=False):
         try:
             payments = client.order.payments(candidate.razorpay_order_id)
         except Exception as err:
-            logger.error(f"[verify_and_activate_pending_payment] Razorpay API call failed: {err}")
+            logger.error(
+                f"[verify_and_activate_pending_payment] Razorpay API call failed: {err}"
+            )
             continue
-        if payments and 'items' in payments:
+        if payments and "items" in payments:
             from apps.agents.services.razorpay_checkout import ensure_payment_captured
-            for item in payments['items']:
-                if item.get('status') in ('captured', 'authorized'):
+
+            for item in payments["items"]:
+                if item.get("status") in ("captured", "authorized"):
                     captured = ensure_payment_captured(client, item)
                     if captured:
                         subscription, successful_payment = candidate, captured
@@ -3203,7 +4138,7 @@ def verify_and_activate_pending_payment(agent, include_paid_agents=False):
         )
         return False
 
-    paid_amount_paise = successful_payment.get('amount')
+    paid_amount_paise = successful_payment.get("amount")
     expected_amount_paise = _expected_amount_paise(subscription.registration_amount)
     if not _paise_amounts_match(paid_amount_paise, expected_amount_paise):
         logger.critical(
@@ -3213,19 +4148,24 @@ def verify_and_activate_pending_payment(agent, include_paid_agents=False):
         return False
 
     try:
-        _activate_paid_subscription(agent, subscription, successful_payment,
-                                    log_label='[verify_and_activate_pending_payment]')
+        _activate_paid_subscription(
+            agent,
+            subscription,
+            successful_payment,
+            log_label="[verify_and_activate_pending_payment]",
+        )
         return True
     except Exception as db_err:
-        logger.error(f"[verify_and_activate_pending_payment] Database activation transaction failed: {db_err}")
+        logger.error(
+            f"[verify_and_activate_pending_payment] Database activation transaction failed: {db_err}"
+        )
         return False
-
 
 
 # Names that plan_slug_from_name() maps back to the same slug.
 _PAID_PLAN_NAMES = {
-    'starter': PLAN_LABELS['starter'],
-    'professional': PLAN_LABELS['professional'],
+    "starter": PLAN_LABELS["starter"],
+    "professional": PLAN_LABELS["professional"],
 }
 
 # Canonical display names for each plan slug; used to override a client-supplied
@@ -3242,11 +4182,13 @@ def agent_register_complete(request):
     try:
         return _agent_register_complete_impl(request)
     except Exception:
-        logger.exception('agent_register_complete failed')
-        return JsonResponse({
-            'success': False,
-            'message': 'Unable to start payment right now. Please try again.',
-        })
+        logger.exception("agent_register_complete failed")
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Unable to start payment right now. Please try again.",
+            }
+        )
 
 
 def _agent_register_complete_impl(request):
@@ -3255,8 +4197,8 @@ def _agent_register_complete_impl(request):
     except json.JSONDecodeError:
         data = request.POST
 
-    raw_plan_type = data.get('plan_type')
-    client_plan_name = data.get('plan_name')
+    raw_plan_type = data.get("plan_type")
+    client_plan_name = data.get("plan_name")
     plan_type = resolve_checkout_plan_slug(raw_plan_type, client_plan_name)
     # plan_name is stored as subscription.selected_plan and later decides which
     # plan gets activated, so it must name the plan being priced here. The
@@ -3264,51 +4206,90 @@ def _agent_register_complete_impl(request):
     # when it resolves to the same plan (see below).
     plan_name = None
     if not plan_type:
-        logger.error(f"Invalid plan selected. plan_type received: {repr(raw_plan_type)}")
-        return JsonResponse({'success': False, 'message': 'Invalid plan selected.'}, status=400)
+        logger.error(
+            f"Invalid plan selected. plan_type received: {repr(raw_plan_type)}"
+        )
+        return JsonResponse(
+            {"success": False, "message": "Invalid plan selected."}, status=400
+        )
 
-    draft_id = request.session.get('current_draft_id')
+    draft_id = request.session.get("current_draft_id")
     if not draft_id:
-        return JsonResponse({'success': False, 'message': 'Session expired. Please start over.'}, status=400)
+        return JsonResponse(
+            {"success": False, "message": "Session expired. Please start over."},
+            status=400,
+        )
 
     try:
         draft = AgentDraft.objects.get(pk=draft_id)
     except AgentDraft.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'Registration record not found.'}, status=404)
+        return JsonResponse(
+            {"success": False, "message": "Registration record not found."}, status=404
+        )
 
     # The webhook may already have activated this registration while the plans
     # tab stayed open; a new checkout then charged twice and reset the status.
     from apps.agents.models import Agent as _Agent
-    from apps.agents.services.account_auth import BLOCKED_DASHBOARD_STATUSES, agent_has_completed_payment
-    paid_agent = _Agent.objects.filter(email__iexact=draft.email).first() if draft.email else None
+    from apps.agents.services.account_auth import (
+        BLOCKED_DASHBOARD_STATUSES,
+        agent_has_completed_payment,
+    )
+
+    paid_agent = (
+        _Agent.objects.filter(email__iexact=draft.email).first()
+        if draft.email
+        else None
+    )
     if paid_agent and paid_agent.status in BLOCKED_DASHBOARD_STATUSES:
-        return JsonResponse({
-            'success': False,
-            'message': 'This account cannot be registered again. Please contact support.',
-        }, status=403)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "This account cannot be registered again. Please contact support.",
+            },
+            status=403,
+        )
     if paid_agent and agent_has_completed_payment(paid_agent):
-        return JsonResponse({
-            'success': True,
-            'already_completed': True,
-            'message': 'Your payment is already completed.',
-            'redirect_url': reverse('agents:agent_dashboard'),
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "already_completed": True,
+                "message": "Your payment is already completed.",
+                "redirect_url": reverse("agents:agent_dashboard"),
+            }
+        )
 
     # Calculate pricing from DB only — no static fallback
-    pricing_config = SiteSetting.get_value('pricing_config')
+    pricing_config = SiteSetting.get_value("pricing_config")
     if not pricing_config or not isinstance(pricing_config, dict):
-        return JsonResponse({'success': False, 'message': 'Server configuration error.'}, status=500)
+        return JsonResponse(
+            {"success": False, "message": "Server configuration error."}, status=500
+        )
 
-    starter_cfg = pricing_config.get('starter')
-    prof_cfg = pricing_config.get('professional')
-    if not starter_cfg or not prof_cfg or not starter_cfg.get('full_price') or not prof_cfg.get('full_price'):
-        return JsonResponse({'success': False, 'message': 'Server configuration error.'}, status=500)
+    starter_cfg = pricing_config.get("starter")
+    prof_cfg = pricing_config.get("professional")
+    if (
+        not starter_cfg
+        or not prof_cfg
+        or not starter_cfg.get("full_price")
+        or not prof_cfg.get("full_price")
+    ):
+        return JsonResponse(
+            {"success": False, "message": "Server configuration error."}, status=500
+        )
 
-    trial_config = SiteSetting.get_value('trial_plan_config')
-    if not trial_config or not isinstance(trial_config, dict) or not trial_config.get('price'):
-        return JsonResponse({'success': False, 'message': 'Server configuration error.'}, status=500)
+    trial_config = SiteSetting.get_value("trial_plan_config")
+    if (
+        not trial_config
+        or not isinstance(trial_config, dict)
+        or not trial_config.get("price")
+    ):
+        return JsonResponse(
+            {"success": False, "message": "Server configuration error."}, status=500
+        )
 
-    applied_promo_code = (request.session.get('applied_promo_code') or '').strip().upper()
+    applied_promo_code = (
+        (request.session.get("applied_promo_code") or "").strip().upper()
+    )
     has_promo = bool(applied_promo_code)
     has_free_trial_promo = False
 
@@ -3323,82 +4304,124 @@ def _agent_register_complete_impl(request):
     if promo_obj and promo_obj.is_free_trial_code() and promo_obj.is_valid():
         has_free_trial_promo = True
 
-    trial_base_price = float(trial_config['price'])
-    starter_full = float(starter_cfg['full_price'])
-    prof_full = float(prof_cfg['full_price'])
-    
-    if plan_type == 'free_trial':
+    trial_base_price = float(trial_config["price"])
+    starter_full = float(starter_cfg["full_price"])
+    prof_full = float(prof_cfg["full_price"])
+
+    if plan_type == "free_trial":
         if has_free_trial_promo and promo_obj:
             if promo_obj.trial_price_override is not None:
                 trial_base_price = float(promo_obj.trial_price_override)
             if float(promo_obj.discount_value) > 0:
-                trial_base_price = max(0.0, trial_base_price - promo_obj.calculate_discount(trial_base_price))
+                trial_base_price = max(
+                    0.0,
+                    trial_base_price - promo_obj.calculate_discount(trial_base_price),
+                )
         total_amount = trial_base_price + (trial_base_price * 0.18)
-        promo_trial_days = (promo_obj.trial_duration_days
-                            if has_free_trial_promo and promo_obj and promo_obj.trial_duration_days else None)
-        plan_name = plan_name or f"Trial Plan ({promo_trial_days or trial_config.get('duration_days', 30)} Days)"
-    elif plan_type == 'exclusive':
-        exclusive_config = SiteSetting.get_value('exclusive_plan_config') or {}
-        
+        promo_trial_days = (
+            promo_obj.trial_duration_days
+            if has_free_trial_promo and promo_obj and promo_obj.trial_duration_days
+            else None
+        )
+        plan_name = (
+            plan_name
+            or f"Trial Plan ({promo_trial_days or trial_config.get('duration_days', 30)} Days)"
+        )
+    elif plan_type == "exclusive":
+        exclusive_config = SiteSetting.get_value("exclusive_plan_config") or {}
+
         from apps.agents.models import UserPlanProgress
-        session_key = f'followed_platforms_{draft_id}'
+
+        session_key = f"followed_platforms_{draft_id}"
         followed = request.session.get(session_key, [])
         follow_count = len(followed)
         discount_unlocked = follow_count > 0
-        progress = UserPlanProgress.objects.filter(draft=draft, plan_key='exclusive_gamified').first()
+        progress = UserPlanProgress.objects.filter(
+            draft=draft, plan_key="exclusive_gamified"
+        ).first()
         if progress and progress.discount_unlocked:
             discount_unlocked = True
-            
-        base_price = _exclusive_base_price(exclusive_config, follow_count, discount_unlocked)
+
+        base_price = _exclusive_base_price(
+            exclusive_config, follow_count, discount_unlocked
+        )
         total_amount = round(base_price + round(base_price * 0.18, 2), 2)
-        plan_name = plan_name or exclusive_config.get('name') or 'Exclusive Plan'
-        logger.info(f"Exclusive Checkout: discount_unlocked={discount_unlocked}, follow_count={follow_count}, base_price={base_price}, total_amount={total_amount}")
-    elif plan_type == 'starter':
-        session_key = f'followed_platforms_{draft_id}'
+        plan_name = plan_name or exclusive_config.get("name") or "Exclusive Plan"
+        logger.info(
+            f"Exclusive Checkout: discount_unlocked={discount_unlocked}, follow_count={follow_count}, base_price={base_price}, total_amount={total_amount}"
+        )
+    elif plan_type == "starter":
+        session_key = f"followed_platforms_{draft_id}"
         followed = request.session.get(session_key, [])
         follow_count = len(followed)
         checkout_promo = promo_obj if (not has_free_trial_promo and has_promo) else None
         total_amount = _checkout_total_for_plan(
-            pricing_config, follow_count, 'starter', request, data, checkout_promo,
+            pricing_config,
+            follow_count,
+            "starter",
+            request,
+            data,
+            checkout_promo,
         )
-        if request.session.get('championship_ref_id') and not checkout_promo:
+        if request.session.get("championship_ref_id") and not checkout_promo:
             try:
                 from apps.referral_championship.models import ChampionshipCampaign
+
                 champ = ChampionshipCampaign.get_current()
                 champ_pricing = champ.pricing_config or {}
-                total_amount = float(champ_pricing.get('digital', {}).get('campaign_price', 999))
+                total_amount = float(
+                    champ_pricing.get("digital", {}).get("campaign_price", 999)
+                )
             except Exception:
-                pass
-        plan_name = PLAN_LABELS['starter']
+                logger.exception(
+                    "Starter checkout: championship campaign price unavailable; using regular price"
+                )
+        plan_name = PLAN_LABELS["starter"]
         logger.info(
-            'Starter checkout: full=%s displayed=%s follow=%s total=%s',
-            starter_full, data.get('displayed_total'), follow_count, total_amount,
+            "Starter checkout: full=%s displayed=%s follow=%s total=%s",
+            starter_full,
+            data.get("displayed_total"),
+            follow_count,
+            total_amount,
         )
     else:
-        session_key = f'followed_platforms_{draft_id}'
+        session_key = f"followed_platforms_{draft_id}"
         followed = request.session.get(session_key, [])
         follow_count = len(followed)
         checkout_promo = promo_obj if (not has_free_trial_promo and has_promo) else None
         total_amount = _checkout_total_for_plan(
-            pricing_config, follow_count, 'professional', request, data, checkout_promo,
+            pricing_config,
+            follow_count,
+            "professional",
+            request,
+            data,
+            checkout_promo,
         )
-        if request.session.get('championship_ref_id') and not checkout_promo:
+        if request.session.get("championship_ref_id") and not checkout_promo:
             try:
                 from apps.referral_championship.models import ChampionshipCampaign
+
                 champ = ChampionshipCampaign.get_current()
                 champ_pricing = champ.pricing_config or {}
-                total_amount = float(champ_pricing.get('professional', {}).get('campaign_price', 4999))
+                total_amount = float(
+                    champ_pricing.get("professional", {}).get("campaign_price", 4999)
+                )
             except Exception:
-                pass
-        plan_name = PLAN_LABELS['professional']
+                logger.exception(
+                    "Professional checkout: championship campaign price unavailable; using regular price"
+                )
+        plan_name = PLAN_LABELS["professional"]
         logger.info(
-            'Professional checkout: full=%s displayed=%s follow=%s total=%s',
-            prof_full, data.get('displayed_total'), follow_count, total_amount,
+            "Professional checkout: full=%s displayed=%s follow=%s total=%s",
+            prof_full,
+            data.get("displayed_total"),
+            follow_count,
+            total_amount,
         )
 
     if client_plan_name and plan_slug_from_name(client_plan_name) == plan_type:
         plan_name = client_plan_name
-    parsed_plan = plan_slug_from_name(plan_name or '')
+    parsed_plan = plan_slug_from_name(plan_name or "")
     if parsed_plan and parsed_plan != plan_type:
         # A name that resolves to a DIFFERENT plan would activate that plan later.
         # Names that don't resolve at all (custom admin names) are kept as-is:
@@ -3410,11 +4433,16 @@ def _agent_register_complete_impl(request):
 
     # Store / count a promo only when it actually changed this plan's price:
     # an invalid or other-plan code used to be saved and later counted.
-    if plan_type == 'free_trial':
+    if plan_type == "free_trial":
         promo_applied = has_free_trial_promo
-    elif plan_type in ('starter', 'professional') and promo_obj and not has_free_trial_promo:
-        promo_applied = (not promo_obj.is_free_trial_code()
-                         and promo_obj.is_valid('basic' if plan_type == 'starter' else 'professional'))
+    elif (
+        plan_type in ("starter", "professional")
+        and promo_obj
+        and not has_free_trial_promo
+    ):
+        promo_applied = not promo_obj.is_free_trial_code() and promo_obj.is_valid(
+            "basic" if plan_type == "starter" else "professional"
+        )
     else:
         promo_applied = False
     stored_promo_code = applied_promo_code if promo_applied else None
@@ -3422,23 +4450,25 @@ def _agent_register_complete_impl(request):
     total_amount = _to_money(total_amount)
     amount_paise = _to_paise(total_amount)
     order_notes = {
-        'draft_id': str(draft.pk),
-        'email': str(getattr(draft, 'email', '') or ''),
-        'plan_type': str(plan_type),
+        "draft_id": str(draft.pk),
+        "email": str(getattr(draft, "email", "") or ""),
+        "plan_type": str(plan_type),
     }
     razorpay_order_id, mock_checkout = create_checkout_order(
         amount_paise,
-        f'agent_draft_{draft.pk}_{int(time.time())}',
+        f"agent_draft_{draft.pk}_{int(time.time())}",
         request,
         notes=order_notes,
     )
 
     # Strict Production Guard: If order creation fails for a paid plan, prevent bypass
     if not razorpay_order_id and amount_paise > 0:
-        return JsonResponse({
-            'success': False,
-            'message': gateway_failure_message(),
-        })
+        return JsonResponse(
+            {
+                "success": False,
+                "message": gateway_failure_message(),
+            }
+        )
 
     from django.db import transaction
     from apps.agents.models import AgentSubscription
@@ -3447,25 +4477,37 @@ def _agent_register_complete_impl(request):
     try:
         with transaction.atomic():
             # Create/get Agent record from DB
-            agent = create_agent_from_draft(draft, plan_type, plan_name, status='pending_payment')
-            
+            agent = create_agent_from_draft(
+                draft, plan_type, plan_name, status="pending_payment"
+            )
+
             # Capture distributor/referral binding
-            sub_dist_id = request.session.get('sub_distributor_id') or getattr(draft, 'sub_distributor_id', None)
+            sub_dist_id = request.session.get("sub_distributor_id") or getattr(
+                draft, "sub_distributor_id", None
+            )
             if sub_dist_id:
                 agent.sub_distributor_id = sub_dist_id
 
-            dist_id_from_session = request.session.get('distributor_id') or getattr(draft, 'distributor_id', None)
+            dist_id_from_session = request.session.get("distributor_id") or getattr(
+                draft, "distributor_id", None
+            )
             if dist_id_from_session:
                 agent.distributor_id = dist_id_from_session
                 # First-touch protection: only set referral code if not already attributed
                 if not agent.referred_by_code:
                     from apps.admin_panel.models.referral_code import ReferralCode
-                    ref_obj = ReferralCode.objects.filter(distributor_id=dist_id_from_session, is_active=True).first()
+
+                    ref_obj = ReferralCode.objects.filter(
+                        distributor_id=dist_id_from_session, is_active=True
+                    ).first()
                     if ref_obj:
                         agent.referred_by_code = ref_obj.code
                     if sub_dist_id:
                         from apps.distributors.models import SubDistributor
-                        sub_dist_obj = SubDistributor.objects.filter(id=sub_dist_id).first()
+
+                        sub_dist_obj = SubDistributor.objects.filter(
+                            id=sub_dist_id
+                        ).first()
                         if sub_dist_obj:
                             agent.referred_by_code = sub_dist_obj.code
                 agent.save()
@@ -3476,21 +4518,28 @@ def _agent_register_complete_impl(request):
                     agent=agent,
                     draft_id=draft.pk,
                     extra_details={
-                        'distributor_id': dist_id_from_session,
-                        'referred_by_code': agent.referred_by_code or '',
-                        'plan_type': plan_type,
+                        "distributor_id": dist_id_from_session,
+                        "referred_by_code": agent.referred_by_code or "",
+                        "plan_type": plan_type,
                     },
                 )
             else:
-                ref_code = request.session.get('ref_code') or request.session.get('championship_ref_id')
+                ref_code = request.session.get("ref_code") or request.session.get(
+                    "championship_ref_id"
+                )
                 # First-touch protection: only apply if no referral code already set
                 if ref_code and not agent.referred_by_code:
-                    if str(ref_code).startswith('PA-') or str(ref_code).startswith('EV-'):
+                    if str(ref_code).startswith("PA-") or str(ref_code).startswith(
+                        "EV-"
+                    ):
                         agent.referred_by_code = ref_code
                         agent.save()
                     else:
                         from apps.admin_panel.models.referral_code import ReferralCode
-                        ref_obj = ReferralCode.objects.filter(code=ref_code, is_active=True).first()
+
+                        ref_obj = ReferralCode.objects.filter(
+                            code=ref_code, is_active=True
+                        ).first()
                         if ref_obj:
                             agent.referred_by_code = ref_code
                             if ref_obj.distributor_id:
@@ -3502,20 +4551,22 @@ def _agent_register_complete_impl(request):
                                     agent=agent,
                                     draft_id=draft.pk,
                                     extra_details={
-                                        'distributor_id': ref_obj.distributor_id,
-                                        'referred_by_code': ref_code,
-                                        'plan_type': plan_type,
-                                        'via_ref_code': True,
+                                        "distributor_id": ref_obj.distributor_id,
+                                        "referred_by_code": ref_code,
+                                        "plan_type": plan_type,
+                                        "via_ref_code": True,
                                     },
                                 )
                             agent.save()
-            
+
             # Calculate subscription duration
-            trial_days = int(trial_config.get('duration_days', 30))
+            trial_days = int(trial_config.get("duration_days", 30))
             if has_free_trial_promo and promo_obj and promo_obj.trial_duration_days:
-                trial_days = int(promo_obj.trial_duration_days)  # promo's own trial length
+                trial_days = int(
+                    promo_obj.trial_duration_days
+                )  # promo's own trial length
             sub_expiry = timezone.now() + timezone.timedelta(days=365)
-            if plan_type == 'free_trial':
+            if plan_type == "free_trial":
                 sub_expiry = timezone.now() + timezone.timedelta(days=trial_days)
 
             # One subscription row per Razorpay order. Re-pointing an existing
@@ -3524,18 +4575,23 @@ def _agent_register_complete_impl(request):
             # webhook or recovery could find it, so the money was taken but the
             # agent never activated. Only a row with no order yet is reused.
             from django.db.models import Q
-            subscription = AgentSubscription.objects.filter(
-                Q(razorpay_order_id__isnull=True) | Q(razorpay_order_id=''),
-                agent=agent,
-                payment_status__in=['pending', 'failed'],
-            ).order_by('-created_at').first()
+
+            subscription = (
+                AgentSubscription.objects.filter(
+                    Q(razorpay_order_id__isnull=True) | Q(razorpay_order_id=""),
+                    agent=agent,
+                    payment_status__in=["pending", "failed"],
+                )
+                .order_by("-created_at")
+                .first()
+            )
             if subscription:
                 subscription.selected_plan = plan_name or plan_type
                 subscription.promo_code = stored_promo_code
                 subscription.registration_amount = total_amount
                 subscription.razorpay_order_id = razorpay_order_id
-                subscription.payment_status = 'pending'
-                subscription.status = 'inactive'
+                subscription.payment_status = "pending"
+                subscription.status = "inactive"
                 subscription.save()
             else:
                 subscription = AgentSubscription.objects.create(
@@ -3543,9 +4599,9 @@ def _agent_register_complete_impl(request):
                     selected_plan=plan_name or plan_type,
                     promo_code=stored_promo_code,
                     registration_amount=total_amount,
-                    payment_status='pending',
-                    status='inactive',
-                    razorpay_order_id=razorpay_order_id
+                    payment_status="pending",
+                    status="inactive",
+                    razorpay_order_id=razorpay_order_id,
                 )
 
             # ── Event: CLAIM_BUTTON ───────────────────────────────────────
@@ -3556,99 +4612,130 @@ def _agent_register_complete_impl(request):
                 draft_id=draft.pk,
                 subscription_id=subscription.pk,
                 extra_details={
-                    'plan_type': plan_type,
-                    'plan_name': plan_name,
-                    'amount': str(total_amount),
-                    'razorpay_order_id': razorpay_order_id or '',
-                    'promo_code': applied_promo_code or '',
-                    'is_mock': mock_checkout,
+                    "plan_type": plan_type,
+                    "plan_name": plan_name,
+                    "amount": str(total_amount),
+                    "razorpay_order_id": razorpay_order_id or "",
+                    "promo_code": applied_promo_code or "",
+                    "is_mock": mock_checkout,
                 },
             )
 
             # If 0 amount: complete instantly
             if amount_paise == 0:
-                subscription.payment_status = 'completed'
-                subscription.status = 'active'
+                subscription.payment_status = "completed"
+                subscription.status = "active"
                 subscription.starts_at = timezone.now()
                 subscription.expires_at = sub_expiry
                 subscription.save()
                 _deactivate_superseded_subscriptions(agent, subscription.pk)
 
-                agent.status = 'pending_approval'
+                agent.status = "pending_approval"
                 agent.plan_type = plan_type
                 agent.registration_step = 2
-                if plan_type == 'free_trial':
-                    agent.trial_ends_at = timezone.now() + timezone.timedelta(days=trial_days)
-                    upgrade_discount = SiteSetting.get_value('trial_upgrade_discount', 20)
+                if plan_type == "free_trial":
+                    agent.trial_ends_at = timezone.now() + timezone.timedelta(
+                        days=trial_days
+                    )
+                    upgrade_discount = SiteSetting.get_value(
+                        "trial_upgrade_discount", 20
+                    )
                     agent.upgrade_discount_percent = int(upgrade_discount)
                 agent.save()
 
                 # Best-effort side effects, each in its own savepoint.
-                _isolated('Promo usage during free checkout',
-                          lambda: _increment_promo_usage(subscription.promo_code))
-                _isolated('Referral credit during free checkout', lambda: _credit_referral_conversion(agent))
-                _isolated('Championship qualification hook during free checkout',
-                          lambda: _championship_qualification(agent, subscription))
-                _isolated('Event referral qualification hook during free checkout',
-                          lambda: _event_referral_qualification(agent, subscription))
-                _isolated('Referral code generation', lambda: _ensure_referral_code(agent))
-                _isolated('Queue invoice and welcome during free checkout',
-                          lambda: queue_invoice_and_welcome(agent.id, subscription.id))
+                _isolated(
+                    "Promo usage during free checkout",
+                    lambda: _increment_promo_usage(subscription.promo_code),
+                )
+                _isolated(
+                    "Referral credit during free checkout",
+                    lambda: _credit_referral_conversion(agent),
+                )
+                _isolated(
+                    "Championship qualification hook during free checkout",
+                    lambda: _championship_qualification(agent, subscription),
+                )
+                _isolated(
+                    "Event referral qualification hook during free checkout",
+                    lambda: _event_referral_qualification(agent, subscription),
+                )
+                _isolated(
+                    "Referral code generation", lambda: _ensure_referral_code(agent)
+                )
+                _isolated(
+                    "Queue invoice and welcome during free checkout",
+                    lambda: queue_invoice_and_welcome(agent.id, subscription.id),
+                )
 
                 instant_complete = True
     except Exception as db_err:
         logger.error(f"Database transaction error in agent_register_complete: {db_err}")
-        return JsonResponse({
-            'success': False,
-            'message': 'Database error occurred. Please try again.'
-        }, status=500)
+        return JsonResponse(
+            {"success": False, "message": "Database error occurred. Please try again."},
+            status=500,
+        )
 
     if instant_complete:
         try:
             user = create_or_link_django_user(agent)
             login_agent_user(request, user)
         except Exception as login_err:
-            logger.error(f"Instant checkout login failed for agent {getattr(agent, 'id', None)}: {login_err}")
+            logger.error(
+                f"Instant checkout login failed for agent {getattr(agent, 'id', None)}: {login_err}"
+            )
 
-        request.session.pop('current_draft_id', None)
-        request.session.pop('reg_step', None)
-        request.session.pop('ref_code', None)
-        request.session.pop('pending_checkout', None)
-        request.session['auto_show_invite_studio'] = True
+        request.session.pop("current_draft_id", None)
+        request.session.pop("reg_step", None)
+        request.session.pop("ref_code", None)
+        request.session.pop("pending_checkout", None)
+        request.session["auto_show_invite_studio"] = True
 
         try:
             from apps.agents.services.registration_leads import mark_payment_completed
+
             mark_payment_completed(agent)
         except Exception:
-            logger.exception('Quick-registration lead sync failed after free checkout for agent %s', getattr(agent, 'id', None))
+            logger.exception(
+                "Quick-registration lead sync failed after free checkout for agent %s",
+                getattr(agent, "id", None),
+            )
 
-        return JsonResponse(_activation_success_payload(
-            request,
-            agent,
-            message='Registration completed successfully! Welcome to PadosiAgent.',
-        ))
+        return JsonResponse(
+            _activation_success_payload(
+                request,
+                agent,
+                message="Registration completed successfully! Welcome to PadosiAgent.",
+            )
+        )
 
-    request.session['pending_checkout'] = {
-        'agent_id': agent.id,
-        'order_id': razorpay_order_id,
-        'plan_type': plan_type,
-        'plan_name': plan_name,
+    request.session["pending_checkout"] = {
+        "agent_id": agent.id,
+        "order_id": razorpay_order_id,
+        "plan_type": plan_type,
+        "plan_name": plan_name,
     }
     request.session.modified = True
 
     try:
         from apps.agents.services.registration_leads import mark_payment_pending
+
         mark_payment_pending(agent)
     except Exception:
-        logger.exception('Quick-registration payment pending sync failed for agent %s', getattr(agent, 'id', None))
+        logger.exception(
+            "Quick-registration payment pending sync failed for agent %s",
+            getattr(agent, "id", None),
+        )
 
-    return JsonResponse(checkout_payload(
-        razorpay_order_id,
-        amount_paise,
-        agent,
-        is_mock=mock_checkout,
-        request=request,
-    ))
+    return JsonResponse(
+        checkout_payload(
+            razorpay_order_id,
+            amount_paise,
+            agent,
+            is_mock=mock_checkout,
+            request=request,
+        )
+    )
 
 
 def _payer_signature_valid(order_id, payment_id, signature):
@@ -3665,11 +4752,13 @@ def _payer_signature_valid(order_id, payment_id, signature):
         client = razorpay_client()
         if client is None:
             return False
-        client.utility.verify_payment_signature({
-            'razorpay_order_id': order_id,
-            'razorpay_payment_id': payment_id,
-            'razorpay_signature': signature,
-        })
+        client.utility.verify_payment_signature(
+            {
+                "razorpay_order_id": order_id,
+                "razorpay_payment_id": payment_id,
+                "razorpay_signature": signature,
+            }
+        )
         return True
     except Exception:
         return False
@@ -3679,7 +4768,7 @@ class _PaymentAlreadyFinalized(Exception):
     """Raised inside the activation transaction when the order is already paid."""
 
     def __init__(self, agent):
-        super().__init__('payment already finalized')
+        super().__init__("payment already finalized")
         self.agent = agent
 
 
@@ -3688,35 +4777,35 @@ def _finalize_razorpay_payment(request, data):
     Verify Razorpay payment signature and activate registration.
     Used by verify-payment (JSON) and payment-callback (redirect).
     """
-    pending = request.session.get('pending_checkout') or {}
-    razorpay_payment_id = data.get('razorpay_payment_id')
-    razorpay_order_id = data.get('razorpay_order_id') or pending.get('order_id')
-    razorpay_signature = data.get('razorpay_signature')
+    pending = request.session.get("pending_checkout") or {}
+    razorpay_payment_id = data.get("razorpay_payment_id")
+    razorpay_order_id = data.get("razorpay_order_id") or pending.get("order_id")
+    razorpay_signature = data.get("razorpay_signature")
     # The agent and plan come from server state (checkout session / the priced
     # order), never from the request body: a client plan_type let an agent pay
     # the Starter price and be activated on Professional/Exclusive.
-    agent_id = pending.get('agent_id')
-    plan_name = pending.get('plan_name')
+    agent_id = pending.get("agent_id")
+    plan_name = pending.get("plan_name")
 
     from apps.agents.models import AgentSubscription, Invoice
 
     if razorpay_order_id:
         existing_sub = AgentSubscription.objects.filter(
-            razorpay_order_id=razorpay_order_id,
-            payment_status='completed'
+            razorpay_order_id=razorpay_order_id, payment_status="completed"
         ).first()
         existing_invoice = Invoice.objects.filter(
             razorpay_order_id=razorpay_order_id,
-            payment_status='paid',
+            payment_status="paid",
         ).first()
 
         if existing_sub or existing_invoice:
             agent_obj = existing_sub.agent if existing_sub else existing_invoice.agent
             from apps.agents.services.account_auth import agent_can_access_dashboard
+
             if not agent_can_access_dashboard(agent_obj):
                 return {
-                    'success': False,
-                    'message': 'Payment is not completed yet.',
+                    "success": False,
+                    "message": "Payment is not completed yet.",
                 }
             # A known order id alone must never sign the caller in as the order's
             # agent, nor re-sync their plan/subscriptions (replaying an old order
@@ -3725,19 +4814,21 @@ def _finalize_razorpay_payment(request, data):
             # this order (e.g. UPI app switch landed in a different browser).
             if not (
                 _session_owns_agent(request, agent_obj)
-                or _payer_signature_valid(razorpay_order_id, razorpay_payment_id, razorpay_signature)
+                or _payer_signature_valid(
+                    razorpay_order_id, razorpay_payment_id, razorpay_signature
+                )
             ):
                 return {
-                    'success': True,
-                    'message': 'Payment already processed. Please log in to continue.',
-                    'redirect_url': reverse('agents:agent_login'),
+                    "success": True,
+                    "message": "Payment already processed. Please log in to continue.",
+                    "redirect_url": reverse("agents:agent_login"),
                 }
             completed_sub = existing_sub
             if completed_sub and completed_sub.selected_plan:
                 synced_slug = plan_slug_from_name(completed_sub.selected_plan)
                 if synced_slug and synced_slug != agent_obj.plan_type:
                     agent_obj.plan_type = synced_slug
-                    agent_obj.save(update_fields=['plan_type', 'updated_at'])
+                    agent_obj.save(update_fields=["plan_type", "updated_at"])
             if completed_sub:
                 _deactivate_superseded_subscriptions(agent_obj, completed_sub.pk)
             try:
@@ -3746,47 +4837,52 @@ def _finalize_razorpay_payment(request, data):
             except Exception as login_err:
                 logger.error(f"Idempotent payment login failed: {login_err}")
 
-            request.session.pop('current_draft_id', None)
-            request.session.pop('reg_step', None)
-            request.session.pop('ref_code', None)
-            request.session.pop('pending_checkout', None)
+            request.session.pop("current_draft_id", None)
+            request.session.pop("reg_step", None)
+            request.session.pop("ref_code", None)
+            request.session.pop("pending_checkout", None)
 
             return _activation_success_payload(
                 request,
                 agent_obj,
-                message='Payment already processed successfully.',
+                message="Payment already processed successfully.",
             )
 
     mock_checkout = is_mock_payment(razorpay_order_id, razorpay_signature)
     if mock_checkout:
-        logger.error('Rejecting mock payment verification for order=%s', razorpay_order_id)
+        logger.error(
+            "Rejecting mock payment verification for order=%s", razorpay_order_id
+        )
         return {
-            'success': False,
-            'message': 'Payment was not completed. Please pay through Razorpay to continue.',
+            "success": False,
+            "message": "Payment was not completed. Please pay through Razorpay to continue.",
         }
 
     if not razorpay_signature:
         return {
-            'success': False,
-            'message': 'Payment signature is missing. Cannot verify transaction.',
+            "success": False,
+            "message": "Payment signature is missing. Cannot verify transaction.",
         }
 
     subscription = None
     try:
         client = razorpay_client()
         if client is None:
-            return {'success': False, 'message': gateway_failure_message()}
+            return {"success": False, "message": gateway_failure_message()}
 
-        client.utility.verify_payment_signature({
-            'razorpay_order_id': razorpay_order_id,
-            'razorpay_payment_id': razorpay_payment_id,
-            'razorpay_signature': razorpay_signature
-        })
+        client.utility.verify_payment_signature(
+            {
+                "razorpay_order_id": razorpay_order_id,
+                "razorpay_payment_id": razorpay_payment_id,
+                "razorpay_signature": razorpay_signature,
+            }
+        )
 
         payment_info = client.payment.fetch(razorpay_payment_id)
-        payment_status = payment_info.get('status')
+        payment_status = payment_info.get("status")
 
         from apps.agents.services.razorpay_checkout import ensure_payment_captured
+
         captured = ensure_payment_captured(client, payment_info)
         if not captured:
             logger.error(
@@ -3794,17 +4890,24 @@ def _finalize_razorpay_payment(request, data):
                 razorpay_payment_id,
                 payment_status,
             )
-            if payment_status == 'authorized':
-                return {'success': False, 'message': 'Your payment is still being confirmed by the bank. Your account will activate automatically in a few minutes.'}
-            return {'success': False, 'message': 'Payment is not completed.'}
-        paid_amount_paise = captured.get('amount')
+            if payment_status == "authorized":
+                return {
+                    "success": False,
+                    "message": "Your payment is still being confirmed by the bank. Your account will activate automatically in a few minutes.",
+                }
+            return {"success": False, "message": "Payment is not completed."}
+        paid_amount_paise = captured.get("amount")
 
-        subscription = AgentSubscription.objects.filter(razorpay_order_id=razorpay_order_id).first()
+        subscription = AgentSubscription.objects.filter(
+            razorpay_order_id=razorpay_order_id
+        ).first()
         if not subscription:
             subscription = adopt_orphan_registration_order(razorpay_order_id)
         if not subscription:
-            logger.error(f"No subscription found matching Razorpay Order {razorpay_order_id}")
-            return {'success': False, 'message': 'Invalid transaction ID.'}
+            logger.error(
+                f"No subscription found matching Razorpay Order {razorpay_order_id}"
+            )
+            return {"success": False, "message": "Invalid transaction ID."}
 
         expected_amount_paise = _expected_amount_paise(subscription.registration_amount)
         if not _paise_amounts_match(paid_amount_paise, expected_amount_paise):
@@ -3813,71 +4916,94 @@ def _finalize_razorpay_payment(request, data):
                 f"Agent ID: {agent_id}, Paid: {paid_amount_paise} paise, Expected: {expected_amount_paise} paise. "
                 f"Razorpay Payment ID: {razorpay_payment_id}"
             )
-            return {'success': False, 'message': 'Payment validation failed: Amount mismatch.'}
+            return {
+                "success": False,
+                "message": "Payment validation failed: Amount mismatch.",
+            }
 
     except Exception as e:
         logger.error("Razorpay Signature/Amount Verification Failed: %s", e)
-        return {'success': False, 'message': gateway_failure_message()}
+        return {"success": False, "message": gateway_failure_message()}
 
     # Security check: the order must belong to the agent the checkout session names.
     agent = subscription.agent
     if not agent:
-        return {'success': False, 'message': 'Agent record not found.'}
+        return {"success": False, "message": "Agent record not found."}
     if agent_id and str(agent.pk) != str(agent_id):
         logger.critical(
-            'Razorpay order %s belongs to agent #%s but checkout session names agent #%s — rejecting.',
-            razorpay_order_id, agent.pk, agent_id,
+            "Razorpay order %s belongs to agent #%s but checkout session names agent #%s — rejecting.",
+            razorpay_order_id,
+            agent.pk,
+            agent_id,
         )
-        return {'success': False, 'message': 'Invalid transaction ID.'}
+        return {"success": False, "message": "Invalid transaction ID."}
 
     try:
-        payment = {'id': razorpay_payment_id, 'signature': razorpay_signature}
+        payment = {"id": razorpay_payment_id, "signature": razorpay_signature}
         subscription, activated = _activate_paid_subscription(
-            agent, subscription, payment, log_label='[callback]',
+            agent,
+            subscription,
+            payment,
+            log_label="[callback]",
         )
         agent = subscription.agent  # refresh after lock
 
         # Activity log — best-effort, after the activation transaction commits.
-        _isolated('[callback] Activity log', lambda: RegistrationActivityLog.log(
-            RegistrationActivityLog.EVENT_PAYMENT_BUTTON,
-            request=request,
-            agent=agent,
-            subscription_id=subscription.pk,
-            extra_details={
-                'plan_type': agent.plan_type or '',
-                'plan_name': plan_name or '',
-                'razorpay_payment_id': razorpay_payment_id or '',
-                'razorpay_order_id': razorpay_order_id or '',
-                'promo_code': (subscription.promo_code or ''),
-            },
-        ))
+        _isolated(
+            "[callback] Activity log",
+            lambda: RegistrationActivityLog.log(
+                RegistrationActivityLog.EVENT_PAYMENT_BUTTON,
+                request=request,
+                agent=agent,
+                subscription_id=subscription.pk,
+                extra_details={
+                    "plan_type": agent.plan_type or "",
+                    "plan_name": plan_name or "",
+                    "razorpay_payment_id": razorpay_payment_id or "",
+                    "razorpay_order_id": razorpay_order_id or "",
+                    "promo_code": (subscription.promo_code or ""),
+                },
+            ),
+        )
 
         # Signature was verified above — this is the payer; sign them in.
         try:
             user = create_or_link_django_user(agent)
             login_agent_user(request, user)
         except Exception as login_err:
-            logger.error('Payment success login failed for agent %s: %s', getattr(agent, 'id', None), login_err)
+            logger.error(
+                "Payment success login failed for agent %s: %s",
+                getattr(agent, "id", None),
+                login_err,
+            )
 
         if not activated:
             # Webhook won the lock and already activated before us.
-            request.session.pop('pending_checkout', None)
+            request.session.pop("pending_checkout", None)
             return _activation_success_payload(
-                request, agent, message='Payment already processed successfully.',
+                request,
+                agent,
+                message="Payment already processed successfully.",
             )
 
-        request.session.pop('current_draft_id', None)
-        request.session.pop('reg_step', None)
-        request.session.pop('ref_code', None)
-        request.session.pop('pending_checkout', None)
-        request.session['auto_show_invite_studio'] = True
+        request.session.pop("current_draft_id", None)
+        request.session.pop("reg_step", None)
+        request.session.pop("ref_code", None)
+        request.session.pop("pending_checkout", None)
+        request.session["auto_show_invite_studio"] = True
 
         return _activation_success_payload(
-            request, agent, message='Payment successful and account activated.',
+            request,
+            agent,
+            message="Payment successful and account activated.",
         )
     except Exception as e:
-        logger.error('Error activating account in payment_success: %s', e)
-        return {'success': False, 'message': 'Failed to activate agent account.', 'status': 500}
+        logger.error("Error activating account in payment_success: %s", e)
+        return {
+            "success": False,
+            "message": "Failed to activate agent account.",
+            "status": 500,
+        }
 
 
 @require_POST
@@ -3892,7 +5018,7 @@ def payment_success(request):
         data = request.POST
 
     result = _finalize_razorpay_payment(request, data)
-    status = result.pop('status', None) or (200 if result.get('success') else 400)
+    status = result.pop("status", None) or (200 if result.get("success") else 400)
     return JsonResponse(result, status=status)
 
 
@@ -3905,66 +5031,83 @@ def payment_callback(request):
     """
     payload = _razorpay_callback_payload(request)
     logger.info(
-        'Razorpay payment callback order=%s payment=%s has_signature=%s',
-        payload.get('razorpay_order_id'),
-        payload.get('razorpay_payment_id'),
-        bool(payload.get('razorpay_signature')),
+        "Razorpay payment callback order=%s payment=%s has_signature=%s",
+        payload.get("razorpay_order_id"),
+        payload.get("razorpay_payment_id"),
+        bool(payload.get("razorpay_signature")),
     )
 
-    has_pending_checkout = bool(request.session.get('pending_checkout'))
-    login_url = reverse('agents:agent_login')
+    has_pending_checkout = bool(request.session.get("pending_checkout"))
+    login_url = reverse("agents:agent_login")
 
-    if payload.get('razorpay_payment_id') and payload.get('razorpay_order_id') and payload.get('razorpay_signature'):
+    if (
+        payload.get("razorpay_payment_id")
+        and payload.get("razorpay_order_id")
+        and payload.get("razorpay_signature")
+    ):
         # Retries (waiting for the bank to confirm capture) only for a genuine
         # payer — a valid signature or this browser's own checkout. Anyone else
         # used to hold a worker for ~7s per request.
         genuine = has_pending_checkout or _payer_signature_valid(
-            payload.get('razorpay_order_id'),
-            payload.get('razorpay_payment_id'),
-            payload.get('razorpay_signature'),
+            payload.get("razorpay_order_id"),
+            payload.get("razorpay_payment_id"),
+            payload.get("razorpay_signature"),
         )
         attempts = 3 if genuine else 1
         for attempt in range(attempts):
             result = _finalize_razorpay_payment(request, payload)
-            if result.get('success'):
-                if result.get('redirect_url') == login_url:
+            if result.get("success"):
+                if result.get("redirect_url") == login_url:
                     return redirect(login_url)
-                return redirect('agents:payment_complete')
+                return redirect("agents:payment_complete")
             if attempt < attempts - 1:
                 time.sleep(1.5)
 
-    recovered_url = _recover_pending_razorpay_checkout(request, payload, retry=has_pending_checkout)
+    recovered_url = _recover_pending_razorpay_checkout(
+        request, payload, retry=has_pending_checkout
+    )
     if recovered_url:
         return redirect(recovered_url)
 
-    logger.warning('Razorpay callback could not complete order=%s', payload.get('razorpay_order_id'))
-    return redirect('agents:chooseplan')
+    logger.warning(
+        "Razorpay callback could not complete order=%s",
+        payload.get("razorpay_order_id"),
+    )
+    return redirect("agents:chooseplan")
 
 
 def payment_complete(request):
     """Brief success message after verified payment, then auto-redirect to dashboard."""
     if not request.user.is_authenticated:
-        return redirect('agents:chooseplan')
+        return redirect("agents:chooseplan")
 
-    from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard
+    from apps.agents.services.account_auth import (
+        resolve_agent_for_user,
+        agent_can_access_dashboard,
+    )
+
     try:
         agent = resolve_agent_for_user(request.user)
     except Exception:
         agent = None
 
     if not agent or not agent_can_access_dashboard(agent):
-        return redirect('agents:chooseplan')
+        return redirect("agents:chooseplan")
 
-    handoff_plan = request.session.get('app_upgrade_handoff_plan')
+    handoff_plan = request.session.get("app_upgrade_handoff_plan")
     redirect_url = _post_payment_redirect_url(request, agent)
-    request.session.pop('app_upgrade_handoff_plan', None)
-    request.session.pop('post_payment_landing', None)
-    return render(request, 'agents/payment_complete.html', {
-        'agent_name': (getattr(agent, 'fullname', '') or '').strip(),
-        'redirect_url': redirect_url,
-        'is_plan_upgrade': bool(handoff_plan),
-        'hide_chatbot': True,
-    })
+    request.session.pop("app_upgrade_handoff_plan", None)
+    request.session.pop("post_payment_landing", None)
+    return render(
+        request,
+        "agents/payment_complete.html",
+        {
+            "agent_name": (getattr(agent, "fullname", "") or "").strip(),
+            "redirect_url": redirect_url,
+            "is_plan_upgrade": bool(handoff_plan),
+            "hide_chatbot": True,
+        },
+    )
 
 
 # Wrong promo codes allowed per client IP and per browser session before the
@@ -3974,22 +5117,26 @@ PROMO_FAIL_WINDOW_SECONDS = 15 * 60
 
 
 def _promo_fail_keys(request):
-    keys = [f'promo_fail_ip_{_get_client_ip(request)}']
+    keys = [f"promo_fail_ip_{_get_client_ip(request)}"]
     if request.session.session_key:
-        keys.append(f'promo_fail_sess_{request.session.session_key}')
+        keys.append(f"promo_fail_sess_{request.session.session_key}")
     return keys
 
 
 def _promo_checks_paused(request):
     from django.core.cache import cache
+
     try:
-        return any((cache.get(k) or 0) >= PROMO_FAIL_LIMIT for k in _promo_fail_keys(request))
+        return any(
+            (cache.get(k) or 0) >= PROMO_FAIL_LIMIT for k in _promo_fail_keys(request)
+        )
     except Exception:
         return False
 
 
 def _record_promo_failure(request):
     from django.core.cache import cache
+
     for key in _promo_fail_keys(request):
         try:
             cache.add(key, 0, timeout=PROMO_FAIL_WINDOW_SECONDS)
@@ -4007,42 +5154,51 @@ def agent_verify_promo(request):
     """
     try:
         data = json.loads(request.body)
-        promo_code = data.get('promo_code', '').strip().upper()
+        promo_code = data.get("promo_code", "").strip().upper()
     except (json.JSONDecodeError, AttributeError):
-        promo_code = request.POST.get('promo_code', '').strip().upper()
+        promo_code = request.POST.get("promo_code", "").strip().upper()
 
     if not promo_code:
-        return JsonResponse({'success': False, 'message': 'Promo code is required.'})
+        return JsonResponse({"success": False, "message": "Promo code is required."})
 
     if _promo_checks_paused(request):
-        return JsonResponse({
-            'success': False,
-            'message': 'Too many attempts. Please try again after 15 minutes.',
-        }, status=429)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Too many attempts. Please try again after 15 minutes.",
+            },
+            status=429,
+        )
 
     try:
         promo = PromoCode.objects.filter(code__iexact=promo_code).first()
         if promo and promo.is_valid():
-            request.session['applied_promo_code'] = promo.code
+            request.session["applied_promo_code"] = promo.code
             request.session.modified = True
-            return JsonResponse({
-                'success': True,
-                'message': f'Promo code "{promo.code}" is valid and will be applied at checkout!',
-            })
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": f'Promo code "{promo.code}" is valid and will be applied at checkout!',
+                }
+            )
         elif promo:
             _record_promo_failure(request)
-            return JsonResponse({
-                'success': False,
-                'message': 'Promo code has expired or is no longer valid.',
-            })
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Promo code has expired or is no longer valid.",
+                }
+            )
     except Exception as e:
         logger.error(f"Promo verification error: {e}")
 
     _record_promo_failure(request)
-    return JsonResponse({
-        'success': False,
-        'message': 'Invalid or expired promo code.',
-    })
+    return JsonResponse(
+        {
+            "success": False,
+            "message": "Invalid or expired promo code.",
+        }
+    )
 
 
 @require_POST
@@ -4052,9 +5208,9 @@ def agent_clear_promo(request):
     Clear the applied promo code from the session.
     Called when the user clicks 'Remove' on the plans page promo widget.
     """
-    request.session.pop('applied_promo_code', None)
+    request.session.pop("applied_promo_code", None)
     request.session.modified = True
-    return JsonResponse({'success': True, 'message': 'Promo code removed.'})
+    return JsonResponse({"success": True, "message": "Promo code removed."})
 
 
 def referral_join(request, ref_code):
@@ -4066,41 +5222,49 @@ def referral_join(request, ref_code):
     code_val = str(ref_code).strip().upper()
 
     # If code is for Referral Championship (PA-XXXXXX)
-    if code_val.startswith('EV-'):
+    if code_val.startswith("EV-"):
         from apps.event_referral.models import EventReferralParticipant
+
         if EventReferralParticipant.objects.filter(referral_code=code_val).exists():
-            request.session['ref_code'] = code_val
-            url = reverse('agents:agent_registration_referral', kwargs={'ref_code': code_val})
+            request.session["ref_code"] = code_val
+            url = reverse(
+                "agents:agent_registration_referral", kwargs={"ref_code": code_val}
+            )
             return redirect(url)
 
-    if code_val.startswith('PA-'):
+    if code_val.startswith("PA-"):
         from apps.referral_championship.models import ChampionshipParticipant
+
         if ChampionshipParticipant.objects.filter(referral_id=code_val).exists():
-            return redirect('championship:public_landing', ref_id=code_val)
+            return redirect("championship:public_landing", ref_id=code_val)
 
     # If code is for a SubDistributor
     from apps.distributors.models import SubDistributor
-    sub_dist = SubDistributor.objects.filter(code=code_val, status='active').first()
+
+    sub_dist = SubDistributor.objects.filter(code=code_val, status="active").first()
     if sub_dist:
         _bump_clicks(sub_dist)
-        request.session['ref_code'] = sub_dist.code
-        request.session['sub_distributor_id'] = sub_dist.id
-        request.session['distributor_id'] = sub_dist.distributor_id
-        request.session['distributor_led_registration'] = True
-        url = reverse('agents:agent_registration') + f"?ref={code_val}&show_trial=1"
+        request.session["ref_code"] = sub_dist.code
+        request.session["sub_distributor_id"] = sub_dist.id
+        request.session["distributor_id"] = sub_dist.distributor_id
+        request.session["distributor_led_registration"] = True
+        url = reverse("agents:agent_registration") + f"?ref={code_val}&show_trial=1"
         return redirect(url)
 
     from apps.admin_panel.models.referral_code import ReferralCode
+
     code = ReferralCode.objects.filter(code=code_val, is_active=True).first()
     if code:
-        _bump_clicks(code)  # a full save() rewrote total_referrals etc. from a stale read
-        request.session['ref_code'] = code.code
+        _bump_clicks(
+            code
+        )  # a full save() rewrote total_referrals etc. from a stale read
+        request.session["ref_code"] = code.code
         if code.distributor_id:
-            request.session['distributor_id'] = code.distributor_id
-            request.session['distributor_led_registration'] = True
-    
+            request.session["distributor_id"] = code.distributor_id
+            request.session["distributor_led_registration"] = True
+
     # Redirect to registration page with query params
-    url = reverse('agents:agent_registration') + f"?ref={code_val}&show_trial=1"
+    url = reverse("agents:agent_registration") + f"?ref={code_val}&show_trial=1"
     return redirect(url)
 
 
@@ -4133,17 +5297,23 @@ def _is_portal_user(user):
         return True
     if user.email and Agent.objects.filter(email__iexact=user.email).exists():
         return True
-    if hasattr(user, 'insurance_profile'):
+    if hasattr(user, "insurance_profile"):
         return True
-    if getattr(user, 'role', None) == 'distributor' or user.groups.filter(name='distributor').exists():
+    if (
+        getattr(user, "role", None) == "distributor"
+        or user.groups.filter(name="distributor").exists()
+    ):
         return True
     return False
 
 
-def _safe_local_redirect(request, url, default='/find-agents/'):
+def _safe_local_redirect(request, url, default="/find-agents/"):
     from django.utils.http import url_has_allowed_host_and_scheme
+
     if url and url_has_allowed_host_and_scheme(
-        url, allowed_hosts={request.get_host()}, require_https=request.is_secure(),
+        url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
     ):
         return url
     return default
@@ -4165,56 +5335,67 @@ def client_quick_register(request):
     except (json.JSONDecodeError, AttributeError):
         data = request.POST
 
-    fullname = (data.get('fullname') or '').strip()
-    email = (data.get('email') or '').strip().lower()
-    mobile = (data.get('mobile') or '').strip()
-    pincode = (data.get('pincode') or '').strip() or None
+    fullname = (data.get("fullname") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    mobile = (data.get("mobile") or "").strip()
+    pincode = (data.get("pincode") or "").strip() or None
 
     # Validation
     errors = {}
     if not fullname:
-        errors['fullname'] = ['Full name is required.']
+        errors["fullname"] = ["Full name is required."]
     elif len(fullname) < 2 or len(fullname) > 100:
-        errors['fullname'] = ['Name must be between 2 and 100 characters.']
-    elif not re.match(r'^[\w\s.\-\']+$', fullname):
-        errors['fullname'] = ['Name may only contain letters, spaces, dots, hyphens or apostrophes.']
+        errors["fullname"] = ["Name must be between 2 and 100 characters."]
+    elif not re.match(r"^[\w\s.\-\']+$", fullname):
+        errors["fullname"] = [
+            "Name may only contain letters, spaces, dots, hyphens or apostrophes."
+        ]
 
     if not email:
-        errors['email'] = ['Email is required.']
-    elif '@' not in email:
-        errors['email'] = ['Please enter a valid email address.']
+        errors["email"] = ["Email is required."]
+    elif "@" not in email:
+        errors["email"] = ["Please enter a valid email address."]
 
     if not mobile:
-        errors['mobile'] = ['Mobile number is required.']
+        errors["mobile"] = ["Mobile number is required."]
     elif len(mobile) != 10 or not mobile.isdigit():
-        errors['mobile'] = ['Mobile number must be exactly 10 digits.']
-    elif not re.match(r'^[6-9][0-9]{9}$', mobile):
-        errors['mobile'] = ['Please enter a valid Indian mobile number (starts with 6-9).']
+        errors["mobile"] = ["Mobile number must be exactly 10 digits."]
+    elif not re.match(r"^[6-9][0-9]{9}$", mobile):
+        errors["mobile"] = [
+            "Please enter a valid Indian mobile number (starts with 6-9)."
+        ]
 
     if pincode and (len(pincode) != 6 or not pincode.isdigit()):
-        errors['pincode'] = ['Pincode must be exactly 6 digits.']
+        errors["pincode"] = ["Pincode must be exactly 6 digits."]
 
     if errors:
-        return JsonResponse({
-            'success': False,
-            'message': 'Please fix the validation errors below.',
-            'errors': errors
-        }, status=422)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Please fix the validation errors below.",
+                "errors": errors,
+            },
+            status=422,
+        )
 
     from django.contrib.auth.models import User
     from apps.agents.models import Client, Agent
     from apps.agents.services.account_auth import DJANGO_AUTH_BACKEND
-    
+
     existing_user = User.objects.filter(email=email).first()
     if not existing_user and mobile:
-        existing_client = Client.objects.filter(mobile=mobile).select_related('user').first()
+        existing_client = (
+            Client.objects.filter(mobile=mobile).select_related("user").first()
+        )
         if existing_client and existing_client.user:
             existing_user = existing_client.user
         else:
-            existing_agent = Agent.objects.filter(mobile=mobile).select_related('user').first()
+            existing_agent = (
+                Agent.objects.filter(mobile=mobile).select_related("user").first()
+            )
             if existing_agent and existing_agent.user:
                 existing_user = existing_agent.user
-    
+
     # A logged-in agent (or distributor) must not be converted into a client or
     # have their portal session hijacked when they use the client quick-register.
     current_is_logged_in_agent = (
@@ -4222,75 +5403,81 @@ def client_quick_register(request):
         and Agent.objects.filter(user=request.user).exists()
     )
 
-    redirect_to = _safe_local_redirect(request, data.get('redirect_url'))
+    redirect_to = _safe_local_redirect(request, data.get("redirect_url"))
 
     if existing_user and _is_portal_user(existing_user):
         # Privileged identity: keep the lead-capture session data the visitor
         # typed, but never mutate or sign in the portal account.
-        request.session['quick_lead_user'] = {
-            'fullname': fullname,
-            'email': email,
-            'mobile': mobile,
-            'pincode': pincode,
+        request.session["quick_lead_user"] = {
+            "fullname": fullname,
+            "email": email,
+            "mobile": mobile,
+            "pincode": pincode,
         }
         request.session.modified = True
-        return JsonResponse({
-            'success': True,
-            'status': 'success',
-            'message': 'Welcome back! Redirecting...',
-            'redirect': redirect_to,
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "status": "success",
+                "message": "Welcome back! Redirecting...",
+                "redirect": redirect_to,
+            }
+        )
 
     if existing_user:
         # Plain client account (passwordless guest identity by design).
         is_client = Client.objects.filter(user=existing_user).exists()
         if not is_client:
-            Client.objects.create(
-                user=existing_user,
-                mobile=mobile,
-                pincode=pincode
-            )
+            Client.objects.create(user=existing_user, mobile=mobile, pincode=pincode)
 
-        request.session['quick_lead_user'] = {
-            'fullname': fullname or getattr(existing_user, 'fullname', '') or existing_user.get_full_name() or existing_user.username,
-            'email': existing_user.email or email,
-            'mobile': mobile,
-            'pincode': pincode,
+        request.session["quick_lead_user"] = {
+            "fullname": fullname
+            or getattr(existing_user, "fullname", "")
+            or existing_user.get_full_name()
+            or existing_user.username,
+            "email": existing_user.email or email,
+            "mobile": mobile,
+            "pincode": pincode,
         }
         # Typing an email proves nothing, so an existing account is never
         # signed in here; the lead details above are enough to contact agents.
         request.session.modified = True
 
-        return JsonResponse({
-            'success': True,
-            'status': 'success',
-            'message': 'Welcome back! Redirecting...',
-            'redirect': redirect_to,
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "status": "success",
+                "message": "Welcome back! Redirecting...",
+                "redirect": redirect_to,
+            }
+        )
 
     if _email_belongs_to_portal_account(email):
         # e.g. an agent that has no auth_user yet: creating one with this email
         # would let the visitor inherit that agent on next request.
-        request.session['quick_lead_user'] = {
-            'fullname': fullname,
-            'email': email,
-            'mobile': mobile,
-            'pincode': pincode,
+        request.session["quick_lead_user"] = {
+            "fullname": fullname,
+            "email": email,
+            "mobile": mobile,
+            "pincode": pincode,
         }
         request.session.modified = True
-        return JsonResponse({
-            'success': True,
-            'status': 'success',
-            'message': 'Welcome back! Redirecting...',
-            'redirect': redirect_to,
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "status": "success",
+                "message": "Welcome back! Redirecting...",
+                "redirect": redirect_to,
+            }
+        )
 
     # Create new client account
     from django.db import transaction
+
     try:
         with transaction.atomic():
             # Create standard User
-            username = email.split('@')[0]
+            username = email.split("@")[0]
             counter = 1
             base_username = username
             while User.objects.filter(username=username).exists():
@@ -4303,45 +5490,50 @@ def client_quick_register(request):
                 username=username,
                 email=email,
                 password=None,
-                first_name=fullname.split(' ')[0],
-                last_name=' '.join(fullname.split(' ')[1:])
+                first_name=fullname.split(" ")[0],
+                last_name=" ".join(fullname.split(" ")[1:]),
             )
 
             # Create Client record
-            Client.objects.create(
-                user=user,
-                mobile=mobile,
-                pincode=pincode
-            )
+            Client.objects.create(user=user, mobile=mobile, pincode=pincode)
 
         # Log user in
         from django.contrib.auth import login
         from apps.distributors.views.dashboard import is_distributor
-        if not (request.user.is_authenticated and is_distributor(request.user)) and not current_is_logged_in_agent:
+
+        if (
+            not (request.user.is_authenticated and is_distributor(request.user))
+            and not current_is_logged_in_agent
+        ):
             login(request, user, backend=DJANGO_AUTH_BACKEND)
 
-        request.session['quick_lead_user'] = {
-            'fullname': fullname,
-            'email': email,
-            'mobile': mobile,
-            'pincode': pincode,
+        request.session["quick_lead_user"] = {
+            "fullname": fullname,
+            "email": email,
+            "mobile": mobile,
+            "pincode": pincode,
         }
         request.session.modified = True
 
-        return JsonResponse({
-            'success': True,
-            'status': 'success',
-            'message': 'Registration successful! Redirecting...',
-            'redirect': redirect_to,
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "status": "success",
+                "message": "Registration successful! Redirecting...",
+                "redirect": redirect_to,
+            }
+        )
 
     except Exception as e:
         logger.error(f"Client quick registration failed: {e}")
-        return JsonResponse({
-            'success': False,
-            'status': 'error',
-            'message': 'Unable to complete registration right now. Please try again.'
-        }, status=500)
+        return JsonResponse(
+            {
+                "success": False,
+                "status": "error",
+                "message": "Unable to complete registration right now. Please try again.",
+            },
+            status=500,
+        )
 
 
 @require_POST
@@ -4356,92 +5548,111 @@ def payment_failure(request):
         except json.JSONDecodeError:
             data = request.POST
 
-        pending = request.session.get('pending_checkout') or {}
+        pending = request.session.get("pending_checkout") or {}
         # Only act on the checkout this session started; a client-supplied
         # agent_id/order_id let any caller flip other agents' status/orders.
-        agent_id = pending.get('agent_id')
-        order_id = pending.get('order_id') or data.get('razorpay_order_id')
+        agent_id = pending.get("agent_id")
+        order_id = pending.get("order_id") or data.get("razorpay_order_id")
         from apps.agents.models import Agent, AgentSubscription
 
         agent = Agent.objects.filter(pk=agent_id).first() if agent_id else None
         subscription = None
         if order_id:
-            subscription = AgentSubscription.objects.filter(razorpay_order_id=order_id).first()
+            subscription = AgentSubscription.objects.filter(
+                razorpay_order_id=order_id
+            ).first()
             if subscription and not agent:
                 agent = subscription.agent
         if agent and not _session_owns_agent(request, agent):
-            return JsonResponse({'success': False, 'message': 'Checkout session not found.'}, status=403)
+            return JsonResponse(
+                {"success": False, "message": "Checkout session not found."}, status=403
+            )
         if subscription and agent and subscription.agent_id != agent.pk:
             subscription = None
         if not subscription and agent:
-            subscription = AgentSubscription.objects.filter(
-                agent=agent,
-                payment_status='pending'
-            ).order_by('-created_at').first()
+            subscription = (
+                AgentSubscription.objects.filter(agent=agent, payment_status="pending")
+                .order_by("-created_at")
+                .first()
+            )
 
         if subscription:
             # Netbanking/UPI often fire a client "failed" event while the bank
             # payment is still in progress. Never mark failed in that case.
-            error = data.get('error') if isinstance(data.get('error'), dict) else {}
+            error = data.get("error") if isinstance(data.get("error"), dict) else {}
             if _is_in_progress_razorpay_error(error):
                 logger.info(
-                    'Ignoring in-progress Razorpay failure for order %s step=%s',
-                    order_id, error.get('step'),
+                    "Ignoring in-progress Razorpay failure for order %s step=%s",
+                    order_id,
+                    error.get("step"),
                 )
-                return JsonResponse({
-                    'success': True,
-                    'ignored': True,
-                    'message': 'Payment still in progress.',
-                })
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "ignored": True,
+                        "message": "Payment still in progress.",
+                    }
+                )
 
             agent = agent or subscription.agent
             if agent and verify_and_activate_pending_payment(agent):
                 from apps.agents.services.account_auth import agent_can_access_dashboard
+
                 agent.refresh_from_db()
                 if agent_can_access_dashboard(agent):
-                    return JsonResponse({
-                        'success': True,
-                        'already_completed': True,
-                        'message': 'Payment already captured.',
-                        'redirect_url': reverse('agents:agent_dashboard'),
-                    })
+                    return JsonResponse(
+                        {
+                            "success": True,
+                            "already_completed": True,
+                            "message": "Payment already captured.",
+                            "redirect_url": reverse("agents:agent_dashboard"),
+                        }
+                    )
 
-            if subscription.payment_status != 'completed':
-                subscription.payment_status = 'failed'
-                subscription.save(update_fields=['payment_status'])
+            if subscription.payment_status != "completed":
+                subscription.payment_status = "failed"
+                subscription.save(update_fields=["payment_status"])
                 logger.info(
-                    'Razorpay client failure recorded for order %s; subscription marked failed',
+                    "Razorpay client failure recorded for order %s; subscription marked failed",
                     order_id or subscription.razorpay_order_id,
                 )
 
         # Only registration-stage agents move back to pending_payment; never
         # un-suspend / un-blacklist an account via a payment failure event.
-        if agent and agent.status in ('incomplete', 'pending_payment', 'pending_accounts_payment', 'inactive'):
-            agent.status = 'pending_payment'
-            agent.save(update_fields=['status'])
+        if agent and agent.status in (
+            "incomplete",
+            "pending_payment",
+            "pending_accounts_payment",
+            "inactive",
+        ):
+            agent.status = "pending_payment"
+            agent.save(update_fields=["status"])
         try:
             from apps.agents.services.registration_leads import mark_payment_failed
+
             mark_payment_failed(agent)
         except Exception:
-            logger.exception('Quick-registration lead payment-fail sync failed')
+            logger.exception("Quick-registration lead payment-fail sync failed")
 
-        request.session.pop('pending_checkout', None)
+        request.session.pop("pending_checkout", None)
 
-        return JsonResponse({
-            'success': True,
-            'message': 'Payment failure logged.',
-            'redirect_url': reverse('agents:chooseplan')
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "Payment failure logged.",
+                "redirect_url": reverse("agents:chooseplan"),
+            }
+        )
     except Exception as e:
         logger.error(f"PAYMENT FAILURE LOG ERR: {e}")
-        return JsonResponse({'success': False}, status=500)
+        return JsonResponse({"success": False}, status=500)
 
 
 from django.views.decorators.csrf import csrf_exempt
 
 # Receipts of checkouts that verify their own payments (insurance portal,
 # events funnel) and never have an agent subscription for the webhook.
-_FOREIGN_CHECKOUT_RECEIPTS = ('agent_ins_', 'cart_ins_', 'evt_')
+_FOREIGN_CHECKOUT_RECEIPTS = ("agent_ins_", "cart_ins_", "evt_")
 
 
 def _is_foreign_checkout_order(order_id):
@@ -4453,17 +5664,17 @@ def _is_foreign_checkout_order(order_id):
     try:
         client = razorpay_client()
         order = client.order.fetch(order_id) if client else None
-        receipt = order.get('receipt') if isinstance(order, dict) else None
+        receipt = order.get("receipt") if isinstance(order, dict) else None
     except Exception:
         return False
     return isinstance(receipt, str) and receipt.startswith(_FOREIGN_CHECKOUT_RECEIPTS)
 
 
 _ORPHAN_PLAN_NAMES = {
-    'free_trial': 'Trial Plan',
-    'starter': PLAN_LABELS['starter'],
-    'professional': PLAN_LABELS['professional'],
-    'exclusive': PLAN_LABELS['exclusive'],
+    "free_trial": "Trial Plan",
+    "starter": PLAN_LABELS["starter"],
+    "professional": PLAN_LABELS["professional"],
+    "exclusive": PLAN_LABELS["exclusive"],
 }
 
 
@@ -4485,38 +5696,46 @@ def adopt_orphan_registration_order(order_id):
         client = razorpay_client()
         order = client.order.fetch(order_id) if client else None
     except Exception as err:
-        logger.warning('[Orphan order] Could not fetch %s: %s', order_id, err)
+        logger.warning("[Orphan order] Could not fetch %s: %s", order_id, err)
         return None
-    if not order or not str(order.get('receipt') or '').startswith('agent_draft_'):
+    if not order or not str(order.get("receipt") or "").startswith("agent_draft_"):
         return None
 
-    notes = order.get('notes') if isinstance(order.get('notes'), dict) else {}
-    email = str(notes.get('email') or '').strip().lower()
-    plan_type = str(notes.get('plan_type') or '').strip()
-    amount_paise = int(order.get('amount') or 0)
+    notes = order.get("notes") if isinstance(order.get("notes"), dict) else {}
+    email = str(notes.get("email") or "").strip().lower()
+    plan_type = str(notes.get("plan_type") or "").strip()
+    amount_paise = int(order.get("amount") or 0)
     if not email or plan_type not in _ORPHAN_PLAN_NAMES or amount_paise <= 0:
         return None
     agent = Agent.objects.filter(email__iexact=email).first()
     if not agent:
         return None
-    draft_id = str(notes.get('draft_id') or '')
+    draft_id = str(notes.get("draft_id") or "")
     if draft_id.isdigit():
         draft = AgentDraft.objects.filter(pk=int(draft_id)).first()
-        if draft and (draft.email or '').strip().lower() != email:
-            logger.error('[Orphan order] %s notes email does not match draft #%s', order_id, draft_id)
+        if draft and (draft.email or "").strip().lower() != email:
+            logger.error(
+                "[Orphan order] %s notes email does not match draft #%s",
+                order_id,
+                draft_id,
+            )
             return None
 
     subscription = AgentSubscription.objects.create(
         agent=agent,
         selected_plan=_ORPHAN_PLAN_NAMES[plan_type],
         registration_amount=Decimal(amount_paise) / 100,
-        payment_status='pending',
-        status='inactive',
+        payment_status="pending",
+        status="inactive",
         razorpay_order_id=order_id,
     )
     logger.warning(
-        '[Orphan order] Restored subscription #%s for agent #%s from order %s (%s, %s paise)',
-        subscription.pk, agent.pk, order_id, plan_type, amount_paise,
+        "[Orphan order] Restored subscription #%s for agent #%s from order %s (%s, %s paise)",
+        subscription.pk,
+        agent.pk,
+        order_id,
+        plan_type,
+        amount_paise,
     )
     return subscription
 
@@ -4529,64 +5748,78 @@ def razorpay_webhook(request):
     Verifies signature and activates the agent subscription.
     """
     payload = request.body
-    received_signature = request.META.get('HTTP_X_RAZORPAY_SIGNATURE') or request.headers.get('X-Razorpay-Signature')
-    webhook_secret = razorpay_webhook_secret() or getattr(settings, 'RAZORPAY_WEBHOOK_SECRET', '')
+    received_signature = request.META.get(
+        "HTTP_X_RAZORPAY_SIGNATURE"
+    ) or request.headers.get("X-Razorpay-Signature")
+    webhook_secret = razorpay_webhook_secret() or getattr(
+        settings, "RAZORPAY_WEBHOOK_SECRET", ""
+    )
 
     if not webhook_secret:
         logger.error("[Razorpay Webhook] RAZORPAY_WEBHOOK_SECRET is not configured.")
-        return HttpResponse('Webhook secret not configured', status=400)
+        return HttpResponse("Webhook secret not configured", status=400)
 
     # Verify signature (always; no DEBUG bypass)
     try:
         client = razorpay_client()
         if client is None:
             logger.error("[Razorpay Webhook] Razorpay keys not configured.")
-            return HttpResponse('Unable to process webhook.', status=400)
+            return HttpResponse("Unable to process webhook.", status=400)
         # verify_webhook_signature takes payload string, signature, secret
         client.utility.verify_webhook_signature(
-            payload.decode('utf-8') if isinstance(payload, bytes) else payload,
+            payload.decode("utf-8") if isinstance(payload, bytes) else payload,
             received_signature,
-            webhook_secret
+            webhook_secret,
         )
     except Exception as sig_err:
         logger.error(f"[Razorpay Webhook] Signature verification failed: {sig_err}")
-        return HttpResponse('Invalid signature', status=400)
+        return HttpResponse("Invalid signature", status=400)
 
     try:
         data = json.loads(payload)
     except json.JSONDecodeError:
-        return HttpResponse('Invalid JSON payload', status=400)
+        return HttpResponse("Invalid JSON payload", status=400)
 
-    event = data.get('event')
+    event = data.get("event")
     if not event:
-        return HttpResponse('Invalid event', status=400)
+        return HttpResponse("Invalid event", status=400)
 
-    if event == 'payment.authorized':
+    if event == "payment.authorized":
         # Only a hold; payment.captured (or order.paid) follows once Razorpay
         # captures it, and an uncaptured payment is released, not paid.
-        return HttpResponse('Webhook received (waiting for capture)', status=200)
+        return HttpResponse("Webhook received (waiting for capture)", status=200)
 
-    if event in ('payment.captured', 'order.paid'):
-        payload_data = data.get('payload') or {}
-        payment_entity = (payload_data.get('payment') or {}).get('entity') or {}
-        order_entity = (payload_data.get('order') or {}).get('entity') or {}
+    if event in ("payment.captured", "order.paid"):
+        payload_data = data.get("payload") or {}
+        payment_entity = (payload_data.get("payment") or {}).get("entity") or {}
+        order_entity = (payload_data.get("order") or {}).get("entity") or {}
 
-        order_id = payment_entity.get('order_id') or order_entity.get('id')
-        payment_id = payment_entity.get('id') or order_entity.get('payment_id')
-        paid_amount_paise = payment_entity.get('amount') or order_entity.get('amount_paid') or order_entity.get('amount')
+        order_id = payment_entity.get("order_id") or order_entity.get("id")
+        payment_id = payment_entity.get("id") or order_entity.get("payment_id")
+        paid_amount_paise = (
+            payment_entity.get("amount")
+            or order_entity.get("amount_paid")
+            or order_entity.get("amount")
+        )
         signature = received_signature
 
         if not order_id:
             logger.error(f"[Razorpay Webhook] Missing order_id in event {event}")
-            return HttpResponse('Missing order ID', status=400)
+            return HttpResponse("Missing order ID", status=400)
 
         from apps.agents.models import AgentSubscription, Invoice
 
-        subscription = AgentSubscription.objects.filter(razorpay_order_id=order_id).first()
+        subscription = AgentSubscription.objects.filter(
+            razorpay_order_id=order_id
+        ).first()
         existing_invoice = Invoice.objects.filter(razorpay_order_id=order_id).first()
-        
-        if (subscription and subscription.payment_status == 'completed') or existing_invoice:
-            return HttpResponse('Webhook processed successfully (already completed)', status=200)
+
+        if (
+            subscription and subscription.payment_status == "completed"
+        ) or existing_invoice:
+            return HttpResponse(
+                "Webhook processed successfully (already completed)", status=200
+            )
 
         if not subscription:
             # A paid registration order whose row was re-pointed at a newer
@@ -4596,41 +5829,59 @@ def razorpay_webhook(request):
             # Insurance / event checkouts are verified by their own flows; a
             # 503 here made Razorpay retry them forever (and risk disabling
             # the webhook endpoint).
-            return HttpResponse('Webhook ignored: insurance / event checkout order', status=200)
+            return HttpResponse(
+                "Webhook ignored: insurance / event checkout order", status=200
+            )
         if not subscription:
             # Order may not have been committed yet by frontend request; tell Razorpay to retry
-            logger.warning(f"[Razorpay Webhook] Subscription not found yet for order {order_id}. Returning 503 for retry.")
-            return HttpResponse('Order subscription not found yet, retrying', status=503)
+            logger.warning(
+                f"[Razorpay Webhook] Subscription not found yet for order {order_id}. Returning 503 for retry."
+            )
+            return HttpResponse(
+                "Order subscription not found yet, retrying", status=503
+            )
 
         agent = subscription.agent
         if not agent:
-            logger.error(f"[Razorpay Webhook] Subscription {subscription.pk} has no associated agent.")
-            return HttpResponse('Agent not found', status=400)
+            logger.error(
+                f"[Razorpay Webhook] Subscription {subscription.pk} has no associated agent."
+            )
+            return HttpResponse("Agent not found", status=400)
 
         # Verify amount paid matches subscription amount to prevent tampering
         expected_amount_paise = _expected_amount_paise(subscription.registration_amount)
-        if paid_amount_paise and not _paise_amounts_match(paid_amount_paise, expected_amount_paise):
-            logger.critical(
-                f"[Webhook] PRICE TAMPERING DETECTED! "
-                f"Order: {order_id}, Paid: {paid_amount_paise} paise, Expected: {expected_amount_paise} paise."
+        if paid_amount_paise and not _paise_amounts_match(
+            paid_amount_paise, expected_amount_paise
+        ):
+            # 200, not 400: a mismatch never fixes itself, and Razorpay would retry for
+            # 24h and may disable the endpoint. Not activated; ERROR reaches Sentry.
+            logger.error(
+                f"[Webhook] PRICE TAMPERING DETECTED! Not activating. "
+                f"Order: {order_id}, Payment: {payment_id}, Subscription: {subscription.pk}, "
+                f"Paid: {paid_amount_paise} paise, Expected: {expected_amount_paise} paise."
             )
-            return HttpResponse('Payment validation failed: Amount mismatch.', status=400)
+            return HttpResponse("Webhook ignored: amount mismatch.", status=200)
 
         try:
-            payment = {'id': payment_id, 'signature': signature}
+            payment = {"id": payment_id, "signature": signature}
             subscription, activated = _activate_paid_subscription(
-                agent, subscription, payment, log_label='[Webhook]',
+                agent,
+                subscription,
+                payment,
+                log_label="[Webhook]",
             )
             if not activated:
-                return HttpResponse('Webhook processed successfully (already completed)', status=200)
+                return HttpResponse(
+                    "Webhook processed successfully (already completed)", status=200
+                )
         except Exception as db_err:
-            logger.error('[Webhook] Database transaction failed: %s', db_err)
-            return HttpResponse('Database transaction failed', status=500)
+            logger.error("[Webhook] Database transaction failed: %s", db_err)
+            return HttpResponse("Database transaction failed", status=500)
 
-    elif event == 'refund.processed':
+    elif event == "refund.processed":
         return _handle_refund_webhook(data)
 
-    return HttpResponse('Webhook processed successfully', status=200)
+    return HttpResponse("Webhook processed successfully", status=200)
 
 
 def _handle_refund_webhook(data):
@@ -4643,20 +5894,25 @@ def _handle_refund_webhook(data):
     from apps.agents.models import AgentSubscription, Invoice
     from apps.agents.services.account_auth import agent_has_completed_payment
 
-    payload = data.get('payload') or {}
-    payment = (payload.get('payment') or {}).get('entity') or {}
-    payment_id = payment.get('id') or ((payload.get('refund') or {}).get('entity') or {}).get('payment_id')
-    order_id = payment.get('order_id')
+    payload = data.get("payload") or {}
+    payment = (payload.get("payment") or {}).get("entity") or {}
+    payment_id = payment.get("id") or (
+        (payload.get("refund") or {}).get("entity") or {}
+    ).get("payment_id")
+    order_id = payment.get("order_id")
     try:
-        amount = int(payment.get('amount') or 0)
-        refunded = int(payment.get('amount_refunded') or 0)
+        amount = int(payment.get("amount") or 0)
+        refunded = int(payment.get("amount_refunded") or 0)
     except (TypeError, ValueError):
         amount, refunded = 0, 0
-    is_full_refund = payment.get('refund_status') == 'full' or (amount > 0 and refunded >= amount)
+    is_full_refund = payment.get("refund_status") == "full" or (
+        amount > 0 and refunded >= amount
+    )
     if not payment_id or not is_full_refund:
-        return HttpResponse('Refund noted (partial or unmatched)', status=200)
+        return HttpResponse("Refund noted (partial or unmatched)", status=200)
 
     from django.db.models import Q
+
     match = Q(razorpay_payment_id=payment_id)
     if order_id:
         match |= Q(razorpay_order_id=order_id)
@@ -4667,63 +5923,89 @@ def _handle_refund_webhook(data):
         with transaction.atomic():
             subs = list(AgentSubscription.objects.select_for_update().filter(match))
             if not subs:
-                return HttpResponse('Refund noted (no matching subscription)', status=200)
+                return HttpResponse(
+                    "Refund noted (no matching subscription)", status=200
+                )
 
             for sub in subs:
-                if sub.payment_status == 'refunded':
+                if sub.payment_status == "refunded":
                     continue
-                sub.payment_status = 'refunded'
-                sub.status = 'inactive'
-                sub.save(update_fields=['payment_status', 'status', 'updated_at'])
+                sub.payment_status = "refunded"
+                sub.status = "inactive"
+                sub.save(update_fields=["payment_status", "status", "updated_at"])
                 if sub.agent_id:
                     agents[sub.agent_id] = sub.agent
 
-            Invoice.objects.filter(match, payment_status='paid').update(payment_status='refunded')
+            Invoice.objects.filter(match, payment_status="paid").update(
+                payment_status="refunded"
+            )
 
             lost_access = {}
             for agent_id, agent in agents.items():
                 # Only drop access if no OTHER real payment remains (e.g. upgrades).
                 if not agent_has_completed_payment(agent):
                     lost_access[agent_id] = agent
-                    if agent.status in ('active', 'pending_approval'):
-                        agent.status = 'pending_payment'
-                        agent.save(update_fields=['status'])
+                    if agent.status in ("active", "pending_approval"):
+                        agent.status = "pending_payment"
+                        agent.save(update_fields=["status"])
                     continue
                 # A refunded upgrade: go back to the newest payment that still
                 # stands. Its row had been deactivated as superseded, so the
                 # agent used to keep the refunded plan.
-                remaining = (AgentSubscription.objects.select_for_update()
-                             .filter(agent=agent, payment_status='completed')
-                             .order_by('-starts_at', '-created_at').first())
+                remaining = (
+                    AgentSubscription.objects.select_for_update()
+                    .filter(agent=agent, payment_status="completed")
+                    .order_by("-starts_at", "-created_at")
+                    .first()
+                )
                 if remaining:
-                    if remaining.status != 'active':
-                        remaining.status = 'active'
-                        remaining.save(update_fields=['status', 'updated_at'])
-                    previous_plan = plan_slug_from_name(remaining.selected_plan or '')
+                    if remaining.status != "active":
+                        remaining.status = "active"
+                        remaining.save(update_fields=["status", "updated_at"])
+                    previous_plan = plan_slug_from_name(remaining.selected_plan or "")
                     if previous_plan and previous_plan != agent.plan_type:
                         agent.plan_type = previous_plan
-                        agent.save(update_fields=['plan_type'])
+                        agent.save(update_fields=["plan_type"])
     except Exception as err:
-        logger.error('[Webhook] Refund processing failed for payment %s: %s', payment_id, err)
-        return HttpResponse('Refund processing failed', status=500)
+        logger.error(
+            "[Webhook] Refund processing failed for payment %s: %s", payment_id, err
+        )
+        return HttpResponse("Refund processing failed", status=500)
 
     # Referral credit is withdrawn only when the agent's paid access ended; a
     # refunded upgrade leaves the original (credited) payment standing.
     for agent in lost_access.values():
         try:
-            from apps.referral_championship.services.qualification_service import revert_championship_qualification
-            revert_championship_qualification(agent, reason='refund')
+            from apps.referral_championship.services.qualification_service import (
+                revert_championship_qualification,
+            )
+
+            revert_championship_qualification(agent, reason="refund")
         except Exception as champ_err:
-            logger.warning('[Webhook] Championship refund revert failed for agent %s: %s', agent.pk, champ_err)
+            logger.warning(
+                "[Webhook] Championship refund revert failed for agent %s: %s",
+                agent.pk,
+                champ_err,
+            )
         try:
-            from apps.event_referral.services.qualification_service import revert_event_referral
-            revert_event_referral(agent, reason='refund')
+            from apps.event_referral.services.qualification_service import (
+                revert_event_referral,
+            )
+
+            revert_event_referral(agent, reason="refund")
         except Exception as ev_err:
-            logger.warning('[Webhook] Event referral refund revert failed for agent %s: %s', agent.pk, ev_err)
+            logger.warning(
+                "[Webhook] Event referral refund revert failed for agent %s: %s",
+                agent.pk,
+                ev_err,
+            )
 
-    logger.info('[Webhook] Full refund processed for payment %s (%d agent(s) updated)', payment_id, len(agents))
-    return HttpResponse('Refund processed', status=200)
-
+    logger.info(
+        "[Webhook] Full refund processed for payment %s (%d agent(s) updated)",
+        payment_id,
+        len(agents),
+    )
+    return HttpResponse("Refund processed", status=200)
 
 
 def agent_register_failed(request):
@@ -4731,12 +6013,13 @@ def agent_register_failed(request):
     Render payment failed page.
     """
     from apps.agents.models import Agent
+
     # Session only: ?agent_id= exposed any agent's name/email/mobile.
-    pending = request.session.get('pending_checkout') or {}
-    agent_id = request.session.get('current_agent_id') or pending.get('agent_id')
+    pending = request.session.get("pending_checkout") or {}
+    agent_id = request.session.get("current_agent_id") or pending.get("agent_id")
     agent = Agent.objects.filter(id=agent_id).first() if agent_id else None
 
-    return render(request, 'agents/failed.html', {'agent': agent})
+    return render(request, "agents/failed.html", {"agent": agent})
 
 
 def fb_ad_signup(request):
@@ -4745,87 +6028,93 @@ def fb_ad_signup(request):
     Mirrors client_quick_register but fixes the password=email security issue,
     adds a transaction guard for concurrent email signups, and blocks agent accounts.
     """
-    if request.method == 'GET':
-        return render(request, 'public/fb_ad_signup.html')
-        
+    if request.method == "GET":
+        return render(request, "public/fb_ad_signup.html")
+
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, AttributeError):
         data = request.POST
 
-    fullname = (data.get('fullname') or '').strip()
-    email = (data.get('email') or '').strip().lower()
-    mobile = (data.get('mobile') or '').strip()
-    pincode = (data.get('pincode') or '').strip()
+    fullname = (data.get("fullname") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    mobile = (data.get("mobile") or "").strip()
+    pincode = (data.get("pincode") or "").strip()
 
     # --- Validation ---
     errors = {}
     if not fullname:
-        errors['fullname'] = ['Full name is required.']
+        errors["fullname"] = ["Full name is required."]
     elif len(fullname) < 2 or len(fullname) > 100:
-        errors['fullname'] = ['Name must be between 2 and 100 characters.']
-    elif not re.match(r'^[\w\s.\-\']+$', fullname):
-        errors['fullname'] = ['Name may only contain letters, spaces, dots, hyphens or apostrophes.']
+        errors["fullname"] = ["Name must be between 2 and 100 characters."]
+    elif not re.match(r"^[\w\s.\-\']+$", fullname):
+        errors["fullname"] = [
+            "Name may only contain letters, spaces, dots, hyphens or apostrophes."
+        ]
 
     if not email:
-        errors['email'] = ['Email is required.']
-    elif '@' not in email:
-        errors['email'] = ['Please enter a valid email address.']
+        errors["email"] = ["Email is required."]
+    elif "@" not in email:
+        errors["email"] = ["Please enter a valid email address."]
 
     if not mobile:
-        errors['mobile'] = ['Mobile number is required.']
+        errors["mobile"] = ["Mobile number is required."]
     elif len(mobile) != 10 or not mobile.isdigit():
-        errors['mobile'] = ['Mobile number must be exactly 10 digits.']
-    elif not re.match(r'^[6-9][0-9]{9}$', mobile):
-        errors['mobile'] = ['Please enter a valid Indian mobile number.']
+        errors["mobile"] = ["Mobile number must be exactly 10 digits."]
+    elif not re.match(r"^[6-9][0-9]{9}$", mobile):
+        errors["mobile"] = ["Please enter a valid Indian mobile number."]
 
     if not pincode:
-        errors['pincode'] = ['Pincode is required.']
+        errors["pincode"] = ["Pincode is required."]
     elif len(pincode) != 6 or not pincode.isdigit():
-        errors['pincode'] = ['Pincode must be exactly 6 digits.']
+        errors["pincode"] = ["Pincode must be exactly 6 digits."]
 
     if errors:
-        return JsonResponse({
-            'success': False,
-            'message': 'Please fix the validation errors below.',
-            'errors': errors
-        }, status=422)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Please fix the validation errors below.",
+                "errors": errors,
+            },
+            status=422,
+        )
 
     from django.contrib.auth.models import User
     from apps.agents.models import Client
     from django.contrib.auth import login
     from django.db import transaction
-    
+
     try:
         with transaction.atomic():
             # Guard against duplicates via select_for_update if existing, else create carefully
             existing_user = User.objects.select_for_update().filter(email=email).first()
-            
+
             # Security Check: this passwordless consumer flow must never sign in
             # (or create a look-alike of) an agent/insurance/distributor/staff
             # account — only plain client accounts.
             if _is_portal_user(existing_user) or (
                 not existing_user and _email_belongs_to_portal_account(email)
             ):
-                return JsonResponse({
-                    'success': False,
-                    'status': 'error',
-                    'message': 'This email is already registered with another PadosiAgent portal — please use that login page.'
-                }, status=403)
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "status": "error",
+                        "message": "This email is already registered with another PadosiAgent portal — please use that login page.",
+                    },
+                    status=403,
+                )
 
             if existing_user:
                 is_client = Client.objects.filter(user=existing_user).exists()
                 if not is_client:
                     Client.objects.create(
-                        user=existing_user,
-                        mobile=mobile,
-                        pincode=pincode
+                        user=existing_user, mobile=mobile, pincode=pincode
                     )
                 user_to_login = existing_user
                 created_now = False
-                message = 'Welcome back! Redirecting...'
+                message = "Welcome back! Redirecting..."
             else:
-                username = email.split('@')[0]
+                username = email.split("@")[0]
                 counter = 1
                 base_username = username
                 while User.objects.filter(username=username).exists():
@@ -4835,47 +6124,49 @@ def fb_ad_signup(request):
                 user_to_login = User.objects.create_user(
                     username=username,
                     email=email,
-                    first_name=fullname.split(' ')[0],
-                    last_name=' '.join(fullname.split(' ')[1:])
+                    first_name=fullname.split(" ")[0],
+                    last_name=" ".join(fullname.split(" ")[1:]),
                 )
-                
+
                 # MODIFICATION 1: Avoid setting password to email for security
                 user_to_login.set_unusable_password()
                 user_to_login.save()
 
                 Client.objects.create(
-                    user=user_to_login,
-                    mobile=mobile,
-                    pincode=pincode
+                    user=user_to_login, mobile=mobile, pincode=pincode
                 )
                 created_now = True
-                message = 'Registration successful! Redirecting...'
+                message = "Registration successful! Redirecting..."
 
     except Exception as e:
         logger.error(f"FB Ad quick registration failed: {e}")
-        return JsonResponse({
-            'success': False,
-            'status': 'error',
-            'message': 'Unable to complete registration right now. Please try again.'
-        }, status=500)
+        return JsonResponse(
+            {
+                "success": False,
+                "status": "error",
+                "message": "Unable to complete registration right now. Please try again.",
+            },
+            status=500,
+        )
 
     # Set session for agent_capture_lead compatibility
-    request.session['quick_lead_user'] = {
-        'fullname': fullname,
-        'email': email,
-        'mobile': mobile,
-        'pincode': pincode,
+    request.session["quick_lead_user"] = {
+        "fullname": fullname,
+        "email": email,
+        "mobile": mobile,
+        "pincode": pincode,
     }
-    
+
     # Typing an email proves nothing, so an existing account is never signed
     # in here; the lead details above are enough to contact agents.
     if created_now:
         login(request, user_to_login)
-    
-    return JsonResponse({
-        'success': True,
-        'status': 'success',
-        'message': message,
-        'redirect': f'/find-agents/?pincode={pincode}'
-    })
 
+    return JsonResponse(
+        {
+            "success": True,
+            "status": "success",
+            "message": message,
+            "redirect": f"/find-agents/?pincode={pincode}",
+        }
+    )

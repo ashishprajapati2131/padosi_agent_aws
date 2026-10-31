@@ -24,7 +24,7 @@ def client_ip_from_forwarded_for(x_forwarded_for):
     """
     import ipaddress
 
-    hops = [h.strip() for h in (x_forwarded_for or '').split(',') if h.strip()]
+    hops = [h.strip() for h in (x_forwarded_for or "").split(",") if h.strip()]
     valid = []
     for hop in hops:
         try:
@@ -36,18 +36,18 @@ def client_ip_from_forwarded_for(x_forwarded_for):
             return hop
     if valid:
         return valid[0][0]
-    return '127.0.0.1'
+    return "127.0.0.1"
 
 
-AUTO_BLOCK_PREFIX = 'Auto-blocked'
+AUTO_BLOCK_PREFIX = "Auto-blocked"
 AUTO_BLOCK_TTL_HOURS = 24
 
 
 def is_ip_blocked(ip):
     """True if the IP is blocked. Automatic blocks expire after 24 hours. (Cached 60s)"""
-    if not ip or ip in ('127.0.0.1', '::1'):
+    if not ip or ip in ("127.0.0.1", "::1"):
         return False
-    cache_key = f'waf_ip_blocked_{ip}'
+    cache_key = f"waf_ip_blocked_{ip}"
     try:
         cached = cache.get(cache_key)
         if cached is not None:
@@ -62,10 +62,11 @@ def is_ip_blocked(ip):
         except Exception:
             pass
         return False
-    reason = block.reason or ''
-    created = getattr(block, 'created_at', None)
+    reason = block.reason or ""
+    created = getattr(block, "created_at", None)
     if reason.startswith(AUTO_BLOCK_PREFIX) and created:
         from datetime import datetime, timedelta
+
         try:
             expired = created < datetime.now() - timedelta(hours=AUTO_BLOCK_TTL_HOURS)
         except TypeError:  # aware vs naive datetime from legacy rows
@@ -74,7 +75,7 @@ def is_ip_blocked(ip):
             try:
                 block.delete()
             except Exception:
-                logger.warning('Could not lift expired auto-block for %s', ip)
+                logger.warning("Could not lift expired auto-block for %s", ip)
             try:
                 cache.set(cache_key, False, timeout=60)
             except Exception:
@@ -92,40 +93,52 @@ class ThreatMonitorMiddleware:
     Web Application Firewall (WAF) and Threat Monitor Middleware.
     Mirrors Laravel's ThreatMonitorMiddleware.
     """
+
     def __init__(self, get_response):
         self.get_response = get_response
 
     @staticmethod
     def get_client_ip(request):
-        remote_addr = request.META.get('REMOTE_ADDR', '')
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        remote_addr = request.META.get("REMOTE_ADDR", "")
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         # Only trust X-Forwarded-For if direct connection is a local trusted proxy
-        if remote_addr in ['127.0.0.1', '::1'] and x_forwarded_for:
+        if remote_addr in ["127.0.0.1", "::1"] and x_forwarded_for:
             return client_ip_from_forwarded_for(x_forwarded_for)
-        return remote_addr or '127.0.0.1'
+        return remote_addr or "127.0.0.1"
 
     def __call__(self, request):
         # 1. Get Client IP Address safely
-        remote_addr = request.META.get('REMOTE_ADDR', '')
+        remote_addr = request.META.get("REMOTE_ADDR", "")
         ip = self.get_client_ip(request)
 
         # 2. Whitelist local/trusted IPs only if direct connection is genuinely local
-        if remote_addr in ['127.0.0.1', '::1'] and ip in ['127.0.0.1', '::1']:
+        if remote_addr in ["127.0.0.1", "::1"] and ip in ["127.0.0.1", "::1"]:
             return self.get_response(request)
 
         # 3. Check if IP is already explicitly Blocked
         if is_ip_blocked(ip):
-            if request.headers.get('accept') == 'application/json' or request.path.startswith('/api/'):
-                return JsonResponse({'error': 'Forbidden', 'message': 'Your IP address has been blocked.'}, status=403)
-            return HttpResponseForbidden('Your IP address has been blocked due to suspicious activity.')
+            if request.headers.get(
+                "accept"
+            ) == "application/json" or request.path.startswith("/api/"):
+                return JsonResponse(
+                    {
+                        "error": "Forbidden",
+                        "message": "Your IP address has been blocked.",
+                    },
+                    status=403,
+                )
+            return HttpResponseForbidden(
+                "Your IP address has been blocked due to suspicious activity."
+            )
 
         # 4. Identify potential Malicious Payloads (Basic WAF functionality)
         url_to_check = request.build_absolute_uri()
-        
+
         # Check if user is an authenticated Admin (to allow safe HTML and template saving)
         is_admin = False
         try:
             from apps.admin_panel.views.dashboard import _get_admin_from_session
+
             if _get_admin_from_session(request):
                 is_admin = True
         except Exception:
@@ -133,12 +146,16 @@ class ThreatMonitorMiddleware:
 
         if not is_admin:
             try:
-                if hasattr(request, 'session') and request.session and (
-                    request.session.get('admin_id') or
-                    request.session.get('admin_user_id') or
-                    request.session.get('admin_name') or
-                    request.session.get('is_admin') or
-                    request.session.get('user_type') == 'admin'
+                if (
+                    hasattr(request, "session")
+                    and request.session
+                    and (
+                        request.session.get("admin_id")
+                        or request.session.get("admin_user_id")
+                        or request.session.get("admin_name")
+                        or request.session.get("is_admin")
+                        or request.session.get("user_type") == "admin"
+                    )
                 ):
                     is_admin = True
             except Exception:
@@ -146,48 +163,102 @@ class ThreatMonitorMiddleware:
 
         if not is_admin:
             try:
-                if hasattr(request, 'user') and request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser):
+                if (
+                    hasattr(request, "user")
+                    and request.user.is_authenticated
+                    and (request.user.is_staff or request.user.is_superuser)
+                ):
                     is_admin = True
             except Exception:
                 pass
 
-        is_admin_path = request.path.startswith('/admin/') or request.path.startswith('/padosi-admin/') or request.path.startswith('/django-admin/')
+        is_admin_path = (
+            request.path.startswith("/admin/")
+            or request.path.startswith("/padosi-admin/")
+            or request.path.startswith("/django-admin/")
+        )
         if is_admin_path and not is_admin:
             try:
-                if hasattr(request, 'session') and request.session and request.session.get('admin_id'):
+                if (
+                    hasattr(request, "session")
+                    and request.session
+                    and request.session.get("admin_id")
+                ):
                     is_admin = True
             except Exception:
                 pass
 
         safe_html_fields = [
-            'file_content', 'content', 'html_content', 'template', 'email_body', 'email_header',
-            'html_code', 'config_json', 'digital_price', 'professional_price', 'modal_title',
-            'modal_subtitle', 'tab_review_label', 'tab_social_label', 'config', 'settings',
-            'json_data', 'template_text', 'body', 'message', 'subject', 'description',
-            'custom_css', 'custom_js', 'html', 'raw_html', 'payload', 'json_config',
-            'badge_title', 'badge_subtitle', 'cta_button_text', 'nudge_title', 'nudge_message',
-            'nudge_yes_text', 'nudge_skip_text', 'dashboard_section_title', 'dashboard_section_desc',
-            'dashboard_url_placeholder',
+            "file_content",
+            "content",
+            "html_content",
+            "template",
+            "email_body",
+            "email_header",
+            "html_code",
+            "config_json",
+            "digital_price",
+            "professional_price",
+            "modal_title",
+            "modal_subtitle",
+            "tab_review_label",
+            "tab_social_label",
+            "config",
+            "settings",
+            "json_data",
+            "template_text",
+            "body",
+            "message",
+            "subject",
+            "description",
+            "custom_css",
+            "custom_js",
+            "html",
+            "raw_html",
+            "payload",
+            "json_config",
+            "badge_title",
+            "badge_subtitle",
+            "cta_button_text",
+            "nudge_title",
+            "nudge_message",
+            "nudge_yes_text",
+            "nudge_skip_text",
+            "dashboard_section_title",
+            "dashboard_section_desc",
+            "dashboard_url_placeholder",
         ]
 
         # Collect request input fields
         payload_dict = {}
-        if request.method in ['POST', 'PUT', 'PATCH']:
+        if request.method in ["POST", "PUT", "PATCH"]:
             # Try to load POST parameters
             for k, v in request.POST.items():
-                if (is_admin or is_admin_path) and (k in safe_html_fields or '{{' in str(v) or '{%' in str(v)):
-                    v_clean = re.sub(r"({{\s*[\s\S]*?\s*}}|{%\s*[\s\S]*?\s*%}|\[\[\s*[\s\S]*?\s*\]\])", "[TEMPLATE_TAG]", str(v))
+                if (is_admin or is_admin_path) and (
+                    k in safe_html_fields or "{{" in str(v) or "{%" in str(v)
+                ):
+                    v_clean = re.sub(
+                        r"({{\s*[\s\S]*?\s*}}|{%\s*[\s\S]*?\s*%}|\[\[\s*[\s\S]*?\s*\]\])",
+                        "[TEMPLATE_TAG]",
+                        str(v),
+                    )
                     payload_dict[k] = v_clean
                 else:
                     payload_dict[k] = v
             # If JSON body, try parsing it
             try:
-                if request.content_type == 'application/json' and request.body:
-                    json_data = json.loads(request.body.decode('utf-8', errors='ignore'))
+                if request.content_type == "application/json" and request.body:
+                    json_data = json.loads(
+                        request.body.decode("utf-8", errors="ignore")
+                    )
                     if isinstance(json_data, dict):
                         for k, v in json_data.items():
-                            if (is_admin or is_admin_path):
-                                v_clean = re.sub(r"({{\s*[\s\S]*?\s*}}|{%\s*[\s\S]*?\s*%}|\[\[\s*[\s\S]*?\s*\]\])", "[TEMPLATE_TAG]", str(v))
+                            if is_admin or is_admin_path:
+                                v_clean = re.sub(
+                                    r"({{\s*[\s\S]*?\s*}}|{%\s*[\s\S]*?\s*%}|\[\[\s*[\s\S]*?\s*\]\])",
+                                    "[TEMPLATE_TAG]",
+                                    str(v),
+                                )
                                 payload_dict[k] = v_clean
                             else:
                                 payload_dict[k] = v
@@ -199,51 +270,67 @@ class ThreatMonitorMiddleware:
             payload_dict[k] = v
 
         input_str = json.dumps(payload_dict)
-        input_str_for_crlf = input_str.replace('\\r\\n', ' ').replace('\r\n', ' ')
+        input_str_for_crlf = input_str.replace("\\r\\n", " ").replace("\r\n", " ")
 
         # Hardened WAF regex patterns
         patterns = {
-            'SQL Injection': r"(union select\s|select\s+\*\s+from|insert\s+into|update\s+\w+\s+set|'\s*or\s*'1'\s*=\s*'1|sleep\(\d+\)|benchmark\s*\(|group_concat|information_schema)",
-            'Cross Site Scripting (XSS)': r"(<script\b[^>]*>|javascript:|onerror=|onload=|eval\(|setTimeout\(|setInterval\(|alert\(|document\.cookie|document\.domain|window\.location)",
-            'Path Traversal / LFI': r"((?<!\.)\.\.[/\\]|\/etc\/passwd|\/etc\/shadow|\/etc\/group|\/etc\/hosts|\/proc\/self|php:\/\/filter|php:\/\/input|expect:\/\/)",
-            'RCE / Shell Injection': r"(system\(|exec\(|passthru\(|shell_exec\(|proc_open\(|pcntl_exec\(|python\s+-c|perl\s+-e|ruby\s+-e|bash\s+-i|nc\s+-e)",
-            'SSRF / Metadata API': r"(169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data\/)",
-            'XML External Entity (XXE)': r"(<!ENTITY\s+|SYSTEM\s+[\"']|PUBLIC\s+[\"'])",
-            'Server-Side Template Injection': r"({{\s*[\s\S]*\s*}}|{%\s*[\s\S]*\s*%}|\[\[\s*[\s\S]*\s*\]\])",
-            'CRLF / Header Injection': r"(\%0d\%0a|Set-Cookie:|Content-Type:)",
+            "SQL Injection": r"(union select\s|select\s+\*\s+from|insert\s+into|update\s+\w+\s+set|'\s*or\s*'1'\s*=\s*'1|sleep\(\d+\)|benchmark\s*\(|group_concat|information_schema)",
+            "Cross Site Scripting (XSS)": r"(<script\b[^>]*>|javascript:|onerror=|onload=|eval\(|setTimeout\(|setInterval\(|alert\(|document\.cookie|document\.domain|window\.location)",
+            "Path Traversal / LFI": r"((?<!\.)\.\.[/\\]|\/etc\/passwd|\/etc\/shadow|\/etc\/group|\/etc\/hosts|\/proc\/self|php:\/\/filter|php:\/\/input|expect:\/\/)",
+            "RCE / Shell Injection": r"(system\(|exec\(|passthru\(|shell_exec\(|proc_open\(|pcntl_exec\(|python\s+-c|perl\s+-e|ruby\s+-e|bash\s+-i|nc\s+-e)",
+            "SSRF / Metadata API": r"(169\.254\.169\.254|metadata\.google\.internal|\/latest\/meta-data\/)",
+            "XML External Entity (XXE)": r"(<!ENTITY\s+|SYSTEM\s+[\"']|PUBLIC\s+[\"'])",
+            "Server-Side Template Injection": r"({{\s*[\s\S]*\s*}}|{%\s*[\s\S]*\s*%}|\[\[\s*[\s\S]*\s*\]\])",
+            "CRLF / Header Injection": r"(\%0d\%0a|Set-Cookie:|Content-Type:)",
         }
 
         matched_type = None
         for threat_type, pattern in patterns.items():
-            if threat_type == 'Server-Side Template Injection' and (is_admin or is_admin_path):
+            if threat_type == "Server-Side Template Injection" and (
+                is_admin or is_admin_path
+            ):
                 continue
-            str_to_check = input_str_for_crlf if threat_type == 'CRLF / Header Injection' else input_str
-            if re.search(pattern, str_to_check, re.IGNORECASE) or re.search(pattern, url_to_check, re.IGNORECASE):
+            str_to_check = (
+                input_str_for_crlf
+                if threat_type == "CRLF / Header Injection"
+                else input_str
+            )
+            if re.search(pattern, str_to_check, re.IGNORECASE) or re.search(
+                pattern, url_to_check, re.IGNORECASE
+            ):
                 matched_type = threat_type
                 break
 
-
         if matched_type:
             # 5. Profile Hacker
-            hacker_name = 'GUEST / ANONYMOUS'
+            hacker_name = "GUEST / ANONYMOUS"
             hacker_email = None
             hacker_mobile = None
 
             # Get admin credentials from session if present
             try:
-                if hasattr(request, 'session') and request.session and request.session.get('admin_id'):
+                if (
+                    hasattr(request, "session")
+                    and request.session
+                    and request.session.get("admin_id")
+                ):
                     hacker_name = f"Admin: {request.session.get('admin_name', 'N/A')}"
-                    hacker_email = request.session.get('admin_email')
+                    hacker_email = request.session.get("admin_email")
             except Exception:
                 pass
 
             # Fallback to general django auth user if present
-            if hacker_name == 'GUEST / ANONYMOUS' and hasattr(request, 'user') and request.user.is_authenticated:
+            if (
+                hacker_name == "GUEST / ANONYMOUS"
+                and hasattr(request, "user")
+                and request.user.is_authenticated
+            ):
                 hacker_name = request.user.get_full_name() or request.user.username
                 hacker_email = request.user.email
                 # Try to fetch mobile from Client profile if it exists
                 try:
                     from apps.agents.models import Client
+
                     client = Client.objects.filter(user=request.user).first()
                     if client:
                         hacker_mobile = client.mobile
@@ -257,8 +344,7 @@ class ThreatMonitorMiddleware:
             # 7. Auto-Block check (3 offenses in last 1 hour)
             one_hour_ago = timezone.now() - timezone.timedelta(hours=1)
             recent_offenses = SecurityThreatLog.objects.filter(
-                ip_address=ip,
-                created_at__gte=one_hour_ago
+                ip_address=ip, created_at__gte=one_hour_ago
             ).count()
 
             is_auto_blocked = False
@@ -266,7 +352,9 @@ class ThreatMonitorMiddleware:
             if recent_offenses >= 2:
                 BlockedIp.objects.get_or_create(
                     ip_address=ip,
-                    defaults={'reason': f"Auto-blocked by Threat Monitor due to recurring malicious payloads ({matched_type})."}
+                    defaults={
+                        "reason": f"Auto-blocked by Threat Monitor due to recurring malicious payloads ({matched_type})."
+                    },
                 )
                 is_auto_blocked = True
 
@@ -281,42 +369,55 @@ class ThreatMonitorMiddleware:
                 isp=isp,
                 url=url_to_check,
                 payload=input_str[:1000],
-                user_agent=request.META.get('HTTP_USER_AGENT', '')
+                user_agent=request.META.get("HTTP_USER_AGENT", ""),
             )
 
             # 9. Send Security Alert Email to Admin via Brevo service (throttled to avoid DoS)
             email_cache_key = f"threat_email_alert_{ip}"
             if is_auto_blocked and not cache.get(email_cache_key):
                 try:
-                    cache.set(email_cache_key, True, timeout=600)  # Throttled: max 1 email per 10 min per blocked IP
+                    cache.set(
+                        email_cache_key, True, timeout=600
+                    )  # Throttled: max 1 email per 10 min per blocked IP
                     threat_context = {
-                        'ip_address': ip,
-                        'event_type': matched_type,
-                        'timestamp': timezone.now().strftime('%d %b %Y, %I:%M %p'),
-                        'url': url_to_check,
-                        'payload': input_str[:500],
-                        'user_agent': request.META.get('HTTP_USER_AGENT', ''),
-                        'hacker_name': hacker_name,
-                        'hacker_email': hacker_email,
-                        'location': location,
-                        'isp': isp,
-                        'is_blocked': is_auto_blocked
+                        "ip_address": ip,
+                        "event_type": matched_type,
+                        "timestamp": timezone.now().strftime("%d %b %Y, %I:%M %p"),
+                        "url": url_to_check,
+                        "payload": input_str[:500],
+                        "user_agent": request.META.get("HTTP_USER_AGENT", ""),
+                        "hacker_name": hacker_name,
+                        "hacker_email": hacker_email,
+                        "location": location,
+                        "isp": isp,
+                        "is_blocked": is_auto_blocked,
                     }
-                    html_body = render_to_string('emails/security_threat.html', {'threat': threat_context})
-                    alert_email = getattr(settings, 'SECURITY_ALERT_EMAIL', '').strip() or 'ashisprajapati131@gmail.com'
+                    html_body = render_to_string(
+                        "emails/security_threat.html", {"threat": threat_context}
+                    )
+                    alert_email = (
+                        getattr(settings, "SECURITY_ALERT_EMAIL", "").strip()
+                        or "ashisprajapati131@gmail.com"
+                    )
                     send_brevo_email(
                         to_email=alert_email,
-                        to_name='Admin',
-                        subject='⚠️ SECURITY ALERT: Malicious Activity Detected on PadosiAgent',
-                        html_content=html_body
+                        to_name="Admin",
+                        subject="⚠️ SECURITY ALERT: Malicious Activity Detected on PadosiAgent",
+                        html_content=html_body,
                     )
                 except Exception as e:
-                    logger.error(f"ThreatMonitorMiddleware: Failed to send security email alert: {e}")
+                    logger.error(
+                        f"ThreatMonitorMiddleware: Failed to send security email alert: {e}"
+                    )
 
             # Return 403 response
-            if request.headers.get('accept') == 'application/json' or request.path.startswith('/api/'):
-                return JsonResponse({'error': 'Malicious Activity Detected.'}, status=403)
-            return HttpResponseForbidden('Malicious Activity Detected.')
+            if request.headers.get(
+                "accept"
+            ) == "application/json" or request.path.startswith("/api/"):
+                return JsonResponse(
+                    {"error": "Malicious Activity Detected."}, status=403
+                )
+            return HttpResponseForbidden("Malicious Activity Detected.")
 
         return self.get_response(request)
 
@@ -324,27 +425,37 @@ class ThreatMonitorMiddleware:
 from django.shortcuts import redirect
 from apps.home.services.portal_messages import PORTAL_ADMIN, portal_error
 
+
 class AdminIpWhitelistMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        path = request.path.rstrip('/')
-        if path.startswith('/admin') or path.startswith('/padosi-admin') or path.startswith('/django-admin'):
+        path = request.path.rstrip("/")
+        if (
+            path.startswith("/admin")
+            or path.startswith("/padosi-admin")
+            or path.startswith("/django-admin")
+        ):
             # Trusted client IP: a raw X-Forwarded-For would let anyone claim a
             # whitelisted address.
             ip = ThreatMonitorMiddleware.get_client_ip(request)
 
-            # Fetch whitelist from settings or fallback
-            whitelist = getattr(settings, 'ADMIN_WHITELIST_IPS', [])
+            # Fetch whitelist from settings. Enforce only when configured.
+            whitelist = getattr(settings, "ADMIN_WHITELIST_IPS", [])
             if not whitelist:
-                # Laravel fallback
-                whitelist = ['127.0.0.1', '::1', '152.58.37.11', '152.58.37.205', '171.61.166.173', '152.58.35.25', '49.36.89.253', '152.59.35.126', '152.58.36.18', '100.83.86.57']
-            
-            if ip not in whitelist:
-                logger.warning(f"Admin IP Whitelist: Blocked request from unauthorized IP: {ip} for path {request.path}")
-                return HttpResponseForbidden("Access Denied: IP address not authorized.")
-                
+                return self.get_response(request)
+
+            # Localhost always allowed
+            allowed = set(whitelist) | {"127.0.0.1", "::1", "localhost", "testclient", "testserver"}
+            if ip not in allowed:
+                logger.warning(
+                    f"Admin IP Whitelist: Blocked request from unauthorized IP: {ip} for path {request.path}"
+                )
+                return HttpResponseForbidden(
+                    "Access Denied: IP address not authorized."
+                )
+
         return self.get_response(request)
 
 
@@ -358,24 +469,24 @@ class IsolateAdminAgentSessionsMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        path = request.path.rstrip('/')
-        if path in ['/admin', '/admin/login', '/admin/login/post', '/admin/logout']:
+        path = request.path.rstrip("/")
+        if path in ["/admin", "/admin/login", "/admin/login/post", "/admin/logout"]:
             return self.get_response(request)
 
-        token = request.COOKIES.get('session_token')
-        user = getattr(request, 'user', None)
-        if (
-            token
-            and user is not None
-            and getattr(user, 'is_authenticated', False)
-        ):
+        token = request.COOKIES.get("session_token")
+        user = getattr(request, "user", None)
+        if token and user is not None and getattr(user, "is_authenticated", False):
             from apps.agents.models import Agent
+
             if Agent.objects.filter(user_id=user.pk).exists():
-                from apps.admin_panel.views.dashboard import invalidate_admin_session_token
+                from apps.admin_panel.views.dashboard import (
+                    invalidate_admin_session_token,
+                )
+
                 invalidate_admin_session_token(token)
-                request.COOKIES.pop('session_token', None)
+                request.COOKIES.pop("session_token", None)
                 response = self.get_response(request)
-                response.delete_cookie('session_token')
+                response.delete_cookie("session_token")
                 return response
         return self.get_response(request)
 
@@ -385,51 +496,68 @@ class AdminPermissionMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        path = request.path.rstrip('/')
-        if not (path.startswith('/admin') or path.startswith('/padosi-admin')):
+        path = request.path.rstrip("/")
+        if not (path.startswith("/admin") or path.startswith("/padosi-admin")):
             return self.get_response(request)
 
         # Allow auth endpoints without session or permissions
-        if path in ['/admin', '/admin/login', '/admin/login/post', '/admin/logout']:
+        if path in ["/admin", "/admin/login", "/admin/login/post", "/admin/logout"]:
             return self.get_response(request)
 
         from apps.admin_panel.views.dashboard import _get_admin_from_session
         from apps.admin_panel.models.admin_auth import Admin
-        
+
         admin_id = _get_admin_from_session(request)
         if not admin_id:
             import logging
-            logging.getLogger(__name__).warning(f"Unauthorized admin access from path: {request.path}")
+
+            logging.getLogger(__name__).warning(
+                f"Unauthorized admin access from path: {request.path}"
+            )
             # For AJAX / JSON requests, return a clean 403 JSON — never add flash messages
             # that would leak into the agent login page after logout.
             is_ajax = (
-                request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-                or 'application/json' in request.headers.get('Accept', '')
-                or request.content_type == 'application/json'
+                request.headers.get("X-Requested-With") == "XMLHttpRequest"
+                or "application/json" in request.headers.get("Accept", "")
+                or request.content_type == "application/json"
             )
             if is_ajax:
                 from django.http import JsonResponse
-                return JsonResponse({'success': False, 'message': 'Unauthorized. Please sign in to the admin panel.'}, status=403)
-            portal_error(request, "Please sign in to access the admin panel.", PORTAL_ADMIN)
-            return redirect('admin_login_page')
+
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": "Unauthorized. Please sign in to the admin panel.",
+                    },
+                    status=403,
+                )
+            portal_error(
+                request, "Please sign in to access the admin panel.", PORTAL_ADMIN
+            )
+            return redirect("admin_login_page")
 
         try:
             admin = Admin.objects.get(pk=admin_id)
         except Admin.DoesNotExist:
             from apps.admin_panel.views.dashboard import admin_logout
+
             is_ajax = (
-                request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-                or 'application/json' in request.headers.get('Accept', '')
-                or request.content_type == 'application/json'
+                request.headers.get("X-Requested-With") == "XMLHttpRequest"
+                or "application/json" in request.headers.get("Accept", "")
+                or request.content_type == "application/json"
             )
             if is_ajax:
                 from django.http import JsonResponse
-                return JsonResponse({'success': False, 'message': 'Admin account not found.'}, status=403)
+
+                return JsonResponse(
+                    {"success": False, "message": "Admin account not found."},
+                    status=403,
+                )
             portal_error(request, "Admin account not found. Logged out.", PORTAL_ADMIN)
             return admin_logout(request)
 
         # Super admins have full access to everything
-        if admin.role == 'super':
+        if admin.role == "super":
             request.admin_user = admin
             return self.get_response(request)
 
@@ -439,40 +567,72 @@ class AdminPermissionMiddleware:
             if allowed_route:
                 try:
                     from django.urls import reverse
+
                     url = reverse(allowed_route)
                     portal_error(request, message, PORTAL_ADMIN)
                     return redirect(url)
                 except Exception:
                     pass
             from apps.admin_panel.views.dashboard import admin_logout
-            portal_error(request, "Your staff account has no access permissions. Logged out.", PORTAL_ADMIN)
+
+            portal_error(
+                request,
+                "Your staff account has no access permissions. Logged out.",
+                PORTAL_ADMIN,
+            )
             return admin_logout(request)
 
         # 1. DELETE ACTION PROTECTION:
         # Staff admins can never delete records.
         try:
             from django.urls import resolve
+
             url_name = resolve(request.path_info).url_name
         except Exception:
-            url_name = ''
+            url_name = ""
         is_delete_request = (
-            request.method == 'DELETE' or
-            'delete' in url_name.lower() or
-            'destroy' in url_name.lower() or
-            'delete' in request.path.lower()
+            request.method == "DELETE"
+            or "delete" in url_name.lower()
+            or "destroy" in url_name.lower()
+            or "delete" in request.path.lower()
         )
 
         if is_delete_request:
-            if request.headers.get('accept') == 'application/json' or request.path.startswith('/api/'):
-                return JsonResponse({'success': False, 'message': 'Unauthorized. Staff accounts do not have delete permissions.'}, status=403)
-            return get_redirect_response('Unauthorized. Staff accounts do not have delete permissions.')
+            if request.headers.get(
+                "accept"
+            ) == "application/json" or request.path.startswith("/api/"):
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": "Unauthorized. Staff accounts do not have delete permissions.",
+                    },
+                    status=403,
+                )
+            return get_redirect_response(
+                "Unauthorized. Staff accounts do not have delete permissions."
+            )
 
         # 2. ADMIN USER / STAFF MANAGEMENT PROTECTION:
         # Staff admins can never access admin management routes.
-        if url_name.startswith('admin_admins') or url_name.startswith('admin_staff') or '/admin/admins/' in request.path or '/admin/staff/' in request.path:
-            if request.headers.get('accept') == 'application/json' or request.path.startswith('/api/'):
-                return JsonResponse({'success': False, 'message': 'Unauthorized. Only Super Admins can manage administrator accounts.'}, status=403)
-            return get_redirect_response('Unauthorized. Only Super Admins can manage administrator accounts.')
+        if (
+            url_name.startswith("admin_admins")
+            or url_name.startswith("admin_staff")
+            or "/admin/admins/" in request.path
+            or "/admin/staff/" in request.path
+        ):
+            if request.headers.get(
+                "accept"
+            ) == "application/json" or request.path.startswith("/api/"):
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": "Unauthorized. Only Super Admins can manage administrator accounts.",
+                    },
+                    status=403,
+                )
+            return get_redirect_response(
+                "Unauthorized. Only Super Admins can manage administrator accounts."
+            )
 
         # 3. SECTION/MODULE PERMISSION CHECK (exact lookup, deny-by-default):
         # get_required_permission() does a direct dict lookup — no prefix matching.
@@ -482,29 +642,58 @@ class AdminPermissionMiddleware:
         if required_permission is None:
             if url_name:
                 # Known URL pattern but not in our permission map → deny by default.
-                if request.headers.get('accept') == 'application/json' or request.path.startswith('/api/'):
-                    return JsonResponse({'success': False, 'message': 'Unauthorized. Access to this section is not permitted for your staff account.'}, status=403)
-                return get_redirect_response('Access to this section is not permitted for your staff account.')
+                if request.headers.get(
+                    "accept"
+                ) == "application/json" or request.path.startswith("/api/"):
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "message": "Unauthorized. Access to this section is not permitted for your staff account.",
+                        },
+                        status=403,
+                    )
+                return get_redirect_response(
+                    "Access to this section is not permitted for your staff account."
+                )
             # url_name is empty → unresolved URL; let Django render the 404.
             return self.get_response(request)
 
-        permissions_list = admin.permissions if isinstance(admin.permissions, list) else []
-        
+        permissions_list = (
+            admin.permissions if isinstance(admin.permissions, list) else []
+        )
+
         def _has(perm):
-            if perm == 'approvals':
-                return 'approvals_awaiting_verification' in permissions_list or 'approvals_missing_licenses' in permissions_list
+            if perm == "approvals":
+                return (
+                    "approvals_awaiting_verification" in permissions_list
+                    or "approvals_missing_licenses" in permissions_list
+                )
             return perm in permissions_list
 
         # A route may accept several permissions (tuple): any one is enough.
-        required_any = required_permission if isinstance(required_permission, tuple) else (required_permission,)
+        required_any = (
+            required_permission
+            if isinstance(required_permission, tuple)
+            else (required_permission,)
+        )
         has_permission = any(_has(perm) for perm in required_any)
         required_permission = required_any[0]
 
         if not has_permission:
-            if request.headers.get('accept') == 'application/json' or request.path.startswith('/api/'):
-                return JsonResponse({'success': False, 'message': 'Unauthorized. You do not have permission to access this module.'}, status=403)
-            perm_name = required_permission.replace('_', ' ').title()
-            return get_redirect_response(f'Unauthorized. You do not have permission to access the {perm_name} module.')
+            if request.headers.get(
+                "accept"
+            ) == "application/json" or request.path.startswith("/api/"):
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "message": "Unauthorized. You do not have permission to access this module.",
+                    },
+                    status=403,
+                )
+            perm_name = required_permission.replace("_", " ").title()
+            return get_redirect_response(
+                f"Unauthorized. You do not have permission to access the {perm_name} module."
+            )
 
         request.admin_user = admin
         return self.get_response(request)
@@ -529,334 +718,340 @@ class AdminPermissionMiddleware:
             return None
         return {
             # ── Dashboard ─────────────────────────────────────────────────
-            'admin_dashboard':                          'dashboard',
+            "admin_dashboard": "dashboard",
             # ── Agents ────────────────────────────────────────────────────
-            'admin_agents':                             'agents',
-            'admin_agents_manage':                      'agents',
-            'admin_agents_manage_alt':                  'agents',
+            "admin_agents": "agents",
+            "admin_agents_manage": "agents",
+            "admin_agents_manage_alt": "agents",
             # Approvals staff approve/reject from the queue; the view limits them
             # to agents awaiting approval.
-            'admin_agents_toggle_status':               ('agents', 'approvals'),
-            'admin_agents_update_badge':                'agents',
-            'admin_agents_update_irdai_license':        'agents',
-            'admin_agents_save_notes':                  'agents',
-            'admin_agents_bulk_action':                 ('agents', 'approvals'),
-            'admin_agents_delete':                      'agents',
-            'admin_agents_irdai_verify':                'agents',
-            'admin_agents_amfi_verify':                 'agents',
-            'admin_agents_update_visibility':           'agents',
-            'admin_agents_update_achievement_limit':    'agents',
-            'admin_agents_update_plan':                 'agents',
-            'admin_agents_toggle_review_approval':      'agents',
-            'admin_agents_update_profile':              'agents',
-            'admin_agents_get_agent_json':              'agents',
-            'admin_agents_get_edit_logs':               'agents',
-            'admin_agents_edit_profile':                'agents',
-            'admin_agents_full_update_profile':         'agents',
-            'admin_agents_verify_pending_payment':      'agents',
+            "admin_agents_toggle_status": ("agents", "approvals"),
+            "admin_agents_update_badge": "agents",
+            "admin_agents_update_irdai_license": "agents",
+            "admin_agents_save_notes": "agents",
+            "admin_agents_bulk_action": ("agents", "approvals"),
+            "admin_agents_delete": "agents",
+            "admin_agents_irdai_verify": "agents",
+            "admin_agents_amfi_verify": "agents",
+            "admin_agents_update_visibility": "agents",
+            "admin_agents_update_achievement_limit": "agents",
+            "admin_agents_update_plan": "agents",
+            "admin_agents_toggle_review_approval": "agents",
+            "admin_agents_update_profile": "agents",
+            "admin_agents_get_agent_json": "agents",
+            "admin_agents_get_edit_logs": "agents",
+            "admin_agents_edit_profile": "agents",
+            "admin_agents_full_update_profile": "agents",
+            "admin_agents_verify_pending_payment": "agents",
             # ── Approvals / Pending / Blacklist ───────────────────────────
-            'admin_agents_approvals':                   'approvals',
-            'admin_agents_pending_registrations':       'pending_registrations',
-            'admin_agents_pending':                     'pending_registrations',
-            'admin_blacklisted_agents':                 'blacklisted_agents',
-            'ajax_blacklist_approve':                   'approvals',
-            'ajax_blacklist_confirm':                   'approvals',
-            'ajax_blacklist_remove':                    'approvals',
+            "admin_agents_approvals": "approvals",
+            "admin_agents_pending_registrations": "pending_registrations",
+            "admin_agents_pending": "pending_registrations",
+            "admin_blacklisted_agents": "blacklisted_agents",
+            "ajax_blacklist_approve": "approvals",
+            "ajax_blacklist_confirm": "approvals",
+            "ajax_blacklist_remove": "approvals",
             # ── Distributors ──────────────────────────────────────────────
-            'admin_distributors':                       'distributors',
-            'admin_distributors_create':                'distributors',
-            'admin_distributors_store':                 'distributors',
-            'admin_distributor_toggle_status':          'distributors',
-            'admin_distributor_reset_password':         'distributors',
-            'admin_subdistributor_reset_password':      'distributors',
-            'admin_distributor_detail':                 'distributors',
+            "admin_distributors": "distributors",
+            "admin_distributors_create": "distributors",
+            "admin_distributors_store": "distributors",
+            "admin_distributor_toggle_status": "distributors",
+            "admin_distributor_reset_password": "distributors",
+            "admin_subdistributor_reset_password": "distributors",
+            "admin_distributor_detail": "distributors",
             # ── Insurance Companies ───────────────────────────────────────
-            'admin_insurance_index':                    'insurance',
-            'admin_insurance_create':                   'insurance',
-            'admin_insurance_store':                    'insurance',
-            'admin_insurance_show':                     'insurance',
-            'admin_insurance_toggle_status':            'insurance',
+            "admin_insurance_index": "insurance",
+            "admin_insurance_create": "insurance",
+            "admin_insurance_store": "insurance",
+            "admin_insurance_show": "insurance",
+            "admin_insurance_toggle_status": "insurance",
             # ── Insurance Approvals ───────────────────────────────────────
-            'admin_insurance_approvals_index':                  'insurance_approvals',
-            'admin_insurance_approvals_process':                'insurance_approvals',
-            'admin_insurance_approvals_approve_onboarding':     'insurance_approvals',
-            'admin_insurance_approvals_reject_onboarding':      'insurance_approvals',
+            "admin_insurance_approvals_index": "insurance_approvals",
+            "admin_insurance_approvals_process": "insurance_approvals",
+            "admin_insurance_approvals_approve_onboarding": "insurance_approvals",
+            "admin_insurance_approvals_reject_onboarding": "insurance_approvals",
             # ── Clients / Users ───────────────────────────────────────────
-            'admin_users':                              'users',
-            'admin_users_edit':                         'users',
-            'admin_users_update':                       'users',
+            "admin_users": "users",
+            "admin_users_edit": "users",
+            "admin_users_update": "users",
             # ── Events ────────────────────────────────────────────────────
-            'admin_events_index':                       'events',
-            'admin_events_show':                        'events',
-            'admin_events_export':                      'events',
+            "admin_events_index": "events",
+            "admin_events_show": "events",
+            "admin_events_export": "events",
             # ── Subscriptions ─────────────────────────────────────────────
-            'admin_subscriptions_index':                'subscriptions',
-            'admin_delete_subscription':                'subscriptions',
-            'admin_plans_index':                        'subscriptions',
-            'admin_plan_create':                        'subscriptions',
-            'admin_plan_edit':                          'subscriptions',
-            'admin_plan_delete':                        'subscriptions',
+            "admin_subscriptions_index": "subscriptions",
+            "admin_delete_subscription": "subscriptions",
+            "admin_plans_index": "subscriptions",
+            "admin_plan_create": "subscriptions",
+            "admin_plan_edit": "subscriptions",
+            "admin_plan_delete": "subscriptions",
             # ── Leads ─────────────────────────────────────────────────────
-            'admin_leads_index':                        'leads',
-            'admin_leads_update_status':                'leads',
-            'admin_quick_registration_leads':           'leads',
-            'admin_quick_registration_lead_delete':     'leads',
-            'admin_quick_registration_leads_export_csv': 'leads',
-            'admin_quick_registration_leads_export_xlsx': 'leads',
+            "admin_leads_index": "leads",
+            "admin_leads_update_status": "leads",
+            "admin_quick_registration_leads": "leads",
+            "admin_quick_registration_lead_delete": "leads",
+            "admin_quick_registration_leads_export_csv": "leads",
+            "admin_quick_registration_leads_export_xlsx": "leads",
             # ── Contacts ──────────────────────────────────────────────────
-            'admin_contacts_index':                     'contacts',
-            'admin_contacts_show':                      'contacts',
-            'admin_contacts_update_status':             'contacts',
-            'admin_contacts_delete':                    'contacts',
-            'admin_contacts_assign':                    'contacts',
-            'admin_contacts_set_priority':              'contacts',
-            'admin_contacts_reply':                     'contacts',
+            "admin_contacts_index": "contacts",
+            "admin_contacts_show": "contacts",
+            "admin_contacts_update_status": "contacts",
+            "admin_contacts_delete": "contacts",
+            "admin_contacts_assign": "contacts",
+            "admin_contacts_set_priority": "contacts",
+            "admin_contacts_reply": "contacts",
             # ── Reviews ───────────────────────────────────────────────────
-            'admin_reviews_index':                      'reviews',
-            'admin_reviews_toggle_approval':            'reviews',
-            'admin_reviews_bulk_approve':               'reviews',
-            'admin_reviews_delete':                     'reviews',
+            "admin_reviews_index": "reviews",
+            "admin_reviews_toggle_approval": "reviews",
+            "admin_reviews_bulk_approve": "reviews",
+            "admin_reviews_delete": "reviews",
             # ── Notifications / Broadcast ─────────────────────────────────
-            'agent_notify':                             'notifications',
-            'agent_notify_send':                        'notifications',
-            'agent_notify_broadcast':                   'notifications',
-            'broadcast_index':                          'notifications',
-            'broadcast_send':                           'notifications',
+            "agent_notify": "notifications",
+            "agent_notify_send": "notifications",
+            "agent_notify_broadcast": "notifications",
+            "broadcast_index": "notifications",
+            "broadcast_send": "notifications",
             # ── Content & CMS (incl. homepage + hero editors) ─────────────
             # Note: admin_settings_homepage* and admin_settings_hero_section*
             # map to 'content' (sidebar: Content Control), NOT 'site_settings'.
-            'admin_content_about':                      'content',
+            "admin_content_about": "content",
             # Visiting Card Studio (sidebar: Content Control)
-            'admin_digital_card_studio':                'content',
-            'admin_digital_card_studio_direct':         'content',
-            'admin_digital_card_studio_update':         'content',
-            'admin_digital_card_agent_toggle':          'content',
-            'admin_digital_card_agent_detail':          'content',
-            'admin_digital_card_agent_save':            'content',
-            'admin_content_about_update':               'content',
-            'admin_content_faqs':                       'content',
-            'admin_content_faqs_settings_update':       'content',
-            'admin_content_faqs_store':                 'content',
-            'admin_content_faqs_update':                'content',
-            'admin_content_faqs_toggle':                'content',
-            'admin_content_calculators':                'content',
-            'admin_content_calculators_edit':           'content',
-            'admin_content_calculators_toggle':         'content',
-            'admin_content_calculators_category':       'content',
-            'admin_content_calculator_categories_save': 'content',
-            'admin_content_calculator_categories_toggle': 'content',
-            'admin_content_calculator_categories_delete': 'content',
-            'admin_content_contact':                    'content',
-            'admin_content_contact_update':             'content',
-            'admin_content_banners':                    'content',
-            'admin_content_banners_update':             'content',
-            'admin_profile_banners_index':              ('content', 'agents'),
-            'admin_profile_banner_upload':              ('content', 'agents'),
-            'admin_profile_banner_toggle':              ('content', 'agents'),
-            'admin_profile_banner_delete':              ('content', 'agents'),
-            'admin_profile_banner_settings_save':       ('content', 'agents'),
-            'admin_content_registration_cards':         'content',
-            'admin_content_registration_cards_update':  'content',
-            'admin_content_plans':                      'content',
-            'admin_content_plans_update':               'content',
-            'admin_content_plans_update_features':      'content',
-            'admin_content_exclusive_plans_update':     'content',
-            'admin_content_plans_update_unlock_rules':  'content',
-            'admin_content_plans_update_qr_service':    'content',
-            'admin_content_plans_update_review_growth': 'content',
-            'admin_content_plans_manage_agent':         'content',
-            'admin_content_plans_manage_agent_toggle':  'content',
-            'admin_settings_homepage':                  'content',
-            'admin_settings_homepage_update':           'content',
-            'admin_settings_hero_section':              'content',
-            'admin_settings_hero_section_update':       'content',
-            'admin_pages_index':                        'content',
-            'admin_pages_create':                       'content',
-            'admin_pages_store':                        'content',
-            'admin_pages_edit':                         'content',
-            'admin_pages_update':                       'content',
-            'admin_pages_delete':                       'content',
-            'admin_coming_soon_index':                  'content',
-            'admin_coming_soon_save':                   'content',
-            'admin_coming_soon_feature_save':           'content',
-            'admin_coming_soon_feature_toggle':         'content',
-            'admin_coming_soon_feature_delete':         'content',
-            'admin_coming_soon_feature_reorder':        'content',
-            'admin_coming_soon_feature_seed':           'content',
-            'admin_google_review_config_save':          'content',
-            'admin_google_review_toggle':               'content',
-            'admin_qr_files_index':                     'content',
-            'admin_qr_files_store':                     'content',
-            'admin_qr_files_update':                    'content',
-            'admin_qr_files_delete':                    'content',
+            "admin_digital_card_studio": "content",
+            "admin_digital_card_studio_direct": "content",
+            "admin_digital_card_studio_update": "content",
+            "admin_digital_card_agent_toggle": "content",
+            "admin_digital_card_agent_detail": "content",
+            "admin_digital_card_agent_save": "content",
+            "admin_content_about_update": "content",
+            "admin_content_faqs": "content",
+            "admin_content_faqs_settings_update": "content",
+            "admin_content_faqs_store": "content",
+            "admin_content_faqs_update": "content",
+            "admin_content_faqs_toggle": "content",
+            "admin_content_calculators": "content",
+            "admin_content_calculators_edit": "content",
+            "admin_content_calculators_toggle": "content",
+            "admin_content_calculators_category": "content",
+            "admin_content_calculator_categories_save": "content",
+            "admin_content_calculator_categories_toggle": "content",
+            "admin_content_calculator_categories_delete": "content",
+            "admin_content_contact": "content",
+            "admin_content_contact_update": "content",
+            "admin_content_banners": "content",
+            "admin_content_banners_update": "content",
+            "admin_profile_banners_index": ("content", "agents"),
+            "admin_profile_banner_upload": ("content", "agents"),
+            "admin_profile_banner_toggle": ("content", "agents"),
+            "admin_profile_banner_delete": ("content", "agents"),
+            "admin_profile_banner_settings_save": ("content", "agents"),
+            "admin_content_registration_cards": "content",
+            "admin_content_registration_cards_update": "content",
+            "admin_content_plans": "content",
+            "admin_content_plans_update": "content",
+            "admin_content_plans_update_features": "content",
+            "admin_content_exclusive_plans_update": "content",
+            "admin_content_plans_update_unlock_rules": "content",
+            "admin_content_plans_update_qr_service": "content",
+            "admin_content_plans_update_review_growth": "content",
+            "admin_content_plans_manage_agent": "content",
+            "admin_content_plans_manage_agent_toggle": "content",
+            "admin_settings_homepage": "content",
+            "admin_settings_homepage_update": "content",
+            "admin_settings_hero_section": "content",
+            "admin_settings_hero_section_update": "content",
+            "admin_pages_index": "content",
+            "admin_pages_create": "content",
+            "admin_pages_store": "content",
+            "admin_pages_edit": "content",
+            "admin_pages_update": "content",
+            "admin_pages_delete": "content",
+            "admin_coming_soon_index": "content",
+            "admin_coming_soon_save": "content",
+            "admin_coming_soon_feature_save": "content",
+            "admin_coming_soon_feature_toggle": "content",
+            "admin_coming_soon_feature_delete": "content",
+            "admin_coming_soon_feature_reorder": "content",
+            "admin_coming_soon_feature_seed": "content",
+            "admin_google_review_config_save": "content",
+            "admin_google_review_toggle": "content",
+            "admin_qr_files_index": "content",
+            "admin_qr_files_store": "content",
+            "admin_qr_files_update": "content",
+            "admin_qr_files_delete": "content",
             # ── Revenue ───────────────────────────────────────────────────
-            'admin_revenue':                            'revenue',
-            'admin_search':                             'dashboard',
+            "admin_revenue": "revenue",
+            "admin_search": "dashboard",
             # ── Invoices ──────────────────────────────────────────────────
-            'admin_invoices':                           'invoices',
-            'admin_invoices_create':                    'invoices',
-            'admin_invoices_verify_promo':              'invoices',
-            'admin_invoice_preview':                    'invoices',
-            'admin_invoice_download':                   'invoices',
-            'admin_invoice_save_sheet_url':             'invoices',
-            'admin_invoice_sync_sheet':                 'invoices',
-            'admin_invoice_open_sheet':                 'invoices',
+            "admin_invoices": "invoices",
+            "admin_invoices_create": "invoices",
+            "admin_invoices_verify_promo": "invoices",
+            "admin_invoice_preview": "invoices",
+            "admin_invoice_download": "invoices",
+            "admin_invoice_save_sheet_url": "invoices",
+            "admin_invoice_sync_sheet": "invoices",
+            "admin_invoice_open_sheet": "invoices",
             # ── Promo Codes ───────────────────────────────────────────────
-            'admin_promo_codes':                        'promo_codes',
-            'admin_promo_code_store':                   'promo_codes',
-            'admin_promo_code_update':                  'promo_codes',
-            'admin_promo_code_toggle_status':           'promo_codes',
+            "admin_promo_codes": "promo_codes",
+            "admin_promo_code_store": "promo_codes",
+            "admin_promo_code_update": "promo_codes",
+            "admin_promo_code_toggle_status": "promo_codes",
             # ── Free Trial ────────────────────────────────────────────────
-            'admin_free_trial':                         'free_trial',
-            'admin_ft_update_config':                   'free_trial',
-            'admin_ft_update_discount':                 'free_trial',
-            'admin_ft_update_referral_config':          'free_trial',
-            'admin_ft_force_test_credit':               'free_trial',
-            'admin_ft_generate_promo':                  'free_trial',
-            'admin_ft_update_promo':                    'free_trial',
-            'admin_ft_toggle_promo':                    'free_trial',
-            'admin_ft_delete_promo':                    'free_trial',
-            'admin_ft_history':                         'free_trial',
-            'admin_ft_analytics_data':                  'free_trial',
+            "admin_free_trial": "free_trial",
+            "admin_ft_update_config": "free_trial",
+            "admin_ft_update_discount": "free_trial",
+            "admin_ft_update_referral_config": "free_trial",
+            "admin_ft_force_test_credit": "free_trial",
+            "admin_ft_generate_promo": "free_trial",
+            "admin_ft_update_promo": "free_trial",
+            "admin_ft_toggle_promo": "free_trial",
+            "admin_ft_delete_promo": "free_trial",
+            "admin_ft_history": "free_trial",
+            "admin_ft_analytics_data": "free_trial",
             # ── Referrals ─────────────────────────────────────────────────
-            'admin_referrals_index':                    'referrals',
-            'admin_referrals_toggle_code':              'referrals',
-            'admin_referrals_mark_claimed':             'referrals',
-            'admin_referrals_generate_missing':         'referrals',
-            'admin_referrals_update_tiers':             'referrals',
+            "admin_referrals_index": "referrals",
+            "admin_referrals_toggle_code": "referrals",
+            "admin_referrals_mark_claimed": "referrals",
+            "admin_referrals_generate_missing": "referrals",
+            "admin_referrals_update_tiers": "referrals",
             # ── Finance & Accounts ────────────────────────────────────────
-            'admin_finance_index':                      'finance_accounts',
-            'admin_finance_mark_payment':               'finance_accounts',
+            "admin_finance_index": "finance_accounts",
+            "admin_finance_mark_payment": "finance_accounts",
             # ── Export Center ─────────────────────────────────────────────
-            'export_index':                             'export',
-            'export_agents':                            'export',
-            'export_leads':                             'export',
-            'export_contacts':                          'export',
-            'export_subscriptions':                     'export',
-            'export_reviews':                           'export',
-            'export_pending':                           'export',
+            "export_index": "export",
+            "export_agents": "export",
+            "export_leads": "export",
+            "export_contacts": "export",
+            "export_subscriptions": "export",
+            "export_reviews": "export",
+            "export_pending": "export",
             # ── QR Generator ──────────────────────────────────────────────
-            'admin_qr_files_index':                     'qr_generator',
-            'admin_qr_files_store':                     'qr_generator',
-            'admin_qr_files_update':                    'qr_generator',
-            'admin_qr_files_delete':                    'qr_generator',
+            "admin_qr_files_index": "qr_generator",
+            "admin_qr_files_store": "qr_generator",
+            "admin_qr_files_update": "qr_generator",
+            "admin_qr_files_delete": "qr_generator",
             # ── Geocoding ─────────────────────────────────────────────────
-            'admin_geocoding_index':                    'geocoding',
-            'admin_geocoding_single':                   'geocoding',
-            'admin_geocoding_batch':                    'geocoding',
-            'admin_geocoding_stats':                    'geocoding',
+            "admin_geocoding_index": "geocoding",
+            "admin_geocoding_single": "geocoding",
+            "admin_geocoding_batch": "geocoding",
+            "admin_geocoding_stats": "geocoding",
             # ── Pincode ───────────────────────────────────────────────────
-            'admin_pincode_index':                      'pincode',
-            'admin_pincode_upload':                     'pincode',
-            'admin_pincode_import':                     'pincode',
-            'admin_pincode_districts':                  'pincode',
-            'admin_pincode_sample':                     'pincode',
-            'admin_pincode_export':                     'pincode',
-            'admin_pincode_delete_state':               'pincode',
+            "admin_pincode_index": "pincode",
+            "admin_pincode_upload": "pincode",
+            "admin_pincode_import": "pincode",
+            "admin_pincode_districts": "pincode",
+            "admin_pincode_sample": "pincode",
+            "admin_pincode_export": "pincode",
+            "admin_pincode_delete_state": "pincode",
             # ── Find Agent Locator (Pincode & Lat/Lng) ────────────────────
-            'admin_find_agent_locator':                 ('pincode', 'geocoding', 'agents'),
-            'admin_find_agent_locator_extract':         ('pincode', 'geocoding', 'agents'),
-            'admin_find_agent_locator_save_pincode':    ('pincode', 'geocoding', 'agents'),
-            'admin_find_agent_locator_search_agents':   ('pincode', 'geocoding', 'agents'),
-            'admin_find_agent_locator_assign_agent':    ('pincode', 'geocoding', 'agents'),
-            'admin_find_agent_locator_create_agent':    ('pincode', 'geocoding', 'agents'),
-            'admin_find_agent_locator_live_preview':    ('pincode', 'geocoding', 'agents'),
-            'admin_find_agent_locator_unlink_agent':    ('pincode', 'geocoding', 'agents'),
+            "admin_find_agent_locator": ("pincode", "geocoding", "agents"),
+            "admin_find_agent_locator_extract": ("pincode", "geocoding", "agents"),
+            "admin_find_agent_locator_save_pincode": ("pincode", "geocoding", "agents"),
+            "admin_find_agent_locator_search_agents": (
+                "pincode",
+                "geocoding",
+                "agents",
+            ),
+            "admin_find_agent_locator_assign_agent": ("pincode", "geocoding", "agents"),
+            "admin_find_agent_locator_create_agent": ("pincode", "geocoding", "agents"),
+            "admin_find_agent_locator_live_preview": ("pincode", "geocoding", "agents"),
+            "admin_find_agent_locator_unlink_agent": ("pincode", "geocoding", "agents"),
             # ── Analytics / Advanced / Error Logs / Threats ───────────────
-            'advanced_analytics':                       'analytics',
-            'advanced_activity_logs':                   'analytics',
-            'advanced_activity_logs_delete':            'analytics',
-            'admin_error_logs_index':                   'error_logs',
-            'admin_error_logs_show':                    'error_logs',
-            'admin_error_logs_delete':                  'error_logs',
+            "advanced_analytics": "analytics",
+            "advanced_activity_logs": "analytics",
+            "advanced_activity_logs_delete": "analytics",
+            "admin_error_logs_index": "error_logs",
+            "admin_error_logs_show": "error_logs",
+            "admin_error_logs_delete": "error_logs",
             # ── Feature Flags (sidebar shows them for either permission) ──
-            'admin_feature_flags':                      ('feature_flags', 'site_settings'),
-            'admin_feature_flag_toggle':                ('feature_flags', 'site_settings'),
-            'admin_feature_flag_create':                ('feature_flags', 'site_settings'),
-            'admin_feature_flag_update':                ('feature_flags', 'site_settings'),
-            'admin_feature_flag_delete':                ('feature_flags', 'site_settings'),
-            'security_threat_logs':                     'analytics',
-            'security_threat_logs_delete':              'analytics',
+            "admin_feature_flags": ("feature_flags", "site_settings"),
+            "admin_feature_flag_toggle": ("feature_flags", "site_settings"),
+            "admin_feature_flag_create": ("feature_flags", "site_settings"),
+            "admin_feature_flag_update": ("feature_flags", "site_settings"),
+            "admin_feature_flag_delete": ("feature_flags", "site_settings"),
+            "security_threat_logs": "analytics",
+            "security_threat_logs_delete": "analytics",
             # ── Investment Types ──────────────────────────────────────────
-            'admin_investment_types_index':             'content',
-            'admin_investment_types_store':             'content',
-            'admin_investment_types_update':            'content',
-            'admin_investment_types_delete':            'content',
-            'admin_investment_types_toggle':            'content',
+            "admin_investment_types_index": "content",
+            "admin_investment_types_store": "content",
+            "admin_investment_types_update": "content",
+            "admin_investment_types_delete": "content",
+            "admin_investment_types_toggle": "content",
             # ── Site Settings / Security (blocked IPs) ────────────────────
-            'admin_settings_general':                   'site_settings',
-            'admin_settings_seo':                       'site_settings',
-            'admin_link_og_save':                       'site_settings',
-            'admin_link_og_delete':                     'site_settings',
-            'admin_link_og_toggle':                     'site_settings',
-            'admin_settings_security':                  'site_settings',
-            'admin_settings_templates':                 'email_templates',
-            'admin_settings_templates_update':          'email_templates',
-            'admin_settings_update':                    'site_settings',
-            'security_blocked_ips':                     'site_settings',
-            'security_block_ip':                        'site_settings',
-            'security_unblock_ip':                      'site_settings',
+            "admin_settings_general": "site_settings",
+            "admin_settings_seo": "site_settings",
+            "admin_link_og_save": "site_settings",
+            "admin_link_og_delete": "site_settings",
+            "admin_link_og_toggle": "site_settings",
+            "admin_settings_security": "site_settings",
+            "admin_settings_templates": "email_templates",
+            "admin_settings_templates_update": "email_templates",
+            "admin_settings_update": "site_settings",
+            "security_blocked_ips": "site_settings",
+            "security_block_ip": "site_settings",
+            "security_unblock_ip": "site_settings",
             # ── System ────────────────────────────────────────────────────
-            'admin_system_health':                      'server_health',
-            'admin_system_logs':                        'logs',
-            'admin_system_api_logs':                    'api_logs',
-            'admin_system_backups':                     'backups',
-            'admin_system_run_backup':                  'backups',
-            'admin_system_download_backup':             'backups',
-            'admin_system_clear_cache':                 'server_health',
+            "admin_system_health": "server_health",
+            "admin_system_logs": "logs",
+            "admin_system_api_logs": "api_logs",
+            "admin_system_backups": "backups",
+            "admin_system_run_backup": "backups",
+            "admin_system_download_backup": "backups",
+            "admin_system_clear_cache": "server_health",
             # ── Session & Device Management (module #15) ──────────────────
-            'admin_sessions_index':                     'sessions',
-            'admin_sessions_revoke':                    'sessions',
+            "admin_sessions_index": "sessions",
+            "admin_sessions_revoke": "sessions",
             # ── App Version Control (module #16) ──────────────────────────
-            'admin_app_version':                        'app_version',
-            'admin_app_version_save':                   'app_version',
+            "admin_app_version": "app_version",
+            "admin_app_version_save": "app_version",
         }.get(url_name)
 
     def get_first_allowed_route(self, admin):
         permission_to_route = {
-            'dashboard': 'admin_dashboard',
-            'agents': 'admin_agents',
-            'approvals': 'admin_agents_approvals',
-            'approvals_awaiting_verification': 'admin_agents_approvals',
-            'approvals_missing_licenses': 'admin_agents_approvals',
-            'blacklisted_agents': 'admin_blacklisted_agents',
-            'pending_registrations': 'admin_agents_pending_registrations',
-            'distributors': 'admin_distributors',
-            'insurance': 'admin_insurance_index',
-            'insurance_approvals': 'admin_insurance_approvals_index',
-            'users': 'admin_users',
-            'events': 'admin_events_index',
-            'subscriptions': 'admin_subscriptions_index',
-            'leads': 'admin_leads_index',
-            'contacts': 'admin_contacts_index',
-            'reviews': 'admin_reviews_index',
-            'notifications': 'agent_notify',
-            'content': 'admin_content_about',
-            'revenue': 'admin_revenue',
-            'invoices': 'admin_invoices',
-            'promo_codes': 'admin_promo_codes',
-            'free_trial': 'admin_free_trial',
-            'referrals': 'admin_referrals_index',
-            'finance_accounts': 'admin_finance_index',
-            'export': 'export_index',
-            'qr_generator': 'admin_qr_files_index',
-            'geocoding': 'admin_geocoding_index',
-            'pincode': 'admin_pincode_index',
-            'analytics': 'advanced_analytics',
-            'error_logs': 'admin_error_logs_index',
-            'feature_flags': 'admin_feature_flags',
-            'site_settings': 'admin_settings_general',
-            'email_templates': 'admin_settings_templates',
-            'server_health': 'admin_system_health',
-            'logs': 'admin_system_logs',
-            'api_logs': 'admin_system_api_logs',
-            'backups': 'admin_system_backups',
-            'sessions': 'admin_sessions_index',
-            'app_version': 'admin_app_version',
-            'fastapi_services': 'admin_dashboard',
+            "dashboard": "admin_dashboard",
+            "agents": "admin_agents",
+            "approvals": "admin_agents_approvals",
+            "approvals_awaiting_verification": "admin_agents_approvals",
+            "approvals_missing_licenses": "admin_agents_approvals",
+            "blacklisted_agents": "admin_blacklisted_agents",
+            "pending_registrations": "admin_agents_pending_registrations",
+            "distributors": "admin_distributors",
+            "insurance": "admin_insurance_index",
+            "insurance_approvals": "admin_insurance_approvals_index",
+            "users": "admin_users",
+            "events": "admin_events_index",
+            "subscriptions": "admin_subscriptions_index",
+            "leads": "admin_leads_index",
+            "contacts": "admin_contacts_index",
+            "reviews": "admin_reviews_index",
+            "notifications": "agent_notify",
+            "content": "admin_content_about",
+            "revenue": "admin_revenue",
+            "invoices": "admin_invoices",
+            "promo_codes": "admin_promo_codes",
+            "free_trial": "admin_free_trial",
+            "referrals": "admin_referrals_index",
+            "finance_accounts": "admin_finance_index",
+            "export": "export_index",
+            "qr_generator": "admin_qr_files_index",
+            "geocoding": "admin_geocoding_index",
+            "pincode": "admin_pincode_index",
+            "analytics": "advanced_analytics",
+            "error_logs": "admin_error_logs_index",
+            "feature_flags": "admin_feature_flags",
+            "site_settings": "admin_settings_general",
+            "email_templates": "admin_settings_templates",
+            "server_health": "admin_system_health",
+            "logs": "admin_system_logs",
+            "api_logs": "admin_system_api_logs",
+            "backups": "admin_system_backups",
+            "sessions": "admin_sessions_index",
+            "app_version": "admin_app_version",
+            "fastapi_services": "admin_dashboard",
         }
-        
-        permissions_list = admin.permissions if isinstance(admin.permissions, list) else []
+
+        permissions_list = (
+            admin.permissions if isinstance(admin.permissions, list) else []
+        )
         for permission, route in permission_to_route.items():
             if permission in permissions_list:
                 return route
@@ -866,6 +1061,7 @@ class AdminPermissionMiddleware:
 import traceback
 import sys
 from apps.admin_panel.models.error_log import ErrorLog
+
 
 class ExceptionLoggerMiddleware:
     def __init__(self, get_response):
@@ -879,24 +1075,27 @@ class ExceptionLoggerMiddleware:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
             stack_trace = "".join(tb_lines)
-            
+
             # Identify user
             user_info = None
             try:
-                if hasattr(request, 'session') and request.session and request.session.get('admin_id'):
+                if (
+                    hasattr(request, "session")
+                    and request.session
+                    and request.session.get("admin_id")
+                ):
                     user_info = f"Admin: {request.session.get('admin_name', 'N/A')} ({request.session.get('admin_email', 'N/A')})"
-                elif hasattr(request, 'user') and request.user.is_authenticated:
+                elif hasattr(request, "user") and request.user.is_authenticated:
                     user_info = f"User: {request.user.username}"
             except Exception:
                 pass
 
-                
             # Get IP address (trusted-proxy rule, not the spoofable first hop)
             ip = ThreatMonitorMiddleware.get_client_ip(request)
 
             # Log to Database
             ErrorLog.objects.create(
-                level='ERROR',
+                level="ERROR",
                 module=exception.__class__.__module__,
                 exception_type=exception.__class__.__name__,
                 message=str(exception),
@@ -905,9 +1104,9 @@ class ExceptionLoggerMiddleware:
                 method=request.method,
                 user_info=user_info,
                 status_code=500,
-                ip_address=ip
+                ip_address=ip,
             )
         except Exception:
-            pass
+            # Module logger goes to console/file only (no DB handler), so this can't recurse.
+            logger.exception("ExceptionLoggerMiddleware could not write ErrorLog")
         return None
-

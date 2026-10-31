@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import datetime
 from pathlib import Path
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 
 
@@ -55,9 +55,9 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(
                 f"==> [SUCCESS] Database backup created: {target_path.name} ({file_size_kb} KB)"
             ))
-            self._prune_old_backups(backup_dir, retention)
+            self._prune_old_backups(backup_dir, retention, tag)
         else:
-            self.stdout.write(self.style.ERROR("==> [ERROR] Database backup could not be completed."))
+            raise CommandError("Database backup could not be completed.")
 
     def _backup_mysql(self, db_conf, backup_dir, base_filename):
         target_file = backup_dir / f"{base_filename}.sql.gz"
@@ -75,33 +75,40 @@ class Command(BaseCommand):
                     mysqldump_bin = candidate
                     break
 
-        if mysqldump_bin and name:
-            cmd = [
-                mysqldump_bin,
-                f"--host={host}",
-                f"--port={port}",
-                f"--user={user}",
-                "--single-transaction",
-                "--quick",
-                "--skip-lock-tables",
-                name,
-            ]
-            env = os.environ.copy()
-            if password:
-                env['MYSQL_PWD'] = password
+        # No dumpdata fallback on MySQL: it skips every unmanaged table (admins,
+        # users, pincodes...), so a "successful" fallback backup could not restore them.
+        if not name:
+            raise CommandError("MySQL backup failed: DATABASES['default']['NAME'] is empty.")
+        if not mysqldump_bin:
+            raise CommandError("MySQL backup failed: mysqldump not found on PATH.")
 
-            try:
-                proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-                with gzip.open(target_file, 'wb') as f_out:
-                    shutil.copyfileobj(proc.stdout, f_out)
-                proc.communicate()
-                if proc.returncode == 0 and target_file.exists() and target_file.stat().st_size > 0:
-                    return True, target_file
-            except Exception as e:
-                self.stdout.write(self.style.WARNING(f"mysqldump execution failed: {e}. Falling back to dumpdata."))
+        cmd = [
+            mysqldump_bin,
+            f"--host={host}",
+            f"--port={port}",
+            f"--user={user}",
+            "--single-transaction",
+            "--quick",
+            "--skip-lock-tables",
+            name,
+        ]
+        env = os.environ.copy()
+        if password:
+            env['MYSQL_PWD'] = password
 
-        # Fallback to dumpdata if mysqldump not available or failed
-        return self._backup_dumpdata(backup_dir, base_filename)
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+            with gzip.open(target_file, 'wb') as f_out:
+                shutil.copyfileobj(proc.stdout, f_out)
+            _, stderr = proc.communicate()
+        except Exception as e:
+            target_file.unlink(missing_ok=True)
+            raise CommandError(f"mysqldump execution failed: {e}") from e
+        if proc.returncode == 0 and target_file.exists() and target_file.stat().st_size > 0:
+            return True, target_file
+        target_file.unlink(missing_ok=True)
+        err = (stderr or b'').decode('utf-8', 'replace').strip()
+        raise CommandError(f"mysqldump failed (exit {proc.returncode}): {err or 'empty dump'}")
 
     def _backup_sqlite(self, db_conf, backup_dir, base_filename):
         target_file = backup_dir / f"{base_filename}.sqlite3.gz"
@@ -162,9 +169,10 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f"Django dumpdata failed: {e}"))
             return False, None
 
-    def _prune_old_backups(self, backup_dir, retention):
+    def _prune_old_backups(self, backup_dir, retention, tag):
+        # Per tag, so a pre_deploy run with --retention 7 never prunes the daily backups.
         backups = sorted(
-            [f for f in backup_dir.glob('db_backup_*') if f.is_file()],
+            [f for f in backup_dir.glob(f'db_backup_{tag}_*') if f.is_file()],
             key=lambda x: x.stat().st_mtime,
             reverse=True
         )

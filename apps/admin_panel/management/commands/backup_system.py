@@ -3,7 +3,7 @@ import subprocess
 import datetime
 import zipfile
 from pathlib import Path
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 
 class Command(BaseCommand):
@@ -14,6 +14,12 @@ class Command(BaseCommand):
             '--no-zip',
             action='store_true',
             help='Do not compress the SQL file',
+        )
+        parser.add_argument(
+            '--retention',
+            type=int,
+            default=7,
+            help='Number of most recent backups made by this command to keep. Default is 7.',
         )
 
     def handle(self, *args, **options):
@@ -26,8 +32,7 @@ class Command(BaseCommand):
         db_port = db_settings.get('PORT', '3306')
 
         if not db_name or not db_user:
-            self.stderr.write("Database name or user not configured in settings.")
-            return
+            raise CommandError("Database name or user not configured in settings.")
 
         # Prepare backup directory inside project backups folder
         backup_dir = Path(settings.BASE_DIR) / 'backups'
@@ -48,25 +53,24 @@ class Command(BaseCommand):
             f"--user={db_user}",
             f"--host={db_host}",
             f"--port={db_port}",
+            db_name,
         ]
-        
+        # Password via env, not argv: argv is visible to every user in `ps`.
+        env = os.environ.copy()
         if db_password:
-            dump_cmd.append(f"--password={db_password}")
-            
-        dump_cmd.append(db_name)
+            env['MYSQL_PWD'] = db_password
 
         self.stdout.write(f"Starting database dump to {sql_filepath}...")
         
         try:
             with open(sql_filepath, 'w', encoding='utf-8') as f:
-                process = subprocess.run(dump_cmd, stdout=f, stderr=subprocess.PIPE, text=True)
+                process = subprocess.run(dump_cmd, stdout=f, stderr=subprocess.PIPE, text=True, env=env)
                 
             if process.returncode != 0:
-                self.stderr.write(f"mysqldump failed: {process.stderr}")
                 # Remove empty or corrupt file
                 if sql_filepath.exists():
                     sql_filepath.unlink()
-                return
+                raise CommandError(f"mysqldump failed: {process.stderr}")
 
             self.stdout.write(self.style.SUCCESS('Database dump successful.'))
             
@@ -83,8 +87,26 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f'Successfully created backup: {zip_filepath}'))
             else:
                 self.stdout.write(self.style.SUCCESS(f'Successfully created backup: {sql_filepath}'))
+            self._prune_old_backups(backup_dir, db_name, options['retention'])
 
-        except FileNotFoundError:
-            self.stderr.write("mysqldump executable not found. Make sure it is in your system PATH or XAMPP is installed.")
+        except CommandError:
+            raise
+        except FileNotFoundError as e:
+            raise CommandError("mysqldump executable not found. Make sure it is in your system PATH or XAMPP is installed.") from e
         except Exception as e:
-            self.stderr.write(f"An error occurred: {e}")
+            raise CommandError(f"An error occurred: {e}") from e
+
+    def _prune_old_backups(self, backup_dir, db_name, retention):
+        # This command's files are {db_name}_YYYY-MM-DD-HH-MM-SS.(zip|sql); backup_database
+        # prunes only its own db_backup_* files, so these were never removed.
+        backups = sorted(
+            [f for f in backup_dir.glob(f'{db_name}_[0-9][0-9][0-9][0-9]-*') if f.is_file() and f.suffix in ('.zip', '.sql')],
+            key=lambda x: x.stat().st_mtime,
+            reverse=True,
+        )
+        for old_file in backups[retention:]:
+            try:
+                old_file.unlink()
+                self.stdout.write(f"Pruned older backup: {old_file.name}")
+            except OSError:
+                pass

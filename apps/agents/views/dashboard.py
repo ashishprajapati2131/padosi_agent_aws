@@ -1,7 +1,11 @@
 import os
 import logging
 from urllib.parse import quote
-from json import dumps as json_dumps, loads as json_loads, JSONDecodeError as JSONDecodeError
+from json import (
+    dumps as json_dumps,
+    loads as json_loads,
+    JSONDecodeError as JSONDecodeError,
+)
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
@@ -14,7 +18,15 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
-from apps.agents.models import Agent, AgentProfile, AgentSubscription, AgentLead, AgentProfileView, AgentDeviceToken, FavoriteAgent
+from apps.agents.models import (
+    Agent,
+    AgentProfile,
+    AgentSubscription,
+    AgentLead,
+    AgentProfileView,
+    AgentDeviceToken,
+    FavoriteAgent,
+)
 from apps.home.models import SiteSetting, UpcomingFeature
 from apps.admin_panel.models.referral_code import ReferralCode
 from apps.admin_panel.models.referral_usage import ReferralUsage
@@ -42,7 +54,9 @@ from apps.agents.views.registration import (
     _display_plan_name,
     verify_and_activate_pending_payment,
 )
+
 logger = logging.getLogger(__name__)
+
 
 class PlanFeatureProxy:
     """
@@ -77,6 +91,7 @@ class PlanFeatureProxy:
       visibility_seo        → show_visibility_seo
       visibility_priority_ranking → show_visibility_priority_ranking
     """
+
     # Maps feature slug → list of show_* attr names it enables
     FEATURE_MAP = FEATURE_ATTR_MAP
 
@@ -88,7 +103,7 @@ class PlanFeatureProxy:
         feats = set(enabled_features or [])
         # Legacy: edit_profile alone implied all four steps. Once steps are saved
         # explicitly, each step is independently lockable.
-        if 'edit_profile' in feats and not any(
+        if "edit_profile" in feats and not any(
             step in feats for step in EDIT_PROFILE_CHILD_FEATURES
         ):
             feats.update(EDIT_PROFILE_CHILD_FEATURES)
@@ -99,7 +114,10 @@ class PlanFeatureProxy:
 
     def __getattr__(self, name):
         # Any show_* attribute returns True only if it is in enabled set
-        if name.startswith('show_') or name in ('is_listed_in_directory', 'premium_priority_support'):
+        if name.startswith("show_") or name in (
+            "is_listed_in_directory",
+            "premium_priority_support",
+        ):
             return name in self._enabled
         raise AttributeError(name)
 
@@ -128,19 +146,22 @@ def _resolve_base_agent_plan(plan_type):
     # -- Priority 1: plan_features_config (Plans & Pricing admin checkbox grid)
     try:
         from apps.home.models import SiteSetting
-        features_config = SiteSetting.get_value('plan_features_config') or {}
+
+        features_config = SiteSetting.get_value("plan_features_config") or {}
 
         def _check_site_settings(slug_to_try):
             """Return PlanFeatureProxy for known plan slugs (canonical starter/pro rules)."""
             if not slug_to_try:
                 return None
             canonical_slug = normalize_plan_slug(slug_to_try)
-            if canonical_slug in ('starter', 'professional', 'exclusive', 'free_trial'):
+            if canonical_slug in ("starter", "professional", "exclusive", "free_trial"):
                 enabled = resolve_plan_entitlements(canonical_slug, features_config)
                 return PlanFeatureProxy(enabled)
             enabled = features_config.get(slug_to_try)
             if isinstance(enabled, list):
-                return PlanFeatureProxy(resolve_plan_entitlements(slug_to_try, features_config))
+                return PlanFeatureProxy(
+                    resolve_plan_entitlements(slug_to_try, features_config)
+                )
             return None
 
         # 1a: Direct normalize -- handles 'starter', 'basic', 'standard', 'professional', etc.
@@ -153,6 +174,7 @@ def _resolve_base_agent_plan(plan_type):
         if pt.isdigit():
             try:
                 from apps.agents.models import SubscriptionPlan as _SP
+
                 plan_by_id = _SP.objects.filter(id=int(pt)).first()
                 if plan_by_id and plan_by_id.slug:
                     result = _check_site_settings(plan_by_id.slug)
@@ -168,14 +190,19 @@ def _resolve_base_agent_plan(plan_type):
         if not pt.isdigit() and slug not in features_config:
             try:
                 from apps.agents.models import SubscriptionPlan as _SP
+
                 plan_by_slug = _SP.objects.filter(slug=pt).first()
                 if not plan_by_slug:
-                    plan_by_slug = _SP.objects.filter(name__icontains=pt, is_active=True).first()
+                    plan_by_slug = _SP.objects.filter(
+                        name__icontains=pt, is_active=True
+                    ).first()
                 if plan_by_slug and plan_by_slug.slug:
                     result = _check_site_settings(plan_by_slug.slug)
                     if result is not None:
                         return result
-                    result = _check_site_settings(normalize_plan_slug(plan_by_slug.slug))
+                    result = _check_site_settings(
+                        normalize_plan_slug(plan_by_slug.slug)
+                    )
                     if result is not None:
                         return result
             except Exception:
@@ -187,6 +214,7 @@ def _resolve_base_agent_plan(plan_type):
     # -- Priority 2: SubscriptionPlan model -----------------------------------
     try:
         from apps.agents.models import SubscriptionPlan
+
         # Tier 2a: numeric ID
         if pt.isdigit():
             plan = SubscriptionPlan.objects.filter(id=int(pt)).first()
@@ -198,16 +226,18 @@ def _resolve_base_agent_plan(plan_type):
             return plan
         # Tier 2c: keyword-contains fallback
         SLUG_KEYWORDS = {
-            'free_trial': ['free', 'trial'],
-            'starter':    ['starter', 'basic'],
-            'basic':      ['basic', 'starter'],
-            'professional': ['professional', 'pro'],
-            'standard':   ['standard'],
-            'exclusive':  ['exclusive'],
+            "free_trial": ["free", "trial"],
+            "starter": ["starter", "basic"],
+            "basic": ["basic", "starter"],
+            "professional": ["professional", "pro"],
+            "standard": ["standard"],
+            "exclusive": ["exclusive"],
         }
         keywords = SLUG_KEYWORDS.get(pt.lower(), [pt])
         for kw in keywords:
-            plan = SubscriptionPlan.objects.filter(name__icontains=kw, is_active=True).first()
+            plan = SubscriptionPlan.objects.filter(
+                name__icontains=kw, is_active=True
+            ).first()
             if plan:
                 return plan
     except Exception:
@@ -228,18 +258,19 @@ def _resolve_agent_plan(plan_type, agent=None):
     if base is None or agent is None:
         return base
     plan_slug = normalize_plan_slug(plan_type)
-    features_config = SiteSetting.get_value('plan_features_config') or {}
+    features_config = SiteSetting.get_value("plan_features_config") or {}
     extra = set(evaluate_unlock_rules(agent, plan_slug))
     try:
         from apps.agents.services.review_growth import extra_unlock_attrs
+
         extra |= extra_unlock_attrs(agent)
     except Exception:
-        logger.exception('Review-growth unlock overlay failed')
+        logger.exception("Review-growth unlock overlay failed")
     extra = filter_overlay_extras(plan_slug, extra, features_config)
     return overlay_plan(base, extra)
 
 
-@login_required(login_url='agents:agent_login')
+@login_required(login_url="agents:agent_login")
 def agent_dashboard(request):
     r"""
     Handle rendering the agent dashboard.
@@ -247,187 +278,253 @@ def agent_dashboard(request):
     Includes self-healing logic and pricing calculation.
     """
     user = request.user
-    from apps.agents.services.account_auth import resolve_agent_for_user, agent_can_access_dashboard, find_agent
+    from apps.agents.services.account_auth import (
+        resolve_agent_for_user,
+        agent_can_access_dashboard,
+        find_agent,
+    )
 
     is_admin = user.is_staff or user.is_superuser
     agent = resolve_agent_for_user(user)
-    if not agent and getattr(user, 'email', None):
+    if not agent and getattr(user, "email", None):
         agent = find_agent(user.email)
 
     if not agent and not is_admin:
         messages.error(request, "Please complete your registration.")
-        return redirect('agents:agent_registration')
+        return redirect("agents:agent_registration")
 
     event_referral_participant = None
     force_lock_all_features = False
     event_referral_expired_locked = False
-    event_referral_share_url = ''
+    event_referral_share_url = ""
     if agent:
         try:
-            from apps.event_referral.services.participant_service import prepare_event_referral_portal_state
-            event_referral_participant, force_lock_all_features, event_referral_expired_locked = (
-                prepare_event_referral_portal_state(agent)
+            from apps.event_referral.services.participant_service import (
+                prepare_event_referral_portal_state,
             )
+
+            (
+                event_referral_participant,
+                force_lock_all_features,
+                event_referral_expired_locked,
+            ) = prepare_event_referral_portal_state(agent)
             if event_referral_participant:
                 agent.refresh_from_db()
                 event_referral_share_url = request.build_absolute_uri(
-                    reverse('agents:agent_registration_referral', kwargs={'ref_code': event_referral_participant.referral_code})
+                    reverse(
+                        "agents:agent_registration_referral",
+                        kwargs={"ref_code": event_referral_participant.referral_code},
+                    )
                 )
         except Exception as ev_err:
-            logger.warning('Event referral dashboard context failed: %s', ev_err)
+            logger.warning("Event referral dashboard context failed: %s", ev_err)
 
-    event_referral_whatsapp_url = ''
+    event_referral_whatsapp_url = ""
     if event_referral_share_url:
-        event_referral_whatsapp_url = (
-            'https://api.whatsapp.com/send?text=' + quote(event_referral_share_url)
+        event_referral_whatsapp_url = "https://api.whatsapp.com/send?text=" + quote(
+            event_referral_share_url
         )
 
-    event_referral_welcome = bool(request.session.pop('event_referral_welcome_dashboard', False))
-    suppress_review_share = bool(request.session.pop('suppress_review_share_popup', False))
+    event_referral_welcome = bool(
+        request.session.pop("event_referral_welcome_dashboard", False)
+    )
+    suppress_review_share = bool(
+        request.session.pop("suppress_review_share_popup", False)
+    )
 
     # Only re-check Razorpay if payment has not been completed yet (netbanking / lost callback recovery).
     if agent:
         from apps.agents.services.account_auth import agent_has_completed_payment
+
         if not agent_has_completed_payment(agent):
             try:
                 verify_and_activate_pending_payment(agent)
                 agent.refresh_from_db()
             except Exception as e:
-                logger.warning("Dashboard payment re-verify failed for agent #%s: %s", agent.id, e)
+                logger.warning(
+                    "Dashboard payment re-verify failed for agent #%s: %s", agent.id, e
+                )
 
-        latest_completed_sub = AgentSubscription.objects.filter(
-            agent=agent,
-            payment_status='completed',
-            status='active',
-        ).order_by('-starts_at', '-created_at', '-id').first()
+        latest_completed_sub = (
+            AgentSubscription.objects.filter(
+                agent=agent,
+                payment_status="completed",
+                status="active",
+            )
+            .order_by("-starts_at", "-created_at", "-id")
+            .first()
+        )
         if latest_completed_sub:
-            synced_plan = plan_slug_from_name(latest_completed_sub.selected_plan or '')
-            if synced_plan and synced_plan != normalize_plan_slug(agent.plan_type or ''):
+            synced_plan = plan_slug_from_name(latest_completed_sub.selected_plan or "")
+            if synced_plan and synced_plan != normalize_plan_slug(
+                agent.plan_type or ""
+            ):
                 agent.plan_type = synced_plan
-                agent.save(update_fields=['plan_type', 'updated_at'])
+                agent.save(update_fields=["plan_type", "updated_at"])
             try:
                 _deactivate_superseded_subscriptions(agent, latest_completed_sub.pk)
             except Exception:
-                logger.exception('Failed to deactivate superseded subscriptions for agent #%s', agent.id)
+                logger.exception(
+                    "Failed to deactivate superseded subscriptions for agent #%s",
+                    agent.id,
+                )
 
         # ── Self-Heal: Stuck in pending_payment but subscription completed ──
-        if agent.status in ['pending_payment', 'pending_accounts_payment', 'incomplete'] or agent.registration_step < 2:
-            completed_sub = AgentSubscription.objects.filter(
-                agent=agent,
-                payment_status='completed',
-                status='active'
-            ).order_by('-created_at').first()
+        if (
+            agent.status
+            in ["pending_payment", "pending_accounts_payment", "incomplete"]
+            or agent.registration_step < 2
+        ):
+            completed_sub = (
+                AgentSubscription.objects.filter(
+                    agent=agent, payment_status="completed", status="active"
+                )
+                .order_by("-created_at")
+                .first()
+            )
 
             if completed_sub:
-                plan_name = (completed_sub.selected_plan or '').lower()
-                plan_type = plan_slug_from_name(plan_name) or 'professional'
+                plan_name = (completed_sub.selected_plan or "").lower()
+                plan_type = plan_slug_from_name(plan_name) or "professional"
 
-                if plan_type == 'free_trial':
-                    agent.status = 'active'
+                if plan_type == "free_trial":
+                    agent.status = "active"
                     if not agent.trial_ends_at:
-                        agent.trial_ends_at = completed_sub.expires_at or (timezone.now() + timezone.timedelta(days=30))
+                        agent.trial_ends_at = completed_sub.expires_at or (
+                            timezone.now() + timezone.timedelta(days=30)
+                        )
                 else:
-                    agent.status = 'pending_approval'
+                    agent.status = "pending_approval"
                 agent.plan_type = plan_type
                 agent.registration_step = 2
                 agent.save()
                 agent.refresh_from_db()
                 try:
-                    from apps.agents.services.registration_leads import sync_lead_for_agent
+                    from apps.agents.services.registration_leads import (
+                        sync_lead_for_agent,
+                    )
+
                     sync_lead_for_agent(agent)
                 except Exception:
-                    logger.exception('Quick-registration lead sync failed during dashboard self-heal for agent #%s', agent.id)
-                logger.info(f"AgentDashboard self-heal: agent #{agent.id} promoted to {agent.status}.")
+                    logger.exception(
+                        "Quick-registration lead sync failed during dashboard self-heal for agent #%s",
+                        agent.id,
+                    )
+                logger.info(
+                    f"AgentDashboard self-heal: agent #{agent.id} promoted to {agent.status}."
+                )
 
     if not is_admin and (not agent or not agent_can_access_dashboard(agent)):
-        messages.warning(request, "Please complete your payment to access the dashboard.")
-        return redirect('agents:chooseplan')
+        messages.warning(
+            request, "Please complete your payment to access the dashboard."
+        )
+        return redirect("agents:chooseplan")
 
     # Enforce role guard check for dashboard access
     is_admin = user.is_staff or user.is_superuser
     if not (agent or is_admin):
         logout(request)
         portal_error(request, "Unauthorized access. Gated area.", PORTAL_AGENT)
-        return redirect('agents:agent_login')
+        return redirect("agents:agent_login")
 
     # Load statistics
-    start_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    start_of_month = timezone.now().replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
 
     try:
         from django.db.models import Count
+
         lead_stats = AgentLead.objects.filter(agent=agent).aggregate(
-            total=Count('id'),
-            monthly=Count('id', filter=Q(created_at__gte=start_of_month)),
-            new=Count('id', filter=Q(lead_status='new')),
-            contacted=Count('id', filter=Q(lead_status='contacted')),
-            follow_up=Count('id', filter=Q(lead_status='follow_up')),
-            closed=Count('id', filter=Q(lead_status='closed')),
+            total=Count("id"),
+            monthly=Count("id", filter=Q(created_at__gte=start_of_month)),
+            new=Count("id", filter=Q(lead_status="new")),
+            contacted=Count("id", filter=Q(lead_status="contacted")),
+            follow_up=Count("id", filter=Q(lead_status="follow_up")),
+            closed=Count("id", filter=Q(lead_status="closed")),
         )
-        total_leads = lead_stats['total'] or 0
-        monthly_leads = lead_stats['monthly'] or 0
-        new_leads = lead_stats['new'] or 0
-        contacted_leads = lead_stats['contacted'] or 0
-        follow_up_leads = lead_stats['follow_up'] or 0
-        closed_leads = lead_stats['closed'] or 0
+        total_leads = lead_stats["total"] or 0
+        monthly_leads = lead_stats["monthly"] or 0
+        new_leads = lead_stats["new"] or 0
+        contacted_leads = lead_stats["contacted"] or 0
+        follow_up_leads = lead_stats["follow_up"] or 0
+        closed_leads = lead_stats["closed"] or 0
     except Exception as e:
         logger.warning(f"Dashboard lead stats unavailable for agent #{agent.id}: {e}")
-        total_leads = monthly_leads = new_leads = contacted_leads = follow_up_leads = closed_leads = 0
+        total_leads = monthly_leads = new_leads = contacted_leads = follow_up_leads = (
+            closed_leads
+        ) = 0
 
     active_leads = new_leads + contacted_leads + follow_up_leads
-    conversion_rate = round((closed_leads / total_leads * 100), 1) if total_leads > 0 else 0.0
+    conversion_rate = (
+        round((closed_leads / total_leads * 100), 1) if total_leads > 0 else 0.0
+    )
 
     try:
         pv_stats = AgentProfileView.objects.filter(agent=agent).aggregate(
-            total=Sum('view_count'),
-            monthly=Sum('view_count', filter=Q(view_date__gte=start_of_month.date()))
+            total=Sum("view_count"),
+            monthly=Sum("view_count", filter=Q(view_date__gte=start_of_month.date())),
         )
-        total_page_views = pv_stats['total'] or 0
-        monthly_visits = pv_stats['monthly'] or 0
+        total_page_views = pv_stats["total"] or 0
+        monthly_visits = pv_stats["monthly"] or 0
     except Exception as e:
-        logger.warning(f"Dashboard profile view stats unavailable for agent #{agent.id}: {e}")
+        logger.warning(
+            f"Dashboard profile view stats unavailable for agent #{agent.id}: {e}"
+        )
         total_page_views = monthly_visits = 0
 
     try:
-        recent_leads = AgentLead.objects.filter(agent=agent).order_by('-created_at')[:10]
-        all_leads = AgentLead.objects.filter(agent=agent).order_by('-created_at')
+        recent_leads = AgentLead.objects.filter(agent=agent).order_by("-created_at")[
+            :10
+        ]
+        all_leads = AgentLead.objects.filter(agent=agent).order_by("-created_at")
     except Exception as e:
         logger.warning(f"Dashboard recent leads unavailable for agent #{agent.id}: {e}")
         recent_leads = []
         all_leads = []
 
     dashboard_stats = {
-        'conversionRate': conversion_rate,
-        'monthlyTarget': 0,
-        'totalPageViews': total_page_views,
-        'contactRequests': total_leads,
-        'monthlyVisits': monthly_visits,
-        'totalLeads': total_leads,
-        'monthlyLeads': monthly_leads,
-        'newLeads': new_leads,
-        'contactedLeads': contacted_leads,
-        'followUpLeads': follow_up_leads,
-        'closedLeads': closed_leads,
-        'activeLeads': active_leads,
+        "conversionRate": conversion_rate,
+        "monthlyTarget": 0,
+        "totalPageViews": total_page_views,
+        "contactRequests": total_leads,
+        "monthlyVisits": monthly_visits,
+        "totalLeads": total_leads,
+        "monthlyLeads": monthly_leads,
+        "newLeads": new_leads,
+        "contactedLeads": contacted_leads,
+        "followUpLeads": follow_up_leads,
+        "closedLeads": closed_leads,
+        "activeLeads": active_leads,
     }
 
     # Referral Config check
-    referral_config = SiteSetting.get_value('referral_config', {'eligibility': 'free_trial_only'})
+    referral_config = SiteSetting.get_value(
+        "referral_config", {"eligibility": "free_trial_only"}
+    )
     show_referral = False
-    if referral_config.get('eligibility') == 'all' or agent.plan_type == 'free_trial':
+    if referral_config.get("eligibility") == "all" or agent.plan_type == "free_trial":
         show_referral = True
 
     # ── Unread Notifications (Laravel: fetch + mark-read-on-view) ────────────
     from apps.agents.models import AgentNotification
+
     unread_notifications = []
     if agent:
         try:
             unread_notifications = list(
-                AgentNotification.objects.filter(agent=agent, is_read=False).order_by('-created_at')
+                AgentNotification.objects.filter(agent=agent, is_read=False).order_by(
+                    "-created_at"
+                )
             )
             if unread_notifications:
-                AgentNotification.objects.filter(agent=agent, is_read=False).update(is_read=True)
+                AgentNotification.objects.filter(agent=agent, is_read=False).update(
+                    is_read=True
+                )
         except Exception as e:
-            logger.warning(f"Dashboard notifications unavailable for agent #{agent.id}: {e}")
+            logger.warning(
+                f"Dashboard notifications unavailable for agent #{agent.id}: {e}"
+            )
 
     # Profile Completion Check (shared rubric with activity-unlock rules)
     profile = agent.get_primary_profile()
@@ -443,25 +540,30 @@ def agent_dashboard(request):
 
     discount_pct = 0
     if is_on_trial:
-        admin_default = SiteSetting.get_value('trial_upgrade_discount', 20)
+        admin_default = SiteSetting.get_value("trial_upgrade_discount", 20)
         agent_specific = agent.upgrade_discount_percent or 0
-        
+
         ref_code = ReferralCode.objects.filter(agent=agent).first()
         referral_discount = 0
         if ref_code:
             tier = ref_code.currentTier()
-            if tier and 'discount' in tier:
-                referral_discount = tier['discount']
+            if tier and "discount" in tier:
+                referral_discount = tier["discount"]
 
-        discount_pct = max(int(admin_default), int(agent_specific), int(referral_discount))
+        discount_pct = max(
+            int(admin_default), int(agent_specific), int(referral_discount)
+        )
 
-    pricing_config = SiteSetting.get_value('pricing_config', {
-        'starter': {'name': PLAN_LABELS['starter'], 'full_price': 2359},
-        'professional': {'name': PLAN_LABELS['professional'], 'full_price': 8258},
-    })
+    pricing_config = SiteSetting.get_value(
+        "pricing_config",
+        {
+            "starter": {"name": PLAN_LABELS["starter"], "full_price": 2359},
+            "professional": {"name": PLAN_LABELS["professional"], "full_price": 8258},
+        },
+    )
 
-    starter_full = float(pricing_config.get('starter', {}).get('full_price', 2359))
-    prof_full = float(pricing_config.get('professional', {}).get('full_price', 8258))
+    starter_full = float(pricing_config.get("starter", {}).get("full_price", 2359))
+    prof_full = float(pricing_config.get("professional", {}).get("full_price", 8258))
 
     discount_factor = (100 - discount_pct) / 100
     starter_final = round(starter_full * discount_factor)
@@ -469,24 +571,29 @@ def agent_dashboard(request):
     starter_disc = starter_base + round(starter_base * 0.18, 0)
 
     prof_final = round(prof_full * discount_factor)
-    if agent.referral_reward_type == 'pro_plan_1rs':
+    if agent.referral_reward_type == "pro_plan_1rs":
         prof_final = 1
         discount_pct = 99.99
 
     prof_base = round(prof_final / 1.18, 0)
-    if agent.referral_reward_type == 'pro_plan_1rs':
+    if agent.referral_reward_type == "pro_plan_1rs":
         prof_disc = 1.00
     else:
         prof_disc = prof_base + round(prof_base * 0.18, 0)
 
     from django.conf import settings
+
     plan_name = _display_plan_name(agent, pricing_config)
 
     dashboard_plan_type = agent.plan_type
     if event_referral_participant:
-        from apps.event_referral.services.participant_service import event_referral_effective_plan_type
+        from apps.event_referral.services.participant_service import (
+            event_referral_effective_plan_type,
+        )
 
-        override_plan = event_referral_effective_plan_type(agent, event_referral_participant)
+        override_plan = event_referral_effective_plan_type(
+            agent, event_referral_participant
+        )
         if override_plan:
             dashboard_plan_type = override_plan
 
@@ -495,29 +602,37 @@ def agent_dashboard(request):
 
     try:
         favorite_ids = set(
-            FavoriteAgent.objects.filter(user=request.user).values_list('agent_id', flat=True)
+            FavoriteAgent.objects.filter(user=request.user).values_list(
+                "agent_id", flat=True
+            )
         )
     except Exception:
         favorite_ids = set()
 
     try:
         popup_notifications = [
-            n for n in unread_notifications
-            if (n.title or '').strip() not in ('Upgrade Unlocked',)
+            n
+            for n in unread_notifications
+            if (n.title or "").strip() not in ("Upgrade Unlocked",)
         ]
         unread_notifications_json = json_dumps(
-            [{'title': n.title, 'body': n.body} for n in popup_notifications],
+            [{"title": n.title, "body": n.body} for n in popup_notifications],
             ensure_ascii=False,
-        ).replace('</', r'<\/')
+        ).replace("</", r"<\/")
     except Exception:
-        unread_notifications_json = '[]'
+        unread_notifications_json = "[]"
     try:
-        feature_unlock_hints = build_unlock_hints(agent, normalize_plan_slug(agent.plan_type))
+        feature_unlock_hints = build_unlock_hints(
+            agent, normalize_plan_slug(agent.plan_type)
+        )
         from apps.agents.services.review_growth import build_review_growth_hints
+
         feature_unlock_hints.update(build_review_growth_hints(agent))
-        feature_unlock_hints_json = json_dumps(feature_unlock_hints).replace('</', r'<\/')
+        feature_unlock_hints_json = json_dumps(feature_unlock_hints).replace(
+            "</", r"<\/"
+        )
     except Exception:
-        feature_unlock_hints_json = '[]'
+        feature_unlock_hints_json = "[]"
 
     from apps.agents.services.qr_branded import build_qr_target_url
     from apps.agents.services.review_growth import (
@@ -536,76 +651,137 @@ def agent_dashboard(request):
 
     growth_cfg = get_review_growth_config()
     growth_status = get_review_growth_status(agent)
-    professional_plan = _resolve_agent_plan('professional', agent=agent)
-    review_unlock_summary = build_review_unlock_summary(agent, agent_plan, professional_plan)
+    professional_plan = _resolve_agent_plan("professional", agent=agent)
+    review_unlock_summary = build_review_unlock_summary(
+        agent, agent_plan, professional_plan
+    )
     from apps.agents.services.review_growth import get_review_milestone_features
-    review_milestone_features = get_review_milestone_features(agent_plan, professional_plan)
+
+    review_milestone_features = get_review_milestone_features(
+        agent_plan, professional_plan
+    )
     from apps.agents.views.registration import _PROFESSIONAL_PLAN_UI_FEATURES
-    prof_cfg = pricing_config.get('professional', {})
-    prof_name = PLAN_LABELS['professional']
-    prof_desc = prof_cfg.get('description', 'Maximum visibility and premium tools for top agents.')
-    slug = (profile.slug if profile and profile.slug else '') or getattr(agent, 'agent_slug', '') or str(agent.id)
-    state_code = agent.state_code() if callable(getattr(agent, 'state_code', None)) else getattr(agent, 'state_code', 'gj')
-    profile_url = request.build_absolute_uri(
-        reverse('agents:agent_public_profile_state_direct', kwargs={'state_code': state_code, 'slug': slug})
-    ) if slug else request.build_absolute_uri('/')
+
+    prof_cfg = pricing_config.get("professional", {})
+    prof_name = PLAN_LABELS["professional"]
+    prof_desc = prof_cfg.get(
+        "description", "Maximum visibility and premium tools for top agents."
+    )
+    slug = (
+        (profile.slug if profile and profile.slug else "")
+        or getattr(agent, "agent_slug", "")
+        or str(agent.id)
+    )
+    state_code = (
+        agent.state_code()
+        if callable(getattr(agent, "state_code", None))
+        else getattr(agent, "state_code", "gj")
+    )
+    profile_url = (
+        request.build_absolute_uri(
+            reverse(
+                "agents:agent_public_profile_state_direct",
+                kwargs={"state_code": state_code, "slug": slug},
+            )
+        )
+        if slug
+        else request.build_absolute_uri("/")
+    )
     share_text = (
         f"I'm now on PadosiAgent — India's trusted insurance agent network. "
         f"View my profile and leave a review: {profile_url}"
     )
     # ── Digital Visiting Card feature flag & studio config ──
-    from apps.admin_panel.services.digital_card_studio import get_digital_card_studio_config
-    card_flag_val = SiteSetting.get_value('agent_digital_card_enabled', None)
+    from apps.admin_panel.services.digital_card_studio import (
+        get_digital_card_studio_config,
+    )
+
+    card_flag_val = SiteSetting.get_value("agent_digital_card_enabled", None)
     if card_flag_val is not None:
         if isinstance(card_flag_val, str):
-            agent_digital_card_enabled = card_flag_val.strip().lower() in ('1', 'true', 'yes', 'on')
+            agent_digital_card_enabled = card_flag_val.strip().lower() in (
+                "1",
+                "true",
+                "yes",
+                "on",
+            )
         else:
             agent_digital_card_enabled = bool(card_flag_val)
     else:
         agent_digital_card_enabled = True
 
     studio_config = get_digital_card_studio_config(use_cache=False)
-    studio_config['enabled'] = agent_digital_card_enabled
+    studio_config["enabled"] = agent_digital_card_enabled
 
     card_cfg = profile.get_card_config() if profile else {}
-    card_agency_name = (card_cfg.get('agency_name') or getattr(profile, 'agency_name', '') or '').strip()
-    card_tagline = (card_cfg.get('tagline') or getattr(profile, 'card_tagline', '') or studio_config.get('default_card_tagline', '') or '').strip()
-    card_banner_css = getattr(profile, 'card_banner_css', 'linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)') if profile else 'linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)'
+    card_agency_name = (
+        card_cfg.get("agency_name") or getattr(profile, "agency_name", "") or ""
+    ).strip()
+    card_tagline = (
+        card_cfg.get("tagline")
+        or getattr(profile, "card_tagline", "")
+        or studio_config.get("default_card_tagline", "")
+        or ""
+    ).strip()
+    card_banner_css = (
+        getattr(
+            profile,
+            "card_banner_css",
+            "linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)",
+        )
+        if profile
+        else "linear-gradient(135deg, #0B1F3A 0%, #1E3A8A 50%, #0D9488 100%)"
+    )
 
     qr_items = []
     if qr_access_for_plan(agent_plan) and slug:
         for qr_type in QR_TYPES:
-            if qr_type == 'card' and not agent_digital_card_enabled:
+            if qr_type == "card" and not agent_digital_card_enabled:
                 continue
             target = build_qr_target_url(request, agent, qr_type)
-            qr_items.append({
-                'type': qr_type,
-                'label': QR_TYPE_LABELS[qr_type],
-                'preview_url': reverse('agents:agent_qr_image', kwargs={'qr_type': qr_type}),
-                'download_url': reverse('agents:agent_qr_download', kwargs={'qr_type': qr_type}),
-                'public_png_url': reverse('agents:agent_public_qr_image', kwargs={'slug': slug, 'qr_type': qr_type}),
-                'target_url': target,
-                'whatsapp_url': 'https://api.whatsapp.com/send?text=' + quote(
-                    f"I'm on PadosiAgent. Scan my {QR_TYPE_LABELS[qr_type]}: {target}"
-                ),
-                'facebook_url': 'https://www.facebook.com/sharer/sharer.php?u=' + quote(target, safe=''),
-            })
+            qr_items.append(
+                {
+                    "type": qr_type,
+                    "label": QR_TYPE_LABELS[qr_type],
+                    "preview_url": reverse(
+                        "agents:agent_qr_image", kwargs={"qr_type": qr_type}
+                    ),
+                    "download_url": reverse(
+                        "agents:agent_qr_download", kwargs={"qr_type": qr_type}
+                    ),
+                    "public_png_url": reverse(
+                        "agents:agent_public_qr_image",
+                        kwargs={"slug": slug, "qr_type": qr_type},
+                    ),
+                    "target_url": target,
+                    "whatsapp_url": "https://api.whatsapp.com/send?text="
+                    + quote(
+                        f"I'm on PadosiAgent. Scan my {QR_TYPE_LABELS[qr_type]}: {target}"
+                    ),
+                    "facebook_url": "https://www.facebook.com/sharer/sharer.php?u="
+                    + quote(target, safe=""),
+                }
+            )
 
     # ── Coming Soon features & legacy plan content ──
-    _agent_plan_slug = normalize_plan_slug(agent.plan_type or '')
-    if _agent_plan_slug in ('starter', 'basic'):
-        _plan_filter = ['all', 'starter']
-        coming_soon_html = SiteSetting.get_value('coming_soon_starter_html', '') or ''
-    elif _agent_plan_slug in ('professional', 'exclusive', 'pro'):
-        _plan_filter = ['all', 'professional']
-        coming_soon_html = SiteSetting.get_value('coming_soon_professional_html', '') or ''
+    _agent_plan_slug = normalize_plan_slug(agent.plan_type or "")
+    if _agent_plan_slug in ("starter", "basic"):
+        _plan_filter = ["all", "starter"]
+        coming_soon_html = SiteSetting.get_value("coming_soon_starter_html", "") or ""
+    elif _agent_plan_slug in ("professional", "exclusive", "pro"):
+        _plan_filter = ["all", "professional"]
+        coming_soon_html = (
+            SiteSetting.get_value("coming_soon_professional_html", "") or ""
+        )
     else:
-        _plan_filter = ['all']
-        coming_soon_html = ''
+        _plan_filter = ["all"]
+        coming_soon_html = ""
 
     try:
         upcoming_features = list(
-            UpcomingFeature.objects.filter(is_active=True, visible_to__in=_plan_filter).order_by('sort_order', 'id')
+            UpcomingFeature.objects.filter(
+                is_active=True, visible_to__in=_plan_filter
+            ).order_by("sort_order", "id")
         )
     except Exception:
         upcoming_features = []
@@ -620,32 +796,47 @@ def agent_dashboard(request):
     champ_completion = completion
     try:
         from apps.referral_championship.models import ChampionshipCampaign
-        from apps.referral_championship.services.attribution_service import get_or_create_participant
+        from apps.referral_championship.services.attribution_service import (
+            get_or_create_participant,
+        )
+
         champ_campaign = ChampionshipCampaign.get_current()
         if champ_campaign:
             champ_participant = get_or_create_participant(agent, champ_campaign)
-            champ_unlock_cfg = champ_campaign.unlock_config or {'min_profile_percent': 80, 'min_reviews': 10}
-            champ_min_profile = int(champ_unlock_cfg.get('min_profile_percent', 80))
-            champ_min_reviews = int(champ_unlock_cfg.get('min_reviews', 10))
+            champ_unlock_cfg = champ_campaign.unlock_config or {
+                "min_profile_percent": 80,
+                "min_reviews": 10,
+            }
+            champ_min_profile = int(champ_unlock_cfg.get("min_profile_percent", 80))
+            champ_min_reviews = int(champ_unlock_cfg.get("min_reviews", 10))
             from apps.event_referral.services.participant_service import (
                 event_referral_bypasses_championship_unlock,
             )
+
             if event_referral_bypasses_championship_unlock(agent):
                 champ_is_unlocked = True
             else:
                 champ_is_unlocked = (
-                    champ_completion >= champ_min_profile and champ_reviews >= champ_min_reviews
+                    champ_completion >= champ_min_profile
+                    and champ_reviews >= champ_min_reviews
                 )
     except Exception as e:
         logger.warning("Referral championship context error: %s", e)
 
-    auto_show_studio = bool(request.session.pop('auto_show_invite_studio', False) or request.GET.get('show_studio') == '1')
+    auto_show_studio = bool(
+        request.session.pop("auto_show_invite_studio", False)
+        or request.GET.get("show_studio") == "1"
+    )
 
     from apps.agents.services.invite_studio import get_studio_context
-    studio_context = get_studio_context(request, agent, profile=profile, champ_participant=champ_participant)
+
+    studio_context = get_studio_context(
+        request, agent, profile=profile, champ_participant=champ_participant
+    )
 
     from apps.agents.services.plan_upgrade_handoff import dashboard_upgrade_slug
-    app_upgrade_plan = dashboard_upgrade_slug(agent, request.GET.get('upgrade'))
+
+    app_upgrade_plan = dashboard_upgrade_slug(agent, request.GET.get("upgrade"))
 
     # ── Google Review System Context ──
     from apps.agents.services.google_review import (
@@ -653,112 +844,129 @@ def agent_dashboard(request):
         agent_can_use_google_reviews,
         get_agent_google_review_config,
     )
+
     google_review_sys_cfg = get_google_review_system_config()
-    google_review_system_enabled = bool(google_review_sys_cfg.get('enabled', False))
+    google_review_system_enabled = bool(google_review_sys_cfg.get("enabled", False))
     google_review_eligible = agent_can_use_google_reviews(agent)
     agent_gr_cfg = get_agent_google_review_config(agent)
-    agent_gr_reviews = agent_gr_cfg.cached_reviews if (agent_gr_cfg and isinstance(agent_gr_cfg.cached_reviews, list)) else []
+    agent_gr_reviews = (
+        agent_gr_cfg.cached_reviews
+        if (agent_gr_cfg and isinstance(agent_gr_cfg.cached_reviews, list))
+        else []
+    )
 
     context = {
         **studio_context,
-        'google_review_system_enabled': google_review_system_enabled,
-        'google_review_eligible': google_review_eligible,
-        'agent_gr_cfg': agent_gr_cfg,
-        'agent_gr_reviews': agent_gr_reviews,
-        'google_review_sys_cfg': google_review_sys_cfg,
-        'auto_show_invite_studio': auto_show_studio,
-        'champ_campaign': champ_campaign,
-        'champ_participant': champ_participant,
-        'champ_min_profile': champ_min_profile,
-        'champ_min_reviews': champ_min_reviews,
-        'champ_is_unlocked': champ_is_unlocked,
-        'champ_completion': champ_completion,
-        'champ_reviews': champ_reviews,
-        'agent_plan': agent_plan,
-        'agent': agent,
-        'profile': profile,
-        'favorite_ids': favorite_ids,
-        'dashboardStats': dashboard_stats,
-        'recentLeads': recent_leads,
-        'allLeads': all_leads,
-        'showReferral': show_referral,
-        'unreadNotifications': unread_notifications,
-        'unread_notifications_json': unread_notifications_json,
-        'completion': completion,
-        'isOnTrial': is_on_trial,
-        'daysLeft': days_left,
-        'discountPct': discount_pct,
-        'starterFull': starter_full,
-        'starterDisc': starter_disc,
-        'profFull': prof_full,
-        'profDisc': prof_disc,
-        'planName': plan_name,
-        'feature_unlock_hints_json': feature_unlock_hints_json,
-        'qr_service_enabled': qr_access_for_plan(agent_plan),
-        'qr_allow_download': qr_access_for_plan(agent_plan, download=True),
-        'qr_items': qr_items,
-        'agent_digital_card_enabled': agent_digital_card_enabled,
-        'studio_config': studio_config,
-        'card_config': card_cfg,
-        'card_agency_name': card_agency_name,
-        'card_tagline': card_tagline,
-        'card_banner_css': card_banner_css,
-        'card_public_url': reverse('agents:agent_public_card', kwargs={'slug': slug}) if slug else '',
-        'card_qr_url': reverse('agents:agent_card_pure_qr', kwargs={'slug': slug}) if slug else '',
-        'card_qr_download_url': (reverse('agents:agent_card_pure_qr', kwargs={'slug': slug}) + '?download=1') if slug else '',
-        'show_review_share_popup': (
+        "google_review_system_enabled": google_review_system_enabled,
+        "google_review_eligible": google_review_eligible,
+        "agent_gr_cfg": agent_gr_cfg,
+        "agent_gr_reviews": agent_gr_reviews,
+        "google_review_sys_cfg": google_review_sys_cfg,
+        "auto_show_invite_studio": auto_show_studio,
+        "champ_campaign": champ_campaign,
+        "champ_participant": champ_participant,
+        "champ_min_profile": champ_min_profile,
+        "champ_min_reviews": champ_min_reviews,
+        "champ_is_unlocked": champ_is_unlocked,
+        "champ_completion": champ_completion,
+        "champ_reviews": champ_reviews,
+        "agent_plan": agent_plan,
+        "agent": agent,
+        "profile": profile,
+        "favorite_ids": favorite_ids,
+        "dashboardStats": dashboard_stats,
+        "recentLeads": recent_leads,
+        "allLeads": all_leads,
+        "showReferral": show_referral,
+        "unreadNotifications": unread_notifications,
+        "unread_notifications_json": unread_notifications_json,
+        "completion": completion,
+        "isOnTrial": is_on_trial,
+        "daysLeft": days_left,
+        "discountPct": discount_pct,
+        "starterFull": starter_full,
+        "starterDisc": starter_disc,
+        "profFull": prof_full,
+        "profDisc": prof_disc,
+        "planName": plan_name,
+        "feature_unlock_hints_json": feature_unlock_hints_json,
+        "qr_service_enabled": qr_access_for_plan(agent_plan),
+        "qr_allow_download": qr_access_for_plan(agent_plan, download=True),
+        "qr_items": qr_items,
+        "agent_digital_card_enabled": agent_digital_card_enabled,
+        "studio_config": studio_config,
+        "card_config": card_cfg,
+        "card_agency_name": card_agency_name,
+        "card_tagline": card_tagline,
+        "card_banner_css": card_banner_css,
+        "card_public_url": reverse("agents:agent_public_card", kwargs={"slug": slug})
+        if slug
+        else "",
+        "card_qr_url": reverse("agents:agent_card_pure_qr", kwargs={"slug": slug})
+        if slug
+        else "",
+        "card_qr_download_url": (
+            reverse("agents:agent_card_pure_qr", kwargs={"slug": slug}) + "?download=1"
+        )
+        if slug
+        else "",
+        "show_review_share_popup": (
             should_show_popup(agent)
             and not suppress_review_share
             and not (
                 event_referral_participant
-                and event_referral_participant.status == 'active'
+                and event_referral_participant.status == "active"
             )
         ),
-        'show_starter_upgrade_cta': should_show_upgrade_cta(agent),
-        'show_starter_upgrade_progress': should_show_upgrade_progress(agent),
-        'review_growth_status': growth_status,
-        'show_visibility_section': (
-            growth_cfg.get('enabled', True)
-            and growth_cfg.get('visibility_section_enabled', True)
+        "show_starter_upgrade_cta": should_show_upgrade_cta(agent),
+        "show_starter_upgrade_progress": should_show_upgrade_progress(agent),
+        "review_growth_status": growth_status,
+        "show_visibility_section": (
+            growth_cfg.get("enabled", True)
+            and growth_cfg.get("visibility_section_enabled", True)
         ),
-        'review_growth': growth_cfg,
-        'review_upgrade_price': get_review_upgrade_pricing(agent),
-        'review_count_display': agent_review_count(agent),
-        'share_profile_url': profile_url,
-        'share_text': share_text,
-        'share_text_encoded': quote(share_text),
-        'share_url_encoded': quote(profile_url, safe=''),
-        'fcm_api_key': getattr(settings, 'FCM_API_KEY', ''),
-        'fcm_auth_domain': getattr(settings, 'FCM_AUTH_DOMAIN', ''),
-        'fcm_project_id': getattr(settings, 'FCM_PROJECT_ID', ''),
-        'fcm_storage_bucket': getattr(settings, 'FCM_STORAGE_BUCKET', ''),
-        'fcm_messaging_sender_id': getattr(settings, 'FCM_MESSAGING_SENDER_ID', ''),
-        'fcm_app_id': getattr(settings, 'FCM_APP_ID', ''),
-        'fcm_vapid_key': getattr(settings, 'FCM_VAPID_KEY', ''),
-        'hide_footer': True,
-        'review_unlock_summary': review_unlock_summary,
-        'review_milestone_features': review_milestone_features,
-        'review_unlock_summary_json': json_dumps(review_unlock_summary, ensure_ascii=False) if review_unlock_summary else 'null',
-        'review_growth_status_json': json_dumps(growth_status, ensure_ascii=False),
-        'professional_plan_features': _PROFESSIONAL_PLAN_UI_FEATURES,
-        'prof_name': prof_name,
-        'prof_desc': prof_desc,
-        'prof_base': int(prof_base),
-        'prof_full': int(prof_full),
-        'agent_id': agent.id,
-        'coming_soon_html': coming_soon_html,
-        'upcoming_features': upcoming_features,
-        'has_upcoming_features': bool(upcoming_features),
-        'event_referral_participant': event_referral_participant,
-        'force_lock_all_features': force_lock_all_features,
-        'event_referral_share_url': event_referral_share_url,
-        'event_referral_whatsapp_url': event_referral_whatsapp_url,
-        'event_referral_welcome': event_referral_welcome,
-        'event_referral_expired_locked': event_referral_expired_locked,
-        'paldi_event_name': 'Paldi',
-        'app_upgrade_plan': app_upgrade_plan,
-        'active_sub': latest_completed_sub,
-        'sub_days_left': (
+        "review_growth": growth_cfg,
+        "review_upgrade_price": get_review_upgrade_pricing(agent),
+        "review_count_display": agent_review_count(agent),
+        "share_profile_url": profile_url,
+        "share_text": share_text,
+        "share_text_encoded": quote(share_text),
+        "share_url_encoded": quote(profile_url, safe=""),
+        "fcm_api_key": getattr(settings, "FCM_API_KEY", ""),
+        "fcm_auth_domain": getattr(settings, "FCM_AUTH_DOMAIN", ""),
+        "fcm_project_id": getattr(settings, "FCM_PROJECT_ID", ""),
+        "fcm_storage_bucket": getattr(settings, "FCM_STORAGE_BUCKET", ""),
+        "fcm_messaging_sender_id": getattr(settings, "FCM_MESSAGING_SENDER_ID", ""),
+        "fcm_app_id": getattr(settings, "FCM_APP_ID", ""),
+        "fcm_vapid_key": getattr(settings, "FCM_VAPID_KEY", ""),
+        "hide_footer": True,
+        "review_unlock_summary": review_unlock_summary,
+        "review_milestone_features": review_milestone_features,
+        "review_unlock_summary_json": json_dumps(
+            review_unlock_summary, ensure_ascii=False
+        )
+        if review_unlock_summary
+        else "null",
+        "review_growth_status_json": json_dumps(growth_status, ensure_ascii=False),
+        "professional_plan_features": _PROFESSIONAL_PLAN_UI_FEATURES,
+        "prof_name": prof_name,
+        "prof_desc": prof_desc,
+        "prof_base": int(prof_base),
+        "prof_full": int(prof_full),
+        "agent_id": agent.id,
+        "coming_soon_html": coming_soon_html,
+        "upcoming_features": upcoming_features,
+        "has_upcoming_features": bool(upcoming_features),
+        "event_referral_participant": event_referral_participant,
+        "force_lock_all_features": force_lock_all_features,
+        "event_referral_share_url": event_referral_share_url,
+        "event_referral_whatsapp_url": event_referral_whatsapp_url,
+        "event_referral_welcome": event_referral_welcome,
+        "event_referral_expired_locked": event_referral_expired_locked,
+        "paldi_event_name": "Paldi",
+        "app_upgrade_plan": app_upgrade_plan,
+        "active_sub": latest_completed_sub,
+        "sub_days_left": (
             (latest_completed_sub.expires_at - timezone.now()).days
             if (latest_completed_sub and latest_completed_sub.expires_at)
             else None
@@ -767,6 +975,7 @@ def agent_dashboard(request):
 
     # ── Wholesale Marketplace Showcase for Agent Dashboard ──
     from apps.wholesale.adapters.auth_bridge import is_wholesale_enabled
+
     wholesale_enabled = is_wholesale_enabled()
 
     wholesale_products = []
@@ -777,36 +986,44 @@ def agent_dashboard(request):
             from apps.wholesale.models.product import WholesaleProduct
             from apps.wholesale.models.category import ProductCategory
             from apps.wholesale.models.inquiry import BuyerInquiry
+
             wholesale_products = list(
                 WholesaleProduct.objects.filter(
-                    approval_status='PUBLISHED',
-                    wholesaler__verification_status='APPROVED'
-                ).select_related('wholesaler', 'category')
-                 .prefetch_related('images', 'price_tiers', 'variants')
-                 .order_by('-is_featured', '-id')[:30]
+                    approval_status="PUBLISHED",
+                    wholesaler__verification_status="APPROVED",
+                )
+                .select_related("wholesaler", "category")
+                .prefetch_related("images", "price_tiers", "variants")
+                .order_by("-is_featured", "-id")[:30]
             )
             wholesale_categories = list(
                 ProductCategory.objects.filter(is_active=True, parent__isnull=True)[:8]
             )
-            agent_inquiries = list(
-                BuyerInquiry.objects.filter(buyer_user=request.user)
-                .select_related('product', 'wholesaler')
-                .order_by('-created_at')[:15]
-            ) if request.user.is_authenticated else []
+            agent_inquiries = (
+                list(
+                    BuyerInquiry.objects.filter(buyer_user=request.user)
+                    .select_related("product", "wholesaler")
+                    .order_by("-created_at")[:15]
+                )
+                if request.user.is_authenticated
+                else []
+            )
         except Exception as ws_err:
-            logger.warning('Failed to load wholesale products for agent dashboard: %s', ws_err)
+            logger.warning(
+                "Failed to load wholesale products for agent dashboard: %s", ws_err
+            )
             agent_inquiries = []
 
-    context['wholesale_enabled'] = wholesale_enabled
-    context['wholesale_products'] = wholesale_products
-    context['wholesale_categories'] = wholesale_categories
-    context['agent_inquiries'] = agent_inquiries
+    context["wholesale_enabled"] = wholesale_enabled
+    context["wholesale_products"] = wholesale_products
+    context["wholesale_categories"] = wholesale_categories
+    context["agent_inquiries"] = agent_inquiries
 
-    return render(request, 'agents/dashboard.html', context)
+    return render(request, "agents/dashboard.html", context)
 
 
 @require_POST
-@login_required(login_url='agents:agent_login')
+@login_required(login_url="agents:agent_login")
 @csrf_protect
 def update_lead_status(request):
     """
@@ -815,26 +1032,39 @@ def update_lead_status(request):
     user = request.user
     agent = Agent.objects.filter(user=user).first()
     if not agent:
-        return JsonResponse({'status': 'error', 'message': 'Agent not found'}, status=403)
-        
-    lead_id = request.POST.get('lead_id')
-    new_status = request.POST.get('status')
-    
-    valid_statuses = ['new', 'contacted', 'follow_up', 'closed']
+        return JsonResponse(
+            {"status": "error", "message": "Agent not found"}, status=403
+        )
+
+    lead_id = request.POST.get("lead_id")
+    new_status = request.POST.get("status")
+
+    valid_statuses = ["new", "contacted", "follow_up", "closed"]
     if new_status not in valid_statuses:
-        return JsonResponse({'status': 'error', 'message': 'Invalid status provided'}, status=400)
-        
+        return JsonResponse(
+            {"status": "error", "message": "Invalid status provided"}, status=400
+        )
+
     lead = AgentLead.objects.filter(id=lead_id, agent=agent).first()
     if not lead:
-        return JsonResponse({'status': 'error', 'message': 'Lead not found or access denied'}, status=404)
-        
+        return JsonResponse(
+            {"status": "error", "message": "Lead not found or access denied"},
+            status=404,
+        )
+
     lead.lead_status = new_status
     lead.save()
-    
-    return JsonResponse({'status': 'success', 'message': 'Lead status updated successfully', 'new_status': new_status})
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "message": "Lead status updated successfully",
+            "new_status": new_status,
+        }
+    )
 
 
-@login_required(login_url='agents:agent_login')
+@login_required(login_url="agents:agent_login")
 def referral(request):
     r"""
     Handle rendering the agent referral milestone page.
@@ -845,15 +1075,19 @@ def referral(request):
 
     if not agent:
         messages.error(request, "Please complete your registration.")
-        return redirect('agents:agent_registration')
+        return redirect("agents:agent_registration")
 
     # Eligibility check
-    referral_config = SiteSetting.get_value('referral_config', {'eligibility': 'free_trial_only'})
-    show_referral = (referral_config.get('eligibility') == 'all' or agent.plan_type == 'free_trial')
+    referral_config = SiteSetting.get_value(
+        "referral_config", {"eligibility": "free_trial_only"}
+    )
+    show_referral = (
+        referral_config.get("eligibility") == "all" or agent.plan_type == "free_trial"
+    )
 
     if not show_referral:
         messages.error(request, "Referral program is not available for your plan.")
-        return redirect('agents:agent_dashboard')
+        return redirect("agents:agent_dashboard")
 
     # Load or generate referral code
     ref_code = ReferralCode.objects.filter(agent=agent).first()
@@ -862,8 +1096,7 @@ def referral(request):
 
     # Sync total_referrals count with actual converted usages
     actual_conversions = ReferralUsage.objects.filter(
-        referral_code=ref_code,
-        status='converted'
+        referral_code=ref_code, status="converted"
     ).count()
 
     if ref_code.total_referrals != actual_conversions:
@@ -871,11 +1104,16 @@ def referral(request):
         ref_code.save()
 
     # Calculate pending conversions: agents registered via ref_code.code, but not converted yet
-    registered_ids = list(Agent.objects.filter(referred_by_code=ref_code.code).values_list('id', flat=True))
-    converted_ids = list(ReferralUsage.objects.filter(
-        referral_code=ref_code,
-        status='converted'
-    ).values_list('referred_agent_id', flat=True))
+    registered_ids = list(
+        Agent.objects.filter(referred_by_code=ref_code.code).values_list(
+            "id", flat=True
+        )
+    )
+    converted_ids = list(
+        ReferralUsage.objects.filter(
+            referral_code=ref_code, status="converted"
+        ).values_list("referred_agent_id", flat=True)
+    )
 
     pending_count = len(set(registered_ids) - set(converted_ids))
 
@@ -887,127 +1125,144 @@ def referral(request):
     pending = int(pending_count)
 
     # Current tier label
-    tier_label = 'None Yet 🏅'
+    tier_label = "None Yet 🏅"
     if current_tier:
-        r = current_tier.get('reward', '')
-        if r == 'pro_plan_1rs':
-            tier_label = 'Tier 3: Pro @ ₹1 🥇'
-        elif r == 'discount_50':
-            tier_label = 'Tier 2: 50% OFF 🥈'
-        elif r == 'discount_25':
-            tier_label = 'Tier 1: 25% OFF 🥉'
+        r = current_tier.get("reward", "")
+        if r == "pro_plan_1rs":
+            tier_label = "Tier 3: Pro @ ₹1 🥇"
+        elif r == "discount_50":
+            tier_label = "Tier 2: 50% OFF 🥈"
+        elif r == "discount_25":
+            tier_label = "Tier 1: 25% OFF 🥉"
         else:
-            tier_label = str(r).replace('_', ' ').upper()
+            tier_label = str(r).replace("_", " ").upper()
 
     # Progress bar calculation
-    next_target = next_tier.get('min') if next_tier else None
+    next_target = next_tier.get("min") if next_tier else None
     if next_target:
         prev = 0 if next_target == 5 else (5 if next_target == 10 else 10)
-        raw_pct = round(((total - prev) / (next_target - prev)) * 100) if (next_target - prev) > 0 else 0
+        raw_pct = (
+            round(((total - prev) / (next_target - prev)) * 100)
+            if (next_target - prev) > 0
+            else 0
+        )
         pct = min(100, max(0, raw_pct))
         progress_label = f"{total} / {next_target} conversions"
         next_goal_text = f"{next_target - total} more to unlock next tier!"
     else:
         pct = 100
         progress_label = f"{total} / 15 ✓"
-        next_goal_text = '🎉 All tiers unlocked! Claim your reward when upgrading.'
+        next_goal_text = "🎉 All tiers unlocked! Claim your reward when upgrading."
 
     # Build absolute referral join URL
     domain = request.get_host()
-    scheme = 'https' if request.is_secure() else 'http'
+    scheme = "https" if request.is_secure() else "http"
     referral_url = f"{scheme}://{domain}/agent-registration/join/{ref_code.code}/"
 
     # WhatsApp & Email messages construction (with urlencode)
     import urllib.parse
-    rocket_enc = '🚀'
-    point_enc = '👉'
-    rupee_enc = '₹'
+
+    rocket_enc = "🚀"
+    point_enc = "👉"
+    rupee_enc = "₹"
 
     wa_msg_raw = f"{rocket_enc} I've already started my digital growth journey with PadosiAgent and the response is amazing.\n\nNow it's your turn.\n\nAs my contact, you get SPECIAL TRIAL ACCESS just at {rupee_enc}99 for 30 days.\n(No Promo Code required).\n\n{point_enc} Click below & register:\n{referral_url}\n\nOnce you're in, you'll understand why smart agents are shifting online."
     wa_msg = urllib.parse.quote(wa_msg_raw)
-    email_sub = urllib.parse.quote('Special Invitation: Join PadosiAgent Digital Growth')
+    email_sub = urllib.parse.quote(
+        "Special Invitation: Join PadosiAgent Digital Growth"
+    )
     email_body = wa_msg
 
     # Load referred usages
-    referred_agents = ReferralUsage.objects.filter(referral_code=ref_code).order_by('-signed_up_at')
+    referred_agents = ReferralUsage.objects.filter(referral_code=ref_code).order_by(
+        "-signed_up_at"
+    )
 
     # Load registered agents from agents table (referred_by_code)
-    all_registered = Agent.objects.filter(referred_by_code=ref_code.code).order_by('-created_at')
+    all_registered = Agent.objects.filter(referred_by_code=ref_code.code).order_by(
+        "-created_at"
+    )
 
     # Pre-process referral details for template rendering
     for referred in all_registered:
         # Find corresponding usage
         usage = referred_agents.filter(referred_agent_id=referred.id).first()
-        referred.is_converted = usage and usage.status == 'converted'
-        referred.converted_date = f" · {usage.converted_at.strftime('%d %b')}" if (referred.is_converted and usage.converted_at) else ''
-        referred.email_display = referred.email or (usage.referred_agent_email if usage else '—')
-        
+        referred.is_converted = usage and usage.status == "converted"
+        referred.converted_date = (
+            f" · {usage.converted_at.strftime('%d %b')}"
+            if (referred.is_converted and usage.converted_at)
+            else ""
+        )
+        referred.email_display = referred.email or (
+            usage.referred_agent_email if usage else "—"
+        )
+
         # plan label configuration
-        plan = referred.plan_type or ''
-        if plan == 'professional':
-            referred.plan_label_text = 'Professional'
-            referred.plan_label_color = '#7c3aed'
-            referred.plan_label_bg = '#ede9fe'
-        elif plan == 'basic':
-            referred.plan_label_text = 'Starter'
-            referred.plan_label_color = '#2563eb'
-            referred.plan_label_bg = '#dbeafe'
-        elif plan == 'free_trial':
-            referred.plan_label_text = 'Free Trial'
-            referred.plan_label_color = '#f59e0b'
-            referred.plan_label_bg = '#fef3c7'
+        plan = referred.plan_type or ""
+        if plan == "professional":
+            referred.plan_label_text = "Professional"
+            referred.plan_label_color = "#7c3aed"
+            referred.plan_label_bg = "#ede9fe"
+        elif plan == "basic":
+            referred.plan_label_text = "Starter"
+            referred.plan_label_color = "#2563eb"
+            referred.plan_label_bg = "#dbeafe"
+        elif plan == "free_trial":
+            referred.plan_label_text = "Free Trial"
+            referred.plan_label_color = "#f59e0b"
+            referred.plan_label_bg = "#fef3c7"
         else:
-            referred.plan_label_text = plan.title() if plan else '—'
-            referred.plan_label_color = '#64748b'
-            referred.plan_label_bg = '#f1f5f9'
-            
+            referred.plan_label_text = plan.title() if plan else "—"
+            referred.plan_label_color = "#64748b"
+            referred.plan_label_bg = "#f1f5f9"
+
         # status map configuration
-        status = referred.status or ''
-        if status == 'active':
-            referred.status_text = 'Active'
-            referred.status_color = '#15803d'
-            referred.status_bg = '#dcfce7'
-        elif status == 'pending_approval':
-            referred.status_text = 'Pending Approval'
-            referred.status_color = '#b45309'
-            referred.status_bg = '#fef3c7'
-        elif status == 'pending_payment':
-            referred.status_text = 'Pending Payment'
-            referred.status_color = '#1d4ed8'
-            referred.status_bg = '#dbeafe'
-        elif status == 'inactive':
-            referred.status_text = 'Inactive'
-            referred.status_color = '#94a3b8'
-            referred.status_bg = '#f1f5f9'
+        status = referred.status or ""
+        if status == "active":
+            referred.status_text = "Active"
+            referred.status_color = "#15803d"
+            referred.status_bg = "#dcfce7"
+        elif status == "pending_approval":
+            referred.status_text = "Pending Approval"
+            referred.status_color = "#b45309"
+            referred.status_bg = "#fef3c7"
+        elif status == "pending_payment":
+            referred.status_text = "Pending Payment"
+            referred.status_color = "#1d4ed8"
+            referred.status_bg = "#dbeafe"
+        elif status == "inactive":
+            referred.status_text = "Inactive"
+            referred.status_color = "#94a3b8"
+            referred.status_bg = "#f1f5f9"
         else:
-            referred.status_text = status.title() if status else '—'
-            referred.status_color = '#64748b'
-            referred.status_bg = '#f1f5f9'
+            referred.status_text = status.title() if status else "—"
+            referred.status_color = "#64748b"
+            referred.status_bg = "#f1f5f9"
 
     context = {
-        'agent': agent,
-        'refCode': ref_code,
-        'actualConversions': actual_conversions,
-        'pendingCount': pending_count,
-        'currentTier': current_tier,
-        'nextTier': next_tier,
-        'referralUrl': referral_url,
-        'referredAgents': referred_agents,
-        'allRegistered': all_registered,
-        'total': total,
-        'pending': pending,
-        'tierLabel': tier_label,
-        'nextTarget': next_target,
-        'pct': pct,
-        'progressLabel': progress_label,
-        'nextGoalText': next_goal_text,
-        'waMsg': wa_msg,
-        'emailSub': email_sub,
-        'emailBody': email_body,
-        'hide_footer': True,
+        "agent": agent,
+        "refCode": ref_code,
+        "actualConversions": actual_conversions,
+        "pendingCount": pending_count,
+        "currentTier": current_tier,
+        "nextTier": next_tier,
+        "referralUrl": referral_url,
+        "referredAgents": referred_agents,
+        "allRegistered": all_registered,
+        "total": total,
+        "pending": pending,
+        "tierLabel": tier_label,
+        "nextTarget": next_target,
+        "pct": pct,
+        "progressLabel": progress_label,
+        "nextGoalText": next_goal_text,
+        "waMsg": wa_msg,
+        "emailSub": email_sub,
+        "emailBody": email_body,
+        "hide_footer": True,
     }
 
-    return render(request, 'agents/referral.html', context)
+    return render(request, "agents/referral.html", context)
 
 
 def agent_public_profile(request, slug, state_code=None):
@@ -1015,71 +1270,76 @@ def agent_public_profile(request, slug, state_code=None):
     from django.conf import settings
     from apps.agents.models import Agent, AgentProfileView
     import time
-    
+
     # Try to find by slug first
     agent = Agent.objects.filter(profile__slug=slug).first()
-    
+
     # Fallback for ID if slug not found and is numeric
     if not agent and slug.isdigit():
         agent = Agent.objects.filter(id=int(slug)).first()
-        
+
     if not agent:
         raise Http404("Agent not found")
-        
+
     is_owner = False
     if request.user.is_authenticated:
         is_owner = Agent.objects.filter(user=request.user, id=agent.id).exists()
-        
+
     if not is_owner:
         try:
-            session_key = f'agent_profile_viewed_{agent.id}'
+            session_key = f"agent_profile_viewed_{agent.id}"
             last_viewed_at = request.session.get(session_key)
             cooldown_seconds = 30 * 60
             current_time = int(time.time())
-            
-            if not last_viewed_at or (current_time - int(last_viewed_at)) > cooldown_seconds:
-                from django.utils import timezone
-                today = timezone.now().date()
-                profile_view, created = AgentProfileView.objects.get_or_create(
-                    agent=agent,
-                    view_date=today,
-                    defaults={'view_count': 1}
-                )
-                if not created:
-                    from django.db.models import F
-                    profile_view.view_count = F('view_count') + 1
-                    profile_view.save()
-                    
+
+            if (
+                not last_viewed_at
+                or (current_time - int(last_viewed_at)) > cooldown_seconds
+            ):
+                AgentProfileView.record_view(agent)
                 request.session[session_key] = current_time
-                from apps.wa_agent_bot.services.notification_service import notify_agent_profile_view
+                from apps.wa_agent_bot.services.notification_service import (
+                    notify_agent_profile_view,
+                )
+
                 notify_agent_profile_view(request, agent.id)
         except Exception as e:
             if settings.DEBUG:
                 logger.warning(f"Profile tracking failed: {e}")
-                
+
     # Fetch approved reviews
-    reviews = agent.reviews.filter(is_approved=True).select_related('user').order_by('-created_at')
-    
+    reviews = (
+        agent.reviews.filter(is_approved=True)
+        .select_related("user")
+        .order_by("-created_at")
+    )
+
     # Find existing review for current user to populate form
     existing_review = None
     if request.user.is_authenticated and not is_owner:
         existing_review = agent.reviews.filter(user=request.user).first()
-        
+
     profile = agent.get_primary_profile()
     if profile is None:
         raise Http404("Agent profile not found")
-    display_name = (profile.display_name if profile else '') or agent.fullname or 'Agent'
-    agent_initial = display_name[0].upper() if display_name else 'A'
+    display_name = (
+        (profile.display_name if profile else "") or agent.fullname or "Agent"
+    )
+    agent_initial = display_name[0].upper() if display_name else "A"
 
     if profile and not profile.is_profile_visible:
-        return render(request, 'agents/profile_private_fallback.html', {
-            'agent': agent,
-            'profile': profile,
-            'agentDisplayName': display_name,
-            'agentInitial': agent_initial,
-            'hide_eligibility_popup': True,
-        })
-    
+        return render(
+            request,
+            "agents/profile_private_fallback.html",
+            {
+                "agent": agent,
+                "profile": profile,
+                "agentDisplayName": display_name,
+                "agentInitial": agent_initial,
+                "hide_eligibility_popup": True,
+            },
+        )
+
     social_links = {}
     if profile and profile.social_links:
         if isinstance(profile.social_links, dict):
@@ -1089,32 +1349,35 @@ def agent_public_profile(request, slug, state_code=None):
                 social_links = json_loads(profile.social_links)
             except ValueError:
                 pass
-                
+
     # Resolve agent_plan for public profile
     agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
 
     from apps.agents.services.og_meta import profile_og_context
 
     context = {
-        'agent': agent,
-        'profile': profile,
-        'agent_plan': agent_plan,
-        'isOwnerView': is_owner,
-        'reviews': reviews,
-        'existingReview': existing_review,
-        'reviewSlug': slug,
-        'agentDisplayName': display_name,
-        'agentInitial': agent_initial,
-        'socialLinks': social_links,
-        'performanceStats': getattr(agent, 'performanceStats', None),
-        'leadPreferences': getattr(agent, 'leadPreferences', None),
-        'review_scroll_delay_ms': 3000,
-        'hide_eligibility_popup': True,
+        "agent": agent,
+        "profile": profile,
+        "agent_plan": agent_plan,
+        "isOwnerView": is_owner,
+        "reviews": reviews,
+        "existingReview": existing_review,
+        "reviewSlug": slug,
+        "agentDisplayName": display_name,
+        "agentInitial": agent_initial,
+        "socialLinks": social_links,
+        "performanceStats": getattr(agent, "performanceStats", None),
+        "leadPreferences": getattr(agent, "leadPreferences", None),
+        "review_scroll_delay_ms": 3000,
+        "hide_eligibility_popup": True,
     }
     context.update(profile_og_context(request, agent, display_name=display_name))
     try:
         from apps.agents.services.review_growth import get_review_growth_config
-        context['review_scroll_delay_ms'] = get_review_growth_config()['review_scroll_delay_ms']
+
+        context["review_scroll_delay_ms"] = get_review_growth_config()[
+            "review_scroll_delay_ms"
+        ]
     except Exception:
         pass
 
@@ -1124,95 +1387,115 @@ def agent_public_profile(request, slug, state_code=None):
             get_agent_google_review_data,
             get_google_nudge_config,
         )
-        context['google_review_display'] = get_agent_google_review_data(agent)
-        context['google_nudge_config'] = get_google_nudge_config(agent)
-    except Exception:
-        context['google_review_display'] = None
-        context['google_nudge_config'] = None
 
-    return render(request, 'agents/profile_view.html', context)
+        context["google_review_display"] = get_agent_google_review_data(agent)
+        context["google_nudge_config"] = get_google_nudge_config(agent)
+    except Exception:
+        context["google_review_display"] = None
+        context["google_nudge_config"] = None
+
+    return render(request, "agents/profile_view.html", context)
 
 
 from django.views.decorators.http import require_POST
+
 
 @require_POST
 def store_review(request, slug, state_code=None):
     from django.http import JsonResponse
     from apps.agents.models import Agent, AgentReview
     import re
-    
+
     # Retrieve agent
     agent = Agent.objects.filter(profile__slug=slug).first()
     if not agent and slug.isdigit():
         agent = Agent.objects.filter(id=int(slug)).first()
-        
+
     if not agent:
-        return JsonResponse({'status': 'error', 'message': 'Agent not found'}, status=404)
-        
+        return JsonResponse(
+            {"status": "error", "message": "Agent not found"}, status=404
+        )
+
     # Prevent agent from reviewing themselves
     if request.user.is_authenticated:
         is_owner = Agent.objects.filter(user=request.user, id=agent.id).exists()
         if is_owner:
-            return JsonResponse({'status': 'error', 'message': 'You cannot review yourself'}, status=403)
+            return JsonResponse(
+                {"status": "error", "message": "You cannot review yourself"}, status=403
+            )
 
     from apps.admin_panel.middleware import ThreatMonitorMiddleware, is_ip_blocked
+
     client_ip = ThreatMonitorMiddleware.get_client_ip(request)
     if is_ip_blocked(client_ip):
-        return JsonResponse({'status': 'error', 'message': 'Access denied due to suspicious activity.'}, status=403)
+        return JsonResponse(
+            {"status": "error", "message": "Access denied due to suspicious activity."},
+            status=403,
+        )
 
     from django.core.cache import cache
+
     rate_key = f"review_ratelimit_{client_ip}"
     submits = cache.get(rate_key, 0)
     if submits >= 20:
-        return JsonResponse({'status': 'error', 'message': 'Too many reviews submitted from this network. Please try again later.'}, status=429)
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": "Too many reviews submitted from this network. Please try again later.",
+            },
+            status=429,
+        )
     cache.set(rate_key, submits + 1, timeout=3600)
-            
-    rating_val = request.POST.get('rating')
-    review_val = request.POST.get('review')
-    
+
+    rating_val = request.POST.get("rating")
+    review_val = request.POST.get("review")
+
     errors = {}
-    if not rating_val or rating_val == '0':
-        errors['rating'] = ['The rating field is required.']
+    if not rating_val or rating_val == "0":
+        errors["rating"] = ["The rating field is required."]
     else:
         try:
             rating_val = int(rating_val)
             if rating_val < 1 or rating_val > 5:
-                errors['rating'] = ['The rating must be between 1 and 5.']
+                errors["rating"] = ["The rating must be between 1 and 5."]
         except ValueError:
-            errors['rating'] = ['The rating must be an integer.']
-            
+            errors["rating"] = ["The rating must be an integer."]
+
     if not review_val:
-        errors['review'] = ['The review field is required.']
+        errors["review"] = ["The review field is required."]
     elif len(review_val) < 10:
-        errors['review'] = ['The review must be at least 10 characters.']
+        errors["review"] = ["The review must be at least 10 characters."]
     elif len(review_val) > 500:
-        errors['review'] = ['The review may not be greater than 500 characters.']
-        
+        errors["review"] = ["The review may not be greater than 500 characters."]
+
     if not request.user.is_authenticated:
-        fullname = (request.POST.get('fullname') or '').strip()
-        email = (request.POST.get('email') or '').strip()
-        mobile = (request.POST.get('mobile') or '').strip()
-        
+        fullname = (request.POST.get("fullname") or "").strip()
+        email = (request.POST.get("email") or "").strip()
+        mobile = (request.POST.get("mobile") or "").strip()
+
         if not fullname:
-            errors['fullname'] = ['The fullname field is required.']
+            errors["fullname"] = ["The fullname field is required."]
         if email:
-            if '@' not in email or '.' not in email:
-                errors['email'] = ['The email must be a valid email address.']
+            if "@" not in email or "." not in email:
+                errors["email"] = ["The email must be a valid email address."]
         if not mobile:
-            errors['mobile'] = ['The mobile field is required.']
+            errors["mobile"] = ["The mobile field is required."]
         else:
-            mobile_digits = re.sub(r'[^0-9]', '', mobile)
+            mobile_digits = re.sub(r"[^0-9]", "", mobile)
             if len(mobile_digits) != 10:
-                errors['mobile'] = ['The mobile format is invalid. Must be 10 digits.']
+                errors["mobile"] = ["The mobile format is invalid. Must be 10 digits."]
     else:
-        fullname = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.username
-        email = (request.user.email or '').strip()
+        fullname = (
+            f"{request.user.first_name} {request.user.last_name}".strip()
+            or request.user.username
+        )
+        email = (request.user.email or "").strip()
         # Try to find user's agent mobile
         user_agent = Agent.objects.filter(user=request.user).first()
         mobile = user_agent.mobile if user_agent else ""
-        
+
     if errors:
-        return JsonResponse({'status': 'error', 'errors': errors}, status=422)
+        return JsonResponse({"status": "error", "errors": errors}, status=422)
 
     from apps.agents.services.review_growth import (
         agent_review_count,
@@ -1221,39 +1504,64 @@ def store_review(request, slug, state_code=None):
         review_threshold_just_crossed,
         should_show_upgrade_cta,
     )
+
     previous_review_count = agent_review_count(agent)
-        
+
     reviewer_email = email.lower() if email else None
-    
+
     if request.user.is_authenticated:
         review_obj, created = AgentReview.objects.update_or_create(
             agent=agent,
             user=request.user,
             defaults={
-                'reviewer_name': fullname,
-                'reviewer_email': reviewer_email,
-                'reviewer_mobile': mobile,
-                'rating': rating_val,
-                'review': review_val,
-                'is_approved': True
-            }
+                "reviewer_name": fullname,
+                "reviewer_email": reviewer_email,
+                "reviewer_mobile": mobile,
+                "rating": rating_val,
+                "review": review_val,
+                "is_approved": True,
+            },
         )
     else:
-        mobile_digits = re.sub(r'[^0-9]', '', mobile)
+        mobile_digits = re.sub(r"[^0-9]", "", mobile)
         # The email/mobile is unverified, so an anonymous submission may create a review
         # but never overwrite one.
-        if reviewer_email and AgentReview.objects.filter(agent=agent, reviewer_email=reviewer_email).exists():
-            return JsonResponse({
-                'status': 'error',
-                'message': 'A review from this email already exists for this agent.',
-                'errors': {'email': ['A review from this email already exists for this agent.']},
-            }, status=422)
-        if mobile_digits and AgentReview.objects.filter(agent=agent, reviewer_mobile=mobile_digits).exists():
-            return JsonResponse({
-                'status': 'error',
-                'message': 'A review from this mobile number already exists for this agent.',
-                'errors': {'mobile': ['A review from this mobile number already exists for this agent.']},
-            }, status=422)
+        if (
+            reviewer_email
+            and AgentReview.objects.filter(
+                agent=agent, reviewer_email=reviewer_email
+            ).exists()
+        ):
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": "A review from this email already exists for this agent.",
+                    "errors": {
+                        "email": [
+                            "A review from this email already exists for this agent."
+                        ]
+                    },
+                },
+                status=422,
+            )
+        if (
+            mobile_digits
+            and AgentReview.objects.filter(
+                agent=agent, reviewer_mobile=mobile_digits
+            ).exists()
+        ):
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": "A review from this mobile number already exists for this agent.",
+                    "errors": {
+                        "mobile": [
+                            "A review from this mobile number already exists for this agent."
+                        ]
+                    },
+                },
+                status=422,
+            )
         review_obj = AgentReview.objects.create(
             agent=agent,
             reviewer_email=reviewer_email,
@@ -1265,71 +1573,74 @@ def store_review(request, slug, state_code=None):
             is_approved=True,
         )
         created = True
-    message = 'Review submitted successfully!' if created else 'Review updated successfully!'
+    message = (
+        "Review submitted successfully!" if created else "Review updated successfully!"
+    )
 
     new_review_count = agent_review_count(agent)
     growth_status = get_review_growth_status(agent)
-    if (
-        review_threshold_just_crossed(previous_review_count, new_review_count)
-        and should_show_upgrade_cta(agent)
-    ):
+    if review_threshold_just_crossed(
+        previous_review_count, new_review_count
+    ) and should_show_upgrade_cta(agent):
         try:
             from apps.agents.models import AgentNotification
+
             growth_cfg = get_review_growth_config()
             AgentNotification.objects.create(
                 agent=agent,
-                title='Upgrade Unlocked',
+                title="Upgrade Unlocked",
                 body=growth_cfg.get(
-                    'upgrade_message',
-                    'You have collected enough reviews. Upgrade to Professional for full visibility.',
+                    "upgrade_message",
+                    "You have collected enough reviews. Upgrade to Professional for full visibility.",
                 )[:500],
             )
         except Exception:
-            logger.exception('Failed to create upgrade-unlocked notification for agent #%s', agent.id)
+            logger.exception(
+                "Failed to create upgrade-unlocked notification for agent #%s", agent.id
+            )
 
     response_message = message
     if not created:
+        response_message = f"{message} Note: updating an existing review from the same email does not add a new review."
+    if growth_status.get("show_upgrade_progress"):
+        remaining = growth_status.get("remaining_reviews", 0)
         response_message = (
-            f'{message} Note: updating an existing review from the same email does not add a new review.'
+            f"{response_message} You have {new_review_count} of {growth_status['min_reviews']} unique customer reviews"
+            f" — {remaining} more unlocks your Professional upgrade."
         )
-    if growth_status.get('show_upgrade_progress'):
-        remaining = growth_status.get('remaining_reviews', 0)
-        response_message = (
-            f'{response_message} You have {new_review_count} of {growth_status["min_reviews"]} unique customer reviews'
-            f' — {remaining} more unlocks your Professional upgrade.'
-        )
-    elif growth_status.get('upgrade_ready'):
-        response_message = (
-            f'{response_message} You unlocked the Professional upgrade — open your agent dashboard to continue.'
-        )
+    elif growth_status.get("upgrade_ready"):
+        response_message = f"{response_message} You unlocked the Professional upgrade — open your agent dashboard to continue."
 
     nudge_data = None
     try:
         from apps.agents.services.google_review import get_google_nudge_config
+
         nudge_data = get_google_nudge_config(agent)
     except Exception:
         pass
 
-    return JsonResponse({
-        'status': 'success',
-        'message': response_message,
-        'review_count': new_review_count,
-        'min_reviews': growth_status.get('min_reviews', 3),
-        'upgrade_ready': bool(growth_status.get('upgrade_ready')),
-        'review_created': bool(created),
-        'google_nudge': nudge_data,
-    })
+    return JsonResponse(
+        {
+            "status": "success",
+            "message": response_message,
+            "review_count": new_review_count,
+            "min_reviews": growth_status.get("min_reviews", 3),
+            "upgrade_ready": bool(growth_status.get("upgrade_ready")),
+            "review_created": bool(created),
+            "google_nudge": nudge_data,
+        }
+    )
 
 
 @never_cache
 def edit_profile(request):
     if not request.user.is_authenticated:
-        return redirect('agents:agent_login')
+        return redirect("agents:agent_login")
 
     agent = Agent.objects.filter(user=request.user).first()
     if not agent:
         messages.error(request, "Please complete your registration.")
-        return redirect('agents:agent_registration')
+        return redirect("agents:agent_registration")
 
     return render_edit_profile(request, agent, is_admin_view=False)
 
@@ -1340,29 +1651,119 @@ def render_edit_profile(request, agent, is_admin_view=False):
     profile, _ = AgentProfile.objects.get_or_create(agent=agent)
 
     # Load serviceable cities
-    agent_cities = list(agent.serviceableCities.values_list('name', flat=True))
+    agent_cities = list(agent.serviceableCities.values_list("name", flat=True))
 
-    main_cities = sorted(list(set([
-        'Ahmedabad', 'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Surat',
-        'Jaipur', 'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Pimpri-Chinchwad',
-        'Patna', 'Vadodara', 'Ghaziabad', 'Ludhiana', 'Coimbatore', 'Agra', 'Madurai', 'Nashik', 'Vijayawada',
-        'Faridabad', 'Meerut', 'Rajkot', 'Kalyan-Dombivli', 'Vasai-Virar', 'Varanasi', 'Srinagar', 'Aurangabad',
-        'Dhanbad', 'Amritsar', 'Navi Mumbai', 'Allahabad', 'Howrah', 'Ranchi', 'Gwalior', 'Jabalpur',
-        'Jodhpur', 'Raipur', 'Chandigarh', 'Guntur', 'Guwahati', 'Solapur', 'Noida', 'Mysuru', 'Gurgaon',
-        'Bhubaneswar', 'Thiruvananthapuram', 'Dehradun', 'Jammu', 'Jamnagar', 'Ujjain', 'Jhansi', 'Kochi',
-        'Mangalore', 'Udaipur', 'Ajmer', 'Tiruppur', 'Nellore', 'Kurnool', 'Gaya', 'Hoshiarpur', 'Muzaffarpur',
-        'Vellore', 'Shimla', 'Rohtak', 'Ambala', 'Gandhinagar', 'Pondicherry', 'Siliguri', 'Raurkela',
-        'Durgapur', 'Asansol'
-    ])))
+    main_cities = sorted(
+        list(
+            set(
+                [
+                    "Ahmedabad",
+                    "Mumbai",
+                    "Delhi",
+                    "Bangalore",
+                    "Hyderabad",
+                    "Chennai",
+                    "Kolkata",
+                    "Pune",
+                    "Surat",
+                    "Jaipur",
+                    "Lucknow",
+                    "Kanpur",
+                    "Nagpur",
+                    "Indore",
+                    "Thane",
+                    "Bhopal",
+                    "Visakhapatnam",
+                    "Pimpri-Chinchwad",
+                    "Patna",
+                    "Vadodara",
+                    "Ghaziabad",
+                    "Ludhiana",
+                    "Coimbatore",
+                    "Agra",
+                    "Madurai",
+                    "Nashik",
+                    "Vijayawada",
+                    "Faridabad",
+                    "Meerut",
+                    "Rajkot",
+                    "Kalyan-Dombivli",
+                    "Vasai-Virar",
+                    "Varanasi",
+                    "Srinagar",
+                    "Aurangabad",
+                    "Dhanbad",
+                    "Amritsar",
+                    "Navi Mumbai",
+                    "Allahabad",
+                    "Howrah",
+                    "Ranchi",
+                    "Gwalior",
+                    "Jabalpur",
+                    "Jodhpur",
+                    "Raipur",
+                    "Chandigarh",
+                    "Guntur",
+                    "Guwahati",
+                    "Solapur",
+                    "Noida",
+                    "Mysuru",
+                    "Gurgaon",
+                    "Bhubaneswar",
+                    "Thiruvananthapuram",
+                    "Dehradun",
+                    "Jammu",
+                    "Jamnagar",
+                    "Ujjain",
+                    "Jhansi",
+                    "Kochi",
+                    "Mangalore",
+                    "Udaipur",
+                    "Ajmer",
+                    "Tiruppur",
+                    "Nellore",
+                    "Kurnool",
+                    "Gaya",
+                    "Hoshiarpur",
+                    "Muzaffarpur",
+                    "Vellore",
+                    "Shimla",
+                    "Rohtak",
+                    "Ambala",
+                    "Gandhinagar",
+                    "Pondicherry",
+                    "Siliguri",
+                    "Raurkela",
+                    "Durgapur",
+                    "Asansol",
+                ]
+            )
+        )
+    )
 
     extra_cities = [c for c in agent_cities if c not in main_cities]
 
     import datetime
+
     current_year = datetime.datetime.now().year
     years_range = list(range(current_year, 1979, -1))
-    months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ]
 
     from apps.agents.models import InvestmentType
+
     investment_types = InvestmentType.objects.filter(is_active=True)
 
     logged_in_admin = None
@@ -1371,12 +1772,14 @@ def render_edit_profile(request, agent, is_admin_view=False):
 
     if is_admin_view:
         from apps.admin_panel.views.dashboard import _get_admin_from_session
+
         admin_session_id = _get_admin_from_session(request)
         if admin_session_id:
             from apps.admin_panel.models.admin_auth import Admin
+
             logged_in_admin = Admin.objects.filter(id=admin_session_id).first()
             if logged_in_admin:
-                is_super_admin = (logged_in_admin.role == 'super')
+                is_super_admin = logged_in_admin.role == "super"
                 raw_perms = logged_in_admin.permissions
                 admin_permissions = raw_perms if isinstance(raw_perms, list) else []
 
@@ -1404,8 +1807,10 @@ def render_edit_profile(request, agent, is_admin_view=False):
     # Resolve SubscriptionPlan using robust multi-tier helper
     agent_plan = _resolve_agent_plan(edit_plan_type, agent=agent)
 
-    feature_unlock_hints = build_unlock_hints(agent, normalize_plan_slug(edit_plan_type or agent.plan_type))
-    review_growth_status_json = '{}'
+    feature_unlock_hints = build_unlock_hints(
+        agent, normalize_plan_slug(edit_plan_type or agent.plan_type)
+    )
+    review_growth_status_json = "{}"
     show_starter_upgrade_cta = False
     show_starter_upgrade_progress = False
     if not is_admin_view:
@@ -1417,68 +1822,82 @@ def render_edit_profile(request, agent, is_admin_view=False):
             should_show_upgrade_progress,
         )
         from apps.agents.views.registration import _PROFESSIONAL_PLAN_UI_FEATURES
+
         feature_unlock_hints.update(build_review_growth_hints(agent))
         growth_status = get_review_growth_status(agent)
         review_growth_status_json = json_dumps(growth_status, ensure_ascii=False)
         show_starter_upgrade_cta = should_show_upgrade_cta(agent)
         show_starter_upgrade_progress = should_show_upgrade_progress(agent)
         review_upgrade_price = get_review_upgrade_pricing(agent)
-        pricing_config = SiteSetting.get_value('pricing_config', {
-            'professional': {'name': PLAN_LABELS['professional'], 'full_price': 8258},
-        })
-        prof_cfg = pricing_config.get('professional', {})
-        prof_name = PLAN_LABELS['professional']
-        prof_desc = prof_cfg.get('description', 'Maximum visibility and premium tools for top agents.')
-        prof_full = float(prof_cfg.get('full_price', 8258))
+        pricing_config = SiteSetting.get_value(
+            "pricing_config",
+            {
+                "professional": {
+                    "name": PLAN_LABELS["professional"],
+                    "full_price": 8258,
+                },
+            },
+        )
+        prof_cfg = pricing_config.get("professional", {})
+        prof_name = PLAN_LABELS["professional"]
+        prof_desc = prof_cfg.get(
+            "description", "Maximum visibility and premium tools for top agents."
+        )
+        prof_full = float(prof_cfg.get("full_price", 8258))
         prof_base = int(round(prof_full / 1.18, 0))
         professional_plan_features = _PROFESSIONAL_PLAN_UI_FEATURES
     else:
         review_upgrade_price = None
         professional_plan_features = []
-        prof_name = prof_desc = ''
+        prof_name = prof_desc = ""
         prof_base = prof_full = 0
 
     from apps.agents.models import ProfileBannerPreset
-    banner_presets = ProfileBannerPreset.objects.filter(is_active=True).order_by('display_order', '-created_at')
-    banner_enabled_val = SiteSetting.get_value('profile_banner_enabled', '1')
-    banner_feature_enabled = str(banner_enabled_val).lower() in ('1', 'true', 'yes')
-    allow_custom_val = SiteSetting.get_value('profile_banner_allow_custom_upload', '1')
-    banner_allow_custom_upload = str(allow_custom_val).lower() in ('1', 'true', 'yes')
+
+    banner_presets = ProfileBannerPreset.objects.filter(is_active=True).order_by(
+        "display_order", "-created_at"
+    )
+    banner_enabled_val = SiteSetting.get_value("profile_banner_enabled", "1")
+    banner_feature_enabled = str(banner_enabled_val).lower() in ("1", "true", "yes")
+    allow_custom_val = SiteSetting.get_value("profile_banner_allow_custom_upload", "1")
+    banner_allow_custom_upload = str(allow_custom_val).lower() in ("1", "true", "yes")
 
     context = {
-        'banner_presets': banner_presets,
-        'banner_feature_enabled': banner_feature_enabled,
-        'banner_allow_custom_upload': banner_allow_custom_upload,
-        'agent_plan': agent_plan,
-        'agent': agent,
-        'profile': profile,
-        'isAdminView': is_admin_view,
-        'logged_in_admin': logged_in_admin,
-        'is_super_admin': is_super_admin,
-        'admin_permissions': admin_permissions,
-        'base_template': 'admin/base.html' if is_admin_view else 'base.html',
-        'main_cities': main_cities,
-        'agent_cities': agent_cities,
-        'extra_cities': extra_cities,
-        'years_range': years_range,
-        'months': months,
-        'active_investment_types': investment_types,
-        'feature_unlock_hints_json': json_dumps(feature_unlock_hints, ensure_ascii=False),
-        'show_starter_upgrade_cta': show_starter_upgrade_cta,
-        'show_starter_upgrade_progress': show_starter_upgrade_progress,
-        'review_growth_status_json': review_growth_status_json,
-        'hide_footer': not is_admin_view,
-        'review_upgrade_price': review_upgrade_price if not is_admin_view else None,
-        'professional_plan_features': professional_plan_features,
-        'prof_name': prof_name if not is_admin_view else '',
-        'prof_desc': prof_desc if not is_admin_view else '',
-        'prof_base': prof_base if not is_admin_view else 0,
-        'prof_full': int(prof_full) if not is_admin_view else 0,
-        'agent_id': agent.id,
-        'force_lock_all_features': force_lock_all_features,
-        'event_referral_expired_locked': event_referral_expired_locked,
+        "banner_presets": banner_presets,
+        "banner_feature_enabled": banner_feature_enabled,
+        "banner_allow_custom_upload": banner_allow_custom_upload,
+        "agent_plan": agent_plan,
+        "agent": agent,
+        "profile": profile,
+        "isAdminView": is_admin_view,
+        "logged_in_admin": logged_in_admin,
+        "is_super_admin": is_super_admin,
+        "admin_permissions": admin_permissions,
+        "base_template": "admin/base.html" if is_admin_view else "base.html",
+        "main_cities": main_cities,
+        "agent_cities": agent_cities,
+        "extra_cities": extra_cities,
+        "years_range": years_range,
+        "months": months,
+        "active_investment_types": investment_types,
+        "feature_unlock_hints_json": json_dumps(
+            feature_unlock_hints, ensure_ascii=False
+        ),
+        "show_starter_upgrade_cta": show_starter_upgrade_cta,
+        "show_starter_upgrade_progress": show_starter_upgrade_progress,
+        "review_growth_status_json": review_growth_status_json,
+        "hide_footer": not is_admin_view,
+        "review_upgrade_price": review_upgrade_price if not is_admin_view else None,
+        "professional_plan_features": professional_plan_features,
+        "prof_name": prof_name if not is_admin_view else "",
+        "prof_desc": prof_desc if not is_admin_view else "",
+        "prof_base": prof_base if not is_admin_view else 0,
+        "prof_full": int(prof_full) if not is_admin_view else 0,
+        "agent_id": agent.id,
+        "force_lock_all_features": force_lock_all_features,
+        "event_referral_expired_locked": event_referral_expired_locked,
     }
-    return render(request, 'agents/edit_profile.html', context)
+    return render(request, "agents/edit_profile.html", context)
 
 
 @require_POST
@@ -1487,21 +1906,27 @@ def update_profile(request):
     from django.http import JsonResponse
 
     if not request.user.is_authenticated:
-        return JsonResponse({'status': 'error', 'message': 'Authentication required'}, status=401)
+        return JsonResponse(
+            {"status": "error", "message": "Authentication required"}, status=401
+        )
 
     agent = Agent.objects.filter(user=request.user).first()
     if not agent:
-        return JsonResponse({'status': 'error', 'message': 'Agent not found'}, status=404)
+        return JsonResponse(
+            {"status": "error", "message": "Agent not found"}, status=404
+        )
 
-    from apps.event_referral.services.participant_service import prepare_event_referral_portal_state
+    from apps.event_referral.services.participant_service import (
+        prepare_event_referral_portal_state,
+    )
 
     _, force_lock, _ = prepare_event_referral_portal_state(agent)
     if force_lock:
         return JsonResponse(
             {
-                'status': 'error',
-                'message': 'Your 48-hour challenge has ended. Upgrade your plan to edit your profile.',
-                'redirect': reverse('agents:chooseplan'),
+                "status": "error",
+                "message": "Your 48-hour challenge has ended. Upgrade your plan to edit your profile.",
+                "redirect": reverse("agents:chooseplan"),
             },
             status=403,
         )
@@ -1514,8 +1939,8 @@ def _email_taken_by_other_login(email, agent):
     from django.contrib.auth.models import User as DjangoUser
     from apps.agents.services.account_auth import fetch_users_row
 
-    new = (email or '').strip().lower()
-    current = (agent.email or '').strip().lower()
+    new = (email or "").strip().lower()
+    current = (agent.email or "").strip().lower()
     if not new or new == current:
         return False
     if DjangoUser.objects.filter(email__iexact=new).exclude(pk=agent.user_id).exists():
@@ -1534,14 +1959,14 @@ def _collect_license_uploads(request):
 
     payloads = []
     specs = (
-        ('irdai', 'irdai_license_doc', 'IRDAI certificate'),
-        ('amfi', 'amfi_license_doc', 'AMFI certificate'),
+        ("irdai", "irdai_license_doc", "IRDAI certificate"),
+        ("amfi", "amfi_license_doc", "AMFI certificate"),
     )
     for kind, field, label in specs:
         upload = request.FILES.get(field)
         if not upload:
             continue
-        content = b''
+        content = b""
         too_big = False
         for chunk in upload.chunks():
             content += chunk
@@ -1549,57 +1974,108 @@ def _collect_license_uploads(request):
                 too_big = True
                 break
         if too_big:
-            return None, JsonResponse({
-                'status': 'error',
-                'message': f'{label} file size must be under 5MB.',
-                'errors': {field: ['File size must be under 5MB.']},
-            }, status=422)
+            return None, JsonResponse(
+                {
+                    "status": "error",
+                    "message": f"{label} file size must be under 5MB.",
+                    "errors": {field: ["File size must be under 5MB."]},
+                },
+                status=422,
+            )
         ok, err, ext = validate_license_document(content, upload.name)
         if not ok:
-            return None, JsonResponse({
-                'status': 'error',
-                'message': f'Invalid file type for {label}: {err}',
-                'errors': {field: [err]},
-            }, status=422)
+            return None, JsonResponse(
+                {
+                    "status": "error",
+                    "message": f"Invalid file type for {label}: {err}",
+                    "errors": {field: [err]},
+                },
+                status=422,
+            )
         payloads.append((field, content, ext, kind))
     return payloads, None
 
 
 # Backend current_step -> edit-profile section (the page posts visual steps 1-5 as 1, 2, 4, 5, 7).
 _EDIT_LOG_STEP_LABELS = {
-    1: 'Basic Info', 2: 'Professional Details', 3: 'Portfolio & Segments', 4: 'Portfolio & Segments',
-    5: 'Additional Info', 6: 'Lead Preferences', 7: 'Final Submission',
+    1: "Basic Info",
+    2: "Professional Details",
+    3: "Portfolio & Segments",
+    4: "Portfolio & Segments",
+    5: "Additional Info",
+    6: "Lead Preferences",
+    7: "Final Submission",
 }
 
 
 def _profile_edit_snapshot(agent, profile):
     """Readable {field: value} of everything the edit-profile sections save, for the admin diff."""
     from apps.agents.models import AgentPerformanceStat, AgentLeadPreference
-    from apps.agents.services.profile_edit_log import FIELDS, snapshot_value, child_snapshot
-    snap = {'status': agent.status}
-    columns = {'': (agent, {f.name for f in agent._meta.concrete_fields}),
-               'profile.': (profile, {f.name for f in profile._meta.concrete_fields})}
+    from apps.agents.services.profile_edit_log import (
+        FIELDS,
+        snapshot_value,
+        child_snapshot,
+    )
+
+    snap = {"status": agent.status}
+    columns = {
+        "": (agent, {f.name for f in agent._meta.concrete_fields}),
+        "profile.": (profile, {f.name for f in profile._meta.concrete_fields}),
+    }
     for key in FIELDS:
-        prefix, name = ('profile.', key[8:]) if key.startswith('profile.') else ('', key)
+        prefix, name = (
+            ("profile.", key[8:]) if key.startswith("profile.") else ("", key)
+        )
         obj, names = columns[prefix]
         if name in names:
             snap[key] = snapshot_value(getattr(obj, name))
     # Child tables are replaced wholesale on save; row columns follow CHILD_FORMATS.
-    snap.update(child_snapshot({
-        'insurance_segments': agent.insuranceSegments.values_list('segment_type'),
-        'serviceable_cities': agent.serviceableCities.values_list('name'),
-        'service_areas': agent.servicePincodes.values_list('service_pincode', 'city_name', 'selected_areas_json'),
-        'product_expertise': agent.productExpertise.values_list('segment_type', 'product_name', 'expertise_level'),
-        'family_licenses': agent.familyLicenses.values_list('full_name', 'relationship', 'license_number'),
-        'portfolios': agent.portfolios.values_list('segment_type', 'primary_companies', 'secondary_companies'),
-        'performance_stats': AgentPerformanceStat.objects.filter(agent=agent).values_list(
-            'claims_processed', 'claims_settled', 'claims_amount', 'response_time'),
-        'lead_preferences': AgentLeadPreference.objects.filter(agent=agent).values_list(
-            'leads_new_business', 'leads_portfolio_analysis', 'portfolio_charging', 'portfolio_fee',
-            'leads_claims_support', 'claims_charging', 'claims_fee_amount', 'claims_percent'),
-        'achievement_photos': agent.achievementPhotos.values_list('photo_path'),
-        'career_timeline': agent.careerTimelines.values_list('month', 'year', 'event_type', 'event_text'),
-    }))
+    snap.update(
+        child_snapshot(
+            {
+                "insurance_segments": agent.insuranceSegments.values_list(
+                    "segment_type"
+                ),
+                "serviceable_cities": agent.serviceableCities.values_list("name"),
+                "service_areas": agent.servicePincodes.values_list(
+                    "service_pincode", "city_name", "selected_areas_json"
+                ),
+                "product_expertise": agent.productExpertise.values_list(
+                    "segment_type", "product_name", "expertise_level"
+                ),
+                "family_licenses": agent.familyLicenses.values_list(
+                    "full_name", "relationship", "license_number"
+                ),
+                "portfolios": agent.portfolios.values_list(
+                    "segment_type", "primary_companies", "secondary_companies"
+                ),
+                "performance_stats": AgentPerformanceStat.objects.filter(
+                    agent=agent
+                ).values_list(
+                    "claims_processed",
+                    "claims_settled",
+                    "claims_amount",
+                    "response_time",
+                ),
+                "lead_preferences": AgentLeadPreference.objects.filter(
+                    agent=agent
+                ).values_list(
+                    "leads_new_business",
+                    "leads_portfolio_analysis",
+                    "portfolio_charging",
+                    "portfolio_fee",
+                    "leads_claims_support",
+                    "claims_charging",
+                    "claims_fee_amount",
+                    "claims_percent",
+                ),
+                "achievement_photos": agent.achievementPhotos.values_list("photo_path"),
+                "career_timeline": agent.careerTimelines.values_list(
+                    "month", "year", "event_type", "event_text"
+                ),
+            }
+        )
+    )
     return snap
 
 
@@ -1607,18 +2083,19 @@ def _log_profile_edit(request, agent, before, after, current_step, is_admin_edit
     from apps.agents.models import AgentProfileEditLog
     from apps.admin_panel.middleware import ThreatMonitorMiddleware
     from apps.agents.services.profile_edit_log import build_changes
+
     changes = build_changes(before, after)
-    status_before, status_after = before.get('status'), after.get('status')
+    status_before, status_after = before.get("status"), after.get("status")
     if not changes and status_before == status_after:
         return
-    step = int(current_step) if str(current_step or '').isdigit() else None
+    step = int(current_step) if str(current_step or "").isdigit() else None
     AgentProfileEditLog.objects.create(
         agent_id=agent.id,
-        edited_by='admin' if is_admin_edit else 'agent',
-        edited_by_id=request.session.get('admin_id') if is_admin_edit else agent.id,
+        edited_by="admin" if is_admin_edit else "agent",
+        edited_by_id=request.session.get("admin_id") if is_admin_edit else agent.id,
         # step must be set: get_edit_logs treats admin rows with step=None as approval boundaries
         step=step or 7,
-        step_label=_EDIT_LOG_STEP_LABELS.get(step, 'Profile Edit'),
+        step_label=_EDIT_LOG_STEP_LABELS.get(step, "Profile Edit"),
         changes=changes,
         ip_address=ThreatMonitorMiddleware.get_client_ip(request),
         status_before=status_before,
@@ -1631,120 +2108,155 @@ def apply_profile_update(request, agent, is_admin_edit=False):
     from django.db import transaction
     from django.core.files.storage import default_storage
     from apps.agents.models import (
-        Agent, AgentProfile, AgentPerformanceStat, AgentFamilyLicense, 
-        AgentInsuranceSegment, AgentProductExpertise, AgentPortfolio, 
-        AgentAchievementPhoto, AgentCareerTimeline, AgentLeadPreference, City
+        Agent,
+        AgentProfile,
+        AgentPerformanceStat,
+        AgentFamilyLicense,
+        AgentInsuranceSegment,
+        AgentProductExpertise,
+        AgentPortfolio,
+        AgentAchievementPhoto,
+        AgentCareerTimeline,
+        AgentLeadPreference,
+        City,
     )
     import re
     import os
     import time
     import uuid
+
     profile, _ = AgentProfile.objects.get_or_create(agent=agent)
     edit_snapshot_before = _profile_edit_snapshot(agent, profile)
-    current_step = request.POST.get('current_step')
+    current_step = request.POST.get("current_step")
     license_payloads, license_error = _collect_license_uploads(request)
     if license_error:
         return license_error
-    
+
     # helper for step processing
     def should_process(step):
         return not current_step or str(current_step) == str(step)
-        
+
     try:
         with transaction.atomic():
             # ── Step 1: Basic Info ──
             if should_process(1):
-                full_name = (request.POST.get('full_name') or '').strip()
-                email = (request.POST.get('email') or '').strip()
-                mobile = (request.POST.get('mobile') or '').strip()
-                display_name = (request.POST.get('display_name') or '').strip()
-                whatsapp = (request.POST.get('whatsapp') or '').strip()
-                languages = (request.POST.get('languages') or '').strip()
-                address = (request.POST.get('address') or '').strip()
-                date_of_birth = request.POST.get('date_of_birth')
-                
+                full_name = (request.POST.get("full_name") or "").strip()
+                email = (request.POST.get("email") or "").strip()
+                mobile = (request.POST.get("mobile") or "").strip()
+                display_name = (request.POST.get("display_name") or "").strip()
+                whatsapp = (request.POST.get("whatsapp") or "").strip()
+                languages = (request.POST.get("languages") or "").strip()
+                address = (request.POST.get("address") or "").strip()
+                date_of_birth = request.POST.get("date_of_birth")
+
                 # Basic validation
                 errors = {}
                 from django.core.validators import validate_email
                 from django.core.exceptions import ValidationError
-                
+
                 if not full_name:
-                    errors['full_name'] = ['The full name field is required.']
+                    errors["full_name"] = ["The full name field is required."]
                 elif len(full_name) > 255:
-                    errors['full_name'] = ['Full name cannot exceed 255 characters.']
-                elif re.search(r'[<>]', full_name):
-                    errors['full_name'] = ['Full name contains invalid characters.']
-                if display_name and re.search(r'[<>]', display_name):
-                    errors['display_name'] = ['Display name contains invalid characters.']
-                    
+                    errors["full_name"] = ["Full name cannot exceed 255 characters."]
+                elif re.search(r"[<>]", full_name):
+                    errors["full_name"] = ["Full name contains invalid characters."]
+                if display_name and re.search(r"[<>]", display_name):
+                    errors["display_name"] = [
+                        "Display name contains invalid characters."
+                    ]
+
                 if is_admin_edit:
                     if not email:
-                        errors['email'] = ['The email field is required.']
+                        errors["email"] = ["The email field is required."]
                     else:
                         try:
                             validate_email(email)
-                            if Agent.objects.filter(email__iexact=email).exclude(id=agent.id).exists():
-                                errors['email'] = ['The email has already been taken.']
+                            if (
+                                Agent.objects.filter(email__iexact=email)
+                                .exclude(id=agent.id)
+                                .exists()
+                            ):
+                                errors["email"] = ["The email has already been taken."]
                             elif _email_taken_by_other_login(email, agent):
                                 # Login resolves accounts by email across auth_user and
                                 # users; taking a staff/insurance/distributor address
                                 # let an agent log in as (and overwrite) that account.
-                                errors['email'] = ['The email has already been taken.']
+                                errors["email"] = ["The email has already been taken."]
                         except ValidationError:
-                            errors['email'] = ['Enter a valid email address.']
+                            errors["email"] = ["Enter a valid email address."]
                 else:
                     # The login email is fixed. A posted value is ignored so the
                     # rest of the profile can still be saved.
-                    email = (agent.email or '').strip()
-                        
+                    email = (agent.email or "").strip()
+
                 if not mobile:
-                    errors['mobile'] = ['The mobile field is required.']
+                    errors["mobile"] = ["The mobile field is required."]
                 elif not mobile.isdigit() or len(mobile) < 10 or len(mobile) > 15:
-                    errors['mobile'] = ['Enter a valid mobile number (10-15 digits).']
-                    
+                    errors["mobile"] = ["Enter a valid mobile number (10-15 digits)."]
+
                 if display_name and len(display_name) > 255:
-                    errors['display_name'] = ['Display name cannot exceed 255 characters.']
-                    
-                if whatsapp and (not whatsapp.isdigit() or len(whatsapp) < 10 or len(whatsapp) > 20):
-                    errors['whatsapp'] = ['Enter a valid WhatsApp number.']
-                    
+                    errors["display_name"] = [
+                        "Display name cannot exceed 255 characters."
+                    ]
+
+                if whatsapp and (
+                    not whatsapp.isdigit() or len(whatsapp) < 10 or len(whatsapp) > 20
+                ):
+                    errors["whatsapp"] = ["Enter a valid WhatsApp number."]
+
                 if not languages:
-                    errors['languages'] = ['The languages field is required.']
+                    errors["languages"] = ["The languages field is required."]
                 elif len(languages) > 255:
-                    errors['languages'] = ['Languages field cannot exceed 255 characters.']
-                    
+                    errors["languages"] = [
+                        "Languages field cannot exceed 255 characters."
+                    ]
+
                 if not address:
-                    errors['address'] = ['The address field is required.']
+                    errors["address"] = ["The address field is required."]
                 elif len(address) > 155:
-                    errors['address'] = ['Address cannot exceed 155 characters.']
-                    
+                    errors["address"] = ["Address cannot exceed 155 characters."]
+
                 if errors:
-                    return JsonResponse({'status': 'error', 'message': 'Validation failed', 'errors': errors}, status=422)
-                    
+                    return JsonResponse(
+                        {
+                            "status": "error",
+                            "message": "Validation failed",
+                            "errors": errors,
+                        },
+                        status=422,
+                    )
+
                 agent.fullname = full_name
                 if is_admin_edit:
                     previous_email = agent.email
                     agent.email = email
                 agent.mobile = mobile
-                
+
                 # User types (Optional)
-                user_types = request.POST.getlist('user_types[]') or request.POST.getlist('user_types')
+                user_types = request.POST.getlist(
+                    "user_types[]"
+                ) or request.POST.getlist("user_types")
                 if user_types:
                     agent.user_types = user_types
-                    
+
                 # Admin values
                 if is_admin_edit:
-                    badge_data = request.POST.getlist('badge[]') or request.POST.getlist('badge')
-                    agent.badge = ','.join(filter(None, badge_data))
-                    if request.POST.get('status'):
-                        agent.status = request.POST.get('status')
-                        
+                    badge_data = request.POST.getlist(
+                        "badge[]"
+                    ) or request.POST.getlist("badge")
+                    agent.badge = ",".join(filter(None, badge_data))
+                    if request.POST.get("status"):
+                        agent.status = request.POST.get("status")
+
                 agent.save()
 
                 # Login reads `users`/`auth_user` by email. Only an admin edit may
                 # move that address; an agent save leaves it unchanged.
                 if is_admin_edit:
-                    from apps.agents.services.account_auth import sync_agent_email_change
+                    from apps.agents.services.account_auth import (
+                        sync_agent_email_change,
+                    )
+
                     sync_agent_email_change(previous_email, email, full_name)
 
                 profile.display_name = display_name
@@ -1755,14 +2267,14 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                     profile.date_of_birth = date_of_birth
                 else:
                     profile.date_of_birth = None
-                
+
                 # Profile Photo upload
-                profile_photo = request.FILES.get('profile_photo')
+                profile_photo = request.FILES.get("profile_photo")
                 if profile_photo:
                     from django.core.files.base import ContentFile
                     from apps.agents.utils.file_validation import validate_profile_photo
 
-                    photo_bytes = b''.join(profile_photo.chunks())
+                    photo_bytes = b"".join(profile_photo.chunks())
                     ok, photo_error, safe_ext = validate_profile_photo(
                         photo_bytes,
                         profile_photo.name,
@@ -1775,25 +2287,42 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                         )
                         profile.profile_photo_path = saved_path
                     elif photo_error:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Validation failed',
-                            'errors': {'profile_photo': [photo_error]}
-                        }, status=422)
+                        return JsonResponse(
+                            {
+                                "status": "error",
+                                "message": "Validation failed",
+                                "errors": {"profile_photo": [photo_error]},
+                            },
+                            status=422,
+                        )
 
                 # Banner handling: presets, custom upload, or reset
-                remove_banner = request.POST.get('remove_banner') == '1'
-                banner_preset_id = request.POST.get('banner_preset_id')
-                custom_banner = request.FILES.get('custom_banner')
+                remove_banner = request.POST.get("remove_banner") == "1"
+                banner_preset_id = request.POST.get("banner_preset_id")
+                custom_banner = request.FILES.get("custom_banner")
 
                 from apps.home.models.site_setting import SiteSetting
                 from apps.agents.models import ProfileBannerPreset
-                banner_enabled_val = SiteSetting.get_value('profile_banner_enabled', '1')
-                banner_feature_enabled = str(banner_enabled_val).lower() in ('1', 'true', 'yes')
-                allow_custom_val = SiteSetting.get_value('profile_banner_allow_custom_upload', '1')
-                banner_allow_custom_upload = str(allow_custom_val).lower() in ('1', 'true', 'yes')
+
+                banner_enabled_val = SiteSetting.get_value(
+                    "profile_banner_enabled", "1"
+                )
+                banner_feature_enabled = str(banner_enabled_val).lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                )
+                allow_custom_val = SiteSetting.get_value(
+                    "profile_banner_allow_custom_upload", "1"
+                )
+                banner_allow_custom_upload = str(allow_custom_val).lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                )
 
                 if banner_feature_enabled:
+
                     def _cleanup_old_custom_banner():
                         if profile.custom_banner_path:
                             try:
@@ -1808,423 +2337,584 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                         profile.custom_banner_path = None
                     elif custom_banner:
                         if not banner_allow_custom_upload:
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'Custom banner uploads are currently disabled by administrator.',
-                                'errors': {'custom_banner': ['Custom banner uploads are currently disabled.']}
-                            }, status=403)
+                            return JsonResponse(
+                                {
+                                    "status": "error",
+                                    "message": "Custom banner uploads are currently disabled by administrator.",
+                                    "errors": {
+                                        "custom_banner": [
+                                            "Custom banner uploads are currently disabled."
+                                        ]
+                                    },
+                                },
+                                status=403,
+                            )
 
-                        from apps.agents.utils.file_validation import validate_profile_photo
+                        from apps.agents.utils.file_validation import (
+                            validate_profile_photo,
+                        )
                         from django.core.files.base import ContentFile
-                        banner_bytes = b''.join(custom_banner.chunks())
-                        ok, banner_err, safe_ext = validate_profile_photo(banner_bytes, custom_banner.name)
+
+                        banner_bytes = b"".join(custom_banner.chunks())
+                        ok, banner_err, safe_ext = validate_profile_photo(
+                            banner_bytes, custom_banner.name
+                        )
                         if ok:
                             _cleanup_old_custom_banner()
                             banner_name = f"banners/custom/agent_{agent.id}_{int(time.time())}{safe_ext}"
-                            saved_banner_path = default_storage.save(banner_name, ContentFile(banner_bytes))
+                            saved_banner_path = default_storage.save(
+                                banner_name, ContentFile(banner_bytes)
+                            )
                             profile.custom_banner_path = saved_banner_path
                             profile.banner_preset = None
                         elif banner_err:
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'Validation failed',
-                                'errors': {'custom_banner': [banner_err]}
-                            }, status=422)
+                            return JsonResponse(
+                                {
+                                    "status": "error",
+                                    "message": "Validation failed",
+                                    "errors": {"custom_banner": [banner_err]},
+                                },
+                                status=422,
+                            )
                     elif banner_preset_id:
                         try:
                             if str(banner_preset_id).isdigit():
-                                preset_obj = ProfileBannerPreset.objects.filter(id=int(banner_preset_id), is_active=True).first()
+                                preset_obj = ProfileBannerPreset.objects.filter(
+                                    id=int(banner_preset_id), is_active=True
+                                ).first()
                                 if preset_obj:
                                     _cleanup_old_custom_banner()
                                     profile.banner_preset = preset_obj
                                     profile.custom_banner_path = None
                         except Exception:
                             pass
-                    
+
                 profile.save()
-                
+
             # ── Step 2: Professional Details ──
             if should_process(2):
-                pan = (request.POST.get('pan') or '').strip()
-                agency_name = (request.POST.get('agency_name') or '').strip()
-                office_address = (request.POST.get('office_address') or '').strip()
-                service_pincode = (request.POST.get('service_pincode') or '').strip()
+                pan = (request.POST.get("pan") or "").strip()
+                agency_name = (request.POST.get("agency_name") or "").strip()
+                office_address = (request.POST.get("office_address") or "").strip()
+                service_pincode = (request.POST.get("service_pincode") or "").strip()
                 # Default to '0' so the field is NOT silently cleared when the
                 # radio button is untouched (unchecked radio sends nothing in POST).
-                has_pos_license = request.POST.get('has_pos_license', '0') == '1'
-                experience_years = (request.POST.get('experience_years') or '').strip()
-                client_base = (request.POST.get('client_base') or '').strip()
-                
+                has_pos_license = request.POST.get("has_pos_license", "0") == "1"
+                experience_years = (request.POST.get("experience_years") or "").strip()
+                client_base = (request.POST.get("client_base") or "").strip()
+
                 # Validation
                 errors = {}
                 import re
-                if pan and not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$', pan, re.IGNORECASE):
-                    errors['pan'] = ['Enter a valid PAN number.']
+
+                if pan and not re.match(
+                    r"^[A-Z]{5}[0-9]{4}[A-Z]{1}$", pan, re.IGNORECASE
+                ):
+                    errors["pan"] = ["Enter a valid PAN number."]
                 elif pan and len(pan) > 20:
-                    errors['pan'] = ['PAN number cannot exceed 20 characters.']
-                    
+                    errors["pan"] = ["PAN number cannot exceed 20 characters."]
+
                 if agency_name and len(agency_name) > 255:
-                    errors['agency_name'] = ['Agency name cannot exceed 255 characters.']
-                    
+                    errors["agency_name"] = [
+                        "Agency name cannot exceed 255 characters."
+                    ]
+
                 if office_address and len(office_address) > 255:
-                    errors['office_address'] = ['Office address cannot exceed 255 characters.']
-                    
+                    errors["office_address"] = [
+                        "Office address cannot exceed 255 characters."
+                    ]
+
                 if not service_pincode:
-                    errors['service_pincode'] = ['The service pincode field is required.']
-                elif not re.match(r'^[1-9][0-9]{5}$', service_pincode):
-                    errors['service_pincode'] = ['Enter a valid 6-digit PIN code.']
-                    
+                    errors["service_pincode"] = [
+                        "The service pincode field is required."
+                    ]
+                elif not re.match(r"^[1-9][0-9]{5}$", service_pincode):
+                    errors["service_pincode"] = ["Enter a valid 6-digit PIN code."]
+
                 if not experience_years:
-                    errors['experience_years'] = ['The experience field is required.']
+                    errors["experience_years"] = ["The experience field is required."]
                 elif len(experience_years) > 50:
-                    errors['experience_years'] = ['Experience field cannot exceed 50 characters.']
-                    
+                    errors["experience_years"] = [
+                        "Experience field cannot exceed 50 characters."
+                    ]
+
                 if not client_base:
-                    errors['client_base'] = ['The client base field is required.']
+                    errors["client_base"] = ["The client base field is required."]
                 elif len(client_base) > 50:
-                    errors['client_base'] = ['Client base cannot exceed 50 characters.']
-                    
-                serviceable_cities_data = request.POST.getlist('serviceable_cities[]') or request.POST.getlist('serviceable_cities')
+                    errors["client_base"] = ["Client base cannot exceed 50 characters."]
+
+                serviceable_cities_data = request.POST.getlist(
+                    "serviceable_cities[]"
+                ) or request.POST.getlist("serviceable_cities")
                 if not serviceable_cities_data:
-                    errors['serviceable_cities'] = ['The serviceable cities field is required.']
-                    
+                    errors["serviceable_cities"] = [
+                        "The serviceable cities field is required."
+                    ]
+
                 if errors:
-                    return JsonResponse({'status': 'error', 'message': 'Validation failed', 'errors': errors}, status=422)
-                    
+                    return JsonResponse(
+                        {
+                            "status": "error",
+                            "message": "Validation failed",
+                            "errors": errors,
+                        },
+                        status=422,
+                    )
+
                 profile.pan_number = pan
                 profile.agency_name = agency_name
                 profile.office_address = office_address
                 profile.service_pincode = service_pincode
                 profile.has_pos_license = has_pos_license
-                
-                license_valid_till = request.POST.get('license_valid_till')
+
+                license_valid_till = request.POST.get("license_valid_till")
                 if license_valid_till:
                     profile.license_valid_till = license_valid_till
                 else:
                     profile.license_valid_till = None
-                    
-                profile.arn_number = request.POST.get('arn_number', '').strip()
-                profile.euin_number = request.POST.get('euin_number', '').strip()
-                
-                investment_valid_till = request.POST.get('investment_valid_till')
+
+                profile.arn_number = request.POST.get("arn_number", "").strip()
+                profile.euin_number = request.POST.get("euin_number", "").strip()
+
+                investment_valid_till = request.POST.get("investment_valid_till")
                 if investment_valid_till:
                     profile.investment_valid_till = investment_valid_till
                 else:
                     profile.investment_valid_till = None
-                
-                if is_admin_edit and request.POST.get('license_number'):
-                    profile.license_number = request.POST.get('license_number')
-                    
+
+                if is_admin_edit and request.POST.get("license_number"):
+                    profile.license_number = request.POST.get("license_number")
+
                 profile.save()
-                
+
                 agent.experience_range = experience_years
                 agent.client_base = client_base
-                
-                insurance_companies = request.POST.getlist('insurance_companies[]') or request.POST.getlist('insurance_companies')
+
+                insurance_companies = request.POST.getlist(
+                    "insurance_companies[]"
+                ) or request.POST.getlist("insurance_companies")
                 if insurance_companies:
                     agent.insurance_companies = insurance_companies
-                    
+
                 agent.save()
-                
+
                 # Family Licenses
                 agent.familyLicenses.all().delete()
                 family_indices = set()
                 for key in request.POST.keys():
-                    match = re.match(r'family_members\[(\d+)\]\[name\]', key)
+                    match = re.match(r"family_members\[(\d+)\]\[name\]", key)
                     if match:
                         family_indices.add(int(match.group(1)))
-                        
+
                 for idx in sorted(family_indices):
-                    name = request.POST.get(f'family_members[{idx}][name]', '').strip()
-                    relationship = request.POST.get(f'family_members[{idx}][relationship]', '').strip()
-                    license_num = request.POST.get(f'family_members[{idx}][license]', '').strip()
+                    name = request.POST.get(f"family_members[{idx}][name]", "").strip()
+                    relationship = request.POST.get(
+                        f"family_members[{idx}][relationship]", ""
+                    ).strip()
+                    license_num = request.POST.get(
+                        f"family_members[{idx}][license]", ""
+                    ).strip()
                     if name:
                         AgentFamilyLicense.objects.create(
                             agent=agent,
                             full_name=name,
                             relationship=relationship,
-                            license_number=license_num
+                            license_number=license_num,
                         )
-                        
+
                 # Performance Stats
-                claims_processed = int(request.POST.get('claims_processed') or 0)
-                claims_settled = int(request.POST.get('claims_settled') or 0)
-                claims_amount = float(request.POST.get('claims_amount') or 0.0)
-                response_time = int(request.POST.get('response_time') or 2)
-                success_rate = round((claims_settled / claims_processed) * 100, 2) if claims_processed > 0 else 0.0
-                
+                claims_processed = int(request.POST.get("claims_processed") or 0)
+                claims_settled = int(request.POST.get("claims_settled") or 0)
+                claims_amount = float(request.POST.get("claims_amount") or 0.0)
+                response_time = int(request.POST.get("response_time") or 2)
+                success_rate = (
+                    round((claims_settled / claims_processed) * 100, 2)
+                    if claims_processed > 0
+                    else 0.0
+                )
+
                 AgentPerformanceStat.objects.update_or_create(
                     agent=agent,
                     defaults={
-                        'claims_processed': claims_processed,
-                        'claims_settled': claims_settled,
-                        'claims_amount': claims_amount,
-                        'success_rate': success_rate,
-                        'response_time': response_time
-                    }
+                        "claims_processed": claims_processed,
+                        "claims_settled": claims_settled,
+                        "claims_amount": claims_amount,
+                        "success_rate": success_rate,
+                        "response_time": response_time,
+                    },
                 )
-                
+
                 # Serviceable Cities
                 city_ids = []
                 for city_name in serviceable_cities_data:
                     city, _ = City.objects.get_or_create(
                         name=city_name,
                         defaults={
-                            'slug': re.sub(r'[^a-zA-Z0-9]', '-', city_name).lower(),
-                            'is_active': True
-                        }
+                            "slug": re.sub(r"[^a-zA-Z0-9]", "-", city_name).lower(),
+                            "is_active": True,
+                        },
                     )
                     city_ids.append(city.id)
                 agent.serviceableCities.set(city_ids)
-                
+
             # ── Step 3: Insurance Segments ──
             if should_process(3):
-                segments = request.POST.getlist('segments[]') or request.POST.getlist('segments')
-                
+                segments = request.POST.getlist("segments[]") or request.POST.getlist(
+                    "segments"
+                )
+
                 agent.insuranceSegments.all().delete()
                 for segment_type in segments:
-                    AgentInsuranceSegment.objects.create(agent=agent, segment_type=segment_type)
-                    
-                investment_types = request.POST.getlist('investment_types[]') or request.POST.getlist('investment_types')
+                    AgentInsuranceSegment.objects.create(
+                        agent=agent, segment_type=segment_type
+                    )
+
+                investment_types = request.POST.getlist(
+                    "investment_types[]"
+                ) or request.POST.getlist("investment_types")
                 profile.investment_types = investment_types
                 profile.save()
-                    
+
                 # Product expertise ratings
                 agent.productExpertise.all().delete()
                 for key, value in request.POST.items():
-                    match = re.match(r'expertise\[([^\]]+)\]\[([^\]]+)\]', key)
+                    match = re.match(r"expertise\[([^\]]+)\]\[([^\]]+)\]", key)
                     if match:
                         segment = match.group(1)
                         product = match.group(2)
                         try:
                             level = int(value)
                             if level > 0:
-                                is_custom = request.POST.get(f"custom_products[{segment}][{product}]") == '1'
+                                is_custom = (
+                                    request.POST.get(
+                                        f"custom_products[{segment}][{product}]"
+                                    )
+                                    == "1"
+                                )
                                 AgentProductExpertise.objects.create(
                                     agent=agent,
                                     segment_type=segment,
                                     product_name=product,
                                     expertise_level=level,
-                                    is_custom=is_custom
+                                    is_custom=is_custom,
                                 )
                         except ValueError:
                             pass
-                            
+
             # ── Step 4: Portfolios ──
             if should_process(4):
                 # Always sync segments on step 4 even if empty, so unselecting all works
-                segments = request.POST.getlist('segments[]') or request.POST.getlist('segments')
-                if 'segments[]' in request.POST or 'segments' in request.POST or str(current_step) == '4':
+                segments = request.POST.getlist("segments[]") or request.POST.getlist(
+                    "segments"
+                )
+                if (
+                    "segments[]" in request.POST
+                    or "segments" in request.POST
+                    or str(current_step) == "4"
+                ):
                     agent.insuranceSegments.all().delete()
                     for segment_type in segments:
-                        AgentInsuranceSegment.objects.create(agent=agent, segment_type=segment_type)
-                        
-                investment_types = request.POST.getlist('investment_types[]') or request.POST.getlist('investment_types')
-                if 'investment_types[]' in request.POST or 'investment_types' in request.POST or str(current_step) == '4':
+                        AgentInsuranceSegment.objects.create(
+                            agent=agent, segment_type=segment_type
+                        )
+
+                investment_types = request.POST.getlist(
+                    "investment_types[]"
+                ) or request.POST.getlist("investment_types")
+                if (
+                    "investment_types[]" in request.POST
+                    or "investment_types" in request.POST
+                    or str(current_step) == "4"
+                ):
                     profile.investment_types = investment_types
                     profile.save()
-                        
+
                 portfolio_data = {}
                 for key in request.POST.keys():
-                    match = re.match(r'portfolio\[([^\]]+)\]\[([^\]]+)\]', key)
+                    match = re.match(r"portfolio\[([^\]]+)\]\[([^\]]+)\]", key)
                     if match:
                         segment = match.group(1)
                         field = match.group(2)
                         if segment not in portfolio_data:
                             portfolio_data[segment] = {}
-                        if field != 'companies_extra':
+                        if field != "companies_extra":
                             portfolio_data[segment][field] = request.POST.get(key)
-                            
+
                 for key in request.POST.keys():
-                    match = re.match(r'portfolio\[([^\]]+)\]\[companies_extra\]\[(\d+)\]\[(name|percent)\]', key)
+                    match = re.match(
+                        r"portfolio\[([^\]]+)\]\[companies_extra\]\[(\d+)\]\[(name|percent)\]",
+                        key,
+                    )
                     if match:
                         segment = match.group(1)
                         idx = int(match.group(2))
                         field = match.group(3)
-                        
+
                         if segment not in portfolio_data:
                             portfolio_data[segment] = {}
-                        if 'companies_extra' not in portfolio_data[segment]:
-                            portfolio_data[segment]['companies_extra'] = {}
-                        if idx not in portfolio_data[segment]['companies_extra']:
-                            portfolio_data[segment]['companies_extra'][idx] = {}
-                            
-                        portfolio_data[segment]['companies_extra'][idx][field] = request.POST.get(key)
-                        
+                        if "companies_extra" not in portfolio_data[segment]:
+                            portfolio_data[segment]["companies_extra"] = {}
+                        if idx not in portfolio_data[segment]["companies_extra"]:
+                            portfolio_data[segment]["companies_extra"][idx] = {}
+
+                        portfolio_data[segment]["companies_extra"][idx][field] = (
+                            request.POST.get(key)
+                        )
+
                 agent.portfolios.all().delete()
                 for segment_type, data in portfolio_data.items():
-                    primary_name = (data.get('primary_company') or '').strip()
-                    primary_percent = (data.get('primary_percent') or '').strip()
-                    secondary_name = (data.get('secondary_company') or '').strip()
-                    secondary_percent = (data.get('secondary_percent') or '').strip()
-                    other_companies = (data.get('other_companies') or '').strip()
-                    
+                    primary_name = (data.get("primary_company") or "").strip()
+                    primary_percent = (data.get("primary_percent") or "").strip()
+                    secondary_name = (data.get("secondary_company") or "").strip()
+                    secondary_percent = (data.get("secondary_percent") or "").strip()
+                    other_companies = (data.get("other_companies") or "").strip()
+
                     if primary_name:
                         # Construct companies extra list
                         extra_list = []
-                        if 'companies_extra' in data:
-                            for idx, comp in data['companies_extra'].items():
-                                cname = (comp.get('name') or '').strip()
-                                cpercent = (comp.get('percent') or '').strip()
+                        if "companies_extra" in data:
+                            for idx, comp in data["companies_extra"].items():
+                                cname = (comp.get("name") or "").strip()
+                                cpercent = (comp.get("percent") or "").strip()
                                 if cname:
-                                    extra_list.append({'name': cname, 'percent': cpercent})
-                                    
-                        all_companies = [{'name': primary_name, 'percent': primary_percent}]
+                                    extra_list.append(
+                                        {"name": cname, "percent": cpercent}
+                                    )
+
+                        all_companies = [
+                            {"name": primary_name, "percent": primary_percent}
+                        ]
                         if secondary_name:
-                            all_companies.append({'name': secondary_name, 'percent': secondary_percent})
+                            all_companies.append(
+                                {"name": secondary_name, "percent": secondary_percent}
+                            )
                         all_companies.extend(extra_list)
-                        
+
                         AgentPortfolio.objects.create(
                             agent=agent,
                             segment_type=segment_type,
                             primary_companies={
-                                'name': primary_name,
-                                'percentage': primary_percent
+                                "name": primary_name,
+                                "percentage": primary_percent,
                             },
                             secondary_companies={
-                                'name': secondary_name,
-                                'percentage': secondary_percent,
-                                'others': other_companies,
-                                'companies': all_companies
-                            }
+                                "name": secondary_name,
+                                "percentage": secondary_percent,
+                                "others": other_companies,
+                                "companies": all_companies,
+                            },
                         )
-                        
+
             # ── Step 5: Additional Info ──
             if should_process(5):
-                website = (request.POST.get('website') or '').strip()
-                google_business = (request.POST.get('google_business') or '').strip()
-                linkedin = (request.POST.get('linkedin_url') or '').strip()
-                instagram = (request.POST.get('instagram_url') or '').strip()
-                facebook = (request.POST.get('facebook_url') or '').strip()
-                youtube = (request.POST.get('youtube_url') or '').strip()
-                career_highlights = (request.POST.get('career_highlights') or '').strip()
-                
+                website = (request.POST.get("website") or "").strip()
+                google_business = (request.POST.get("google_business") or "").strip()
+                linkedin = (request.POST.get("linkedin_url") or "").strip()
+                instagram = (request.POST.get("instagram_url") or "").strip()
+                facebook = (request.POST.get("facebook_url") or "").strip()
+                youtube = (request.POST.get("youtube_url") or "").strip()
+                career_highlights = (
+                    request.POST.get("career_highlights") or ""
+                ).strip()
+
                 # Validation
                 errors = {}
                 from django.core.validators import URLValidator
                 from django.core.exceptions import ValidationError
+
                 url_validator = URLValidator()
-                
+
                 def validate_optional_url(url, field_name):
                     if url:
                         if len(url) > 255:
-                            errors[field_name] = ['URL cannot exceed 255 characters.']
+                            errors[field_name] = ["URL cannot exceed 255 characters."]
                         else:
                             try:
                                 url_validator(url)
                             except ValidationError:
-                                errors[field_name] = [f'Enter a valid URL for {field_name}.']
-                
-                validate_optional_url(website, 'website')
-                validate_optional_url(google_business, 'google_business')
-                validate_optional_url(linkedin, 'linkedin_url')
-                validate_optional_url(instagram, 'instagram_url')
-                validate_optional_url(facebook, 'facebook_url')
-                validate_optional_url(youtube, 'youtube_url')
-                
+                                errors[field_name] = [
+                                    f"Enter a valid URL for {field_name}."
+                                ]
+
+                validate_optional_url(website, "website")
+                validate_optional_url(google_business, "google_business")
+                validate_optional_url(linkedin, "linkedin_url")
+                validate_optional_url(instagram, "instagram_url")
+                validate_optional_url(facebook, "facebook_url")
+                validate_optional_url(youtube, "youtube_url")
+
                 if career_highlights and len(career_highlights) > 500:
-                    errors['career_highlights'] = ['Professional Bio cannot exceed 500 characters.']
-                    return JsonResponse({'status': 'error', 'message': 'Professional Bio cannot exceed 500 characters.', 'errors': errors}, status=400)
-                    
+                    errors["career_highlights"] = [
+                        "Professional Bio cannot exceed 500 characters."
+                    ]
+                    return JsonResponse(
+                        {
+                            "status": "error",
+                            "message": "Professional Bio cannot exceed 500 characters.",
+                            "errors": errors,
+                        },
+                        status=400,
+                    )
+
                 if errors:
-                    return JsonResponse({'status': 'error', 'message': 'Validation failed', 'errors': errors}, status=422)
-                
+                    return JsonResponse(
+                        {
+                            "status": "error",
+                            "message": "Validation failed",
+                            "errors": errors,
+                        },
+                        status=422,
+                    )
+
                 # Check photos limits
-                remove_photo_ids = request.POST.getlist('remove_photos[]') or request.POST.getlist('remove_photos')
+                remove_photo_ids = request.POST.getlist(
+                    "remove_photos[]"
+                ) or request.POST.getlist("remove_photos")
                 remove_photo_ids = [int(i) for i in remove_photo_ids if i.isdigit()]
-                
-                plan_text = str(agent.activeSubscription.selected_plan if agent.activeSubscription else '').lower()
-                max_achievement_photos = 10 if 'professional' in plan_text else 5
-                
+
+                plan_text = str(
+                    agent.activeSubscription.selected_plan
+                    if agent.activeSubscription
+                    else ""
+                ).lower()
+                max_achievement_photos = 10 if "professional" in plan_text else 5
+
                 existing_photos_count = agent.achievementPhotos.count()
                 removed_count = len(remove_photo_ids)
-                new_photos = request.FILES.getlist('achievement_photos')
+                new_photos = request.FILES.getlist("achievement_photos")
                 new_photos_count = len(new_photos)
-                
-                projected_total = max(0, existing_photos_count - removed_count) + new_photos_count
+
+                projected_total = (
+                    max(0, existing_photos_count - removed_count) + new_photos_count
+                )
                 if projected_total > max_achievement_photos:
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': f"Achievement photo limit exceeded. Your current plan allows up to {max_achievement_photos} photos.",
-                        'errors': {
-                            'achievement_photos': [f"You can upload up to {max_achievement_photos} achievement photos."]
-                        }
-                    }, status=422)
+                    return JsonResponse(
+                        {
+                            "status": "error",
+                            "message": f"Achievement photo limit exceeded. Your current plan allows up to {max_achievement_photos} photos.",
+                            "errors": {
+                                "achievement_photos": [
+                                    f"You can upload up to {max_achievement_photos} achievement photos."
+                                ]
+                            },
+                        },
+                        status=422,
+                    )
 
                 profile.website_url = website
                 profile.social_links = {
-                    'google_business': google_business,
-                    'linkedin': linkedin,
-                    'instagram': instagram,
-                    'facebook': facebook,
-                    'youtube': youtube
+                    "google_business": google_business,
+                    "linkedin": linkedin,
+                    "instagram": instagram,
+                    "facebook": facebook,
+                    "youtube": youtube,
                 }
                 profile.career_highlights = career_highlights
                 profile.save()
-                
+
                 # Process photo removal
                 if remove_photo_ids:
                     agent.achievementPhotos.filter(id__in=remove_photo_ids).delete()
-                    
+
                 # Process photo uploads
-                allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+                allowed_extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
                 for photo_file in new_photos:
                     file_content = photo_file.read()
                     photo_file.seek(0)
-                    is_valid, error_msg = validate_magic_bytes(file_content, photo_file.name)
+                    is_valid, error_msg = validate_magic_bytes(
+                        file_content, photo_file.name
+                    )
                     if not is_valid:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': f'Invalid file for achievement photo: {error_msg}',
-                            'errors': {'achievement_photos': [error_msg]}
-                        }, status=422)
-                    
+                        return JsonResponse(
+                            {
+                                "status": "error",
+                                "message": f"Invalid file for achievement photo: {error_msg}",
+                                "errors": {"achievement_photos": [error_msg]},
+                            },
+                            status=422,
+                        )
+
                     file_ext = os.path.splitext(photo_file.name)[1].lower()
                     if file_ext not in allowed_extensions:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Invalid file extension. Only JPG, JPEG, PNG, GIF, and WEBP are allowed.',
-                            'errors': {'achievement_photos': ['Invalid file extension. Only images are allowed.']}
-                        }, status=422)
+                        return JsonResponse(
+                            {
+                                "status": "error",
+                                "message": "Invalid file extension. Only JPG, JPEG, PNG, GIF, and WEBP are allowed.",
+                                "errors": {
+                                    "achievement_photos": [
+                                        "Invalid file extension. Only images are allowed."
+                                    ]
+                                },
+                            },
+                            status=422,
+                        )
 
                     if photo_file.size > 5 * 1024 * 1024:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'One of your photos exceeds 5MB size limit.',
-                            'errors': {'achievement_photos': ['A photo exceeds 5MB.']}
-                        }, status=422)
+                        return JsonResponse(
+                            {
+                                "status": "error",
+                                "message": "One of your photos exceeds 5MB size limit.",
+                                "errors": {
+                                    "achievement_photos": ["A photo exceeds 5MB."]
+                                },
+                            },
+                            status=422,
+                        )
 
                     from PIL import Image
+
                     try:
                         photo_file.seek(0)
                         img = Image.open(photo_file)
                         img.verify()
                         photo_file.seek(0)
                     except Exception:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'The uploaded file is not a valid image.',
-                            'errors': {'achievement_photos': ['Invalid or corrupted image file.']}
-                        }, status=422)
+                        return JsonResponse(
+                            {
+                                "status": "error",
+                                "message": "The uploaded file is not a valid image.",
+                                "errors": {
+                                    "achievement_photos": [
+                                        "Invalid or corrupted image file."
+                                    ]
+                                },
+                            },
+                            status=422,
+                        )
 
                     file_name = f"app/public/achievement/achievement_{agent.id}_{int(time.time())}_{uuid.uuid4().hex[:6]}{file_ext}"
                     saved_path = default_storage.save(file_name, photo_file)
-                    AgentAchievementPhoto.objects.create(agent=agent, photo_path=saved_path)
-                    
+                    AgentAchievementPhoto.objects.create(
+                        agent=agent, photo_path=saved_path
+                    )
+
                 # Recreate career timelines
                 agent.careerTimelines.all().delete()
                 timeline_indices = set()
                 for key in request.POST.keys():
-                    match = re.match(r'career_timelines\[(\d+)\]\[event_text\]', key)
+                    match = re.match(r"career_timelines\[(\d+)\]\[event_text\]", key)
                     if match:
                         timeline_indices.add(int(match.group(1)))
-                        
+
                 for idx in sorted(timeline_indices):
-                    event_type = request.POST.get(f'career_timelines[{idx}][type]', 'Career Event').strip()
-                    event_text = request.POST.get(f'career_timelines[{idx}][event_text]', '').strip()
-                    month = request.POST.get(f'career_timelines[{idx}][month]', '').strip()
-                    year = request.POST.get(f'career_timelines[{idx}][year]', '').strip()
-                    suggestion_key = request.POST.get(f'career_timelines[{idx}][suggestion_key]', '').strip() or None
+                    event_type = request.POST.get(
+                        f"career_timelines[{idx}][type]", "Career Event"
+                    ).strip()
+                    event_text = request.POST.get(
+                        f"career_timelines[{idx}][event_text]", ""
+                    ).strip()
+                    month = request.POST.get(
+                        f"career_timelines[{idx}][month]", ""
+                    ).strip()
+                    year = request.POST.get(
+                        f"career_timelines[{idx}][year]", ""
+                    ).strip()
+                    suggestion_key = (
+                        request.POST.get(
+                            f"career_timelines[{idx}][suggestion_key]", ""
+                        ).strip()
+                        or None
+                    )
                     if event_text and year:
                         AgentCareerTimeline.objects.create(
                             agent=agent,
@@ -2234,93 +2924,158 @@ def apply_profile_update(request, agent, is_admin_edit=False):
                             year=year,
                             suggestion_key=suggestion_key,
                         )
-                        
+
             # ── Step 6: Lead Preferences ──
             if should_process(6):
                 agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
                 can_edit_leads = is_admin_edit or (
                     agent_plan is None
-                    or plan_shows_feature(agent_plan, 'show_lead_preferences', default=False)
+                    or plan_shows_feature(
+                        agent_plan, "show_lead_preferences", default=False
+                    )
                 )
                 if can_edit_leads:
-                    lead_types = request.POST.getlist('lead_types[]') or request.POST.getlist('lead_types')
-                    portfolio_charging = request.POST.get('portfolio_charging', 'free')
-                    
+                    lead_types = request.POST.getlist(
+                        "lead_types[]"
+                    ) or request.POST.getlist("lead_types")
+                    portfolio_charging = request.POST.get("portfolio_charging", "free")
+
                     portfolio_fee = 0.0
-                    if portfolio_charging == 'conditional':
-                        portfolio_fee = float(request.POST.get('portfolio_fee_conditional') or 0.0)
-                    elif portfolio_charging == 'paid':
-                        portfolio_fee = float(request.POST.get('portfolio_fee_paid') or 0.0)
-                        
-                    claims_charging = request.POST.get('claims_charging', 'free')
-                    claims_fee_amount = float(request.POST.get('claims_fee_amount') or 0.0) if claims_charging == 'fee' else 0.0
-                    claims_percent = float(request.POST.get('claims_percent') or 0.0) if claims_charging == 'percentage' else 0.0
-                    
-                    allow_new = is_admin_edit or agent_plan is None or plan_shows_feature(agent_plan, 'show_new_business_leads', default=False)
-                    allow_portfolio = is_admin_edit or agent_plan is None or plan_shows_feature(agent_plan, 'show_lead_portfolio_analysis', default=False)
-                    allow_claims = is_admin_edit or agent_plan is None or plan_shows_feature(agent_plan, 'show_lead_claims_support', default=False)
+                    if portfolio_charging == "conditional":
+                        portfolio_fee = float(
+                            request.POST.get("portfolio_fee_conditional") or 0.0
+                        )
+                    elif portfolio_charging == "paid":
+                        portfolio_fee = float(
+                            request.POST.get("portfolio_fee_paid") or 0.0
+                        )
+
+                    claims_charging = request.POST.get("claims_charging", "free")
+                    claims_fee_amount = (
+                        float(request.POST.get("claims_fee_amount") or 0.0)
+                        if claims_charging == "fee"
+                        else 0.0
+                    )
+                    claims_percent = (
+                        float(request.POST.get("claims_percent") or 0.0)
+                        if claims_charging == "percentage"
+                        else 0.0
+                    )
+
+                    allow_new = (
+                        is_admin_edit
+                        or agent_plan is None
+                        or plan_shows_feature(
+                            agent_plan, "show_new_business_leads", default=False
+                        )
+                    )
+                    allow_portfolio = (
+                        is_admin_edit
+                        or agent_plan is None
+                        or plan_shows_feature(
+                            agent_plan, "show_lead_portfolio_analysis", default=False
+                        )
+                    )
+                    allow_claims = (
+                        is_admin_edit
+                        or agent_plan is None
+                        or plan_shows_feature(
+                            agent_plan, "show_lead_claims_support", default=False
+                        )
+                    )
                     AgentLeadPreference.objects.update_or_create(
                         agent=agent,
                         defaults={
-                            'leads_new_business': allow_new and 'new_business' in lead_types,
-                            'leads_portfolio_analysis': allow_portfolio and 'portfolio_analysis' in lead_types,
-                            'portfolio_charging': portfolio_charging,
-                            'portfolio_fee': portfolio_fee,
-                            'leads_claims_support': allow_claims and 'claims_support' in lead_types,
-                            'claims_charging': claims_charging,
-                            'claims_fee_amount': claims_fee_amount,
-                            'claims_percent': claims_percent
-                        }
+                            "leads_new_business": allow_new
+                            and "new_business" in lead_types,
+                            "leads_portfolio_analysis": allow_portfolio
+                            and "portfolio_analysis" in lead_types,
+                            "portfolio_charging": portfolio_charging,
+                            "portfolio_fee": portfolio_fee,
+                            "leads_claims_support": allow_claims
+                            and "claims_support" in lead_types,
+                            "claims_charging": claims_charging,
+                            "claims_fee_amount": claims_fee_amount,
+                            "claims_percent": claims_percent,
+                        },
                     )
-                
+
             # ── Step 7: Final Submission ──
-            if not current_step or str(current_step) == '7':
+            if not current_step or str(current_step) == "7":
                 if not is_admin_edit:
-                    agent.status = 'pending_approval'
+                    agent.status = "pending_approval"
                     agent.save()
-                    
+
             if license_payloads:
                 from django.core.files.base import ContentFile
+
                 for field, content, ext, kind in license_payloads:
-                    folder = 'insurance' if kind == 'irdai' else 'investment'
-                    doc_path = f"app/public/{folder}/{kind}_{agent.id}_{uuid.uuid4().hex}{ext}"
-                    setattr(profile, field, default_storage.save(doc_path, ContentFile(content)))
+                    folder = "insurance" if kind == "irdai" else "investment"
+                    doc_path = (
+                        f"app/public/{folder}/{kind}_{agent.id}_{uuid.uuid4().hex}{ext}"
+                    )
+                    setattr(
+                        profile,
+                        field,
+                        default_storage.save(doc_path, ContentFile(content)),
+                    )
                 profile.save()
 
             # Clear OG image cache so changes (like WhatsApp, Photo, Name) reflect immediately
             from django.core.cache import cache
             from apps.agents.models import og_image_cache_key
+
             cache.delete(og_image_cache_key(agent.id))
 
             try:
-                with transaction.atomic():  # savepoint: a logging error must not roll back the profile save
-                    _log_profile_edit(request, agent, edit_snapshot_before,
-                                      _profile_edit_snapshot(agent, profile), current_step, is_admin_edit)
+                with (
+                    transaction.atomic()
+                ):  # savepoint: a logging error must not roll back the profile save
+                    _log_profile_edit(
+                        request,
+                        agent,
+                        edit_snapshot_before,
+                        _profile_edit_snapshot(agent, profile),
+                        current_step,
+                        is_admin_edit,
+                    )
             except Exception:
                 logger.exception("Profile edit log failed for agent_id=%s", agent.id)
 
             def _doc_url(field_file):
-                name = str(field_file or '').strip()
-                return f'/media/{name}' if name else None
+                name = str(field_file or "").strip()
+                return f"/media/{name}" if name else None
 
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Profile saved successfully' if not current_step else 'Progress saved',
-                'redirect': None if current_step and str(current_step) != '7' else (
-                    '/admin/agents/manage/' + str(agent.id) + '/' if is_admin_edit else '/agent/dashboard/'
-                ),
-                'profile_photo_url': profile.profile_photo_url,
-                'irdai_license_doc_url': _doc_url(profile.irdai_license_doc),
-                'amfi_license_doc_url': _doc_url(profile.amfi_license_doc),
-            })
-            
+            return JsonResponse(
+                {
+                    "status": "success",
+                    "message": "Profile saved successfully"
+                    if not current_step
+                    else "Progress saved",
+                    "redirect": None
+                    if current_step and str(current_step) != "7"
+                    else (
+                        "/admin/agents/manage/" + str(agent.id) + "/"
+                        if is_admin_edit
+                        else "/agent/dashboard/"
+                    ),
+                    "profile_photo_url": profile.profile_photo_url,
+                    "irdai_license_doc_url": _doc_url(profile.irdai_license_doc),
+                    "amfi_license_doc_url": _doc_url(profile.amfi_license_doc),
+                }
+            )
+
     except Exception as e:
         import traceback
+
         logger.error(f"Profile update failed: {e}\n{traceback.format_exc()}")
-        return JsonResponse({
-            'status': 'error',
-            'message': f"An error occurred while updating your profile: {str(e)}"
-        }, status=500)
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": f"An error occurred while updating your profile: {str(e)}",
+            },
+            status=500,
+        )
 
 
 @require_POST
@@ -2329,11 +3084,11 @@ def agent_push_token(request):
     Handle POST request to store/update the FCM push token for the authenticated agent.
     """
     if not request.user.is_authenticated:
-        return JsonResponse({'message': 'Unauthenticated.'}, status=401)
+        return JsonResponse({"message": "Unauthenticated."}, status=401)
 
     agent = Agent.objects.filter(user=request.user).first()
     if not agent:
-        return JsonResponse({'message': 'Agent not found.'}, status=403)
+        return JsonResponse({"message": "Agent not found."}, status=403)
 
     try:
         try:
@@ -2341,24 +3096,24 @@ def agent_push_token(request):
         except JSONDecodeError:
             data = request.POST
 
-        token = data.get('token', '').strip()
-        platform = data.get('platform', '').strip() or None
+        token = data.get("token", "").strip()
+        platform = data.get("platform", "").strip() or None
 
         if not token:
-            return JsonResponse({'message': 'Token is required.'}, status=422)
+            return JsonResponse({"message": "Token is required."}, status=422)
 
         AgentDeviceToken.objects.update_or_create(
             token=token,
             defaults={
-                'agent': agent,
-                'platform': platform,
-                'last_seen_at': timezone.now()
-            }
+                "agent": agent,
+                "platform": platform,
+                "last_seen_at": timezone.now(),
+            },
         )
-        return JsonResponse({'message': 'Token saved.'})
+        return JsonResponse({"message": "Token saved."})
     except Exception as e:
         logger.error(f"FCM token store failed: {e}")
-        return JsonResponse({'message': 'Failed to save token.'}, status=500)
+        return JsonResponse({"message": "Failed to save token."}, status=500)
 
 
 def referral_info(request):
@@ -2366,11 +3121,11 @@ def referral_info(request):
     Agent referral info API (for dashboard)
     """
     if not request.user.is_authenticated:
-        return JsonResponse({'error': 'Unauthenticated.'}, status=401)
+        return JsonResponse({"error": "Unauthenticated."}, status=401)
 
     agent = Agent.objects.filter(user=request.user).first()
     if not agent:
-        return JsonResponse({'error': 'Agent Profile Not found'}, status=404)
+        return JsonResponse({"error": "Agent Profile Not found"}, status=404)
 
     try:
         ref_code = ReferralCode.objects.filter(agent=agent).first()
@@ -2379,8 +3134,7 @@ def referral_info(request):
 
         # Auto self-heal total_referrals from actual converted usages
         actual_conversions = ReferralUsage.objects.filter(
-            referral_code=ref_code,
-            status='converted'
+            referral_code=ref_code, status="converted"
         ).count()
 
         if ref_code.total_referrals != actual_conversions:
@@ -2390,34 +3144,46 @@ def referral_info(request):
         next_tier = ref_code.nextTier()
 
         # Calculate pending referrals: registered with this code but not converted yet
-        total_registered_agents = list(Agent.objects.filter(referred_by_code=ref_code.code).values_list('id', flat=True))
-        converted_agent_ids = list(ReferralUsage.objects.filter(
-            referral_code=ref_code,
-            status='converted'
-        ).values_list('referred_agent_id', flat=True))
+        total_registered_agents = list(
+            Agent.objects.filter(referred_by_code=ref_code.code).values_list(
+                "id", flat=True
+            )
+        )
+        converted_agent_ids = list(
+            ReferralUsage.objects.filter(
+                referral_code=ref_code, status="converted"
+            ).values_list("referred_agent_id", flat=True)
+        )
 
         pending_referrals = len(set(total_registered_agents) - set(converted_agent_ids))
 
         # Build absolute referral URL in Django
         from django.urls import reverse
-        try:
-            referral_url = request.build_absolute_uri(reverse('agents:referral_join', args=[ref_code.code]))
-        except Exception:
-            referral_url = f"{request.scheme}://{request.get_host()}/join/{ref_code.code}/"
 
-        return JsonResponse({
-            'code': ref_code.code,
-            'total_referrals': actual_conversions,
-            'pending_referrals': pending_referrals,
-            'current_tier': ref_code.currentTier(),
-            'next_tier': next_tier,
-            'next_target': next_tier['min'] if next_tier else None,
-            'reward_claimed': bool(ref_code.reward_claimed),
-            'referral_url': referral_url,
-        })
+        try:
+            referral_url = request.build_absolute_uri(
+                reverse("agents:referral_join", args=[ref_code.code])
+            )
+        except Exception:
+            referral_url = (
+                f"{request.scheme}://{request.get_host()}/join/{ref_code.code}/"
+            )
+
+        return JsonResponse(
+            {
+                "code": ref_code.code,
+                "total_referrals": actual_conversions,
+                "pending_referrals": pending_referrals,
+                "current_tier": ref_code.currentTier(),
+                "next_tier": next_tier,
+                "next_target": next_tier["min"] if next_tier else None,
+                "reward_claimed": bool(ref_code.reward_claimed),
+                "referral_url": referral_url,
+            }
+        )
     except Exception as e:
         logger.error(f"Referral info API failed: {e}")
-        return JsonResponse({'error': f"Server Error: {str(e)}"}, status=500)
+        return JsonResponse({"error": f"Server Error: {str(e)}"}, status=500)
 
 
 @require_POST
@@ -2426,11 +3192,15 @@ def agent_upgrade_plan(request):
     Handle plan upgrade checkout for logged-in agents (creates Razorpay order).
     """
     if not request.user.is_authenticated:
-        return JsonResponse({'success': False, 'message': 'Unauthenticated.'}, status=401)
+        return JsonResponse(
+            {"success": False, "message": "Unauthenticated."}, status=401
+        )
 
     agent = Agent.objects.filter(user=request.user).first()
     if not agent:
-        return JsonResponse({'success': False, 'message': 'Agent not found.'}, status=403)
+        return JsonResponse(
+            {"success": False, "message": "Agent not found."}, status=403
+        )
 
     try:
         try:
@@ -2438,53 +3208,72 @@ def agent_upgrade_plan(request):
         except JSONDecodeError:
             data = request.POST
 
-        raw_plan_type = data.get('plan_type')
+        raw_plan_type = data.get("plan_type")
         plan_type = resolve_checkout_plan_slug(raw_plan_type)
-        if plan_type not in ['starter', 'professional']:
-            return JsonResponse({'success': False, 'message': 'Invalid plan selection.'}, status=400)
+        if plan_type not in ["starter", "professional"]:
+            return JsonResponse(
+                {"success": False, "message": "Invalid plan selection."}, status=400
+            )
         # Same rule as the app upgrade link: only a plan above the current one.
         from plan_upgrade_handoff import upgrade_target_allowed
-        if not upgrade_target_allowed(agent.plan_type, plan_type):
-            return JsonResponse({
-                'success': False,
-                'message': 'You are already on this plan or a higher one.',
-            }, status=400)
 
-        promo_code = data.get('promo_code', '').strip()
+        if not upgrade_target_allowed(agent.plan_type, plan_type):
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "You are already on this plan or a higher one.",
+                },
+                status=400,
+            )
+
+        promo_code = data.get("promo_code", "").strip()
         promo_obj = None
         if promo_code:
             # PromoCode lives in apps.agents.models (the old admin_panel path
             # did not exist, so every upgrade with a promo code failed).
             from apps.agents.models import PromoCode
-            promo_obj = PromoCode.objects.filter(code=promo_code, is_active=True).first()
+
+            promo_obj = PromoCode.objects.filter(
+                code=promo_code, is_active=True
+            ).first()
 
         # Re-compute prices. The upgrade discount applies to agents on a free
         # trial only, exactly as the dashboard displays it; charging it to every
         # agent made Razorpay take less than the price shown.
         discount_pct = 0
         if agent.isOnFreeTrial():
-            admin_default = SiteSetting.get_value('trial_upgrade_discount', 20)
+            admin_default = SiteSetting.get_value("trial_upgrade_discount", 20)
             agent_specific = agent.upgrade_discount_percent or 0
 
             ref_code = ReferralCode.objects.filter(agent=agent).first()
             referral_discount = 0
             if ref_code:
                 tier = ref_code.currentTier()
-                if tier and 'discount' in tier:
-                    referral_discount = tier['discount']
+                if tier and "discount" in tier:
+                    referral_discount = tier["discount"]
 
-            discount_pct = max(int(admin_default), int(agent_specific), int(referral_discount))
+            discount_pct = max(
+                int(admin_default), int(agent_specific), int(referral_discount)
+            )
 
-        pricing_config = SiteSetting.get_value('pricing_config', {
-            'starter': {'name': PLAN_LABELS['starter'], 'full_price': 2359},
-            'professional': {'name': PLAN_LABELS['professional'], 'full_price': 8258},
-        })
+        pricing_config = SiteSetting.get_value(
+            "pricing_config",
+            {
+                "starter": {"name": PLAN_LABELS["starter"], "full_price": 2359},
+                "professional": {
+                    "name": PLAN_LABELS["professional"],
+                    "full_price": 8258,
+                },
+            },
+        )
 
-        starter_full = float(pricing_config.get('starter', {}).get('full_price', 2359))
-        prof_full = float(pricing_config.get('professional', {}).get('full_price', 8258))
+        starter_full = float(pricing_config.get("starter", {}).get("full_price", 2359))
+        prof_full = float(
+            pricing_config.get("professional", {}).get("full_price", 8258)
+        )
 
         starter_final = starter_full
-        if promo_obj and promo_obj.is_valid('basic'):
+        if promo_obj and promo_obj.is_valid("basic"):
             starter_final = starter_full - promo_obj.calculate_discount(starter_full)
 
         discount_factor = (100 - discount_pct) / 100
@@ -2493,49 +3282,48 @@ def agent_upgrade_plan(request):
         starter_disc = starter_base + round(starter_base * 0.18, 0)
 
         prof_final = prof_full
-        if promo_obj and promo_obj.is_valid('professional'):
+        if promo_obj and promo_obj.is_valid("professional"):
             prof_final = prof_full - promo_obj.calculate_discount(prof_full)
 
         prof_final = round(prof_final * discount_factor)
-        if agent.referral_reward_type == 'pro_plan_1rs':
+        if agent.referral_reward_type == "pro_plan_1rs":
             prof_final = 1
             discount_pct = 99.99
 
         from apps.agents.services.review_growth import get_review_upgrade_pricing
-        review_upgrade = get_review_upgrade_pricing(agent) if plan_type == 'professional' else None
+
+        review_upgrade = (
+            get_review_upgrade_pricing(agent) if plan_type == "professional" else None
+        )
 
         if review_upgrade:
-            prof_base = review_upgrade['checkout_base_excl_gst']
-            prof_disc = review_upgrade['checkout_total_incl_gst']
+            prof_base = review_upgrade["checkout_base_excl_gst"]
+            prof_disc = review_upgrade["checkout_total_incl_gst"]
         else:
             prof_base = round(prof_final / 1.18, 0)
-            if agent.referral_reward_type == 'pro_plan_1rs':
+            if agent.referral_reward_type == "pro_plan_1rs":
                 prof_disc = 1.00
             else:
                 prof_disc = prof_base + round(prof_base * 0.18, 0)
 
-        if plan_type == 'starter':
+        if plan_type == "starter":
             total_amount = starter_disc
             plan_amount = starter_base
-            plan_name = PLAN_LABELS['starter']
+            plan_name = PLAN_LABELS["starter"]
         else:
             total_amount = prof_disc
             plan_amount = prof_base
-            plan_name = PLAN_LABELS['professional']
+            plan_name = PLAN_LABELS["professional"]
 
         # Check duplicate paid subscription
         already_paid = AgentSubscription.objects.filter(
-            agent=agent,
-            payment_status='completed',
-            selected_plan=plan_name
+            agent=agent, payment_status="completed", selected_plan=plan_name
         ).first()
 
         if already_paid:
-            return JsonResponse({
-                'success': True,
-                'already_completed': True,
-                'agent_id': agent.id
-            })
+            return JsonResponse(
+                {"success": True, "already_completed": True, "agent_id": agent.id}
+            )
 
         import time
         from apps.agents.services.razorpay_checkout import (
@@ -2547,213 +3335,278 @@ def agent_upgrade_plan(request):
         amount_paise = int(round(total_amount * 100))
         razorpay_order_id, mock_checkout = create_checkout_order(
             amount_paise,
-            f'agent_upgrade_{agent.pk}_{int(time.time())}',
+            f"agent_upgrade_{agent.pk}_{int(time.time())}",
             request,
         )
 
         if not razorpay_order_id and amount_paise > 0:
-            return JsonResponse({
-                'success': False,
-                'message': gateway_failure_message(),
-            })
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": gateway_failure_message(),
+                }
+            )
 
         # Update or create AgentSubscription
         subscription, created = AgentSubscription.objects.update_or_create(
             agent=agent,
             razorpay_order_id=razorpay_order_id,
             defaults={
-                'selected_plan': plan_name or plan_type,
-                'promo_code': promo_code if promo_obj else None,
-                'registration_amount': total_amount,
-                'payment_status': 'pending',
-                'status': 'inactive',
-            }
+                "selected_plan": plan_name or plan_type,
+                "promo_code": promo_code if promo_obj else None,
+                "registration_amount": total_amount,
+                "payment_status": "pending",
+                "status": "inactive",
+            },
         )
 
         # Keep current agent status until payment succeeds — do not demote active trial users.
 
         # If 0 amount, complete instantly
         if amount_paise == 0:
-            subscription.payment_status = 'completed'
-            subscription.status = 'active'
+            subscription.payment_status = "completed"
+            subscription.status = "active"
             subscription.starts_at = timezone.now()
             subscription.expires_at = timezone.now() + timezone.timedelta(days=365)
             subscription.save()
-            
-            agent.status = 'active'
+
+            agent.status = "active"
             agent.plan_type = plan_type
             agent.save()
             _deactivate_superseded_subscriptions(agent, subscription.pk)
             try:
                 from apps.agents.services.registration_leads import sync_lead_for_agent
+
                 sync_lead_for_agent(agent)
             except Exception:
-                logger.exception('Quick-registration lead sync failed during zero-amount upgrade for agent #%s', agent.id)
+                logger.exception(
+                    "Quick-registration lead sync failed during zero-amount upgrade for agent #%s",
+                    agent.id,
+                )
 
             # Credit referral
             if agent.referred_by_code:
                 try:
-                    ref_code_obj = ReferralCode.objects.filter(code=agent.referred_by_code).first()
+                    ref_code_obj = ReferralCode.objects.filter(
+                        code=agent.referred_by_code
+                    ).first()
                     if ref_code_obj:
                         usage, u_created = ReferralUsage.objects.get_or_create(
                             referral_code=ref_code_obj,
                             referred_agent_id=agent.id,
-                            defaults={'status': 'converted', 'signed_up_at': timezone.now()}
+                            defaults={
+                                "status": "converted",
+                                "signed_up_at": timezone.now(),
+                            },
                         )
-                        if not u_created and usage.status != 'converted':
-                            usage.status = 'converted'
+                        if not u_created and usage.status != "converted":
+                            usage.status = "converted"
                             usage.save()
 
                         # Recalculate converted count
                         actual_conversions = ReferralUsage.objects.filter(
-                            referral_code=ref_code_obj,
-                            status='converted'
+                            referral_code=ref_code_obj, status="converted"
                         ).count()
                         ref_code_obj.total_referrals = actual_conversions
                         ref_code_obj.save()
 
                         if actual_conversions >= 5:
-                            referring_agent = Agent.objects.filter(pk=ref_code_obj.agent_id).first()
-                            if referring_agent and referring_agent.plan_type == 'free_trial':
-                                referring_agent.referral_reward_type = 'pro_plan_1rs'
-                                referring_agent.referral_reward_earned_at = timezone.now()
+                            referring_agent = Agent.objects.filter(
+                                pk=ref_code_obj.agent_id
+                            ).first()
+                            if (
+                                referring_agent
+                                and referring_agent.plan_type == "free_trial"
+                            ):
+                                referring_agent.referral_reward_type = "pro_plan_1rs"
+                                referring_agent.referral_reward_earned_at = (
+                                    timezone.now()
+                                )
                                 referring_agent.save()
                 except Exception as ref_err:
-                    logger.warning(f"Referral credit during plan upgrade failed: {ref_err}")
-            
+                    logger.warning(
+                        f"Referral credit during plan upgrade failed: {ref_err}"
+                    )
+
             try:
                 ReferralCode.generateForAgent(agent)
             except Exception:
                 pass
 
-            return JsonResponse({
-                'success': True,
-                'already_completed': True,
-                'agent_id': agent.id
-            })
+            return JsonResponse(
+                {"success": True, "already_completed": True, "agent_id": agent.id}
+            )
 
-        request.session['pending_checkout'] = {
-            'agent_id': agent.id,
-            'order_id': razorpay_order_id,
-            'plan_type': plan_type,
-            'plan_name': plan_name,
+        request.session["pending_checkout"] = {
+            "agent_id": agent.id,
+            "order_id": razorpay_order_id,
+            "plan_type": plan_type,
+            "plan_name": plan_name,
         }
         request.session.modified = True
 
         try:
             from apps.agents.services.registration_leads import mark_payment_pending
+
             mark_payment_pending(agent)
         except Exception:
-            logger.exception('Quick-registration payment pending sync failed during upgrade for agent #%s', agent.id)
+            logger.exception(
+                "Quick-registration payment pending sync failed during upgrade for agent #%s",
+                agent.id,
+            )
 
-        return JsonResponse(checkout_payload(
-            razorpay_order_id,
-            amount_paise,
-            agent,
-            is_mock=mock_checkout,
-            extra={
-                'plan_amount': plan_amount,
-                'total_amount': total_amount,
-            },
-            request=request,
-        ))
+        return JsonResponse(
+            checkout_payload(
+                razorpay_order_id,
+                amount_paise,
+                agent,
+                is_mock=mock_checkout,
+                extra={
+                    "plan_amount": plan_amount,
+                    "total_amount": total_amount,
+                },
+                request=request,
+            )
+        )
 
     except Exception as e:
         logger.error(f"Plan upgrade request failed: {e}")
-        return JsonResponse({'success': False, 'message': 'An unexpected error occurred.'}, status=500)
+        return JsonResponse(
+            {"success": False, "message": "An unexpected error occurred."}, status=500
+        )
 
 
 @csrf_exempt
 @require_POST
 def agent_capture_lead(request):
     try:
-        agent_id = request.POST.get('agent_id')
-        interaction_type = request.POST.get('interaction_type')
-        service_type = request.POST.get('service_type')
-        insurance_type = request.POST.get('insurance_type')
-        insurance_company = request.POST.get('insurance_company')
-        source_page = request.POST.get('source_page')
+        agent_id = request.POST.get("agent_id")
+        interaction_type = request.POST.get("interaction_type")
+        service_type = request.POST.get("service_type")
+        insurance_type = request.POST.get("insurance_type")
+        insurance_company = request.POST.get("insurance_company")
+        source_page = request.POST.get("source_page")
 
         if not agent_id or not interaction_type:
-            return JsonResponse({'success': False, 'message': 'Missing required fields: agent_id and interaction_type.'}, status=400)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Missing required fields: agent_id and interaction_type.",
+                },
+                status=400,
+            )
 
-        allowed_types = ['call', 'whatsapp', 'linkedin', 'facebook', 'instagram', 'youtube', 'google_business']
+        allowed_types = [
+            "call",
+            "whatsapp",
+            "linkedin",
+            "facebook",
+            "instagram",
+            "youtube",
+            "google_business",
+        ]
         if interaction_type not in allowed_types:
-            return JsonResponse({'success': False, 'message': 'Invalid interaction type.'}, status=400)
+            return JsonResponse(
+                {"success": False, "message": "Invalid interaction type."}, status=400
+            )
 
         # Get client IP (trusted-proxy rule; a raw X-Forwarded-For let callers
         # rotate IPs to bypass the per-IP lead limit below)
         from apps.admin_panel.middleware import ThreatMonitorMiddleware
+
         client_ip = ThreatMonitorMiddleware.get_client_ip(request)
 
         # 1. Explicit IP Block Check
         from apps.admin_panel.middleware import is_ip_blocked
+
         if is_ip_blocked(client_ip):
-            return JsonResponse({
-                'success': False,
-                'url': '#',
-                'message': 'Access denied. Your IP address has been blocked due to suspicious activity.'
-            })
+            return JsonResponse(
+                {
+                    "success": False,
+                    "url": "#",
+                    "message": "Access denied. Your IP address has been blocked due to suspicious activity.",
+                }
+            )
 
         # Check Agent exists
         agent = Agent.objects.filter(id=agent_id).first()
         if not agent:
-            return JsonResponse({'success': False, 'message': 'Agent not found.'}, status=404)
+            return JsonResponse(
+                {"success": False, "message": "Agent not found."}, status=404
+            )
 
         # 2. Dynamic Rate Limiting (Unique Agents per IP)
-        allowed_unique_leads = int(SiteSetting.get_value('rate_limit_clicks', 10))
-        timeframe_hours = int(SiteSetting.get_value('rate_limit_timeframe', 2))
+        allowed_unique_leads = int(SiteSetting.get_value("rate_limit_clicks", 10))
+        timeframe_hours = int(SiteSetting.get_value("rate_limit_timeframe", 2))
 
         time_threshold = timezone.now() - timezone.timedelta(hours=timeframe_hours)
 
-        unique_interactions_count = AgentLead.objects.filter(
-            ip_address=client_ip,
-            created_at__gte=time_threshold
-        ).order_by().values('agent_id').distinct().count()
+        unique_interactions_count = (
+            AgentLead.objects.filter(
+                ip_address=client_ip, created_at__gte=time_threshold
+            )
+            .order_by()
+            .values("agent_id")
+            .distinct()
+            .count()
+        )
 
         if unique_interactions_count >= allowed_unique_leads:
             is_same_interaction_allowed = AgentLead.objects.filter(
                 ip_address=client_ip,
                 agent_id=agent_id,
                 interaction_type=interaction_type,
-                created_at__gte=time_threshold
+                created_at__gte=time_threshold,
             ).exists()
 
             if not is_same_interaction_allowed:
-                return JsonResponse({
-                    'success': False,
-                    'url': '#',
-                    'message': f"Rate limit exceeded: You can only contact {allowed_unique_leads} different agents every {timeframe_hours} hours. Please try again later."
-                })
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "url": "#",
+                        "message": f"Rate limit exceeded: You can only contact {allowed_unique_leads} different agents every {timeframe_hours} hours. Please try again later.",
+                    }
+                )
 
         # Resolve customer details
-        lead_user = request.session.get('quick_lead_user', {})
-        customer_name = lead_user.get('fullname') or request.POST.get('fullname')
-        customer_email = lead_user.get('email') or request.POST.get('email')
-        customer_mobile = lead_user.get('mobile') or request.POST.get('mobile')
-        customer_pincode = lead_user.get('pincode') or request.POST.get('pincode')
+        lead_user = request.session.get("quick_lead_user", {})
+        customer_name = lead_user.get("fullname") or request.POST.get("fullname")
+        customer_email = lead_user.get("email") or request.POST.get("email")
+        customer_mobile = lead_user.get("mobile") or request.POST.get("mobile")
+        customer_pincode = lead_user.get("pincode") or request.POST.get("pincode")
 
-        if (not customer_name or not customer_email or not customer_mobile) and request.user.is_authenticated:
+        if (
+            not customer_name or not customer_email or not customer_mobile
+        ) and request.user.is_authenticated:
             user = request.user
-            customer_name = customer_name or getattr(user, 'fullname', '') or user.get_full_name() or user.username
+            customer_name = (
+                customer_name
+                or getattr(user, "fullname", "")
+                or user.get_full_name()
+                or user.username
+            )
             customer_email = customer_email or user.email
             if not customer_mobile:
                 from apps.agents.models import Client
+
                 user_client = Client.objects.filter(user=user).first()
                 if user_client:
                     customer_mobile = customer_mobile or user_client.mobile
                     customer_pincode = customer_pincode or user_client.pincode
 
-        enquiry_parts = [val for val in [service_type, insurance_type, insurance_company] if val]
-        enquiry_requirements = ' | '.join(enquiry_parts) if enquiry_parts else None
+        enquiry_parts = [
+            val for val in [service_type, insurance_type, insurance_company] if val
+        ]
+        enquiry_requirements = " | ".join(enquiry_parts) if enquiry_parts else None
 
         # Secure URL Calculation
         from apps.agents.models import AgentProfile
-        profile = AgentProfile.objects.filter(agent=agent).first()
-        url = '#'
 
-        if interaction_type == 'whatsapp':
-            whatsapp_source = ''
+        profile = AgentProfile.objects.filter(agent=agent).first()
+        url = "#"
+
+        if interaction_type == "whatsapp":
+            whatsapp_source = ""
             if profile and profile.whatsapp:
                 whatsapp_source = str(profile.whatsapp)
             elif agent.mobile:
@@ -2761,32 +3614,46 @@ def agent_capture_lead(request):
 
             import re
             import urllib.parse
-            whatsapp_digits = re.sub(r'[^0-9]', '', whatsapp_source)
+
+            whatsapp_digits = re.sub(r"[^0-9]", "", whatsapp_source)
             if len(whatsapp_digits) == 10:
-                whatsapp_digits = '91' + whatsapp_digits
+                whatsapp_digits = "91" + whatsapp_digits
 
             if whatsapp_digits:
-                agent_name = (profile.display_name if profile and profile.display_name else '') or getattr(agent, 'fullname', '') or getattr(agent, 'get_full_name', lambda: '')() or getattr(agent, 'username', '') or 'Agent'
+                agent_name = (
+                    (profile.display_name if profile and profile.display_name else "")
+                    or getattr(agent, "fullname", "")
+                    or getattr(agent, "get_full_name", lambda: "")()
+                    or getattr(agent, "username", "")
+                    or "Agent"
+                )
                 agent_name = agent_name.strip()
 
                 raw_host = request.get_host()
                 if raw_host:
-                    clean_host = raw_host.split(':')[0]
-                    if clean_host in ['127.0.0.1', 'localhost']:
-                        domain_name = 'localhost'
+                    clean_host = raw_host.split(":")[0]
+                    if clean_host in ["127.0.0.1", "localhost"]:
+                        domain_name = "localhost"
                     else:
                         domain_name = clean_host
                 else:
-                    domain_name = 'www.padosiagent.com'
+                    domain_name = "www.padosiagent.com"
 
-                s_type = (service_type or '').strip()
-                i_type = (insurance_type or '').strip()
-                i_comp = (insurance_company or '').strip()
+                s_type = (service_type or "").strip()
+                i_type = (insurance_type or "").strip()
+                i_comp = (insurance_company or "").strip()
 
                 if s_type and i_type:
                     req_desc = f"{s_type} for {i_type}"
                 elif s_type:
-                    req_desc = s_type if any(w in s_type.lower() for w in ['insurance', 'policy', 'service']) else f"{s_type} Service for Insurance"
+                    req_desc = (
+                        s_type
+                        if any(
+                            w in s_type.lower()
+                            for w in ["insurance", "policy", "service"]
+                        )
+                        else f"{s_type} Service for Insurance"
+                    )
                 elif i_type:
                     req_desc = f"Insurance Service for {i_type}"
                 else:
@@ -2798,20 +3665,26 @@ def agent_capture_lead(request):
                 if customer_pincode:
                     req_desc += f" in {customer_pincode}"
 
-                cust_name = (customer_name or '').strip()
+                cust_name = (customer_name or "").strip()
                 msg = f"Hello {agent_name},\nI found you on {domain_name}\n\nI am looking for {req_desc}."
                 if cust_name:
                     msg += f"\n\nRegards,\n{cust_name}"
 
                 encoded_msg = urllib.parse.quote(msg)
-                url = f'https://api.whatsapp.com/send/?phone={whatsapp_digits}&text={encoded_msg}&type=phone_number&app_absent=0'
+                url = f"https://api.whatsapp.com/send/?phone={whatsapp_digits}&text={encoded_msg}&type=phone_number&app_absent=0"
             else:
-                url = '#'
+                url = "#"
 
-        elif interaction_type == 'call':
-            url = f'tel:{agent.mobile}' if agent.mobile else '#'
+        elif interaction_type == "call":
+            url = f"tel:{agent.mobile}" if agent.mobile else "#"
 
-        elif interaction_type in ['linkedin', 'facebook', 'instagram', 'youtube', 'google_business']:
+        elif interaction_type in [
+            "linkedin",
+            "facebook",
+            "instagram",
+            "youtube",
+            "google_business",
+        ]:
             social_links = {}
             if profile and profile.social_links:
                 if isinstance(profile.social_links, dict):
@@ -2821,32 +3694,32 @@ def agent_capture_lead(request):
                         social_links = json_loads(profile.social_links)
                     except ValueError:
                         pass
-            url = social_links.get(interaction_type) or '#'
+            url = social_links.get(interaction_type) or "#"
 
         # Deduplication (1 hour timeframe)
         one_hour_ago = timezone.now() - timezone.timedelta(hours=1)
         existing_lead_query = AgentLead.objects.filter(
             agent_id=agent_id,
             interaction_type=interaction_type,
-            created_at__gte=one_hour_ago
+            created_at__gte=one_hour_ago,
         )
 
         has_identifier = False
         if customer_mobile:
-            existing_lead_query = existing_lead_query.filter(customer_mobile=customer_mobile)
+            existing_lead_query = existing_lead_query.filter(
+                customer_mobile=customer_mobile
+            )
             has_identifier = True
         elif customer_email:
-            existing_lead_query = existing_lead_query.filter(customer_email=customer_email)
+            existing_lead_query = existing_lead_query.filter(
+                customer_email=customer_email
+            )
             has_identifier = True
 
         if has_identifier:
             existing_lead = existing_lead_query.first()
             if existing_lead:
-                return JsonResponse({
-                    'success': True,
-                    'duplicate': True,
-                    'url': url
-                })
+                return JsonResponse({"success": True, "duplicate": True, "url": url})
 
         # Create Lead
         lead = AgentLead.objects.create(
@@ -2856,37 +3729,51 @@ def agent_capture_lead(request):
             customer_mobile=customer_mobile,
             customer_pincode=customer_pincode,
             interaction_type=interaction_type,
-            lead_status='new',
+            lead_status="new",
             service_type=service_type,
             insurance_type=insurance_type,
             insurance_company=insurance_company,
             enquiry_requirements=enquiry_requirements,
-            source_page=source_page or 'find-agents',
+            source_page=source_page or "find-agents",
             ip_address=client_ip,
         )
 
-        from apps.wa_agent_bot.services.notification_service import notify_agent_new_lead
+        from apps.wa_agent_bot.services.notification_service import (
+            notify_agent_new_lead,
+        )
+
         notify_agent_new_lead(lead)
 
         # Retrieve device tokens for the agent and dispatch FCM pushes via FcmService
-        tokens = list(AgentDeviceToken.objects.filter(agent_id=agent_id).values_list('token', flat=True))
+        tokens = list(
+            AgentDeviceToken.objects.filter(agent_id=agent_id).values_list(
+                "token", flat=True
+            )
+        )
         tokens = [t for t in tokens if t]
 
         if tokens:
-            title = 'New Lead Assigned'
-            lead_name = customer_name or 'A customer'
+            title = "New Lead Assigned"
+            lead_name = customer_name or "A customer"
             body = f"{lead_name} contacted you via {interaction_type}."
 
             try:
                 from apps.agents.services.fcm import FcmService
+
                 fcm_service = FcmService()
                 import threading
+
                 thread = threading.Thread(
                     target=fcm_service.send_to_tokens,
-                    args=(tokens, title, body, {
-                        'url': '/agent/dashboard',
-                        'lead_id': str(lead.id),
-                    })
+                    args=(
+                        tokens,
+                        title,
+                        body,
+                        {
+                            "url": "/agent/dashboard",
+                            "lead_id": str(lead.id),
+                        },
+                    ),
                 )
                 thread.daemon = True
                 thread.start()
@@ -2894,24 +3781,38 @@ def agent_capture_lead(request):
                 logger.error(f"FCM thread dispatch failed: {fcm_err}")
 
         # Send email notification to advisor so web-only advisors never miss leads
-        if agent and getattr(agent, 'email', None):
-            def _send_lead_email(to_email, to_name, cust_name, cust_phone, cust_email, int_type, serv_type, ins_type, reqs):
+        if agent and getattr(agent, "email", None):
+
+            def _send_lead_email(
+                to_email,
+                to_name,
+                cust_name,
+                cust_phone,
+                cust_email,
+                int_type,
+                serv_type,
+                ins_type,
+                reqs,
+            ):
                 try:
                     from apps.agents.services.brevo import email_service
-                    lead_label = cust_name or 'A prospect'
-                    subject = f"New Client Enquiry: {lead_label} reached out on PadosiAgent"
+
+                    lead_label = cust_name or "A prospect"
+                    subject = (
+                        f"New Client Enquiry: {lead_label} reached out on PadosiAgent"
+                    )
                     html_content = f"""
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
                         <h2 style="color: #273c8e; margin-top: 0;">🎉 You Have a New Client Lead!</h2>
                         <p>Hello <strong>{to_name}</strong>,</p>
                         <p>A prospective client just reached out to you through your PadosiAgent profile:</p>
                         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                            <tr style="background-color: #f8fafc;"><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Name</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{cust_name or 'Not specified'}</td></tr>
-                            <tr><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Phone</td><td style="padding: 10px; border: 1px solid #e2e8f0;"><a href="tel:{cust_phone or ''}" style="color: #06a441; font-weight: bold;">{cust_phone or 'Not specified'}</a></td></tr>
-                            <tr style="background-color: #f8fafc;"><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Email</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{cust_email or 'Not specified'}</td></tr>
-                            <tr><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Interaction Channel</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{int_type or 'Direct'}</td></tr>
-                            <tr style="background-color: #f8fafc;"><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Insurance / Service</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{ins_type or serv_type or 'General Insurance'}</td></tr>
-                            <tr><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Details</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{reqs or 'Standard inquiry'}</td></tr>
+                            <tr style="background-color: #f8fafc;"><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Name</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{cust_name or "Not specified"}</td></tr>
+                            <tr><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Phone</td><td style="padding: 10px; border: 1px solid #e2e8f0;"><a href="tel:{cust_phone or ""}" style="color: #06a441; font-weight: bold;">{cust_phone or "Not specified"}</a></td></tr>
+                            <tr style="background-color: #f8fafc;"><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Email</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{cust_email or "Not specified"}</td></tr>
+                            <tr><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Interaction Channel</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{int_type or "Direct"}</td></tr>
+                            <tr style="background-color: #f8fafc;"><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Insurance / Service</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{ins_type or serv_type or "General Insurance"}</td></tr>
+                            <tr><td style="padding: 10px; font-weight: bold; border: 1px solid #e2e8f0;">Details</td><td style="padding: 10px; border: 1px solid #e2e8f0;">{reqs or "Standard inquiry"}</td></tr>
                         </table>
                         <p style="margin-top: 25px;">
                             <a href="https://padosiagent.com/agent-login/" style="background-color: #06a441; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">View in Dashboard</a>
@@ -2921,24 +3822,37 @@ def agent_capture_lead(request):
                     """
                     email_service.send_generic(to_email, to_name, subject, html_content)
                 except Exception as mail_err:
-                    logger.warning(f"Lead email notification failed for agent {to_email}: {mail_err}")
+                    logger.warning(
+                        f"Lead email notification failed for agent {to_email}: {mail_err}"
+                    )
 
             import threading
+
             threading.Thread(
                 target=_send_lead_email,
-                args=(agent.email, agent.fullname or 'Advisor', customer_name, customer_mobile, customer_email, interaction_type, service_type, insurance_type, enquiry_requirements),
-                daemon=True
+                args=(
+                    agent.email,
+                    agent.fullname or "Advisor",
+                    customer_name,
+                    customer_mobile,
+                    customer_email,
+                    interaction_type,
+                    service_type,
+                    insurance_type,
+                    enquiry_requirements,
+                ),
+                daemon=True,
             ).start()
 
-        return JsonResponse({
-            'success': True,
-            'message': 'Lead captured successfully.',
-            'url': url
-        })
+        return JsonResponse(
+            {"success": True, "message": "Lead captured successfully.", "url": url}
+        )
 
     except Exception as e:
         logger.exception(f"Lead capture failed: {e}")
-        return JsonResponse({'success': False, 'message': 'An unexpected error occurred.'}, status=500)
+        return JsonResponse(
+            {"success": False, "message": "An unexpected error occurred."}, status=500
+        )
 
 
 def agent_og_image(request, agent_id=None, slug=None):
@@ -2959,13 +3873,23 @@ def agent_og_image(request, agent_id=None, slug=None):
         if not agent:
             try:
                 from apps.referral_championship.models import ChampionshipParticipant
-                participant = ChampionshipParticipant.objects.filter(referral_id=slug.strip().upper()).select_related('agent').first()
+
+                participant = (
+                    ChampionshipParticipant.objects.filter(
+                        referral_id=slug.strip().upper()
+                    )
+                    .select_related("agent")
+                    .first()
+                )
                 if participant:
                     from django.conf import settings
                     import os
-                    champ_img_path = os.path.join(settings.BASE_DIR, 'static', 'img', 'championship_og.jpg')
+
+                    champ_img_path = os.path.join(
+                        settings.BASE_DIR, "static", "img", "championship_og.jpg"
+                    )
                     if os.path.exists(champ_img_path):
-                        with open(champ_img_path, 'rb') as f:
+                        with open(champ_img_path, "rb") as f:
                             content = f.read()
                         response = HttpResponse(content, content_type="image/jpeg")
                         response["Cache-Control"] = "public, max-age=86400"
@@ -2977,7 +3901,12 @@ def agent_og_image(request, agent_id=None, slug=None):
         if not agent:
             try:
                 from apps.admin_panel.models.referral_code import ReferralCode
-                ref_obj = ReferralCode.objects.filter(code=slug).select_related('agent').first()
+
+                ref_obj = (
+                    ReferralCode.objects.filter(code=slug)
+                    .select_related("agent")
+                    .first()
+                )
                 if ref_obj and ref_obj.agent:
                     agent = ref_obj.agent
             except Exception:
@@ -2992,6 +3921,7 @@ def agent_og_image(request, agent_id=None, slug=None):
     nocache = request.GET.get("nocache") == "1"
     if nocache:
         from apps.admin_panel.views.dashboard import _get_admin_from_session
+
         owns = request.user.is_authenticated and agent.user_id == request.user.pk
         if not owns and not _get_admin_from_session(request):
             nocache = False
@@ -3038,31 +3968,42 @@ def agent_public_share_profile(request, slug):
     profile = agent.get_primary_profile()
 
     # Inactive, suspended or deleted checks
-    is_active = getattr(agent, 'is_active', True)
+    is_active = getattr(agent, "is_active", True)
     is_visible = profile.is_profile_visible if profile else False
 
     if not is_active or not is_visible:
-        return render(request, 'agents/profile_unavailable.html', {
-            'agent': agent,
-            'profile': profile
-        }, status=404)
+        return render(
+            request,
+            "agents/profile_unavailable.html",
+            {"agent": agent, "profile": profile},
+            status=404,
+        )
 
-    profile_slug = (profile.slug if profile and profile.slug else '') or getattr(agent, 'agent_slug', '') or str(agent.id)
+    profile_slug = (
+        (profile.slug if profile and profile.slug else "")
+        or getattr(agent, "agent_slug", "")
+        or str(agent.id)
+    )
 
-    state_code = getattr(agent, 'state_code', 'gj')
+    state_code = getattr(agent, "state_code", "gj")
     if callable(state_code):
         state_code = state_code()
-    state_code = str(state_code or 'gj').strip().lower()
+    state_code = str(state_code or "gj").strip().lower()
 
     try:
-        target_url = reverse('agents:agent_public_profile_state_direct', kwargs={'state_code': state_code, 'slug': profile_slug})
+        target_url = reverse(
+            "agents:agent_public_profile_state_direct",
+            kwargs={"state_code": state_code, "slug": profile_slug},
+        )
     except Exception:
         try:
-            target_url = reverse('agents:agent_public_profile', kwargs={'slug': profile_slug})
+            target_url = reverse(
+                "agents:agent_public_profile", kwargs={"slug": profile_slug}
+            )
         except Exception:
             target_url = f"/{state_code}/{profile_slug}/"
 
-    query_string = request.META.get('QUERY_STRING', '')
+    query_string = request.META.get("QUERY_STRING", "")
     if query_string:
         target_url = f"{target_url}?{query_string}"
 
@@ -3081,47 +4022,61 @@ def serve_private_file(request, file_path):
     # 1. Normalise FIRST. Ownership used to be checked on the raw path, so
     #    "agents/<my id>/../../invoices/<other>.pdf" passed as "owner" and then
     #    resolved to another agent's invoice.
-    private_root = os.path.abspath(os.path.join(settings.MEDIA_ROOT, 'app', 'private'))
-    normalized_path = posixpath.normpath(str(file_path).replace('\\', '/')).lstrip('/')
+    private_root = os.path.abspath(os.path.join(settings.MEDIA_ROOT, "app", "private"))
+    normalized_path = posixpath.normpath(str(file_path).replace("\\", "/")).lstrip("/")
     normalized_full_path = os.path.abspath(os.path.join(private_root, normalized_path))
     try:
-        inside_root = os.path.commonpath([normalized_full_path, private_root]) == private_root
+        inside_root = (
+            os.path.commonpath([normalized_full_path, private_root]) == private_root
+        )
     except ValueError:
         inside_root = False
-    if not inside_root or normalized_path.startswith('..'):
+    if not inside_root or normalized_path.startswith(".."):
         return HttpResponseForbidden("Access Denied: Invalid path traversal attempt.")
 
     # 2. Access checks on the normalised path
     # Admin panel staff need the module permission for the file (Super Admin: all).
     from apps.wholesale.adapters.auth_bridge import admin_session_has_permission
-    if normalized_path.startswith('wholesale/'):
-        is_admin = admin_session_has_permission(request, 'wholesale')
+
+    if normalized_path.startswith("wholesale/"):
+        is_admin = admin_session_has_permission(request, "wholesale")
     else:
-        is_admin = admin_session_has_permission(request, 'agents', 'subscriptions')
+        is_admin = admin_session_has_permission(request, "agents", "subscriptions")
     if not is_admin and request.user.is_authenticated:
-        if getattr(request.user, 'is_staff', False) or getattr(request.user, 'is_superuser', False):
+        if getattr(request.user, "is_staff", False) or getattr(
+            request.user, "is_superuser", False
+        ):
             is_admin = True
 
     is_owner = False
     if request.user.is_authenticated:
         from apps.agents.models import Agent, Invoice
         from apps.agents.services.account_auth import resolve_agent_for_user
-        agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
+
+        agent = (
+            resolve_agent_for_user(request.user)
+            or Agent.objects.filter(user=request.user).first()
+        )
         if agent:
-            invoice_exists = Invoice.objects.filter(agent=agent, pdf_path=normalized_path).exists()
+            invoice_exists = Invoice.objects.filter(
+                agent=agent, pdf_path=normalized_path
+            ).exists()
             if invoice_exists:
                 is_owner = True
-            elif normalized_path.startswith(f"agents/{agent.id}/") or normalized_path.startswith(f"agent_{agent.id}/"):
+            elif normalized_path.startswith(
+                f"agents/{agent.id}/"
+            ) or normalized_path.startswith(f"agent_{agent.id}/"):
                 is_owner = True
 
         # Check wholesale documents ownership
         if not is_owner and normalized_path.startswith("wholesale/documents/"):
             try:
                 from apps.wholesale.models.profile import BusinessVerificationDocument
+
                 doc_file_match = f"app/private/{normalized_path}"
                 if BusinessVerificationDocument.objects.filter(
                     wholesaler__user=request.user,
-                    document_file__in=[doc_file_match, normalized_path]
+                    document_file__in=[doc_file_match, normalized_path],
                 ).exists():
                     is_owner = True
             except Exception:
@@ -3132,34 +4087,44 @@ def serve_private_file(request, file_path):
             try:
                 from django.db.models import Q
                 from apps.wholesale.models.inquiry import InquiryMessage
+
                 doc_file_match = f"app/private/{normalized_path}"
-                if InquiryMessage.objects.filter(
-                    attachment__in=[doc_file_match, normalized_path]
-                ).filter(
-                    Q(inquiry__buyer_user=request.user) | Q(inquiry__wholesaler__user=request.user)
-                ).exists():
+                if (
+                    InquiryMessage.objects.filter(
+                        attachment__in=[doc_file_match, normalized_path]
+                    )
+                    .filter(
+                        Q(inquiry__buyer_user=request.user)
+                        | Q(inquiry__wholesaler__user=request.user)
+                    )
+                    .exists()
+                ):
                     is_owner = True
             except Exception:
                 pass
 
     if not is_admin and not is_owner:
-        return HttpResponseForbidden("Access Denied: You do not have permission to access this file.")
+        return HttpResponseForbidden(
+            "Access Denied: You do not have permission to access this file."
+        )
 
     if not os.path.exists(normalized_full_path):
         raise Http404("File not found")
 
     from apps.agents.utils.file_validation import UPLOAD_SANDBOX_CSP
+
     ext = os.path.splitext(normalized_path.lower())[1]
-    inline = ext in ('.pdf', '.png', '.jpg', '.jpeg', '.webp')
+    inline = ext in (".pdf", ".png", ".jpg", ".jpeg", ".webp")
     response = FileResponse(
-        open(normalized_full_path, 'rb'),
+        open(normalized_full_path, "rb"),
         as_attachment=not inline,
         filename=os.path.basename(normalized_path),
     )
-    response['X-Content-Type-Options'] = 'nosniff'
-    if ext != '.pdf':  # same PDF exemption as the public media route (browser viewer)
-        response['Content-Security-Policy'] = UPLOAD_SANDBOX_CSP
+    response["X-Content-Type-Options"] = "nosniff"
+    if ext != ".pdf":  # same PDF exemption as the public media route (browser viewer)
+        response["Content-Security-Policy"] = UPLOAD_SANDBOX_CSP
     return response
+
 
 @login_required
 @require_POST
@@ -3169,35 +4134,51 @@ def agent_update_visibility(request):
     """
     try:
         data = json_loads(request.body)
-        field = data.get('field')
-        value = 1 if data.get('value') else 0
+        field = data.get("field")
+        value = 1 if data.get("value") else 0
     except JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'Invalid JSON'})
+        return JsonResponse({"success": False, "message": "Invalid JSON"})
 
     valid_fields = [
-        'show_certificates', 'show_achievements', 'show_reviews',
-        'show_experience', 'show_claims_stats', 'show_client_base', 'show_ratings',
-        'show_languages', 'show_gallery', 'show_contact_info', 'show_social_links'
+        "show_certificates",
+        "show_achievements",
+        "show_reviews",
+        "show_experience",
+        "show_claims_stats",
+        "show_client_base",
+        "show_ratings",
+        "show_languages",
+        "show_gallery",
+        "show_contact_info",
+        "show_social_links",
     ]
     if field not in valid_fields:
-        return JsonResponse({'success': False, 'message': 'Invalid field'})
+        return JsonResponse({"success": False, "message": "Invalid field"})
 
     try:
         from apps.agents.services.account_auth import resolve_agent_for_user
-        agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
+
+        agent = (
+            resolve_agent_for_user(request.user)
+            or Agent.objects.filter(user=request.user).first()
+        )
         if not agent:
-            return JsonResponse({'success': False, 'message': 'Agent profile not found'})
+            return JsonResponse(
+                {"success": False, "message": "Agent profile not found"}
+            )
 
         profile = AgentProfile.objects.filter(agent=agent).first()
         if not profile:
-            return JsonResponse({'success': False, 'message': 'Agent profile not found'})
+            return JsonResponse(
+                {"success": False, "message": "Agent profile not found"}
+            )
 
         setattr(profile, field, value)
         profile.save(update_fields=[field])
-        return JsonResponse({'success': True})
+        return JsonResponse({"success": True})
     except Exception as e:
         logger.error(f"Error updating agent visibility: {e}")
-        return JsonResponse({'success': False, 'message': 'Database error'})
+        return JsonResponse({"success": False, "message": "Database error"})
 
 
 @require_POST
@@ -3207,12 +4188,20 @@ def save_google_review_settings(request):
     is_enabled status, and up to 5 reviews.
     """
     if not request.user.is_authenticated:
-        return JsonResponse({'success': False, 'message': 'Authentication required.'}, status=401)
+        return JsonResponse(
+            {"success": False, "message": "Authentication required."}, status=401
+        )
 
     from apps.agents.services.account_auth import resolve_agent_for_user
-    agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
+
+    agent = (
+        resolve_agent_for_user(request.user)
+        or Agent.objects.filter(user=request.user).first()
+    )
     if not agent:
-        return JsonResponse({'success': False, 'message': 'Agent profile not found.'}, status=404)
+        return JsonResponse(
+            {"success": False, "message": "Agent profile not found."}, status=404
+        )
 
     from apps.agents.services.google_review import (
         agent_can_use_google_reviews,
@@ -3222,22 +4211,34 @@ def save_google_review_settings(request):
     from decimal import Decimal, InvalidOperation
 
     if not agent_can_use_google_reviews(agent):
-        return JsonResponse({
-            'success': False,
-            'message': 'Your current plan does not include the Google Review feature. Please upgrade your plan.'
-        }, status=403)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Your current plan does not include the Google Review feature. Please upgrade your plan.",
+            },
+            status=403,
+        )
 
     cfg = get_agent_google_review_config(agent)
     if not cfg:
-        return JsonResponse({'success': False, 'message': 'Could not initialize Google review config.'}, status=500)
+        return JsonResponse(
+            {"success": False, "message": "Could not initialize Google review config."},
+            status=500,
+        )
 
-    url = request.POST.get('google_review_url', '').strip()
-    if url and not (url.startswith('http://') or url.startswith('https://')):
-        return JsonResponse({'success': False, 'message': 'Google review URL must start with http:// or https://.'}, status=400)
-    is_enabled = request.POST.get('is_enabled') in ('1', 'true', 'on', True)
-    rating_raw = request.POST.get('google_rating', '').strip()
-    count_raw = request.POST.get('google_review_count', '').strip()
-    place_name = request.POST.get('google_place_name', '').strip()
+    url = request.POST.get("google_review_url", "").strip()
+    if url and not (url.startswith("http://") or url.startswith("https://")):
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Google review URL must start with http:// or https://.",
+            },
+            status=400,
+        )
+    is_enabled = request.POST.get("is_enabled") in ("1", "true", "on", True)
+    rating_raw = request.POST.get("google_rating", "").strip()
+    count_raw = request.POST.get("google_review_count", "").strip()
+    place_name = request.POST.get("google_place_name", "").strip()
 
     # Parse rating (e.g. 4.8)
     google_rating = None
@@ -3257,7 +4258,8 @@ def save_google_review_settings(request):
 
     # Parse reviews array
     import json
-    reviews_json_raw = request.POST.get('reviews_json')
+
+    reviews_json_raw = request.POST.get("reviews_json")
     reviews_list = []
     if reviews_json_raw:
         try:
@@ -3268,30 +4270,40 @@ def save_google_review_settings(request):
             pass
 
     if not reviews_list:
-        authors = request.POST.getlist('review_author[]') or request.POST.getlist('review_author')
-        ratings = request.POST.getlist('review_rating[]') or request.POST.getlist('review_rating')
-        texts = request.POST.getlist('review_text[]') or request.POST.getlist('review_text')
-        times = request.POST.getlist('review_time[]') or request.POST.getlist('review_time')
+        authors = request.POST.getlist("review_author[]") or request.POST.getlist(
+            "review_author"
+        )
+        ratings = request.POST.getlist("review_rating[]") or request.POST.getlist(
+            "review_rating"
+        )
+        texts = request.POST.getlist("review_text[]") or request.POST.getlist(
+            "review_text"
+        )
+        times = request.POST.getlist("review_time[]") or request.POST.getlist(
+            "review_time"
+        )
 
         for i in range(len(texts)):
-            t = texts[i].strip() if i < len(texts) else ''
+            t = texts[i].strip() if i < len(texts) else ""
             if not t:
                 continue
-            a = authors[i].strip() if i < len(authors) and authors[i] else 'Client'
+            a = authors[i].strip() if i < len(authors) and authors[i] else "Client"
             try:
                 r_num = min(5, max(1, int(ratings[i]))) if i < len(ratings) else 5
             except (ValueError, TypeError):
                 r_num = 5
-            tm = times[i].strip() if i < len(times) and times[i] else ''
-            reviews_list.append({
-                'author': a,
-                'rating': r_num,
-                'text': t,
-                'time': tm,
-            })
+            tm = times[i].strip() if i < len(times) and times[i] else ""
+            reviews_list.append(
+                {
+                    "author": a,
+                    "rating": r_num,
+                    "text": t,
+                    "time": tm,
+                }
+            )
 
     sys_cfg = get_google_review_system_config()
-    max_reviews = sys_cfg.get('max_reviews_shown', 5)
+    max_reviews = sys_cfg.get("max_reviews_shown", 5)
     reviews_list = reviews_list[:max_reviews]
 
     cfg.google_review_url = url
@@ -3302,24 +4314,34 @@ def save_google_review_settings(request):
     cfg.cached_reviews = reviews_list
     cfg.save()
 
-    return JsonResponse({
-        'success': True,
-        'message': 'Google Review settings saved successfully!',
-        'is_enabled': cfg.is_enabled,
-        'review_count': len(reviews_list),
-    })
+    return JsonResponse(
+        {
+            "success": True,
+            "message": "Google Review settings saved successfully!",
+            "is_enabled": cfg.is_enabled,
+            "review_count": len(reviews_list),
+        }
+    )
 
 
 @require_POST
 def toggle_agent_google_review(request):
     """Agent endpoint: Quick ON/OFF toggle for profile Google review display."""
     if not request.user.is_authenticated:
-        return JsonResponse({'success': False, 'message': 'Authentication required.'}, status=401)
+        return JsonResponse(
+            {"success": False, "message": "Authentication required."}, status=401
+        )
 
     from apps.agents.services.account_auth import resolve_agent_for_user
-    agent = resolve_agent_for_user(request.user) or Agent.objects.filter(user=request.user).first()
+
+    agent = (
+        resolve_agent_for_user(request.user)
+        or Agent.objects.filter(user=request.user).first()
+    )
     if not agent:
-        return JsonResponse({'success': False, 'message': 'Agent profile not found.'}, status=404)
+        return JsonResponse(
+            {"success": False, "message": "Agent profile not found."}, status=404
+        )
 
     from apps.agents.services.google_review import (
         agent_can_use_google_reviews,
@@ -3327,43 +4349,50 @@ def toggle_agent_google_review(request):
     )
 
     if not agent_can_use_google_reviews(agent):
-        return JsonResponse({
-            'success': False,
-            'message': 'Your current plan does not include the Google Review feature. Please upgrade your plan.'
-        }, status=403)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "Your current plan does not include the Google Review feature. Please upgrade your plan.",
+            },
+            status=403,
+        )
 
     cfg = get_agent_google_review_config(agent)
     cfg.is_enabled = not cfg.is_enabled
-    cfg.save(update_fields=['is_enabled', 'updated_at'])
+    cfg.save(update_fields=["is_enabled", "updated_at"])
 
-    status_str = 'enabled' if cfg.is_enabled else 'disabled'
-    return JsonResponse({
-        'success': True,
-        'is_enabled': cfg.is_enabled,
-        'message': f'Google Reviews showcase is now {status_str} on your public profile.'
-    })
+    status_str = "enabled" if cfg.is_enabled else "disabled"
+    return JsonResponse(
+        {
+            "success": True,
+            "is_enabled": cfg.is_enabled,
+            "message": f"Google Reviews showcase is now {status_str} on your public profile.",
+        }
+    )
 
 
 @require_POST
 def track_google_review_click_view(request):
     """Public or client endpoint: Tracks when a user clicks 'Review on Google'."""
-    agent_id = request.POST.get('agent_id')
+    agent_id = request.POST.get("agent_id")
     if not agent_id:
         import json
+
         try:
-            body = json.loads(request.body.decode('utf-8'))
-            agent_id = body.get('agent_id')
+            body = json.loads(request.body.decode("utf-8"))
+            agent_id = body.get("agent_id")
         except Exception:
             agent_id = None
 
     if not agent_id:
-        return JsonResponse({'success': False, 'message': 'Missing agent_id'}, status=400)
+        return JsonResponse(
+            {"success": False, "message": "Missing agent_id"}, status=400
+        )
 
     try:
         from apps.agents.services.google_review import track_google_review_click
+
         clicks = track_google_review_click(int(agent_id))
-        return JsonResponse({'success': True, 'clicks': clicks})
+        return JsonResponse({"success": True, "clicks": clicks})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
-
-
+        return JsonResponse({"success": False, "message": str(e)}, status=500)

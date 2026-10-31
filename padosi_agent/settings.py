@@ -32,7 +32,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 _RAZORPAY_ENV_SNAPSHOT = capture_razorpay_environ()
 
 # Parent .env first, then src/.env so the app directory wins on duplicates.
-for _env_path in (BASE_DIR.parent / '.env', BASE_DIR / '.env'):
+for _env_path in (BASE_DIR.parent / ".env", BASE_DIR / ".env"):
     if _env_path.exists():
         load_dotenv(_env_path, override=True)
 
@@ -46,58 +46,62 @@ CSRF_COOKIE_NAME = "padosi_csrf_token"
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # DEBUG defaults False for production safety. Local dev .env sets DEBUG=True.
-DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 
 # Public canonical origin for emails, OG tags, and share links (e.g. https://padosiagent.com)
-APP_URL = os.environ.get('APP_URL', '').strip().rstrip('/')
+APP_URL = os.environ.get("APP_URL", "").strip().rstrip("/")
 
 # Production must set SECRET_KEY in the environment. The insecure fallback is
 # local-only so a missing production secret fails closed instead of shipping
 # a committed key.
-_INSECURE_DEV_SECRET = 'django-insecure-u5n+gf_rt4&sgf%p8atp)#=b*129@9tyqfi)sz6v46nyd@+796'
-SECRET_KEY = os.environ.get('SECRET_KEY', '')
+_INSECURE_DEV_SECRET = (
+    "django-insecure-u5n+gf_rt4&sgf%p8atp)#=b*129@9tyqfi)sz6v46nyd@+796"
+)
+SECRET_KEY = os.environ.get("SECRET_KEY", "")
 if not SECRET_KEY:
     if DEBUG:
         SECRET_KEY = _INSECURE_DEV_SECRET
     else:
-        raise ImproperlyConfigured('SECRET_KEY must be set when DEBUG is False')
+        raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG is False")
 
 # In production: set ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com in .env
-_allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
-ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(',') if h.strip()]
+_allowed_hosts_env = os.environ.get("ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(",") if h.strip()]
 if not ALLOWED_HOSTS:
     if DEBUG:
-        ALLOWED_HOSTS = ['*']
+        ALLOWED_HOSTS = ["*"]
     else:
-        ALLOWED_HOSTS = ['padosiagent.com', 'www.padosiagent.com']
+        ALLOWED_HOSTS = ["padosiagent.com", "www.padosiagent.com"]
 else:
-    for _domain in ('padosiagent.com', 'www.padosiagent.com'):
-        if _domain not in ALLOWED_HOSTS and '*' not in ALLOWED_HOSTS:
+    for _domain in ("padosiagent.com", "www.padosiagent.com"):
+        if _domain not in ALLOWED_HOSTS and "*" not in ALLOWED_HOSTS:
             ALLOWED_HOSTS.append(_domain)
 
-_csrf_env = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+_csrf_env = os.environ.get("CSRF_TRUSTED_ORIGINS", "")
 _PRODUCTION_CSRF_ORIGINS = [
-    'https://padosiagent.com',
-    'https://www.padosiagent.com',
+    "https://padosiagent.com",
+    "https://www.padosiagent.com",
 ]
 if _csrf_env:
-    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in _csrf_env.split(',') if origin.strip()]
+    CSRF_TRUSTED_ORIGINS = [
+        origin.strip() for origin in _csrf_env.split(",") if origin.strip()
+    ]
 elif not DEBUG:
     # Never trust dev origins in production — the dev list below includes
     # "https://*.ngrok-free.dev", i.e. any attacker-registered ngrok subdomain.
     CSRF_TRUSTED_ORIGINS = list(_PRODUCTION_CSRF_ORIGINS)
 else:
     CSRF_TRUSTED_ORIGINS = [
-        'https://catfish-rebirth-uproar.ngrok-free.dev',
-        'https://*.ngrok-free.dev',
-        'http://127.0.0.1:8000',
-        'http://localhost:8000',
-        'http://127.0.0.1:1234',
-        'http://localhost:1234',
-        'http://127.0.0.1:7070',
-        'http://localhost:7070',
-        'https://padosiagent.com',
-        'https://www.padosiagent.com',
+        "https://catfish-rebirth-uproar.ngrok-free.dev",
+        "https://*.ngrok-free.dev",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+        "http://127.0.0.1:1234",
+        "http://localhost:1234",
+        "http://127.0.0.1:7070",
+        "http://localhost:7070",
+        "https://padosiagent.com",
+        "https://www.padosiagent.com",
     ]
 
 
@@ -106,137 +110,156 @@ else:
 # The 'daphne' app only swaps `manage.py runserver` to ASGI. Importing it pulls in
 # twisted/autobahn (~1-2.5s), which every Passenger worker would pay on cold start,
 # so it is loaded for runserver only. Running the daphne CLI does not need it here.
-_DAPHNE_APPS = ['daphne'] if sys.argv[1:2] == ['runserver'] else []
+_DAPHNE_APPS = ["daphne"] if sys.argv[1:2] == ["runserver"] else []
 
 INSTALLED_APPS = [
     *_DAPHNE_APPS,
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django.contrib.sitemaps',
-    
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django.contrib.sitemaps",
     # Internal Apps
-    'apps.home',
-    'apps.admin_panel',
-    'apps.agents',
-    'apps.insurance',
-    'apps.distributors',
-    'apps.chatbot',
-    'apps.wa_agent_bot',
-    'apps.referral_championship',
-    'apps.event_referral',
-    'apps.wholesale',
-    'rest_framework',
-    'django.contrib.humanize',
+    "apps.home",
+    "apps.admin_panel",
+    "apps.agents",
+    "apps.insurance",
+    "apps.distributors",
+    "apps.chatbot",
+    "apps.wa_agent_bot",
+    "apps.referral_championship",
+    "apps.event_referral",
+    "apps.wholesale",
+    "rest_framework",
+    "django.contrib.humanize",
 ]
 
 MIDDLEWARE = [
-    'padosi_agent.middleware.StaleCookieSanitizerMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-    'padosi_agent.middleware.WwwRedirectMiddleware',
-    'django.middleware.gzip.GZipMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'padosi_agent.middleware.AutoCsrfCookieMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'apps.agents.middleware.AgentPaymentGateMiddleware',
-    'apps.admin_panel.middleware.ThreatMonitorMiddleware',
-    # 'apps.admin_panel.middleware.AdminIpWhitelistMiddleware',
-    'apps.admin_panel.middleware.IsolateAdminAgentSessionsMiddleware',
-    'apps.admin_panel.middleware.AdminPermissionMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'apps.admin_panel.middleware.ExceptionLoggerMiddleware',
-    'padosi_agent.middleware.SEOMiddleware',
-    'apps.agents.middleware.BackgroundJobsMiddleware',
+    "padosi_agent.middleware.StaleCookieSanitizerMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "padosi_agent.middleware.WwwRedirectMiddleware",
+    "django.middleware.gzip.GZipMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "padosi_agent.middleware.AutoCsrfCookieMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "apps.agents.middleware.AgentPaymentGateMiddleware",
+    "apps.admin_panel.middleware.ThreatMonitorMiddleware",
+    "apps.admin_panel.middleware.AdminIpWhitelistMiddleware",
+    "apps.admin_panel.middleware.IsolateAdminAgentSessionsMiddleware",
+    "apps.admin_panel.middleware.AdminPermissionMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.admin_panel.middleware.ExceptionLoggerMiddleware",
+    "padosi_agent.middleware.SEOMiddleware",
+    "apps.agents.middleware.BackgroundJobsMiddleware",
 ]
 
 # Scheduled jobs run from web traffic instead of cron (apps/agents/services/background_jobs.py).
 # On by default in production; set BACKGROUND_JOBS_ENABLED=False in .env to turn off.
 BACKGROUND_JOBS_ENABLED = os.environ.get(
-    'BACKGROUND_JOBS_ENABLED', 'False' if DEBUG else 'True').lower() in ('true', '1', 'yes')
+    "BACKGROUND_JOBS_ENABLED", "False" if DEBUG else "True"
+).lower() in ("true", "1", "yes")
 
-CSRF_FAILURE_VIEW = 'padosi_agent.views.csrf_failure_view'
+CSRF_FAILURE_VIEW = "padosi_agent.views.csrf_failure_view"
 
-ROOT_URLCONF = 'padosi_agent.urls'
+ROOT_URLCONF = "padosi_agent.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-                'apps.admin_panel.context_processors.admin_badge_counts',
-                'apps.home.context_processors.footer_settings',
-                'apps.home.context_processors.seo_context',
-                'apps.home.context_processors.calculator_nav',
-                'apps.wholesale.context_processors.wholesale_context',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "apps.admin_panel.context_processors.admin_badge_counts",
+                "apps.home.context_processors.footer_settings",
+                "apps.home.context_processors.seo_context",
+                "apps.home.context_processors.calculator_nav",
+                "apps.wholesale.context_processors.wholesale_context",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'padosi_agent.wsgi.application'
-ASGI_APPLICATION = 'padosi_agent.asgi.application'
+WSGI_APPLICATION = "padosi_agent.wsgi.application"
+ASGI_APPLICATION = "padosi_agent.asgi.application"
 
+
+_db_options = {"charset": "utf8mb4"}
+_ssl_ca = os.environ.get("MYSQL_ATTR_SSL_CA", "").strip()
+if _ssl_ca:
+    _db_options["ssl"] = {"ca": _ssl_ca}
+elif os.environ.get("DB_SSL", "False").lower() in ("true", "1", "yes"):
+    _db_options["ssl_mode"] = "REQUIRED"
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DB_NAME', '') or '',
-        'USER': os.environ.get('DB_USER', '') or '',
-        'PASSWORD': os.environ.get('DB_PASSWORD', '') or '',
-        'HOST': os.environ.get('DB_HOST', '127.0.0.1') or '127.0.0.1',
-        'PORT': os.environ.get('DB_PORT', '3306') or '3306',
-        'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '60')),
-        'CONN_HEALTH_CHECKS': True,
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": os.environ.get("DB_NAME", "") or "",
+        "USER": os.environ.get("DB_USER", "") or "",
+        "PASSWORD": os.environ.get("DB_PASSWORD", "") or "",
+        "HOST": os.environ.get("DB_HOST", "127.0.0.1") or "127.0.0.1",
+        "PORT": os.environ.get("DB_PORT", "3306") or "3306",
+        "CONN_MAX_AGE": int(os.environ.get("DB_CONN_MAX_AGE", "60")),
+        "CONN_HEALTH_CHECKS": True,
+        "OPTIONS": _db_options,
     }
 }
 
 
-
 # Cache configuration (Redis when REDIS_URL is configured, graceful FileBasedCache fallback for cPanel shared hosting)
 # https://docs.djangoproject.com/en/5.2/ref/settings/#cache
-REDIS_URL = os.environ.get('REDIS_URL', '').strip()
+REDIS_URL = os.environ.get("REDIS_URL", "").strip()
+if REDIS_URL:
+    # Django's built-in RedisCache needs the `redis` package (not in requirements.txt).
+    try:
+        import redis  # noqa: F401
+    except ImportError:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "REDIS_URL is set but the 'redis' package is not installed; using FileBasedCache."
+        )
+        REDIS_URL = ""
 if REDIS_URL:
     CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-            'LOCATION': REDIS_URL,
-            'TIMEOUT': 300,
-            'OPTIONS': {
-                'IGNORE_EXCEPTIONS': True,  # Graceful degradation if Redis is temporarily unreachable
-            }
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "TIMEOUT": 300,
         }
     }
     # Session storage: Redis cache backend for high-concurrency (zero MySQL lock contention)
-    SESSION_ENGINE = os.environ.get('SESSION_ENGINE', 'django.contrib.sessions.backends.cache')
-    SESSION_CACHE_ALIAS = 'default'
+    SESSION_ENGINE = os.environ.get(
+        "SESSION_ENGINE", "django.contrib.sessions.backends.cache"
+    )
+    SESSION_CACHE_ALIAS = "default"
 else:
-    CACHE_DIR = BASE_DIR / 'cache'
+    CACHE_DIR = BASE_DIR / "cache"
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
-            'LOCATION': CACHE_DIR,
-            'TIMEOUT': 300,
-            'OPTIONS': {
-                'MAX_ENTRIES': 5000,
-                'CULL_FREQUENCY': 3,
-            }
+        "default": {
+            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+            "LOCATION": CACHE_DIR,
+            "TIMEOUT": 300,
+            "OPTIONS": {
+                "MAX_ENTRIES": 5000,
+                "CULL_FREQUENCY": 3,
+            },
         }
     }
     # Session Optimization: Use cached_db so sessions read from cache first instead of querying MySQL on every request
-    SESSION_ENGINE = os.environ.get('SESSION_ENGINE', 'django.contrib.sessions.backends.cached_db')
+    SESSION_ENGINE = os.environ.get(
+        "SESSION_ENGINE", "django.contrib.sessions.backends.cached_db"
+    )
 
 
 # Password validation
@@ -244,16 +267,16 @@ else:
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -261,9 +284,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'Asia/Kolkata'
+TIME_ZONE = "Asia/Kolkata"
 
 USE_I18N = True
 
@@ -273,9 +296,9 @@ USE_TZ = False
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = '/static/'
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',
+    BASE_DIR / "static",
 ]
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -295,48 +318,57 @@ WHITENOISE_MANIFEST_STRICT = False
 WHITENOISE_MAX_AGE = 31536000
 
 # Media files (user uploads)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # File upload size limits — allow profile photos (≤5 MB) and achievement photos
 # (≤20 MB each) to reach the view; Django's default 2.5 MB limit was silently
 # dropping uploads before the view could return a useful error.
-DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024   # 25 MB (POST body incl. files)
-FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024   # 25 MB (file content in memory)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25 MB (POST body incl. files)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25 MB (file content in memory)
 
 # Default primary key field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ─── Brevo (Sendinblue) Transactional Email — PRIMARY ───────────────────────
 # All values read from .env (dev) or environment variables (production).
 # BREVO_API_KEY: your Brevo API key from https://app.brevo.com/settings/keys/api
-BREVO_API_KEY       = os.environ.get('BREVO_API_KEY', '')       # Required for email
-BREVO_FROM_EMAIL    = os.environ.get('BREVO_FROM_EMAIL', os.environ.get('MAIL_FROM_ADDRESS', 'noreply@padosiagent.com'))
-BREVO_FROM_NAME     = os.environ.get('BREVO_FROM_NAME', os.environ.get('MAIL_FROM_NAME', 'PadosiAgent'))
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")  # Required for email
+BREVO_FROM_EMAIL = os.environ.get(
+    "BREVO_FROM_EMAIL", os.environ.get("MAIL_FROM_ADDRESS", "noreply@padosiagent.com")
+)
+BREVO_FROM_NAME = os.environ.get(
+    "BREVO_FROM_NAME", os.environ.get("MAIL_FROM_NAME", "PadosiAgent")
+)
 # BREVO_OTP_FALLBACK: if True, allow registration to proceed even if email fails
 # Set to False in production to strictly require email delivery.
-BREVO_OTP_FALLBACK  = os.environ.get('BREVO_OTP_FALLBACK', 'true').lower() in ('true', '1', 'yes')
+BREVO_OTP_FALLBACK = os.environ.get("BREVO_OTP_FALLBACK", "true").lower() in (
+    "true",
+    "1",
+    "yes",
+)
 
 # ─── Django SMTP — FALLBACK (if Brevo API fails) ────────────────────────────
 # Brevo SMTP relay: smtp-relay.brevo.com:587 (TLS) or :465 (SSL)
 # Alternatively use Gmail, Mailgun, SendGrid SMTP, etc.
-EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST          = os.environ.get('MAIL_HOST', 'smtp-relay.brevo.com')
-EMAIL_PORT          = int(os.environ.get('MAIL_PORT', 587))
-EMAIL_HOST_USER     = os.environ.get('MAIL_USERNAME', '')       # Brevo login email
-EMAIL_HOST_PASSWORD = os.environ.get('MAIL_PASSWORD', '')       # Brevo SMTP key
-_mail_enc           = os.environ.get('MAIL_ENCRYPTION', 'tls').lower()
-EMAIL_USE_TLS       = _mail_enc == 'tls'
-EMAIL_USE_SSL       = _mail_enc == 'ssl'
-EMAIL_TIMEOUT       = 20
-DEFAULT_FROM_EMAIL  = (
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.environ.get("MAIL_HOST", "smtp-relay.brevo.com")
+EMAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
+EMAIL_HOST_USER = os.environ.get("MAIL_USERNAME", "")  # Brevo login email
+EMAIL_HOST_PASSWORD = os.environ.get("MAIL_PASSWORD", "")  # Brevo SMTP key
+_mail_enc = os.environ.get("MAIL_ENCRYPTION", "tls").lower()
+EMAIL_USE_TLS = _mail_enc == "tls"
+EMAIL_USE_SSL = _mail_enc == "ssl"
+EMAIL_TIMEOUT = 20
+DEFAULT_FROM_EMAIL = (
     f"{os.environ.get('MAIL_FROM_NAME', 'PadosiAgent')} "
     f"<{os.environ.get('MAIL_FROM_ADDRESS', 'noreply@padosiagent.com')}>"
 )
 
+
 # ─── Razorpay Payments ───────────────────────────────────────────────────────
 def _clean_env_secret(value):
-    text = str(value or '').replace('\ufeff', '').strip()
+    text = str(value or "").replace("\ufeff", "").strip()
     if len(text) >= 2 and text[0] == text[-1] and text[0] in ('"', "'"):
         text = text[1:-1].strip()
     return text
@@ -346,79 +378,81 @@ RAZORPAY_KEY, RAZORPAY_SECRET = complete_pair_from_env_files(BASE_DIR)
 if not (RAZORPAY_KEY and RAZORPAY_SECRET):
     RAZORPAY_KEY, RAZORPAY_SECRET = credential_pair_from_mapping(os.environ)
 RAZORPAY_WEBHOOK_SECRET = _clean_env_secret(
-    os.environ.get('RAZORPAY_WEBHOOK_SECRET') or webhook_secret_from_env_files(BASE_DIR) or ''
+    os.environ.get("RAZORPAY_WEBHOOK_SECRET")
+    or webhook_secret_from_env_files(BASE_DIR)
+    or ""
 )
 
 # ─── Firebase Cloud Messaging (FCM) ─────────────────────────────────────────
-FCM_API_KEY              = os.environ.get('FCM_API_KEY', '')
-FCM_AUTH_DOMAIN          = os.environ.get('FCM_AUTH_DOMAIN', '')
-FCM_PROJECT_ID           = os.environ.get('FCM_PROJECT_ID', '')
-FCM_STORAGE_BUCKET       = os.environ.get('FCM_STORAGE_BUCKET', '')
-FCM_MESSAGING_SENDER_ID  = os.environ.get('FCM_MESSAGING_SENDER_ID', '')
-FCM_APP_ID               = os.environ.get('FCM_APP_ID', '')
-FCM_VAPID_KEY            = os.environ.get('FCM_VAPID_KEY', '')
-FCM_SERVICE_ACCOUNT_JSON = os.environ.get('FCM_SERVICE_ACCOUNT_JSON', '')
+FCM_API_KEY = os.environ.get("FCM_API_KEY", "")
+FCM_AUTH_DOMAIN = os.environ.get("FCM_AUTH_DOMAIN", "")
+FCM_PROJECT_ID = os.environ.get("FCM_PROJECT_ID", "")
+FCM_STORAGE_BUCKET = os.environ.get("FCM_STORAGE_BUCKET", "")
+FCM_MESSAGING_SENDER_ID = os.environ.get("FCM_MESSAGING_SENDER_ID", "")
+FCM_APP_ID = os.environ.get("FCM_APP_ID", "")
+FCM_VAPID_KEY = os.environ.get("FCM_VAPID_KEY", "")
+FCM_SERVICE_ACCOUNT_JSON = os.environ.get("FCM_SERVICE_ACCOUNT_JSON", "")
 
 # ─── IndexNow (Bing/Yandex URL submission) ───────────────────────────────────
 # Empty = feature off: /<key>.txt returns 404 and `manage.py indexnow_ping` refuses to run.
-INDEXNOW_KEY = os.environ.get('INDEXNOW_KEY', '').strip()
+INDEXNOW_KEY = os.environ.get("INDEXNOW_KEY", "").strip()
 
 # ─── Google OAuth ────────────────────────────────────────────────────────────
-GOOGLE_CLIENT_ID     = os.environ.get('GOOGLE_CLIENT_ID', '')
-GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
-GOOGLE_REDIRECT_URI  = os.environ.get('GOOGLE_REDIRECT_URI', '')
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "")
 # Separate redirect URI for Google Business Profile OAuth flow (must be
 # registered in Google Cloud Console alongside GOOGLE_REDIRECT_URI)
-GBP_REDIRECT_URI     = os.environ.get('GBP_REDIRECT_URI', '')
+GBP_REDIRECT_URI = os.environ.get("GBP_REDIRECT_URI", "")
 
 # ─── Facebook (participant auto-post module) ─────────────────────────────────
-FACEBOOK_APP_ID     = os.environ.get('FACEBOOK_APP_ID', '759405373797845')
-FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET', '')
+FACEBOOK_APP_ID = os.environ.get("FACEBOOK_APP_ID", "759405373797845")
+FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET", "")
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
 # Keep Python logs inside the project root (BASE_DIR / 'logs') so they are
 # NEVER exposed via the public MEDIA_URL or web server static routes.
-LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR = BASE_DIR / "logs"
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '[{asctime}] {levelname} {name} — {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{asctime}] {levelname} {name} — {message}",
+            "style": "{",
         },
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
         },
-        'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': LOGS_DIR / 'django.log',
-            'maxBytes': 10 * 1024 * 1024,  # 10 MB
-            'backupCount': 5,
-            'formatter': 'verbose',
-            'encoding': 'utf8'
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": LOGS_DIR / "django.log",
+            "maxBytes": 10 * 1024 * 1024,  # 10 MB
+            "backupCount": 5,
+            "formatter": "verbose",
+            "encoding": "utf8",
         },
     },
-    'root': {
-        'handlers': ['console', 'file'],
-        'level': 'INFO',
+    "root": {
+        "handlers": ["console", "file"],
+        "level": "INFO",
     },
-    'loggers': {
-        'apps': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
-            'propagate': False,
+    "loggers": {
+        "apps": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
         },
     },
 }
 
 # ─── Sentry Error Monitoring & APM ──────────────────────────────────────────
-SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "").strip()
 if SENTRY_DSN:
     try:
         import logging
@@ -427,35 +461,39 @@ if SENTRY_DSN:
         from sentry_sdk.integrations.logging import LoggingIntegration
 
         sentry_logging = LoggingIntegration(
-            level=logging.INFO,
-            event_level=logging.ERROR
+            level=logging.INFO, event_level=logging.ERROR
         )
         sentry_sdk.init(
             dsn=SENTRY_DSN,
             integrations=[DjangoIntegration(), sentry_logging],
-            traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+            traces_sample_rate=float(
+                os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")
+            ),
             send_default_pii=False,
-            environment=os.environ.get('APP_ENV', 'production' if not DEBUG else 'development'),
+            environment=os.environ.get(
+                "APP_ENV", "production" if not DEBUG else "development"
+            ),
         )
     except Exception as _sentry_err:
         import warnings
+
         warnings.warn(f"Failed to initialize Sentry: {_sentry_err}")
 
-TEST_RUNNER = 'apps.home.test_runner.ManagedModelsTestRunner'
+TEST_RUNNER = "apps.home.test_runner.ManagedModelsTestRunner"
 
 # Password reset links: the reset email promises 60 minutes (Django default is 3 days).
 PASSWORD_RESET_TIMEOUT = 60 * 60
 
 # Ensure Django trusts the reverse proxy's HTTPS header (required for CSRF validation behind GoDaddy Apache proxy)
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 
 # Explicit Cookie Path & SameSite configuration to prevent cross-origin/stale cookie errors
-SESSION_COOKIE_PATH = '/'
-CSRF_COOKIE_PATH = '/'
-SESSION_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_PATH = "/"
+CSRF_COOKIE_PATH = "/"
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
@@ -466,16 +504,13 @@ if not DEBUG:
     CSRF_COOKIE_HTTPONLY = False
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_BROWSER_XSS_FILTER = True
-    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
-    
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+
     # Enable HSTS for 1 year
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 
 # ─── Admin Access Controls ───────────────────────────────────────────────────
-_whitelist_ips_env = os.environ.get('ADMIN_WHITELIST_IPS', '')
-ADMIN_WHITELIST_IPS = [ip.strip() for ip in _whitelist_ips_env.split(',') if ip.strip()]
-
-
-
+_whitelist_ips_env = os.environ.get("ADMIN_WHITELIST_IPS", "")
+ADMIN_WHITELIST_IPS = [ip.strip() for ip in _whitelist_ips_env.split(",") if ip.strip()]

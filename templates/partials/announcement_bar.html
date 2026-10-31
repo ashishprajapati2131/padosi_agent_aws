@@ -8,7 +8,7 @@
         <div class="d-flex align-items-center justify-content-between py-2 gap-2">
             <div class="d-flex align-items-center flex-grow-1 justify-content-center text-center gap-2">
                 <span class="announcement-text fw-medium" style="font-size: 13.5px; line-height: 1.35;">
-                    {{ site_banner.message|safe }}
+                    {{ site_banner.message }}
                 </span>
                 {% if site_banner.btn_text and site_banner.btn_url %}
                 <a href="{{ site_banner.btn_url }}" class="btn btn-sm announcement-btn text-nowrap rounded-pill px-3 ms-2 shadow-xs fw-bold">

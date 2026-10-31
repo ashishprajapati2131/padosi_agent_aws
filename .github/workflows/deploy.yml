@@ -72,8 +72,8 @@ jobs:
           PROJECT_PATH: ${{ secrets.GODADDY_PROJECT_PATH }}
         run: |
           # 1. Ensure clean Unix line endings on deployment script
-          sed -i 's/\r$//' scripts/deploy_godaddy.sh
-          chmod +x scripts/deploy_godaddy.sh
+          sed -i 's/\r$//' scripts/deploy_godaddy.sh scripts/rollback_godaddy.sh
+          chmod +x scripts/deploy_godaddy.sh scripts/rollback_godaddy.sh
 
           # 2. Setup SSH directory and private key
           mkdir -p ~/.ssh
@@ -90,8 +90,11 @@ jobs:
             chmod 600 ~/.ssh/id_rsa
             SSH_KEY_FILE=~/.ssh/id_rsa
           fi
+          echo "SSH_KEY_FILE=$SSH_KEY_FILE" >> "$GITHUB_ENV"
 
-          # 3. Execute deployment with retry logic (up to 3 attempts)
+          # 3. Execute deployment, retrying only SSH connection failures (exit 255).
+          # Any other exit code is the script itself failing (backup, migrate, ...):
+          # re-running it would just repeat migrate against a half-migrated DB.
           MAX_ATTEMPTS=3
           ATTEMPT=1
           DEPLOY_SUCCESS=0
@@ -120,6 +123,10 @@ jobs:
             else
               EXIT_CODE=$?
               echo "==> Attempt $ATTEMPT failed with exit code $EXIT_CODE."
+              if [ $EXIT_CODE -ne 255 ]; then
+                echo "==> The deploy script itself failed (not the SSH connection): not retrying."
+                break
+              fi
               if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
                 echo "==> Waiting 10 seconds before retrying..."
                 sleep 10
@@ -129,9 +136,39 @@ jobs:
           done
 
           if [ $DEPLOY_SUCCESS -ne 1 ]; then
-            echo "==> ERROR: Deployment to GoDaddy failed after $MAX_ATTEMPTS attempts."
+            echo "==> ERROR: Deployment to GoDaddy failed (attempt $ATTEMPT of $MAX_ATTEMPTS)."
             exit 1
           fi
+
+      - name: Health check (roll back on failure)
+        env:
+          GODADDY_HOST: ${{ secrets.GODADDY_HOST }}
+          GODADDY_USER: ${{ secrets.GODADDY_USERNAME }}
+          GODADDY_PORT: ${{ secrets.GODADDY_PORT || '22' }}
+          PROJECT_PATH: ${{ secrets.GODADDY_PROJECT_PATH }}
+          # Override with an APP_URL repository variable; default is the domain the OG check uses.
+          SITE_URL: ${{ vars.APP_URL || 'https://padosiagent.com' }}
+        run: |
+          if curl -fsS --retry 5 --retry-delay 5 "${SITE_URL%/}/health/"; then
+            echo
+            echo "==> Health check passed."
+            exit 0
+          fi
+          echo "==> ERROR: ${SITE_URL%/}/health/ failed after deploy. Rolling back..."
+          ssh -i "$SSH_KEY_FILE" \
+              -p "$GODADDY_PORT" \
+              -o StrictHostKeyChecking=no \
+              -o UserKnownHostsFile=/dev/null \
+              -o IdentitiesOnly=yes \
+              -o HostkeyAlgorithms=+ssh-rsa,ssh-ed25519 \
+              -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-ed25519 \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=10 \
+              -o ConnectTimeout=45 \
+              -o BatchMode=yes \
+              "$GODADDY_USER@$GODADDY_HOST" "cd \"$PROJECT_PATH\" && PROJECT_DIR=\"$PROJECT_PATH\" bash -se" < scripts/rollback_godaddy.sh \
+            || echo "==> ERROR: rollback script failed too; roll back by hand over SSH."
+          exit 1
 
       - name: Verify production OG meta (post-deploy)
         if: success()

@@ -239,10 +239,16 @@ def get_google_nudge_config(agent):
 def track_google_review_click(agent_id, source='badge'):
     """Increment click count for agent's Google review link."""
     try:
+        import datetime
+        from django.db.models import F
         cfg = GoogleReviewConfig.objects.filter(agent_id=agent_id).first()
         if cfg:
-            cfg.google_review_clicks += 1
-            cfg.save(update_fields=['google_review_clicks', 'updated_at'])
+            # Atomic increment: read-modify-save lost concurrent clicks.
+            GoogleReviewConfig.objects.filter(pk=cfg.pk).update(
+                google_review_clicks=F('google_review_clicks') + 1,
+                updated_at=datetime.datetime.now(),
+            )
+            cfg.refresh_from_db(fields=['google_review_clicks'])
             return cfg.google_review_clicks
     except Exception as e:
         logger.warning('Failed to track Google review click for agent %s: %s', agent_id, e)

@@ -6,7 +6,9 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 from fastapi_app.config import settings
 
-encoded_password = urllib.parse.quote_plus(settings.DB_PASSWORD) if settings.DB_PASSWORD else ""
+encoded_password = (
+    urllib.parse.quote_plus(settings.DB_PASSWORD) if settings.DB_PASSWORD else ""
+)
 
 DATABASE_URL = (
     f"mysql+pymysql://{settings.DB_USER}:"
@@ -17,10 +19,11 @@ DATABASE_URL = (
 )
 
 # Passenger/cPanel typically runs several workers against a shared MySQL
-# connection limit. Keep the pool small and configurable.
-_pool_size = int(os.environ.get("DB_POOL_SIZE", "5"))
-_max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "10"))
-_pool_recycle = int(os.environ.get("DB_POOL_RECYCLE", "1800"))
+# connection limit, and this pool is per process: 2 + 3 caps each process at 5.
+_pool_size = int(os.environ.get("DB_POOL_SIZE", "2"))
+_max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "3"))
+# Below the 300s wait_timeout some shared MySQL hosts use; pre_ping covers the rest.
+_pool_recycle = int(os.environ.get("DB_POOL_RECYCLE", "280"))
 
 engine = create_engine(
     DATABASE_URL,

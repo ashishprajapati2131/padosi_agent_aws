@@ -39,6 +39,18 @@ if command -v nice >/dev/null 2>&1; then
     NICE="nice -n 10"
 fi
 
+# Remember what is live now, so rollback_godaddy.sh can return to it. Only when
+# HEAD is a finished deploy: a retried attempt must not record the half-pulled code.
+CURRENT_HEAD="$(git rev-parse HEAD)"
+if [ ! -f tmp/.last_deployed_commit ] || [ "$(cat tmp/.last_deployed_commit)" = "$CURRENT_HEAD" ]; then
+    echo "$CURRENT_HEAD" > tmp/.previous_deployed_commit
+fi
+
+# A rollback leaves a detached HEAD; get back on main so the pull works.
+if ! git symbolic-ref -q HEAD >/dev/null; then
+    git checkout main
+fi
+
 echo "==> Pulling latest code from Git..."
 git pull origin main
 NEW_COMMIT="$(git rev-parse HEAD)"
@@ -97,7 +109,7 @@ fi
 
 if [ "$REQ_CHANGED" = "1" ] || changed '/migrations/[^/]+\.py$'; then
     echo "==> Creating automated pre-migration database backup..."
-    $NICE "$PY_BIN" manage.py backup_database --tag pre_deploy --retention 7 || echo "WARNING: Backup failed, continuing carefully..."
+    $NICE "$PY_BIN" manage.py backup_database --tag pre_deploy --retention 7 || { echo "ERROR: backup failed, aborting before migrate"; exit 1; }
     echo "==> Running database migrations..."
     $NICE "$PY_BIN" manage.py migrate --noinput
 else
