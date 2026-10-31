@@ -96,17 +96,21 @@ class Command(BaseCommand):
         if password:
             env['MYSQL_PWD'] = password
 
+        # Dump to a tmp_ name and rename on success, so a dump killed half-way
+        # (Passenger recycle) never looks like a db_backup_* file to restore --latest.
+        part_file = backup_dir / f"tmp_{target_file.name}"
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-            with gzip.open(target_file, 'wb') as f_out:
+            with gzip.open(part_file, 'wb') as f_out:
                 shutil.copyfileobj(proc.stdout, f_out)
             _, stderr = proc.communicate()
         except Exception as e:
-            target_file.unlink(missing_ok=True)
+            part_file.unlink(missing_ok=True)
             raise CommandError(f"mysqldump execution failed: {e}") from e
-        if proc.returncode == 0 and target_file.exists() and target_file.stat().st_size > 0:
+        if proc.returncode == 0 and part_file.exists() and part_file.stat().st_size > 0:
+            part_file.replace(target_file)
             return True, target_file
-        target_file.unlink(missing_ok=True)
+        part_file.unlink(missing_ok=True)
         err = (stderr or b'').decode('utf-8', 'replace').strip()
         raise CommandError(f"mysqldump failed (exit {proc.returncode}): {err or 'empty dump'}")
 

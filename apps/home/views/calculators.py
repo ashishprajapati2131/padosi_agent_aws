@@ -81,16 +81,16 @@ def _render_hub(request, category=None):
     if category:
         meta_title = category.meta_title or f'{category.name} Calculators India | PadosiAgent'
         meta_description = category.meta_description or (
-            f'Free {category.name.lower()} calculators. Educational estimates — talk to a licensed PadosiAgent.'
+            f'Free {category.name.lower()} calculators for India. Estimate your premiums, returns and targets online, then connect with a verified PadosiAgent for advice.'
         )
         canonical = request.build_absolute_uri(
             reverse('home:calculator_detail', kwargs={'slug': category.slug})
         )
     else:
-        meta_title = 'Financial Calculators India | SIP, EMI, Insurance | PadosiAgent'
+        meta_title = 'Financial & Insurance Calculators India | PadosiAgent'
         meta_description = (
-            'Free SIP, EMI, FD, PPF, insurance and retirement calculators. '
-            'Educational estimates — talk to a licensed PadosiAgent for advice.'
+            'Free SIP, EMI, FD, PPF, insurance, and retirement calculators for India. '
+            'Estimate figures online and connect with verified local advisors on PadosiAgent.'
         )
         canonical = request.build_absolute_uri(reverse('home:calculators'))
 

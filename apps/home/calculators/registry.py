@@ -246,7 +246,7 @@ CALCULATORS = [
          _inr('coverage', 'Life cover', 10000000, 1000000, 50000000, 100000),
          _yrs('term', 'Policy term', 30, 5, 40), _SMOKING],
         _PREMIUM, _PREMIUM_FAQ, 5,
-        meta_description='Free term insurance calculator India. Estimate premium for life cover by age, term and smoking status.',
+        meta_description='Free term insurance calculator for India. Estimate life cover premiums by age, tenure and smoking habits, then consult a verified local PadosiAgent advisor.',
     ),
     _spec(
         'life-insurance-calculator', 'Life Insurance Calculator',
@@ -256,7 +256,7 @@ CALCULATORS = [
          _inr('coverage', 'Sum assured', 5000000, 500000, 25000000, 100000),
          _yrs('term', 'Policy term', 20, 5, 40), _SMOKING],
         _PREMIUM, _PREMIUM_FAQ, 8,
-        meta_description='Calculate life insurance premium online. Educational estimate for life cover in India.',
+        meta_description='Calculate life insurance premium online in India. Get instant estimates for your family cover and connect with verified neighbourhood PadosiAgent experts.',
     ),
     _spec(
         'health-insurance-calculator', 'Health Insurance Calculator',
@@ -267,7 +267,7 @@ CALCULATORS = [
          _num('members', 'Family members', 1, 1, 8, 1, '', 'number'),
          _yrs('term', 'Policy term', 1, 1, 3), _SMOKING],
         _PREMIUM, _PREMIUM_FAQ, 10,
-        meta_description='Health insurance premium calculator India. Estimate mediclaim cost by age, cover and family size.',
+        meta_description='Health insurance premium calculator for India. Estimate mediclaim cost by age, sum insured and family size, then talk to a verified local PadosiAgent advisor.',
     ),
     _spec(
         'human-life-value-calculator', 'Human Life Value Calculator',
@@ -296,7 +296,7 @@ CALCULATORS = [
              'Annual income × years to retirement, minus existing savings and cover.'),
         ),
         12,
-        meta_description='Human life value calculator India. Estimate how much term cover your family may need.',
+        meta_description='Human life value calculator India. Estimate how much term cover your family needs based on income, liabilities, and consult a verified local PadosiAgent advisor.',
     ),
     _spec(
         'life-cover-calculator', 'Life Cover Calculator',
@@ -339,7 +339,7 @@ CALCULATORS = [
             'period_toggle': False,
         },
         _PREMIUM_FAQ, 16,
-        meta_description='Home loan insurance calculator. Estimate cover equal to outstanding housing loan.',
+        meta_description='Home loan insurance calculator India. Estimate cover equal to your outstanding housing loan balance and protect your family with a verified local PadosiAgent.',
     ),
     _spec(
         'lic-calculator', 'LIC Calculator',
@@ -365,7 +365,7 @@ CALCULATORS = [
              'Term cover is usually cheaper per rupee of protection. Compare with the ULIP vs mutual fund calculator.'),
         ),
         18,
-        meta_description='LIC calculator India. Estimate premium and maturity for an educational endowment-style plan.',
+        meta_description='LIC calculator India. Estimate endowment premium, maturity value and life cover benefits online, then connect with an official verified local PadosiAgent advisor.',
     ),
     _spec(
         'ulip-calculator', 'ULIP Calculator',
@@ -395,7 +395,7 @@ CALCULATORS = [
              'Many advisors compare a cheap term plan plus SIP with a ULIP. Use the ULIP vs mutual fund calculator.'),
         ),
         20,
-        meta_description='ULIP calculator India. Estimate maturity value after charges on a unit-linked insurance plan.',
+        meta_description='ULIP calculator India. Project your maturity corpus after fund management charges, compare growth, and consult a verified local PadosiAgent financial advisor.',
     ),
     _spec(
         'car-insurance-calculator', 'Car Insurance Calculator',
@@ -419,7 +419,7 @@ CALCULATORS = [
             'period_toggle': False,
         },
         _PREMIUM_FAQ, 22,
-        meta_description='Car insurance calculator India. Estimate OD and third-party premium from IDV and NCB.',
+        meta_description='Car insurance calculator India. Estimate own-damage and third-party motor premium from IDV, age and NCB, then consult a verified local PadosiAgent advisor.',
     ),
     _spec(
         'bike-insurance-calculator', 'Bike Insurance Calculator',
@@ -442,7 +442,7 @@ CALCULATORS = [
             'period_toggle': False,
         },
         _PREMIUM_FAQ, 24,
-        meta_description='Bike insurance calculator India. Estimate two-wheeler premium from IDV, age and NCB.',
+        meta_description='Bike insurance calculator India. Estimate two-wheeler own-damage and third-party premiums from IDV and NCB, then consult a verified local PadosiAgent advisor.',
     ),
     _spec(
         'idv-calculator', 'IDV Calculator',
@@ -466,7 +466,7 @@ CALCULATORS = [
              'It follows a typical IRDAI-style schedule. Insurers may differ. Confirm on the policy.'),
         ),
         26,
-        meta_description='IDV calculator India. Estimate car or bike insured declared value from ex-showroom price and age.',
+        meta_description='Insured declared value IDV calculator for India. Estimate vehicle market value from ex-showroom price and consult a verified local PadosiAgent insurance advisor.',
     ),
     _spec(
         'travel-insurance-calculator', 'Travel Insurance Calculator',
@@ -490,7 +490,7 @@ CALCULATORS = [
             'period_toggle': False,
         },
         _PREMIUM_FAQ, 28,
-        meta_description='Travel insurance calculator India. Estimate trip premium by days, destination and cover.',
+        meta_description='Travel insurance calculator India. Estimate international or domestic trip premiums by days, destination and medical cover with a verified PadosiAgent advisor.',
     ),
     _spec(
         'section-80d-calculator', 'Section 80D Calculator',
@@ -515,7 +515,7 @@ CALCULATORS = [
              'Typically ₹25,000 (₹50,000 if senior) for self/family and a separate limit for parents. Preventive checks up to ₹5,000 sit inside the cap. Tax laws change — confirm with an advisor.'),
         ),
         30,
-        meta_description='Section 80D calculator. Estimate income-tax deduction on health insurance premiums in India.',
+        meta_description='Section 80D tax calculator for India. Estimate income tax deductions on health insurance for self and parents, then talk to a verified local PadosiAgent advisor.',
     ),
     _spec(
         'ulip-vs-mutual-fund-calculator', 'ULIP vs Mutual Fund Calculator',
@@ -608,7 +608,7 @@ CALCULATORS = [
             'period_toggle': False,
         },
         _PREMIUM_FAQ, 38,
-        meta_description='Super top-up health insurance calculator. Estimate premium for cover above your deductible.',
+        meta_description='Super top-up health insurance calculator. Estimate premiums for extra hospitalisation cover above deductible and consult a verified local PadosiAgent advisor.',
     ),
     _spec(
         'critical-illness-cover-calculator', 'Critical Illness Cover Calculator',
@@ -636,7 +636,7 @@ CALCULATORS = [
          _pct('annual_rate', 'Expected return (p.a.)', 12, 1, 30)],
         _DONUT, _SIP_FAQ, 100,
         meta_title='SIP Calculator India | Calculate SIP Returns Online | PadosiAgent',
-        meta_description='Calculate SIP returns with monthly investment, tenure and expected rate. Free online SIP calculator.',
+        meta_description='SIP calculator India. Calculate returns and maturity amounts on your monthly mutual fund investments, then consult a verified local PadosiAgent advisor.',
     ),
     _spec(
         'goal-sip-calculator', 'Goal SIP Calculator',
@@ -697,7 +697,7 @@ CALCULATORS = [
          _yrs('years', 'Investment period', 10, 1, 40),
          _pct('annual_rate', 'Expected return (p.a.)', 10, 1, 30)],
         _DONUT, _SIP_FAQ, 118, engine='lumpsum-calculator',
-        meta_description='Investment calculator India. Project the future value of a lumpsum at an assumed rate of return.',
+        meta_description='Investment calculator India. Project the future value of a lumpsum investment at your target rate of return, and consult a verified local PadosiAgent advisor.',
     ),
     _spec(
         'sip-vs-lumpsum-calculator', 'SIP vs Lumpsum Calculator',
@@ -775,7 +775,7 @@ CALCULATORS = [
              'Equity-linked saving schemes have a 3-year lock-in. Tax benefits depend on the regime you choose.'),
         ),
         135, engine='sip-calculator',
-        meta_description='ELSS calculator India. Estimate tax-saving mutual fund SIP returns with a 3-year lock-in.',
+        meta_description='ELSS tax saving calculator India. Estimate mutual fund SIP returns and tax deductions under Section 80C with 3-year lock-in, then consult a PadosiAgent advisor.',
     ),
     _spec(
         'bond-yield-calculator', 'Bond Yield Calculator',
@@ -822,7 +822,7 @@ CALCULATORS = [
              'No. Fees, insurance and prepayment charges are extra. Ask a PadosiAgent before you sign.'),
         ),
         200,
-        meta_description='EMI calculator India. Calculate monthly EMI, interest and total payout for any loan.',
+        meta_description='EMI calculator India. Calculate monthly EMI instalments, interest breakdown, and total payout for home, car, or personal loans with a local PadosiAgent advisor.',
     ),
     _spec(
         'home-loan-emi-calculator', 'Home Loan EMI Calculator',
@@ -850,7 +850,7 @@ CALCULATORS = [
              'Many lenders offer cover on the outstanding loan. Use the Home Loan Insurance calculator, then talk to an agent.'),
         ),
         205, engine='emi-calculator',
-        meta_description='Home loan EMI calculator India. Estimate monthly EMI, interest and total payout.',
+        meta_description='Home loan EMI calculator India. Estimate monthly EMI, interest, and amortization schedule accurately, then consult a verified neighbourhood PadosiAgent advisor.',
     ),
     _spec(
         'car-loan-emi-calculator', 'Car Loan EMI Calculator',
@@ -873,7 +873,7 @@ CALCULATORS = [
             ],
             'period_toggle': False,
         }, [], 210, engine='emi-calculator',
-        meta_description='Car loan EMI calculator India. Calculate monthly instalment and total interest.',
+        meta_description='Car loan EMI calculator India. Calculate monthly instalment, total interest, and effective loan cost for your new vehicle with a verified local PadosiAgent advisor.',
     ),
     _spec(
         'personal-loan-emi-calculator', 'Personal Loan EMI Calculator',
@@ -918,7 +918,7 @@ CALCULATORS = [
             ],
             'period_toggle': False,
         }, [], 300,
-        meta_description='NPS calculator India. Estimate National Pension System corpus, lump sum and annuity.',
+        meta_description='NPS calculator India. Estimate National Pension System retirement corpus, lump-sum payout, and regular pension annuity with a verified local PadosiAgent advisor.',
     ),
     _spec(
         'retirement-calculator', 'Retirement Calculator',
@@ -1049,7 +1049,7 @@ CALCULATORS = [
              'A guardian can open an account for a girl child. Contribution and age rules apply — check the latest government notification.'),
         ),
         410,
-        meta_description='SSY calculator India. Estimate Sukanya Samriddhi Yojana maturity and interest.',
+        meta_description='Sukanya Samriddhi Yojana SSY calculator India. Estimate government scheme maturity corpus and interest for your daughter, then consult a local PadosiAgent advisor.',
     ),
     _spec(
         'rd-calculator', 'RD Calculator',
@@ -1068,7 +1068,7 @@ CALCULATORS = [
          _yrs('years', 'Period', 5, 1, 20),
          _pct('annual_rate', 'Interest rate (p.a.)', 3.5, 1, 8, 0.1)],
         _DONUT, [], 420,
-        meta_description='Savings calculator India. Estimate how a savings balance grows with compounding interest.',
+        meta_description='Savings calculator India. Estimate how savings grow over time with compound interest and regular deposits, then consult a verified local PadosiAgent advisor.',
     ),
     _spec(
         'income-tax-calculator', 'Income Tax Calculator',
@@ -1090,7 +1090,7 @@ CALCULATORS = [
              'New regime slabs with a rebate illustration up to ₹12 lakh, plus 4% cess. Not a filed-return computation.'),
         ),
         500,
-        meta_description='Income tax calculator India. Estimate new-regime tax for FY 2025-26 slabs.',
+        meta_description='Income tax calculator India. Estimate new regime vs old regime tax liability for FY 2025-26 slabs, and plan deductions with a verified local PadosiAgent advisor.',
     ),
     _spec(
         'hra-calculator', 'HRA Calculator',
@@ -1132,6 +1132,7 @@ CALCULATORS = [
             ],
             'period_toggle': False,
         }, [], 510,
+        meta_description='GST calculator India. Add or remove Goods and Services Tax from net or gross prices instantly, check tax slabs, and consult a verified local PadosiAgent advisor.',
     ),
     _spec(
         'inflation-calculator', 'Inflation Calculator',
@@ -1283,7 +1284,7 @@ CALCULATORS = [
         },
         _faq(('Is BMI a diagnosis?', 'No. It is a screening number. Muscle mass, age and health conditions matter.')),
         700, disclaimer=FITNESS_DISCLAIMER,
-        meta_description='BMI calculator. Check body mass index from height and weight.',
+        meta_description='BMI calculator India. Check your Body Mass Index from height and weight, understand health categories, and consult verified local PadosiAgent health advisors.',
     ),
     _spec(
         'ideal-weight-calculator', 'Ideal Weight Calculator',

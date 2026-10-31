@@ -5,6 +5,7 @@ Invoice PDF, welcome email, and Google Sheet sync can take tens of seconds.
 The checkout JSON response has to return as soon as the subscription is marked
 paid, otherwise the success message never reaches the browser.
 """
+
 import logging
 import os
 import threading
@@ -19,7 +20,7 @@ def queue_invoice_and_welcome(agent_id, subscription_id):
     """Run invoice + welcome email after the current DB transaction commits."""
     if not agent_id or not subscription_id:
         logger.error(
-            'queue_invoice_and_welcome skipped: agent_id=%s subscription_id=%s',
+            "queue_invoice_and_welcome skipped: agent_id=%s subscription_id=%s",
             agent_id,
             subscription_id,
         )
@@ -33,7 +34,7 @@ def queue_invoice_and_welcome(agent_id, subscription_id):
             target=_run_invoice_and_welcome,
             args=(agent_id, subscription_id),
             daemon=False,
-            name=f'invoice-welcome-{agent_id}',
+            name=f"invoice-welcome-{agent_id}",
         )
         thread.start()
 
@@ -43,7 +44,7 @@ def queue_invoice_and_welcome(agent_id, subscription_id):
             return
     except Exception:
         logger.exception(
-            'Could not attach invoice/welcome to on_commit for agent %s',
+            "Could not attach invoice/welcome to on_commit for agent %s",
             agent_id,
         )
     _start()
@@ -67,30 +68,45 @@ def fulfill_invoice_and_welcome(agent, subscription):
             sync_sheet=False,
         )
         if invoice and invoice.pdf_path:
-            pdf_path = os.path.join(settings.MEDIA_ROOT, 'app', 'private', invoice.pdf_path)
+            pdf_path = os.path.join(
+                settings.MEDIA_ROOT, "app", "private", invoice.pdf_path
+            )
     except Exception:
-        logger.exception('Invoice generation failed for subscription %s', getattr(subscription, 'id', None))
+        logger.exception(
+            "Invoice generation failed for subscription %s",
+            getattr(subscription, "id", None),
+        )
 
     try:
         from apps.agents.services.account_auth import default_agent_temp_password
 
-        email_service.send_welcome(
+        sent = email_service.send_welcome(
             to_email=agent.email,
             to_name=agent.fullname,
             temp_password=default_agent_temp_password(agent),
             plan_name=subscription.selected_plan,
             attachment_path=pdf_path,
         )
+        if sent is False:
+            # shortcut: nothing durable records a sent welcome, so the hourly retry
+            # (invoice-based) cannot resend it; needs a model field + migration to fix.
+            logger.error(
+                "Welcome email not delivered for agent %s (subscription %s)",
+                getattr(agent, "id", None),
+                getattr(subscription, "id", None),
+            )
     except Exception:
-        logger.exception('Welcome email failed for agent %s', getattr(agent, 'id', None))
+        logger.exception(
+            "Welcome email failed for agent %s", getattr(agent, "id", None)
+        )
 
     if invoice:
         try:
             invoice_service.sync_to_google_sheet(invoice)
         except Exception:
             logger.exception(
-                'Google Sheet sync failed for invoice %s',
-                getattr(invoice, 'invoice_number', None),
+                "Google Sheet sync failed for invoice %s",
+                getattr(invoice, "invoice_number", None),
             )
     return invoice
 
@@ -104,15 +120,13 @@ def _run_invoice_and_welcome(agent_id, subscription_id):
         subscription = AgentSubscription.objects.filter(pk=subscription_id).first()
         if not agent or not subscription:
             logger.error(
-                'Invoice/welcome skipped: agent=%s subscription=%s missing',
+                "Invoice/welcome skipped: agent=%s subscription=%s missing",
                 agent_id,
                 subscription_id,
             )
             return
         fulfill_invoice_and_welcome(agent, subscription)
     except Exception:
-        logger.exception('Background invoice/welcome failed for agent %s', agent_id)
+        logger.exception("Background invoice/welcome failed for agent %s", agent_id)
     finally:
         close_old_connections()
-
-

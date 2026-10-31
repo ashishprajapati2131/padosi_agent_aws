@@ -4,6 +4,7 @@
 {% block pwa_manifest %}{% endblock %}
 
 {% block title %}{% if welcome_preview_mode %}Your Agent Card & Website | PadosiAgent{% elif event_referral_mode %}{{ event_referral_campaign.page_title|default:"Event Registration" }} | PadosiAgent{% elif referring_agent %}{% if referring_agent.is_championship %}Agent Championship — Invited by {{ referring_agent.name }} | PadosiAgent{% else %}You're Invited by {{ referring_agent.name }} | PadosiAgent{% endif %}{% else %}Agent Registration | PadosiAgent{% endif %}{% endblock %}
+{% block meta_description %}Register as a verified insurance advisor on PadosiAgent. Build your digital presence, receive direct client inquiries, showcase reviews, and grow your practice.{% endblock %}
 
 {% block og_title %}{% if use_paldi_og %}{{ paldi_og_share_title|default:"PadosiAgent" }}{% elif use_championship_og %}{{ championship_og_share_title|default:"Agent Championship | PadosiAgent" }}{% elif og_share_title %}{{ og_share_title }}{% elif referring_agent %}{% if referring_agent.is_championship %}Agent Championship | PadosiAgent{% else %}PadosiAgent{% endif %}{% else %}Agent Registration | PadosiAgent{% endif %}{% endblock %}
 {% block og_description %}{% if use_paldi_og %}{{ paldi_og_share_title|default:"PadosiAgent" }}{% elif use_championship_og %}{{ championship_og_description|default:"Join the PadosiAgent Championship." }}{% elif og_share_title %}{{ og_share_title }}{% elif referring_agent %}{% if referring_agent.is_championship %}Agent Championship on PadosiAgent{% else %}Join PadosiAgent{% endif %}{% else %}Register as a PadosiAgent Insurance & Investment Advisor.{% endif %}{% endblock %}
@@ -548,6 +549,8 @@
                 <header class="event-paldi-hero">
                     <h1 class="event-paldi-hero__title">{{ event_referral_campaign.page_title|default:"Paldi Registration" }}</h1>
                 </header>
+                {% else %}
+                <h1 class="sr-only">Join PadosiAgent — Register as a Licensed Insurance &amp; Financial Advisor</h1>
                 {% endif %}
                 {% if registration_swipe_enabled and registration_swipe_slides and not event_referral_mode %}
                 <!-- Features Card Slider -->
@@ -598,7 +601,7 @@
                                                 class="relative h-[80px] w-[80px] sm:h-[110px] sm:w-[110px] shrink-0 overflow-hidden rounded-lg border-2 border-dashed border-primary/40 bg-primary/[0.06] transition-colors hover:border-primary{% if event_referral_mode %} event-paldi-photo-btn{% endif %}">
                                                 <template x-if="photoPreview">
                                                     <div>
-                                                        <img :src="photoPreview" class="h-full w-full object-cover" />
+                                                        <img :src="photoPreview" alt="Agent profile photo preview" class="h-full w-full object-cover" />
                                                         <span
                                                             class="absolute inset-x-0 bottom-0 bg-foreground/70 py-0.5 text-xs sm:text-sm font-bold text-background">Change</span>
                                                     </div>
@@ -1189,6 +1192,7 @@
                                 <div class="rac-d-row">
                                     <div class="rac-d-photo">
                                         <img :src="photoPreview ? photoPreview : '{% static 'img/avatar-icon.jpg' %}'"
+                                            alt="Agent card preview photo"
                                             class="rac-d-photo-img" style="object-fit: cover;">
                                     </div>
                                     <div class="rac-d-info">
@@ -1309,6 +1313,7 @@
                                 <div class="rac-top">
                                     <div class="rac-photo-col" style="width: 100px;">
                                         <img :src="photoPreview ? photoPreview : '{% static 'img/avatar-icon.jpg' %}'"
+                                            alt="Agent visiting card photo"
                                             class="rac-photo-img" style="object-fit: cover;">
                                         <div class="rac-photo-fade"></div>
                                     </div>
@@ -1496,7 +1501,7 @@
 
                                         <!-- Right Column: Agent Bio & Highlights -->
                                         <div class="profile-right-col">
-                                            <h1 class="agent-name" x-text="name || 'Dishant Shah'"></h1>
+                                            <div class="agent-name h1" x-text="name || 'Dishant Shah'"></div>
 
                                             <div class="d-flex align-items-center flex-wrap mb-2" style="gap: 8px;">
                                                 <span class="agent-recognition-badge badge-verified-official" style="padding: 4px 12px; font-size: 12px;">
@@ -1696,7 +1701,7 @@
                                             </div>
                                             <div class="media-grid">
                                                 <div class="media-item rounded-xl overflow-hidden shadow-sm relative group">
-                                                    <img src="{% static 'img/avatar-icon.webp' %}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                    <img src="{% static 'img/avatar-icon.webp' %}" alt="Advisor avatar placeholder" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                                                     <div class="media-overlay"><i class="fas fa-award text-white text-xl"></i></div>
                                                 </div>
                                                 <div class="media-item rounded-xl overflow-hidden shadow-sm relative group bg-teal-50 flex items-center justify-center p-4">

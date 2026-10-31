@@ -590,7 +590,7 @@ def generate_professional_bio(
 
     from apps.agents.models import Agent as DjangoAgent
     from apps.agents.models import AgentProfile as DjangoAgentProfile
-    from apps.agents.views.bio_generator import generate_agent_bio_logic
+    from apps.agents.views.bio_generator import BioDailyLimitExceeded, generate_agent_bio_logic
 
     try:
         django_agent = DjangoAgent.objects.filter(id=current_agent.id).first()
@@ -603,6 +603,8 @@ def generate_professional_bio(
         return {"status": "success", "bio": bio}
     except HTTPException:
         raise
+    except BioDailyLimitExceeded as e:
+        raise HTTPException(status_code=429, detail=str(e))
     except Exception as e:
         logger.error(f"Bio generation failed via FastAPI: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to generate professional bio. Please try again later.")

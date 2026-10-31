@@ -207,3 +207,23 @@ See "Fix NOW" #3. Also:
 - Insurance-portal payment internals.
 - Which events are actually subscribed in the Razorpay dashboard. This decides whether the WhatsApp-bot webhook issue can be exploited right now.
 - Real production config.
+
+---
+
+## Fix status (2026-11-01)
+
+Full suite after the fixes: `manage.py test apps fastapi_app` ran 1026 tests, OK (2 skipped). `check` is clean and no migrations are pending.
+
+| # | Status |
+|---|---|
+| 01 Race conditions | ✅ Profile-view unique index (migration `agents/0040` merges duplicates first) · leaderboard refresh runs `on_commit` with `bulk_update` · click counters use `F()`. Also fixed a hidden bug: `timezone.localdate()` meant card views were never counted. |
+| 02 N+1 | ✅ Leaderboards and the 3 admin pages fixed. |
+| 03 Error tracking | ✅ Silent `except: pass` blocks now log. ⚠️ You still need to set `SENTRY_DSN` in production. |
+| 04 Rate limits | ✅ Card-lead form, contact form and FastAPI forgot-password (no account enumeration) are limited · FastAPI limiter now uses the shared cache · chatbot Origin/Referer check · Redis branch fixed. |
+| 05 Background jobs | ✅ Job claims use MySQL `GET_LOCK` · search analytics threads are de-duplicated · a failed welcome email is now logged. ⏳ Automatic re-send needs a new DB field (your call). |
+| 06 Spend | ✅ Chatbot caps: 100 per IP per day and 5000 per day globally, with an alert · bio generator capped at 10 per agent per day (env vars in `.env.example`). ⚠️ Set billing alerts in the Groq, Gemini and Brevo consoles. |
+| 07 Rollback | ✅ Deploy records the previous commit · rollback uses that record · `/health/` check after deploy rolls back automatically · retries only on SSH connection failure. |
+| 08 Live DB | ✅ FastAPI pool reduced to 2+3 · `repair_imported_agent_data` is a dry run unless `--apply` · `seed_homepage` needs `--yes`. ⚠️ The env override mismatch (Django `override=True` vs FastAPI) is not changed; check it on the server. |
+| 09 Webhooks | ✅ WhatsApp-bot webhook: event allowlist, amount and capture checks, no demotion, message de-duplication · main webhook returns 200 and an alert on amount mismatch. ⏳ Event/insurance order fulfilment from the webhook is still open (needs an events.py refactor). |
+| 10 Backups | ✅ A failed backup aborts the deploy · no incomplete `dumpdata` fallback on MySQL · daily backup job keeps 14 · password passed via env. ⚠️ An offsite, encrypted copy and backup of `media/` need a destination you choose. |
+| Extra | ✅ Expired deletion OTP fixed · OTP row lock · cron token no longer uses a `SECRET_KEY` fallback · deletion route uses the correct client IP · contact form no longer logs PII · mobile bio returns 429 at the cap. |

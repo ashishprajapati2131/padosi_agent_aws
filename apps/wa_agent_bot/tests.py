@@ -62,28 +62,28 @@ class ValidatorTests(unittest.TestCase):
     def test_parse_contact_input(self):
         # Combined mobile + email
         res = validators.parse_contact_input("6352701899parthsadhu0309@gmail.com")
-        self.assertEqual(res['mobile'], "6352701899")
-        self.assertEqual(res['email'], "parthsadhu0309@gmail.com")
+        self.assertEqual(res["mobile"], "6352701899")
+        self.assertEqual(res["email"], "parthsadhu0309@gmail.com")
 
         # Reverse concatenated email + mobile
         res = validators.parse_contact_input("parthsadhu0309@gmail.com6352701899")
-        self.assertEqual(res['mobile'], "6352701899")
-        self.assertEqual(res['email'], "parthsadhu0309@gmail.com")
+        self.assertEqual(res["mobile"], "6352701899")
+        self.assertEqual(res["email"], "parthsadhu0309@gmail.com")
 
         # Separated with space
         res = validators.parse_contact_input("6352701899 parthsadhu0309@gmail.com")
-        self.assertEqual(res['mobile'], "6352701899")
-        self.assertEqual(res['email'], "parthsadhu0309@gmail.com")
+        self.assertEqual(res["mobile"], "6352701899")
+        self.assertEqual(res["email"], "parthsadhu0309@gmail.com")
 
         # Only mobile
         res = validators.parse_contact_input("6352701899")
-        self.assertEqual(res['mobile'], "6352701899")
-        self.assertIsNone(res['email'])
+        self.assertEqual(res["mobile"], "6352701899")
+        self.assertIsNone(res["email"])
 
         # Only email
         res = validators.parse_contact_input("parthsadhu0309@gmail.com")
-        self.assertIsNone(res['mobile'])
-        self.assertEqual(res['email'], "parthsadhu0309@gmail.com")
+        self.assertIsNone(res["mobile"])
+        self.assertEqual(res["email"], "parthsadhu0309@gmail.com")
 
     def test_validate_state(self):
         valid, val = validators.validate_state_selection("1")
@@ -175,11 +175,14 @@ class StateMachineFlowTests(unittest.TestCase):
         self.session.agent = None
         self.session.save = MagicMock()
         # Built-in defaults only: settings cached by another test in the same (parallel) worker must not leak in.
-        settings_patch = patch('apps.home.models.site_setting.SiteSetting.get_value', side_effect=lambda key, default=None: default)
+        settings_patch = patch(
+            "apps.home.models.site_setting.SiteSetting.get_value",
+            side_effect=lambda key, default=None: default,
+        )
         settings_patch.start()
         self.addCleanup(settings_patch.stop)
 
-    @patch('apps.agents.models.Agent.objects')
+    @patch("apps.agents.models.Agent.objects")
     def test_full_registration_and_plan_flow(self, mock_agent_objects):
         mock_agent_objects.filter.return_value.exists.return_value = False
 
@@ -191,32 +194,36 @@ class StateMachineFlowTests(unittest.TestCase):
         # 2. Enter full name
         reply = process_message(self.session, "Amit Kumar")
         self.assertEqual(self.session.state, WaBotSession.STATE_ASK_EMAIL)
-        self.assertEqual(self.session.registration_data.get('fullname'), "Amit Kumar")
+        self.assertEqual(self.session.registration_data.get("fullname"), "Amit Kumar")
 
         # 3. Enter email
         reply = process_message(self.session, "amit@example.com")
         self.assertEqual(self.session.state, WaBotSession.STATE_ASK_MOBILE)
-        self.assertEqual(self.session.registration_data.get('email'), "amit@example.com")
+        self.assertEqual(
+            self.session.registration_data.get("email"), "amit@example.com"
+        )
 
         # 4. Enter mobile
         reply = process_message(self.session, "9876543210")
         self.assertEqual(self.session.state, WaBotSession.STATE_ASK_STATE)
-        self.assertEqual(self.session.registration_data.get('mobile'), "9876543210")
+        self.assertEqual(self.session.registration_data.get("mobile"), "9876543210")
 
         # 5. Enter state
         reply = process_message(self.session, "Gujarat")
         self.assertEqual(self.session.state, WaBotSession.STATE_ASK_PINCODE)
-        self.assertEqual(self.session.registration_data.get('state'), "Gujarat")
+        self.assertEqual(self.session.registration_data.get("state"), "Gujarat")
 
         # 6. Enter pincode
         reply = process_message(self.session, "380001")
         self.assertEqual(self.session.state, WaBotSession.STATE_ASK_EXPERIENCE)
-        self.assertEqual(self.session.registration_data.get('agent_pincode'), "380001")
+        self.assertEqual(self.session.registration_data.get("agent_pincode"), "380001")
 
         # 7. Enter experience
         reply = process_message(self.session, "2")
         self.assertEqual(self.session.state, WaBotSession.STATE_ASK_SEGMENTS)
-        self.assertEqual(self.session.registration_data.get('experience_range'), "2-5 years")
+        self.assertEqual(
+            self.session.registration_data.get("experience_range"), "2-5 years"
+        )
 
         # 8. Enter segments -> Confirmation summary
         reply = process_message(self.session, "1, 2")
@@ -233,17 +240,19 @@ class StateMachineFlowTests(unittest.TestCase):
         self.assertNotIn("30-Day Trial", reply)
 
         # 10. Select Plan "1" (Starter) -> Generates Payment Link!
-        with patch('apps.wa_agent_bot.services.state_machine.create_plan_payment_link') as mock_link:
+        with patch(
+            "apps.wa_agent_bot.services.state_machine.create_plan_payment_link"
+        ) as mock_link:
             mock_link.return_value = {
-                'success': True,
-                'payment_link': 'https://rzp.io/i/test1234',
-                'payment_link_id': 'plink_test1234',
-                'plan_name': 'Starter Plan',
-                'base': 1499.0,
-                'gst': 269.82,
-                'total': 1769,
-                'agent': MagicMock(),
-                'subscription': MagicMock(),
+                "success": True,
+                "payment_link": "https://rzp.io/i/test1234",
+                "payment_link_id": "plink_test1234",
+                "plan_name": "Starter Plan",
+                "base": 1499.0,
+                "gst": 269.82,
+                "total": 1769,
+                "agent": MagicMock(),
+                "subscription": MagicMock(),
             }
             reply = process_message(self.session, "1")
             self.assertEqual(self.session.state, WaBotSession.STATE_AWAITING_PAYMENT)
@@ -254,9 +263,9 @@ class StateMachineFlowTests(unittest.TestCase):
     def test_switch_plan_during_awaiting_payment(self):
         self.session.state = WaBotSession.STATE_AWAITING_PAYMENT
         self.session.registration_data = {
-            'payment_link': 'https://rzp.io/i/test1234',
-            'plan_name': 'Starter Plan',
-            'plan_total': 1769,
+            "payment_link": "https://rzp.io/i/test1234",
+            "plan_name": "Starter Plan",
+            "plan_total": 1769,
         }
         reply = process_message(self.session, "change")
         self.assertEqual(self.session.state, WaBotSession.STATE_ASK_PLAN)
@@ -264,7 +273,7 @@ class StateMachineFlowTests(unittest.TestCase):
 
     def test_cancel_command_resets_session(self):
         self.session.state = WaBotSession.STATE_ASK_EMAIL
-        self.session.registration_data = {'fullname': 'Amit'}
+        self.session.registration_data = {"fullname": "Amit"}
         reply = process_message(self.session, "cancel")
         self.assertEqual(self.session.state, WaBotSession.STATE_WELCOME)
         self.assertEqual(self.session.registration_data, {})
@@ -275,49 +284,56 @@ class StateMachineFlowTests(unittest.TestCase):
         reply = process_message(self.session, "back")
         self.assertEqual(self.session.state, WaBotSession.STATE_CONFIRM_DETAILS)
 
-    @patch('apps.agents.models.Agent.objects')
+    @patch("apps.agents.models.Agent.objects")
     def test_registration_with_combined_email_and_mobile(self, mock_agent_objects):
         mock_agent_objects.filter.return_value.exists.return_value = False
         self.session.state = WaBotSession.STATE_ASK_EMAIL
-        self.session.registration_data = {'fullname': 'Parth Sadhu'}
+        self.session.registration_data = {"fullname": "Parth Sadhu"}
 
         reply = process_message(self.session, "6352701899parthsadhu0309@gmail.com")
         self.assertEqual(self.session.state, WaBotSession.STATE_ASK_STATE)
-        self.assertEqual(self.session.registration_data.get('email'), "parthsadhu0309@gmail.com")
-        self.assertEqual(self.session.registration_data.get('mobile'), "6352701899")
+        self.assertEqual(
+            self.session.registration_data.get("email"), "parthsadhu0309@gmail.com"
+        )
+        self.assertEqual(self.session.registration_data.get("mobile"), "6352701899")
         self.assertIn("Email & Mobile Saved", reply)
         self.assertIn("Step 4 of 7", reply)
 
-    @patch('apps.agents.models.Agent.objects')
+    @patch("apps.agents.models.Agent.objects")
     def test_registration_mobile_entered_at_email_step(self, mock_agent_objects):
         mock_agent_objects.filter.return_value.exists.return_value = False
         self.session.state = WaBotSession.STATE_ASK_EMAIL
-        self.session.registration_data = {'fullname': 'Parth Sadhu'}
+        self.session.registration_data = {"fullname": "Parth Sadhu"}
 
         # 1. User accidentally enters mobile number at email step
         reply = process_message(self.session, "6352701899")
         self.assertEqual(self.session.state, WaBotSession.STATE_ASK_EMAIL)
-        self.assertEqual(self.session.registration_data.get('mobile'), "6352701899")
+        self.assertEqual(self.session.registration_data.get("mobile"), "6352701899")
         self.assertIn("Got your mobile number", reply)
 
         # 2. User then enters email address
         reply2 = process_message(self.session, "parthsadhu0309@gmail.com")
         # Should skip asking for mobile again and jump straight to state selection
         self.assertEqual(self.session.state, WaBotSession.STATE_ASK_STATE)
-        self.assertEqual(self.session.registration_data.get('email'), "parthsadhu0309@gmail.com")
-        self.assertEqual(self.session.registration_data.get('mobile'), "6352701899")
+        self.assertEqual(
+            self.session.registration_data.get("email"), "parthsadhu0309@gmail.com"
+        )
+        self.assertEqual(self.session.registration_data.get("mobile"), "6352701899")
         self.assertIn("Step 4 of 7", reply2)
 
-    @patch('apps.agents.models.Agent.objects')
+    @patch("apps.agents.models.Agent.objects")
     def test_registration_quick_whatsapp_number(self, mock_agent_objects):
         mock_agent_objects.filter.return_value.exists.return_value = False
         self.session.phone_number = "916352701839"
         self.session.state = WaBotSession.STATE_ASK_MOBILE
-        self.session.registration_data = {'fullname': 'Parth Sadhu', 'email': 'parthsadhu0309@gmail.com'}
+        self.session.registration_data = {
+            "fullname": "Parth Sadhu",
+            "email": "parthsadhu0309@gmail.com",
+        }
 
         reply = process_message(self.session, "yes")
         self.assertEqual(self.session.state, WaBotSession.STATE_ASK_STATE)
-        self.assertEqual(self.session.registration_data.get('mobile'), "6352701839")
+        self.assertEqual(self.session.registration_data.get("mobile"), "6352701839")
         self.assertIn("Step 4 of 7", reply)
 
 
@@ -392,109 +408,136 @@ class WebhookAndPaymentViewTests(unittest.TestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-    @patch('apps.wa_agent_bot.views.WaBotSession.objects')
+    @patch("apps.wa_agent_bot.views.WaBotSession.objects")
     def test_health_check(self, mock_session_objects):
         mock_session_objects.count.return_value = 5
         mock_session_objects.filter.return_value.count.return_value = 2
 
-        request = self.factory.get('/wa-bot/health/')
+        request = self.factory.get("/wa-bot/health/")
         response = views.bot_health(request)
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content.decode('utf-8'))
-        self.assertEqual(data.get('status'), 'healthy')
-        self.assertEqual(data.get('total_sessions'), 5)
-        self.assertEqual(data.get('registered_agents'), 2)
+        data = json.loads(response.content.decode("utf-8"))
+        self.assertEqual(data.get("status"), "healthy")
+        self.assertEqual(data.get("total_sessions"), 5)
+        self.assertEqual(data.get("registered_agents"), 2)
 
-    @patch('apps.agents.models.AgentSubscription.objects')
+    @patch("apps.agents.models.AgentSubscription.objects")
     def test_payment_callback_renders_html(self, mock_sub_objects):
         mock_sub_objects.filter.return_value.first.return_value = None
-        request = self.factory.get('/wa-bot/payment-callback/?razorpay_payment_id=pay_123&razorpay_payment_link_id=plink_123')
+        request = self.factory.get(
+            "/wa-bot/payment-callback/?razorpay_payment_id=pay_123&razorpay_payment_link_id=plink_123"
+        )
         response = views.payment_callback(request)
         self.assertEqual(response.status_code, 200)
-        content = response.content.decode('utf-8')
+        content = response.content.decode("utf-8")
         self.assertIn("Payment Received", content)
         self.assertIn("WhatsApp & Email", content)
 
-    @patch('apps.agents.services.razorpay_checkout.razorpay_webhook_secret', return_value='whsec_test')
-    @patch('apps.agents.models.AgentSubscription.objects')
-    @patch('apps.wa_agent_bot.services.payment_service.activate_agent_subscription_after_payment')
-    def test_razorpay_webhook_processing(self, mock_activate, mock_sub_objects, _mock_secret):
-        mock_sub = MagicMock()
+    @patch(
+        "apps.agents.services.razorpay_checkout.razorpay_webhook_secret",
+        return_value="whsec_test",
+    )
+    @patch("apps.agents.models.AgentSubscription.objects")
+    @patch(
+        "apps.wa_agent_bot.services.payment_service.activate_agent_subscription_after_payment"
+    )
+    def test_razorpay_webhook_processing(
+        self, mock_activate, mock_sub_objects, _mock_secret
+    ):
+        mock_sub = MagicMock(payment_status="pending", registration_amount=1179)
         mock_sub.id = 99
         mock_sub_objects.filter.return_value.first.return_value = mock_sub
         mock_activate.return_value = (True, "Activated successfully")
 
         payload = {
-            'event': 'payment_link.paid',
-            'payload': {
-                'payment_link': {
-                    'entity': {
-                        'id': 'plink_test999',
-                        'notes': {'subscription_id': 99},
+            "event": "payment_link.paid",
+            "payload": {
+                "payment_link": {
+                    "entity": {
+                        "id": "plink_test999",
+                        "notes": {"subscription_id": 99},
                     }
-                }
-            }
+                },
+                "payment": {
+                    "entity": {
+                        "id": "pay_test999",
+                        "status": "captured",
+                        "amount": 117900,
+                    }
+                },
+            },
         }
         body = json.dumps(payload)
         request = self.factory.post(
-            '/wa-bot/razorpay-webhook/',
+            "/wa-bot/razorpay-webhook/",
             data=body,
-            content_type='application/json',
-            HTTP_X_RAZORPAY_SIGNATURE=hmac.new(b'whsec_test', body.encode(), hashlib.sha256).hexdigest(),
+            content_type="application/json",
+            HTTP_X_RAZORPAY_SIGNATURE=hmac.new(
+                b"whsec_test", body.encode(), hashlib.sha256
+            ).hexdigest(),
         )
         response = views.razorpay_webhook(request)
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content.decode('utf-8'))
-        self.assertEqual(data.get('status'), 'success')
+        data = json.loads(response.content.decode("utf-8"))
+        self.assertEqual(data.get("status"), "success")
 
-    @patch('apps.home.models.site_setting.SiteSetting.get_value')
+    @patch("apps.home.models.site_setting.SiteSetting.get_value")
     def test_webhook_receiver_when_disabled_via_admin_flag(self, mock_get_val):
         """When Admin Panel flag is OFF (False), webhook receiver responds with status: disabled."""
         mock_get_val.return_value = False
         request = self.factory.post(
-            '/wa-bot/webhook/',
-            data=json.dumps({'event': 'message:received'}),
-            content_type='application/json',
+            "/wa-bot/webhook/",
+            data=json.dumps({"event": "message:received"}),
+            content_type="application/json",
         )
         response = views.webhook_receiver(request)
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content.decode('utf-8'))
-        self.assertEqual(data.get('status'), 'disabled')
+        data = json.loads(response.content.decode("utf-8"))
+        self.assertEqual(data.get("status"), "disabled")
 
-    @patch('apps.home.models.site_setting.SiteSetting.get_value')
-    @patch('apps.wa_agent_bot.views._verify_webhook_signature', return_value=True)
+    @patch("apps.home.models.site_setting.SiteSetting.get_value")
+    @patch("apps.wa_agent_bot.views._verify_webhook_signature", return_value=True)
     def test_webhook_receiver_when_enabled_via_admin_flag(self, mock_sig, mock_get_val):
         """When Admin Panel flag is ON (True), webhook receiver proceeds to process request."""
         mock_get_val.return_value = True
         request = self.factory.post(
-            '/wa-bot/webhook/',
+            "/wa-bot/webhook/",
             data="not-valid-json",
-            content_type='application/json',
+            content_type="application/json",
         )
         response = views.webhook_receiver(request)
         # Should pass the enabled check and fail on JSON parsing
         self.assertEqual(response.status_code, 400)
-        data = json.loads(response.content.decode('utf-8'))
-        self.assertEqual(data.get('error'), 'Invalid JSON')
+        data = json.loads(response.content.decode("utf-8"))
+        self.assertEqual(data.get("error"), "Invalid JSON")
 
-    @patch('apps.admin_panel.views.settings._get_admin_from_session', return_value=1)
-    @patch('apps.home.models.site_setting.SiteSetting.get_value', return_value=True)
-    @patch('apps.home.models.site_setting.SiteSetting.set_value')
-    @patch('apps.admin_panel.models.admin_activity_log.AdminActivityLog.log')
-    def test_admin_toggle_wa_bot_service(self, mock_log, mock_set_val, mock_get_val, mock_admin):
+    @patch("apps.admin_panel.views.settings._get_admin_from_session", return_value=1)
+    @patch("apps.home.models.site_setting.SiteSetting.get_value", return_value=True)
+    @patch("apps.home.models.site_setting.SiteSetting.set_value")
+    @patch("apps.admin_panel.models.admin_activity_log.AdminActivityLog.log")
+    def test_admin_toggle_wa_bot_service(
+        self, mock_log, mock_set_val, mock_get_val, mock_admin
+    ):
         """Test Admin Panel AJAX endpoint toggles service from True to False and back."""
         from apps.admin_panel.views.settings import toggle_wa_bot_service
-        request = self.factory.post('/admin/settings/wa-bot/toggle/')
+
+        request = self.factory.post("/admin/settings/wa-bot/toggle/")
         response = toggle_wa_bot_service(request)
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.content.decode('utf-8'))
-        self.assertTrue(data.get('success'))
-        self.assertFalse(data.get('enabled'))
-        mock_set_val.assert_called_once_with('wa_agent_bot_enabled', '0', group='general')
+        data = json.loads(response.content.decode("utf-8"))
+        self.assertTrue(data.get("success"))
+        self.assertFalse(data.get("enabled"))
+        mock_set_val.assert_called_once_with(
+            "wa_agent_bot_enabled", "0", group="general"
+        )
 
     def test_post_login_status_and_card_reflects_pending_approval(self):
         """Test post-login handler formats status as Pending Admin Approval and informs agent."""
-        from apps.wa_agent_bot.services.post_login_handler import handle_status, handle_card
+        from apps.wa_agent_bot.services.post_login_handler import (
+            handle_status,
+            handle_card,
+        )
+
         agent = MagicMock()
         agent.fullname = "Kishor Shah"
         agent.email = "kishor@example.com"
@@ -507,7 +550,7 @@ class WebhookAndPaymentViewTests(unittest.TestCase):
         agent.id = 101
 
         # While pending approval
-        agent.status = 'pending_approval'
+        agent.status = "pending_approval"
         status_resp = handle_status(agent)
         self.assertIn("Pending Admin Approval", status_resp)
         self.assertIn("under review", status_resp.lower())
@@ -517,24 +560,29 @@ class WebhookAndPaymentViewTests(unittest.TestCase):
         self.assertIn("/card/101/", card_resp)
 
         # After approval
-        agent.status = 'active'
+        agent.status = "active"
         active_status = handle_status(agent)
         self.assertIn("Active & Verified", active_status)
 
         active_card = handle_card(agent)
         self.assertIn("Active & Live", active_card)
 
-    @patch('apps.wa_agent_bot.models.WaBotSession.objects')
-    @patch('apps.wa_agent_bot.services.message_sender.send_text_message')
-    @patch('apps.wa_agent_bot.views.is_wa_bot_enabled', return_value=True)
-    def test_notify_agent_approved_whatsapp(self, mock_enabled, mock_send, mock_session_objects):
+    @patch("apps.wa_agent_bot.models.WaBotSession.objects")
+    @patch("apps.wa_agent_bot.services.message_sender.send_text_message")
+    @patch("apps.wa_agent_bot.views.is_wa_bot_enabled", return_value=True)
+    def test_notify_agent_approved_whatsapp(
+        self, mock_enabled, mock_send, mock_session_objects
+    ):
         """Test approval notification helper dispatches WhatsApp message with live links."""
-        from apps.wa_agent_bot.services.notification_service import notify_agent_approved_whatsapp
+        from apps.wa_agent_bot.services.notification_service import (
+            notify_agent_approved_whatsapp,
+        )
         from apps.agents.models import Agent
-        mock_send.return_value = {'success': True}
+
+        mock_send.return_value = {"success": True}
         mock_session_objects.filter.return_value.first.return_value = None
 
-        with patch('apps.agents.models.Agent.objects.filter') as mock_agent_filter:
+        with patch("apps.agents.models.Agent.objects.filter") as mock_agent_filter:
             mock_agent = MagicMock()
             mock_agent.id = 88
             mock_agent.fullname = "Rajesh Mehta"
@@ -560,128 +608,222 @@ class BotSecurityTests(unittest.TestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-    @patch('apps.agents.services.razorpay_checkout.razorpay_webhook_secret', return_value='whsec_test')
-    @patch('apps.wa_agent_bot.services.payment_service.activate_agent_subscription_after_payment')
+    @patch(
+        "apps.agents.services.razorpay_checkout.razorpay_webhook_secret",
+        return_value="whsec_test",
+    )
+    @patch(
+        "apps.wa_agent_bot.services.payment_service.activate_agent_subscription_after_payment"
+    )
     def test_razorpay_webhook_rejects_unsigned(self, mock_activate, _mock_secret):
-        body = json.dumps({'payload': {'payment': {'entity': {'notes': {'subscription_id': 1}}}}})
-        request = self.factory.post('/wa-bot/razorpay-webhook/', data=body, content_type='application/json')
+        body = json.dumps(
+            {"payload": {"payment": {"entity": {"notes": {"subscription_id": 1}}}}}
+        )
+        request = self.factory.post(
+            "/wa-bot/razorpay-webhook/", data=body, content_type="application/json"
+        )
         response = views.razorpay_webhook(request)
         self.assertEqual(response.status_code, 400)
         mock_activate.assert_not_called()
 
-    @patch('apps.agents.services.razorpay_checkout.razorpay_client')
-    @patch('apps.agents.models.AgentSubscription.objects')
-    @patch('apps.wa_agent_bot.services.payment_service.activate_agent_subscription_after_payment')
-    def test_payment_callback_test_prefix_does_not_activate(self, mock_activate, mock_sub_objects, mock_client):
-        sub = MagicMock(payment_status='pending', razorpay_order_id='plink_X', selected_plan='starter')
-        sub.agent.email = 'victim@example.com'
+    @patch("apps.agents.services.razorpay_checkout.razorpay_client")
+    @patch("apps.agents.models.AgentSubscription.objects")
+    @patch(
+        "apps.wa_agent_bot.services.payment_service.activate_agent_subscription_after_payment"
+    )
+    def test_payment_callback_test_prefix_does_not_activate(
+        self, mock_activate, mock_sub_objects, mock_client
+    ):
+        sub = MagicMock(
+            payment_status="pending",
+            razorpay_order_id="plink_X",
+            selected_plan="starter",
+        )
+        sub.agent.email = "victim@example.com"
         mock_sub_objects.filter.return_value.first.return_value = sub
-        mock_client.return_value.payment_link.fetch.return_value = {'status': 'created'}
-        request = self.factory.get('/wa-bot/payment-callback/?razorpay_payment_link_id=plink_X&razorpay_payment_id=pay_test_1')
+        mock_client.return_value.payment_link.fetch.return_value = {"status": "created"}
+        request = self.factory.get(
+            "/wa-bot/payment-callback/?razorpay_payment_link_id=plink_X&razorpay_payment_id=pay_test_1"
+        )
         response = views.payment_callback(request)
         mock_activate.assert_not_called()
-        self.assertNotIn('victim@example.com', response.content.decode('utf-8'))
+        self.assertNotIn("victim@example.com", response.content.decode("utf-8"))
 
     @override_settings(DEBUG=False)
     def test_inbound_webhook_fails_closed_without_secret(self):
-        request = self.factory.post('/wa-bot/webhook/', data='{}', content_type='application/json')
-        with patch.dict('os.environ', {'WA_BOT_WEBHOOK_SECRET': ''}):
+        request = self.factory.post(
+            "/wa-bot/webhook/", data="{}", content_type="application/json"
+        )
+        with patch.dict("os.environ", {"WA_BOT_WEBHOOK_SECRET": ""}):
             self.assertFalse(views._verify_webhook_signature(request))
 
     def test_inbound_webhook_token(self):
-        with patch.dict('os.environ', {'WA_BOT_WEBHOOK_SECRET': 's3cret'}):
-            ok = self.factory.post('/wa-bot/webhook/?token=s3cret', data='{}', content_type='application/json')
-            bad = self.factory.post('/wa-bot/webhook/?token=nope', data='{}', content_type='application/json')
+        with patch.dict("os.environ", {"WA_BOT_WEBHOOK_SECRET": "s3cret"}):
+            ok = self.factory.post(
+                "/wa-bot/webhook/?token=s3cret",
+                data="{}",
+                content_type="application/json",
+            )
+            bad = self.factory.post(
+                "/wa-bot/webhook/?token=nope",
+                data="{}",
+                content_type="application/json",
+            )
             self.assertTrue(views._verify_webhook_signature(ok))
             self.assertFalse(views._verify_webhook_signature(bad))
 
-    @patch('apps.admin_panel.views.dashboard._get_admin_from_session', return_value=None)
+    @patch(
+        "apps.admin_panel.views.dashboard._get_admin_from_session", return_value=None
+    )
     def test_simulator_requires_admin(self, _mock_admin):
         from apps.wa_agent_bot import simulator_views
-        request = self.factory.post('/wa-bot/simulator/simulate-payment/', data='{}', content_type='application/json')
+
+        request = self.factory.post(
+            "/wa-bot/simulator/simulate-payment/",
+            data="{}",
+            content_type="application/json",
+        )
         request._dont_enforce_csrf_checks = True
         self.assertEqual(simulator_views.simulator_payment(request).status_code, 403)
 
-    @patch('apps.agents.services.account_auth.email_owned_by_non_agent_account', return_value=False)
-    @patch('apps.wa_agent_bot.services.registration_handler.User')
-    @patch('apps.agents.models.Agent.objects')
-    def test_registration_never_takes_over_existing_login(self, mock_agents, mock_user, _mock_owned):
+    @patch(
+        "apps.agents.services.account_auth.email_owned_by_non_agent_account",
+        return_value=False,
+    )
+    @patch("apps.wa_agent_bot.services.registration_handler.User")
+    @patch("apps.agents.models.Agent.objects")
+    def test_registration_never_takes_over_existing_login(
+        self, mock_agents, mock_user, _mock_owned
+    ):
         """Finding #1: an email that already has an auth_user must be rejected, not have its password reset."""
-        from apps.wa_agent_bot.services.registration_handler import create_agent_from_wa_data
+        from apps.wa_agent_bot.services.registration_handler import (
+            create_agent_from_wa_data,
+        )
+
         mock_agents.filter.return_value.exists.return_value = False
         mock_user.objects.filter.return_value.exists.return_value = True
-        result = create_agent_from_wa_data({'email': 'admin@example.com', 'fullname': 'X Y', 'mobile': '9800000000'})
-        self.assertFalse(result['success'])
+        result = create_agent_from_wa_data(
+            {"email": "admin@example.com", "fullname": "X Y", "mobile": "9800000000"}
+        )
+        self.assertFalse(result["success"])
         mock_user.objects.create_user.assert_not_called()
         mock_user.objects.get.assert_not_called()
 
     def test_openwa_override_url_blocks_internal_hosts(self):
         """Finding #8: admin-typed OpenWA URL can't reach metadata/internal hosts."""
-        from apps.wa_agent_bot.services.openwa_admin_service import _override_url_allowed
-        configured = 'http://localhost:2785'
-        self.assertFalse(_override_url_allowed('http://169.254.169.254/latest/meta-data', configured))
-        self.assertFalse(_override_url_allowed('http://10.0.0.5:8080', configured))
-        self.assertFalse(_override_url_allowed('file:///etc/passwd', configured))
-        self.assertTrue(_override_url_allowed('http://localhost:2785/api', configured))
+        from apps.wa_agent_bot.services.openwa_admin_service import (
+            _override_url_allowed,
+        )
 
-    @patch('apps.agents.services.account_auth.email_owned_by_non_agent_account', return_value=False)
-    @patch('apps.wa_agent_bot.services.registration_handler.User')
-    @patch('apps.agents.models.Agent.objects')
-    def test_registration_never_takes_over_existing_login(self, mock_agents, mock_user, _mock_owned):
+        configured = "http://localhost:2785"
+        self.assertFalse(
+            _override_url_allowed("http://169.254.169.254/latest/meta-data", configured)
+        )
+        self.assertFalse(_override_url_allowed("http://10.0.0.5:8080", configured))
+        self.assertFalse(_override_url_allowed("file:///etc/passwd", configured))
+        self.assertTrue(_override_url_allowed("http://localhost:2785/api", configured))
+
+    @patch(
+        "apps.agents.services.account_auth.email_owned_by_non_agent_account",
+        return_value=False,
+    )
+    @patch("apps.wa_agent_bot.services.registration_handler.User")
+    @patch("apps.agents.models.Agent.objects")
+    def test_registration_never_takes_over_existing_login(
+        self, mock_agents, mock_user, _mock_owned
+    ):
         """Finding #1: an email that already has an auth_user must be rejected, not have its password reset."""
-        from apps.wa_agent_bot.services.registration_handler import create_agent_from_wa_data
+        from apps.wa_agent_bot.services.registration_handler import (
+            create_agent_from_wa_data,
+        )
+
         mock_agents.filter.return_value.exists.return_value = False
         mock_user.objects.filter.return_value.exists.return_value = True
-        result = create_agent_from_wa_data({'email': 'admin@example.com', 'fullname': 'X Y', 'mobile': '9800000000'})
-        self.assertFalse(result['success'])
+        result = create_agent_from_wa_data(
+            {"email": "admin@example.com", "fullname": "X Y", "mobile": "9800000000"}
+        )
+        self.assertFalse(result["success"])
         mock_user.objects.create_user.assert_not_called()
         mock_user.objects.get.assert_not_called()
 
     def test_openwa_override_url_blocks_internal_hosts(self):
         """Finding #8: admin-typed OpenWA URL can't reach metadata/internal hosts."""
-        from apps.wa_agent_bot.services.openwa_admin_service import _override_url_allowed
-        configured = 'http://localhost:2785'
-        self.assertFalse(_override_url_allowed('http://169.254.169.254/latest/meta-data', configured))
-        self.assertFalse(_override_url_allowed('http://10.0.0.5:8080', configured))
-        self.assertFalse(_override_url_allowed('file:///etc/passwd', configured))
-        self.assertTrue(_override_url_allowed('http://localhost:2785/api', configured))
+        from apps.wa_agent_bot.services.openwa_admin_service import (
+            _override_url_allowed,
+        )
+
+        configured = "http://localhost:2785"
+        self.assertFalse(
+            _override_url_allowed("http://169.254.169.254/latest/meta-data", configured)
+        )
+        self.assertFalse(_override_url_allowed("http://10.0.0.5:8080", configured))
+        self.assertFalse(_override_url_allowed("file:///etc/passwd", configured))
+        self.assertTrue(_override_url_allowed("http://localhost:2785/api", configured))
 
 
 class LeadAlertTests(unittest.TestCase):
     """WhatsApp message to the agent on a new lead, behind the wa_lead_alert_enabled flag."""
 
     def _lead(self):
-        lead = MagicMock(id=7, customer_name='Ramesh', customer_mobile='9811111111', customer_email='',
-                         insurance_type='Health', service_type='', customer_pincode='380001',
-                         enquiry_requirements='Family floater')
-        lead.agent.mobile = '98250 00000'
+        lead = MagicMock(
+            id=7,
+            customer_name="Ramesh",
+            customer_mobile="9811111111",
+            customer_email="",
+            insurance_type="Health",
+            service_type="",
+            customer_pincode="380001",
+            enquiry_requirements="Family floater",
+        )
+        lead.agent.mobile = "98250 00000"
         return lead
 
-    @patch('apps.wa_agent_bot.services.message_sender.send_text_message')
-    @patch('apps.wa_agent_bot.services.notification_service.lead_alerts_enabled', return_value=False)
+    @patch("apps.wa_agent_bot.services.message_sender.send_text_message")
+    @patch(
+        "apps.wa_agent_bot.services.notification_service.lead_alerts_enabled",
+        return_value=False,
+    )
     def test_flag_off_sends_nothing(self, _flag, mock_send):
-        from apps.wa_agent_bot.services.notification_service import notify_agent_new_lead
+        from apps.wa_agent_bot.services.notification_service import (
+            notify_agent_new_lead,
+        )
+
         self.assertFalse(notify_agent_new_lead(self._lead()))
         mock_send.assert_not_called()
 
-    @patch('threading.Thread')
-    @patch('apps.wa_agent_bot.services.message_sender.send_text_message', return_value={'success': True})
-    @patch('apps.wa_agent_bot.services.notification_service.lead_alerts_enabled', return_value=True)
+    @patch("threading.Thread")
+    @patch(
+        "apps.wa_agent_bot.services.message_sender.send_text_message",
+        return_value={"success": True},
+    )
+    @patch(
+        "apps.wa_agent_bot.services.notification_service.lead_alerts_enabled",
+        return_value=True,
+    )
     def test_flag_on_messages_agent(self, _flag, mock_send, mock_thread):
-        from apps.wa_agent_bot.services.notification_service import notify_agent_new_lead
+        from apps.wa_agent_bot.services.notification_service import (
+            notify_agent_new_lead,
+        )
+
         mock_thread.side_effect = lambda target, daemon: MagicMock(start=target)
         self.assertTrue(notify_agent_new_lead(self._lead()))
         phone, text = mock_send.call_args[0]
-        self.assertEqual(phone, '919825000000')
-        self.assertIn('Ramesh', text)
-        self.assertIn('9811111111', text)
+        self.assertEqual(phone, "919825000000")
+        self.assertIn("Ramesh", text)
+        self.assertIn("9811111111", text)
 
-    @patch('apps.wa_agent_bot.services.message_sender.send_text_message')
-    @patch('apps.wa_agent_bot.services.notification_service.lead_alerts_enabled', return_value=True)
+    @patch("apps.wa_agent_bot.services.message_sender.send_text_message")
+    @patch(
+        "apps.wa_agent_bot.services.notification_service.lead_alerts_enabled",
+        return_value=True,
+    )
     def test_agent_without_mobile_is_skipped(self, _flag, mock_send):
-        from apps.wa_agent_bot.services.notification_service import notify_agent_new_lead
+        from apps.wa_agent_bot.services.notification_service import (
+            notify_agent_new_lead,
+        )
+
         lead = self._lead()
-        lead.agent.mobile = ''
+        lead.agent.mobile = ""
         self.assertFalse(notify_agent_new_lead(lead))
         mock_send.assert_not_called()
 
@@ -689,140 +831,230 @@ class LeadAlertTests(unittest.TestCase):
 class ViewAlertTests(unittest.TestCase):
     """Card-view / profile-view WhatsApp alerts: active paid agents only, once per kind per day."""
 
-    NS = 'apps.wa_agent_bot.services.notification_service'
+    NS = "apps.wa_agent_bot.services.notification_service"
 
     def setUp(self):
         from django.core.cache import cache
+
         cache.clear()
-        self.agent = MagicMock(id=11, fullname='Asha', mobile='9825000000')
+        self.agent = MagicMock(id=11, fullname="Asha", mobile="9825000000")
         patches = [
-            patch(f'{self.NS}.view_alert_settings',
-                  return_value={'card_enabled': True, 'profile_enabled': True, 'top_n': 3}),
-            patch('apps.agents.models.Agent.objects.filter',
-                  return_value=MagicMock(first=MagicMock(return_value=self.agent))),
-            patch('apps.agents.services.account_auth.agent_has_completed_payment', return_value=True),
-            patch('apps.wa_agent_bot.models.WaBotMessageLog.objects.filter',
-                  return_value=MagicMock(exists=MagicMock(return_value=False))),
-            patch(f'{self.NS}.render_template', side_effect=lambda key, **kw: f"{key}:{kw.get('pincode')}"),
+            patch(
+                f"{self.NS}.view_alert_settings",
+                return_value={
+                    "card_enabled": True,
+                    "profile_enabled": True,
+                    "top_n": 3,
+                },
+            ),
+            patch(
+                "apps.agents.models.Agent.objects.filter",
+                return_value=MagicMock(first=MagicMock(return_value=self.agent)),
+            ),
+            patch(
+                "apps.agents.services.account_auth.agent_has_completed_payment",
+                return_value=True,
+            ),
+            patch(
+                "apps.wa_agent_bot.models.WaBotMessageLog.objects.filter",
+                return_value=MagicMock(exists=MagicMock(return_value=False)),
+            ),
+            patch(
+                f"{self.NS}.render_template",
+                side_effect=lambda key, **kw: f"{key}:{kw.get('pincode')}",
+            ),
         ]
         for p in patches:
             p.start()
             self.addCleanup(p.stop)
 
-    @patch('apps.wa_agent_bot.services.message_sender.send_text_message', return_value={'success': True})
+    @patch(
+        "apps.wa_agent_bot.services.message_sender.send_text_message",
+        return_value={"success": True},
+    )
     def test_card_alert_sent_once_per_day(self, mock_send):
         from apps.wa_agent_bot.services.notification_service import send_view_alert
-        self.assertTrue(send_view_alert(11, 'card_view_alert', '380001'))
-        self.assertFalse(send_view_alert(11, 'card_view_alert', '380015'))
-        mock_send.assert_called_once_with('919825000000', 'card_view_alert:380001', category='card_view_alert')
+
+        self.assertTrue(send_view_alert(11, "card_view_alert", "380001"))
+        self.assertFalse(send_view_alert(11, "card_view_alert", "380015"))
+        mock_send.assert_called_once_with(
+            "919825000000", "card_view_alert:380001", category="card_view_alert"
+        )
         # The profile alert is a separate daily quota.
-        self.assertTrue(send_view_alert(11, 'profile_view_alert'))
+        self.assertTrue(send_view_alert(11, "profile_view_alert"))
         self.assertEqual(mock_send.call_count, 2)
 
-    @patch('apps.wa_agent_bot.services.message_sender.send_text_message')
+    @patch("apps.wa_agent_bot.services.message_sender.send_text_message")
     def test_already_logged_today_is_skipped(self, mock_send):
         from apps.wa_agent_bot.services.notification_service import send_view_alert
-        with patch('apps.wa_agent_bot.models.WaBotMessageLog.objects.filter',
-                   return_value=MagicMock(exists=MagicMock(return_value=True))):
-            self.assertFalse(send_view_alert(11, 'card_view_alert', '380001'))
+
+        with patch(
+            "apps.wa_agent_bot.models.WaBotMessageLog.objects.filter",
+            return_value=MagicMock(exists=MagicMock(return_value=True)),
+        ):
+            self.assertFalse(send_view_alert(11, "card_view_alert", "380001"))
         mock_send.assert_not_called()
 
-    @patch('apps.wa_agent_bot.services.message_sender.send_text_message')
+    @patch("apps.wa_agent_bot.services.message_sender.send_text_message")
     def test_unpaid_agent_is_skipped(self, mock_send):
         from apps.wa_agent_bot.services.notification_service import send_view_alert
-        with patch('apps.agents.services.account_auth.agent_has_completed_payment', return_value=False):
-            self.assertFalse(send_view_alert(11, 'card_view_alert', '380001'))
+
+        with patch(
+            "apps.agents.services.account_auth.agent_has_completed_payment",
+            return_value=False,
+        ):
+            self.assertFalse(send_view_alert(11, "card_view_alert", "380001"))
         mock_send.assert_not_called()
 
-    @patch('apps.wa_agent_bot.services.message_sender.send_text_message')
+    @patch("apps.wa_agent_bot.services.message_sender.send_text_message")
     def test_flag_off_sends_nothing(self, mock_send):
         from apps.wa_agent_bot.services.notification_service import send_view_alert
-        with patch(f'{self.NS}.view_alert_settings',
-                   return_value={'card_enabled': False, 'profile_enabled': True, 'top_n': 3}):
-            self.assertFalse(send_view_alert(11, 'card_view_alert', '380001'))
+
+        with patch(
+            f"{self.NS}.view_alert_settings",
+            return_value={"card_enabled": False, "profile_enabled": True, "top_n": 3},
+        ):
+            self.assertFalse(send_view_alert(11, "card_view_alert", "380001"))
         mock_send.assert_not_called()
 
     def test_bot_user_agents_are_detected(self):
         from apps.wa_agent_bot.services.notification_service import is_bot_request
-        req = lambda ua: MagicMock(META={'HTTP_USER_AGENT': ua})
-        self.assertTrue(is_bot_request(req('WhatsApp/2.23.20.0 A')))
-        self.assertTrue(is_bot_request(req('Mozilla/5.0 (compatible; Googlebot/2.1)')))
-        self.assertTrue(is_bot_request(req('')))
-        self.assertFalse(is_bot_request(req('Mozilla/5.0 (Linux; Android 14) Chrome/129.0 Mobile Safari/537.36')))
+
+        req = lambda ua: MagicMock(META={"HTTP_USER_AGENT": ua})
+        self.assertTrue(is_bot_request(req("WhatsApp/2.23.20.0 A")))
+        self.assertTrue(is_bot_request(req("Mozilla/5.0 (compatible; Googlebot/2.1)")))
+        self.assertTrue(is_bot_request(req("")))
+        self.assertFalse(
+            is_bot_request(
+                req("Mozilla/5.0 (Linux; Android 14) Chrome/129.0 Mobile Safari/537.36")
+            )
+        )
 
 
 class ViewAlertSettingsTests(unittest.TestCase):
     def test_settings_clamp_top_n(self):
         from apps.wa_agent_bot.services.notification_service import view_alert_settings
-        with patch(GET_VALUE, return_value={'card_enabled': True, 'top_n': 999}):
+
+        with patch(GET_VALUE, return_value={"card_enabled": True, "top_n": 999}):
             conf = view_alert_settings()
-        self.assertEqual((conf['card_enabled'], conf['profile_enabled'], conf['top_n']), (True, False, 20))
+        self.assertEqual(
+            (conf["card_enabled"], conf["profile_enabled"], conf["top_n"]),
+            (True, False, 20),
+        )
 
 
 class SiteUrlTests(unittest.TestCase):
-    @override_settings(DEBUG=False, APP_URL='https://padosiagent.com')
+    @override_settings(DEBUG=False, APP_URL="https://padosiagent.com")
     def test_localhost_site_url_is_ignored_in_production(self):
         from apps.wa_agent_bot.services.site_url import bot_site_url
-        with patch.dict('os.environ', {'WA_BOT_SITE_URL': 'http://localhost:8000'}):
-            self.assertEqual(bot_site_url(), 'https://padosiagent.com')
 
-    @override_settings(DEBUG=False, APP_URL='')
+        with patch.dict("os.environ", {"WA_BOT_SITE_URL": "http://localhost:8000"}):
+            self.assertEqual(bot_site_url(), "https://padosiagent.com")
+
+    @override_settings(DEBUG=False, APP_URL="")
     def test_falls_back_to_canonical_origin(self):
         from apps.wa_agent_bot.services.site_url import bot_site_url
-        with patch.dict('os.environ', {'WA_BOT_SITE_URL': 'http://127.0.0.1:8000'}):
-            self.assertEqual(bot_site_url(), 'https://padosiagent.com')
+
+        with patch.dict("os.environ", {"WA_BOT_SITE_URL": "http://127.0.0.1:8000"}):
+            self.assertEqual(bot_site_url(), "https://padosiagent.com")
 
 
-GET_VALUE = 'apps.home.models.site_setting.SiteSetting.get_value'
+GET_VALUE = "apps.home.models.site_setting.SiteSetting.get_value"
 
 
 class MessageTemplateTests(unittest.TestCase):
     def _settings(self, templates=None, keywords=None):
-        values = {'wa_message_templates': templates or {}, 'wa_keyword_replies': keywords or []}
-        return patch(GET_VALUE, side_effect=lambda key, default=None: values.get(key, default))
+        values = {
+            "wa_message_templates": templates or {},
+            "wa_keyword_replies": keywords or [],
+        }
+        return patch(
+            GET_VALUE, side_effect=lambda key, default=None: values.get(key, default)
+        )
 
     def test_default_drops_lines_with_empty_values(self):
         from apps.wa_agent_bot.services.message_templates import render
+
         with self._settings():
-            text = render('lead_alert', customer_name='Ramesh', customer_mobile='98', customer_email='',
-                          dashboard_url='https://x/agent/dashboard/')
-        self.assertIn('Ramesh', text)
-        self.assertNotIn('Email', text)
-        self.assertNotIn('Pincode', text)
+            text = render(
+                "lead_alert",
+                customer_name="Ramesh",
+                customer_mobile="98",
+                customer_email="",
+                dashboard_url="https://x/agent/dashboard/",
+            )
+        self.assertIn("Ramesh", text)
+        self.assertNotIn("Email", text)
+        self.assertNotIn("Pincode", text)
 
     def test_admin_override_is_used(self):
         from apps.wa_agent_bot.services.message_templates import render
-        with self._settings({'approval': 'Hi {agent_name}! {card_url}'}):
-            self.assertEqual(render('approval', agent_name='Asha', card_url='https://c'), 'Hi Asha! https://c')
+
+        with self._settings({"approval": "Hi {agent_name}! {card_url}"}):
+            self.assertEqual(
+                render("approval", agent_name="Asha", card_url="https://c"),
+                "Hi Asha! https://c",
+            )
 
     def test_broken_override_falls_back_to_default(self):
         from apps.wa_agent_bot.services.message_templates import render
-        with self._settings({'approval': 'Hi {agent_name.upper}'}):
-            self.assertIn('Congratulations, Asha', render('approval', agent_name='Asha'))
+
+        with self._settings({"approval": "Hi {agent_name.upper}"}):
+            self.assertIn(
+                "Congratulations, Asha", render("approval", agent_name="Asha")
+            )
 
     def test_template_errors(self):
         from apps.wa_agent_bot.services.message_templates import template_errors
-        self.assertEqual(template_errors('approval', 'Hi {agent_name}'), [])
-        self.assertTrue(template_errors('approval', 'Hi {password}'))
-        self.assertTrue(template_errors('approval', 'Hi {agent_name'))
+
+        self.assertEqual(template_errors("approval", "Hi {agent_name}"), [])
+        self.assertTrue(template_errors("approval", "Hi {password}"))
+        self.assertTrue(template_errors("approval", "Hi {agent_name"))
 
     def test_keyword_matching(self):
         from apps.wa_agent_bot.services.message_templates import match_keyword_reply
+
         rules = [
-            {'keyword': 'Price', 'reply': 'Plans start at 999', 'match': 'exact', 'active': True},
-            {'keyword': 'office', 'reply': 'We are in Ahmedabad', 'match': 'contains', 'active': True},
-            {'keyword': 'off', 'reply': 'never', 'match': 'exact', 'active': False},
+            {
+                "keyword": "Price",
+                "reply": "Plans start at 999",
+                "match": "exact",
+                "active": True,
+            },
+            {
+                "keyword": "office",
+                "reply": "We are in Ahmedabad",
+                "match": "contains",
+                "active": True,
+            },
+            {"keyword": "off", "reply": "never", "match": "exact", "active": False},
         ]
         with self._settings(keywords=rules):
-            self.assertEqual(match_keyword_reply('  price '), 'Plans start at 999')
-            self.assertIsNone(match_keyword_reply('price list'))
-            self.assertEqual(match_keyword_reply('where is your office?'), 'We are in Ahmedabad')
-            self.assertIsNone(match_keyword_reply('off'))
+            self.assertEqual(match_keyword_reply("  price "), "Plans start at 999")
+            self.assertIsNone(match_keyword_reply("price list"))
+            self.assertEqual(
+                match_keyword_reply("where is your office?"), "We are in Ahmedabad"
+            )
+            self.assertIsNone(match_keyword_reply("off"))
 
     def test_keyword_reply_only_outside_registration(self):
-        rules = [{'keyword': 'price', 'reply': 'Plans start at 999', 'match': 'exact', 'active': True}]
+        rules = [
+            {
+                "keyword": "price",
+                "reply": "Plans start at 999",
+                "match": "exact",
+                "active": True,
+            }
+        ]
         with self._settings(keywords=rules):
-            welcome = MagicMock(state=WaBotSession.STATE_WELCOME, is_logged_in=False, agent=None)
-            self.assertEqual(process_message(welcome, 'price'), 'Plans start at 999')
-            mid = MagicMock(state=WaBotSession.STATE_ASK_FULLNAME, is_logged_in=False, agent=None, registration_data={})
-            self.assertNotEqual(process_message(mid, 'price'), 'Plans start at 999')
+            welcome = MagicMock(
+                state=WaBotSession.STATE_WELCOME, is_logged_in=False, agent=None
+            )
+            self.assertEqual(process_message(welcome, "price"), "Plans start at 999")
+            mid = MagicMock(
+                state=WaBotSession.STATE_ASK_FULLNAME,
+                is_logged_in=False,
+                agent=None,
+                registration_data={},
+            )
+            self.assertNotEqual(process_message(mid, "price"), "Plans start at 999")

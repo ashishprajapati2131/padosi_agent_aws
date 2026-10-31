@@ -43,6 +43,11 @@ from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
+CONTACT_MAX_PER_IP = 5
+CONTACT_WINDOW_SECONDS = 60 * 60
+# One analytics thread per (pincode, result set) per window; crawlers re-running a search spawn nothing.
+SEARCH_TRACK_DEDUPE_SECONDS = 10 * 60
+
 
 def about(request):
     about_content = SiteSetting.get_value('about_page_content', {
@@ -100,7 +105,15 @@ def contact_submit(request):
     AJAX contact form handler — mirrors Laravel's ContactController.store().
     Validates input, saves to contact_submissions table, returns JSON.
     """
-    logger.info('CONTACT FORM SUBMISSION — received data: %s', request.POST.dict())
+    logger.info('CONTACT FORM SUBMISSION received')
+
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware
+    rl_key = f"rl_contact_{ThreatMonitorMiddleware.get_client_ip(request)}"
+    if (cache.get(rl_key, 0) or 0) >= CONTACT_MAX_PER_IP:
+        return JsonResponse({
+            'success': False,
+            'message': 'Too many messages sent from your network. Please try again in an hour.',
+        }, status=429)
 
     try:
         name    = request.POST.get('name', '').strip()
@@ -141,6 +154,11 @@ def contact_submit(request):
             status='pending',
         )
         logger.info('CONTACT FORM SUBMISSION — saved #%s ref=%s', submission.id, submission.reference_id)
+        try:
+            if not cache.add(rl_key, 1, timeout=CONTACT_WINDOW_SECONDS):
+                cache.incr(rl_key)
+        except Exception:
+            logger.warning('Contact form rate-limit counter update failed', exc_info=True)
 
         return JsonResponse({
             'success': True,
@@ -977,20 +995,27 @@ def find_agents(request):
                 close_old_connections()
 
         try:
+            import hashlib
             import threading
             _tracked_agent_ids = [_a.id for _a in agents_page]
-            # WhatsApp "your card was seen" goes only to the top N cards of the first page, never to bots.
-            _alert_agent_ids = []
-            if start == 0 and pincode:
-                from apps.wa_agent_bot.services.notification_service import is_bot_request, view_alert_settings
-                _va = view_alert_settings()
-                if _va['card_enabled'] and not is_bot_request(request):
-                    _alert_agent_ids = _tracked_agent_ids[:_va['top_n']]
-            threading.Thread(
-                target=_async_track_search,
-                args=(pincode or None, _tracked_agent_ids, _alert_agent_ids),
-                daemon=True
-            ).start()
+            _track_key = 'find_agents_track_{}_{}'.format(
+                pincode or '-',
+                hashlib.md5(','.join(map(str, _tracked_agent_ids)).encode()).hexdigest(),
+            )
+            # cache.add is atomic: only the first identical search per window starts a thread.
+            if cache.add(_track_key, 1, timeout=SEARCH_TRACK_DEDUPE_SECONDS):
+                # WhatsApp "your card was seen" goes only to the top N cards of the first page, never to bots.
+                _alert_agent_ids = []
+                if start == 0 and pincode:
+                    from apps.wa_agent_bot.services.notification_service import is_bot_request, view_alert_settings
+                    _va = view_alert_settings()
+                    if _va['card_enabled'] and not is_bot_request(request):
+                        _alert_agent_ids = _tracked_agent_ids[:_va['top_n']]
+                threading.Thread(
+                    target=_async_track_search,
+                    args=(pincode or None, _tracked_agent_ids, _alert_agent_ids),
+                    daemon=True
+                ).start()
         except Exception as _t_err:
             logger.warning(f"Failed to dispatch search analytics thread: {_t_err}")
     # ── End Analytics Tracking ────────────────────────────────────────────

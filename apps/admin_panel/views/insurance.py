@@ -60,12 +60,16 @@ def insurance_show(request, id):
     # For each agent, try to load active subscription
     from apps.admin_panel.models.agent_subscription import AgentSubscription
     from django.utils import timezone
+    # One query for the page instead of one per agent.
+    active_subs = {}
+    for sub in AgentSubscription.objects.filter(
+        agent_id__in=[agent.id for agent in page_obj],
+        status='active',
+        expires_at__gt=timezone.now()
+    ).order_by('id'):
+        active_subs.setdefault(sub.agent_id, sub)
     for agent in page_obj:
-        agent.active_sub = AgentSubscription.objects.filter(
-            agent=agent,
-            status='active',
-            expires_at__gt=timezone.now()
-        ).first()
+        agent.active_sub = active_subs.get(agent.id)
 
     active_count = Agent.objects.filter(insurance_id=insurance.id, status='active').count()
     inactive_count = Agent.objects.filter(insurance_id=insurance.id, status='inactive').count()

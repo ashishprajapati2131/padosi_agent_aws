@@ -5,13 +5,15 @@ reverted in `236fd60`), so the website starts its own jobs:
 `apps.agents.middleware.BackgroundJobsMiddleware` checks after each response
 whether a job is due and, if so, runs it once in a background thread
 (`apps/agents/services/background_jobs.py`). The claim is stored in the
-shared cache, so only one app process runs it per interval. If the thread
+shared cache (on MySQL the check-and-claim runs under `GET_LOCK`, because the
+file cache's `add` is not atomic), so only one app process runs it per interval. If the thread
 dies (Passenger recycle, deploy), the next request after the interval runs it
 again; every job is safe to re-run.
 
 | Every | Job | What it does |
 |---|---|---|
 | 1 hour | invoice retry | Razorpay-paid subscriptions from the last 2 days with no invoice (older than 15 min) get the normal invoice PDF, welcome email and sheet sync. At most 3 automatic attempts per subscription, so a broken invoice never resends the welcome email every hour. |
+| 1 day | database backup | `backup_database --tag daily --retention 14`: a `mysqldump` into `backups/db_backup_daily_*.sql.gz`, keeping the newest 14 (pruning is per tag, so pre-deploy backups are kept separately). Failures are logged as `[bgjobs] daily database backup failed`. Backups stay on this host only; copying them offsite (encrypted) is not set up yet. |
 | 30 min | Paldi expirations | Marks challengers WON or BLOCKED once their deadline passes (also happens when they open their dashboard). |
 
 Jobs need traffic: with no visitors for a while they run on the next visit.
@@ -27,7 +29,9 @@ cd <app root> && /home/<cpanel-user>/virtualenv/padosiagentdjango/src/3.11/bin/p
 - `expire_subscriptions [--apply]`: only matters once the expiry switch (Admin → Settings → Security) is ON; access itself is checked live at login.
 - `recover_orphaned_payments --days 60 [--apply]`: lists captured registration payments that never activated an agent, and possible double charges (never auto-activated; refund those in Razorpay).
 - `retry_missing_invoices --days 60 [--apply]`: same as the hourly job, for a longer window and without the 3-attempt limit.
-- `backup_database --tag manual`: the deploy script already backs up before every migration.
+- `backup_database --tag manual`: the deploy script already backs up before every migration (and aborts the deploy if that backup fails), and the daily job above backs up once a day.
+- `repair_imported_agent_data [--apply]`: dry run by default; `--apply` writes.
+- `seed_homepage --yes`: deletes and re-seeds all homepage content; refuses without `--yes` (with `DEBUG=True` on a terminal it asks instead).
 
 ## One-time after the 2026-10-01 audit deploy
 

@@ -53,8 +53,13 @@ def analytics(request):
                         top_leads.append(agent)
 
 
+        # Latest subscription per agent in one query instead of one per agent.
+        latest_subs = {}
+        if top_leads:
+            for sub in AgentSubscription.objects.filter(agent_id__in=[a.id for a in top_leads]).order_by('-id'):
+                latest_subs.setdefault(sub.agent_id, sub)
         for agent in top_leads:
-            latest_sub = AgentSubscription.objects.filter(agent_id=agent.id).order_by('-id').first()
+            latest_sub = latest_subs.get(agent.id)
             plan_label = ''
             is_pro = False
             if latest_sub:

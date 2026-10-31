@@ -72,6 +72,8 @@ def record_email_login_failure(email):
     try:
         if not cache.add(key, 1, timeout=EMAIL_LOGIN_WINDOW_SECONDS):
             cache.incr(key)
+            # FileBasedCache.incr resets the TTL to the 300s default
+            cache.touch(key, EMAIL_LOGIN_WINDOW_SECONDS)
     except Exception:
         pass
 

@@ -1370,6 +1370,7 @@ def agent_public_profile(request, slug, state_code=None):
         "leadPreferences": getattr(agent, "leadPreferences", None),
         "review_scroll_delay_ms": 3000,
         "hide_eligibility_popup": True,
+        "is_legacy_profile_path": bool(not state_code or request.path.startswith("/profile/")),
     }
     context.update(profile_og_context(request, agent, display_name=display_name))
     try:

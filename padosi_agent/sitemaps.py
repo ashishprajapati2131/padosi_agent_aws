@@ -9,11 +9,33 @@ import re
 _PROFILE_SLUG_RE = re.compile(r'[a-zA-Z0-9_-]+')
 
 class StaticViewSitemap(Sitemap):
-    priority = 0.8
-    changefreq = 'weekly'
-
     def items(self):
-        return ['home:home', 'home:about', 'home:faq', 'home:contact', 'home:terms', 'home:privacy', 'home:find_agents', 'home:calculators']
+        return [
+            'home:home',
+            'home:find_agents',
+            'agents:agent_registration',
+            'home:about',
+            'home:faq',
+            'home:contact',
+            'home:calculators',
+            'home:blacklisted_agents',
+            'home:cancellation_refund',
+            'home:lic_event',
+            'home:terms',
+            'home:privacy',
+        ]
+
+    def priority(self, item):
+        if item in ('home:home', 'home:find_agents', 'agents:agent_registration'):
+            return 1.0
+        if item in ('home:calculators', 'home:lic_event'):
+            return 0.8
+        return 0.6
+
+    def changefreq(self, item):
+        if item in ('home:home', 'home:find_agents', 'agents:agent_registration', 'home:calculators'):
+            return 'daily'
+        return 'weekly'
 
     def location(self, item):
         return reverse(item)

@@ -757,9 +757,12 @@ def agent_card_lead_submit(request, slug):
 
     from django.core.cache import cache
 
-    rl_lead_key = f"rl_card_lead_{client_ip}"
-    lead_count = cache.get(rl_lead_key, 0)
-    if lead_count >= 10:
+    # Each enquiry fires Brevo email + FCM + WhatsApp: cap per IP (burst window + daily).
+    rl_lead_keys = (
+        (f"rl_card_lead_10m_{client_ip}", 5, 10 * 60),
+        (f"rl_card_lead_day_{client_ip}", 20, 24 * 60 * 60),
+    )
+    if any((cache.get(key, 0) or 0) >= limit for key, limit, _window in rl_lead_keys):
         return JsonResponse(
             {
                 "success": False,
@@ -845,10 +848,13 @@ def agent_card_lead_submit(request, slug):
         ip_address=client_ip,
     )
 
-    try:
-        cache.set(rl_lead_key, lead_count + 1, timeout=3600)
-    except Exception:
-        pass
+    # add/incr is atomic and keeps the window fixed (set() restarted it on every lead).
+    for key, _limit, window in rl_lead_keys:
+        try:
+            if not cache.add(key, 1, timeout=window):
+                cache.incr(key)
+        except Exception:
+            logger.warning("Card lead rate-limit counter update failed", exc_info=True)
 
     from apps.wa_agent_bot.services.notification_service import notify_agent_new_lead
 
