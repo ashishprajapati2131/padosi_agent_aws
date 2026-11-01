@@ -44,3 +44,4 @@ print('==> Internal Server Health Verified: Database OK, Cache OK, Django Engine
 
 echo "==> Internal health check succeeded!"
 exit 0
+
