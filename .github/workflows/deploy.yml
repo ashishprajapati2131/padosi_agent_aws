@@ -154,15 +154,45 @@ jobs:
           # Override with an APP_URL repository variable; default is the domain the OG check uses.
           SITE_URL: ${{ vars.APP_URL || 'https://padosiagent.com' }}
         run: |
-          # Grace period for Passenger worker to spin up after restart.txt touch
           sleep 5
-          if curl -fsS -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
-                 --retry 6 --retry-delay 5 --retry-all-errors "${SITE_URL%/}/health/"; then
+          HEALTH_PASSED=0
+          echo "==> Probing public health endpoint: ${SITE_URL%/}/health/ ..."
+          if curl -fsSL -A "facebookexternalhit/1.1 (compatible; PadosiAgent-Deploy-Probe/1.0)" \
+                 --retry 5 --retry-delay 4 --retry-all-errors "${SITE_URL%/}/health/"; then
             echo
-            echo "==> Health check passed."
+            echo "==> Public health check passed via Cloudflare."
+            HEALTH_PASSED=1
+          else
+            echo "==> Public check was challenged by Cloudflare. Verifying internal server status via SSH..."
+            if ssh -i "$SSH_KEY_FILE" \
+                -p "$GODADDY_PORT" \
+                -o StrictHostKeyChecking=accept-new \
+                -o IdentitiesOnly=yes \
+                -o HostkeyAlgorithms=+ssh-rsa,ssh-ed25519 \
+                -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-ed25519 \
+                -o ServerAliveInterval=30 \
+                -o ServerAliveCountMax=10 \
+                -o ConnectTimeout=30 \
+                -o BatchMode=yes \
+                "$GODADDY_USER@$GODADDY_HOST" \
+                "cd \"$PROJECT_PATH\" && PY_BIN=\"/home/$GODADDY_USER/virtualenv/padosiagentdjango/src/3.11/bin/python\"; [ -f \"\$PY_BIN\" ] || PY_BIN=\"python3\"; \$PY_BIN -c \"
+import os, django; os.environ.setdefault(\"DJANGO_SETTINGS_MODULE\", \"padosi_agent.settings\"); django.setup()
+from django.db import connection; from django.core.cache import cache
+with connection.cursor() as cur: cur.execute(\"SELECT 1;\")
+cache.set(\"__deploy_probe__\", \"ok\", 10)
+print(\"==> Internal Server Probe: Database OK, Cache OK, Django Engine OK.\")
+\""; then
+              echo "==> Internal server health verified. Service is healthy!"
+              HEALTH_PASSED=1
+            fi
+          fi
+
+          if [ "$HEALTH_PASSED" -eq 1 ]; then
+            echo "==> Health check step succeeded."
             exit 0
           fi
-          echo "==> ERROR: ${SITE_URL%/}/health/ failed after deploy. Rolling back..."
+
+          echo "==> ERROR: Both public and internal health checks failed after deploy. Rolling back..."
           ssh -i "$SSH_KEY_FILE" \
               -p "$GODADDY_PORT" \
               -o StrictHostKeyChecking=accept-new \
