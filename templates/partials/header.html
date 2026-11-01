@@ -2,10 +2,16 @@
 <header class="header">
     <div class="container">
         <nav class="navbar navbar-expand-lg navbar-light p-0">
-            <a class="navbar-brand"
+            <a class="navbar-brand d-inline-flex align-items-center"
                 href="{% if request.user.is_authenticated and request.user.role == 'agent' %}/agent/dashboard/{% else %}/{% endif %}" aria-label="PadosiAgent Home">
-                <figure class="logo mb-0">
+                <figure class="logo mb-0 d-inline-flex align-items-center">
                     <img src="{% static 'img/logo-400.webp' %}" alt="PadosiAgent Logo" class="img-fluid" width="156" height="47" fetchpriority="high">
+                    {% if enable_multilingual_regional_branding %}
+                    <span class="padosi-regional-badge ml-2 notranslate" title="Regional Meaning / સ્થાનિક અર્થ">
+                        <i class="fa-solid fa-location-dot mr-1 text-primary"></i>
+                        <span class="js-padosi-regional-meaning">પડોશી એજન્ટ</span>
+                    </span>
+                    {% endif %}
                 </figure>
             </a>
             {% if not hide_site_nav %}
@@ -81,8 +87,150 @@
                             </button>
                         </form>
                     </li>
+
+                    {% if enable_multilingual_regional_branding %}
+                    {# Mobile Language Selector #}
+                    <li class="nav-item d-lg-none mt-2 pt-2 border-top notranslate">
+                        <div class="dropdown padosi-lang-dropdown">
+                            <button class="btn btn-sm btn-light btn-block text-left d-flex align-items-center justify-content-between dropdown-toggle" 
+                                    type="button" id="padosiLangMenuMobile" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                                    style="border-radius: 12px; font-weight: 600; padding: 9px 14px; background: #f8fafc; border: 1.5px solid #cbd5e1; color: #1e293b;">
+                                <span><i class="fa-solid fa-language mr-2 text-primary"></i> <span class="js-padosi-current-lang-text">ગુજરાતી (પડોશી)</span></span>
+                            </button>
+                            <div class="dropdown-menu w-100 shadow border-0 mt-1 py-2" aria-labelledby="padosiLangMenuMobile"
+                                 style="max-height: 280px; overflow-y: auto; border-radius: 12px;">
+                                <div class="dropdown-header px-3 py-1 font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px; color: #64748b;">
+                                    Pan-India Languages / ભાષા
+                                </div>
+                                <div class="dropdown-divider my-1"></div>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('gu')" data-lang="gu">
+                                    <span><strong>ગુજરાતી</strong> <span class="text-muted small">· પડોશી</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('hi')" data-lang="hi">
+                                    <span><strong>हिन्दी</strong> <span class="text-muted small">· पड़ोसी</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('mr')" data-lang="mr">
+                                    <span><strong>मराठी</strong> <span class="text-muted small">· शेजारी</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('en')" data-lang="en">
+                                    <span><strong>English</strong> <span class="text-muted small">· Neighbor</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('bn')" data-lang="bn">
+                                    <span><strong>বাংলা</strong> <span class="text-muted small">· প্রতিবেশী</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('ta')" data-lang="ta">
+                                    <span><strong>தமிழ்</strong> <span class="text-muted small">· பக்கத்து</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('te')" data-lang="te">
+                                    <span><strong>తెలుగు</strong> <span class="text-muted small">· పొరుగు</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('kn')" data-lang="kn">
+                                    <span><strong>ಕನ್ನಡ</strong> <span class="text-muted small">· ನೆರೆಹೊರೆ</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('ml')" data-lang="ml">
+                                    <span><strong>മലയാളം</strong> <span class="text-muted small">· അയൽപക്കം</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('pa')" data-lang="pa">
+                                    <span><strong>ਪੰਜਾਬੀ</strong> <span class="text-muted small">· ਗੁਆਂਢੀ</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('or')" data-lang="or">
+                                    <span><strong>ଓଡ଼ିଆ</strong> <span class="text-muted small">· ପଡ଼ୋଶୀ</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('as')" data-lang="as">
+                                    <span><strong>অসমীয়া</strong> <span class="text-muted small">· চুবুৰীয়া</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                                <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('ur')" data-lang="ur">
+                                    <span><strong>اردو</strong> <span class="text-muted small">· پڑوسی</span></span>
+                                    <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </li>
+                    {% endif %}
                 </ul>
                 <div class="header-right-btns d-none d-lg-flex align-items-center">
+                    {% if enable_multilingual_regional_branding %}
+                    {# Desktop Language Selector Dropdown #}
+                    <div class="dropdown padosi-lang-dropdown mr-2 notranslate">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center shadow-none" 
+                                type="button" id="padosiLangMenuDesktop" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
+                                style="border-radius: 20px; font-weight: 600; font-size: 13px; padding: 6px 14px; background: #f8fafc; border: 1.5px solid #cbd5e1; color: #1e293b;">
+                            <i class="fa-solid fa-language mr-1 text-primary" style="font-size: 15px;"></i>
+                            <span class="js-padosi-current-lang-text">ગુજરાતી (પડોશી)</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-right shadow border-0 mt-2 py-2" aria-labelledby="padosiLangMenuDesktop"
+                             style="min-width: 230px; max-height: 380px; overflow-y: auto; border-radius: 12px; z-index: 1060;">
+                            <div class="dropdown-header px-3 py-1 font-weight-bold text-uppercase" style="font-size: 10px; letter-spacing: 0.5px; color: #64748b;">
+                                Pan-India Languages / ભાષા
+                            </div>
+                            <div class="dropdown-divider my-1"></div>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('gu')" data-lang="gu">
+                                <span><strong>ગુજરાતી</strong> <span class="text-muted small">· પડોશી</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('hi')" data-lang="hi">
+                                <span><strong>हिन्दी</strong> <span class="text-muted small">· पड़ोसी</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('mr')" data-lang="mr">
+                                <span><strong>मराठी</strong> <span class="text-muted small">· शेजारी</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('en')" data-lang="en">
+                                <span><strong>English</strong> <span class="text-muted small">· Neighbor</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('bn')" data-lang="bn">
+                                <span><strong>বাংলা</strong> <span class="text-muted small">· প্রতিবেশী</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('ta')" data-lang="ta">
+                                <span><strong>தமிழ்</strong> <span class="text-muted small">· பக்கத்து</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('te')" data-lang="te">
+                                <span><strong>తెలుగు</strong> <span class="text-muted small">· పొరుగు</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('kn')" data-lang="kn">
+                                <span><strong>ಕನ್ನಡ</strong> <span class="text-muted small">· ನೆರೆಹೊರೆ</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('ml')" data-lang="ml">
+                                <span><strong>മലയാളം</strong> <span class="text-muted small">· അയൽപക്കം</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('pa')" data-lang="pa">
+                                <span><strong>ਪੰਜਾਬੀ</strong> <span class="text-muted small">· ਗੁਆਂਢੀ</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('or')" data-lang="or">
+                                <span><strong>ଓଡ଼ିଆ</strong> <span class="text-muted small">· ପଡ଼ୋଶୀ</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('as')" data-lang="as">
+                                <span><strong>অসমীয়া</strong> <span class="text-muted small">· চুবুৰীয়া</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                            <a class="dropdown-item py-2 d-flex justify-content-between align-items-center js-padosi-lang-item" href="javascript:void(0)" onclick="setPadosiLanguage('ur')" data-lang="ur">
+                                <span><strong>اردو</strong> <span class="text-muted small">· پڑوسی</span></span>
+                                <i class="fa-solid fa-check text-success d-none check-icon"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
                     {% if not request.user.is_authenticated %}
                     {% if '/find-agents' not in request.path %}
                     <a class="contact_us text-decoration-none mr-2" href="/find-agents/?openFilter=1">

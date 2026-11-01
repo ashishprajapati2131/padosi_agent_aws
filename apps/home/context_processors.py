@@ -195,3 +195,19 @@ def calculator_nav(request):
         cache.set(NAV_CACHE_KEY, cached, timeout=None)
     return {'show_calculators_nav': bool(cached)}
 
+
+def multilingual_context(request):
+    """
+    Exposes Pan-India Multi-Language & Regional Branding flag.
+    Toggled from Admin Panel -> Feature Flags ('enable_multilingual_regional_branding').
+    """
+    try:
+        from apps.admin_panel.services.feature_flags import is_feature_enabled
+        is_enabled = is_feature_enabled('enable_multilingual_regional_branding', default=True)
+    except Exception:
+        is_enabled = True
+    return {
+        'enable_multilingual_regional_branding': is_enabled,
+    }
+
+

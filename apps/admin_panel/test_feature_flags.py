@@ -76,6 +76,14 @@ class FeatureFlagsTests(TestCase):
         self.assertIn('feature_flag_pincode_heatmap', keys)
         self.assertIn('profile_banner_enabled', keys)
         self.assertIn('subscription_expiry_enforced', keys)
+        self.assertIn('enable_multilingual_regional_branding', keys)
+
+        # Check multilingual regional flag definition
+        ml_flag = get_feature_flag('enable_multilingual_regional_branding')
+        self.assertIsNotNone(ml_flag)
+        self.assertTrue(ml_flag['is_system'])
+        self.assertTrue(ml_flag['is_enabled'])
+        self.assertEqual(ml_flag['category'], 'Growth & Marketing')
 
         # Check wholesale flag definition
         wm_flag = get_feature_flag('wholesale_marketplace_enabled')
@@ -257,6 +265,54 @@ class FeatureFlagsTests(TestCase):
              patch('apps.admin_panel.views.feature_flags.Admin.objects.filter', side_effect=Exception('db')):
             resp = feature_flag_toggle(req)
         self.assertEqual(resp.status_code, 403)
+
+    def test_multilingual_regional_flag_and_context_processor(self):
+        """Test enabling/disabling multilingual flag and verifying context processor output."""
+        from apps.home.context_processors import multilingual_context
+        key = 'enable_multilingual_regional_branding'
+
+        # Default state is enabled
+        self.assertTrue(is_feature_enabled(key))
+        req = self.rf.get('/')
+        ctx = multilingual_context(req)
+        self.assertTrue(ctx['enable_multilingual_regional_branding'])
+
+        # Admin toggles it off
+        res = set_feature_flag_status(key, False, admin_id=self.admin.id)
+        self.assertTrue(res['success'])
+        self.assertFalse(is_feature_enabled(key))
+        ctx = multilingual_context(req)
+        self.assertFalse(ctx['enable_multilingual_regional_branding'])
+
+        # Admin toggles it back on
+        res = set_feature_flag_status(key, True, admin_id=self.admin.id)
+        self.assertTrue(res['success'])
+        self.assertTrue(is_feature_enabled(key))
+        ctx = multilingual_context(req)
+        self.assertTrue(ctx['enable_multilingual_regional_branding'])
+
+    def test_multilingual_templates_render_cleanly(self):
+        """Verify that header and multilingual widget render with the regional branding."""
+        from django.template.loader import render_to_string
+        req = self._setup_req(self.rf.get('/'))
+
+        # When feature flag is enabled
+        header_html = render_to_string('partials/header.html', {'enable_multilingual_regional_branding': True}, request=req)
+        self.assertIn('padosi-lang-dropdown', header_html)
+        self.assertIn('પડોશી', header_html)
+        self.assertIn('padosi-regional-badge', header_html)
+
+        widget_html = render_to_string('partials/multilingual_widget.html', {'enable_multilingual_regional_branding': True}, request=req)
+        self.assertIn('padosiGoogleTranslateInit', widget_html)
+        self.assertIn('પડોશી', widget_html)
+        self.assertIn('शेजारी', widget_html)
+
+        # When feature flag is disabled
+        header_disabled = render_to_string('partials/header.html', {'enable_multilingual_regional_branding': False}, request=req)
+        self.assertNotIn('padosi-lang-dropdown', header_disabled)
+        self.assertNotIn('padosi-regional-badge', header_disabled)
+
+
 
 
 class FeatureFlagsStaffAccessTests(TestCase):

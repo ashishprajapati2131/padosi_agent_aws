@@ -183,6 +183,7 @@ TEMPLATES = [
                 "apps.home.context_processors.footer_settings",
                 "apps.home.context_processors.seo_context",
                 "apps.home.context_processors.calculator_nav",
+                "apps.home.context_processors.multilingual_context",
                 "apps.wholesale.context_processors.wholesale_context",
             ],
         },

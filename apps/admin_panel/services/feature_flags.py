@@ -122,6 +122,16 @@ DEFAULT_SYSTEM_FLAGS: List[Dict[str, Any]] = [
         'icon': 'fa-solid fa-calendar-xmark',
         'is_system': True,
     },
+    {
+        'key': 'enable_multilingual_regional_branding',
+        'name': 'Pan-India Multi-Language & Regional Branding (Padosi / પડોશી / शेजारी)',
+        'category': 'Growth & Marketing',
+        'description': 'Master switch for Pan-India regional branding (Padosi / પડોશી / शेजारी / etc.) and automatic real-time website translation across all Indian languages.',
+        'redirect_url': '/admin/feature-flags/',
+        'default': True,
+        'icon': 'fa-solid fa-language',
+        'is_system': True,
+    },
 ]
 
 
