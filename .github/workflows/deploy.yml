@@ -76,8 +76,8 @@ jobs:
           PROJECT_PATH: ${{ secrets.GODADDY_PROJECT_PATH }}
         run: |
           # 1. Ensure clean Unix line endings on deployment script
-          sed -i 's/\r$//' scripts/deploy_godaddy.sh scripts/rollback_godaddy.sh
-          chmod +x scripts/deploy_godaddy.sh scripts/rollback_godaddy.sh
+          sed -i 's/\r$//' scripts/deploy_godaddy.sh scripts/rollback_godaddy.sh scripts/verify_health_ssh.sh
+          chmod +x scripts/deploy_godaddy.sh scripts/rollback_godaddy.sh scripts/verify_health_ssh.sh
 
           # 2. Setup SSH directory and private key
           mkdir -p ~/.ssh
@@ -155,13 +155,40 @@ jobs:
           SITE_URL: ${{ vars.APP_URL || 'https://padosiagent.com' }}
         run: |
           sleep 5
-          if curl -fsSL -A "facebookexternalhit/1.1 (compatible; PadosiAgent-Deploy-Probe/1.0)" \
-                 --retry 5 --retry-delay 4 --retry-all-errors "${SITE_URL%/}/health/"; then
+          HEALTH_OK=0
+
+          echo "==> Probing public health endpoint: ${SITE_URL%/}/health/ ..."
+          PUBLIC_STATUS=$(curl -sS -o /tmp/health_body.txt -w "%{http_code}" -A "facebookexternalhit/1.1 (compatible; PadosiAgent-Deploy-Probe/1.0)" "${SITE_URL%/}/health/" || echo "000")
+          echo "==> Public health check HTTP status: $PUBLIC_STATUS"
+          if [ "$PUBLIC_STATUS" = "200" ]; then
+            cat /tmp/health_body.txt
             echo
-            echo "==> Health check passed."
+            echo "==> Public health check passed via Cloudflare."
+            HEALTH_OK=1
+          else
+            echo "==> Public check returned HTTP $PUBLIC_STATUS (Cloudflare WAF / challenge). Verifying server internally over SSH..."
+            if ssh -i "$SSH_KEY_FILE" \
+                -p "$GODADDY_PORT" \
+                -o StrictHostKeyChecking=accept-new \
+                -o IdentitiesOnly=yes \
+                -o HostkeyAlgorithms=+ssh-rsa,ssh-ed25519 \
+                -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-ed25519 \
+                -o ServerAliveInterval=30 \
+                -o ServerAliveCountMax=10 \
+                -o ConnectTimeout=45 \
+                -o BatchMode=yes \
+                "$GODADDY_USER@$GODADDY_HOST" "bash -se -- \"$PROJECT_PATH\"" < scripts/verify_health_ssh.sh; then
+              echo "==> Server internal health verified successfully via SSH!"
+              HEALTH_OK=1
+            fi
+          fi
+
+          if [ "$HEALTH_OK" -eq 1 ]; then
+            echo "==> Health verification completed successfully."
             exit 0
           fi
-          echo "==> ERROR: ${SITE_URL%/}/health/ failed after deploy. Rolling back..."
+
+          echo "==> ERROR: Both public and internal health checks failed after deploy. Rolling back..."
           ssh -i "$SSH_KEY_FILE" \
               -p "$GODADDY_PORT" \
               -o StrictHostKeyChecking=accept-new \
