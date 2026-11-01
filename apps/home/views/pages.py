@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_cookie
 import re
 import math
 import logging
@@ -63,10 +65,14 @@ def about(request):
     return render(request, 'public/about.html', {'about': about_content})
 
 
+@vary_on_cookie
+@cache_page(60 * 60 * 2)
 def terms(request):
     return render(request, 'public/terms.html')
 
 
+@vary_on_cookie
+@cache_page(60 * 60 * 2)
 def privacy(request):
     return render(request, 'public/privacy.html')
 
@@ -1365,6 +1371,8 @@ def lic_event(request):
     })
 
 
+@vary_on_cookie
+@cache_page(60 * 60 * 2)
 def cancellation_refund_policy(request):
     """Cancellation & refund policy — port of routes/web.php:500-502 inline closure."""
     return render(request, 'public/cancellation-refund-policy.html')
