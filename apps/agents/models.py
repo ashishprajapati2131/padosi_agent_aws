@@ -387,8 +387,23 @@ class Agent(models.Model):
     def activeSubscription(self):
         from django.utils import timezone
 
+        now = timezone.now()
+        if "subscriptions" in getattr(self, "_prefetched_objects_cache", {}):
+            active_subs = [
+                s
+                for s in self.subscriptions.all()
+                if s.status == "active" and s.expires_at and s.expires_at > now
+            ]
+            if active_subs:
+                active_subs.sort(
+                    key=lambda s: (s.starts_at or now, s.created_at or now, s.id or 0),
+                    reverse=True,
+                )
+                return active_subs[0]
+            return None
+
         return (
-            self.subscriptions.filter(status="active", expires_at__gt=timezone.now())
+            self.subscriptions.filter(status="active", expires_at__gt=now)
             .order_by("-starts_at", "-created_at", "-id")
             .first()
         )
@@ -557,7 +572,14 @@ class Agent(models.Model):
 
     @property
     def ordered_insurance_segments(self):
-        segments = list(self.insuranceSegments.values_list("segment_type", flat=True))
+        if "insuranceSegments" in getattr(self, "_prefetched_objects_cache", {}):
+            segments = [
+                obj.segment_type
+                for obj in self.insuranceSegments.all()
+                if getattr(obj, "segment_type", None)
+            ]
+        else:
+            segments = list(self.insuranceSegments.values_list("segment_type", flat=True))
         segments = [s.strip().lower() for s in segments if s and s.strip() != "-"]
         segments = list(set(segments))
         priority = ["health", "life", "motor", "sme"]

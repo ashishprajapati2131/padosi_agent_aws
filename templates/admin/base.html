@@ -1070,6 +1070,14 @@
                     <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Site
                 </a>
 
+                <!-- Cloudflare CDN Cache Purge -->
+                <button type="button" class="btn btn-sm btn-outline-warning d-flex align-items-center"
+                    onclick="showCloudflarePurgeModal()" style="font-size:13px; font-weight:600; border-radius:8px;"
+                    title="Purge Cloudflare Edge Cache across all global CDN nodes">
+                    <i class="fa-solid fa-bolt text-warning me-1"></i>
+                    <span class="d-none d-sm-inline">Purge Cloudflare</span>
+                </button>
+
                 <!-- Dark-mode toggle -->
                 <button class="dark-toggle" id="darkToggle" title="Toggle Dark Mode">
                     <i class="fa-solid fa-moon" id="darkIcon"></i>
@@ -1228,6 +1236,39 @@
             </div>
             {% endif %}
             {% endfor %}
+
+            <!-- Automatic Cloudflare Purge Suggestion on Content & Settings Updates -->
+            {% if '/settings/' in request.path or '/content/' in request.path or '/plans/' in request.path or '/profile-banners/' in request.path or '/promo-codes/' in request.path or '/pages/' in request.path or '/about/' in request.path or '/contact/' in request.path or '/faqs/' in request.path %}
+            <div class="alert cf-purge-suggestion-banner border-0 shadow-sm mb-4 p-3 position-relative" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 4px solid #f59e0b !important; border-radius: 10px;">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div style="width: 42px; height: 42px; border-radius: 10px; background: #fef08a; display: flex; align-items: center; justify-content: center; color: #b45309; font-size: 20px; flex-shrink: 0; box-shadow: 0 2px 4px rgba(245,158,11,0.15);">
+                            <i class="fa-solid fa-cloud-bolt"></i>
+                        </div>
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <strong style="color: #92400e; font-size: 13.5px;">Cloudflare Edge Cache Suggestion:</strong>
+                                <span class="badge bg-warning text-dark" style="font-size: 10px;">Guest Cache 2 Hrs</span>
+                            </div>
+                            <div style="font-size: 12.5px; color: #78350f; margin-top: 2px;">
+                                તમે ફેરફાર સેવ કર્યા છે! જો તમે ઇચ્છો કે નવા મુલાકાતીઓ (Guest Visitors) ને આ અપડેટ તરત જ દેખાય, તો <strong>Cloudflare Cache Purge</strong> કરવું સલાહભર્યું છે.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-warning text-dark fw-bold shadow-sm d-flex align-items-center" onclick="quickPurgeCloudflare(this)" style="padding: 7px 15px; border-radius: 8px;">
+                            <i class="fa-solid fa-bolt me-1"></i> Purge Everything Now
+                        </button>
+                        <a href="{{ cloudflare_dash_url }}" target="_blank" class="btn btn-sm btn-outline-secondary d-flex align-items-center" style="padding: 7px 12px; border-radius: 8px; font-size: 12px;" title="Open Cloudflare Caching Dashboard">
+                            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> CF Dash
+                        </a>
+                        <button type="button" class="btn btn-sm btn-link text-muted p-1" onclick="jQuery(this).closest('.cf-purge-suggestion-banner').fadeOut()" title="Dismiss">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             {% endif %}
 
             {% block content %}{% endblock %}
@@ -1372,6 +1413,140 @@
                 $(this).find('td:first').text(index + 1);
             });
             $('.total-count').text($('table tbody tr').length);
+        }
+
+        /* ── Cloudflare CDN Purge Functions ──────────────────────────── */
+        function quickPurgeCloudflare(btn) {
+            var $btn = jQuery(btn);
+            var origHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i> Purging...');
+
+            jQuery.ajax({
+                url: "{% url 'admin_system_purge_cloudflare' %}",
+                type: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                data: {},
+                success: function(res) {
+                    if (res.success) {
+                        $btn.removeClass('btn-warning').addClass('btn-success').html('<i class="fa-solid fa-check me-1"></i> Purged!');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Cloudflare Cache Purged!',
+                            text: res.message || 'All edge caches have been successfully purged across the globe.',
+                            timer: 3500,
+                            showConfirmButton: false
+                        });
+                        setTimeout(function() {
+                            $btn.closest('.cf-purge-suggestion-banner').fadeOut();
+                        }, 2500);
+                    } else if (res.requires_setup) {
+                        $btn.prop('disabled', false).html(origHtml);
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Purge via Cloudflare Dashboard',
+                            html: '<p style="font-size:14px; color:#475569; margin-bottom:16px;">' +
+                                  'Cloudflare API Token is not configured in .env yet. Click below to purge directly on Cloudflare in 1 click:</p>' +
+                                  '<a href="' + (res.dash_url || '{{ cloudflare_dash_url }}') + '" target="_blank" class="btn btn-warning fw-bold text-dark w-100 py-2 mb-2">' +
+                                  '<i class="fa-solid fa-arrow-up-right-from-square me-2"></i> Open Cloudflare Dashboard (Purge Everything)</a>' +
+                                  '<p style="font-size:12px; color:#94a3b8; margin-top:12px;">Tip: You can add <code>CLOUDFLARE_API_TOKEN</code> & <code>CLOUDFLARE_ZONE_ID</code> in .env or System Health to enable instant 1-click purge directly from this panel.</p>',
+                            showConfirmButton: false,
+                            showCloseButton: true
+                        });
+                    } else {
+                        $btn.prop('disabled', false).html(origHtml);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Cloudflare Purge Failed',
+                            text: res.message || 'An error occurred while contacting Cloudflare API.'
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    $btn.prop('disabled', false).html(origHtml);
+                    var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Server error while communicating with Cloudflare.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: msg
+                    });
+                }
+            });
+        }
+
+        function showCloudflarePurgeModal() {
+            Swal.fire({
+                title: '⚡ Purge Cloudflare Edge Cache?',
+                html: '<div style="text-align:left; font-size:14px; color:#475569;">' +
+                      '<p style="margin-bottom:12px;">Cloudflare caches guest pages for <strong>2 hours</strong> for ultra-fast loading speed.</p>' +
+                      '<p style="margin-bottom:14px;">Purging clears the CDN edge cache immediately across all global servers so new visitors see your latest updates instantly.</p>' +
+                      '<div class="p-3 rounded mb-2" style="background:#fef3c7; border:1px solid #fde047; color:#92400e; font-size:13px;">' +
+                      '<i class="fa-solid fa-circle-info me-1"></i> <strong>Note:</strong> Logged-in agents always see fresh data. This purge is mainly for guest visitors on the homepage, plans, and banners.' +
+                      '</div></div>',
+                icon: 'question',
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonColor: '#f59e0b',
+                confirmButtonText: '<i class="fa-solid fa-bolt me-1"></i> Purge Everything Now',
+                denyButtonColor: '#64748b',
+                denyButtonText: '<i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Cloudflare Dash',
+                cancelButtonText: 'Cancel'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Purging Cloudflare Cache...',
+                        text: 'Connecting to Cloudflare edge network...',
+                        allowOutsideClick: false,
+                        didOpen: function() {
+                            Swal.showLoading();
+                            jQuery.ajax({
+                                url: "{% url 'admin_system_purge_cloudflare' %}",
+                                type: 'POST',
+                                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                                data: {},
+                                success: function(res) {
+                                    if (res.success) {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Purge Complete!',
+                                            text: res.message || 'Cloudflare edge cache has been completely cleared.',
+                                            timer: 3500,
+                                            showConfirmButton: false
+                                        });
+                                    } else if (res.requires_setup) {
+                                        Swal.fire({
+                                            icon: 'info',
+                                            title: 'Purge via Cloudflare Dashboard',
+                                            html: '<p style="font-size:14px; color:#475569; margin-bottom:16px;">' +
+                                                  'Cloudflare API credentials are not yet configured in .env. Click below to purge directly on Cloudflare in 1 click:</p>' +
+                                                  '<a href="' + (res.dash_url || '{{ cloudflare_dash_url }}') + '" target="_blank" class="btn btn-warning fw-bold text-dark w-100 py-2 mb-2">' +
+                                                  '<i class="fa-solid fa-arrow-up-right-from-square me-2"></i> Open Cloudflare Dashboard (Purge Everything)</a>' +
+                                                  '<p style="font-size:12px; color:#94a3b8; margin-top:12px;">Tip: Set <code>CLOUDFLARE_API_TOKEN</code> & <code>CLOUDFLARE_ZONE_ID</code> in .env or System Health for direct 1-click purge.</p>',
+                                            showConfirmButton: false,
+                                            showCloseButton: true
+                                        });
+                                    } else {
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Cloudflare Purge Failed',
+                                            text: res.message || 'Unable to purge Cloudflare cache.'
+                                        });
+                                    }
+                                },
+                                error: function(xhr) {
+                                    var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Server error while communicating with Cloudflare.';
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: msg
+                                    });
+                                }
+                            });
+                        }
+                    });
+                } else if (result.isDenied) {
+                    window.open('{{ cloudflare_dash_url }}', '_blank');
+                }
+            });
         }
 
         /* ── Auto-scroll active sidebar item into view on load ─────────── */

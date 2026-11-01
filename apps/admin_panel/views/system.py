@@ -13,7 +13,9 @@ from django.conf import settings
 from datetime import datetime, timedelta
 import logging
 import collections
-from apps.admin_panel.services import log_reader
+from apps.admin_panel.services import log_reader, cloudflare
+from apps.admin_panel.views.dashboard import _get_admin_from_session
+from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,9 @@ def health(request):
     disk_usage = psutil.disk_usage("/")
     process = psutil.Process(os.getpid())
 
+    zone_id, api_token = cloudflare.get_credentials()
+    masked_token = (api_token[:4] + "••••••••" + api_token[-4:]) if len(api_token) >= 8 else ("Configured" if api_token else "")
+
     server_info = {
         "php_version": "Python " + sys.version.split(" ")[0],  # Mocking as PHP version
         "laravel_version": "Django " + django.get_version(),
@@ -45,6 +50,10 @@ def health(request):
         "disk_used": format_bytes(disk_usage.used),
         "disk_usage_percent": disk_usage.percent,
         "memory_usage": format_bytes(process.memory_info().rss),
+        "cloudflare_configured": cloudflare.is_configured(),
+        "cloudflare_zone_id": zone_id,
+        "cloudflare_masked_token": masked_token,
+        "cloudflare_dash_url": cloudflare.get_purge_url(),
     }
 
     return render(request, "admin/system/health.html", {"serverInfo": server_info})
@@ -53,6 +62,7 @@ def health(request):
 def clear_cache(request):
     """
     Clear cache view.
+    Supports clearing Django cache as well as Cloudflare edge CDN cache.
     """
     if request.method == "POST":
         cache_type = request.POST.get("type", "all")
@@ -60,7 +70,20 @@ def clear_cache(request):
         try:
             if cache_type == "all":
                 cache.clear()
-                messages.success(request, "Application cache cleared successfully!")
+                if cloudflare.is_configured():
+                    cf_ok, cf_msg = cloudflare.purge_cache()
+                    if cf_ok:
+                        messages.success(request, "Application cache and Cloudflare CDN cache cleared successfully!")
+                    else:
+                        messages.warning(request, f"Application cache cleared, but Cloudflare: {cf_msg}")
+                else:
+                    messages.success(request, "Application cache cleared successfully!")
+            elif cache_type == "cloudflare":
+                cf_ok, cf_msg = cloudflare.purge_cache()
+                if cf_ok:
+                    messages.success(request, cf_msg)
+                else:
+                    messages.warning(request, cf_msg)
             elif cache_type == "config":
                 messages.success(request, "Configuration cache cleared successfully!")
             elif cache_type == "route":
@@ -76,6 +99,86 @@ def clear_cache(request):
     # Always redirect back
     referer = request.META.get("HTTP_REFERER")
     return redirect(referer if referer else "admin_dashboard")
+
+
+def purge_cloudflare(request):
+    """
+    Purge Cloudflare CDN edge cache.
+    Accepts AJAX JSON requests or standard browser form POST.
+    """
+    admin_id = _get_admin_from_session(request)
+    is_ajax = (
+        request.headers.get("x-requested-with") == "XMLHttpRequest"
+        or "application/json" in request.headers.get("accept", "")
+    )
+
+    if not admin_id:
+        if is_ajax:
+            return JsonResponse({"success": False, "message": "Unauthorized session. Please login again."}, status=401)
+        return redirect("admin_login")
+
+    if request.method == "POST":
+        from apps.admin_panel.models.admin_activity_log import AdminActivityLog
+
+        if not cloudflare.is_configured():
+            msg = (
+                "Cloudflare API credentials are not configured yet. "
+                "Please click the dashboard button below to Purge Everything directly on Cloudflare, "
+                "or save your Zone ID & API Token in Settings to enable 1-click purge."
+            )
+            if is_ajax:
+                return JsonResponse({
+                    "success": False,
+                    "requires_setup": True,
+                    "dash_url": cloudflare.get_purge_url(),
+                    "message": msg,
+                })
+            messages.warning(request, msg)
+        else:
+            success, message = cloudflare.purge_cache()
+            if success:
+                try:
+                    AdminActivityLog.log("Purged Cloudflare CDN cache", "System", request=request)
+                except Exception:
+                    pass
+                if is_ajax:
+                    return JsonResponse({"success": True, "message": message})
+                messages.success(request, message)
+            else:
+                if is_ajax:
+                    return JsonResponse({"success": False, "message": message})
+                messages.error(request, message)
+
+    referer = request.META.get("HTTP_REFERER")
+    return redirect(referer if referer else "admin_system_health")
+
+
+def save_cloudflare_settings(request):
+    """
+    Save Cloudflare credentials directly from Admin System Health.
+    """
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect("admin_login")
+
+    if request.method == "POST":
+        from apps.admin_panel.models.admin_activity_log import AdminActivityLog
+
+        zone_id = request.POST.get("cloudflare_zone_id", "").strip()
+        api_token = request.POST.get("cloudflare_api_token", "").strip()
+
+        if zone_id and api_token:
+            cloudflare.save_credentials(zone_id, api_token)
+            try:
+                AdminActivityLog.log("Updated Cloudflare CDN API configuration", "System", request=request)
+            except Exception:
+                pass
+            messages.success(request, "Cloudflare credentials saved! 1-click purge is now active.")
+        else:
+            messages.error(request, "Please provide both Cloudflare Zone ID and API Token.")
+
+    referer = request.META.get("HTTP_REFERER")
+    return redirect(referer if referer else "admin_system_health")
 
 
 LOG_RANGES = {

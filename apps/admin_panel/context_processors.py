@@ -1,6 +1,7 @@
 from typing import Any
 from django.db import connection
 from django.core.cache import cache
+from apps.admin_panel.services import cloudflare
 
 
 def admin_badge_counts(request):
@@ -46,6 +47,8 @@ def admin_badge_counts(request):
         'payment_pending_count':   0,
         'active_feature_flags_count': 0,
         'notif_count':             0,
+        'cloudflare_configured':   cloudflare.is_configured(),
+        'cloudflare_dash_url':     cloudflare.get_purge_url(),
         # Permission-gate helpers used by the sidebar template:
         #   is_super_admin     – True for Super Admins (all items visible)
         #   admin_permissions  – set of canonical permission keys for Staff Admins

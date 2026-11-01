@@ -409,6 +409,15 @@ GBP_REDIRECT_URI = os.environ.get("GBP_REDIRECT_URI", "")
 FACEBOOK_APP_ID = os.environ.get("FACEBOOK_APP_ID", "759405373797845")
 FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET", "")
 
+# ─── Cloudflare CDN & Caching ───────────────────────────────────────────────
+CLOUDFLARE_ZONE_ID = os.environ.get("CLOUDFLARE_ZONE_ID", "").strip()
+CLOUDFLARE_API_TOKEN = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
+CLOUDFLARE_ACCOUNT_ID = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "64503f055289a96299db0c2bc0dc973c").strip()
+CLOUDFLARE_PURGE_URL = os.environ.get(
+    "CLOUDFLARE_PURGE_URL",
+    f"https://dash.cloudflare.com/{CLOUDFLARE_ACCOUNT_ID}/padosiagent.com/caching/configuration"
+).strip()
+
 # ─── Logging ─────────────────────────────────────────────────────────────────
 # Keep Python logs inside the project root (BASE_DIR / 'logs') so they are
 # NEVER exposed via the public MEDIA_URL or web server static routes.

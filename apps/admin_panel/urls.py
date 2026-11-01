@@ -315,6 +315,8 @@ from apps.admin_panel.views.search import admin_search
 from apps.admin_panel.views.system import (
     health,
     clear_cache,
+    purge_cloudflare,
+    save_cloudflare_settings,
     logs,
     api_logs,
     backups,
@@ -679,6 +681,8 @@ urlpatterns = [
     # System
     path("admin/system/health/", health, name="admin_system_health"),
     path("admin/system/clear-cache/", clear_cache, name="admin_system_clear_cache"),
+    path("admin/system/purge-cloudflare/", purge_cloudflare, name="admin_system_purge_cloudflare"),
+    path("admin/system/save-cloudflare/", save_cloudflare_settings, name="admin_system_save_cloudflare"),
     path("admin/system/logs/", logs, name="admin_system_logs"),
 
     # Subscription Plans

@@ -100,6 +100,76 @@
         </div>
     </div>
 
+    <!-- Cloudflare CDN Edge Cache Card -->
+    <div class="card mt-4 border-warning border-opacity-50">
+        <div class="card-header d-flex justify-content-between align-items-center" style="background: #fffbeb !important;">
+            <h5 class="m-0 text-dark"><i class="fa-solid fa-cloud-bolt text-warning me-2"></i> Cloudflare CDN Cache &amp; Edge TTL</h5>
+            {% if serverInfo.cloudflare_configured %}
+                <span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i> API Connected</span>
+            {% else %}
+                <span class="badge bg-warning text-dark"><i class="fa-solid fa-circle-info me-1"></i> Dashboard Purge Active</span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <div class="row align-items-center mb-3">
+                <div class="col-md-8">
+                    <p style="color: var(--text-primary); font-size: 14px; margin-bottom: 6px; font-weight: 600;">
+                        Active Global CDN: <span class="text-success"><i class="fa-solid fa-shield-halved me-1"></i> Proxied via Cloudflare</span> (Edge Cache: 2 Hours for Guest Visitors)
+                    </p>
+                    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 0;">
+                        Cloudflare stores cached HTML copies across global edge nodes for fast loading speeds.
+                        Whenever you update homepage banners, pricing plans, promo codes, or CMS pages, purge the Cloudflare cache so all guest visitors see changes immediately.
+                    </p>
+                </div>
+                <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                    <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                        <button type="button" class="btn btn-warning fw-bold text-dark shadow-sm" onclick="showCloudflarePurgeModal()">
+                            <i class="fa-solid fa-bolt me-1"></i> Purge Cloudflare Everything
+                        </button>
+                        <a href="{{ serverInfo.cloudflare_dash_url }}" target="_blank" class="btn btn-outline-secondary" title="Open Cloudflare Caching Dashboard">
+                            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Open Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color: var(--border-color); opacity: 0.5;">
+
+            <!-- Cloudflare API Credentials Configuration -->
+            <div class="mt-2">
+                <a class="text-decoration-none fw-semibold" data-bs-toggle="collapse" href="#cfConfigCollapse" role="button" aria-expanded="false" style="font-size: 13.5px; color: var(--primary);">
+                    <i class="fa-solid fa-key me-1"></i> {% if serverInfo.cloudflare_configured %}Edit Cloudflare API Credentials{% else %}Configure 1-Click Cloudflare Purge API{% endif %} &rsaquo;
+                </a>
+                
+                <div class="collapse {% if not serverInfo.cloudflare_configured %}show{% endif %} mt-3" id="cfConfigCollapse">
+                    <div class="p-3 rounded-3" style="background: var(--bg-body); border: 1px solid var(--border-color);">
+                        <form action="{% url 'admin_system_save_cloudflare' %}" method="POST">
+                            {% csrf_token %}
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" style="font-size: 12.5px; font-weight: 600;">Cloudflare Zone ID</label>
+                                    <input type="text" name="cloudflare_zone_id" class="form-control font-monospace" style="font-size: 13px;" value="{{ serverInfo.cloudflare_zone_id }}" placeholder="Found on Cloudflare Overview page" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" style="font-size: 12.5px; font-weight: 600;">Cloudflare API Token</label>
+                                    <input type="password" name="cloudflare_api_token" class="form-control font-monospace" style="font-size: 13px;" placeholder="{% if serverInfo.cloudflare_masked_token %}Token configured (leave blank to keep){% else %}API Token with Zone.Cache Purge permission{% endif %}">
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <small class="text-muted" style="font-size: 12px;">
+                                        Token requires <code>Zone.Cache Purge</code> permission in Cloudflare &rsaquo; My Profile &rsaquo; API Tokens.
+                                    </small>
+                                    <button type="submit" class="btn btn-sm btn-primary">
+                                        <i class="fa-solid fa-floppy-disk me-1"></i> Save Credentials
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="m-0"><i class="fa-solid fa-clock-rotate-left me-2"></i> Scheduled Maintenance (No-Cron Environment Support)</h5>
