@@ -28,13 +28,18 @@ mkdir -p tmp
 # Previous failed deploys or rollbacks can leave stale Python/Passenger
 # workers that eat into the limit, causing "cannot fork()" on git pull.
 echo "==> Cleaning up stale processes to free CloudLinux resources..."
-# Kill old Passenger workers (they respawn automatically on restart.txt touch)
-pkill -u "$USER" -f 'PassengerAgent' 2>/dev/null || true
+# GoDaddy CloudLinux counts threads (nlwp) towards the NPROC limit.
+# Each Passenger Python worker consumes 8-12 threads.
+# Killing python workers releases ~30 threads instantly so git pull can fork.
+# Passenger automatically spawns fresh workers upon restart.txt touch.
+pkill -9 -u "$USER" -f 'python3.11_bin' 2>/dev/null || true
+pkill -9 -u "$USER" -f 'passenger_wsgi' 2>/dev/null || true
+pkill -9 -u "$USER" -f 'virtualenv/padosiagentdjango' 2>/dev/null || true
 # Kill leftover collectstatic / migrate processes from failed deploys
-pkill -u "$USER" -f 'manage.py collectstatic' 2>/dev/null || true
-pkill -u "$USER" -f 'manage.py migrate' 2>/dev/null || true
-# Give OS a moment to reclaim process slots
-sleep 2
+pkill -9 -u "$USER" -f 'manage.py collectstatic' 2>/dev/null || true
+pkill -9 -u "$USER" -f 'manage.py migrate' 2>/dev/null || true
+# Give OS a moment to reclaim process & thread slots
+sleep 3
 echo "==> Process cleanup done. $(ps -u "$USER" --no-headers 2>/dev/null | wc -l) processes running."
 
 # One deploy at a time: two overlapping deploys would run pip/collectstatic

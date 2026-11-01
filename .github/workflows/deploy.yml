@@ -120,7 +120,7 @@ jobs:
                 -o ServerAliveCountMax=10 \
                 -o ConnectTimeout=45 \
                 -o BatchMode=yes \
-                "$GODADDY_USER@$GODADDY_HOST" "bash -se -- \"$PROJECT_PATH\" \"$GODADDY_USER\"" < scripts/deploy_godaddy.sh
+                "$GODADDY_USER@$GODADDY_HOST" "bash --noprofile --norc -se -- \"$PROJECT_PATH\" \"$GODADDY_USER\"" < scripts/deploy_godaddy.sh
             then
               DEPLOY_SUCCESS=1
               echo "==> Deployment successfully finished on attempt $ATTEMPT."
@@ -167,7 +167,7 @@ jobs:
               -o ServerAliveCountMax=10 \
               -o ConnectTimeout=45 \
               -o BatchMode=yes \
-              "$GODADDY_USER@$GODADDY_HOST" "bash -se -- \"$PROJECT_PATH\"" < scripts/verify_health_ssh.sh; then
+              "$GODADDY_USER@$GODADDY_HOST" "bash --noprofile --norc -se -- \"$PROJECT_PATH\"" < scripts/verify_health_ssh.sh; then
             echo "==> Health check PASSED (Database OK, Cache OK, Django OK)."
             exit 0
           fi
@@ -182,7 +182,7 @@ jobs:
               -o ServerAliveCountMax=10 \
               -o ConnectTimeout=45 \
               -o BatchMode=yes \
-              "$GODADDY_USER@$GODADDY_HOST" "cd \"$PROJECT_PATH\" && PROJECT_DIR=\"$PROJECT_PATH\" bash -se" < scripts/rollback_godaddy.sh \
+              "$GODADDY_USER@$GODADDY_HOST" "cd \"$PROJECT_PATH\" && PROJECT_DIR=\"$PROJECT_PATH\" bash --noprofile --norc -se" < scripts/rollback_godaddy.sh \
             || echo "==> ERROR: rollback script failed too; roll back by hand over SSH."
           exit 1
 
