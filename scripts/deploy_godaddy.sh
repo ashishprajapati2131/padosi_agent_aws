@@ -23,6 +23,20 @@ fi
 echo "==> Current Working Directory: $(pwd)"
 mkdir -p tmp
 
+# ── Free resources before heavy work ──────────────────────────────
+# GoDaddy CloudLinux has strict per-user process/memory limits.
+# Previous failed deploys or rollbacks can leave stale Python/Passenger
+# workers that eat into the limit, causing "cannot fork()" on git pull.
+echo "==> Cleaning up stale processes to free CloudLinux resources..."
+# Kill old Passenger workers (they respawn automatically on restart.txt touch)
+pkill -u "$USER" -f 'PassengerAgent' 2>/dev/null || true
+# Kill leftover collectstatic / migrate processes from failed deploys
+pkill -u "$USER" -f 'manage.py collectstatic' 2>/dev/null || true
+pkill -u "$USER" -f 'manage.py migrate' 2>/dev/null || true
+# Give OS a moment to reclaim process slots
+sleep 2
+echo "==> Process cleanup done. $(ps -u "$USER" --no-headers 2>/dev/null | wc -l) processes running."
+
 # One deploy at a time: two overlapping deploys would run pip/collectstatic
 # twice in parallel inside the same CloudLinux resource limits.
 if command -v flock >/dev/null 2>&1; then
@@ -52,7 +66,19 @@ if ! git symbolic-ref -q HEAD >/dev/null; then
 fi
 
 echo "==> Pulling latest code from Git..."
-git pull origin main
+# Retry git pull up to 3 times — CloudLinux may need a moment to reclaim
+# process slots after the cleanup above.
+for _pull_try in 1 2 3; do
+    if git pull origin main; then
+        break
+    fi
+    echo "==> git pull attempt $_pull_try failed; waiting 5s for resources to free up..."
+    sleep 5
+    if [ "$_pull_try" -eq 3 ]; then
+        echo "==> ERROR: git pull failed after 3 attempts."
+        exit 1
+    fi
+done
 NEW_COMMIT="$(git rev-parse HEAD)"
 
 echo "==> Detecting Python virtualenv..."
