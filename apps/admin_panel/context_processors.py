@@ -27,6 +27,10 @@ def admin_badge_counts(request):
         total_pincodes_count    – Pincode Manager    (#7c3aed) — always shown if >0
         notif_count             – Bell badge = sum of non-active agents + pending reviews + pending contacts
     """
+    path = request.path.rstrip('/')
+    if path in ['/admin', '/admin/login', '/admin/login/post', '/admin/logout', '/padosi-admin', '/padosi-admin/login', '/padosi-admin/logout']:
+        return {}
+
     if not (request.path.startswith('/admin/') or request.path.startswith('/padosi-admin/')):
         return {}
 
@@ -47,8 +51,8 @@ def admin_badge_counts(request):
         'payment_pending_count':   0,
         'active_feature_flags_count': 0,
         'notif_count':             0,
-        'cloudflare_configured':   cloudflare.is_configured(),
-        'cloudflare_dash_url':     cloudflare.get_purge_url(),
+        'cloudflare_configured':   False,
+        'cloudflare_dash_url':     '',
         # Permission-gate helpers used by the sidebar template:
         #   is_super_admin     – True for Super Admins (all items visible)
         #   admin_permissions  – set of canonical permission keys for Staff Admins
@@ -56,6 +60,12 @@ def admin_badge_counts(request):
         'admin_permissions':       set(),
         'logged_in_admin':         None,
     }
+
+    try:
+        counts['cloudflare_configured'] = cloudflare.is_configured()
+        counts['cloudflare_dash_url'] = cloudflare.get_purge_url()
+    except Exception:
+        pass
 
     # 1. Check if aggregate badge counts are already cached
     badge_cache_key = 'admin_sidebar_counts_v4'

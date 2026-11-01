@@ -189,6 +189,97 @@ def _record_failed_admin_login(request, email):
 # Auth Views  (login / logout)  — preserved from Phase 1 stubs
 # ---------------------------------------------------------------------------
 
+def _mask_email(email: str) -> str:
+    """Mask email for display, e.g. admin@padosiagent.com -> a***n@padosiagent.com"""
+    if not email or "@" not in email:
+        return email or ""
+    try:
+        user_part, domain_part = email.split("@", 1)
+        if len(user_part) <= 2:
+            masked_user = user_part[0] + "*"
+        else:
+            masked_user = user_part[0] + "*" * (len(user_part) - 2) + user_part[-1]
+        return f"{masked_user}@{domain_part}"
+    except Exception:
+        return email
+
+
+def _issue_admin_session(request, admin_db_id, email):
+    """
+    Issue an authenticated admin session and set the session cookie.
+    """
+    # Agent Django sessions and admin cookie sessions must not coexist.
+    invalidate_admin_session_token(request.COOKIES.get(ADMIN_SESSION_COOKIE))
+    django_logout(request)
+
+    token = secrets.token_hex(32)
+    now_curr = datetime.now()
+    expires_at = now_curr + timedelta(days=ADMIN_SESSION_DAYS)
+    ip_address = (request.META.get("REMOTE_ADDR") or "")[:45]
+    user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
+
+    try:
+        with connection.cursor() as cursor:
+            # Insert into user_sessions with fallback for schema variations
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO user_sessions
+                        (session_token, admin_id, agent_id, distributor_id,
+                         ip_address, user_agent, last_activity,
+                         expires_at, created_at, updated_at)
+                    VALUES
+                        (%s, %s, NULL, NULL, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        token, admin_db_id, ip_address, user_agent,
+                        now_curr, expires_at, now_curr, now_curr,
+                    ],
+                )
+            except Exception:
+                cursor.execute(
+                    """
+                    INSERT INTO user_sessions
+                        (session_token, ip_address, user_agent, last_activity,
+                         expires_at, created_at, updated_at)
+                    VALUES
+                        (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        token, ip_address, user_agent,
+                        now_curr, expires_at, now_curr, now_curr,
+                    ],
+                )
+            session_id = cursor.lastrowid
+
+            cursor.execute(
+                """
+                INSERT INTO user_session_data
+                    (session_id, data_key, data_value, created_at, updated_at)
+                VALUES
+                    (%s, %s, %s, %s, %s)
+                """,
+                [session_id, "admin_id", str(admin_db_id), now_curr, now_curr],
+            )
+    except Exception as exc:
+        logger.error("Session creation error: %s", exc)
+        return render(request, "admin/login.html", {
+            "error": "Could not create session. Please try again.",
+            "old_email": email,
+        })
+
+    response = redirect("admin_dashboard")
+    response.set_cookie(
+        ADMIN_SESSION_COOKIE,
+        token,
+        max_age=ADMIN_SESSION_DAYS * 24 * 60 * 60,
+        httponly=True,
+        samesite="Lax",
+        secure=_admin_cookie_secure(),
+    )
+    return response
+
+
 def show_login_form(request):
     """
     Display the admin login page.
@@ -199,24 +290,45 @@ def show_login_form(request):
 
 def admin_login(request):
     """
-    Handle admin login POST.
+    Handle admin login POST (both credential check and MFA verification).
 
     Laravel source: AdminAuthController@login  →  POST /admin/login
     Django route:   POST /admin/login/post/     →  name='admin_login_post'
-
-    Flow:
-      1. Read email + password from POST.
-      2. Query admins table (raw SQL — no Django auth).
-      3. Verify password with bcrypt.checkpw().
-      4. On failure  → re-render login.html with error + old_email.
-      5. On success  → create user_sessions + user_session_data rows,
-                       set session_token cookie, redirect to dashboard.
-
-    Session architecture: custom cookie + user_sessions / user_session_data tables.
-    No Django sessions (request.session) are used.
     """
     if request.method != "POST":
         return render(request, "admin/login.html")
+
+    # --- 0. Handle MFA Verification Submission ---
+    mfa_ticket = request.POST.get("mfa_ticket")
+    if mfa_ticket:
+        from django.core.cache import cache
+        session_data = cache.get(f"admin_mfa_{mfa_ticket}")
+        if not session_data:
+            return render(request, "admin/login.html", {
+                "error": "Verification code has expired. Please log in again.",
+            })
+
+        otp = request.POST.get("otp", "").strip()
+        attempts = session_data.get("attempts", 0) + 1
+        session_data["attempts"] = attempts
+
+        if attempts > 5:
+            cache.delete(f"admin_mfa_{mfa_ticket}")
+            return render(request, "admin/login.html", {
+                "error": "Too many failed attempts. Please log in again.",
+            })
+
+        if not otp or otp != session_data.get("otp"):
+            cache.set(f"admin_mfa_{mfa_ticket}", session_data, timeout=300)
+            return render(request, "admin/login.html", {
+                "mfa_required": True,
+                "mfa_ticket": mfa_ticket,
+                "masked_email": _mask_email(session_data.get("email", "")),
+                "error": f"Invalid verification code. ({5 - attempts} attempts remaining)",
+            })
+
+        cache.delete(f"admin_mfa_{mfa_ticket}")
+        return _issue_admin_session(request, session_data["admin_id"], session_data["email"])
 
     # --- 1. Read credentials ---
     email    = request.POST.get("email",    "").strip()
@@ -270,15 +382,15 @@ def admin_login(request):
         })
 
     # --- 4. Two-Factor Authentication (MFA) Gate ---
-    admin_mfa_enabled = getattr(settings, "ADMIN_MFA_ENABLED", True)
+    admin_mfa_enabled = getattr(settings, "ADMIN_MFA_ENABLED", False)
     if admin_mfa_enabled:
         from django.core.cache import cache
         from apps.admin_panel.services.brevo import send_otp_email
 
         otp = f"{secrets.randbelow(900000) + 100000}"
-        mfa_ticket = secrets.token_urlsafe(32)
+        new_mfa_ticket = secrets.token_urlsafe(32)
         cache.set(
-            f"admin_mfa_{mfa_ticket}",
+            f"admin_mfa_{new_mfa_ticket}",
             {
                 "admin_id": admin_db_id,
                 "email": email,
@@ -298,7 +410,7 @@ def admin_login(request):
 
         return render(request, "admin/login.html", {
             "mfa_required": True,
-            "mfa_ticket": mfa_ticket,
+            "mfa_ticket": new_mfa_ticket,
             "masked_email": _mask_email(email),
             "info": "A 6-digit two-factor verification code has been sent to your email.",
         })
