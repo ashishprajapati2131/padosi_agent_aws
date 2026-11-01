@@ -107,6 +107,9 @@ class ThreatMonitorMiddleware:
         return remote_addr or "127.0.0.1"
 
     def __call__(self, request):
+        # 0. Fast-path whitelist for health checks, probes, and static metadata
+        if request.path in ["/health/", "/healthz", "/favicon.ico", "/robots.txt"]:
+            return self.get_response(request)
         # 1. Get Client IP Address safely
         remote_addr = request.META.get("REMOTE_ADDR", "")
         ip = self.get_client_ip(request)
@@ -431,6 +434,9 @@ class AdminIpWhitelistMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        # 0. Fast-path whitelist for health checks, probes, and static metadata
+        if request.path in ["/health/", "/healthz", "/favicon.ico", "/robots.txt"]:
+            return self.get_response(request)
         path = request.path.rstrip("/")
         if (
             path.startswith("/admin")
@@ -469,6 +475,9 @@ class IsolateAdminAgentSessionsMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        # 0. Fast-path whitelist for health checks, probes, and static metadata
+        if request.path in ["/health/", "/healthz", "/favicon.ico", "/robots.txt"]:
+            return self.get_response(request)
         path = request.path.rstrip("/")
         if path in ["/admin", "/admin/login", "/admin/login/post", "/admin/logout"]:
             return self.get_response(request)
@@ -496,6 +505,9 @@ class AdminPermissionMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        # 0. Fast-path whitelist for health checks, probes, and static metadata
+        if request.path in ["/health/", "/healthz", "/favicon.ico", "/robots.txt"]:
+            return self.get_response(request)
         path = request.path.rstrip("/")
         if not (path.startswith("/admin") or path.startswith("/padosi-admin")):
             return self.get_response(request)
@@ -1068,6 +1080,9 @@ class ExceptionLoggerMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        # 0. Fast-path whitelist for health checks, probes, and static metadata
+        if request.path in ["/health/", "/healthz", "/favicon.ico", "/robots.txt"]:
+            return self.get_response(request)
         return self.get_response(request)
 
     def process_exception(self, request, exception):
