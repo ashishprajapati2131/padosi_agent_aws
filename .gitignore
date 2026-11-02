@@ -23,8 +23,10 @@ blacklisted_agents_insert.sql
 *history*.txt
 git_log.txt
 backups/
+load_test_report.json
 
-# Secrets and database dumps anywhere in the tree (backups normally go to backups/)
+# Secrets and database dumps anywhere in the tree (backups normally go to backups/
+load_test_report.json)
 .env.*
 !.env.example
 *.sql.gz

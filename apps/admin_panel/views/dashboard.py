@@ -105,10 +105,10 @@ def _get_admin_from_session(request):
 
     try:
         with connection.cursor() as cursor:
-            # Validate token against user_sessions
+            # Validate token against user_sessions and fetch last_activity
             cursor.execute(
                 """
-                SELECT id
+                SELECT id, last_activity
                 FROM user_sessions
                 WHERE session_token = %s
                   AND expires_at > %s
@@ -121,6 +121,26 @@ def _get_admin_from_session(request):
                 return None
 
             session_id = row[0]
+            last_activity = row[1]
+
+            # Throttled update of last_activity: at most once every 2 minutes
+            try:
+                from datetime import datetime as dt
+                if isinstance(last_activity, str):
+                    try:
+                        last_act_dt = dt.fromisoformat(last_activity.replace(" ", "T"))
+                    except Exception:
+                        last_act_dt = None
+                else:
+                    last_act_dt = last_activity
+
+                if not last_act_dt or (now_curr - last_act_dt).total_seconds() > 120:
+                    cursor.execute(
+                        "UPDATE user_sessions SET last_activity = %s WHERE id = %s",
+                        [now_curr, session_id],
+                    )
+            except Exception:
+                pass
 
             # Retrieve admin_id from user_session_data
             # Column names match actual schema: data_key / data_value
@@ -215,7 +235,8 @@ def _issue_admin_session(request, admin_db_id, email):
     token = secrets.token_hex(32)
     now_curr = datetime.now()
     expires_at = now_curr + timedelta(days=ADMIN_SESSION_DAYS)
-    ip_address = (request.META.get("REMOTE_ADDR") or "")[:45]
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware
+    ip_address = (ThreatMonitorMiddleware.get_client_ip(request) or request.META.get("REMOTE_ADDR") or "")[:45]
     user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
 
     try:

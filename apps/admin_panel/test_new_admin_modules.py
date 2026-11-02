@@ -112,6 +112,48 @@ class SessionManagementTests(TestCase):
         self.assertEqual(resp.status_code, 401)
         self.assertTrue(UserSession.objects.filter(pk=self.active.pk).exists())
 
+    def test_revoke_current_session_deletes_cookie(self):
+        from apps.admin_panel.views.sessions import sessions_revoke
+        from apps.admin_panel.views.dashboard import ADMIN_SESSION_COOKIE
+        req = RequestFactory().post('/admin/sessions/revoke/', {'id': self.active.pk})
+        req.session = {}
+        req.COOKIES[ADMIN_SESSION_COOKIE] = 'tok_active'
+        with patch('apps.admin_panel.views.sessions._get_admin_from_session', return_value=self.admin.pk):
+            resp = sessions_revoke(req)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(ADMIN_SESSION_COOKIE, resp.cookies)
+        self.assertEqual(resp.cookies[ADMIN_SESSION_COOKIE].value, '')
+
+    def test_get_admin_from_session_updates_last_activity(self):
+        from apps.admin_panel.views.dashboard import _get_admin_from_session, ADMIN_SESSION_COOKIE
+        from apps.admin_panel.models.user_session import UserSessionData
+        UserSessionData.objects.create(session=self.active, data_key='admin_id', data_value=str(self.admin.pk))
+        
+        old_time = datetime.datetime.now() - datetime.timedelta(minutes=10)
+        UserSession.objects.filter(pk=self.active.pk).update(last_activity=old_time)
+
+        req = RequestFactory().get('/admin/')
+        req.COOKIES[ADMIN_SESSION_COOKIE] = 'tok_active'
+        admin_id = _get_admin_from_session(req)
+        self.assertEqual(admin_id, self.admin.pk)
+
+        updated_session = UserSession.objects.get(pk=self.active.pk)
+        self.assertGreater(updated_session.last_activity, old_time)
+
+    def test_index_filters_out_non_admin_sessions(self):
+        from apps.admin_panel.views.sessions import sessions_index
+        orphan = UserSession.objects.create(
+            session_token='tok_orphan', admin_id=None, agent_id=999, ip_address='9.9.9.9',
+            user_agent='okhttp/4', last_activity=datetime.datetime.now(),
+            expires_at=datetime.datetime.now() + datetime.timedelta(days=1))
+
+        req = RequestFactory().get('/admin/sessions/')
+        req.session = {}
+        with patch('apps.admin_panel.views.sessions._get_admin_from_session', return_value=self.admin.pk):
+            resp = sessions_index(req)
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn(b'9.9.9.9', resp.content)
+
 
 # ───────────────────────── #8 Support Tickets ──────────────────────────────
 class SupportTicketTests(TestCase):

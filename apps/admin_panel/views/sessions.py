@@ -91,14 +91,17 @@ def sessions_index(request):
     active_count = 0
     for s in session_rows:
         a_id = s.admin_id or fallback.get(s.id)
-        admin_obj = admins.get(a_id) if a_id else None
+        if not a_id:
+            # Only display sessions belonging to an admin account
+            continue
+        admin_obj = admins.get(a_id)
         is_expired = bool(s.expires_at and s.expires_at < now)
         if not is_expired:
             active_count += 1
         token = s.session_token or ''
         items.append({
             'id': s.id,
-            'admin_name': admin_obj.name if admin_obj else '—',
+            'admin_name': admin_obj.name if admin_obj else f'Admin #{a_id}',
             'admin_email': admin_obj.email if admin_obj else '',
             'admin_role': admin_obj.role if admin_obj else '',
             'ip_address': s.ip_address or '—',
@@ -134,10 +137,15 @@ def sessions_revoke(request):
     except (TypeError, ValueError):
         return JsonResponse({'success': False, 'message': 'Invalid session id.'}, status=400)
 
+    is_current = False
+    current_token = request.COOKIES.get(ADMIN_SESSION_COOKIE)
     with connection.cursor() as cursor:
-        cursor.execute("SELECT id FROM user_sessions WHERE id = %s LIMIT 1", [session_id])
-        if not cursor.fetchone():
+        cursor.execute("SELECT id, session_token FROM user_sessions WHERE id = %s LIMIT 1", [session_id])
+        row = cursor.fetchone()
+        if not row:
             return JsonResponse({'success': False, 'message': 'Session not found.'}, status=404)
+        if current_token and row[1] == current_token:
+            is_current = True
         cursor.execute("DELETE FROM user_session_data WHERE session_id = %s", [session_id])
         cursor.execute("DELETE FROM user_sessions WHERE id = %s", [session_id])
 
@@ -145,4 +153,7 @@ def sessions_revoke(request):
         f'Revoked admin session #{session_id}',
         'UserSession', session_id, request=request,
     )
-    return JsonResponse({'success': True, 'message': 'Session revoked.'})
+    resp = JsonResponse({'success': True, 'message': 'Session revoked.'})
+    if is_current:
+        resp.delete_cookie(ADMIN_SESSION_COOKIE)
+    return resp
