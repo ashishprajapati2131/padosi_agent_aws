@@ -158,6 +158,28 @@ fi
 echo "==> Restarting Passenger WSGI application..."
 touch tmp/restart.txt
 
+echo "==> Verifying internal server health..."
+$PY_BIN -c "
+import os, sys, django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'padosi_agent.settings')
+django.setup()
+
+from django.db import connection
+from django.core.cache import cache
+
+with connection.cursor() as cursor:
+    cursor.execute('SELECT 1;')
+    row = cursor.fetchone()
+    if not row or row[0] != 1:
+        raise RuntimeError('Database SELECT 1 verification failed')
+
+cache.set('__deploy_health_probe__', 'ok', timeout=15)
+if cache.get('__deploy_health_probe__') != 'ok':
+    raise RuntimeError('Cache probe failed')
+
+print('==> Internal Server Health Verified: Database OK, Cache OK, Django Engine OK.')
+" || { echo "ERROR: internal server health check failed!"; exit 1; }
+
 echo "$NEW_COMMIT" > "$STATE_FILE"
 
 echo "===================================================="

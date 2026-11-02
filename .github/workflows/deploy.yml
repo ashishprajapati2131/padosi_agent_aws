@@ -118,8 +118,11 @@ jobs:
                 -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-ed25519 \
                 -o ServerAliveInterval=30 \
                 -o ServerAliveCountMax=10 \
-                -o ConnectTimeout=45 \
+                -o ConnectTimeout=60 \
                 -o BatchMode=yes \
+                -o ControlMaster=auto \
+                -o ControlPath=~/.ssh/cm-%r@%h:%p \
+                -o ControlPersist=300s \
                 "$GODADDY_USER@$GODADDY_HOST" "bash --noprofile --norc -se -- \"$PROJECT_PATH\" \"$GODADDY_USER\"" < scripts/deploy_godaddy.sh
             then
               DEPLOY_SUCCESS=1
@@ -155,22 +158,59 @@ jobs:
           # Cloudflare Bot Fight Mode blocks ALL GitHub Actions datacenter IPs
           # regardless of User-Agent (always returns 403).
           # The ONLY reliable approach: SSH into the origin server directly.
-          sleep 3
+          # We use persistent ControlMaster connection + retry loop to prevent
+          # false timeouts on port 22 right after deploy.
+          sleep 5
           echo "==> Verifying server health via SSH (bypasses Cloudflare)..."
-          if ssh -i "$SSH_KEY_FILE" \
-              -p "$GODADDY_PORT" \
-              -o StrictHostKeyChecking=accept-new \
-              -o IdentitiesOnly=yes \
-              -o HostkeyAlgorithms=+ssh-rsa,ssh-ed25519 \
-              -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-ed25519 \
-              -o ServerAliveInterval=30 \
-              -o ServerAliveCountMax=10 \
-              -o ConnectTimeout=45 \
-              -o BatchMode=yes \
-              "$GODADDY_USER@$GODADDY_HOST" "bash --noprofile --norc -se -- \"$PROJECT_PATH\"" < scripts/verify_health_ssh.sh; then
-            echo "==> Health check PASSED (Database OK, Cache OK, Django OK)."
+
+          MAX_ATTEMPTS=4
+          ATTEMPT=1
+          HEALTH_OK=0
+
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "==> [Attempt $ATTEMPT of $MAX_ATTEMPTS] Probing server health via SSH..."
+            if ssh -i "$SSH_KEY_FILE" \
+                -p "$GODADDY_PORT" \
+                -o StrictHostKeyChecking=accept-new \
+                -o IdentitiesOnly=yes \
+                -o HostkeyAlgorithms=+ssh-rsa,ssh-ed25519 \
+                -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-ed25519 \
+                -o ServerAliveInterval=30 \
+                -o ServerAliveCountMax=10 \
+                -o ConnectTimeout=60 \
+                -o BatchMode=yes \
+                -o ControlMaster=auto \
+                -o ControlPath=~/.ssh/cm-%r@%h:%p \
+                -o ControlPersist=300s \
+                "$GODADDY_USER@$GODADDY_HOST" "bash --noprofile --norc -se -- \"$PROJECT_PATH\"" < scripts/verify_health_ssh.sh; then
+              HEALTH_OK=1
+              echo "==> Health check PASSED (Database OK, Cache OK, Django OK)."
+              break
+            else
+              EXIT_CODE=$?
+              echo "==> Health check attempt $ATTEMPT failed with exit code $EXIT_CODE."
+              if [ $EXIT_CODE -ne 255 ]; then
+                echo "==> Application health check failed on server (exit code $EXIT_CODE)."
+                break
+              fi
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                echo "==> SSH connection timed out or dropped. Waiting 10s before retrying..."
+                sleep 10
+              fi
+              ATTEMPT=$((ATTEMPT + 1))
+            fi
+          done
+
+          if [ $HEALTH_OK -eq 1 ]; then
             exit 0
           fi
+
+          if [ $EXIT_CODE -eq 255 ]; then
+            echo "==> WARNING: SSH connection timed out after $MAX_ATTEMPTS attempts."
+            echo "==> Skipping destructive rollback because the server was deployed and healthy during deploy step."
+            exit 1
+          fi
+
           echo "==> ERROR: Server health check failed after deploy. Rolling back..."
           ssh -i "$SSH_KEY_FILE" \
               -p "$GODADDY_PORT" \
@@ -180,8 +220,11 @@ jobs:
               -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-ed25519 \
               -o ServerAliveInterval=30 \
               -o ServerAliveCountMax=10 \
-              -o ConnectTimeout=45 \
+              -o ConnectTimeout=60 \
               -o BatchMode=yes \
+              -o ControlMaster=auto \
+              -o ControlPath=~/.ssh/cm-%r@%h:%p \
+              -o ControlPersist=300s \
               "$GODADDY_USER@$GODADDY_HOST" "cd \"$PROJECT_PATH\" && PROJECT_DIR=\"$PROJECT_PATH\" bash --noprofile --norc -se" < scripts/rollback_godaddy.sh \
             || echo "==> ERROR: rollback script failed too; roll back by hand over SSH."
           exit 1
@@ -199,7 +242,13 @@ jobs:
               -p "$GODADDY_PORT" \
               -o StrictHostKeyChecking=accept-new \
               -o IdentitiesOnly=yes \
+              -o HostkeyAlgorithms=+ssh-rsa,ssh-ed25519 \
+              -o PubkeyAcceptedAlgorithms=+ssh-rsa,ssh-ed25519 \
+              -o ConnectTimeout=60 \
               -o BatchMode=yes \
+              -o ControlMaster=auto \
+              -o ControlPath=~/.ssh/cm-%r@%h:%p \
+              -o ControlPersist=300s \
               "$GODADDY_USER@$GODADDY_HOST" "cd \"$PROJECT_PATH\" && curl -sS http://localhost:${PASSENGER_PORT:-3000}/gj/rashmi-pravinbhai-wagheshwari-1/ 2>/dev/null || echo '__CURL_FAILED__'")
           if echo "$OG_CHECK" | grep -q '__CURL_FAILED__'; then
             echo "==> WARNING: Could not fetch OG page via localhost; skipping OG meta verification."
