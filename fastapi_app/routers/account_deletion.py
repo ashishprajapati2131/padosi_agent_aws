@@ -1,7 +1,7 @@
 import hashlib
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -25,6 +25,11 @@ router = APIRouter(
     prefix="/v1/account-deletion",
     tags=["Account Deletion"],
 )
+
+
+def _utcnow() -> datetime:
+    """Return timezone-naive UTC datetime compatible with Python 3.12+."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _hash_otp(otp: str, salt: str = "padosi_del_salt_2026") -> str:
@@ -164,7 +169,7 @@ def request_deletion_otp(
 
     # Generate 6-digit OTP and Reference ID
     otp_code = str(secrets.randbelow(900000) + 100000)
-    now = datetime.utcnow()
+    now = _utcnow()
     expires_at = now + timedelta(minutes=10)
     ref_id = f"DEL-{now.strftime('%Y%m%d')}-{secrets.token_hex(3).upper()}"
 
@@ -267,7 +272,7 @@ def verify_deletion_otp(
         expires_at = datetime.fromisoformat(summary.get("otp_expires_at"))
     except (TypeError, ValueError):
         expires_at = None
-    if expires_at is None or datetime.utcnow() > expires_at:
+    if expires_at is None or _utcnow() > expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification code has expired. Please request a new code.",
@@ -287,7 +292,7 @@ def verify_deletion_otp(
         )
 
     # Success: Mark as verified and pending administrative action
-    now = datetime.utcnow()
+    now = _utcnow()
     del_req.is_verified = True
     del_req.status = "PENDING"
     del_req.admin_notes = (

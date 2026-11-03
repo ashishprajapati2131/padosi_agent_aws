@@ -47,6 +47,8 @@ logger = logging.getLogger(__name__)
 
 CONTACT_MAX_PER_IP = 5
 CONTACT_WINDOW_SECONDS = 60 * 60
+QUICK_LEAD_MAX_PER_IP = 5
+QUICK_LEAD_WINDOW_SECONDS = 60 * 60
 # One analytics thread per (pincode, result set) per window; crawlers re-running a search spawn nothing.
 SEARCH_TRACK_DEDUPE_SECONDS = 10 * 60
 
@@ -2566,6 +2568,14 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
 @require_POST
 def quick_lead_capture(request):
     """Handle instant lead inquiries submitted via the exit-intent popup."""
+    from apps.admin_panel.middleware import ThreatMonitorMiddleware
+    rl_key = f"rl_quick_lead_{ThreatMonitorMiddleware.get_client_ip(request)}"
+    if (cache.get(rl_key, 0) or 0) >= QUICK_LEAD_MAX_PER_IP:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Too many requests from your network. Please try again in an hour.'
+        }, status=429)
+
     name = request.POST.get('name', '').strip()
     mobile = request.POST.get('mobile', '').strip()
     pincode = request.POST.get('pincode', '').strip()
@@ -2591,6 +2601,12 @@ def quick_lead_capture(request):
             message=message,
             status='pending'
         )
+        try:
+            if not cache.add(rl_key, 1, timeout=QUICK_LEAD_WINDOW_SECONDS):
+                cache.incr(rl_key)
+        except Exception:
+            logger.warning('Quick lead rate-limit counter update failed', exc_info=True)
+
         return JsonResponse({
             'status': 'success',
             'message': 'Thank you! A verified neighbourhood advisor will connect with you shortly.'

@@ -90,3 +90,8 @@ class BuyerInquirySerializer(serializers.ModelSerializer):
             'expected_purchase_timeline', 'message', 'status', 'created_at'
         ]
         read_only_fields = ['id', 'status', 'created_at']
+
+    def create(self, validated_data):
+        if 'wholesaler' not in validated_data and 'product' in validated_data:
+            validated_data['wholesaler'] = validated_data['product'].wholesaler
+        return super().create(validated_data)

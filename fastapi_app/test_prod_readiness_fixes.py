@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 from django.core.cache import cache
 from fastapi import HTTPException
 
-from fastapi_app.routers.account_deletion import _hash_otp, verify_deletion_otp
+from fastapi_app.routers.account_deletion import _hash_otp, verify_deletion_otp, _utcnow
 from fastapi_app.schemas.account_deletion import VerifyDeletionOtpSchema
 from fastapi_app.schemas.auth import ForgotPasswordRequest
 from fastapi_app.services.password_reset_service import PasswordResetService
@@ -67,7 +67,7 @@ class DeletionOtpExpiryTests(unittest.TestCase):
 
     def test_expired_otp_is_rejected(self):
         with self.assertRaises(HTTPException) as ctx:
-            self._verify((datetime.utcnow() - timedelta(minutes=1)).isoformat())
+            self._verify((_utcnow() - timedelta(minutes=1)).isoformat())
         self.assertIn("expired", ctx.exception.detail)
 
     def test_unparseable_expiry_counts_as_expired(self):
@@ -75,7 +75,7 @@ class DeletionOtpExpiryTests(unittest.TestCase):
             self._verify("not-a-date")
 
     def test_valid_otp_is_accepted(self):
-        del_req = self._verify((datetime.utcnow() + timedelta(minutes=5)).isoformat())
+        del_req = self._verify((_utcnow() + timedelta(minutes=5)).isoformat())
         self.assertTrue(del_req.is_verified)
 
 

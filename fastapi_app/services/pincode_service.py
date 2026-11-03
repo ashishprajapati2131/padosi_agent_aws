@@ -28,6 +28,8 @@ class PincodeService:
                 )
                 
             data = response.json()
+        except HTTPException:
+            raise
         except httpx.RequestError:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

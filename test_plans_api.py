@@ -337,6 +337,7 @@ def test_plans_endpoint():
     print("[PASS] Test 4 passed!")
 
     db.close()
+    app.dependency_overrides.clear()
     print("\n>>> ALL TESTS COMPLETED SUCCESSFULLY! <<<")
 
 if __name__ == "__main__":
