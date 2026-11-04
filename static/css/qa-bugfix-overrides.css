@@ -1,0 +1,28 @@
+/* Scoped QA fixes — keep overrides out of minified custome.css */
+.find-agent-btn-steps:hover {
+  box-shadow: 0 8px 16px rgba(17, 76, 151, 0.35);
+  transform: translateY(-2px);
+}
+
+@media (min-width: 1280px) and (max-width: 1400px) {
+  .dyk-section .container,
+  .qp-container,
+  .why-choose-section .container {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+
+.pa-filter-change-btn:focus,
+.pa-filter-change-btn:focus-visible,
+#detectedAreaChangeBtn:focus,
+#detectedAreaChangeBtn:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.modern-contact-section .contact-form-card .input-custom:focus {
+  border-color: #273c8e !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 4px rgba(39, 60, 142, 0.08) !important;
+}

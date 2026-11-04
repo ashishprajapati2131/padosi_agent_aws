@@ -378,10 +378,11 @@ def map_custom_testimonials(custom_list):
         name = str(item.get('name') or 'User').strip() or 'User'
         service = str(item.get('service') or 'Verified Client').strip()
         comment = str(item.get('comment') or '').strip()
+        raw_rating = item.get('rating')
         try:
-            rating = float(item.get('rating') or 5)
+            rating = float(raw_rating) if raw_rating not in (None, '') else 0.0
         except (TypeError, ValueError):
-            rating = 5.0
+            rating = 0.0
         image = small_avatar_url(item.get('image')) or (
             f"https://ui-avatars.com/api/?name={name.replace(' ', '+')}&background=0d9488&color=fff&bold=true"
         )

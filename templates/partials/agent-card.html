@@ -20,7 +20,7 @@
                                     <i class="fas fa-circle-check"></i> Verified
                                 </span>
                             {% endif %}
-                            {% if 'irdai' in badge %}
+                            {% if agent.show_licensed_badge %}
                                 <span class="agent-recognition-badge badge-irdai-official">
                                     <i class="fas fa-medal"></i> Licensed
                                 </span>
@@ -140,8 +140,8 @@
                     data-agent-segments="{{ agent.ordered_insurance_segments|join:", " }}"
                     data-agent-location="{{ profile.city|default:"N/A" }}"
                     data-agent-image="{{ profile.profile_photo_url }}"
-                    data-agent-slug="{{ agent_slug }}" data-agent-mobile="{{ agent.mobile }}"
-                    data-agent-whatsapp="{{ whatsapp_digits }}"
+                    data-agent-slug="{{ agent_slug }}"
+                    data-agent-licensed="{% if agent.show_licensed_badge %}1{% else %}0{% endif %}"
                     data-agent-approved="{% if is_approved_by_admin %}1{% else %}0{% endif %}"
                     data-agent-verified="{% if is_verified_agent %}1{% else %}0{% endif %}"
                     data-agent-trusted="{% if is_trusted %}1{% else %}0{% endif %}" data-agent-badge="{{ badge }}"
@@ -212,7 +212,7 @@
                                 <i class="fas fa-circle-check"></i> Verified
                             </span>
                         {% endif %}
-                        {% if 'irdai' in badge %}
+                        {% if agent.show_licensed_badge %}
                             <span class="agent-recognition-badge badge-irdai-official">
                                 <i class="fas fa-medal"></i> Licensed
                             </span>
@@ -361,8 +361,8 @@
                             data-agent-segments="{{ agent.ordered_insurance_segments|join:", " }}"
                             data-agent-location="{{ profile.city|default:"N/A" }}"
                             data-agent-image="{{ profile.profile_photo_url }}"
-                            data-agent-slug="{{ agent_slug }}" data-agent-mobile="{{ agent.mobile }}"
-                            data-agent-whatsapp="{{ whatsapp_digits }}"
+                            data-agent-slug="{{ agent_slug }}"
+                            data-agent-licensed="{% if agent.show_licensed_badge %}1{% else %}0{% endif %}"
                             data-agent-approved="{% if is_approved_by_admin %}1{% else %}0{% endif %}"
                             data-agent-verified="{% if is_verified_agent %}1{% else %}0{% endif %}"
                             data-agent-trusted="{% if is_trusted %}1{% else %}0{% endif %}" data-agent-badge="{{ badge }}"

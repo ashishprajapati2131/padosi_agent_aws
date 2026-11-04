@@ -946,6 +946,12 @@ def verify_promo_code(request):
     if not code:
         return JsonResponse({'success': False, 'message': 'Please enter a promo code.'}, status=400)
 
+    if len(code) > 50:
+        return JsonResponse(
+            {'success': False, 'message': 'Promo code must be 50 characters or fewer.'},
+            status=400,
+        )
+
     promo = PromoCode.objects.filter(code=code).first()
     if not promo or not promo.is_valid():
         return JsonResponse({'success': False, 'message': 'Invalid or expired promo code.'})

@@ -217,11 +217,11 @@
                 <!-- Promo Code (Optional) -->
                 <div class="mb-4">
                     <label class="form-label" for="promocode">7. Promo Code <span class="text-muted">(Optional)</span></label>
-                    <div class="input-group promo-input-group position-relative" id="promoWrapper" style="border: 1.5px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #fff; transition: all 0.2s; display: flex; align-items: center; padding: 0 4px;">
+                    <div class="input-group promo-input-group position-relative" id="promoWrapper" style="border: 1.5px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #fff; transition: all 0.2s; display: flex; align-items: center; gap: 8px; padding: 0 8px;">
                         <span class="ps-2 pe-1" style="color: #94a3b8; display: flex; align-items: center;">
                             <i class="fa-solid fa-ticket-simple text-secondary" id="promo-icon" style="font-size: 16px; transition: all 0.2s;"></i>
                         </span>
-                        <input type="text" class="form-control border-0 bg-transparent py-2 shadow-none" id="promocode" name="promocode" value="{{ request.POST.promocode }}" placeholder="Enter Code (e.g TOT)" style="font-size: 14px; font-weight: 500; outline: none; box-shadow: none;">
+                        <input type="text" class="form-control border-0 bg-transparent py-2 shadow-none" id="promocode" name="promocode" maxlength="50" value="{{ request.POST.promocode }}" placeholder="Enter Code (e.g TOT)" style="font-size: 14px; font-weight: 500; outline: none; box-shadow: none; flex: 1; min-width: 0;">
                         <button class="btn btn-primary px-3 py-1 border-0 fw-bold d-flex align-items-center justify-content-center" type="button" id="applyPromoCodeBtn" style="background: var(--primary); font-size: 12px; letter-spacing: 0.5px; border-radius: 8px; transition: all 0.2s; white-space: nowrap; height: 34px;">
                             APPLY
                         </button>

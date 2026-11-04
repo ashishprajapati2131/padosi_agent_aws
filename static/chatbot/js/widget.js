@@ -500,6 +500,60 @@ chatbotOnReady(() => {
             sendMessage(text);
         });
     });
+
+    const micBtn = document.querySelector('.chatbot-mic-btn');
+    if (micBtn && input) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            micBtn.addEventListener('click', () => {
+                alert('Voice input is not supported in this browser. Try Chrome on HTTPS.');
+            });
+        } else if (!window.isSecureContext) {
+            micBtn.addEventListener('click', () => {
+                alert('Voice input requires a secure connection (HTTPS).');
+            });
+        } else {
+            let recognition = null;
+            let listening = false;
+            micBtn.addEventListener('click', () => {
+                if (listening && recognition) {
+                    recognition.stop();
+                    return;
+                }
+                recognition = new SpeechRecognition();
+                recognition.lang = document.documentElement.lang || 'en-IN';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+                recognition.onstart = () => {
+                    listening = true;
+                    micBtn.setAttribute('aria-pressed', 'true');
+                };
+                recognition.onend = () => {
+                    listening = false;
+                    micBtn.setAttribute('aria-pressed', 'false');
+                };
+                recognition.onerror = () => {
+                    listening = false;
+                    micBtn.setAttribute('aria-pressed', 'false');
+                };
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript.trim();
+                    if (transcript) {
+                        input.value = transcript;
+                        updateSendBtnState();
+                        sendMessage(transcript);
+                        input.value = '';
+                        updateSendBtnState();
+                    }
+                };
+                try {
+                    recognition.start();
+                } catch (err) {
+                    console.error('Speech recognition failed', err);
+                }
+            });
+        }
+    }
 });
 
 function renderDebugInfo(container, event) {

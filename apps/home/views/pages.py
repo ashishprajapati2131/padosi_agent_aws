@@ -245,7 +245,7 @@ def home(request):
     # Testimonials: admin custom list wins; otherwise approved reviews (cached).
     reviews = cms.get('custom_reviews') or []
     if not reviews:
-        reviews = cache.get('homepage_reviews')
+        reviews = cache.get('homepage_reviews_v2')
     if not reviews:
         from apps.agents.models import AgentReview
         db_reviews = AgentReview.objects.filter(is_approved=True).select_related('agent', 'agent__profile').order_by('-created_at')[:100]
@@ -259,7 +259,7 @@ def home(request):
             if agent_id:
                 if agent_id not in agent_counts:
                     agent_counts[agent_id] = 0
-                if agent_counts[agent_id] < 3:
+                if agent_counts[agent_id] < 1:
                     final_reviews.append(rev)
                     agent_counts[agent_id] += 1
                 else:
@@ -304,7 +304,7 @@ def home(request):
         # No placeholder testimonials: unverifiable claims are a YMYL risk.
         # With zero approved reviews the template hides the section.
         if not cms.get('custom_reviews'):
-            cache.set('homepage_reviews', reviews, 1800)
+            cache.set('homepage_reviews_v2', reviews, 1800)
 
     chart_data = [
         {'year': '2020', 'rejection': 12},
@@ -1760,8 +1760,6 @@ def serialize_agent_for_ai_picks(agent, user_lat, user_lng):
         'languages': profile.languages if (profile and profile.languages) else "N/A",
         'response_rate': resp_rate,
         'profile_completion': comp_score,
-        'mobile': agent.mobile,
-        'whatsapp': agent.whatsapp_raw,
     }
 
 
@@ -2324,7 +2322,13 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
         agents_qs = state_hub_agents(listed_agents_queryset(), state_hub)
     elif city_obj:
         city_display = city_obj.name
-        state_display = city_obj.state or 'Gujarat'
+        state_display = (city_obj.state or '').strip()
+        if not state_display:
+            slug = (city_obj.slug or city_obj.name or '').lower()
+            if slug in ('mumbai', 'mumbai-city'):
+                state_display = 'Maharashtra'
+            else:
+                state_display = 'India'
 
         # Use listed_agents_queryset() so PHP-imported agents are included
         base_qs = listed_agents_queryset()

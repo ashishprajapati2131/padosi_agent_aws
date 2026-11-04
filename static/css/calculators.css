@@ -26,7 +26,8 @@
   color: var(--calc-muted);
   margin-bottom: 10px;
 }
-.calc-crumb a { color: var(--calc-blue); }
+.calc-crumb a,
+.calc-crumb a:hover { color: var(--calc-blue); text-decoration: none; }
 
 .calc-hub-head h1,
 .calc-page-head h1 {

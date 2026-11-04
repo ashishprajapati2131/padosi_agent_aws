@@ -38,7 +38,7 @@ def hero_section(context):
         'cta_claim_text': 'Insurance Claims Support',
         'cta_claim_url': '/find-agents?ServiceType=Claim%20Assistance&openFilter=1',
         'cta_review_text': 'Insurance Audit',
-        'cta_review_url': '/find-agents?ServiceType=Policy%20Review&openFilter=1',
+        'cta_review_url': '/find-agents?ServiceType=Insurance%20audit&openFilter=1',
         'claims_card_label': 'FIND INSURANCE EXPERTS NEAR ME FOR:',
         'claims_card_heading': 'Claims, audits and policy review with local advisors',
         'claims_card_text': 'Easy local guidance from verified agents, with real advisor stories and trusted help just a few minutes away.',
