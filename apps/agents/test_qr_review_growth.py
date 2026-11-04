@@ -286,6 +286,7 @@ class AgentQrAndCardTests(TestCase):
         self.assertContains(response, 'QR Agent')
         self.assertContains(response, 'Your Experience Matters')
         self.assertContains(response, 'PadosiAgent logo')
+        self.assertNotContains(response, 'id="eligibilityPopup"')
         missing = self.client.get(reverse('agents:agent_review_card', args=['no-such-agent']))
         self.assertEqual(missing.status_code, 404)
 
@@ -294,6 +295,7 @@ class AgentQrAndCardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Rate & Review')
         self.assertContains(response, 'QR Agent')
+        self.assertNotContains(response, 'id="eligibilityPopup"')
 
     def test_profile_focus_reviews_renders_scroll_hook(self):
         # The reviews section only renders when the plan includes view_reviews.
