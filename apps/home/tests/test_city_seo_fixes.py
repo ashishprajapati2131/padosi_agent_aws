@@ -59,7 +59,8 @@ class CityDirectoryIndexingTests(TestCase):
         self.assertEqual(item['position'], 1)
         self.assertEqual(item['item']['name'], 'Evil </script><b>x')
         self.assertTrue(item['item']['url'].endswith('/gj/evil/'))
-        self.assertEqual(item['item']['telephone'], '+919876543210')
+        # Agent mobiles are not published in directory JSON-LD (privacy / lead capture).
+        self.assertNotIn('telephone', item['item'])
         self.assertEqual(item['item']['address']['addressLocality'], 'Surat')
 
 
