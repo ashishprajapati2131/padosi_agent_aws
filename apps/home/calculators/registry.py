@@ -137,7 +137,22 @@ _PREMIUM = {
 }
 
 
+# 999 crore. Ten digits: 9,99,00,00,000.
+INR_CAP = 9_990_000_000
+
+
 def _inr(field_id, label, default, min_v, max_v, step=500):
+    min_v = int(min_v)
+    max_v = int(max_v)
+    default = int(default)
+    # Large amounts share one ceiling. Monthly amounts and scheme caps
+    # (PPF, SSY, ELSS, 80D) stay on the tighter limit already set.
+    if max_v >= 1_000_000:
+        max_v = INR_CAP
+    if default > max_v:
+        default = max_v
+    if min_v > max_v:
+        min_v = max_v
     return {
         'id': field_id, 'label': label, 'type': 'range',
         'min': min_v, 'max': max_v, 'step': step, 'default': default,

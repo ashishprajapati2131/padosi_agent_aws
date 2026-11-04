@@ -1,7 +1,52 @@
 (function () {
+  function roundRupee(value) {
+    var n = Number(value);
+    if (!isFinite(n)) return 0;
+    return Math.round(n);
+  }
+
+  // Compact Indian rupees: 2800000 → "₹ 28.00 L". Always two decimals.
+  // K = thousand, L = lakh, Cr = crore. 100 of a smaller unit steps up.
   function formatInr(value) {
-    var n = Math.round(Number(value) || 0);
-    return '₹ ' + n.toLocaleString('en-IN');
+    var n = roundRupee(value);
+    var sign = n < 0 ? '\u2212' : '';
+    var abs = Math.abs(n);
+    var scales = [
+      { div: 10000000, suffix: 'Cr' },
+      { div: 100000, suffix: 'L' },
+      { div: 1000, suffix: 'K' }
+    ];
+    var i;
+    for (i = 0; i < scales.length; i++) {
+      if (abs >= scales[i].div) {
+        var text = (abs / scales[i].div).toFixed(2);
+        if (text === '100.00' && i > 0) {
+          text = (abs / scales[i - 1].div).toFixed(2);
+          return sign + '₹ ' + text + ' ' + scales[i - 1].suffix;
+        }
+        return sign + '₹ ' + text + ' ' + scales[i].suffix;
+      }
+    }
+    return sign + '₹ ' + abs.toFixed(2);
+  }
+
+  function formatInrExact(value) {
+    var n = roundRupee(value);
+    var sign = n < 0 ? '\u2212' : '';
+    return sign + '₹ ' + Math.abs(n).toLocaleString('en-IN');
+  }
+
+  function inrExactTitle(value) {
+    if (!/ (K|L|Cr)$/.test(formatInr(value))) return '';
+    return formatInrExact(value);
+  }
+
+  function chartTooltipLabel(ctx) {
+    var raw = ctx.parsed;
+    if (raw && typeof raw === 'object') raw = raw.y != null ? raw.y : raw.x;
+    var line = (ctx.label ? ctx.label + ': ' : '') + formatInr(raw);
+    var exact = inrExactTitle(raw);
+    return exact ? line + ' (' + exact + ')' : line;
   }
 
   function formatDateLabel(value) {
@@ -49,6 +94,69 @@
     return JSON.parse(el.textContent);
   }
 
+  var INR_CAP = 9990000000;
+
+  function fieldById(config, id) {
+    var fields = config.fields || [];
+    var i;
+    for (i = 0; i < fields.length; i++) {
+      if (fields[i].id === id) return fields[i];
+    }
+    return null;
+  }
+
+  function fieldLimits(field) {
+    var min = Number(field.min);
+    var max = Number(field.max);
+    if (field.format === 'inr' && (!isFinite(max) || max > INR_CAP)) max = INR_CAP;
+    return { min: min, max: max };
+  }
+
+  function clampFieldNumber(field, raw) {
+    var limits = fieldLimits(field);
+    var n = Number(raw);
+    if (field.format === 'inr') n = Math.round(n);
+    if (!isFinite(n)) n = isFinite(limits.min) ? limits.min : 0;
+    if (isFinite(limits.min) && n < limits.min) n = limits.min;
+    if (isFinite(limits.max) && n > limits.max) n = limits.max;
+    return n;
+  }
+
+  function sanitizeNumeric(input, field, commit) {
+    var limits = fieldLimits(field);
+    var raw = String(input.value);
+    if (field.format === 'inr') {
+      var body = raw;
+      if (/e/i.test(body)) {
+        var sci = Number(body);
+        body = isFinite(sci) ? String(Math.trunc(Math.abs(sci))) : '';
+      }
+      var digits = body.replace(/\D/g, '').slice(0, 10);
+      if (digits.length > 1) digits = digits.replace(/^0+/, '');
+      if (!digits) {
+        if (commit && isFinite(limits.min)) input.value = String(limits.min);
+        return;
+      }
+      var n = Number(digits);
+      if (n > limits.max) n = limits.max;
+      if (commit && isFinite(limits.min) && n < limits.min) n = limits.min;
+      var next = String(Math.round(n));
+      if (input.value !== next) input.value = next;
+      return;
+    }
+    if (raw === '' || raw === '-' || raw === '.' || raw === '-.') {
+      if (commit && isFinite(limits.min)) input.value = String(limits.min);
+      return;
+    }
+    var n2 = Number(raw);
+    if (!isFinite(n2)) {
+      if (commit && isFinite(limits.min)) input.value = String(limits.min);
+      return;
+    }
+    if (isFinite(limits.max) && n2 > limits.max) input.value = String(limits.max);
+    else if (commit && isFinite(limits.min) && n2 < limits.min) input.value = String(limits.min);
+  }
+
   function collectInputs(config) {
     var inputs = {};
     (config.fields || []).forEach(function (field) {
@@ -59,8 +167,10 @@
         var sel = document.querySelector('[name="' + field.id + '"]');
         inputs[field.id] = sel ? sel.value : field.current;
       } else {
+        var typed = document.querySelector('[data-twin="' + field.id + '"]');
         var range = document.getElementById('f-' + field.id);
-        inputs[field.id] = range ? range.value : field.current;
+        var raw = typed && String(typed.value) !== '' ? typed.value : (range ? range.value : field.current);
+        inputs[field.id] = clampFieldNumber(field, raw);
       }
     });
     return inputs;
@@ -109,12 +219,24 @@
       }
     }
     var primaryFormat = (outputs.primary && outputs.primary.format) || 'inr';
-    if (valueEl) valueEl.textContent = formatValue(result[primaryKey], primaryFormat);
+    if (valueEl) {
+      valueEl.textContent = formatValue(result[primaryKey], primaryFormat);
+      if (primaryFormat === 'inr') {
+        var exactPrimary = inrExactTitle(result[primaryKey]);
+        if (exactPrimary) valueEl.title = exactPrimary;
+        else valueEl.removeAttribute('title');
+      } else {
+        valueEl.removeAttribute('title');
+      }
+    }
 
     var rowsEl = document.getElementById('result-rows');
     if (rowsEl) {
       rowsEl.innerHTML = (outputs.rows || []).map(function (row) {
-        return '<li><span>' + row.label + '</span><strong>' + formatValue(result[row.key], row.format || 'inr') + '</strong></li>';
+        var format = row.format || 'inr';
+        var exact = format === 'inr' ? inrExactTitle(result[row.key]) : '';
+        var titleAttr = exact ? ' title="' + exact + '"' : '';
+        return '<li><span>' + row.label + '</span><strong' + titleAttr + '>' + formatValue(result[row.key], format) + '</strong></li>';
       }).join('');
     }
 
@@ -143,7 +265,10 @@
         type: 'doughnut',
         data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0 }] },
         options: {
-          plugins: { legend: { labels: { color: '#334155', boxWidth: 10, font: { size: 11 } } } },
+          plugins: {
+            legend: { labels: { color: '#334155', boxWidth: 10, font: { size: 11 } } },
+            tooltip: { callbacks: { label: chartTooltipLabel } }
+          },
           cutout: '64%',
           maintainAspectRatio: false
         }
@@ -180,11 +305,37 @@
       }
     });
 
+    form.addEventListener('keydown', function (e) {
+      var twin = e.target.getAttribute && e.target.getAttribute('data-twin');
+      if (!twin) return;
+      var field = fieldById(config, twin);
+      if (!field || field.type === 'radio' || field.type === 'select' || field.type === 'date') return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-') {
+        e.preventDefault();
+        return;
+      }
+      if (field.format === 'inr' && e.key === '.') {
+        e.preventDefault();
+        return;
+      }
+      if (field.format === 'inr' && /^\d$/.test(e.key)) {
+        var start = e.target.selectionStart || 0;
+        var end = e.target.selectionEnd || 0;
+        if (start !== end) return;
+        var digits = String(e.target.value || '').replace(/\D/g, '');
+        var ceiling = fieldLimits(field).max;
+        if (digits.length >= 10 || Number(e.target.value) >= ceiling) e.preventDefault();
+      }
+    });
+
     form.addEventListener('input', function (e) {
       var twin = e.target.getAttribute('data-twin');
       if (twin) {
+        var field = fieldById(config, twin);
+        if (field) sanitizeNumeric(e.target, field, false);
         var range = document.getElementById('f-' + twin);
-        if (range) range.value = e.target.value;
+        if (range && e.target.value !== '') range.value = e.target.value;
       } else if (e.target.type === 'range') {
         var num = form.querySelector('[data-twin="' + e.target.name + '"]');
         if (num) num.value = e.target.value;
@@ -192,6 +343,15 @@
       recalc(config);
     });
     form.addEventListener('change', function () { recalc(config); });
+    form.addEventListener('focusout', function (e) {
+      var twin = e.target.getAttribute && e.target.getAttribute('data-twin');
+      if (!twin) return;
+      var field = fieldById(config, twin);
+      if (field) sanitizeNumeric(e.target, field, true);
+      var range = document.getElementById('f-' + twin);
+      if (range && e.target.value !== '') range.value = e.target.value;
+      recalc(config);
+    });
 
     document.querySelectorAll('.toggle-premium-period').forEach(function (btn) {
       btn.addEventListener('click', function () {
