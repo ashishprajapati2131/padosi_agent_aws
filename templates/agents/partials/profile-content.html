@@ -638,8 +638,8 @@
                 {% for timeline in agent.sorted_career_timelines %}
                     <div class="timeline-item">
                         <i class="{% if timeline.event_type == 'Award' %}fas fa-trophy{% elif timeline.event_type == 'Achievement' %}fas fa-medal{% elif timeline.event_type == 'Certification' %}fas fa-award{% elif timeline.event_type == 'Career Event' %}fas fa-calendar-check{% elif timeline.event_type == 'Experience' %}fas fa-briefcase{% else %}fas fa-circle{% endif %} timeline-custom-icon"></i>
-                        <div class="timeline-year">{% if timeline.month %}{{ timeline.month }} {% endif %}{{ timeline.year }}</div>
-                        <div class="timeline-text">{% if timeline.event_type %}<strong>{{ timeline.event_type }}:</strong> {% endif %}{{ timeline.event_text }}</div>
+                        <div class="timeline-year">{{ timeline.month }} {{ timeline.year }}</div>
+                        <div class="timeline-text">{{ timeline.event_text }}</div>
                     </div>
                 {% empty %}
                     <div class="text-muted small">No timeline events recorded.</div>
@@ -684,15 +684,13 @@
                     <div class="stat-label">Claims Processed</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-value">{{ performanceStats.success_rate|default:"98"|cut:"%" }}%</div>
+                    <div class="stat-value">{{ performanceStats.success_rate|default:"98" }}%</div>
                     <div class="stat-label">Success Rate</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-value">
-                        {% if performanceStats and performanceStats.claims_settled %}
-                            {{ performanceStats.claims_settled }}
-                        {% elif performanceStats and performanceStats.formatted_claims_processed %}
-                            {{ performanceStats.formatted_claims_processed }}
+                        {% if performanceStats and performanceStats.claims_amount > 0 %}
+                            ₹{{ performanceStats.formatted_claims_amount }}
                         {% else %}
                             —
                         {% endif %}
@@ -1333,107 +1331,39 @@ function showGoogleReviewNudgePopup(nudge) {
         });
     };
 
-    // handleAgentContactClick — same lead gate as Find Agents (no public phone in HTML)
+    // handleAgentContactClick
     window.handleAgentContactClick = function(event, element, interactionType) {
         if (!element) return true;
         event.preventDefault();
-
-        var socialTypes = ['linkedin', 'facebook', 'instagram', 'youtube', 'google_business'];
-        if (socialTypes.indexOf(interactionType) !== -1) {
-            var target = element.getAttribute('target');
-            var socialUrl = '#';
-            if (interactionType === 'linkedin') socialUrl = '{{ socialLinks.linkedin|default:"#" }}';
-            else if (interactionType === 'facebook') socialUrl = '{{ socialLinks.facebook|default:"#" }}';
-            else if (interactionType === 'instagram') socialUrl = '{{ socialLinks.instagram|default:"#" }}';
-            else if (interactionType === 'youtube') socialUrl = '{{ socialLinks.youtube|default:"#" }}';
-            else if (interactionType === 'google_business') socialUrl = '{{ socialLinks.google_business|default:"#" }}';
-            if (socialUrl && socialUrl !== '#') {
-                if (target === '_blank') {
-                    window.open(socialUrl, '_blank', 'noopener');
-                } else {
-                    window.location.href = socialUrl;
-                }
+        
+        var target = element.getAttribute('target');
+        var url = '#';
+        if (interactionType === 'whatsapp') {
+            var whatsapp = '{{ profile.whatsapp_digits|default:agent.mobile }}';
+            var cleanWhatsapp = whatsapp.replace(/[^0-9]/g, '');
+            if (cleanWhatsapp.length === 10) {
+                cleanWhatsapp = '91' + cleanWhatsapp;
             }
-            return false;
-        }
-
-        var agentId = element.getAttribute('data-agent-id') || '{{ agent.id }}';
-        var isAuth = {{ request.user.is_authenticated|yesno:"true,false" }};
-        var hasGuestSession = {% if request.session.quick_lead_user %}true{% else %}false{% endif %};
-
-        var getCsrf = function() {
-            if (typeof getCsrfToken === 'function') return getCsrfToken();
-            if (typeof getCSRFToken === 'function') return getCSRFToken();
-            return '{{ csrf_token }}';
-        };
-
-        var proceedToUrl = function(url, target) {
-            if (target === '_blank' || (url && (url.indexOf('wa.me') !== -1 || url.indexOf('whatsapp') !== -1))) {
-                var win = window.open(url, '_blank', 'noopener');
-                if (!win || win.closed || typeof win.closed === 'undefined') {
-                    window.location.href = url;
-                }
-                return;
-            }
-            window.location.href = url;
-        };
-
-        var captureLeadAndProceed = function(guestData) {
-            var postData = {
-                agent_id: agentId,
-                interaction_type: interactionType,
-                service_type: '',
-                insurance_type: '',
-                source_page: window.location.pathname
-            };
-            if (guestData) {
-                postData.fullname = guestData.fullname;
-                postData.email = guestData.email;
-                postData.mobile = guestData.mobile;
-            } else if (currentGuestData) {
-                postData.fullname = currentGuestData.fullname;
-                postData.email = currentGuestData.email;
-                postData.mobile = currentGuestData.mobile;
-            }
-
-            Swal.fire({
-                title: 'Connecting you...',
-                allowOutsideClick: false,
-                didOpen: function() {
-                    Swal.showLoading();
-                    $.ajax({
-                        url: "{% url 'agents:agent_leads_capture' %}",
-                        type: 'POST',
-                        headers: { 'X-CSRFToken': getCsrf() },
-                        data: postData,
-                        success: function(resp) {
-                            Swal.close();
-                            if (resp.success && resp.url && resp.url !== '#') {
-                                proceedToUrl(resp.url, element.getAttribute('target'));
-                            } else if (resp.message) {
-                                Swal.fire('Notice', resp.message, 'info');
-                            }
-                        },
-                        error: function(xhr) {
-                            Swal.close();
-                            var msg = 'Something went wrong. Please refresh the page and try again.';
-                            if (xhr.status === 403) {
-                                msg = 'Access denied. Suspicious activity has been detected from your IP.';
-                            }
-                            Swal.fire('Oops!', msg, 'warning');
-                        }
-                    });
-                }
-            });
-        };
-
-        if (!isAuth && !hasGuestSession) {
-            showGuestRegistrationPopup('Connect with Agent', function(guestData) {
-                currentGuestData = guestData;
-                captureLeadAndProceed(guestData);
-            });
+            url = cleanWhatsapp !== '' ? ('https://wa.me/' + cleanWhatsapp) : '#';
+        } else if (interactionType === 'call') {
+            url = 'tel:{{ agent.mobile }}';
         } else {
-            captureLeadAndProceed(null);
+            // Social links
+            if (interactionType === 'linkedin') url = '{{ socialLinks.linkedin|default:"#" }}';
+            else if (interactionType === 'facebook') url = '{{ socialLinks.facebook|default:"#" }}';
+            else if (interactionType === 'instagram') url = '{{ socialLinks.instagram|default:"#" }}';
+            else if (interactionType === 'youtube') url = '{{ socialLinks.youtube|default:"#" }}';
+            else if (interactionType === 'google_business') url = '{{ socialLinks.google_business|default:"#" }}';
+        }
+        
+        if (url && url !== '#') {
+            if (target === '_blank') {
+                window.open(url, '_blank', 'noopener');
+            } else {
+                window.location.href = url;
+            }
+        } else {
+            Swal.fire('Notice', 'This agent has not provided contact details for this format.', 'info');
         }
         return false;
     };

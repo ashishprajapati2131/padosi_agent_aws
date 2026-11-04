@@ -1,9 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
 {% load json_tags %}
-{% block agent_profile_view_css %}
-    <link rel="stylesheet" href="{% static 'css/agent-profile-view.css' %}">
-{% endblock %}
 {% block pwa_manifest %}{% endblock %}
 
 {% block title %}{% if welcome_preview_mode %}Your Agent Card & Website | PadosiAgent{% elif event_referral_mode %}{{ event_referral_campaign.page_title|default:"Event Registration" }} | PadosiAgent{% elif referring_agent %}{% if referring_agent.is_championship %}Agent Championship — Invited by {{ referring_agent.name }} | PadosiAgent{% else %}You're Invited by {{ referring_agent.name }} | PadosiAgent{% endif %}{% else %}Agent Registration | PadosiAgent{% endif %}{% endblock %}

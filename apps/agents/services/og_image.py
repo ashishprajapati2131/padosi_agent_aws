@@ -8,7 +8,6 @@ from PIL import Image, ImageDraw, ImageFont
 from django.conf import settings
 
 from apps.agents.models import AgentProfile, AgentPerformanceStat
-from apps.agents.services.licensed_badge import insurance_license_badge_visible
 
 try:
     RESAMPLE = Image.Resampling.LANCZOS
@@ -214,7 +213,8 @@ def _card_data(agent, profile=None, perf=None):
         'subtitle': f'Insurance & Financial Advisor · {agency}' if agency and agency.lower() != name.lower()
                     else 'Insurance & Financial Advisor',
         'location': _share_card_place(agent, profile),
-        'show_licensed': bool(insurance_license_badge_visible(agent)),
+        'show_licensed': bool(profile is not None and (_safe_str(getattr(profile, 'license_number', None))
+                                                       or _safe_str(getattr(profile, 'arn_number', None)))),
         'show_trusted': bool(_safe_num(getattr(agent, 'is_trusted', False), 0)),
         'show_verified': bool(_safe_num(getattr(agent, 'is_verified_agent', False), 0)),
         'rating': rating,

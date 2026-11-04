@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static html_tags %}
+{% load static %}
 
 {% block title %}Blacklisted Agents — PadosiAgent{% endblock %}
 {% block meta_description %}Check whether an insurance agent has been blacklisted by the PadosiAgent verification team before you buy a policy or share personal and financial details.{% endblock %}
@@ -85,8 +85,8 @@
                             {% for agent in agents %}
                             <tr style="background-color: {% cycle '#ffffff' '#fafafb' %}; border-bottom: 1px solid #f1f5f9;">
                                 <td class="ps-4 py-3 text-muted">{{ page_obj.start_index|add:forloop.counter0 }}</td>
-                                <td class="py-3 text-wrap" style="word-break: break-word; max-width: 280px;">
-                                    <span class="fw-medium" style="color: #0d9488;">{{ agent.agent_name|clean_blacklist_name|default:"—" }}</span>
+                                <td class="py-3">
+                                    <a href="#" class="text-decoration-none fw-medium" style="color: #0d9488;">{{ agent.agent_name }}</a>
                                 </td>
                                 <td class="py-3" style="color: #334155;">{% if agent.pan and agent.pan != 'nan' %}{{ agent.pan }}{% endif %}</td>
                                 <td class="py-3" style="color: #334155;">{% if agent.agency_code and agent.agency_code != 'nan' %}{{ agent.agency_code }}{% endif %}</td>

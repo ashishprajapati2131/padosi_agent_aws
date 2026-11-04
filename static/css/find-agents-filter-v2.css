@@ -45,11 +45,6 @@
   line-height: 22px;
   text-align: center;
 }
-.pa-filter-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
 .pa-filter-clear-link {
   border: none;
   background: none;
@@ -58,12 +53,6 @@
   font-size: 0.82rem;
   cursor: pointer;
   padding: 4px 0;
-}
-.pa-filter-header-actions .pa-filter-clear-link {
-  margin-right: 2px;
-}
-.pa-filter-clear-link + .pa-filter-close-btn {
-  margin-left: 10px;
 }
 .pa-filter-close-btn {
   width: 36px;

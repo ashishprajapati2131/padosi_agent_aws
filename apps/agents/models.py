@@ -706,17 +706,10 @@ class Agent(models.Model):
         return agent_city_label(self)
 
     @property
-    def show_licensed_badge(self):
-        from apps.agents.services.licensed_badge import insurance_license_badge_visible
-
-        return insurance_license_badge_visible(self)
-
-    @property
     def badge_list(self):
         if not self.badge or self.badge.lower() == "none":
-            all_badges = []
-        else:
-            all_badges = [b.strip() for b in self.badge.split(",") if b.strip()]
+            return []
+        all_badges = [b.strip() for b in self.badge.split(",") if b.strip()]
         badge_map = {
             "verified": {
                 "class": "badge-verified-official",
@@ -734,16 +727,9 @@ class Agent(models.Model):
                 "label": "Trusted",
             },
         }
-        licensed_visible = self.show_licensed_badge
         res = []
-        has_licensed_entry = False
         for b in all_badges:
             key = b.lower()
-            if key == "irdai":
-                if licensed_visible:
-                    res.append(badge_map["irdai"])
-                    has_licensed_entry = True
-                continue
             if key in badge_map:
                 res.append(badge_map[key])
             else:
@@ -754,8 +740,6 @@ class Agent(models.Model):
                         "label": b.capitalize(),
                     }
                 )
-        if licensed_visible and not has_licensed_entry:
-            res.append(badge_map["irdai"])
         return res
 
     @property

@@ -217,12 +217,13 @@
     <link rel="stylesheet" href="{% static 'bootstrap/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="{% static 'css/custome.css' %}">
-    <link rel="stylesheet" href="{% static 'css/qa-bugfix-overrides.css' %}">
     <link rel="stylesheet" href="{% static 'css/responsive.css' %}">
     <link rel="stylesheet" href="{% static 'css/owl.carousel.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/owl.theme.default.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/aos.css' %}">
-    {% block agent_profile_view_css %}{% endblock %}
+    {% block agent_profile_view_css %}
+    <link rel="stylesheet" href="{% static 'css/agent-profile-view.css' %}?v=20260916-1">
+    {% endblock %}
     {# Not needed for first paint (popups / icon font): load without blocking render #}
     <link rel="stylesheet" href="{% static 'css/magnific-popup.css' %}" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" media="print" onload="this.media='all'">

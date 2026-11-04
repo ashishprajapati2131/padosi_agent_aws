@@ -141,7 +141,7 @@
 <section class="why-choose-section py-5 bg-transparent">
     <div class="container">
         <!-- Desktop Grid -->
-        <div class="d-none d-lg-block">
+        <div class="d-none d-md-block">
             <div class="row">
                 <div class="col-lg-4 mb-4 mb-lg-0 why-choose-left-col">
                     <div class="why-choose-left-container">
@@ -199,7 +199,7 @@
             </div>
         </div>
         <!-- Mobile View -->
-        <div class="d-block d-lg-none">
+        <div class="d-block d-md-none">
             <div class="why-choose-scroll-mobile no-scrollbar">
                 <div class="why-mobile-header-card">
                     <p class="section-subtitle-small mb-2"
@@ -557,23 +557,14 @@
                     updateActiveDot(currentIdx);
                 }
 
-                function pauseAutoplayForNav() {
-                    clearInterval(autoplayTimer);
-                    autoplayTimer = null;
-                }
-
                 if (prevBtn) {
                     prevBtn.addEventListener('click', function () {
-                        pauseAutoplayForNav();
                         jumpTo(currentIdx - 1, true);
-                        setTimeout(startAutoplay, 6000);
                     });
                 }
                 if (nextBtn) {
                     nextBtn.addEventListener('click', function () {
-                        pauseAutoplayForNav();
                         jumpTo(currentIdx + 1, true);
-                        setTimeout(startAutoplay, 6000);
                     });
                 }
 
@@ -589,7 +580,6 @@
                 var autoplayTimer = null;
                 var direction = 1;
                 function startAutoplay() {
-                    clearInterval(autoplayTimer);
                     autoplayTimer = setInterval(function () {
                         if (currentIdx >= maxIdx) direction = -1;
                         else if (currentIdx <= 0) direction = 1;
@@ -664,8 +654,7 @@
         var total = reviewsData.length;
 
         function renderStars(rating) {
-            var r = (rating !== undefined && rating !== null && rating !== '') ? parseFloat(rating) : 0;
-            if (isNaN(r)) r = 0;
+            var r = parseFloat(rating) || 5.0;
             var full = Math.floor(r);
             var partial = r - full;
             var empty = Math.max(0, 5 - Math.ceil(r));

@@ -102,9 +102,6 @@
                 </h3>
                 <div class="d-flex align-items-center gap-2 sort-by-wrapper">
                     <style>
-                        .sort-by-wrapper {
-                            gap: 8px;
-                        }
                         .ai-picks-trigger-btn:hover {
                             opacity: 0.95;
                             transform: translateY(-1px);
@@ -211,7 +208,7 @@
                     <i class="fas fa-location-arrow me-1"></i>
                     <span>{{ detectedArea|default:"Current Location" }}</span>
                     <button type="button" onclick="window.showLocationPopup('{% url 'home:find_agents' %}')"
-                        class="btn btn-link p-0 ms-2 text-success fw-bold pa-filter-change-btn"
+                        class="btn btn-link p-0 ms-2 text-success fw-bold"
                         style="font-size: 11px; text-decoration: underline; border: none; background: none; line-height: 1; margin-left: 8px !important; color: #047857;">
                         Change
                     </button>
@@ -365,7 +362,6 @@
                     transform: translateY(-2px);
                     box-shadow: 0 8px 20px rgba(14, 165, 233, 0.4);
                     color: #fff;
-                    text-decoration: none;
                 }
 
                 .pa-cs-btn-secondary {

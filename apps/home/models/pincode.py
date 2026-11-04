@@ -25,14 +25,7 @@ class Pincode(models.Model):
 
     @property
     def formatted_location(self):
-        base = self.format_location_name(self.office_name, self.district, self.division)
-        taluk = (self.taluk or '').strip()
-        if not taluk:
-            return base
-        taluk_title = taluk.title()
-        if taluk_title.lower() in (base or '').lower():
-            return base
-        return f"{base}, {taluk_title}" if base else taluk_title
+        return self.format_location_name(self.office_name, self.district, self.division)
 
     @staticmethod
     def format_location_name(office_name, district, division=None):
@@ -40,12 +33,6 @@ class Pincode(models.Model):
         
         # Clean Office Name: remove " SO", " BO", " HO", " GPO", etc.
         clean_office = re.sub(r'\s+(S\.?O\.?|B\.?O\.?|H\.?O\.?|G\.?P\.?O\.?)$', '', office, flags=re.IGNORECASE)
-        clean_office = re.sub(
-            r'(?<=[a-zA-Z])(?=(taluka|tehsil|taluk)\b)',
-            ' ',
-            clean_office,
-            flags=re.IGNORECASE,
-        )
         clean_office = clean_office.title()
 
         # Clean District / Division

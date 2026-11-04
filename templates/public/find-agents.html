@@ -1,8 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block agent_profile_view_css %}{% endblock %}
-
 {% block title %}Find Verified Insurance Experts near me - PadosiAgent{% endblock %}
 {% block meta_robots %}{% if request.GET %}noindex, follow{% else %}index, follow{% endif %}{% endblock %}
 {% block canonical_url %}{{ public_site_base }}/find-agents/{% endblock %}
@@ -38,7 +36,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/find-agents-filter-v2.css' %}?v=20261104a">
+<link rel="stylesheet" href="{% static 'css/find-agents-filter-v2.css' %}?v=20261007g">
 <style>
     .header {
         background-color: #f3f4fa !important;
@@ -1528,7 +1526,7 @@
                                 </div>
                                 <p class="pa-filter-v2-subtitle">Find your agent</p>
                             </div>
-                            <div class="d-flex align-items-center pa-filter-header-actions">
+                            <div class="d-flex align-items-center gap-2">
                                 <button type="button" class="pa-filter-clear-link" id="pa-filter-clear-link">Clear</button>
                                 <button type="button" class="pa-filter-close-btn close-mobile-filter" aria-label="Close filters">
                                     <i class="fas fa-times"></i>
@@ -1553,7 +1551,6 @@
                             </div>
                             <button type="button" onclick="window.showLocationPopup('{% url 'home:find_agents' %}')"
                                 class="btn btn-sm text-blue p-0 ms-2"
-                                id="detectedAreaChangeBtn" class="pa-filter-change-btn"
                                 style="font-size: 11px; font-weight: 700; text-decoration: underline; color: #047857; border: none; background: transparent; cursor: pointer;">Change</button>
                         </div>
                         <form id="filter-form" action="{% url 'home:find_agents' %}" method="GET" hx-boost="false"
@@ -1921,7 +1918,7 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body p-0" style="overflow: visible;">
+            <div class="modal-body p-0" style="max-height: 75vh; overflow-y: auto;">
                 <!-- Skeleton Loader -->
                 <div id="ai-picks-skeleton" class="p-4 text-center">
                     <div class="d-flex justify-content-center gap-5 mb-4" style="gap: 40px;">
@@ -1959,7 +1956,7 @@
                 </div>
 
                 <!-- Content Body -->
-                <div id="ai-picks-content-body" style="display: none; max-height: 75vh; overflow-y: auto;">
+                <div id="ai-picks-content-body" style="display: none;">
                     <!-- Dynamically populated -->
                 </div>
             </div>
@@ -2838,25 +2835,7 @@
             // filter refresh when that visit should keep every page already loaded.
             if (findAgentsRestoreTarget() <= 1 && (isHomepageReferral || (hasPreFilters && services.length > 0 && insuranceTypes.length > 0))) {
                 setTimeout(() => {
-                    const form = document.getElementById('filter-form');
-                    const prevPush = form ? form.getAttribute('hx-push-url') : null;
-                    if (form) {
-                        form.setAttribute('hx-push-url', 'false');
-                    }
                     submitFilterForm();
-                    if (form) {
-                        const restorePush = function (ev) {
-                            if (ev.detail && ev.detail.elt === form) {
-                                if (prevPush != null) {
-                                    form.setAttribute('hx-push-url', prevPush);
-                                } else {
-                                    form.removeAttribute('hx-push-url');
-                                }
-                                document.body.removeEventListener('htmx:afterRequest', restorePush);
-                            }
-                        };
-                        document.body.addEventListener('htmx:afterRequest', restorePush);
-                    }
                 }, 300);
             }
         }
@@ -3140,8 +3119,8 @@
                             </div>
                             
                             <div class="d-flex justify-content-center gap-3">
-                                <button onclick="window.aiPicksContactAgent(${ai.id}, \'#\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill px-4" style="background-color: #2563eb; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; height: 42px; cursor:pointer;"><i class="fas fa-phone mr-1"></i> Call Now</button>
-                                <button onclick="window.aiPicksContactAgent(${ai.id}, \'#\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill px-4" style="background-color: #22c55e; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; height: 42px; cursor:pointer;"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                                <button onclick="window.aiPicksContactAgent(${ai.id}, \'tel:${ai.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill px-4" style="background-color: #2563eb; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; height: 42px; cursor:pointer;"><i class="fas fa-phone mr-1"></i> Call Now</button>
+                                <button onclick="window.aiPicksContactAgent(${ai.id}, \'https://wa.me/${ai.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill px-4" style="background-color: #22c55e; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; height: 42px; cursor:pointer;"><i class="fab fa-whatsapp"></i> WhatsApp</button>
                             </div>
                         </div>
                         
@@ -3200,14 +3179,7 @@
             };
 
             // Perform comparisons
-            const expComp = compareAndHighlight(ai.experience_display, best.experience_display, true);
-            const appendInWinner = (cellHtml, suffix) => {
-                if (!suffix) return cellHtml;
-                if (String(cellHtml).indexOf('ai-val-winner') !== -1) {
-                    return String(cellHtml).replace('</span>', suffix + '</span>');
-                }
-                return cellHtml + suffix;
-            };
+            const expComp = compareAndHighlight(ai.experience_years, best.experience_years, true);
             const ratingComp = compareAndHighlight(ai.rating, best.rating, true);
             const reviewsComp = compareAndHighlight(ai.reviews, best.reviews, true);
             const matchComp = compareAndHighlight(ai.match_score, best.match_score, true);
@@ -3305,9 +3277,9 @@
                             
                             <!-- Match Score -->
                             <div class="ai-compare-row">
-                                <div class="ai-compare-cell">${appendInWinner(matchComp.c1, '%')}</div>
+                                <div class="ai-compare-cell">${matchComp.c1}%</div>
                                 <div class="ai-compare-label">Match Score</div>
-                                <div class="ai-compare-cell">${appendInWinner(matchComp.c2, '%')}</div>
+                                <div class="ai-compare-cell">${matchComp.c2}%</div>
                             </div>
                             
                             <!-- Distance -->
@@ -3326,9 +3298,9 @@
                             
                             <!-- Happy Clients -->
                             <div class="ai-compare-row">
-                                <div class="ai-compare-cell">${appendInWinner(clientsComp.c1, '+')}</div>
+                                <div class="ai-compare-cell">${clientsComp.c1}+</div>
                                 <div class="ai-compare-label">Active Clients</div>
-                                <div class="ai-compare-cell">${appendInWinner(clientsComp.c2, '+')}</div>
+                                <div class="ai-compare-cell">${clientsComp.c2}+</div>
                             </div>
                             
                             <!-- Claims Settled -->
@@ -3375,31 +3347,31 @@
                             
                             <!-- Response Rate -->
                             <div class="ai-compare-row">
-                                <div class="ai-compare-cell">${appendInWinner(respComp.c1, '%')}</div>
+                                <div class="ai-compare-cell">${respComp.c1}%</div>
                                 <div class="ai-compare-label">Response Rate</div>
-                                <div class="ai-compare-cell">${appendInWinner(respComp.c2, '%')}</div>
+                                <div class="ai-compare-cell">${respComp.c2}%</div>
                             </div>
                             
                             <!-- Profile Completion -->
                             <div class="ai-compare-row">
-                                <div class="ai-compare-cell">${appendInWinner(compComp.c1, '%')}</div>
+                                <div class="ai-compare-cell">${compComp.c1}%</div>
                                 <div class="ai-compare-label">Completeness</div>
-                                <div class="ai-compare-cell">${appendInWinner(compComp.c2, '%')}</div>
+                                <div class="ai-compare-cell">${compComp.c2}%</div>
                             </div>
                             
                             <!-- Contact Actions -->
                             <div class="ai-compare-row action-row" style="padding-top: 24px; padding-bottom: 12px; border-bottom: none;">
                                 <div class="ai-compare-cell">
                                     <div class="d-flex justify-content-center flex-column gap-3" style="max-width: 140px; margin: 0 auto;">
-                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'#\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
-                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'#\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
+                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'tel:${ai.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
+                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'https://wa.me/${ai.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
                                     </div>
                                 </div>
                                 <div class="ai-compare-label" style="background: transparent; box-shadow: none; color: transparent; user-select: none;">Actions</div>
                                 <div class="ai-compare-cell">
                                     <div class="d-flex justify-content-center flex-column gap-3" style="max-width: 140px; margin: 0 auto;">
-                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'#\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
-                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'#\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
+                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'tel:${best.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
+                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'https://wa.me/${best.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
                                     </div>
                                 </div>
                             </div>
@@ -3492,7 +3464,11 @@
                 });
             }, 400);
         } else {
-            Swal.fire('Notice', 'Please complete quick registration to contact this agent.', 'info');
+            if (interactionType === 'call') {
+                window.location.href = destination;
+            } else {
+                window.open(destination, '_blank', 'noopener');
+            }
         }
     } else {
         fireLead(null);
@@ -3516,9 +3492,10 @@
             verified: String(btn.data('agent-verified')) === '1',
             trusted: String(btn.data('agent-trusted')) === '1',
             badge: _escCompare(btn.data('agent-badge') || 'none'),
-            licensed: String(btn.data('agent-licensed')) === '1',
             location: _escCompare(btn.data('agent-location')),
             slug: _escCompare(btn.data('agent-slug')),
+            mobile: _escCompare(btn.data('agent-mobile')),
+            whatsapp: _escCompare(btn.data('agent-whatsapp')),
             image: _escCompare(btn.data('agent-image'))
         };
 
@@ -3621,20 +3598,15 @@
                             <div class="compare-agent-name">${agent.name}</div>
                             <div class="d-flex align-items-center justify-content-center flex-nowrap mt-1" style="gap:5px; overflow:hidden;">
                                 ${(() => {
-                    const licensedStyle = 'border: 1px solid #bfdbfe; color: #1d4ed8; background: #eff6ff;';
-                    const licensedHtml = `<span class="badge badge-light flex-shrink-0" style="${licensedStyle} font-size:10px; text-transform: capitalize; white-space:nowrap;"><i class="fas fa-medal mr-1"></i>Licensed</span>`;
-                    if (!agent.badge || agent.badge === 'none') {
-                        return agent.licensed ? licensedHtml : '';
-                    }
-                    const rawBadges = agent.badge.split(',').map(b => b.trim().toLowerCase()).filter(b => b);
-                    const allBadges = rawBadges.filter(b => b !== 'irdai' || agent.licensed);
-                    let html = allBadges.map(singleBadge => {
+                    if (!agent.badge || agent.badge === 'none') return '';
+                    const allBadges = agent.badge.split(',').map(b => b.trim().toLowerCase()).filter(b => b);
+                    return allBadges.map(singleBadge => {
                         let style = 'border: 1px solid #cbd5e1; color: #475569; background: #f8fafc;';
                         let icon = 'fa-check-circle';
                         let label = singleBadge.charAt(0).toUpperCase() + singleBadge.slice(1);
 
                         if (singleBadge === 'irdai') {
-                            style = licensedStyle;
+                            style = 'border: 1px solid #bfdbfe; color: #1d4ed8; background: #eff6ff;';
                             icon = 'fa-medal';
                             label = 'Licensed';
                         } else if (singleBadge === 'trusted') {
@@ -3649,10 +3621,6 @@
 
                         return `<span class="badge badge-light flex-shrink-0" style="${style} font-size:10px; text-transform: capitalize; white-space:nowrap;"><i class="fas ${icon} mr-1"></i>${label}</span>`;
                     }).join('');
-                    if (agent.licensed && !rawBadges.includes('irdai')) {
-                        html = licensedHtml + html;
-                    }
-                    return html;
                 })()}
                             </div>
                         </div>
@@ -3693,16 +3661,21 @@
 
             locationRow += `<td class="compare-value">${agent.location}</td>`;
 
+            let whatsappNumber = agent.whatsapp;
+            if (whatsappNumber && whatsappNumber.length === 10) {
+                whatsappNumber = '91' + whatsappNumber;
+            }
+
             actionRow += `
                     <td>
                         <div class="d-flex flex-column mx-auto" style="max-width: 150px;">
                             <button type="button"
-                               onclick="window.compareContactAgent(${agent.id}, '#', 'call', '${currentServiceType}', '${currentInsuranceType}')" 
+                               onclick="window.compareContactAgent(${agent.id}, 'tel:${agent.mobile}', 'call', '${currentServiceType}', '${currentInsuranceType}')" 
                                class="btn btn-sm btn-outline-primary rounded-pill px-3 d-flex align-items-center justify-content-center mb-2">
                                 <i class="fas fa-phone mr-2"></i> Call Now
                             </button>
                             <button type="button"
-                               onclick="window.compareContactAgent(${agent.id}, '#', 'whatsapp', '${currentServiceType}', '${currentInsuranceType}')" 
+                               onclick="window.compareContactAgent(${agent.id}, 'https://wa.me/${whatsappNumber}', 'whatsapp', '${currentServiceType}', '${currentInsuranceType}')" 
                                class="btn btn-sm btn-outline-success rounded-pill px-3 d-flex align-items-center justify-content-center">
                                 <i class="fab fa-whatsapp mr-2"></i> WhatsApp
                             </button>
@@ -4057,12 +4030,6 @@
             padding: isMobilePopup ? '1rem' : '1.5rem',
             width: isMobilePopup ? '92vw' : '450px',
             customClass: { popup: 'guest-gate-popup' },
-            didClose: () => {
-                const active = document.activeElement;
-                if (active && active.classList && active.classList.contains('pa-filter-change-btn')) {
-                    active.blur();
-                }
-            },
             didOpen: () => {
                 setTimeout(() => {
                     const pincodeInput = document.getElementById('swal-manual-pincode');

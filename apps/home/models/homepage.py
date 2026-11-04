@@ -13,7 +13,7 @@ class HomePageSettings(models.Model):
     hero_cta_claim_text = models.CharField(max_length=100, default="Insurance Claims Support")
     hero_cta_claim_url = models.CharField(max_length=255, default="/find-agents?ServiceType=Claim%20Assistance&openFilter=1")
     hero_cta_review_text = models.CharField(max_length=100, default="Insurance Audit")
-    hero_cta_review_url = models.CharField(max_length=255, default="/find-agents?ServiceType=Insurance%20audit&openFilter=1")
+    hero_cta_review_url = models.CharField(max_length=255, default="/find-agents?ServiceType=Policy%20Review&openFilter=1")
     hero_claims_card_label = models.CharField(max_length=100, default="FIND INSURANCE EXPERTS NEAR ME FOR:")
     hero_claims_card_heading = models.CharField(max_length=255, default="Claims, audits and policy review with local advisors")
     hero_claims_card_text = models.TextField(default="Easy local guidance from verified agents, with real advisor stories and trusted help just a few minutes away.")

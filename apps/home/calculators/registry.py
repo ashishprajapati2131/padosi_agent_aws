@@ -237,17 +237,6 @@ _SIP_FAQ = _faq(
      'Lumpsum invests everything at once. SIP spreads purchases over time. Use both calculators to compare.'),
 )
 
-_LUMPSUM_FAQ = _faq(
-    ('How is lumpsum maturity calculated?',
-     'The calculator compounds your one-time investment monthly: FV = P × (1 + r)^n, where P is the amount invested, r is the monthly rate, and n is the number of months.'),
-    ('Are these returns guaranteed?',
-     'No. The rate you enter is an assumption. Mutual fund returns vary with markets. This is an educational estimate, not a forecast.'),
-    ('When is lumpsum better than SIP?',
-     'Lumpsum suits a large amount you can invest at once. SIP spreads purchases over time. Use both calculators to compare scenarios.'),
-    ('Who can help me choose funds?',
-     'A licensed PadosiAgent can help align the investment with your goals, risk profile and insurance cover.'),
-)
-
 CALCULATORS = [
     _spec(
         'term-insurance-calculator', 'Term Insurance Calculator',
@@ -698,7 +687,7 @@ CALCULATORS = [
         [_inr('amount', 'Investment amount', 100000, 1000, 10000000, 1000),
          _yrs('years', 'Investment period', 10, 1, 40),
          _pct('annual_rate', 'Expected return (p.a.)', 12, 1, 30)],
-        _DONUT, _LUMPSUM_FAQ, 115,
+        _DONUT, _SIP_FAQ, 115,
     ),
     _spec(
         'investment-calculator', 'Investment Calculator',
@@ -707,7 +696,7 @@ CALCULATORS = [
         [_inr('amount', 'Investment amount', 100000, 1000, 10000000, 1000),
          _yrs('years', 'Investment period', 10, 1, 40),
          _pct('annual_rate', 'Expected return (p.a.)', 10, 1, 30)],
-        _DONUT, _LUMPSUM_FAQ, 118, engine='lumpsum-calculator',
+        _DONUT, _SIP_FAQ, 118, engine='lumpsum-calculator',
         meta_description='Investment calculator India. Project the future value of a lumpsum investment at your target rate of return, and consult a verified local PadosiAgent advisor.',
     ),
     _spec(
