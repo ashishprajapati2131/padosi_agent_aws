@@ -26,7 +26,10 @@
   color: var(--calc-muted);
   margin-bottom: 10px;
 }
-.calc-crumb a { color: var(--calc-blue); }
+.calc-crumb a { color: var(--calc-blue); text-decoration: none; }
+.calc-crumb a:hover { text-decoration: underline; }
+.calc-faq summary { text-decoration: none; }
+.calc-faq summary:hover { text-decoration: none; }
 
 .calc-hub-head h1,
 .calc-page-head h1 {

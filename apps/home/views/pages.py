@@ -259,7 +259,7 @@ def home(request):
             if agent_id:
                 if agent_id not in agent_counts:
                     agent_counts[agent_id] = 0
-                if agent_counts[agent_id] < 3:
+                if agent_counts[agent_id] < 1:
                     final_reviews.append(rev)
                     agent_counts[agent_id] += 1
                 else:
@@ -1693,6 +1693,8 @@ def build_agent_query(pincode, location, lat, lng, detected_area, service_type_i
 
 
 def serialize_agent_for_ai_picks(agent, user_lat, user_lng):
+    from apps.agents.services.license_status import is_irdai_license_active
+
     profile = agent.get_primary_profile()
     perf = getattr(agent, 'performanceStats', None)
     
@@ -1755,13 +1757,11 @@ def serialize_agent_for_ai_picks(agent, user_lat, user_lng):
         'claims_settled': (int(perf.claims_settled) if (perf and perf.claims_settled is not None and str(perf.claims_settled).isdigit()) else 0) if perf else 0,
         'insurance_types': insurance_types,
         'investment_types': investment_types,
-        'irdai_verified': bool(profile.license_number) if profile else False,
+        'irdai_verified': is_irdai_license_active(profile) if profile else False,
         'amfi_verified': bool(profile.arn_number) if profile else False,
         'languages': profile.languages if (profile and profile.languages) else "N/A",
         'response_rate': resp_rate,
         'profile_completion': comp_score,
-        'mobile': agent.mobile,
-        'whatsapp': agent.whatsapp_raw,
     }
 
 
@@ -2324,7 +2324,7 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
         agents_qs = state_hub_agents(listed_agents_queryset(), state_hub)
     elif city_obj:
         city_display = city_obj.name
-        state_display = city_obj.state or 'Gujarat'
+        state_display = (city_obj.state or '').strip() or 'India'
 
         # Use listed_agents_queryset() so PHP-imported agents are included
         base_qs = listed_agents_queryset()
@@ -2496,8 +2496,6 @@ def city_agents_directory(request, city_slug, category_slug=None, service_slug=N
         }
         if photo:
             item['image'] = (site_base if photo.startswith('/') else '') + photo
-        if a.mobile:
-            item['telephone'] = f"+91{a.mobile}"
         address = {'@type': 'PostalAddress', 'addressLocality': city_display, 'addressRegion': state_display}
         if a.agent_pincode:
             address['postalCode'] = a.agent_pincode

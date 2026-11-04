@@ -337,6 +337,11 @@
     color: #1f7b68;
 }
 
+.chatbot-mic-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 .chatbot-mic-btn svg {
     width: 18px;
     height: 18px;
@@ -548,6 +553,18 @@
     padding: 5px 8px;
     border-radius: 10px;
     min-width: 42px;
+    max-width: 52px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+.chatbot-ac-match-pct {
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+}
+.chatbot-mic-btn.is-listening {
+    background-color: #fee2e2;
+    color: #dc2626;
 }
 
 .chatbot-match--green { background: #f0fdf4; color: #15803d; }

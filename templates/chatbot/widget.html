@@ -64,7 +64,7 @@
 
     <!-- Footer / Input -->
     <div class="chatbot-footer">
-        <button class="chatbot-mic-btn" aria-label="Use voice input">
+        <button type="button" class="chatbot-mic-btn" aria-label="Use voice input" title="Use voice input">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
             </svg>
@@ -82,7 +82,7 @@
 {# Loads when the browser is idle after page load, or at once if the button is clicked first. #}
 <script>
 (function () {
-    var src = "{% static 'chatbot/js/widget.js' %}?v=1.2";
+    var src = "{% static 'chatbot/js/widget.js' %}?v=1.5";
     var trigger = document.getElementById('chatbot-trigger');
     var state = 'idle'; // idle -> loading -> ready
     var openAfterLoad = false;

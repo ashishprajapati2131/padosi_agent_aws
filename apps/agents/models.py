@@ -594,9 +594,17 @@ class Agent(models.Model):
 
     @property
     def display_name(self):
+        from apps.agents.services.display_format import sanitize_agent_display_name
+
         if hasattr(self, "profile") and self.profile and self.profile.display_name:
-            return self.profile.display_name
-        return self.fullname
+            return sanitize_agent_display_name(self.profile.display_name)
+        return sanitize_agent_display_name(self.fullname or "")
+
+    @property
+    def effective_badge_csv(self):
+        from apps.agents.services.license_status import compose_badge_csv
+
+        return compose_badge_csv(self)
 
     def get_effective_pincode(self):
         import re
@@ -707,9 +715,10 @@ class Agent(models.Model):
 
     @property
     def badge_list(self):
-        if not self.badge or self.badge.lower() == "none":
+        badge_csv = self.effective_badge_csv
+        if not badge_csv or badge_csv.lower() == "none":
             return []
-        all_badges = [b.strip() for b in self.badge.split(",") if b.strip()]
+        all_badges = [b.strip() for b in badge_csv.split(",") if b.strip()]
         badge_map = {
             "verified": {
                 "class": "badge-verified-official",
@@ -993,6 +1002,18 @@ class AgentProfile(models.Model):
         return clean_investment_types(self.investment_types)
 
     @property
+    @property
+    def irdai_license_active(self):
+        from apps.agents.services.license_status import is_irdai_license_active
+
+        return is_irdai_license_active(self)
+
+    @property
+    def irdai_license_expired(self):
+        from apps.agents.services.license_status import is_irdai_license_expired
+
+        return is_irdai_license_expired(self)
+
     def state_code(self):
         state_val = self.state
         if not state_val and hasattr(self, "agent") and self.agent:
@@ -1299,6 +1320,31 @@ class AgentPerformanceStat(models.Model):
     @property
     def formatted_claims_amount(self):
         return format_indian_number(self.claims_amount)
+
+    @property
+    def display_success_rate(self):
+        from apps.agents.services.display_format import format_success_rate_display
+
+        return format_success_rate_display(self.success_rate)
+
+    @property
+    def effective_claims_settled(self) -> int:
+        settled = int(self.claims_settled or 0)
+        if settled > 0:
+            return settled
+        processed = int(self.claims_processed or 0)
+        if processed <= 0:
+            return 0
+        from apps.agents.services.display_format import parse_success_rate_percent
+
+        rate = parse_success_rate_percent(self.success_rate)
+        if rate and rate > 0:
+            return int(round(processed * rate / 100.0))
+        return 0
+
+    @property
+    def formatted_claims_settled(self):
+        return format_indian_number(self.effective_claims_settled)
 
 
 class AgentLead(models.Model):

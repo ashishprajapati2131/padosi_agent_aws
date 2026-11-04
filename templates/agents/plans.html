@@ -1798,11 +1798,12 @@
                     <i class="fa-solid fa-tag me-1"></i> Have a promo code?
                 </button>
             </div>
-            <div id="promoInputRow" class="align-items-center gap-2" style="display:none;">
+            <div id="promoInputRow" class="align-items-center" style="display:none;gap:12px;">
                 <input type="text" id="promoCodeInput" placeholder="Enter promo code"
                        class="form-control"
-                       style="border-radius:10px;font-size:14px;flex:1;text-transform:uppercase;"
-                       oninput="this.value=this.value.toUpperCase()"
+                       maxlength="50"
+                       style="border-radius:10px;font-size:14px;flex:1;text-transform:uppercase;min-width:0;"
+                       oninput="this.value=this.value.toUpperCase().slice(0,50)"
                        onkeydown="if(event.key==='Enter'){applyPromoCode();}">
                 <button type="button" id="applyPromoBtn" class="btn btn-primary"
                         style="border-radius:10px;font-size:14px;white-space:nowrap;"
@@ -2330,9 +2331,14 @@
         var btn   = document.getElementById('applyPromoBtn');
         var msg   = document.getElementById('promoMsg');
         if (!input) return;
-        var code = input.value.trim().toUpperCase();
+        var code = input.value.trim().toUpperCase().slice(0, 50);
+        input.value = code;
         if (!code) {
             _showPromoMsg(msg, 'Please enter a promo code.', false);
+            return;
+        }
+        if (code.length > 50) {
+            _showPromoMsg(msg, 'Promo code cannot exceed 50 characters.', false);
             return;
         }
         btn.disabled = true;

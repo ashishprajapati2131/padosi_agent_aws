@@ -1260,6 +1260,7 @@ def advisor_review_context(request, agent):
         "brand_logo_url": _brand_logo_url(),
         "hide_header": True,
         "hide_footer": True,
+        "hide_eligibility_popup": True,
     }
 
 

@@ -36,7 +36,7 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/find-agents-filter-v2.css' %}?v=20261007g">
+<link rel="stylesheet" href="{% static 'css/find-agents-filter-v2.css' %}?v=20261007h">
 <style>
     .header {
         background-color: #f3f4fa !important;
@@ -333,6 +333,7 @@
         background: #e2e8f0;
         color: #0f172a;
         border-color: #94a3b8;
+        text-decoration: none !important;
     }
 
     .btn-apply {
@@ -1526,7 +1527,7 @@
                                 </div>
                                 <p class="pa-filter-v2-subtitle">Find your agent</p>
                             </div>
-                            <div class="d-flex align-items-center gap-2">
+                            <div class="pa-filter-header-actions">
                                 <button type="button" class="pa-filter-clear-link" id="pa-filter-clear-link">Clear</button>
                                 <button type="button" class="pa-filter-close-btn close-mobile-filter" aria-label="Close filters">
                                     <i class="fas fa-times"></i>
@@ -1549,9 +1550,9 @@
                                 <div class="text-dark font-weight-bold truncate"
                                     style="font-size: 13px; color: #0f172a;">{{ detectedArea|default:"Current Location" }}</div>
                             </div>
-                            <button type="button" onclick="window.showLocationPopup('{% url 'home:find_agents' %}')"
-                                class="btn btn-sm text-blue p-0 ms-2"
-                                style="font-size: 11px; font-weight: 700; text-decoration: underline; color: #047857; border: none; background: transparent; cursor: pointer;">Change</button>
+                            <button type="button" onclick="window.showLocationPopup('{% url 'home:find_agents' %}'); this.blur();"
+                                class="btn btn-sm text-blue p-0 ms-2 location-change-btn"
+                                style="font-size: 11px; font-weight: 700; text-decoration: underline; color: #047857; border: none; background: transparent; cursor: pointer; box-shadow: none !important;">Change</button>
                         </div>
                         <form id="filter-form" action="{% url 'home:find_agents' %}" method="GET" hx-boost="false"
                             hx-get="{% url 'home:find_agents' %}" hx-target=".find-agents-list"
@@ -1918,7 +1919,7 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body p-0" style="max-height: 75vh; overflow-y: auto;">
+            <div class="modal-body p-0" style="max-height: 75vh; overflow-y: auto; overflow-x: hidden;">
                 <!-- Skeleton Loader -->
                 <div id="ai-picks-skeleton" class="p-4 text-center">
                     <div class="d-flex justify-content-center gap-5 mb-4" style="gap: 40px;">
@@ -2835,7 +2836,18 @@
             // filter refresh when that visit should keep every page already loaded.
             if (findAgentsRestoreTarget() <= 1 && (isHomepageReferral || (hasPreFilters && services.length > 0 && insuranceTypes.length > 0))) {
                 setTimeout(() => {
+                    const form = document.getElementById('filter-form');
+                    let restorePush = null;
+                    if (isHomepageReferral && form) {
+                        restorePush = form.getAttribute('hx-push-url');
+                        form.setAttribute('hx-push-url', 'false');
+                    }
                     submitFilterForm();
+                    if (form && restorePush !== null) {
+                        setTimeout(function () {
+                            form.setAttribute('hx-push-url', restorePush || 'true');
+                        }, 800);
+                    }
                 }, 300);
             }
         }
@@ -3119,8 +3131,8 @@
                             </div>
                             
                             <div class="d-flex justify-content-center gap-3">
-                                <button onclick="window.aiPicksContactAgent(${ai.id}, \'tel:${ai.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill px-4" style="background-color: #2563eb; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; height: 42px; cursor:pointer;"><i class="fas fa-phone mr-1"></i> Call Now</button>
-                                <button onclick="window.aiPicksContactAgent(${ai.id}, \'https://wa.me/${ai.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill px-4" style="background-color: #22c55e; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; height: 42px; cursor:pointer;"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                                <button onclick="window.aiPicksContactAgent(${ai.id}, '', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill px-4" style="background-color: #2563eb; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; height: 42px; cursor:pointer;"><i class="fas fa-phone mr-1"></i> Call Now</button>
+                                <button onclick="window.aiPicksContactAgent(${ai.id}, '', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill px-4" style="background-color: #22c55e; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; height: 42px; cursor:pointer;"><i class="fab fa-whatsapp"></i> WhatsApp</button>
                             </div>
                         </div>
                         
@@ -3363,15 +3375,15 @@
                             <div class="ai-compare-row action-row" style="padding-top: 24px; padding-bottom: 12px; border-bottom: none;">
                                 <div class="ai-compare-cell">
                                     <div class="d-flex justify-content-center flex-column gap-3" style="max-width: 140px; margin: 0 auto;">
-                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'tel:${ai.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
-                                        <button onclick="window.aiPicksContactAgent(${ai.id}, \'https://wa.me/${ai.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
+                                        <button onclick="window.aiPicksContactAgent(${ai.id}, '', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
+                                        <button onclick="window.aiPicksContactAgent(${ai.id}, '', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
                                     </div>
                                 </div>
                                 <div class="ai-compare-label" style="background: transparent; box-shadow: none; color: transparent; user-select: none;">Actions</div>
                                 <div class="ai-compare-cell">
                                     <div class="d-flex justify-content-center flex-column gap-3" style="max-width: 140px; margin: 0 auto;">
-                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'tel:${best.mobile}\', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
-                                        <button onclick="window.aiPicksContactAgent(${best.id}, \'https://wa.me/${best.whatsapp}\', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
+                                        <button onclick="window.aiPicksContactAgent(${best.id}, '', \'call\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-primary rounded-pill w-100" style="background-color: #2563eb; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);"><i class="fas fa-phone mr-1"></i> Call</button>
+                                        <button onclick="window.aiPicksContactAgent(${best.id}, '', \'whatsapp\', \'${currentServiceType}\', \'${currentInsuranceType}\')" class="btn btn-success rounded-pill w-100" style="background-color: #22c55e; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(34,197,94,0.2);"><i class="fab fa-whatsapp mr-1"></i> WhatsApp</button>
                                     </div>
                                 </div>
                             </div>
@@ -3464,11 +3476,7 @@
                 });
             }, 400);
         } else {
-            if (interactionType === 'call') {
-                window.location.href = destination;
-            } else {
-                window.open(destination, '_blank', 'noopener');
-            }
+            Swal.fire('Notice', 'Please sign in or share your details to contact this agent.', 'info');
         }
     } else {
         fireLead(null);
@@ -3494,8 +3502,6 @@
             badge: _escCompare(btn.data('agent-badge') || 'none'),
             location: _escCompare(btn.data('agent-location')),
             slug: _escCompare(btn.data('agent-slug')),
-            mobile: _escCompare(btn.data('agent-mobile')),
-            whatsapp: _escCompare(btn.data('agent-whatsapp')),
             image: _escCompare(btn.data('agent-image'))
         };
 
@@ -3670,12 +3676,12 @@
                     <td>
                         <div class="d-flex flex-column mx-auto" style="max-width: 150px;">
                             <button type="button"
-                               onclick="window.compareContactAgent(${agent.id}, 'tel:${agent.mobile}', 'call', '${currentServiceType}', '${currentInsuranceType}')" 
+                               onclick="window.compareContactAgent(${agent.id}, '', 'call', '${currentServiceType}', '${currentInsuranceType}')" 
                                class="btn btn-sm btn-outline-primary rounded-pill px-3 d-flex align-items-center justify-content-center mb-2">
                                 <i class="fas fa-phone mr-2"></i> Call Now
                             </button>
                             <button type="button"
-                               onclick="window.compareContactAgent(${agent.id}, 'https://wa.me/${whatsappNumber}', 'whatsapp', '${currentServiceType}', '${currentInsuranceType}')" 
+                               onclick="window.compareContactAgent(${agent.id}, '', 'whatsapp', '${currentServiceType}', '${currentInsuranceType}')" 
                                class="btn btn-sm btn-outline-success rounded-pill px-3 d-flex align-items-center justify-content-center">
                                 <i class="fab fa-whatsapp mr-2"></i> WhatsApp
                             </button>

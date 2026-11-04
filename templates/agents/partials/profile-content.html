@@ -572,7 +572,7 @@
             {% if profile.license_number or profile.arn_number %}
             <div class="licenses-row-grid{% if profile.license_number and profile.arn_number %} dual-licenses{% endif %}">
                 {% if profile.license_number %}
-                <div class="license-badge-card license-irdai">
+                <div class="license-badge-card license-irdai{% if profile.irdai_license_expired %} license-expired{% endif %}">
                     <div class="license-badge-header">
                         <i class="fas fa-certificate item-icon text-emerald"></i>
                         <div>
@@ -583,7 +583,9 @@
                     <div class="license-details">
                         <div><span class="label">License No:</span> {{ profile.license_number }}</div>
                         {% if profile.license_valid_till %}
-                            <div class="text-muted small"><span class="label">Valid till:</span> {{ profile.license_valid_till|date:"d M Y" }}</div>
+                            <div class="text-muted small"><span class="label">Valid till:</span> {{ profile.license_valid_till|date:"d M Y" }}{% if profile.irdai_license_expired %} · <span class="text-danger fw-semibold">License expired</span>{% endif %}</div>
+                        {% elif profile.irdai_license_expired %}
+                            <div class="text-danger small fw-semibold">License expired</div>
                         {% endif %}
                     </div>
                 </div>
@@ -638,8 +640,8 @@
                 {% for timeline in agent.sorted_career_timelines %}
                     <div class="timeline-item">
                         <i class="{% if timeline.event_type == 'Award' %}fas fa-trophy{% elif timeline.event_type == 'Achievement' %}fas fa-medal{% elif timeline.event_type == 'Certification' %}fas fa-award{% elif timeline.event_type == 'Career Event' %}fas fa-calendar-check{% elif timeline.event_type == 'Experience' %}fas fa-briefcase{% else %}fas fa-circle{% endif %} timeline-custom-icon"></i>
-                        <div class="timeline-year">{{ timeline.month }} {{ timeline.year }}</div>
-                        <div class="timeline-text">{{ timeline.event_text }}</div>
+                        <div class="timeline-year">{% if timeline.month %}{{ timeline.month }} {% endif %}{% if timeline.year %}{{ timeline.year }}{% else %}—{% endif %}</div>
+                        <div class="timeline-text">{% if timeline.event_type %}<span class="text-muted small d-block mb-1">{{ timeline.event_type }}</span>{% endif %}{{ timeline.event_text }}</div>
                     </div>
                 {% empty %}
                     <div class="text-muted small">No timeline events recorded.</div>
@@ -684,8 +686,18 @@
                     <div class="stat-label">Claims Processed</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-value">{{ performanceStats.success_rate|default:"98" }}%</div>
+                    <div class="stat-value">{{ performanceStats.display_success_rate|default:"98%" }}</div>
                     <div class="stat-label">Success Rate</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">
+                        {% if performanceStats and performanceStats.effective_claims_settled %}
+                            {{ performanceStats.formatted_claims_settled }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">Claims Settled</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-value">
@@ -695,7 +707,7 @@
                             —
                         {% endif %}
                     </div>
-                    <div class="stat-label">Claims Settled</div>
+                    <div class="stat-label">Claims Value (₹)</div>
                 </div>
                 <div class="stat-box">
                     <div class="stat-value">&lt; {{ performanceStats.response_time|default:"2" }} hours</div>
@@ -1331,39 +1343,70 @@ function showGoogleReviewNudgePopup(nudge) {
         });
     };
 
-    // handleAgentContactClick
+    // handleAgentContactClick — contact URL only via lead capture (no public mobile in page source)
     window.handleAgentContactClick = function(event, element, interactionType) {
         if (!element) return true;
         event.preventDefault();
-        
-        var target = element.getAttribute('target');
-        var url = '#';
-        if (interactionType === 'whatsapp') {
-            var whatsapp = '{{ profile.whatsapp_digits|default:agent.mobile }}';
-            var cleanWhatsapp = whatsapp.replace(/[^0-9]/g, '');
-            if (cleanWhatsapp.length === 10) {
-                cleanWhatsapp = '91' + cleanWhatsapp;
+
+        var socialTypes = ['linkedin', 'facebook', 'instagram', 'youtube', 'google_business'];
+        if (socialTypes.indexOf(interactionType) >= 0) {
+            var socialUrl = '#';
+            if (interactionType === 'linkedin') socialUrl = '{{ socialLinks.linkedin|default:"#" }}';
+            else if (interactionType === 'facebook') socialUrl = '{{ socialLinks.facebook|default:"#" }}';
+            else if (interactionType === 'instagram') socialUrl = '{{ socialLinks.instagram|default:"#" }}';
+            else if (interactionType === 'youtube') socialUrl = '{{ socialLinks.youtube|default:"#" }}';
+            else if (interactionType === 'google_business') socialUrl = '{{ socialLinks.google_business|default:"#" }}';
+            if (socialUrl && socialUrl !== '#') {
+                window.open(socialUrl, element.getAttribute('target') === '_blank' ? '_blank' : '_self', 'noopener');
             }
-            url = cleanWhatsapp !== '' ? ('https://wa.me/' + cleanWhatsapp) : '#';
-        } else if (interactionType === 'call') {
-            url = 'tel:{{ agent.mobile }}';
-        } else {
-            // Social links
-            if (interactionType === 'linkedin') url = '{{ socialLinks.linkedin|default:"#" }}';
-            else if (interactionType === 'facebook') url = '{{ socialLinks.facebook|default:"#" }}';
-            else if (interactionType === 'instagram') url = '{{ socialLinks.instagram|default:"#" }}';
-            else if (interactionType === 'youtube') url = '{{ socialLinks.youtube|default:"#" }}';
-            else if (interactionType === 'google_business') url = '{{ socialLinks.google_business|default:"#" }}';
+            return false;
         }
-        
-        if (url && url !== '#') {
-            if (target === '_blank') {
-                window.open(url, '_blank', 'noopener');
-            } else {
-                window.location.href = url;
+
+        var agentId = element.getAttribute('data-agent-id') || '{{ agent.id }}';
+        var target = element.getAttribute('target');
+        var isAuth = {{ request.user.is_authenticated|yesno:"true,false" }};
+        var hasGuestSession = {% if request.session.quick_lead_user %}true{% else %}false{% endif %};
+
+        var fireLead = function(guestData) {
+            var postData = {
+                agent_id: agentId,
+                interaction_type: interactionType,
+                service_type: 'Profile view',
+                insurance_type: 'Agent profile',
+                source_page: window.location.pathname
+            };
+            if (guestData) {
+                postData.fullname = guestData.fullname;
+                postData.email = guestData.email;
+                postData.mobile = guestData.mobile;
             }
+            var csrf = (typeof getCSRFToken === 'function') ? getCSRFToken() : '';
+            $.ajax({
+                url: "{% url 'agents:agent_leads_capture' %}",
+                type: 'POST',
+                headers: { 'X-CSRFToken': csrf },
+                data: postData,
+                success: function(resp) {
+                    if (resp && resp.success && resp.url && resp.url !== '#') {
+                        if (interactionType === 'call') {
+                            window.location.href = resp.url;
+                        } else {
+                            window.open(resp.url, '_blank', 'noopener');
+                        }
+                    } else if (resp && resp.message) {
+                        Swal.fire('Notice', resp.message, 'info');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Oops!', 'Something went wrong. Please try again.', 'warning');
+                }
+            });
+        };
+
+        if (!isAuth && !hasGuestSession && typeof window.showGuestRegistrationPopup === 'function') {
+            window.showGuestRegistrationPopup('Connect with Agent', function(guestData) { fireLead(guestData); });
         } else {
-            Swal.fire('Notice', 'This agent has not provided contact details for this format.', 'info');
+            fireLead(null);
         }
         return false;
     };

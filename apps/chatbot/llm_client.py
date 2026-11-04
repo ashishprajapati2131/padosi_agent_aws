@@ -1155,7 +1155,6 @@ def _execute_find_agents(function_args, messages):
                             "rating": round(float(a.average_rating), 1),
                             "review_count": a.review_count_val,
                             "experience_years": a.experience_years,
-                            "badge": a.badge or "",
                             "location": (
                                 profile.office_address or profile.address or ""
                             )
@@ -1165,9 +1164,8 @@ def _execute_find_agents(function_args, messages):
                             if getattr(a, "distance", None) is not None
                             and a.distance < 999
                             else None,
-                            "mobile": a.mobile or "",
-                            "whatsapp_digits": whatsapp_digits,
                             "profile_url": profile_url,
+                            "badge": a.effective_badge_csv if hasattr(a, "effective_badge_csv") else (a.badge or ""),
                             "segments": segments,
                             "insurance_type": insurance_type,
                             "service_type": service_type,

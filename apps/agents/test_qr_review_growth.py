@@ -294,6 +294,12 @@ class AgentQrAndCardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Rate & Review')
         self.assertContains(response, 'QR Agent')
+        self.assertNotContains(response, 'id="eligibilityPopup"')
+
+    def test_review_card_hides_eligibility_popup(self):
+        response = self.client.get(reverse('agents:agent_review_card', args=['qr-agent']))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="eligibilityPopup"')
 
     def test_profile_focus_reviews_renders_scroll_hook(self):
         # The reviews section only renders when the plan includes view_reviews.

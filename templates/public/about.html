@@ -8,6 +8,85 @@
 {% block twitter_title %}{{ about.banner_title|default:"About Us" }} — PadosiAgent{% endblock %}
 {% block twitter_description %}PadosiAgent helps families in Gujarat find verified, licensed insurance agents in their own neighbourhood — for health, life, motor and business insurance.{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Who We Are — overlapping image pair (theme expects absolute layout + fixed widths) */
+    .aboutpage-con .who-we-are-media {
+        text-align: left;
+    }
+    .aboutpage-con .about_wrapper.who-we-are-images {
+        position: relative;
+        width: 100%;
+        max-width: 520px;
+        min-height: 380px;
+        margin: 0 auto;
+    }
+    @media (min-width: 992px) {
+        .aboutpage-con .about_wrapper.who-we-are-images {
+            margin: 0;
+        }
+    }
+    .aboutpage-con .about_wrapper.who-we-are-images .about-image1 {
+        position: relative;
+        left: 0;
+        top: 0;
+        width: 62%;
+        max-width: 320px;
+        margin: 0;
+        z-index: 1;
+    }
+    .aboutpage-con .about_wrapper.who-we-are-images .about-image2 {
+        position: absolute;
+        right: 0;
+        top: 48px;
+        width: 55%;
+        max-width: 280px;
+        margin: 0;
+        z-index: 2;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+    }
+    .aboutpage-con .about_wrapper.who-we-are-images .about-image1 img,
+    .aboutpage-con .about_wrapper.who-we-are-images .about-image2 img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 20px;
+        object-fit: cover;
+        aspect-ratio: 4 / 5;
+    }
+    @media (min-width: 576px) and (max-width: 991px) {
+        .aboutpage-con .about_wrapper.who-we-are-images {
+            min-height: 360px;
+            max-width: 460px;
+        }
+        .aboutpage-con .about_wrapper.who-we-are-images .about-image2 {
+            top: 56px;
+        }
+    }
+    @media (max-width: 575px) {
+        .aboutpage-con .about_wrapper.who-we-are-images {
+            min-height: 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            align-items: start;
+        }
+        .aboutpage-con .about_wrapper.who-we-are-images .about-image1,
+        .aboutpage-con .about_wrapper.who-we-are-images .about-image2 {
+            position: relative;
+            top: auto;
+            right: auto;
+            width: 100%;
+            max-width: none;
+            box-shadow: none;
+        }
+        .aboutpage-con .about_wrapper.who-we-are-images .about-image2 {
+            margin-top: 24px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="sub_banner position-relative">
      <section class="sub_banner_con sub-about-banner position-relative">
@@ -30,8 +109,8 @@
     </figure>
     <div class="container">
         <div class="row">
-            <div class="col-lg-7 col-md-12 col-sm-12 col-12 order-lg-1 order-2 text-lg-left text-center">
-                <div class="about_wrapper position-relative" >
+            <div class="col-lg-7 col-md-12 col-sm-12 col-12 order-lg-1 order-2 who-we-are-media">
+                <div class="about_wrapper position-relative who-we-are-images" >
                     <figure class="about-image1 image mb-0">
                         <img src="{% static 'img/aboutpage-image1.webp' %}" alt="image" class="img-fluid">
                     </figure>
@@ -138,12 +217,7 @@
                 </div>
                 <div class="benefit_content" >
                     <h2 class="mb-4">Our Mission</h2>
-                    <ul class="list-unstyled d-inline-block text-left mx-auto">
-                        <li class="mb-3 d-flex align-items-center">
-                            <i class="fa-solid fa-circle-dot text-primary mr-3"></i>
-                            <span class="text-size-18">{{ about.mission|default:"Digitally empower insurance agents."|clean_html }}</span>
-                        </li>
-                    </ul>
+                    <div class="text text-size-18 px-lg-5">{{ about.mission|default:"Digitally empower insurance agents. Promote transparency and accountability."|clean_html }}</div>
                 </div>
             </div>
         </div>

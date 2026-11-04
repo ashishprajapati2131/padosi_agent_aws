@@ -25,7 +25,9 @@ def _is_mock(value):
 
 
 def _clean_place(value):
-    text = re.sub(r'\s+', ' ', str(value or '')).strip()
+    from apps.agents.services.display_format import normalize_location_spacing
+
+    text = normalize_location_spacing(str(value or ''))
     if not text or _JUNK_PLACE.match(text):
         return ''
     return _OFFICE_SUFFIX.sub('', text).strip(' ,')

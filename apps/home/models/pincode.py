@@ -34,6 +34,8 @@ class Pincode(models.Model):
         # Clean Office Name: remove " SO", " BO", " HO", " GPO", etc.
         clean_office = re.sub(r'\s+(S\.?O\.?|B\.?O\.?|H\.?O\.?|G\.?P\.?O\.?)$', '', office, flags=re.IGNORECASE)
         clean_office = clean_office.title()
+        clean_office = re.sub(r'(?i)(?<=[A-Za-z])(taluka|taluk)\b', r' \1', clean_office)
+        clean_office = re.sub(r'\s+', ' ', clean_office).strip()
 
         # Clean District / Division
         clean_district = (district or '').strip()

@@ -5161,6 +5161,11 @@ def agent_verify_promo(request):
     if not promo_code:
         return JsonResponse({"success": False, "message": "Promo code is required."})
 
+    if len(promo_code) > 50:
+        return JsonResponse(
+            {"success": False, "message": "Promo code is too long (maximum 50 characters)."}
+        )
+
     if _promo_checks_paused(request):
         return JsonResponse(
             {

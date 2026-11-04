@@ -38,7 +38,11 @@ def popular_cities(limit=8, min_agents=3):
         for c in rows:
             slug = c.slug or slugify(c.name)
             if _SLUG_RE.fullmatch(slug) and slug not in JUNK_CITY_SLUGS:
-                cities.append({'name': c.name.strip().title(), 'slug': slug})
+                label = c.name.strip().title()
+                state = (getattr(c, 'state', None) or '').strip()
+                if state and state.lower() not in label.lower():
+                    label = f"{label}, {state.title()}"
+                cities.append({'name': label, 'slug': slug})
     except Exception:
         logger.exception('popular_cities failed')
         cache.set(cache_key, [], 60)  # don't retry a failing query on every page view
