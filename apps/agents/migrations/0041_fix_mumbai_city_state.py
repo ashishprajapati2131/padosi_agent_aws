@@ -19,7 +19,7 @@ def reverse_noop(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('agents', '0041_add_agent_to_agentnotification'),
+        ('agents', '0040_agentprofileview_unique_agent_view_date'),
     ]
 
     operations = [
