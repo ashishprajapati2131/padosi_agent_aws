@@ -1291,7 +1291,6 @@ def public_review_page(request, slug):
         {
             "hide_header": False,
             "hide_footer": False,
-            "hide_eligibility_popup": True,
             "review_post_url": reverse(
                 "agents:agent_store_review", kwargs={"slug": context["advisor_slug"]}
             ),
@@ -1331,7 +1330,6 @@ def public_review_card(request, slug):
         )
     context = advisor_review_context(request, agent)
     context["is_owner"] = is_owner
-    context["hide_eligibility_popup"] = True
     return render(request, "agents/review_card.html", context)
 
 
