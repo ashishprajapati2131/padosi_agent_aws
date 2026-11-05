@@ -54,6 +54,40 @@
             padding-right: 28px;
         }
     }
+
+    /* Phone review strip: one card in view, a peek of the next, native swipe. */
+    .testimonials-slider-section .review-scroll-container {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        align-items: stretch;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+        scroll-padding-inline: 2px;
+    }
+    @media (max-width: 767.98px) {
+        .testimonials-slider-section .review-scroll-container {
+            scroll-snap-type: x mandatory;
+            padding-bottom: 8px;
+        }
+        .testimonials-slider-section .review-card-wrapper {
+            width: calc(100% - 36px);
+            max-width: none;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+        }
+        .testimonials-slider-section .review-comment {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 6;
+            overflow: hidden;
+        }
+        .testimonials-slider-section .slider-dots {
+            margin-top: 14px;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -759,21 +793,47 @@
         var isPaused = false;
         var speed = 0.8;
         var raf;
+        var phoneTimer = null;
+        var resumeTimer = null;
+        var programmaticScroll = false;
+        var phoneMode = window.innerWidth < 768;
+        var phoneCursor = 0;
+        var abort = new AbortController();
+        var listen = { signal: abort.signal };
+        var passiveOpts = { signal: abort.signal, passive: true };
 
         function updateDots(idx) {
-            activeIndex = idx;
+            activeIndex = ((idx % total) + total) % total;
             var dots = dotsWrap.querySelectorAll('button');
             dots.forEach(function (d, i) {
                 d.classList.toggle('active', i === activeIndex);
             });
         }
 
-        function scrollToIndex(index) {
+        function cardStep() {
             var cardWrapper = slider.querySelector('.review-card-wrapper');
-            var cardWidth = cardWrapper ? cardWrapper.offsetWidth : 320;
-            var gap = 16;
-            slider.scrollLeft = index * (cardWidth + gap);
-            updateDots(index);
+            var gap = parseFloat(getComputedStyle(slider).columnGap || getComputedStyle(slider).gap) || 16;
+            return (cardWrapper ? cardWrapper.offsetWidth : 280) + gap;
+        }
+
+        function scrollToIndex(index, animate) {
+            var cards = slider.querySelectorAll('.review-card-wrapper').length || 1;
+            var safe = index;
+            if (safe < 0) safe = 0;
+            if (safe >= cards) safe = 0;
+            var stepNow = cardStep();
+            var left = safe * stepNow;
+            programmaticScroll = true;
+            phoneCursor = safe;
+            if (animate) {
+                slider.scrollTo({ left: left, behavior: 'smooth' });
+            } else {
+                slider.scrollLeft = left;
+            }
+            pos = left;
+            step = stepNow;
+            updateDots(safe);
+            setTimeout(function () { programmaticScroll = false; }, animate ? 700 : 40);
         }
 
         // Sizes are measured once (and again on resize), and the position is
@@ -782,8 +842,7 @@
         var step = null, half = 0, pos = 0;
         var infiniteReviews = reviewsData.length >= 4;
         function measure() {
-            var cardWrapper = slider.querySelector('.review-card-wrapper');
-            step = (cardWrapper ? cardWrapper.offsetWidth : 320) + 16;
+            step = cardStep();
             half = infiniteReviews ? slider.scrollWidth / 2 : slider.scrollWidth;
             pos = slider.scrollLeft;
         }
@@ -796,8 +855,10 @@
         });
         if (io) io.observe(slider);
 
+        // Phones use native snap scrolling. Writing scrollLeft every frame
+        // cancelled the touch gesture and snapped the card back.
         function scrollAnimate() {
-            if (!isPaused && visible) {
+            if (!phoneMode && !isPaused && visible) {
                 if (step === null) measure();
                 pos += speed;
                 if (pos >= half) {
@@ -813,27 +874,79 @@
             raf = requestAnimationFrame(scrollAnimate);
         }
 
-        // After a user scroll or dot click, resume from where the slider now is.
-        function resume() { isPaused = false; step = null; }
-        slider.addEventListener('mouseenter', function () { isPaused = true; });
-        slider.addEventListener('mouseleave', resume);
-        slider.addEventListener('touchstart', function () { isPaused = true; }, { passive: true });
-        slider.addEventListener('touchend', resume);
-        dotsWrap.addEventListener('click', function () { step = null; });
+        function startPhoneAutoplay() {
+            clearInterval(phoneTimer);
+            if (!phoneMode) return;
+            phoneTimer = setInterval(function () {
+                if (isPaused || !visible) return;
+                var cards = slider.querySelectorAll('.review-card-wrapper').length || total;
+                var next = phoneCursor + 1;
+                if (next >= cards) next = 0;
+                // Land on the duplicated first card, then jump back to 0 with no animation.
+                var resetAfter = infiniteReviews && next === total;
+                scrollToIndex(next, true);
+                if (resetAfter) {
+                    setTimeout(function () {
+                        if (!phoneMode) return;
+                        phoneCursor = 0;
+                        programmaticScroll = true;
+                        slider.scrollLeft = 0;
+                        pos = 0;
+                        updateDots(0);
+                        setTimeout(function () { programmaticScroll = false; }, 40);
+                    }, 720);
+                }
+            }, 4500);
+        }
+
+        function pauseForUser() {
+            isPaused = true;
+            clearTimeout(resumeTimer);
+        }
+        function resumeLater() {
+            clearTimeout(resumeTimer);
+            resumeTimer = setTimeout(function () {
+                isPaused = false;
+                step = null;
+                pos = slider.scrollLeft;
+            }, 2500);
+        }
+
+        slider.addEventListener('mouseenter', pauseForUser, listen);
+        slider.addEventListener('mouseleave', resumeLater, listen);
+        slider.addEventListener('touchstart', pauseForUser, passiveOpts);
+        slider.addEventListener('touchend', resumeLater, passiveOpts);
+        slider.addEventListener('touchcancel', resumeLater, passiveOpts);
+        slider.addEventListener('scroll', function () {
+            if (!phoneMode || programmaticScroll) return;
+            var stepNow = cardStep();
+            if (!stepNow) return;
+            var raw = Math.round(slider.scrollLeft / stepNow);
+            phoneCursor = raw;
+            var idx = raw % total;
+            if (idx !== activeIndex) updateDots(idx);
+        }, passiveOpts);
+        dotsWrap.addEventListener('click', function () { step = null; }, listen);
 
         raf = requestAnimationFrame(scrollAnimate);
+        startPhoneAutoplay();
 
         var resizeTimer;
         window.addEventListener('resize', function () {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function () {
-                scrollToIndex(activeIndex);
+                phoneMode = window.innerWidth < 768;
+                scrollToIndex(activeIndex, false);
                 step = null;
+                startPhoneAutoplay();
             }, 200);
-        });
+        }, listen);
 
         slider._reviewDestroy = function () {
             cancelAnimationFrame(raf);
+            clearInterval(phoneTimer);
+            clearTimeout(resumeTimer);
+            abort.abort();
             if (io) io.disconnect();
             dotsWrap.innerHTML = '';
             slider.innerHTML = '';
