@@ -4293,15 +4293,18 @@
         const isWhatsapp = url.indexOf('wa.me') !== -1 || url.indexOf('whatsapp') !== -1;
         const isCall = url.indexOf('tel:') === 0;
 
-        if (isWhatsapp) {
-            const win = window.open(url, '_blank', 'noopener');
-            if (win && !win.closed && typeof win.closed !== 'undefined') {
-                if (justRegistered) {
-                    setTimeout(() => { window.location.reload(); }, 600);
-                }
-                return;
+        if (isWhatsapp || target === '_blank') {
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            if (justRegistered) {
+                setTimeout(() => { window.location.reload(); }, 600);
             }
-            window.location.href = url;
             return;
         }
 
@@ -4311,109 +4314,115 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+
             if (justRegistered) {
                 setTimeout(() => { window.location.reload(); }, 800);
             }
             return;
         }
 
-        if (target === '_blank') {
-            const win = window.open(url, '_blank', 'noopener');
-            if (win && !win.closed && typeof win.closed !== 'undefined') {
-                if (justRegistered) {
-                    setTimeout(() => { window.location.reload(); }, 600);
-                }
-                return;
-            }
-        }
         window.location.href = url;
     };
 
     window.handleAgentContactClick = function (event, element, interactionType) {
-        if (!element) return true;
-        event.preventDefault();
+        if (!element) return false;
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        if (element.getAttribute('data-submitting') === 'true') {
+            return false;
+        }
+        element.setAttribute('data-submitting', 'true');
+        setTimeout(() => {
+            if (element) element.removeAttribute('data-submitting');
+        }, 2000);
 
         const isAuth = {{ request.user.is_authenticated|yesno:"true,false" }};
-    const hasGuestSession = {% if request.session.quick_lead_user %}true{% else %} false{% endif %};
-    const href = element.getAttribute('href');
-    const agentId = element.getAttribute('data-agent-id');
-    const urlParams = new URLSearchParams(window.location.search);
-    const serviceType = element.getAttribute('data-service-type') || urlParams.get('ServiceType') || urlParams.get('service_type') || (document.getElementById('ServiceType') ? document.getElementById('ServiceType').value : '') || '';
-    const insuranceType = element.getAttribute('data-insurance-type') || urlParams.get('InsuranceType') || urlParams.get('insurance_type') || (document.getElementById('InsuranceType') ? document.getElementById('InsuranceType').value : '') || '';
-    const insuranceCompany = element.getAttribute('data-insurance-company') || urlParams.get('InsuranceCompany') || urlParams.get('insurance_company') || (document.getElementById('InsuranceCompany') ? document.getElementById('InsuranceCompany').value : '') || '';
-    const pincode = element.getAttribute('data-pincode') || urlParams.get('Pincode') || urlParams.get('pincode') || (document.getElementById('Pincode') ? document.getElementById('Pincode').value : '') || '';
-    const target = element.getAttribute('target');
+        const hasGuestSession = {% if request.session.quick_lead_user %}true{% else %} false{% endif %};
+        const href = element.getAttribute('href');
+        const agentId = element.getAttribute('data-agent-id');
+        const urlParams = new URLSearchParams(window.location.search);
+        const serviceType = element.getAttribute('data-service-type') || urlParams.get('ServiceType') || urlParams.get('service_type') || (document.getElementById('ServiceType') ? document.getElementById('ServiceType').value : '') || '';
+        const insuranceType = element.getAttribute('data-insurance-type') || urlParams.get('InsuranceType') || urlParams.get('insurance_type') || (document.getElementById('InsuranceType') ? document.getElementById('InsuranceType').value : '') || '';
+        const insuranceCompany = element.getAttribute('data-insurance-company') || urlParams.get('InsuranceCompany') || urlParams.get('insurance_company') || (document.getElementById('InsuranceCompany') ? document.getElementById('InsuranceCompany').value : '') || '';
+        const pincode = element.getAttribute('data-pincode') || urlParams.get('Pincode') || urlParams.get('pincode') || (document.getElementById('Pincode') ? document.getElementById('Pincode').value : '') || '';
+        const target = element.getAttribute('target');
 
-    const captureLeadAndProceed = (guestData) => {
-        let finalServiceType = serviceType || '';
-        if (insuranceType) {
-            finalServiceType = finalServiceType ? finalServiceType + ' - ' + insuranceType : insuranceType;
-        }
-        let activePillText = $('.filter-pill.active').text().trim().replace(/\s+/g, ' ');
-        if (!activePillText) {
-            if (serviceType === 'New Policy') activePillText = 'Buy New Insurance';
-            else if (serviceType === 'Policy Review') activePillText = 'Insurance Audit';
-            else if (serviceType === 'Claim Assistance') activePillText = 'Claims Support';
-            else activePillText = serviceType || 'Buy New Insurance';
-        }
-
-        var postData = {
-            agent_id: agentId,
-            interaction_type: interactionType,
-            service_type: finalServiceType,
-            insurance_type: activePillText,
-            insurance_company: insuranceCompany,
-            pincode: pincode,
-            source_page: window.location.pathname
-        };
-
-        const effectiveGuestData = guestData || window._padosiGuestData;
-        if (effectiveGuestData) {
-            postData.fullname = effectiveGuestData.fullname;
-            postData.email = effectiveGuestData.email;
-            postData.mobile = effectiveGuestData.mobile;
-        }
-
-        Swal.fire({
-            title: 'Connecting you...',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-                $.ajax({
-                    url: "{% url 'agents:agent_leads_capture' %}",
-                    type: "POST",
-                    headers: { 'X-CSRFToken': getCSRFToken() },
-                    data: postData,
-                    success: function (resp) {
-                        Swal.close();
-                        if (resp.success && resp.url && resp.url !== '#') {
-                            window.proceedToDestination(resp.url, target, Boolean(window._padosiJustRegistered));
-                        } else if (resp.message) {
-                            const errMsg = resp.message || 'This agent has not provided contact details for this format.';
-                            Swal.fire('Notice', errMsg, 'info');
-                        }
-                    },
-                    error: function (xhr) {
-                        Swal.close();
-                        let msg = 'Something went wrong. Please refresh the page and try again.';
-                        if (xhr.status === 403) {
-                            msg = 'Access denied. Suspicious activity has been detected from your IP.';
-                        }
-                        Swal.fire('Oops!', msg, 'warning');
-                    }
-                });
+        const captureLeadAndProceed = (guestData) => {
+            let finalServiceType = serviceType || '';
+            if (insuranceType) {
+                finalServiceType = finalServiceType ? finalServiceType + ' - ' + insuranceType : insuranceType;
             }
-        });
-    };
+            let activePillText = $('.filter-pill.active').text().trim().replace(/\s+/g, ' ');
+            if (!activePillText) {
+                if (serviceType === 'New Policy') activePillText = 'Buy New Insurance';
+                else if (serviceType === 'Policy Review') activePillText = 'Insurance Audit';
+                else if (serviceType === 'Claim Assistance') activePillText = 'Claims Support';
+                else activePillText = serviceType || 'Buy New Insurance';
+            }
 
-    if (!isAuth && !hasGuestSession && !window._padosiGuestAuthenticated) {
-        window.showQuickRegisterPopup(window.location.pathname + window.location.search, function (guestData) {
-            captureLeadAndProceed(guestData);
-        });
-    } else {
-        captureLeadAndProceed(null);
-    }
+            var postData = {
+                agent_id: agentId,
+                interaction_type: interactionType,
+                service_type: finalServiceType,
+                insurance_type: activePillText,
+                insurance_company: insuranceCompany,
+                pincode: pincode,
+                source_page: window.location.pathname
+            };
+
+            const effectiveGuestData = guestData || window._padosiGuestData;
+            if (effectiveGuestData) {
+                postData.fullname = effectiveGuestData.fullname;
+                postData.email = effectiveGuestData.email;
+                postData.mobile = effectiveGuestData.mobile;
+            }
+
+            Swal.fire({
+                title: 'Connecting you...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                    $.ajax({
+                        url: "{% url 'agents:agent_leads_capture' %}",
+                        type: "POST",
+                        headers: { 'X-CSRFToken': getCSRFToken() },
+                        data: postData,
+                        success: function (resp) {
+                            Swal.close();
+                            if (element) element.removeAttribute('data-submitting');
+                            if (resp.success && resp.url && resp.url !== '#') {
+                                window.proceedToDestination(resp.url, target, Boolean(window._padosiJustRegistered));
+                            } else if (resp.message) {
+                                const errMsg = resp.message || 'This agent has not provided contact details for this format.';
+                                Swal.fire('Notice', errMsg, 'info');
+                            }
+                        },
+                        error: function (xhr) {
+                            Swal.close();
+                            if (element) element.removeAttribute('data-submitting');
+                            let msg = 'Something went wrong. Please refresh the page and try again.';
+                            if (xhr.status === 403) {
+                                msg = 'Access denied. Suspicious activity has been detected from your IP.';
+                            }
+                            Swal.fire('Oops!', msg, 'warning');
+                        }
+                    });
+                }
+            });
         };
+
+        if (!isAuth && !hasGuestSession && !window._padosiGuestAuthenticated) {
+            window.showQuickRegisterPopup(window.location.pathname + window.location.search, function (guestData) {
+                captureLeadAndProceed(guestData);
+            });
+        } else {
+            captureLeadAndProceed(null);
+        }
+        return false;
+    };
 
     });
 </script>

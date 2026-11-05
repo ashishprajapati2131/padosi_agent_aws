@@ -247,6 +247,30 @@
         window._padosiGuestAuthenticated = window._padosiGuestAuthenticated || false;
         window._padosiGuestData = window._padosiGuestData || null;
 
+        window.handleUserLogout = function (event) {
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+            } catch (e) {
+                console.error('Error clearing storage on logout:', e);
+            }
+            return true;
+        };
+
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            if (form && form.action && form.action.indexOf('/logout/') !== -1) {
+                window.handleUserLogout(e);
+            }
+        }, true);
+
+        document.addEventListener('click', function (e) {
+            const el = e.target && e.target.closest ? e.target.closest('a[href*="logout"], button[formaction*="logout"]') : null;
+            if (el) {
+                window.handleUserLogout(e);
+            }
+        }, true);
+
         window.toggleFavoriteAgent = function (btn, agentId) {
             const isAuth = "{{ request.user.is_authenticated|yesno:'true,false' }}" === "true";
             if (!isAuth && !window._padosiGuestAuthenticated) {

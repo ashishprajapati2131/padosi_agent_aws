@@ -493,7 +493,11 @@ def _resolve_logout_role(request):
 
     user = getattr(request, 'user', None)
     if not user or not getattr(user, 'is_authenticated', False):
-        # A quick-registered visitor has only a guest session; send them back to where they were.
+        # A quick-registered visitor or public visitor has only a guest session; send them back to where they were.
+        referer = request.META.get('HTTP_REFERER') or ''
+        host = request.get_host()
+        if (referer and host in referer and 'find-agents' in referer) or request.session.get('quick_lead_user') or request.session.get('last_pincode'):
+            return 'client'
         return 'client' if request.session.get('quick_lead_user') else 'agent'
 
     role = (getattr(user, 'role', None) or '').lower()
@@ -531,11 +535,23 @@ def logout_view(request):
 
     logout(request)
 
+    # Completely wipe all location, pincode, and customer data from session
+    for k in ['last_pincode', 'pincode', 'last_location', 'last_lat', 'last_lng', 'detected_area', 'quick_lead_user', 'location', 'lat', 'lng']:
+        request.session.pop(k, None)
+    request.session.flush()
+
     if role == 'client':
         referer = request.META.get('HTTP_REFERER')
         host = request.get_host()
         if referer and host in referer:
-            return _clear_admin_session_on(redirect(referer), request)
+            import urllib.parse
+            parsed = urllib.parse.urlparse(referer)
+            qs = urllib.parse.parse_qs(parsed.query)
+            for k in ['pincode', 'location', 'lat', 'lng', 'detected_area', 'Pincode', 'ServiceType', 'InsuranceType', 'InsuranceCompany']:
+                qs.pop(k, None)
+            new_query = urllib.parse.urlencode(qs, doseq=True)
+            clean_url = urllib.parse.urlunparse(parsed._replace(query=new_query))
+            return _clear_admin_session_on(redirect(clean_url), request)
         return _clear_admin_session_on(redirect('home:find_agents'), request)
 
     if role == 'distributor':
