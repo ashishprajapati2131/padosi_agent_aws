@@ -15,6 +15,14 @@
                 </figure>
             </a>
             {% if not hide_site_nav %}
+            <div class="d-flex align-items-center d-lg-none ml-auto mr-2 js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
+                <form action="/logout/" method="POST" id="logout-form-mobile-bar" class="m-0" onsubmit="return handleUserLogout(event)">
+                    {% csrf_token %}
+                    <button type="submit" onclick="handleUserLogout(event)" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1 font-weight-bold" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-sign-out-alt"></i> Sign Out
+                    </button>
+                </form>
+            </div>
             <button class="navbar-toggler collapsed" type="button" data-toggle="collapse"
                 data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
                 aria-label="Toggle navigation">
@@ -84,10 +92,10 @@
                             <i class="fa-solid fa-user-circle mr-2 text-primary"></i>{% if request.user.first_name %}{{ request.user.get_full_name|default:request.user.first_name }}{% elif request.session.quick_lead_user.fullname %}{{ request.session.quick_lead_user.fullname }}{% else %}My Account{% endif %}
                         </div>
                     </li>
-                    <li class="nav-item d-lg-none js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
+                    <li class="nav-item js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
                         <form action="/logout/" method="POST" id="logout-form-mobile" class="m-0" onsubmit="return handleUserLogout(event)">
                             {% csrf_token %}
-                            <button type="submit" onclick="handleUserLogout(event)" class="nav-link text-danger border-0 bg-transparent w-100 text-left pt-1">
+                            <button type="submit" onclick="handleUserLogout(event)" class="nav-link text-danger border-0 bg-transparent w-100 text-left pt-1 font-weight-bold" style="cursor: pointer;">
                                 <i class="fas fa-sign-out-alt mr-2"></i>Sign Out
                             </button>
                         </form>
@@ -283,9 +291,24 @@
                             </form>
                         </div>
                     </div>
+
+                    <form action="/logout/" method="POST" id="logout-form-desktop" class="m-0 ml-2 js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}" onsubmit="return handleUserLogout(event)">
+                        {% csrf_token %}
+                        <button type="submit" onclick="handleUserLogout(event)" class="btn btn-sm btn-outline-danger rounded-pill px-3 font-weight-bold d-inline-flex align-items-center" style="font-size: 13px; height: 38px; gap: 6px;">
+                            <i class="fas fa-sign-out-alt"></i> Sign Out
+                        </button>
+                    </form>
                 </div>
             </div>
             {% endif %}
         </nav>
     </div>
+    <style>
+        @media (min-width: 992px) {
+            .header .dropdown.js-guest-account:hover > .dropdown-menu {
+                display: block;
+                margin-top: 0;
+            }
+        }
+    </style>
 </header>

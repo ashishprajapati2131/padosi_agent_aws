@@ -10,6 +10,8 @@ class AgentsConfig(AppConfig):
         from django.contrib.auth.models import User
         
         def get_user_role(self):
+            if not self.pk:
+                return 'anonymous'
             if self.is_superuser or self.is_staff:
                 return 'admin'
             if hasattr(self, 'insurance_profile'):
