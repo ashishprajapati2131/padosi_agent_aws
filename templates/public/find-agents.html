@@ -3449,7 +3449,9 @@
             data: postData,
             success: function (resp) {
                 if (resp && resp.success && resp.url && resp.url !== '#') {
-                    if (interactionType === 'call') {
+                    if (typeof window.proceedToDestination === 'function') {
+                        window.proceedToDestination(resp.url, null, Boolean(window._padosiJustRegistered));
+                    } else if (interactionType === 'call') {
                         window.location.href = resp.url;
                     } else {
                         window.open(resp.url, '_blank', 'noopener');
@@ -4251,6 +4253,7 @@
                                     // contact-click handlers skip the popup and carry contact info.
                                     window._padosiGuestAuthenticated = true;
                                     window._padosiGuestData = result.value;
+                                    window._padosiJustRegistered = true;
                                     // Show My Account / Sign Out in the header without a reload.
                                     document.querySelectorAll('.js-guest-account').forEach(function (el) { el.classList.remove('d-none'); });
                                     if (typeof onSuccessCallback === 'function') {
@@ -4284,13 +4287,44 @@
         });
     };
 
-    window.proceedToDestination = function (url, target) {
-        if (target === '_blank' || (url && (url.indexOf('wa.me') !== -1 || url.indexOf('whatsapp') !== -1))) {
+    window.proceedToDestination = function (url, target, justRegistered) {
+        if (!url || url === '#') return;
+
+        const isWhatsapp = url.indexOf('wa.me') !== -1 || url.indexOf('whatsapp') !== -1;
+        const isCall = url.indexOf('tel:') === 0;
+
+        if (isWhatsapp) {
             const win = window.open(url, '_blank', 'noopener');
-            if (!win || win.closed || typeof win.closed === 'undefined') {
-                window.location.href = url;
+            if (win && !win.closed && typeof win.closed !== 'undefined') {
+                if (justRegistered) {
+                    setTimeout(() => { window.location.reload(); }, 600);
+                }
+                return;
+            }
+            window.location.href = url;
+            return;
+        }
+
+        if (isCall) {
+            const a = document.createElement('a');
+            a.href = url;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            if (justRegistered) {
+                setTimeout(() => { window.location.reload(); }, 800);
             }
             return;
+        }
+
+        if (target === '_blank') {
+            const win = window.open(url, '_blank', 'noopener');
+            if (win && !win.closed && typeof win.closed !== 'undefined') {
+                if (justRegistered) {
+                    setTimeout(() => { window.location.reload(); }, 600);
+                }
+                return;
+            }
         }
         window.location.href = url;
     };
@@ -4353,7 +4387,7 @@
                     success: function (resp) {
                         Swal.close();
                         if (resp.success && resp.url && resp.url !== '#') {
-                            window.proceedToDestination(resp.url, target);
+                            window.proceedToDestination(resp.url, target, Boolean(window._padosiJustRegistered));
                         } else if (resp.message) {
                             const errMsg = resp.message || 'This agent has not provided contact details for this format.';
                             Swal.fire('Notice', errMsg, 'info');

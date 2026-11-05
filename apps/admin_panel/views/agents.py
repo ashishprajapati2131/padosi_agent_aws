@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
+from django.core.cache import cache
 import json
 
 from .dashboard import _get_admin_from_session
@@ -366,7 +367,14 @@ def toggle_status(request):
                 }, status=403)
 
             # Update status
-            cursor.execute("UPDATE agents SET status = %s WHERE id = %s", [new_status, agent_id])
+            if new_status == 'active':
+                cursor.execute(
+                    "UPDATE agents SET status = %s, is_approved = 1, approved_at = COALESCE(approved_at, %s) WHERE id = %s",
+                    [new_status, timezone.now(), agent_id]
+                )
+            else:
+                cursor.execute("UPDATE agents SET status = %s WHERE id = %s", [new_status, agent_id])
+            cache.delete('homepage_reviews')
     except Exception as e:
         logger.error(f"Error updating agent status: {e}")
         return JsonResponse({'success': False, 'message': 'Database error'})
@@ -466,7 +474,11 @@ def bulk_action_agents(request):
                 format_strings = ','.join(['%s'] * len(agent_ids))
 
                 # Update statuses
-                cursor.execute(f"UPDATE agents SET status = 'active' WHERE id IN ({format_strings})", agent_ids)
+                cursor.execute(
+                    f"UPDATE agents SET status = 'active', is_approved = 1, approved_at = COALESCE(approved_at, %s) WHERE id IN ({format_strings})",
+                    [timezone.now()] + agent_ids
+                )
+                cache.delete('homepage_reviews')
                 try:
                     from apps.agents.models import Agent
                     from apps.agents.services.registration_leads import sync_lead_for_agent
@@ -663,6 +675,9 @@ def update_visibility(request):
     except Exception as e:
         logger.error(f"Error updating agent visibility: {e}")
         return JsonResponse({'success': False, 'message': 'Database error'})
+
+    if field in ('is_profile_visible', 'show_reviews'):
+        cache.delete('homepage_reviews')
 
     return JsonResponse({'success': True})
 

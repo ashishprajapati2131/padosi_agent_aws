@@ -245,27 +245,57 @@ def home(request):
     # Testimonials: admin custom list wins; otherwise approved reviews (cached).
     reviews = cms.get('custom_reviews') or []
     if not reviews:
-        reviews = cache.get('homepage_reviews')
+        cached_reviews = cache.get('homepage_reviews')
+        if cached_reviews and isinstance(cached_reviews, list):
+            # Only trust cache if reviews carry the validated agent_id structure
+            if all(isinstance(r, dict) and 'agent_id' in r for r in cached_reviews):
+                reviews = cached_reviews
     if not reviews:
         from apps.agents.models import AgentReview
-        db_reviews = AgentReview.objects.filter(is_approved=True).select_related('agent', 'agent__profile').order_by('-created_at')[:100]
+        db_reviews = (
+            AgentReview.objects.filter(
+                is_approved=True,
+                agent__isnull=False,
+                agent__status='active',
+                agent__is_blacklisted=False,
+            )
+            .filter(
+                Q(agent__profile__isnull=True)
+                | (
+                    Q(agent__profile__is_profile_visible=True)
+                    & Q(agent__profile__show_reviews=True)
+                )
+            )
+            .exclude(agent__email__iendswith='@paldi-test.invalid')
+            .select_related('agent', 'agent__profile')
+            .order_by('-created_at')[:100]
+        )
 
         agent_counts = {}
         final_reviews = []
         backfill_reviews = []
 
         for rev in db_reviews:
+            agent = rev.agent
+            if not agent or agent.status != 'active' or agent.is_blacklisted:
+                continue
+            if hasattr(agent, 'is_approved_by_admin') and not agent.is_approved_by_admin:
+                continue
+            profile = agent.get_primary_profile()
+            if profile and (not profile.is_profile_visible or not profile.show_reviews):
+                continue
+
             agent_id = rev.agent_id
-            if agent_id:
-                if agent_id not in agent_counts:
-                    agent_counts[agent_id] = 0
-                if agent_counts[agent_id] < 1:
-                    final_reviews.append(rev)
-                    agent_counts[agent_id] += 1
-                else:
-                    backfill_reviews.append(rev)
-            else:
+            if not agent_id:
+                continue
+
+            if agent_id not in agent_counts:
+                agent_counts[agent_id] = 0
+            if agent_counts[agent_id] < 1:
                 final_reviews.append(rev)
+                agent_counts[agent_id] += 1
+            else:
+                backfill_reviews.append(rev)
 
         if len(final_reviews) < 10 and backfill_reviews:
             needed = 10 - len(final_reviews)
@@ -275,17 +305,19 @@ def home(request):
 
         reviews = []
         for rev in final_reviews:
-            agent_name = rev.agent.fullname if rev.agent else None
+            agent = rev.agent
+            agent_name = agent.fullname if agent else None
             agent_slug = None
             agent_photo = None
             agent_state = 'gj' # Default fallback
 
-            if rev.agent:
+            if agent:
                 try:
-                    profile = rev.agent.get_primary_profile()
-                    agent_slug = profile.slug
-                    agent_photo = profile.profile_photo_url
-                    agent_state = profile.state_code
+                    profile = agent.get_primary_profile()
+                    if profile:
+                        agent_slug = profile.slug
+                        agent_photo = profile.profile_photo_url
+                        agent_state = profile.state_code
                 except Exception:
                     pass
 
@@ -293,6 +325,7 @@ def home(request):
             avatar_url = small_avatar_url(agent_photo) if (agent_photo and 'avatar-icon.jpg' not in agent_photo) else f"https://ui-avatars.com/api/?name={_urlquote(rev.reviewer_name or 'User')}&background=0d9488&color=fff&bold=true"
 
             reviews.append({
+                'agent_id': rev.agent_id,
                 'name': rev.reviewer_name or 'User',
                 'service': f"Client of {agent_name}" if agent_name else "Verified Client",
                 'agent_url': f"/{agent_state}/{agent_slug}/" if agent_slug else None,

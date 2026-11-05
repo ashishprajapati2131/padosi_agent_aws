@@ -25,14 +25,19 @@ class QuickSignupExistingAccountTests(TestCase):
         }), content_type='application/json')
         return client, resp
 
-    def test_existing_account_is_not_signed_in(self):
-        for url in ('/join/ad/', '/client/quick-register/'):
-            with self.subTest(url=url):
-                client, resp = self._post(url, 'client.old@example.com')
-                self.assertEqual(resp.status_code, 200, resp.content)
-                self.assertTrue(resp.json().get('success'), resp.content)
-                self.assertNotIn('_auth_user_id', client.session)
-                self.assertEqual(client.session['quick_lead_user']['mobile'], '9000000801')
+    def test_existing_account_ad_page_is_not_signed_in(self):
+        client, resp = self._post('/join/ad/', 'client.old@example.com')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertTrue(resp.json().get('success'), resp.content)
+        self.assertNotIn('_auth_user_id', client.session)
+        self.assertEqual(client.session['quick_lead_user']['mobile'], '9000000801')
+
+    def test_existing_client_quick_register_is_signed_in(self):
+        client, resp = self._post('/client/quick-register/', 'client.old@example.com')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertTrue(resp.json().get('success'), resp.content)
+        self.assertEqual(str(client.session.get('_auth_user_id')), str(self.existing.pk))
+        self.assertEqual(client.session['quick_lead_user']['mobile'], '9000000801')
 
     def test_new_account_is_still_signed_in(self):
         for i, url in enumerate(('/join/ad/', '/client/quick-register/')):

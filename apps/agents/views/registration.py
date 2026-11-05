@@ -5430,10 +5430,18 @@ def client_quick_register(request):
         )
 
     if existing_user:
-        # Plain client account (passwordless guest identity by design).
+        # Plain client account: portal accounts are already handled by _is_portal_user above.
         is_client = Client.objects.filter(user=existing_user).exists()
         if not is_client:
             Client.objects.create(user=existing_user, mobile=mobile, pincode=pincode)
+        elif mobile:
+            Client.objects.filter(user=existing_user, mobile__isnull=True).update(mobile=mobile)
+
+        if fullname and not existing_user.first_name:
+            name_parts = fullname.split(" ")
+            existing_user.first_name = name_parts[0]
+            existing_user.last_name = " ".join(name_parts[1:])
+            existing_user.save(update_fields=["first_name", "last_name"])
 
         request.session["quick_lead_user"] = {
             "fullname": fullname
@@ -5444,9 +5452,16 @@ def client_quick_register(request):
             "mobile": mobile,
             "pincode": pincode,
         }
-        # Typing an email proves nothing, so an existing account is never
-        # signed in here; the lead details above are enough to contact agents.
         request.session.modified = True
+
+        from django.contrib.auth import login
+        from apps.distributors.views.dashboard import is_distributor
+
+        if (
+            not (request.user.is_authenticated and is_distributor(request.user))
+            and not current_is_logged_in_agent
+        ):
+            login(request, existing_user, backend=DJANGO_AUTH_BACKEND)
 
         return JsonResponse(
             {

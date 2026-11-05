@@ -506,6 +506,9 @@ def _resolve_logout_role(request):
     try:
         if Agent.objects.filter(user_id=user.pk).exists():
             return 'agent'
+        from apps.agents.models import Client
+        if Client.objects.filter(user_id=user.pk).exists():
+            return 'client'
     except Exception:
         pass
     return 'agent'

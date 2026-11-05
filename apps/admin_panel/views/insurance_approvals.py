@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator
 from django.contrib import messages
 from django.utils import timezone
+from django.core.cache import cache
 from django.db import transaction
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.models.insurance_approval import AgentApprovalRequest
@@ -109,6 +110,7 @@ def insurance_approvals_process(request, id):
                 new_status = 'active' if approval_request.action == 'activate' else 'inactive'
                 agent.status = new_status
                 agent.save()
+                cache.delete('homepage_reviews')
                 logger.info(f"Admin approved insurance status change: agent #{agent.id} -> {new_status}")
 
         label = 'approved' if decision == 'approved' else 'rejected'
@@ -138,6 +140,7 @@ def insurance_approvals_approve_onboarding(request, id):
                 # 1. Activate Agent status
                 agent.status = 'active'
                 agent.save()
+                cache.delete('homepage_reviews')
                 try:
                     from apps.agents.services.registration_leads import sync_lead_for_agent
                     sync_lead_for_agent(agent)

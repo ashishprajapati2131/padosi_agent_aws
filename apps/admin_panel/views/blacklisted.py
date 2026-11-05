@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.utils import timezone
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Q
 from apps.agents.models import Agent
@@ -130,6 +131,7 @@ def ajax_blacklist_confirm(request):
         agent.blacklisted_at = timezone.now()
         agent.blacklist_source = 'Admin'
         agent.save()
+        cache.delete('homepage_reviews')
         return JsonResponse({'success': True, 'message': 'Agent blacklisted successfully'})
     except Agent.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Agent not found'})
@@ -150,6 +152,7 @@ def ajax_blacklist_remove(request):
         agent.blacklisted_at = None
         agent.blacklist_source = None
         agent.save()
+        cache.delete('homepage_reviews')
         return JsonResponse({'success': True, 'message': 'Blacklist removed successfully'})
     except Agent.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Agent not found'})

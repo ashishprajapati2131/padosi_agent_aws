@@ -90,6 +90,171 @@ class HomePageTests(TestCase):
         self.assertContains(response, 'id="pa-counter-0">1,000</span>')
         self.assertNotContains(response, 'id="pa-counter-0">0</span>')
 
+    def test_reviews_from_pending_approval_agent_not_displayed_on_homepage(self):
+        from django.core.cache import cache
+        from apps.agents.models import Agent, AgentProfile, AgentReview
+        cache.delete('homepage_reviews')
+
+        pending_agent = Agent.objects.create(
+            fullname="Pending Agent",
+            email="pending@example.com",
+            mobile="9876543211",
+            status="pending_approval",
+        )
+        AgentProfile.objects.create(
+            agent=pending_agent,
+            slug="pending-agent",
+            display_name="Pending Agent",
+            is_profile_visible=True,
+            show_reviews=True,
+        )
+        AgentReview.objects.create(
+            agent=pending_agent,
+            reviewer_name="Customer A",
+            rating=5,
+            review="Excellent service from pending agent",
+            is_approved=True,
+        )
+
+        response = self.client.get(reverse('home:home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Excellent service from pending agent")
+        self.assertFalse(response.context['has_reviews'])
+
+    def test_reviews_from_active_approved_agent_displayed_on_homepage(self):
+        from django.core.cache import cache
+        from apps.agents.models import Agent, AgentProfile, AgentReview
+        cache.delete('homepage_reviews')
+
+        active_agent = Agent.objects.create(
+            fullname="Approved Agent",
+            email="approved@example.com",
+            mobile="9876543212",
+            status="active",
+        )
+        AgentProfile.objects.create(
+            agent=active_agent,
+            slug="approved-agent",
+            display_name="Approved Agent",
+            is_profile_visible=True,
+            show_reviews=True,
+        )
+        AgentReview.objects.create(
+            agent=active_agent,
+            reviewer_name="Customer B",
+            rating=5,
+            review="Super helpful approved agent",
+            is_approved=True,
+        )
+
+        response = self.client.get(reverse('home:home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Super helpful approved agent")
+        self.assertTrue(response.context['has_reviews'])
+
+    def test_reviews_from_suspended_rejected_or_blacklisted_agent_not_displayed(self):
+        from django.core.cache import cache
+        from apps.agents.models import Agent, AgentProfile, AgentReview
+        cache.delete('homepage_reviews')
+
+        suspended_agent = Agent.objects.create(
+            fullname="Suspended Agent",
+            email="suspended@example.com",
+            mobile="9876543213",
+            status="suspended",
+        )
+        AgentProfile.objects.create(
+            agent=suspended_agent,
+            slug="suspended-agent",
+            is_profile_visible=True,
+            show_reviews=True,
+        )
+        AgentReview.objects.create(
+            agent=suspended_agent,
+            reviewer_name="Customer C",
+            rating=5,
+            review="Suspended agent review text",
+            is_approved=True,
+        )
+
+        blacklisted_agent = Agent.objects.create(
+            fullname="Blacklisted Agent",
+            email="blacklisted@example.com",
+            mobile="9876543214",
+            status="active",
+            is_blacklisted=True,
+        )
+        AgentProfile.objects.create(
+            agent=blacklisted_agent,
+            slug="blacklisted-agent",
+            is_profile_visible=True,
+            show_reviews=True,
+        )
+        AgentReview.objects.create(
+            agent=blacklisted_agent,
+            reviewer_name="Customer D",
+            rating=5,
+            review="Blacklisted agent review text",
+            is_approved=True,
+        )
+
+        response = self.client.get(reverse('home:home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Suspended agent review text")
+        self.assertNotContains(response, "Blacklisted agent review text")
+        self.assertFalse(response.context['has_reviews'])
+
+    def test_reviews_with_hidden_profile_or_reviews_not_displayed(self):
+        from django.core.cache import cache
+        from apps.agents.models import Agent, AgentProfile, AgentReview
+        cache.delete('homepage_reviews')
+
+        hidden_profile_agent = Agent.objects.create(
+            fullname="Hidden Agent",
+            email="hidden@example.com",
+            mobile="9876543215",
+            status="active",
+        )
+        AgentProfile.objects.create(
+            agent=hidden_profile_agent,
+            slug="hidden-agent",
+            is_profile_visible=False,
+            show_reviews=True,
+        )
+        AgentReview.objects.create(
+            agent=hidden_profile_agent,
+            reviewer_name="Customer E",
+            rating=5,
+            review="Hidden profile review text",
+            is_approved=True,
+        )
+
+        hidden_reviews_agent = Agent.objects.create(
+            fullname="NoReviews Agent",
+            email="noreviews@example.com",
+            mobile="9876543216",
+            status="active",
+        )
+        AgentProfile.objects.create(
+            agent=hidden_reviews_agent,
+            slug="noreviews-agent",
+            is_profile_visible=True,
+            show_reviews=False,
+        )
+        AgentReview.objects.create(
+            agent=hidden_reviews_agent,
+            reviewer_name="Customer F",
+            rating=5,
+            review="Hidden reviews toggle text",
+            is_approved=True,
+        )
+
+        response = self.client.get(reverse('home:home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Hidden profile review text")
+        self.assertNotContains(response, "Hidden reviews toggle text")
+        self.assertFalse(response.context['has_reviews'])
+
 
 class StatDisplayTests(TestCase):
     def test_formats_match_js_counter(self):

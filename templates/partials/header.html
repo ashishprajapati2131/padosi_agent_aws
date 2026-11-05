@@ -78,11 +78,16 @@
                     {% endif %}
                     {% endif %}
 
-                    {# Quick-registered guests (no Django login) also get Sign Out; JS reveals it right after the popup. #}
+                    {# Quick-registered guests and logged-in clients get user info and Sign Out #}
+                    <li class="nav-item d-lg-none js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
+                        <div class="nav-link font-weight-bold text-dark pb-0 pt-2 border-top">
+                            <i class="fa-solid fa-user-circle mr-2 text-primary"></i>{% if request.user.first_name %}{{ request.user.get_full_name|default:request.user.first_name }}{% elif request.session.quick_lead_user.fullname %}{{ request.session.quick_lead_user.fullname }}{% else %}My Account{% endif %}
+                        </div>
+                    </li>
                     <li class="nav-item d-lg-none js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
                         <form action="/logout/" method="POST" id="logout-form-mobile" class="m-0">
                             {% csrf_token %}
-                            <button type="submit" class="nav-link text-danger border-0 bg-transparent w-100 text-left">
+                            <button type="submit" class="nav-link text-danger border-0 bg-transparent w-100 text-left pt-1">
                                 <i class="fas fa-sign-out-alt mr-2"></i>Sign Out
                             </button>
                         </form>
@@ -243,11 +248,11 @@
                     <div class="dropdown js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
                         <a class="contact_us text-decoration-none dropdown-toggle" href="#" role="button" id="userMenu"
                             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fa-solid fa-user-circle mr-2"></i>My Account
+                            <i class="fa-solid fa-user-circle mr-2"></i>{% if request.user.first_name %}{{ request.user.first_name }}{% elif request.session.quick_lead_user.fullname %}{{ request.session.quick_lead_user.fullname|truncatewords:1 }}{% else %}My Account{% endif %}
                         </a>
                         <div class="dropdown-menu dropdown-menu-right shadow-sm border-0 mt-2 rounded-lg"
                             aria-labelledby="userMenu">
-                            {% if request.user.role == 'agent' %}
+                            {% if request.user.is_authenticated and request.user.role == 'agent' %}
                             <a class="dropdown-item py-2" href="/agent/dashboard/">
                                 <i class="fas fa-tachometer-alt mr-2 text-primary"></i>My Dashboard
                             </a>
@@ -255,6 +260,10 @@
                                 <i class="fas fa-user-edit mr-2 text-info"></i>Edit Profile
                             </a>
                             {% else %}
+                            <div class="px-3 py-2 border-bottom">
+                                <div class="font-weight-bold text-dark text-truncate" style="max-width: 180px;">{% if request.user.is_authenticated %}{{ request.user.get_full_name|default:request.user.username }}{% else %}{{ request.session.quick_lead_user.fullname }}{% endif %}</div>
+                                <div class="small text-muted">Client Account</div>
+                            </div>
                             <a class="dropdown-item py-2" href="/">
                                 <i class="fas fa-home mr-2 text-primary"></i>Home
                             </a>
