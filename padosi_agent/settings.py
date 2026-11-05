@@ -156,6 +156,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.admin_panel.middleware.ExceptionLoggerMiddleware",
     "padosi_agent.middleware.SEOMiddleware",
+    "padosi_agent.middleware.NoCacheHtmlMiddleware",
     "apps.agents.middleware.BackgroundJobsMiddleware",
 ]
 

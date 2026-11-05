@@ -42,7 +42,8 @@ Options -Indexes
 # 4. Leverage Browser Caching for Static Assets (CSS, JS, Images, Fonts)
 <IfModule mod_expires.c>
     ExpiresActive On
-    ExpiresDefault "access plus 1 day"
+    # No ExpiresDefault — only static asset types get long cache times.
+    # Dynamic HTML responses MUST NOT be cached (user-specific header content).
 
     # Images (immutable/long cache)
     ExpiresByType image/webp "access plus 1 year"
@@ -65,9 +66,16 @@ Options -Indexes
 </IfModule>
 
 <IfModule mod_headers.c>
-    # Set Cache-Control header for static assets
+    # Dynamic (HTML) responses: never cache — content varies per user session
+    Header set Cache-Control "no-cache, no-store, must-revalidate, private"
+    Header set Pragma "no-cache"
+    Header set Vary "Cookie"
+
+    # Override: allow long caching for static assets (images, CSS, JS, fonts)
     <FilesMatch "\.(ico|jpe?g|png|gif|webp|svg|css|js|woff2?|ttf)$">
         Header set Cache-Control "max-age=2592000, public, immutable"
+        Header unset Pragma
+        Header unset Vary
     </FilesMatch>
 </IfModule>
 

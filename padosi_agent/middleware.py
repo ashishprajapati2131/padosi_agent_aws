@@ -120,3 +120,26 @@ class SEOMiddleware(MiddlewareMixin):
         if 'text/html' in content_type and 'Content-Security-Policy' not in response:
             response['Content-Security-Policy'] = self.BASE_CSP
         return response
+
+
+class NoCacheHtmlMiddleware:
+    """Prevent browsers and shared caches (CDN/proxy) from caching HTML responses.
+
+    HTML pages contain user-specific content (e.g. logged-in header vs
+    anonymous header), so caching them causes stale/wrong content to be served.
+    Only HTML responses are affected; static assets served by WhiteNoise or
+    matched by the Apache FilesMatch directive keep their long cache times.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        content_type = response.get('Content-Type', '') or ''
+        if 'text/html' in content_type:
+            response['Cache-Control'] = 'no-cache, no-store, must-revalidate, private'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+            response['Vary'] = 'Cookie'
+        return response

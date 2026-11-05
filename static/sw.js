@@ -1,4 +1,4 @@
-const CACHE_NAME = 'padosi-agent-pwa-v5';
+const CACHE_NAME = 'padosi-agent-pwa-v6';
 const STATIC_ASSETS = [
   '/offline.html'
 ];
@@ -47,6 +47,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Navigation requests (HTML pages) are NEVER cached because they contain
+  // user-specific content (logged-in vs anonymous header). Only fall back to
+  // the offline page when the network is unavailable.
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -54,10 +57,6 @@ self.addEventListener('fetch', (event) => {
           if (!response || response.status === 404) {
             return fetch('/agent-login').catch(() => response);
           }
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
           return response;
         })
         .catch(() => caches.match('/offline.html'))
