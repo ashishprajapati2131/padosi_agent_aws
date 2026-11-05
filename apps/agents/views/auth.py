@@ -491,28 +491,46 @@ def _resolve_logout_role(request):
     if _get_admin_from_session(request):
         return 'admin'
 
+    # If the logout form explicitly marks source as 'client', trust it immediately
+    if request.POST.get('source') == 'client':
+        return 'client'
+
+    referer = request.META.get('HTTP_REFERER') or ''
+    host = request.get_host()
+
     user = getattr(request, 'user', None)
     if not user or not getattr(user, 'is_authenticated', False):
         # A quick-registered visitor or public visitor has only a guest session; send them back to where they were.
-        referer = request.META.get('HTTP_REFERER') or ''
-        host = request.get_host()
-        if (referer and host in referer and 'find-agents' in referer) or request.session.get('quick_lead_user') or request.session.get('last_pincode'):
+        if referer and host in referer:
+            if '/agent/' in referer or '/agent-login' in referer:
+                return 'agent'
+            if '/distributor' in referer:
+                return 'distributor'
+            if '/admin' in referer:
+                return 'admin'
+            if '/insurance' in referer:
+                return 'insurance_company'
+        return 'client'
+
+    # If logging out from public-facing site (Home, Find Agents, About, FAQ, Contact):
+    # never redirect to agent login!
+    if referer and host in referer:
+        if '/agent/' not in referer and '/distributor' not in referer and '/admin' not in referer and '/insurance' not in referer:
             return 'client'
-        return 'client' if request.session.get('quick_lead_user') else 'agent'
 
     role = (getattr(user, 'role', None) or '').lower()
-    if role in ('admin', 'agent', 'client', 'distributor', 'insurance_company'):
+    if role in ('admin', 'client', 'distributor', 'insurance_company'):
         return role
     if user.groups.filter(name='distributor').exists():
         return 'distributor'
     if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
         return 'admin'
     try:
+        from apps.agents.models import Client
+        if Client.objects.filter(user_id=user.pk).exists() or request.session.get('quick_lead_user'):
+            return 'client'
         if Agent.objects.filter(user_id=user.pk).exists():
             return 'agent'
-        from apps.agents.models import Client
-        if Client.objects.filter(user_id=user.pk).exists():
-            return 'client'
     except Exception:
         pass
     return 'agent'
@@ -551,8 +569,12 @@ def logout_view(request):
                 qs.pop(k, None)
             new_query = urllib.parse.urlencode(qs, doseq=True)
             clean_url = urllib.parse.urlunparse(parsed._replace(query=new_query))
-            return _clear_admin_session_on(redirect(clean_url), request)
-        return _clear_admin_session_on(redirect('home:find_agents'), request)
+            response = redirect(clean_url)
+            response.delete_cookie('sessionid')
+            return _clear_admin_session_on(response, request)
+        response = redirect('home:find_agents')
+        response.delete_cookie('sessionid')
+        return _clear_admin_session_on(response, request)
 
     if role == 'distributor':
         portal_success(request, "You have been logged out successfully.", PORTAL_DISTRIBUTOR)

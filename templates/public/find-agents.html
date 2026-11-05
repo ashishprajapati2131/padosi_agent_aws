@@ -53,13 +53,6 @@
         box-shadow: none !important;
     }
 
-    /* Desktop-only header visibility for Find Agents page */
-    @media (max-width: 991.98px) {
-        .header {
-            display: none !important;
-        }
-    }
-
     /* Premium Dark Filter Sidebar Styles */
     .premium-dark-filter {
         background: #ffffff !important;
@@ -4256,6 +4249,8 @@
                                     window._padosiJustRegistered = true;
                                     // Show My Account / Sign Out in the header without a reload.
                                     document.querySelectorAll('.js-guest-account').forEach(function (el) { el.classList.remove('d-none'); });
+                                    document.querySelectorAll('.js-find-agent-cta').forEach(function (el) { el.classList.add('d-none'); });
+                                    document.querySelectorAll('.js-mobile-find-agent-item').forEach(function (el) { el.classList.add('d-none'); });
                                     if (typeof onSuccessCallback === 'function') {
                                         onSuccessCallback(result.value, response);
                                     } else {

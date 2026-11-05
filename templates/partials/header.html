@@ -37,10 +37,10 @@
                     <li class="nav-item {% if request.path == '/contact/' %}active{% endif %}">
                         <a class="nav-link" href="/contact/">Contact Us</a>
                     </li>
-                    {% if not request.user.is_authenticated %}
+                    {% if not request.user.is_authenticated and not request.session.quick_lead_user %}
                     {# Mobile-only Find PadosiAgent for guests with location detection badge #}
                     {% if '/find-agents' not in request.path %}
-                    <li class="nav-item d-lg-none">
+                    <li class="nav-item d-lg-none js-mobile-find-agent-item">
                         <a class="nav-link d-flex flex-column" href="/find-agents/?openFilter=1">
                             <span class="mobile-find-brand">Find <span class="brand-padosi">Padosi</span><span class="brand-agent">Agent</span></span>
                             {% if request.session.detected_area %}
@@ -69,8 +69,8 @@
                         </div>
                     </li>
 
-                    {% if request.user.is_authenticated %}
-                    {% if request.user.role == 'agent' %}
+                    {% if request.user.is_authenticated or request.session.quick_lead_user %}
+                    {% if request.user.is_authenticated and request.user.role == 'agent' %}
                     <li class="nav-item d-lg-none {% if '/agent/dashboard' in request.path %}active{% endif %}">
                         <a class="nav-link" href="/agent/dashboard/">
                             <i class="fas fa-tachometer-alt mr-2 text-primary"></i>My Dashboard
@@ -96,6 +96,7 @@
                     <li class="nav-item d-lg-none js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
                         <form action="/logout/" method="POST" id="logout-form-mobile" class="m-0" onsubmit="return handleUserLogout(event)">
                             {% csrf_token %}
+                            <input type="hidden" name="source" value="client">
                             <button type="submit" onclick="handleUserLogout(event)" class="nav-link text-danger border-0 bg-transparent w-100 text-left font-weight-bold mobile-signout-btn" style="cursor: pointer;">
                                 <i class="fas fa-sign-out-alt mr-2 text-danger"></i>Sign Out
                             </button>
@@ -245,15 +246,15 @@
                         </div>
                     </div>
                     {% endif %}
-                    {% if not request.user.is_authenticated %}
+                    {# Desktop Find PadosiAgent CTA button: ONLY shown when user is NOT logged in and has NO active guest session #}
                     {% if '/find-agents' not in request.path %}
-                    <a class="contact_us text-decoration-none mr-2" href="/find-agents/?openFilter=1">
+                    <a class="contact_us text-decoration-none mr-2 js-find-agent-cta {% if request.user.is_authenticated or request.session.quick_lead_user %}d-none{% endif %}" href="/find-agents/?openFilter=1">
                         Find <span class="brand-padosi">Padosi</span><span class="brand-agent">Agent</span><i
                             class="fa-solid fa-arrow-right"></i>
                     </a>
                     {% endif %}
-                    {% endif %}
 
+                    {# Desktop My Account dropdown: ONLY shown when user IS logged in or HAS active guest session #}
                     <div class="dropdown js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
                         <a class="contact_us text-decoration-none dropdown-toggle" href="javascript:void(0)" role="button" id="userMenu"
                             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -286,6 +287,7 @@
                             <div class="dropdown-divider"></div>
                             <form action="/logout/" method="POST" id="logout-form" class="m-0" onsubmit="return handleUserLogout(event)">
                                 {% csrf_token %}
+                                <input type="hidden" name="source" value="client">
                                 <button type="submit" onclick="handleUserLogout(event)" class="dropdown-item py-2 text-danger">
                                     <i class="fas fa-sign-out-alt mr-2"></i>Sign Out
                                 </button>

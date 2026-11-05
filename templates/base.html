@@ -251,11 +251,19 @@
             try {
                 localStorage.clear();
                 sessionStorage.clear();
+                window._padosiGuestAuthenticated = false;
+                window._padosiGuestData = null;
             } catch (e) {
                 console.error('Error clearing storage on logout:', e);
             }
             return true;
         };
+
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
 
         document.addEventListener('submit', function (e) {
             const form = e.target;
@@ -321,7 +329,7 @@
     <div class="loader-mask" aria-hidden="true" style="display:none"><div class="spinner"></div></div>
     <div id="app-content">
         {% include 'partials/announcement_bar.html' %}
-        {% if not hide_header or request.path == '/' or '/find-agents/' in request.path %}
+        {% if not hide_header or request.path == '/' or 'find-agents' in request.path %}
             {% include 'partials/header.html' %}
         {% endif %}
         
