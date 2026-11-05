@@ -54,16 +54,31 @@
                     {% endif %}
                     {% endif %}
 
+                    {# Quick-registered guests and logged-in users get user info header at TOP #}
+                    <li class="nav-item d-lg-none js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
+                        <div class="mobile-user-profile-header d-flex align-items-center">
+                            <i class="fa-solid fa-circle-user mr-3 text-primary" style="font-size: 26px;"></i>
+                            <div class="overflow-hidden" style="flex: 1;">
+                                <div class="font-weight-bold text-dark text-truncate user-title" style="font-size: 15px; line-height: 1.2;">
+                                    {% if request.user.is_authenticated %}{{ request.user.get_full_name|default:request.user.first_name|default:request.user.username }}{% else %}{{ request.session.quick_lead_user.fullname }}{% endif %}
+                                </div>
+                                <div class="small text-muted user-role-badge" style="font-size: 12px; margin-top: 2px;">
+                                    {% if request.user.is_authenticated and request.user.role == 'agent' %}Agent Account{% elif request.user.is_authenticated %}Client Account{% else %}Guest Account{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+
                     {% if request.user.is_authenticated %}
                     {% if request.user.role == 'agent' %}
                     <li class="nav-item d-lg-none {% if '/agent/dashboard' in request.path %}active{% endif %}">
                         <a class="nav-link" href="/agent/dashboard/">
-                            <i class="fas fa-tachometer-alt mr-2"></i>My Dashboard
+                            <i class="fas fa-tachometer-alt mr-2 text-primary"></i>My Dashboard
                         </a>
                     </li>
                     <li class="nav-item d-lg-none {% if '/agent/edit-profile' in request.path %}active{% endif %}">
                         <a class="nav-link" href="/agent/edit-profile/">
-                            <i class="fas fa-user-edit mr-2"></i>Edit Profile
+                            <i class="fas fa-user-edit mr-2 text-info"></i>Edit Profile
                         </a>
                     </li>
                     {% else %}
@@ -78,17 +93,11 @@
                     {% endif %}
                     {% endif %}
 
-                    {# Quick-registered guests and logged-in clients get user info and Sign Out #}
-                    <li class="nav-item d-lg-none js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
-                        <div class="nav-link font-weight-bold text-dark pb-0 pt-2 border-top">
-                            <i class="fa-solid fa-user-circle mr-2 text-primary"></i>{% if request.user.first_name %}{{ request.user.get_full_name|default:request.user.first_name }}{% elif request.session.quick_lead_user.fullname %}{{ request.session.quick_lead_user.fullname }}{% else %}My Account{% endif %}
-                        </div>
-                    </li>
                     <li class="nav-item d-lg-none js-guest-account {% if not request.user.is_authenticated and not request.session.quick_lead_user %}d-none{% endif %}">
                         <form action="/logout/" method="POST" id="logout-form-mobile" class="m-0" onsubmit="return handleUserLogout(event)">
                             {% csrf_token %}
-                            <button type="submit" onclick="handleUserLogout(event)" class="nav-link text-danger border-0 bg-transparent w-100 text-left pt-1 font-weight-bold" style="cursor: pointer;">
-                                <i class="fas fa-sign-out-alt mr-2"></i>Sign Out
+                            <button type="submit" onclick="handleUserLogout(event)" class="nav-link text-danger border-0 bg-transparent w-100 text-left font-weight-bold mobile-signout-btn" style="cursor: pointer;">
+                                <i class="fas fa-sign-out-alt mr-2 text-danger"></i>Sign Out
                             </button>
                         </form>
                     </li>
@@ -288,4 +297,74 @@
             {% endif %}
         </nav>
     </div>
+    <style>
+        @media screen and (max-width: 991px) {
+            .header .mobile-nav-collapse {
+                border-radius: 16px !important;
+                box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12) !important;
+                border: 1px solid #e2e8f0 !important;
+                overflow: hidden !important;
+                background: #ffffff !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .mobile-user-profile-header {
+                background: #f8fafc !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+                padding: 14px 20px !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item a,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link {
+                display: flex !important;
+                align-items: center !important;
+                padding: 14px 20px !important;
+                font-size: 15px !important;
+                font-weight: 500 !important;
+                color: #1e293b !important;
+                background: #ffffff !important;
+                border-bottom: 1px solid #f1f5f9 !important;
+                transition: background 0.15s ease, color 0.15s ease;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item a i,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link i,
+            .header .mobile-nav-collapse .navbar-nav .nav-item i {
+                display: inline-block !important;
+                width: 22px !important;
+                text-align: center !important;
+                margin-right: 12px !important;
+                font-size: 16px !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item a:hover,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link:hover {
+                background-color: #f8fafc !important;
+                color: #18529d !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .active > a,
+            .header .mobile-nav-collapse .navbar-nav .nav-item.active > a {
+                background-color: #eff6ff !important;
+                color: #1d4ed8 !important;
+                font-weight: 600 !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .active > a i,
+            .header .mobile-nav-collapse .navbar-nav .nav-item.active > a i {
+                color: #1d4ed8 !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn {
+                color: #dc2626 !important;
+                font-weight: 600 !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger i,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn i {
+                color: #dc2626 !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger:hover,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn:hover {
+                background-color: #fef2f2 !important;
+                color: #b91c1c !important;
+            }
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.nav-link.text-danger:hover i,
+            .header .mobile-nav-collapse .navbar-nav .nav-item button.mobile-signout-btn:hover i {
+                color: #b91c1c !important;
+            }
+        }
+    </style>
 </header>
