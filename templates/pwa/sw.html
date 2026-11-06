@@ -65,16 +65,9 @@ self.addEventListener('fetch', (event) => {
 
   // 1. Navigation requests (HTML page loads) - Always Network-Only, fallback to offline page
   if (event.request.mode === 'navigate') {
+    // A 404 must show the real 404 page; it used to swap in /agent-login content.
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // If the page is not found (404), fallback to login helper (if needed)
-          if (!response || response.status === 404) {
-            return fetch('/agent-login').catch(() => response);
-          }
-          return response;
-        })
-        .catch(() => caches.match('/offline.html'))
+      fetch(event.request).catch(() => caches.match('/offline.html'))
     );
     return;
   }

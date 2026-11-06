@@ -3443,7 +3443,7 @@
             success: function (resp) {
                 if (resp && resp.success && resp.url && resp.url !== '#') {
                     if (typeof window.proceedToDestination === 'function') {
-                        window.proceedToDestination(resp.url, null, Boolean(window._padosiJustRegistered));
+                        window.proceedToDestination(resp.url, interactionType === 'call' ? null : '_blank', Boolean(window._padosiJustRegistered));
                     } else if (interactionType === 'call') {
                         window.location.href = resp.url;
                     } else {
@@ -4289,13 +4289,15 @@
         const isCall = url.indexOf('tel:') === 0;
 
         if (isWhatsapp || target === '_blank') {
-            const a = document.createElement('a');
-            a.href = url;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            // No 'noopener' feature: with it window.open() always returns null, which
+            // caused the old duplicate-tab bug. Null now really means "popup blocked"
+            // (iOS Safari blocks it after AJAX), so fall back to same-tab navigation.
+            const win = window.open(url, '_blank');
+            if (!win) {
+                window.location.href = url;
+                return;
+            }
+            try { win.opener = null; } catch (e) {}
 
             if (justRegistered) {
                 setTimeout(() => { window.location.reload(); }, 600);

@@ -404,6 +404,27 @@ class ClientQuickRegisterTests(TestCase):
         self.assertEqual(lead.customer_mobile, '9876543288')
         self.assertEqual(lead.customer_name, 'Happy Client')
 
+    def test_existing_client_guest_session_can_contact_agent(self):
+        # Existing accounts get a guest session (no login), which must still be enough to reach the agent.
+        import json
+        from apps.agents.models import Agent, AgentProfile, AgentLead
+        agent = Agent.objects.create(fullname="Test Agent", email="ta2@padosiagent.com",
+                                     mobile="9876543298", status="active")
+        AgentProfile.objects.create(agent=agent, whatsapp="9876543298", display_name="Test Agent")
+        user = User.objects.create_user(username='old.client', email='old.client@example.com')
+        Client.objects.create(user=user, mobile='9876543277')
+
+        self.client.post(reverse('agents:client_quick_register'), content_type='application/json',
+                         data=json.dumps({'fullname': 'Old Client', 'mobile': '9876543277',
+                                          'email': 'old.client@example.com'}))
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+        resp = self.client.post(reverse('agents:agent_leads_capture'),
+                                data={'agent_id': agent.id, 'interaction_type': 'whatsapp'})
+        self.assertIn('whatsapp', resp.json().get('url', ''))
+        lead = AgentLead.objects.get(agent=agent)
+        self.assertEqual((lead.customer_name, lead.customer_mobile), ('Old Client', '9876543277'))
+
 
 class ProfileBannerFeatureTests(TestCase):
     def setUp(self):

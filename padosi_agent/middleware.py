@@ -138,8 +138,9 @@ class NoCacheHtmlMiddleware:
         response = self.get_response(request)
         content_type = response.get('Content-Type', '') or ''
         if 'text/html' in content_type:
-            response['Cache-Control'] = 'no-cache, no-store, must-revalidate, private'
-            response['Pragma'] = 'no-cache'
-            response['Expires'] = '0'
-            response['Vary'] = 'Cookie'
+            from django.utils.cache import add_never_cache_headers, patch_cache_control, patch_vary_headers
+            add_never_cache_headers(response)
+            patch_cache_control(response, private=True)
+            # Append, don't overwrite: GZip/Locale add their own Vary values.
+            patch_vary_headers(response, ('Cookie',))
         return response

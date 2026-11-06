@@ -66,16 +66,10 @@ Options -Indexes
 </IfModule>
 
 <IfModule mod_headers.c>
-    # Dynamic (HTML) responses: never cache — content varies per user session
-    Header set Cache-Control "no-cache, no-store, must-revalidate, private"
-    Header set Pragma "no-cache"
-    Header set Vary "Cookie"
-
-    # Override: allow long caching for static assets (images, CSS, JS, fonts)
+    # HTML no-cache headers come from Django (NoCacheHtmlMiddleware). A global
+    # "Header set" here also hit JSON/media/sitemap and clobbered Vary: Accept-Encoding.
     <FilesMatch "\.(ico|jpe?g|png|gif|webp|svg|css|js|woff2?|ttf)$">
         Header set Cache-Control "max-age=2592000, public, immutable"
-        Header unset Pragma
-        Header unset Vary
     </FilesMatch>
 </IfModule>
 

@@ -32,11 +32,12 @@ class QuickSignupExistingAccountTests(TestCase):
         self.assertNotIn('_auth_user_id', client.session)
         self.assertEqual(client.session['quick_lead_user']['mobile'], '9000000801')
 
-    def test_existing_client_quick_register_is_signed_in(self):
+    def test_existing_client_quick_register_is_not_signed_in(self):
+        # Typing someone's email must never sign you in as them (account takeover).
         client, resp = self._post('/client/quick-register/', 'client.old@example.com')
         self.assertEqual(resp.status_code, 200, resp.content)
         self.assertTrue(resp.json().get('success'), resp.content)
-        self.assertEqual(str(client.session.get('_auth_user_id')), str(self.existing.pk))
+        self.assertNotIn('_auth_user_id', client.session)
         self.assertEqual(client.session['quick_lead_user']['mobile'], '9000000801')
 
     def test_new_account_is_still_signed_in(self):

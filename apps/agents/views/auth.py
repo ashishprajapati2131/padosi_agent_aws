@@ -560,8 +560,11 @@ def logout_view(request):
 
     if role == 'client':
         referer = request.META.get('HTTP_REFERER')
-        host = request.get_host()
-        if referer and host in referer:
+        from django.utils.http import url_has_allowed_host_and_scheme
+        # "host in referer" let https://evil.com/?padosiagent.com through (open redirect).
+        if referer and url_has_allowed_host_and_scheme(
+            referer, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
             import urllib.parse
             parsed = urllib.parse.urlparse(referer)
             qs = urllib.parse.parse_qs(parsed.query)

@@ -249,7 +249,9 @@
 
         window.handleUserLogout = function (event) {
             try {
-                localStorage.clear();
+                // Only the visitor's location/chat data; language, admin theme and event ids must survive logout.
+                ['user_lat', 'user_lng', 'padosi_location_status', 'padosi_geo_expiry', 'chatbot_session_id'].forEach(function (k) { localStorage.removeItem(k); });
+                Object.keys(localStorage).forEach(function (k) { if (k.indexOf('selectedCompareAgents') === 0) localStorage.removeItem(k); });
                 sessionStorage.clear();
                 window._padosiGuestAuthenticated = false;
                 window._padosiGuestData = null;

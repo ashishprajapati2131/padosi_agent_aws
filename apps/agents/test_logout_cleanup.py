@@ -109,3 +109,18 @@ class LogoutCleanupTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response['Location'], 'http://testserver/find-agents/')
         self.assertNotIn('/agent-login', response['Location'])
+
+    def test_logout_never_redirects_to_foreign_referer(self):
+        # Referer merely containing our host must not become an open redirect.
+        resp = self.client.post('/logout/', {'source': 'client'},
+                                HTTP_REFERER='https://evil.example/?testserver')
+        self.assertEqual(resp.status_code, 302)
+        self.assertNotIn('evil.example', resp.url)
+
+    def test_html_no_cache_keeps_existing_vary(self):
+        resp = self.client.get('/', HTTP_ACCEPT_ENCODING='gzip')
+        self.assertIn('no-store', resp['Cache-Control'])
+        self.assertIn('private', resp['Cache-Control'])
+        vary = resp['Vary'].lower()
+        self.assertIn('cookie', vary)
+        self.assertIn('accept-encoding', vary)
