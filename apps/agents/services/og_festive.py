@@ -41,12 +41,6 @@ STAT_STYLE = {  # label -> (fill, border, icon colour, icon)
     "CLAIMS": ((253, 238, 243), (245, 198, 214), (219, 39, 119), "document"),
     "SETTLED": ((233, 249, 238), (191, 232, 204), (22, 163, 74), "coins"),
 }
-VALUES = (
-    ("TRUSTED", "PEOPLE", "shield", (37, 99, 235)),
-    ("STRONGER", "COMMUNITIES", "people", (22, 163, 74)),
-    ("LOCAL", "SOLUTIONS", "pin", (37, 99, 235)),
-    ("BRIGHTER", "TOMORROW", "chart", (22, 163, 74)),
-)
 
 
 def _font(bold, size):
@@ -191,8 +185,6 @@ def _icon(draw, kind, cx, cy, s, color):
             fill=color,
             width=w,
         )
-    elif kind == "pin":
-        _draw_pin(draw, cx, cy - h * 0.1, fill=color)
     elif kind == "chart":
         for i, bh in enumerate((0.4, 0.7, 1.0)):
             x = cx - h * 0.8 + i * h * 0.6
@@ -320,34 +312,10 @@ def render_festive_card(agent, theme, profile=None, perf=None):
     canvas.paste(art.crop(CARD), CARD[:2], _rounded_mask((cw, ch), 22))
     draw = ImageDraw.Draw(canvas)
 
-    # Left: the agent's photo with the PadosiAgent logo under it; the brand panel if no photo
-    photo = _load_photo(agent, profile)
+    # Left: the agent's photo, or the site's default avatar (same as the Find Agents card)
+    photo = _load_photo(agent, profile) or _load_rgba(os.path.join(settings.BASE_DIR, "static", "img", "avatar-icon.jpg"))
     if photo is not None:
         _photo_panel(canvas, photo)
-    else:
-        _panel(canvas, (40, 140, 352, 322), 18, (255, 255, 255, 236))
-        logo = _load_rgba(os.path.join(settings.BASE_DIR, "static", "img", "logo.png"))
-        if logo:
-            lw = 262
-            logo = logo.resize((lw, int(logo.size[1] * lw / logo.size[0])), RESAMPLE)
-            canvas.alpha_composite(logo, (196 - lw // 2, 150))
-        draw = ImageDraw.Draw(canvas)
-        draw.text(
-            (196, 247),
-            "India's 1st Hyperlocal Platform for Insurance",
-            font=_font(True, 13),
-            fill=NAVY,
-            anchor="mm",
-        )
-        draw.line((62, 263, 196, 263), fill=(37, 99, 235), width=2)
-        draw.line((196, 263, 330, 263), fill=(22, 163, 74), width=2)
-        for i, (l1, l2, icon, color) in enumerate(VALUES):
-            cx = 79 + i * 78
-            _icon(draw, icon, cx, 282, 20, color)
-            draw.text((cx, 301), l1, font=_font(True, 9), fill=NAVY, anchor="mm")
-            draw.text((cx, 312), l2, font=_font(True, 9), fill=NAVY, anchor="mm")
-            if i:
-                draw.line((cx - 39, 274, cx - 39, 314), fill=(203, 213, 225), width=1)
 
     # Info panel (right)
     _panel(

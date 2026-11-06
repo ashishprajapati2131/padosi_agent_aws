@@ -492,3 +492,17 @@ class ShareImageDeliveryTests(_Base):
         self.assertLess(len(resp.content), 200 * 1024)
         html = self.client.get('/about/')
         self.assertIn('padosi_csrf_token', html.cookies)
+
+    def test_festive_card_shows_default_avatar_without_photo(self):
+        from PIL import Image
+        from apps.agents.services.og_image import _load_photo, _render_agent_og_jpeg_pillow, active_share_theme
+        media = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, media, ignore_errors=True)
+        with override_settings(MEDIA_ROOT=media):
+            svc.set_active(svc.add_preset('diwali'))
+            _flag(True)
+            agent = _make_agent(2)
+            self.assertIsNone(_load_photo(agent, agent.profile))
+            img = Image.open(io.BytesIO(_render_agent_og_jpeg_pillow(agent, theme=active_share_theme()))).convert('RGB')
+            r, g, b = img.getpixel((196, 380))  # avatar's blue shirt, inside the photo frame
+            self.assertGreater(b, r + 40)

@@ -2083,7 +2083,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.cache import cache
 
-OG_IMAGE_CACHE_VERSION = "v10"  # v10: card shows only what the agent filled in
+OG_IMAGE_CACHE_VERSION = "v11"  # v11: festive card shows the agent photo / default avatar (bump on any card design change)
 
 
 def og_image_cache_key(agent_id):
