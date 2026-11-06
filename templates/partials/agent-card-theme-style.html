@@ -12,7 +12,7 @@
 {% if t.whatsapp_btn_bg %}.react-agent-card.find-agents-list-item .rac-card .rac-btn--whatsapp,.react-agent-card.find-agents-list-item .rac-card .rac-d-btn--whatsapp{background:{{ t.whatsapp_btn_bg }} !important}{% endif %}
 {% if t.call_btn_bg %}.react-agent-card.find-agents-list-item .rac-card .rac-btn--call,.react-agent-card.find-agents-list-item .rac-card .rac-d-btn--call{background:{{ t.call_btn_bg }} !important}{% endif %}
 {% if t.btn_text_color %}.react-agent-card.find-agents-list-item .rac-card .rac-btn,.react-agent-card.find-agents-list-item .rac-card .rac-d-btn{color:{{ t.btn_text_color }} !important}{% endif %}
-{% if t.background_url %}.react-agent-card.find-agents-list-item .rac-card{background:linear-gradient(rgba(255,255,255,{{ t.panel_alpha }}),rgba(255,255,255,{{ t.panel_alpha }})),url("{{ t.background_url }}") center/cover no-repeat !important}{% endif %}
+{% if t.background_url %}.react-agent-card.find-agents-list-item .rac-card{background:linear-gradient(135deg,rgba({{ t.tint1 }},{{ t.panel_alpha }}),rgba({{ t.tint2 }},{{ t.panel_alpha }})),url("{{ t.background_url }}") center/cover no-repeat !important}{% endif %}
 {% if t.decoration_url %}.react-agent-card.find-agents-list-item .rac-card{position:relative}
 .react-agent-card.find-agents-list-item .rac-card::after{content:"";position:absolute;{% if t.decoration_position == 'top-left' %}top:0;left:0{% elif t.decoration_position == 'bottom-left' %}bottom:0;left:0{% elif t.decoration_position == 'bottom-right' %}bottom:0;right:0{% else %}top:0;right:0{% endif %};width:{{ t.decoration_size }}px;height:{{ t.decoration_size }}px;background:url("{{ t.decoration_url }}") no-repeat center/contain;pointer-events:none;z-index:3}{% endif %}
 </style>{% endif %}

@@ -190,6 +190,7 @@ def agent_card_themes_index(request):
             "themes": store["themes"],
             "presets": svc.PRESETS,
             "editing": editing,
+            "editing_is_live": bool(editing) and editing.get("id") == store["active"],
             "shadows": svc.SHADOWS,
             "positions": svc.DECORATION_POSITIONS,
             "share_layouts": svc.SHARE_LAYOUTS,
@@ -220,6 +221,8 @@ def agent_card_theme_save(request):
                 design[field] = saver(request.FILES[upload_name], name)
                 new_files.append(design[field])
         theme_id = svc.save_theme(name, design, theme_id)
+        if request.POST.get("activate") == "1":
+            svc.set_active(theme_id)
     except ValueError as exc:
         for path in new_files:
             _delete_file(path)
@@ -236,7 +239,12 @@ def agent_card_theme_save(request):
         "SiteSetting",
         request=request,
     )
-    messages.success(request, "Theme saved.")
+    if svc.get_store()["active"] != theme_id:
+        messages.warning(request, "Saved, but this theme is NOT live: the site shows the active theme. Click \"Save & activate\" to show these changes on Find Agents.")
+    elif not svc.is_enabled():
+        messages.warning(request, "Saved and active, but the feature is OFF: turn it ON (top right) to show it on Find Agents.")
+    else:
+        messages.success(request, "Saved. Live on Find Agents now (refresh that page).")
     return redirect(f"/admin/agent-card-themes/?edit={theme_id}")
 
 

@@ -414,3 +414,43 @@ class DiwaliSampleThemeTests(_Base):
             # classic layout is untouched by the festive code
             classic = dict(theme, share_layout='classic')
             self.assertNotEqual(_render_agent_og_jpeg_pillow(full, theme=classic), _render_agent_og_jpeg_pillow(full, theme=theme))
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'])
+class AdminChangesReachTheSiteTests(_Base):
+    """What admin saves must show on Find Agents (or the admin is told why not)."""
+
+    def setUp(self):
+        super().setUp()
+        authenticate_client(self.client)
+        self.agents = [_make_agent(1)]
+        _flag(True)
+
+    def _save(self, theme_id, **fields):
+        post = {'theme_id': theme_id, 'name': 'T', **{f: '1' for f in svc.SHOW_FIELDS}, **fields}
+        return self.client.post('/admin/agent-card-themes/save/', post, follow=True)
+
+    def test_save_and_activate_shows_change_on_find_agents(self):
+        live = svc.save_theme('Live', {})
+        svc.set_active(live)
+        other = svc.save_theme('Other', {})
+        resp = self._save(other, profile_btn_bg='#4ee10e', activate='1')
+        self.assertEqual(svc.get_store()['active'], other)
+        self.assertContains(resp, 'Live on Find Agents now')
+        self.assertIn('background:#4ee10e', _render_cards(self.agents))
+
+    def test_saving_a_theme_that_is_not_live_warns(self):
+        svc.set_active(svc.save_theme('Live', {}))
+        other = svc.save_theme('Other', {})
+        resp = self._save(other, profile_btn_bg='#4ee10e')
+        self.assertContains(resp, 'NOT live')
+        self.assertNotIn('#4ee10e', _render_cards(self.agents))
+        page = self.client.get(f'/admin/agent-card-themes/?edit={other}')
+        self.assertContains(page, 'This theme is not live')
+
+    def test_card_colour_tints_background_image(self):
+        tid = svc.save_theme('Bg', {'background_image': 'agent_card_themes/bg_1.jpg', 'card_bg': '#ff0000', 'card_bg2': '#0000ff'})
+        svc.set_active(tid)
+        html = _render_cards(self.agents)
+        self.assertIn('rgba(255,0,0,0.88)', html)
+        self.assertIn('rgba(0,0,255,0.88)', html)

@@ -195,6 +195,13 @@ def sanitize_design(raw):
     return out
 
 
+def _rgb_csv(hex_color):
+    """'#rrggbb' -> 'r,g,b' for rgba() in CSS ('' when unset)."""
+    if not hex_color:
+        return ""
+    return ",".join(str(int(hex_color[i:i + 2], 16)) for i in (1, 3, 5))
+
+
 def _clean_name(name):
     return re.sub(r"[<>{}\\]", "", str(name or "")).strip()[:60]
 
@@ -347,6 +354,9 @@ def build_card_theme(design, enabled=True):
         (settings.MEDIA_URL + d["background_image"]) if d["background_image"] else ""
     )
     d["panel_alpha"] = "%.2f" % (d["panel_opacity"] / 100)  # string: never locale-formatted in CSS
+    # Over a background image the card colours become the see-through tint (white if unset).
+    d["tint1"] = _rgb_csv(d["card_bg"]) or "255,255,255"
+    d["tint2"] = _rgb_csv(d["card_bg2"]) or d["tint1"]
     return d
 
 

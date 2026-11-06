@@ -98,8 +98,17 @@
                     <label class="form-label small fw-semibold mb-1" for="themeName">Theme name</label>
                     <input id="themeName" type="text" name="name" value="{{ editing.name }}" maxlength="60" class="form-control" placeholder="e.g. Diwali 2026" required>
                 </div>
-                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                <button type="submit" class="btn btn-outline-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                <button type="submit" name="activate" value="1" class="btn btn-primary"><i class="fa-solid fa-bolt me-1"></i>Save &amp; activate</button>
             </div>
+
+            {% if not editing_is_live %}
+            <div class="alert alert-warning border-0 small mt-3 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i><strong>This theme is not live.</strong> Find Agents shows the active theme{% if active_id != 'default' %}{% for t in themes %}{% if t.id == active_id %} (“{{ t.name }}”){% endif %}{% endfor %}{% else %} (the original card){% endif %}. Use <strong>Save &amp; activate</strong> to show your changes.</div>
+            {% elif not flag_enabled %}
+            <div class="alert alert-warning border-0 small mt-3 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i>This theme is active, but the feature is <strong>OFF</strong>: turn it ON (top right) to show it on Find Agents.</div>
+            {% else %}
+            <div class="alert alert-success border-0 small mt-3 mb-0"><i class="fa-solid fa-circle-check me-1"></i>This theme is <strong>live</strong>. Saved changes show on Find Agents straight away.</div>
+            {% endif %}
 
             <div class="act-section">Live preview</div>
             {% if has_sample_agent %}
@@ -195,7 +204,8 @@
 
             <div class="d-flex justify-content-end gap-2 mt-4">
                 <a href="{% url 'admin_agent_card_themes' %}" class="btn btn-light">Close</a>
-                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save theme</button>
+                <button type="submit" class="btn btn-outline-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                <button type="submit" name="activate" value="1" class="btn btn-primary"><i class="fa-solid fa-bolt me-1"></i>Save &amp; activate</button>
             </div>
         </form>
         {% else %}
@@ -246,8 +256,11 @@
     form.addEventListener('input', schedule);
     form.addEventListener('change', schedule);
     // Picking a colour un-ticks its "Default" box.
+    // Some browsers fire only 'change' when the picker closes, so listen to both.
     form.querySelectorAll('input[type=color]').forEach(function (el) {
-        el.addEventListener('input', function () { var d = document.getElementById('d_' + el.name); if (d) d.checked = false; });
+        ['input', 'change'].forEach(function (ev) {
+            el.addEventListener(ev, function () { var d = document.getElementById('d_' + el.name); if (d && d.checked) { d.checked = false; schedule(); } });
+        });
     });
     document.querySelectorAll('[data-preview]').forEach(function (btn) {
         btn.addEventListener('click', function () {
