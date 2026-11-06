@@ -272,6 +272,7 @@ from .views.feature_flags import (
     feature_flag_update,
     feature_flag_delete,
 )
+from .views import agent_card_themes as card_themes
 from .views.digital_card_studio import (
     digital_card_studio_index,
     update_studio_config,
@@ -735,6 +736,17 @@ urlpatterns = [
     path("admin/feature-flags/create/", feature_flag_create, name="admin_feature_flag_create"),
     path("admin/feature-flags/update/", feature_flag_update, name="admin_feature_flag_update"),
     path("admin/feature-flags/delete/", feature_flag_delete, name="admin_feature_flag_delete"),
+
+    # Agent Card Themes (shared agent card designer, behind agent_card_themes_enabled)
+    path("admin/agent-card-themes/", card_themes.agent_card_themes_index, name="admin_agent_card_themes"),
+    path("admin/agent-card-themes/save/", card_themes.agent_card_theme_save, name="admin_agent_card_theme_save"),
+    path("admin/agent-card-themes/activate/", card_themes.agent_card_theme_activate, name="admin_agent_card_theme_activate"),
+    path("admin/agent-card-themes/delete/", card_themes.agent_card_theme_delete, name="admin_agent_card_theme_delete"),
+    path("admin/agent-card-themes/preset/", card_themes.agent_card_theme_preset, name="admin_agent_card_theme_preset"),
+    path("admin/agent-card-themes/import/", card_themes.agent_card_theme_import, name="admin_agent_card_theme_import"),
+    path("admin/agent-card-themes/<slug:theme_id>/export/", card_themes.agent_card_theme_export, name="admin_agent_card_theme_export"),
+    path("admin/agent-card-themes/flag/", card_themes.agent_card_theme_flag, name="admin_agent_card_theme_flag"),
+    path("admin/agent-card-themes/preview/", card_themes.agent_card_theme_preview, name="admin_agent_card_theme_preview"),
 ]
 
 

@@ -734,6 +734,11 @@
                 <i class="fa-solid fa-panorama"></i> Profile Banners
             </a>
 
+            <a href="{% url 'admin_agent_card_themes' %}"
+                class="menu-item {% if '/admin/agent-card-themes/' in request.path %}active{% endif %}">
+                <i class="fa-solid fa-palette"></i> Agent Card Themes
+            </a>
+
             <a href="{% url 'admin_content_registration_cards' %}"
                 class="menu-item {% if '/admin/content/registration-cards/' in request.path %}active{% endif %}">
                 <i class="fa-solid fa-id-card"></i> Registration Cards

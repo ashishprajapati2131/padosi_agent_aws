@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card preview</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+<style>body{margin:0;padding:16px;background:#f1f5f9;font-family:'Plus Jakarta Sans',system-ui,sans-serif}a{pointer-events:none}</style>
+</head>
+<body>
+{{ card }}
+{% if share_img %}<img id="share-img" hidden alt="" src="{{ share_img }}">{% endif %}
+<script>
+  // The card's buttons call page helpers that only exist on the public site.
+  window.toggleCompareAgent = window.toggleFavoriteAgent = window.handleAgentContactClick = function () { return false; };
+</script>
+</body>
+</html>

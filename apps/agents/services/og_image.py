@@ -233,6 +233,7 @@ def card_version(agent):
     import json
     try:
         data = _card_data(agent)
+        data['theme'] = _share_theme_signature()
     except Exception:
         return ''
     return hashlib.sha1(json.dumps(data, sort_keys=True, default=str).encode('utf-8')).hexdigest()[:10]
@@ -279,8 +280,10 @@ def _single_browser_slot():
 def render_agent_og_jpeg(agent):
     """Return JPEG bytes for a 1200x630 agent digital visiting card OG image using Playwright or Pillow."""
     # Social crawlers need a fast, reliable JPEG — Playwright/Chromium is often unavailable on shared hosting.
-    if not getattr(settings, 'DEBUG', False):
-        return _render_agent_og_jpeg_pillow(agent)
+    # A festival theme is drawn only by the Pillow card, so dev shows what production shows.
+    theme = active_share_theme()
+    if theme or not getattr(settings, 'DEBUG', False):
+        return _render_agent_og_jpeg_pillow(agent, theme=theme)
 
     profile, perf = _load_card_sources(agent)
     card = _card_data(agent, profile, perf)
@@ -359,19 +362,87 @@ def render_agent_og_jpeg(agent):
     return _render_agent_og_jpeg_pillow(agent, profile=profile, perf=perf)
 
 
-def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
-    """Fast, lightweight in-memory Pillow 1200x630 OG digital visiting card (used in production)."""
+def _share_theme_signature():
+    try:
+        from apps.admin_panel.services.agent_card_themes import share_theme_signature
+        return share_theme_signature()
+    except Exception:
+        return ''
+
+
+def active_share_theme():
+    """The admin's active card theme when it changes the share image, else None."""
+    try:
+        from apps.admin_panel.services.agent_card_themes import get_active_card_theme, share_theme_signature
+        theme = get_active_card_theme()
+        return theme if share_theme_signature(theme) else None
+    except Exception:
+        logger.warning("Share card theme unavailable; using the default card", exc_info=True)
+        return None
+
+
+def _hex_rgb(value, default):
+    try:
+        return tuple(int(value[i:i + 2], 16) for i in (1, 3, 5))
+    except Exception:
+        return default
+
+
+def _wrap_lines(draw, text, font, max_w, max_lines):
+    """Greedy word wrap; the last line gets an ellipsis if text is left over."""
+    words, lines, line = text.split(), [], ''
+    for word in words:
+        trial = f'{line} {word}'.strip()
+        if _text_size(draw, trial, font)[0] <= max_w:
+            line = trial
+            continue
+        if line:
+            lines.append(line)
+        line = word
+        if len(lines) == max_lines:
+            break
+    if line and len(lines) < max_lines:
+        lines.append(line)
+    if lines and ' '.join(lines) != ' '.join(words):
+        lines[-1] = _fit_text(draw, lines[-1] + '…', font, max_w)
+    return lines
+
+
+def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None, theme=None):
+    """Fast, lightweight in-memory Pillow 1200x630 OG digital visiting card (used in production).
+    `theme` (from active_share_theme) adds festival artwork behind a see-through panel and a greeting."""
+    if theme and theme.get('share_layout') == 'festive':
+        from apps.agents.services.og_festive import render_festive_card
+        return render_festive_card(agent, theme, profile=profile, perf=perf)
     profile, perf = _load_card_sources(agent, profile, perf)
     card = _card_data(agent, profile, perf)
 
     # Full-bleed card: fills the whole 1200x630 frame so WhatsApp's preview shows it as large as possible.
     W, H = 1200, 630
-    canvas = Image.new('RGB', (W, H), (255, 255, 255))
-    draw = ImageDraw.Draw(canvas)
     fonts = _load_fonts()
-
-    # Left column: photo or initial avatar, full height
     photo_w = 380
+    canvas = Image.new('RGB', (W, H), (255, 255, 255))
+    inset = 0
+    if theme:
+        from apps.admin_panel.services.agent_card_themes import background_file_path
+        bg_path = background_file_path(theme)
+        if bg_path:
+            try:
+                # Any uploaded size or shape is cover-fitted to the card.
+                canvas = _cover_crop(Image.open(bg_path).convert('RGB'), W, H)
+            except Exception:
+                logger.warning("Share card background unreadable: %s", bg_path)
+        # Text sits on a see-through white panel; the artwork shows around and through it.
+        inset = 20
+        overlay = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+        alpha = int(255 * theme.get('panel_opacity', 88) / 100)
+        ImageDraw.Draw(overlay).rounded_rectangle([(photo_w + inset, inset), (W - inset, H - inset)], radius=28,
+                                                  fill=(255, 255, 255, alpha))
+        canvas = Image.alpha_composite(canvas.convert('RGBA'), overlay).convert('RGB')
+    draw = ImageDraw.Draw(canvas)
+
+    # Left column: photo or initial avatar, full height (inset with round corners on a festival card)
+    pw, ph = photo_w - inset, H - 2 * inset
     photo = _load_photo(agent, profile)
     if photo:
         if photo.mode in ('RGBA', 'LA', 'P'):
@@ -385,12 +456,25 @@ def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
             photo = bg
         elif photo.mode != 'RGB':
             photo = photo.convert('RGB')
-        canvas.paste(_cover_crop(photo, photo_w, H), (0, 0))
-    else:
+        photo = _cover_crop(photo, pw, ph)
+    elif not inset:
+        # Original card, drawn exactly as before.
         draw.rectangle([(0, 0), (photo_w, H)], fill=(30, 58, 138))
         initial = card['initial']
         iw, ih = _text_size(draw, initial, fonts['initial'])
         draw.text(((photo_w - iw) // 2, (H - ih) // 2 - 12), initial, font=fonts['initial'], fill=(255, 255, 255))
+    else:
+        photo = Image.new('RGB', (pw, ph), (30, 58, 138))
+        pdraw = ImageDraw.Draw(photo)
+        initial = card['initial']
+        iw, ih = _text_size(pdraw, initial, fonts['initial'])
+        pdraw.text(((pw - iw) // 2, (ph - ih) // 2 - 12), initial, font=fonts['initial'], fill=(255, 255, 255))
+    if photo:
+        mask = None
+        if inset:
+            mask = Image.new('L', (pw, ph), 0)
+            ImageDraw.Draw(mask).rounded_rectangle([(0, 0), (pw - 1, ph - 1)], radius=24, fill=255)
+        canvas.paste(photo, (inset, inset), mask)
 
     # Right column
     rx = photo_w + 44
@@ -407,7 +491,8 @@ def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
     badges_w = sum(badge_ws) + 12 * len(badges) + (16 if badges else 0)
     name_font = _shrink_font(draw, card['name'], fonts['name'], col_w - badges_w, 34)
     name = _fit_text(draw, card['name'], name_font, col_w - badges_w)
-    draw.text((rx, 44 + (getattr(fonts['name'], 'size', 0) - getattr(name_font, 'size', 0)) // 2), name, font=name_font, fill=(15, 23, 42))
+    name_rgb = _hex_rgb(theme.get('name_color'), (15, 23, 42)) if theme else (15, 23, 42)
+    draw.text((rx, 44 + (getattr(fonts['name'], 'size', 0) - getattr(name_font, 'size', 0)) // 2), name, font=name_font, fill=name_rgb)
     nw, _ = _text_size(draw, name, name_font)
     bx, by = rx + nw + 16, 58
     for (label, fill, outline, color), bw in zip(badges, badge_ws):
@@ -467,6 +552,27 @@ def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None):
         _rounded_rect(draw, [(px, pill_y), (px + full_pw, pill_y + 44)], radius=22, fill=p_bg, outline=p_border, width=1)
         draw.text((px + 18, pill_y + 10), item['name'], font=fonts['pill'], fill=p_text)
         px += full_pw + 14
+    pills_end = pill_y + 44 if card['segments'] else pill_y
+
+    # Festival greeting in the free space above the footer (dropped if the agent's data leaves no room)
+    if theme and theme.get('greeting_title'):
+        color = _hex_rgb(theme.get('greeting_color'), (194, 65, 12))
+        title_font = _shrink_font(draw, theme['greeting_title'], fonts['name'], col_w, 30)
+        tw, th = _text_size(draw, theme['greeting_title'], title_font)
+        lines = _wrap_lines(draw, theme.get('greeting_text', ''), fonts['meta'], col_w - 20, 2)
+        block_h = th + 14 + len(lines) * 28
+        top, bottom = pills_end + 18, 528
+        if bottom - top < block_h and lines:
+            lines = _wrap_lines(draw, theme.get('greeting_text', ''), fonts['meta'], col_w - 20, 1)
+            block_h = th + 14 + 28
+        if bottom - top >= block_h:
+            y = top + (bottom - top - block_h) // 2
+            draw.text((rx + (col_w - tw) // 2, y), theme['greeting_title'], font=title_font, fill=color)
+            y += th + 14
+            for line in lines:
+                lw, _ = _text_size(draw, line, fonts['meta'])
+                draw.text((rx + (col_w - lw) // 2, y), line, font=fonts['meta'], fill=(51, 65, 85))
+                y += 28
 
     # Footer strip pinned to the bottom
     draw.line([(rx, 540), (right, 540)], fill=(226, 232, 240), width=2)

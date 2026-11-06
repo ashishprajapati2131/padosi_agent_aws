@@ -2087,7 +2087,10 @@ OG_IMAGE_CACHE_VERSION = "v10"  # v10: card shows only what the agent filled in
 
 
 def og_image_cache_key(agent_id):
-    return f"og_image_agent_card_{OG_IMAGE_CACHE_VERSION}_{agent_id}"
+    # The active festival theme is part of the key, so switching themes never serves an old image.
+    from apps.agents.services.og_image import _share_theme_signature
+
+    return f"og_image_agent_card_{OG_IMAGE_CACHE_VERSION}{_share_theme_signature()}_{agent_id}"
 
 
 @receiver(post_save, sender=AgentProfile)

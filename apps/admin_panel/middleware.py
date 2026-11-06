@@ -980,6 +980,16 @@ class AdminPermissionMiddleware:
             "admin_feature_flag_create": ("feature_flags", "site_settings"),
             "admin_feature_flag_update": ("feature_flags", "site_settings"),
             "admin_feature_flag_delete": ("feature_flags", "site_settings"),
+            # ── Agent Card Themes ─────────────────────────────────────────
+            "admin_agent_card_themes": ("content", "site_settings"),
+            "admin_agent_card_theme_save": ("content", "site_settings"),
+            "admin_agent_card_theme_activate": ("content", "site_settings"),
+            "admin_agent_card_theme_delete": ("content", "site_settings"),
+            "admin_agent_card_theme_preset": ("content", "site_settings"),
+            "admin_agent_card_theme_import": ("content", "site_settings"),
+            "admin_agent_card_theme_export": ("content", "site_settings"),
+            "admin_agent_card_theme_flag": ("feature_flags", "site_settings"),
+            "admin_agent_card_theme_preview": ("content", "site_settings"),
             "security_threat_logs": "analytics",
             "security_threat_logs_delete": "analytics",
             # ── Investment Types ──────────────────────────────────────────

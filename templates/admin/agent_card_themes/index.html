@@ -1,0 +1,265 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block breadcrumb_title %}Agent Card Themes{% endblock %}
+
+{% block extra_css %}
+<style>
+.act-card{border:1px solid #e2e8f0;border-radius:14px;background:#fff}
+.act-theme{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #f1f5f9}
+.act-theme:last-child{border-bottom:0}
+.act-swatch{width:34px;height:34px;border-radius:8px;border:1px solid #e2e8f0;flex-shrink:0}
+.act-theme-name{font-weight:700;color:#0f172a;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.act-section{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin:18px 0 8px}
+.act-color{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.act-color input[type=color]{width:42px;height:32px;padding:2px;border:1px solid #cbd5e1;border-radius:6px;background:#fff}
+.act-color label.flex-grow-1{font-size:13px;color:#334155;margin:0}
+.act-color .form-check{margin:0;font-size:12px;color:#64748b}
+.act-preview-wrap{background:#f1f5f9;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0}
+.act-preview-mobile{width:390px;max-width:100%;height:470px;border:0;display:block;margin:0 auto;background:#f1f5f9}
+.act-preview-desktop-box{overflow:hidden;position:relative}
+.act-preview-desktop{width:1060px;height:320px;border:0;transform-origin:0 0;position:absolute;left:0;top:0}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h4 class="mb-1 fw-bold">Agent Card Themes</h4>
+        <div class="text-muted small">Design the agent card shown on Find Agents, city pages and the agent dashboard preview. Make festival themes (Diwali, Holi…) and switch with one click.</div>
+    </div>
+    <form method="post" action="{% url 'admin_agent_card_theme_flag' %}" class="d-flex align-items-center gap-2">
+        {% csrf_token %}
+        <input type="hidden" name="enabled" value="{% if flag_enabled %}0{% else %}1{% endif %}">
+        <span class="badge {% if flag_enabled %}bg-success{% else %}bg-secondary{% endif %} px-3 py-2">Feature {% if flag_enabled %}ON{% else %}OFF{% endif %}</span>
+        <button type="submit" class="btn btn-sm {% if flag_enabled %}btn-outline-danger{% else %}btn-success{% endif %}">
+            {% if flag_enabled %}Turn OFF{% else %}Turn ON{% endif %}
+        </button>
+    </form>
+</div>
+
+{% if not flag_enabled %}
+<div class="alert alert-warning border-0 small">Feature is <strong>OFF</strong>: every visitor sees the original card. You can still create and preview themes; turn it ON to publish the active theme.</div>
+{% endif %}
+
+<div class="row g-4">
+    {# ── Theme list ───────────────────────────────────────────── #}
+    <div class="col-lg-5">
+        <div class="act-card mb-3">
+            <div class="act-theme">
+                <div class="act-swatch" style="background:#fff"></div>
+                <div class="act-theme-name">Default (original card)</div>
+                {% if active_id == 'default' %}<span class="badge bg-primary">Active</span>{% else %}
+                <form method="post" action="{% url 'admin_agent_card_theme_activate' %}">{% csrf_token %}<input type="hidden" name="theme_id" value="default"><button class="btn btn-sm btn-outline-primary">Activate</button></form>{% endif %}
+            </div>
+            {% for t in themes %}
+            <div class="act-theme">
+                <div class="act-swatch" style="background:{% if t.design.card_bg %}{{ t.design.card_bg }}{% else %}#fff{% endif %};border-color:{% if t.design.border_color %}{{ t.design.border_color }}{% else %}#e2e8f0{% endif %}"></div>
+                <div class="act-theme-name" title="{{ t.name }}">{{ t.name }}</div>
+                {% if active_id == t.id %}<span class="badge bg-primary">Active</span>{% else %}
+                <form method="post" action="{% url 'admin_agent_card_theme_activate' %}">{% csrf_token %}<input type="hidden" name="theme_id" value="{{ t.id }}"><button class="btn btn-sm btn-outline-primary">Activate</button></form>{% endif %}
+                <a class="btn btn-sm btn-outline-secondary" href="?edit={{ t.id }}" title="Edit"><i class="fa-solid fa-pen"></i></a>
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin_agent_card_theme_export' t.id %}" title="Download theme file"><i class="fa-solid fa-download"></i></a>
+                <form method="post" action="{% url 'admin_agent_card_theme_delete' %}" onsubmit="return confirm('Delete theme “{{ t.name|escapejs }}”?');">{% csrf_token %}<input type="hidden" name="theme_id" value="{{ t.id }}"><button class="btn btn-sm btn-outline-danger" title="Delete"><i class="fa-solid fa-trash"></i></button></form>
+            </div>
+            {% empty %}
+            <div class="act-theme text-muted small">No custom themes yet.</div>
+            {% endfor %}
+        </div>
+
+        <div class="act-card p-3 mb-3">
+            <div class="d-flex flex-wrap gap-2">
+                <a href="?new=1" class="btn btn-sm btn-dark"><i class="fa-solid fa-plus me-1"></i>New theme</a>
+                {% for key, p in presets.items %}
+                <form method="post" action="{% url 'admin_agent_card_theme_preset' %}">{% csrf_token %}<input type="hidden" name="preset" value="{{ key }}"><button class="btn btn-sm btn-outline-warning"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>Add {{ p.name }}</button></form>
+                {% endfor %}
+            </div>
+            <form method="post" action="{% url 'admin_agent_card_theme_import' %}" enctype="multipart/form-data" class="mt-3">
+                {% csrf_token %}
+                <label class="form-label small fw-semibold mb-1" for="themeUpload">Upload theme: festival image or .json file</label>
+                <input type="text" name="name" maxlength="60" class="form-control form-control-sm mb-2" placeholder="Theme name (optional, e.g. Diwali 2026)" aria-label="Theme name">
+                <div class="input-group input-group-sm">
+                    <input id="themeUpload" type="file" name="theme_file" accept="image/png,image/jpeg,image/webp,.json,application/json" class="form-control" required>
+                    <button class="btn btn-outline-primary">Upload</button>
+                </div>
+                <div class="form-text"><strong>Image</strong> (JPG / PNG / WebP, max 5 MB, any size): a new theme is made with it as the background, auto-fitted to the card. <strong>.json</strong>: a theme downloaded from this page (<i class="fa-solid fa-download"></i>).</div>
+            </form>
+        </div>
+    </div>
+
+    {# ── Editor + live preview ────────────────────────────────── #}
+    <div class="col-lg-7">
+        {% if editing %}
+        <form id="themeForm" method="post" action="{% url 'admin_agent_card_theme_save' %}" enctype="multipart/form-data" class="act-card p-3">
+            {% csrf_token %}
+            <input type="hidden" name="theme_id" value="{{ editing.id }}">
+            <div class="d-flex align-items-end gap-2">
+                <div class="flex-grow-1">
+                    <label class="form-label small fw-semibold mb-1" for="themeName">Theme name</label>
+                    <input id="themeName" type="text" name="name" value="{{ editing.name }}" maxlength="60" class="form-control" placeholder="e.g. Diwali 2026" required>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+            </div>
+
+            <div class="act-section">Live preview</div>
+            {% if has_sample_agent %}
+            <ul class="nav nav-pills nav-sm mb-2" role="tablist">
+                <li class="nav-item"><button type="button" class="nav-link active py-1 px-3" data-preview="mobile">Phone</button></li>
+                <li class="nav-item"><button type="button" class="nav-link py-1 px-3" data-preview="desktop">Desktop</button></li>
+            </ul>
+            <div class="act-preview-wrap">
+                <iframe id="previewMobile" class="act-preview-mobile" title="Phone preview"></iframe>
+                <div class="act-preview-desktop-box d-none" id="previewDesktopBox"><iframe id="previewDesktop" class="act-preview-desktop" title="Desktop preview"></iframe></div>
+            </div>
+            <div class="form-text">Preview uses a real active agent and updates as you change settings. New images show after Save.</div>
+            <div class="act-section">WhatsApp share image</div>
+            <img id="sharePreview" alt="Share image preview" style="width:100%;border-radius:10px;border:1px solid #e2e8f0;background:#f1f5f9;aspect-ratio:1200/630">
+            <div class="form-text">This is the picture shown when an agent's profile link is shared. The festival background and greeting below appear here.</div>
+            {% else %}
+            <div class="alert alert-light border small mb-0">Add at least one active agent to see a live preview.</div>
+            {% endif %}
+
+            <div class="act-section">Colors</div>
+            <div class="row">
+                {% for key, label, value, builtin in color_rows %}
+                <div class="col-sm-6">
+                    <div class="act-color">
+                        <input type="color" name="{{ key }}" id="c_{{ key }}" value="{% if value %}{{ value }}{% else %}{{ builtin }}{% endif %}" aria-label="{{ label }}">
+                        <label class="flex-grow-1" for="c_{{ key }}">{{ label }}</label>
+                        <div class="form-check"><input class="form-check-input js-default" type="checkbox" name="{{ key }}_default" id="d_{{ key }}" value="1" {% if not value %}checked{% endif %}><label class="form-check-label" for="d_{{ key }}">Default</label></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="act-section">Shape &amp; shadow</div>
+            <div class="row g-2">
+                <div class="col-sm-4"><label class="form-label small mb-1" for="radius">Corner radius (px)</label><input id="radius" type="number" name="radius" min="0" max="32" class="form-control form-control-sm" value="{% if editing.design.radius is not None %}{{ editing.design.radius }}{% endif %}" placeholder="Default 14"></div>
+                <div class="col-sm-4"><label class="form-label small mb-1" for="border_width">Border width (px)</label><input id="border_width" type="number" name="border_width" min="0" max="4" class="form-control form-control-sm" value="{% if editing.design.border_width is not None %}{{ editing.design.border_width }}{% endif %}" placeholder="Default 1"></div>
+                <div class="col-sm-4"><label class="form-label small mb-1" for="shadow">Shadow</label>
+                    <select id="shadow" name="shadow" class="form-select form-select-sm">{% for s in shadows %}<option value="{{ s }}" {% if editing.design.shadow == s %}selected{% endif %}>{{ s|capfirst }}</option>{% endfor %}</select></div>
+            </div>
+
+            <div class="act-section">Show / hide sections</div>
+            <div class="row">
+                {% for key, label, value in show_rows %}
+                <div class="col-sm-6"><div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" role="switch" name="{{ key }}" id="s_{{ key }}" value="1" {% if value %}checked{% endif %}>
+                    <label class="form-check-label small" for="s_{{ key }}">{{ label }}</label>
+                </div></div>
+                {% endfor %}
+            </div>
+            <div class="form-text">An agent's own privacy settings (e.g. hide rating) still apply on top of this.</div>
+
+            <div class="act-section">Button &amp; label text</div>
+            <div class="row g-2">
+                {% for key, default, value in label_rows %}
+                <div class="col-sm-6 col-md-4"><label class="form-label small mb-1" for="l_{{ key }}">{{ default }}</label><input id="l_{{ key }}" type="text" name="{{ key }}" value="{{ value }}" maxlength="24" class="form-control form-control-sm" placeholder="{{ default }}"></div>
+                {% endfor %}
+            </div>
+
+            <div class="act-section">Festival background &amp; greeting</div>
+            {% if editing.design.background_url %}
+            <div class="d-flex align-items-center gap-3 mb-2">
+                <img src="{{ editing.design.background_url }}" alt="Current background" style="width:120px;height:63px;object-fit:cover;border:1px solid #e2e8f0;border-radius:8px">
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="remove_background" id="remove_background" value="1"><label class="form-check-label small" for="remove_background">Remove background</label></div>
+            </div>
+            {% endif %}
+            <div class="row g-2">
+                <div class="col-sm-8"><label class="form-label small mb-1" for="background_file">Background artwork (JPG / PNG / WebP, max 5 MB, any size)</label><input id="background_file" type="file" name="background_file" accept="image/png,image/webp,image/jpeg" class="form-control form-control-sm"></div>
+                <div class="col-sm-4"><label class="form-label small mb-1" for="panel_opacity">Text panel whiteness (%)</label><input id="panel_opacity" type="number" name="panel_opacity" min="50" max="100" value="{{ editing.design.panel_opacity }}" class="form-control form-control-sm"></div>
+                <div class="col-12"><label class="form-label small mb-1" for="share_layout">Share image layout</label>
+                    <select id="share_layout" name="share_layout" class="form-select form-select-sm">
+                        <option value="classic" {% if editing.design.share_layout == 'classic' %}selected{% endif %}>Classic: agent photo on the left, art behind a see-through panel</option>
+                        <option value="festive" {% if editing.design.share_layout == 'festive' %}selected{% endif %}>Festive frame: PadosiAgent brand panel, colour stat cards, greeting between decorations, purple footer</option>
+                    </select></div>
+                <div class="col-sm-5"><label class="form-label small mb-1" for="greeting_title">Greeting title</label><input id="greeting_title" type="text" name="greeting_title" maxlength="40" value="{{ editing.design.greeting_title }}" class="form-control form-control-sm" placeholder="Happy Diwali"></div>
+                <div class="col-sm-7"><label class="form-label small mb-1" for="greeting_text">Greeting message</label><input id="greeting_text" type="text" name="greeting_text" maxlength="140" value="{{ editing.design.greeting_text }}" class="form-control form-control-sm" placeholder="May this Diwali bring good health, happiness and prosperity…"></div>
+            </div>
+            <div class="form-text">The image is cropped to fit automatically (1200×630, centre kept). It sits behind the share image and, softened, behind the Find Agents card. Use <strong>artwork only, without text</strong>: the agent's name, stats and greeting are drawn on top from their real data (an image of a finished card would show the text twice). Keep the busy parts of the art near the edges. The greeting shows on the share image when there is room.</div>
+
+            <div class="act-section">Festival decoration</div>
+            {% if editing.design.decoration_url %}
+            <div class="d-flex align-items-center gap-3 mb-2">
+                <img src="{{ editing.design.decoration_url }}" alt="Current decoration" style="width:56px;height:56px;object-fit:contain;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px">
+                <div class="form-check"><input class="form-check-input" type="checkbox" name="remove_decoration" id="remove_decoration" value="1"><label class="form-check-label small" for="remove_decoration">Remove image</label></div>
+            </div>
+            {% endif %}
+            <div class="row g-2">
+                <div class="col-sm-6"><label class="form-label small mb-1" for="decoration_file">Image (PNG / WebP / JPG / GIF, max 2 MB)</label><input id="decoration_file" type="file" name="decoration_file" accept="image/png,image/webp,image/jpeg,image/gif" class="form-control form-control-sm"></div>
+                <div class="col-6 col-sm-3"><label class="form-label small mb-1" for="decoration_position">Position</label>
+                    <select id="decoration_position" name="decoration_position" class="form-select form-select-sm">{% for p in positions %}<option value="{{ p }}" {% if editing.design.decoration_position == p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></div>
+                <div class="col-6 col-sm-3"><label class="form-label small mb-1" for="decoration_size">Size (px)</label><input id="decoration_size" type="number" name="decoration_size" min="24" max="160" value="{{ editing.design.decoration_size }}" class="form-control form-control-sm"></div>
+            </div>
+            <div class="form-text">Tip: a transparent PNG of diyas, rangoli or colour splashes works best. It never blocks the card's buttons.</div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a href="{% url 'admin_agent_card_themes' %}" class="btn btn-light">Close</a>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Save theme</button>
+            </div>
+        </form>
+        {% else %}
+        <div class="act-card p-4 text-center text-muted">
+            <i class="fa-solid fa-palette fa-2x mb-2 text-primary"></i>
+            <div class="fw-semibold text-dark">Pick a theme to edit, or create a new one.</div>
+            <div class="small">Each theme can change colors, shape, which sections show, button text and add a festival decoration.</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if editing and has_sample_agent %}
+<script>
+(function () {
+    var form = document.getElementById('themeForm');
+    var mobile = document.getElementById('previewMobile');
+    var desktop = document.getElementById('previewDesktop');
+    var timer = null, seq = 0;
+
+    function refresh() {
+        var data = new FormData(form);
+        data.delete('decoration_file');
+        var mine = ++seq;
+        fetch("{% url 'admin_agent_card_theme_preview' %}", { method: 'POST', body: data, credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.text() : Promise.reject(r.status); })
+            .then(function (html) {
+                if (mine !== seq) return; // a newer preview is on its way
+                mobile.srcdoc = html;
+                desktop.srcdoc = html;
+                var img = new DOMParser().parseFromString(html, 'text/html').getElementById('share-img');
+                if (img) document.getElementById('sharePreview').src = img.getAttribute('src');
+            })
+            .catch(function () { mobile.srcdoc = '<p style="font-family:sans-serif;color:#b91c1c;padding:16px">Preview failed. Save still works.</p>'; });
+    }
+    function schedule() { clearTimeout(timer); timer = setTimeout(refresh, 350); }
+    // The desktop card only appears at >= 992px, so render 1060px wide and shrink to fit the column.
+    function fitDesktop() {
+        var box = document.getElementById('previewDesktopBox');
+        var s = Math.min(1, box.clientWidth / 1060);
+        desktop.style.transform = 'scale(' + s + ')';
+        box.style.height = Math.round(320 * s) + 'px';
+    }
+    window.addEventListener('resize', fitDesktop);
+
+    form.addEventListener('input', schedule);
+    form.addEventListener('change', schedule);
+    // Picking a colour un-ticks its "Default" box.
+    form.querySelectorAll('input[type=color]').forEach(function (el) {
+        el.addEventListener('input', function () { var d = document.getElementById('d_' + el.name); if (d) d.checked = false; });
+    });
+    document.querySelectorAll('[data-preview]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('[data-preview]').forEach(function (b) { b.classList.toggle('active', b === btn); });
+            var isDesktop = btn.getAttribute('data-preview') === 'desktop';
+            mobile.classList.toggle('d-none', isDesktop);
+            document.getElementById('previewDesktopBox').classList.toggle('d-none', !isDesktop);
+            if (isDesktop) fitDesktop();
+        });
+    });
+    refresh();
+})();
+</script>
+{% endif %}
+{% endblock %}

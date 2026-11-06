@@ -132,6 +132,16 @@ DEFAULT_SYSTEM_FLAGS: List[Dict[str, Any]] = [
         'icon': 'fa-solid fa-language',
         'is_system': True,
     },
+    {
+        'key': 'agent_card_themes_enabled',
+        'name': 'Agent Card Themes (Festival / Custom Design)',
+        'category': 'Growth & Marketing',
+        'description': 'Applies the admin-selected agent card theme (colors, shape, sections, button text, festival decoration) on Find Agents, city pages and the agent dashboard preview. Off = original card design.',
+        'redirect_url': '/admin/agent-card-themes/',
+        'default': False,
+        'icon': 'fa-solid fa-palette',
+        'is_system': True,
+    },
 ]
 
 

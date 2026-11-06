@@ -1,0 +1,18 @@
+{% comment %}Agent card theme overrides. Values come from apps/admin_panel/services/agent_card_themes.sanitize_design (hex colours, clamped ints, enums, our own media path only). ".react-agent-card.find-agents-list-item .rac-card" outranks every rule in agent-card-shared.css.{% endcomment %}{% if show %}<style id="agent-card-theme">
+{% if t.card_bg %}.react-agent-card.find-agents-list-item .rac-card{background:{% if t.card_bg2 %}linear-gradient(135deg,{{ t.card_bg }},{{ t.card_bg2 }}){% else %}{{ t.card_bg }}{% endif %} !important}{% endif %}
+{% if t.border_color %}.react-agent-card.find-agents-list-item .rac-card{border-color:{{ t.border_color }} !important}{% endif %}
+{% if t.border_width is not None %}.react-agent-card.find-agents-list-item .rac-card{border-style:solid !important;border-width:{{ t.border_width }}px !important}{% endif %}
+{% if t.radius is not None %}.react-agent-card.find-agents-list-item .rac-card{border-radius:{{ t.radius }}px !important}{% endif %}
+{% if t.shadow == 'none' %}.react-agent-card.find-agents-list-item .rac-card,.react-agent-card.find-agents-list-item .rac-card:hover{box-shadow:none !important}{% elif t.shadow == 'soft' %}.react-agent-card.find-agents-list-item .rac-card{box-shadow:0 4px 14px rgba(0,0,0,.08) !important}{% elif t.shadow == 'strong' %}.react-agent-card.find-agents-list-item .rac-card{box-shadow:0 12px 32px rgba(0,0,0,.18) !important}{% endif %}
+{% if t.name_color %}.react-agent-card.find-agents-list-item .rac-card .rac-name,.react-agent-card.find-agents-list-item .rac-card .rac-d-name{color:{{ t.name_color }} !important}{% endif %}
+{% if t.star_color %}.react-agent-card.find-agents-list-item .rac-card .rac-star--full{fill:{{ t.star_color }} !important;color:{{ t.star_color }} !important}{% endif %}
+{% if t.stat_bg %}.react-agent-card.find-agents-list-item .rac-card .rac-stat-box{background:{{ t.stat_bg }} !important}{% endif %}
+{% if t.stat_num_color %}.react-agent-card.find-agents-list-item .rac-card .rac-stat-num{color:{{ t.stat_num_color }} !important}{% endif %}
+{% if t.profile_btn_bg %}.react-agent-card.find-agents-list-item .rac-card .rac-btn--profile,.react-agent-card.find-agents-list-item .rac-card .rac-d-btn--profile{background:{{ t.profile_btn_bg }} !important}{% endif %}
+{% if t.whatsapp_btn_bg %}.react-agent-card.find-agents-list-item .rac-card .rac-btn--whatsapp,.react-agent-card.find-agents-list-item .rac-card .rac-d-btn--whatsapp{background:{{ t.whatsapp_btn_bg }} !important}{% endif %}
+{% if t.call_btn_bg %}.react-agent-card.find-agents-list-item .rac-card .rac-btn--call,.react-agent-card.find-agents-list-item .rac-card .rac-d-btn--call{background:{{ t.call_btn_bg }} !important}{% endif %}
+{% if t.btn_text_color %}.react-agent-card.find-agents-list-item .rac-card .rac-btn,.react-agent-card.find-agents-list-item .rac-card .rac-d-btn{color:{{ t.btn_text_color }} !important}{% endif %}
+{% if t.background_url %}.react-agent-card.find-agents-list-item .rac-card{background:linear-gradient(rgba(255,255,255,{{ t.panel_alpha }}),rgba(255,255,255,{{ t.panel_alpha }})),url("{{ t.background_url }}") center/cover no-repeat !important}{% endif %}
+{% if t.decoration_url %}.react-agent-card.find-agents-list-item .rac-card{position:relative}
+.react-agent-card.find-agents-list-item .rac-card::after{content:"";position:absolute;{% if t.decoration_position == 'top-left' %}top:0;left:0{% elif t.decoration_position == 'bottom-left' %}bottom:0;left:0{% elif t.decoration_position == 'bottom-right' %}bottom:0;right:0{% else %}top:0;right:0{% endif %};width:{{ t.decoration_size }}px;height:{{ t.decoration_size }}px;background:url("{{ t.decoration_url }}") no-repeat center/contain;pointer-events:none;z-index:3}{% endif %}
+</style>{% endif %}
