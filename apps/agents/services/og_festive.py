@@ -30,10 +30,10 @@ from apps.agents.services.og_image import (
 )
 
 W, H = 1200, 630
-CARD = (20, 85, 1180, 545)  # the framed card
-INFO = (372, 100, 1052, 476)  # cream info panel
-X0 = 398  # left edge of the agent details
-STAT_ROW = (218, 306)
+CARD = (8, 8, 1192, 622)  # gold frame just inside the full-bleed image
+INFO = (372, 32, 1164, 516)  # cream info panel
+X0 = 400  # left edge of the agent details
+STAT_ROW = (192, 310)
 NAVY, GOLD, ORANGE = (30, 27, 75), (233, 185, 73), (234, 88, 12)
 STAT_STYLE = {  # label -> (fill, border, icon colour, icon)
     "YEARS EXP": ((232, 241, 254), (188, 212, 246), (37, 99, 235), "calendar"),
@@ -255,7 +255,7 @@ def _cover_crop_top(img, w, h):
 
 def _photo_panel(canvas, photo):
     """Agent photo in a white rounded frame, with a small PadosiAgent logo badge below it."""
-    box = (48, 104, 344, 404)  # 296 x 300
+    box = (44, 40, 348, 452)  # 304 x 412, portrait
     w, h = box[2] - box[0], box[3] - box[1]
     shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     ImageDraw.Draw(shadow).rounded_rectangle((box[0] + 2, box[1] + 8, box[2] + 2, box[3] + 10), radius=24, fill=(0, 0, 0, 110))
@@ -269,9 +269,9 @@ def _photo_panel(canvas, photo):
     canvas.paste(_cover_crop_top(photo.convert("RGB"), w, h), box[:2], _rounded_mask((w, h), 20))
     logo = _load_rgba(os.path.join(settings.BASE_DIR, "static", "img", "logo.png"))
     if logo:
-        lw = 170
+        lw = 190
         logo = logo.resize((lw, int(logo.size[1] * lw / logo.size[0])), RESAMPLE)
-        pill = (196 - lw // 2 - 16, box[3] - 18, 196 + lw // 2 + 16, box[3] - 18 + logo.size[1] + 14)
+        pill = (196 - lw // 2 - 16, box[3] - 20, 196 + lw // 2 + 16, box[3] - 20 + logo.size[1] + 14)
         _panel(canvas, pill, (pill[3] - pill[1]) // 2, (255, 255, 255, 250), outline=(233, 185, 73, 255), width=2)
         canvas.alpha_composite(logo, (196 - lw // 2, pill[1] + 7))
 
@@ -298,18 +298,8 @@ def render_festive_card(agent, theme, profile=None, perf=None):
         art = art.filter(ImageFilter.GaussianBlur(120))
     art = _cover_crop(art.convert("RGB"), W, H).convert("RGBA")
 
-    # Backdrop: the artwork blurred and dimmed; the framed card shows it sharp.
-    canvas = art.filter(ImageFilter.GaussianBlur(16))
-    canvas = Image.blend(canvas, Image.new("RGBA", (W, H), (20, 10, 40, 255)), 0.28)
-    cw, ch = CARD[2] - CARD[0], CARD[3] - CARD[1]
-    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(shadow).rounded_rectangle(
-        (CARD[0] + 4, CARD[1] + 10, CARD[2] + 4, CARD[3] + 12),
-        radius=24,
-        fill=(0, 0, 0, 120),
-    )
-    canvas.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(12)))
-    canvas.paste(art.crop(CARD), CARD[:2], _rounded_mask((cw, ch), 22))
+    # Full-bleed: the artwork fills the whole 1200x630 image (WhatsApp shows all of it).
+    canvas = art
     draw = ImageDraw.Draw(canvas)
 
     # Left: the agent's photo, or the site's default avatar (same as the Find Agents card)
@@ -318,241 +308,138 @@ def render_festive_card(agent, theme, profile=None, perf=None):
         _photo_panel(canvas, photo)
 
     # Info panel (right)
-    _panel(
-        canvas, INFO, 22, (255, 251, 245, 238), outline=(255, 255, 255, 220), width=2
-    )
+    _panel(canvas, INFO, 24, (255, 251, 245, 238), outline=(255, 255, 255, 220), width=2)
     draw = ImageDraw.Draw(canvas)
-    right = INFO[2] - 18
-    badge_font = _font(True, 15)
+    right = INFO[2] - 22
+    badge_font = _font(True, 17)
     badges = []
     if card["show_licensed"]:
         badges.append(("Licensed", (243, 238, 255), (167, 139, 250), (91, 33, 182)))
     if card["show_trusted"]:
         badges.append(("Trusted", (236, 253, 245), (110, 231, 183), (4, 120, 87)))
-    badge_ws = [_text_size(draw, b[0], badge_font)[0] + 48 for b in badges]
-    name_room = right - X0 - sum(badge_ws) - 12 * len(badges) - (14 if badges else 0)
-    name_font = _shrink_font(draw, card["name"], _font(True, 31), name_room, 20)
+    badge_ws = [_text_size(draw, b[0], badge_font)[0] + 54 for b in badges]
+    name_room = right - X0 - sum(badge_ws) - 12 * len(badges) - (16 if badges else 0)
+    name_font = _shrink_font(draw, card["name"], _font(True, 36), name_room, 22)
     name = _fit_text(draw, card["name"], name_font, name_room)
-    name_color = (
-        _hex_rgb(theme.get("name_color"), NAVY) if theme.get("name_color") else NAVY
-    )
-    draw.text((X0, 128), name, font=name_font, fill=name_color, anchor="lm")
-    bx = X0 + _text_size(draw, name, name_font)[0] + 14
+    name_color = _hex_rgb(theme.get("name_color"), NAVY) if theme.get("name_color") else NAVY
+    draw.text((X0, 78), name, font=name_font, fill=name_color, anchor="lm")
+    bx = X0 + _text_size(draw, name, name_font)[0] + 16
     for (label, fill, border, color), bw in zip(badges, badge_ws):
-        draw.rounded_rectangle(
-            (bx, 113, bx + bw, 143), radius=15, fill=fill, outline=border, width=2
-        )
-        _icon(draw, "check", bx + 19, 128, 16, color)
-        draw.text((bx + 33, 128), label, font=badge_font, fill=color, anchor="lm")
+        draw.rounded_rectangle((bx, 61, bx + bw, 95), radius=17, fill=fill, outline=border, width=2)
+        _icon(draw, "check", bx + 21, 78, 18, color)
+        draw.text((bx + 37, 78), label, font=badge_font, fill=color, anchor="lm")
         bx += bw + 12
-    draw.text(
-        (X0, 162),
-        _fit_text(draw, card["subtitle"], _font(True, 17), right - X0),
-        font=_font(True, 17),
-        fill=(91, 33, 182),
-        anchor="lm",
-    )
+    sub_font = _font(True, 20)
+    draw.text((X0, 121), _fit_text(draw, card["subtitle"], sub_font, right - X0), font=sub_font, fill=(91, 33, 182), anchor="lm")
 
-    meta_y, mx = 194, X0
+    meta_y, mx = 162, X0
     if card["review_count"]:
-        score, count = (
-            f"{card['rating']:.1f}",
-            f"({card['review_count']} review{'s' if card['review_count'] != 1 else ''})",
-        )
-        sw, cw_ = (
-            _text_size(draw, score, _font(True, 16))[0],
-            _text_size(draw, count, _font(False, 15))[0],
-        )
-        pill_w = 16 + 20 + 8 + sw + 6 + cw_ + 16
-        draw.rounded_rectangle(
-            (mx, meta_y - 15, mx + pill_w, meta_y + 15),
-            radius=15,
-            fill=(255, 247, 230),
-            outline=(246, 214, 160),
-            width=2,
-        )
-        _draw_star(draw, mx + 26, meta_y, 10, fill=(245, 158, 11))
-        draw.text(
-            (mx + 44, meta_y), score, font=_font(True, 16), fill=NAVY, anchor="lm"
-        )
-        draw.text(
-            (mx + 50 + sw, meta_y), count, font=_font(False, 15), fill=NAVY, anchor="lm"
-        )
-        mx += pill_w + 24
+        score = f"{card['rating']:.1f}"
+        count = f"({card['review_count']} review{'s' if card['review_count'] != 1 else ''})"
+        sw, cw_ = _text_size(draw, score, _font(True, 18))[0], _text_size(draw, count, _font(False, 17))[0]
+        pill_w = 18 + 22 + 10 + sw + 7 + cw_ + 18
+        draw.rounded_rectangle((mx, meta_y - 17, mx + pill_w, meta_y + 17), radius=17, fill=(255, 247, 230), outline=(246, 214, 160), width=2)
+        _draw_star(draw, mx + 29, meta_y, 11, fill=(245, 158, 11))
+        draw.text((mx + 50, meta_y), score, font=_font(True, 18), fill=NAVY, anchor="lm")
+        draw.text((mx + 57 + sw, meta_y), count, font=_font(False, 17), fill=NAVY, anchor="lm")
+        mx += pill_w + 26
     if card["location"]:
         _draw_pin(draw, mx + 7, meta_y, fill=NAVY)
-        draw.text(
-            (mx + 22, meta_y),
-            _fit_text(draw, card["location"], _font(False, 16), right - mx - 22),
-            font=_font(False, 16),
-            fill=NAVY,
-            anchor="lm",
-        )
+        draw.text((mx + 24, meta_y), _fit_text(draw, card["location"], _font(False, 18), right - mx - 24), font=_font(False, 18), fill=NAVY, anchor="lm")
 
     stats = card["stats"][:4]
-    top = STAT_ROW[0] if (card["review_count"] or card["location"]) else 180
+    top = STAT_ROW[0] if (card["review_count"] or card["location"]) else 146
     box_h = STAT_ROW[1] - STAT_ROW[0]
     if stats:
-        gap = 14
-        box_w = min(148, (right - X0 - gap * (len(stats) - 1)) // len(stats))
+        gap = 16
+        box_w = min(176, (right - X0 - gap * (len(stats) - 1)) // len(stats))
         for i, (val, lbl, _green) in enumerate(stats):
-            fill, border, icon_color, icon = STAT_STYLE.get(
-                lbl, ((248, 250, 252), (226, 232, 240), NAVY, "chart")
-            )
+            fill, border, icon_color, icon = STAT_STYLE.get(lbl, ((248, 250, 252), (226, 232, 240), NAVY, "chart"))
             x = X0 + i * (box_w + gap)
-            draw.rounded_rectangle(
-                (x, top, x + box_w, top + box_h),
-                radius=12,
-                fill=fill,
-                outline=border,
-                width=2,
-            )
-            _icon(draw, icon, x + box_w / 2, top + 20, 22, icon_color)
-            num_font = _shrink_font(draw, val, _font(True, 27), box_w - 14, 16)
-            draw.text(
-                (x + box_w / 2, top + 50), val, font=num_font, fill=NAVY, anchor="mm"
-            )
-            draw.text(
-                (x + box_w / 2, top + 74),
-                lbl,
-                font=_font(True, 13),
-                fill=(51, 48, 105),
-                anchor="mm",
-            )
+            draw.rounded_rectangle((x, top, x + box_w, top + box_h), radius=14, fill=fill, outline=border, width=2)
+            _icon(draw, icon, x + box_w / 2, top + 25, 26, icon_color)
+            num_font = _shrink_font(draw, val, _font(True, 32), box_w - 16, 18)
+            draw.text((x + box_w / 2, top + 63), val, font=num_font, fill=NAVY, anchor="mm")
+            draw.text((x + box_w / 2, top + 95), lbl, font=_font(True, 15), fill=(51, 48, 105), anchor="mm")
         top += box_h
 
-    pills_top, px = top + 12, X0
-    pill_font = _font(True, 16)
+    pills_top, px = top + 16, X0
+    pill_font = _font(True, 17)
     for item in card["segments"][:3]:
-        fill, border, color = PILL_COLORS.get(
-            item.get("class"), ((241, 245, 249), (203, 213, 225), (51, 65, 85))
-        )
+        fill, border, color = PILL_COLORS.get(item.get("class"), ((241, 245, 249), (203, 213, 225), (51, 65, 85)))
         if item.get("class") == "sme":
             fill, border, color = (255, 243, 224), (246, 197, 139), (154, 52, 18)
-        pw = _text_size(draw, item["name"], pill_font)[0] + 52
+        pw = _text_size(draw, item["name"], pill_font)[0] + 56
         if px + pw > right:
             break
-        draw.rounded_rectangle(
-            (px, pills_top, px + pw, pills_top + 30),
-            radius=15,
-            fill=fill,
-            outline=border,
-            width=2,
-        )
-        _icon(draw, "shield", px + 19, pills_top + 15, 16, color)
-        draw.text(
-            (px + 34, pills_top + 15),
-            item["name"],
-            font=pill_font,
-            fill=color,
-            anchor="lm",
-        )
+        draw.rounded_rectangle((px, pills_top, px + pw, pills_top + 34), radius=17, fill=fill, outline=border, width=2)
+        _icon(draw, "shield", px + 21, pills_top + 17, 18, color)
+        draw.text((px + 37, pills_top + 17), item["name"], font=pill_font, fill=color, anchor="lm")
         px += pw + 10
-    content_bottom = pills_top + 30 if card["segments"] else pills_top
+    content_bottom = pills_top + 34 if card["segments"] else pills_top
 
     # Greeting with a decoration (e.g. diya) on each side
     title = theme.get("greeting_title") or ""
     if title:
         gcx = (X0 + right) / 2 + 8
         words = title.split()
-        accent = (
-            _hex_rgb(theme.get("greeting_color"), ORANGE)
-            if theme.get("greeting_color")
-            else ORANGE
-        )
-        parts = (
-            [(" ".join(words[:-1]), NAVY), (words[-1], accent)]
-            if len(words) > 1
-            else [(title, accent)]
-        )
-        title_font = _font(True, 44)
-        while title_font.size > 26 and _text_size(draw, title, title_font)[0] > 420:
+        accent = _hex_rgb(theme.get("greeting_color"), ORANGE) if theme.get("greeting_color") else ORANGE
+        parts = [(" ".join(words[:-1]), NAVY), (words[-1], accent)] if len(words) > 1 else [(title, accent)]
+        title_font = _font(True, 52)
+        while title_font.size > 28 and _text_size(draw, title, title_font)[0] > 470:
             title_font = title_font.font_variant(size=title_font.size - 2)
-        # centred in the space left under the details (372 with a full card, higher for a sparse one)
-        ty = max(content_bottom + 24, (content_bottom + INFO[3]) / 2 - 40)
+        # centred in the space left under the details (higher on a sparse card)
+        ty = max(content_bottom + 30, (content_bottom + INFO[3]) / 2 - 42)
         tw = _slanted_text(canvas, (gcx, ty), parts, title_font)
         draw = ImageDraw.Draw(canvas)
         for sign in (-1, 1):  # flourishes
-            x1 = gcx + sign * (tw / 2 + 18)
-            draw.line((x1, ty + 4, x1 + sign * 46, ty + 4), fill=accent, width=2)
-            draw.ellipse(
-                (x1 + sign * 46 - 3, ty + 1, x1 + sign * 46 + 3, ty + 7), fill=accent
-            )
-        lines = _wrap_lines(
-            draw, theme.get("greeting_text") or "", _font(False, 16), 470, 2
-        )
-        y = ty + 34
+            x1 = gcx + sign * (tw / 2 + 20)
+            draw.line((x1, ty + 5, x1 + sign * 52, ty + 5), fill=accent, width=3)
+            draw.ellipse((x1 + sign * 52 - 4, ty + 1, x1 + sign * 52 + 4, ty + 9), fill=accent)
+        msg_font = _font(False, 18)
+        lines = _wrap_lines(draw, theme.get("greeting_text") or "", msg_font, 480, 2)
+        y = ty + 42
         for line in lines:
-            draw.text((gcx, y), line, font=_font(False, 16), fill=NAVY, anchor="mm")
-            y += 22
+            draw.text((gcx, y), line, font=msg_font, fill=NAVY, anchor="mm")
+            y += 25
         if lines:
-            draw.line((gcx - 110, y + 2, gcx - 10, y + 2), fill=accent, width=2)
-            draw.line((gcx + 10, y + 2, gcx + 110, y + 2), fill=accent, width=2)
-            draw.polygon(
-                [(gcx, y - 4), (gcx + 6, y + 2), (gcx, y + 8), (gcx - 6, y + 2)],
-                fill=accent,
-            )
+            draw.line((gcx - 120, y + 2, gcx - 12, y + 2), fill=accent, width=2)
+            draw.line((gcx + 12, y + 2, gcx + 120, y + 2), fill=accent, width=2)
+            draw.polygon([(gcx, y - 5), (gcx + 7, y + 2), (gcx, y + 9), (gcx - 7, y + 2)], fill=accent)
         deco = _load_rgba(image_file_path(theme.get("decoration_image")))
         if deco:
-            size = 116
-            deco = deco.resize(
-                (size, int(deco.size[1] * size / deco.size[0])), RESAMPLE
-            )
-            dy = int(ty - deco.size[1] / 2 + 34)
-            canvas.alpha_composite(deco, (int(gcx - tw / 2 - 70 - size), dy))
-            canvas.alpha_composite(
-                deco.transpose(Image.FLIP_LEFT_RIGHT), (int(gcx + tw / 2 + 70), dy)
-            )
+            size = 132
+            deco = deco.resize((size, int(deco.size[1] * size / deco.size[0])), RESAMPLE)
+            dy = int(ty - deco.size[1] / 2 + 40)
+            # outside the wider of title and message, so the diyas never touch the text
+            half = max(tw / 2 + 74, max((_text_size(draw, ln, msg_font)[0] for ln in lines), default=0) / 2 + 16)
+            canvas.alpha_composite(deco, (max(INFO[0] - 10, int(gcx - half - size)), dy))
+            canvas.alpha_composite(deco.transpose(Image.FLIP_LEFT_RIGHT), (min(INFO[2] - size + 10, int(gcx + half)), dy))
             draw = ImageDraw.Draw(canvas)
 
-    # Gold frame
-    draw.rounded_rectangle(CARD, radius=22, outline=GOLD, width=3)
+    # Gold frame just inside the image edge
+    draw.rounded_rectangle(CARD, radius=26, outline=GOLD, width=4)
 
     # Footer bar
-    bar = (262, 487, 1128, 532)
+    bar = (230, 536, 1164, 596)
     footer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    fd = ImageDraw.Draw(footer)
-    fd.rounded_rectangle(bar, radius=22, fill=(58, 22, 112, 245), outline=GOLD, width=2)
+    ImageDraw.Draw(footer).rounded_rectangle(bar, radius=30, fill=(58, 22, 112, 245), outline=GOLD, width=2)
     canvas.alpha_composite(footer)
     draw = ImageDraw.Draw(canvas)
     mid = (bar[1] + bar[3]) // 2
-    phone = _symbol_font(17)
     # WhatsApp: green app tile with a chat bubble; Call: blue circle
-    draw.rounded_rectangle(
-        (296, mid - 17, 330, mid + 17), radius=9, fill=(37, 211, 102)
-    )
-    draw.ellipse((302, mid - 11, 324, mid + 11), outline=(255, 255, 255), width=3)
-    draw.polygon(
-        [(302, mid + 13), (305, mid + 5), (310, mid + 9)], fill=(255, 255, 255)
-    )
-    draw.text(
-        (313, mid + 1), "☎", font=_symbol_font(11), fill=(255, 255, 255), anchor="mm"
-    )
-    draw.ellipse(
-        (348, mid - 17, 382, mid + 17),
-        fill=(59, 130, 246),
-        outline=(255, 255, 255),
-        width=2,
-    )
-    draw.text((365, mid + 1), "☎", font=phone, fill=(255, 255, 255), anchor="mm")
-    foot_font = _font(True, 20)
-    draw.text(
-        (404, mid),
-        "Direct WhatsApp & Calls · Zero middlemen",
-        font=foot_font,
-        fill=(255, 255, 255),
-        anchor="lm",
-    )
+    draw.rounded_rectangle((262, mid - 19, 300, mid + 19), radius=10, fill=(37, 211, 102))
+    draw.ellipse((269, mid - 12, 293, mid + 12), outline=(255, 255, 255), width=3)
+    draw.polygon([(269, mid + 14), (272, mid + 6), (277, mid + 10)], fill=(255, 255, 255))
+    draw.text((281, mid + 1), "☎", font=_symbol_font(12), fill=(255, 255, 255), anchor="mm")
+    draw.ellipse((314, mid - 19, 352, mid + 19), fill=(59, 130, 246), outline=(255, 255, 255), width=2)
+    draw.text((333, mid + 1), "☎", font=_symbol_font(19), fill=(255, 255, 255), anchor="mm")
+    foot_font = _font(True, 22)
+    draw.text((372, mid), "Direct WhatsApp & Calls · Zero middlemen", font=foot_font, fill=(255, 255, 255), anchor="lm")
     if card["show_verified"]:
-        draw.line((818, bar[1] + 9, 818, bar[3] - 9), fill=(196, 181, 253), width=1)
-        _icon(draw, "check", 876, mid, 28, (34, 197, 94))
-        draw.text(
-            (902, mid),
-            "PadosiAgent Verified",
-            font=foot_font,
-            fill=(255, 255, 255),
-            anchor="lm",
-        )
+        draw.line((838, bar[1] + 11, 838, bar[3] - 11), fill=(196, 181, 253), width=1)
+        _icon(draw, "check", 882, mid, 30, (34, 197, 94))
+        draw.text((906, mid), "PadosiAgent Verified", font=foot_font, fill=(255, 255, 255), anchor="lm")
 
     buf = io.BytesIO()
     from apps.agents.services.og_image import JPEG_QUALITY
