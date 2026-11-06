@@ -263,6 +263,11 @@ else:
         "SESSION_ENGINE", "django.contrib.sessions.backends.cached_db"
     )
 
+# Tests get their own in-memory cache; the shared cache/ folder (or Redis) let test data
+# such as site settings leak into the local dev site.
+if len(sys.argv) > 1 and sys.argv[1] == "test":
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
