@@ -147,3 +147,36 @@ def _send(phone_number, text):
         return {'success': False, 'error': error_msg}
 
 
+CAPTION_MAX = 1024  # WhatsApp/OpenWA limit for a photo caption
+
+
+def send_image_message(phone_number, image_url, caption, category='bot', session=None):
+    """
+    Send a photo (fetched by OpenWA from image_url) with a caption, and log it like a text message.
+    Used for broadcasts so the agent's profile card always shows, whatever the engine does with link previews.
+    """
+    result = _send_image(phone_number, image_url, caption)
+    _log_outbound(phone_number, caption, category, session, result)
+    return result
+
+
+def _send_image(phone_number, image_url, caption):
+    config = _get_config()
+    if not config['base_url'] or not config['session_id']:
+        return {'success': False, 'error': 'OpenWA Server URL / Session ID not configured'}
+    base = config['base_url'].rstrip('/')
+    if not base.endswith('/api'):
+        base = f"{base}/api"
+    url = f"{base}/sessions/{config['session_id']}/messages/send-image"
+    payload = {'chatId': _format_chat_id(phone_number), 'url': image_url, 'caption': caption[:CAPTION_MAX]}
+    try:
+        response = requests.post(url, json=payload, headers=_build_headers(config['api_key']), timeout=60)
+    except RequestException as e:
+        logger.error(f"[WA-Bot] Network error sending image to {phone_number}: {e}")
+        return {'success': False, 'error': f"Network error sending image: {e}"}
+    if response.status_code in (200, 201):
+        logger.info(f"[WA-Bot] Image sent to {phone_number}")
+        return {'success': True, 'data': response.json() if response.text else {}}
+    error = f"OpenWA API error (send-image): HTTP {response.status_code} — {response.text[:200]}"
+    logger.error(f"[WA-Bot] Failed to send image to {phone_number}: {error}")
+    return {'success': False, 'error': error, 'status_code': response.status_code}

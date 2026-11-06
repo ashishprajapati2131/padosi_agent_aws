@@ -207,6 +207,7 @@ class WaBroadcast(models.Model):
 
     message = models.TextField()
     add_link = models.BooleanField(default=True)
+    send_card = models.BooleanField(default=True, help_text="Send the agent's profile card as a photo with the text as caption")
     rate_count = models.PositiveIntegerField(default=49, help_text="Messages per rate_hours")
     rate_hours = models.FloatField(default=4)
     min_gap_seconds = models.PositiveIntegerField(default=60, help_text="Minimum delay between two messages")
@@ -252,6 +253,7 @@ class WaBroadcastRecipient(models.Model):
     phone = models.CharField(max_length=15)
     name = models.CharField(max_length=255, blank=True, default="")
     link = models.CharField(max_length=500, blank=True, default="")
+    image_url = models.CharField(max_length=500, blank=True, default="")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING)
     error = models.CharField(max_length=500, blank=True, default="")
     sent_at = models.DateTimeField(null=True, blank=True)

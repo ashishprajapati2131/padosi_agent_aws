@@ -22,7 +22,7 @@ from django.utils.html import escape
 
 from apps.agents.services.og_urls import CANONICAL_PADOSI_ORIGIN
 from apps.wa_agent_bot.models import WaBotMessageLog
-from apps.wa_agent_bot.services.message_sender import send_text_message
+from apps.wa_agent_bot.services.message_sender import CAPTION_MAX, send_image_message, send_text_message
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,16 @@ def site_base():
 
 def profile_link(agent, base=None):
     return f"{(base or site_base()).rstrip('/')}/{agent.state_code}/{agent.agent_slug}/"
+
+
+def card_image_url(agent, base=None):
+    """The agent's share card (same image as the profile's og:image), served at /og-image/<id>/preview.jpg."""
+    from django.urls import reverse
+    from apps.agents.models import OG_IMAGE_CACHE_VERSION
+    from apps.agents.services.og_image import card_version
+
+    path = reverse("agents:agent_og_image", kwargs={"agent_id": agent.id})
+    return f"{(base or site_base()).rstrip('/')}{path}?v={OG_IMAGE_CACHE_VERSION}-{card_version(agent)}"
 
 
 def render_text(message, name="", link=""):
@@ -206,6 +216,7 @@ def build_recipients(agents=(), sheet_rows=(), add_link=True, base=None):
                     "phone": phone,
                     "name": name,
                     "link": profile_link(agent, base) if (agent and add_link) else "",
+                    "image": card_image_url(agent, base) if (agent and add_link) else "",
                 }
             )
 
@@ -283,6 +294,7 @@ def create_broadcast(
     message,
     *,
     add_link=True,
+    send_card=True,
     rate_count=49,
     rate_hours=4,
     min_gap_seconds=60,
@@ -294,6 +306,7 @@ def create_broadcast(
         b = WaBroadcast.objects.create(
             message=message,
             add_link=add_link,
+            send_card=send_card,
             rate_count=rate_count,
             rate_hours=rate_hours,
             min_gap_seconds=min_gap_seconds,
@@ -308,6 +321,7 @@ def create_broadcast(
                     phone=r["phone"],
                     name=r["name"][:255],
                     link=r["link"][:500],
+                    image_url=r.get("image", "")[:500],
                 )
                 for r in recipients
             ],
@@ -414,6 +428,17 @@ def _block(b, reason, recheck):
         )
 
 
+def _deliver(b, r, text):
+    """The agent's card as a photo with the text as caption (always shows, unlike link previews); else plain text."""
+    if b.send_card and r.image_url and len(text) <= CAPTION_MAX:
+        result = send_image_message(r.phone, r.image_url, text, category=CATEGORY)
+        if result.get("success"):
+            return result
+        # e.g. an OpenWA without send-image: the text still goes out, with its link
+        logger.warning("[WA-Broadcast] card photo failed for %s (%s); sending text", r.phone, result.get("error"))
+    return send_text_message(r.phone, text, category=CATEGORY)
+
+
 def _send_next(b):
     WaBroadcast, WaBroadcastRecipient = _models()
     now = datetime.now()
@@ -433,7 +458,7 @@ def _send_next(b):
         r.save(update_fields=["status"])
         return
 
-    result = send_text_message(r.phone, text, category=CATEGORY)
+    result = _deliver(b, r, text)
     gap = timedelta(seconds=_jitter(b.gap_seconds, b.min_gap_seconds))
     if result.get("success"):
         r.status, r.sent_at = WaBroadcastRecipient.STATUS_SENT, now

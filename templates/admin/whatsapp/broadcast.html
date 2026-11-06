@@ -137,6 +137,13 @@
                             <span class="text-muted d-block">Goes where you put <code>+ Profile link</code>, or at the end if you didn't. Sheet numbers that are not agents get no link.</span>
                         </label>
                     </div>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="send_card" value="1" id="sendCard" checked>
+                        <label class="form-check-label small" for="sendCard">
+                            Send the agent's profile card as a photo <span class="badge bg-success-subtle text-success border border-success-subtle">recommended</span>
+                            <span class="text-muted d-block">The card always shows this way; a plain link often shows no preview when sent by the bot. Your text becomes the photo caption (max 1024 characters, longer messages go as text).</span>
+                        </label>
+                    </div>
 
                     <details class="small mt-3">
                         <summary class="fw-bold">How the formatting works</summary>
@@ -158,6 +165,8 @@
                     <span class="small text-muted" id="previewFor"></span>
                 </div>
                 <div class="card-body" style="background: #e5ddd5;">
+                    <img id="previewCard" alt="Agent profile card that will be sent as a photo" loading="lazy"
+                         style="display: none; width: 92%; margin-left: auto; border-radius: 8px 8px 0 0; border: 3px solid #dcf8c6; border-bottom: 0;">
                     <div id="previewBubble" class="small" style="background: #dcf8c6; border-radius: 8px; padding: 8px 10px; max-width: 92%; margin-left: auto; box-shadow: 0 1px 1px rgba(0,0,0,.15); white-space: normal; word-wrap: break-word; overflow-wrap: anywhere; color: #111;"></div>
                     <div class="small text-muted mt-2" style="color: #555 !important;">Shows the first selected agent (or the first one in the list). Each agent gets their own name and link.</div>
                 </div>
@@ -262,7 +271,7 @@
                         </thead>
                         <tbody id="agentRows">
                             {% for a in agents %}
-                            <tr data-plan="{{ a.plan_label }}" data-state="{{ a.state_label }}" data-city="{{ a.city_label }}" data-name="{{ a.fullname }}" data-link="{{ a.profile_url }}">
+                            <tr data-plan="{{ a.plan_label }}" data-state="{{ a.state_label }}" data-city="{{ a.city_label }}" data-name="{{ a.fullname }}" data-link="{{ a.profile_url }}" data-card="{{ a.card_url }}">
                                 <td><input class="form-check-input agent-cb" type="checkbox" name="agent_ids" value="{{ a.id }}" id="ag{{ a.id }}"></td>
                                 <td><label for="ag{{ a.id }}" class="mb-0">{{ a.fullname }}</label></td>
                                 <td>{{ a.mobile }}</td>
@@ -352,12 +361,18 @@
         const name = row ? row.dataset.name : 'Ramesh Patel';
         const link = $('addLink').checked ? (row ? row.dataset.link : 'https://padosiagent.com/gj/ramesh-patel/') : '';
         $('previewFor').textContent = 'for ' + name;
+        const text = compose(msg.value, name, link);
+        const card = $('sendCard').checked && $('addLink').checked && row && row.dataset.card && text.length <= 1024;
+        $('previewCard').style.display = card ? 'block' : 'none';
+        if (card && $('previewCard').getAttribute('src') !== row.dataset.card) $('previewCard').src = row.dataset.card;
+        $('previewBubble').style.borderRadius = card ? '0 0 8px 8px' : '8px';
         $('previewBubble').innerHTML = msg.value.trim()
-            ? waFormat(compose(msg.value, name, link))
+            ? waFormat(text) + ($('sendCard').checked && text.length > 1024 ? '<div class="text-danger mt-1">Longer than 1024 characters: goes as text without the card photo.</div>' : '')
             : '<span class="text-muted">Your message will appear here.</span>';
     };
     msg.addEventListener('input', preview);
     $('addLink').addEventListener('change', preview);
+    $('sendCard').addEventListener('change', preview);
 
     // ── Formatting buttons ──
     const insertAt = (before, after) => {

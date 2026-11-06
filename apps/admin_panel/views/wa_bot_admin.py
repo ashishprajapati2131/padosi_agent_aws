@@ -644,7 +644,7 @@ def _agents_with_place(qs):
     """Attach plan/state/city labels for the broadcast filters; one pincode query for all agents."""
     from apps.agents.services.agent_city import _city_from_pincode_row
     from apps.home.models.pincode import Pincode
-    from apps.wa_agent_bot.services.broadcast import profile_link
+    from apps.wa_agent_bot.services.broadcast import card_image_url, profile_link
 
     agents = list(qs)
     pins = {a.agent_pincode for a in agents if a.agent_pincode}
@@ -657,6 +657,7 @@ def _agents_with_place(qs):
         a.state_label = state if state and state.lower() not in ("other", "na", "n/a", "none") else "Unknown"
         a.city_label = _city_from_pincode_row(row) or "Unknown"
         a.profile_url = profile_link(a)
+        a.card_url = card_image_url(a)
     return agents
 
 
@@ -676,6 +677,7 @@ def wa_bot_broadcast(request):
     if request.method == "POST":
         message = request.POST.get("message", "").strip()
         add_link = request.POST.get("add_link") == "1"
+        send_card = request.POST.get("send_card") == "1"
         ids = [int(i) for i in request.POST.getlist("agent_ids") if str(i).isdigit()]
         upload = request.FILES.get("sheet")
         rate_count = _int_in(request.POST.get("rate_count"), 1, 1000, 49)
@@ -723,6 +725,7 @@ def wa_bot_broadcast(request):
             recipients,
             message,
             add_link=add_link,
+            send_card=send_card,
             rate_count=rate_count,
             rate_hours=rate_hours,
             min_gap_seconds=min_gap,

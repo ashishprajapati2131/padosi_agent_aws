@@ -451,6 +451,7 @@ class BroadcastViewTests(TestCase):
             "rate_hours": "4",
             "min_gap_seconds": "90",
             "alert_email": "me@example.com",
+            "send_card": "1",
         }
         resp = self._call(wa_bot_broadcast, self._req("post", data))
         self.assertEqual(resp.status_code, 302)
@@ -461,6 +462,8 @@ class BroadcastViewTests(TestCase):
         self.assertTrue(b.recipients.get().link)
         self.assertEqual((b.rate_count, b.rate_hours, b.min_gap_seconds), (49, 4.0, 90))
         self.assertEqual((b.alert_email, b.created_by), ("me@example.com", "Boss"))
+        self.assertTrue(b.send_card)
+        self.assertIn("/og-image/", b.recipients.get().image_url)
 
     def test_post_clamps_unsafe_speed(self):
         data = {
@@ -548,6 +551,72 @@ class LinkPreviewTests(TestCase):
         self.assertTrue(result["success"])
         self.assertEqual(post.call_count, 2)
         self.assertNotIn("linkPreview", post.call_args_list[1].kwargs["json"])
+
+
+class CardPhotoTests(TestCase):
+    """Broadcasts send the agent's profile card as a photo, so it shows whatever OpenWA does with link previews."""
+
+    def setUp(self):
+        self.agent = Agent.objects.create(fullname="Ram Patel", email="ram@example.com", mobile="9876543210", status="active")
+
+    def _broadcast(self, text="Happy Diwali {name}", **kw):
+        recips = broadcast.build_recipients(agents=[self.agent], base="https://padosiagent.com")
+        return broadcast.create_broadcast(recips, text, rate_count=1000, rate_hours=0.1, min_gap_seconds=5, **kw)
+
+    def test_recipient_gets_the_agents_card_image(self):
+        (r,) = broadcast.build_recipients(agents=[self.agent], base="https://padosiagent.com")
+        self.assertTrue(r["image"].startswith(f"https://padosiagent.com/og-image/{self.agent.id}/preview.jpg?v="))
+        (no_link,) = broadcast.build_recipients(agents=[self.agent], add_link=False)
+        self.assertEqual(no_link["image"], "")
+
+    @patch("apps.wa_agent_bot.services.broadcast.send_text_message")
+    @patch("apps.wa_agent_bot.services.broadcast.send_image_message", return_value={"success": True})
+    def test_sends_card_photo_with_text_as_caption(self, image, text):
+        b = self._broadcast()
+        broadcast.process_broadcasts(max_seconds=1, sleep=lambda s: None)
+        phone, url, caption = image.call_args[0]
+        self.assertEqual(phone, "9876543210")
+        self.assertIn(f"/og-image/{self.agent.id}/preview.jpg", url)
+        self.assertTrue(caption.startswith("Happy Diwali Ram Patel"))
+        self.assertIn("Your profile: https://padosiagent.com/", caption)
+        text.assert_not_called()
+        self.assertEqual(b.recipients.get().status, "sent")
+
+    @patch("apps.wa_agent_bot.services.broadcast.send_text_message", return_value={"success": True})
+    @patch("apps.wa_agent_bot.services.broadcast.send_image_message", return_value={"success": False, "error": "HTTP 404"})
+    def test_falls_back_to_text_when_photo_fails(self, image, text):
+        b = self._broadcast()
+        broadcast.process_broadcasts(max_seconds=1, sleep=lambda s: None)
+        image.assert_called_once()
+        text.assert_called_once()
+        self.assertEqual(b.recipients.get().status, "sent")
+
+    @patch("apps.wa_agent_bot.services.broadcast.send_text_message", return_value={"success": True})
+    @patch("apps.wa_agent_bot.services.broadcast.send_image_message")
+    def test_text_only_when_turned_off_or_too_long(self, image, text):
+        self._broadcast(send_card=False)
+        broadcast.process_broadcasts(max_seconds=1, sleep=lambda s: None)
+        WaBroadcast.objects.all().delete()
+        self._broadcast(text="x" * 1100)
+        broadcast.process_broadcasts(max_seconds=1, sleep=lambda s: None)
+        image.assert_not_called()
+        self.assertEqual(text.call_count, 2)
+
+    def test_send_image_payload(self):
+        from unittest.mock import MagicMock
+        from apps.wa_agent_bot.services import message_sender
+
+        cfg = {"base_url": "https://wa.example.com", "session_id": "s1", "api_key": "k"}
+        ok = MagicMock(status_code=201, text="{}")
+        ok.json.return_value = {}
+        with patch.object(message_sender, "_get_config", return_value=cfg), \
+                patch.object(message_sender.requests, "post", return_value=ok) as post:
+            result = message_sender.send_image_message("9876543210", "https://padosiagent.com/og-image/1/preview.jpg", "Hi", category="broadcast")
+        self.assertTrue(result["success"])
+        self.assertTrue(post.call_args[0][0].endswith("/api/sessions/s1/messages/send-image"))
+        self.assertEqual(post.call_args.kwargs["json"],
+                         {"chatId": "919876543210@c.us", "url": "https://padosiagent.com/og-image/1/preview.jpg", "caption": "Hi"})
+        self.assertTrue(WaBotMessageLog.objects.filter(category="broadcast", content="Hi", status="sent").exists())
 
 
 class SavedMessageTests(TestCase):
