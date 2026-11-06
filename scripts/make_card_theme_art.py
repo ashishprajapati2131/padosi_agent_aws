@@ -2,8 +2,9 @@
 
     python scripts/make_card_theme_art.py
 
-Writes static/img/card_themes/diwali_bg.jpg (1200x630 share-card background) and
-static/img/card_themes/diwali_diya.png (transparent diya, used as the decoration).
+Writes static/img/card_themes/diwali_bg.jpg (1200x630 share-card background),
+static/img/card_themes/diwali_diya.png (transparent diya, used as the decoration) and
+static/img/card_themes/diwali_profile_banner.jpg (1792x300 agent profile banner).
 All shapes are drawn here, so the art has no third-party licence. Coordinates are
 share-card pixels: the info card covers x 20-1180, y 85-545, so festive detail sits
 around its edges (fireworks top-left, lanterns and marigolds top-right, skyline and
@@ -261,6 +262,9 @@ def main():
         os.path.join(OUT, "diwali_bg.jpg"), "JPEG", quality=88, optimize=True
     )
     diya().save(os.path.join(OUT, "diwali_diya.png"), optimize=True)
+    # Wide profile-page banner (shown 250px tall, cover): the upper band with fireworks and lanterns.
+    wide = img.convert("RGB").resize((1792, 941), Image.LANCZOS).crop((0, 60, 1792, 360))
+    wide.save(os.path.join(OUT, "diwali_profile_banner.jpg"), "JPEG", quality=85, optimize=True)
     print("written to", os.path.abspath(OUT))
 
 

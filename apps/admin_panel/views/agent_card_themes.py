@@ -52,6 +52,7 @@ def _design_from_post(post, current=None):
     current = current or {}
     raw["decoration_image"] = "" if post.get("remove_decoration") else current.get("decoration_image", "")
     raw["background_image"] = "" if post.get("remove_background") else current.get("background_image", "")
+    raw["profile_banner_image"] = "" if post.get("remove_profile_banner") else current.get("profile_banner_image", "")
     return raw
 
 
@@ -94,6 +95,32 @@ def _save_background(upload, name):
     return default_storage.save(
         f"{svc.DECORATION_DIR}{slug}_bg_{int(time.time())}.jpg", ContentFile(out.getvalue())
     )
+
+
+def _save_profile_banner(upload, name):
+    """Validate a profile banner upload; store it at most 1920px wide (any shape: the page uses cover)."""
+    from PIL import Image
+
+    data = b"".join(upload.chunks())
+    if len(data) > BACKGROUND_MAX_BYTES:
+        raise ValueError("Profile banner must be under 5 MB.")
+    ok, err, _ext = validate_profile_photo(data, upload.name)
+    if not ok:
+        raise ValueError(err or "Invalid image file.")
+    img = Image.open(io.BytesIO(data))
+    img.seek(0)
+    if img.mode in ("RGBA", "LA", "P"):
+        img = img.convert("RGBA")
+        flat = Image.new("RGB", img.size, (255, 255, 255))
+        flat.paste(img, mask=img.split()[-1])
+        img = flat
+    img = img.convert("RGB")
+    if img.width > 1920:
+        img = img.resize((1920, max(1, round(img.height * 1920 / img.width))), Image.LANCZOS)
+    out = io.BytesIO()
+    img.save(out, "JPEG", quality=85, optimize=True)
+    slug = "".join(c if c.isalnum() else "_" for c in name.lower())[:30] or "theme"
+    return default_storage.save(f"{svc.DECORATION_DIR}{slug}_banner_{int(time.time())}.jpg", ContentFile(out.getvalue()))
 
 
 def _delete_file(path):
@@ -216,6 +243,7 @@ def agent_card_theme_save(request):
         for field, upload_name, saver in (
             ("decoration_image", "decoration_file", _save_decoration),
             ("background_image", "background_file", _save_background),
+            ("profile_banner_image", "profile_banner_file", _save_profile_banner),
         ):
             if request.FILES.get(upload_name):
                 design[field] = saver(request.FILES[upload_name], name)

@@ -187,6 +187,17 @@
             </div>
             <div class="form-text">The image is cropped to fit automatically (1200×630, centre kept). It sits behind the share image and, softened, behind the Find Agents card. Use <strong>artwork only, without text</strong>: the agent's name, stats and greeting are drawn on top from their real data (an image of a finished card would show the text twice). Keep the busy parts of the art near the edges. The greeting shows on the share image when there is room.</div>
 
+            <div class="act-section">Profile banner (all agents)</div>
+            {% if editing.design.profile_banner_url %}
+            <div class="mb-2">
+                <img src="{{ editing.design.profile_banner_url }}" alt="Current profile banner" style="width:100%;max-height:90px;object-fit:cover;border:1px solid #e2e8f0;border-radius:8px">
+                <div class="form-check mt-1"><input class="form-check-input" type="checkbox" name="remove_profile_banner" id="remove_profile_banner" value="1"><label class="form-check-label small" for="remove_profile_banner">Remove banner</label></div>
+            </div>
+            {% endif %}
+            <label class="form-label small mb-1" for="profile_banner_file">Banner image (JPG / PNG / WebP, max 5 MB; wide works best, e.g. 1792×300)</label>
+            <input id="profile_banner_file" type="file" name="profile_banner_file" accept="image/png,image/webp,image/jpeg" class="form-control form-control-sm">
+            <div class="form-text">While this theme is live, <strong>every agent's public profile</strong> (and the visiting card's default banner) shows this image instead of the agent's own banner. Turn the feature OFF or activate another theme to give agents their own banners back.</div>
+
             <div class="act-section">Festival decoration</div>
             {% if editing.design.decoration_url %}
             <div class="d-flex align-items-center gap-3 mb-2">

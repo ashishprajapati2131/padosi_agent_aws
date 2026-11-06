@@ -66,7 +66,7 @@ DECORATION_POSITIONS = ("top-right", "top-left", "bottom-right", "bottom-left")
 LABEL_MAX = 24
 GREETING_TITLE_MAX = 40
 GREETING_TEXT_MAX = 140
-IMAGE_FIELDS = ("decoration_image", "background_image")
+IMAGE_FIELDS = ("decoration_image", "background_image", "profile_banner_image")
 SHARE_LAYOUTS = ("classic", "festive")  # share image: original layout, or framed festival card
 
 DEFAULT_DESIGN = {
@@ -85,6 +85,8 @@ DEFAULT_DESIGN = {
     "greeting_title": "",
     "greeting_text": "",
     "share_layout": "classic",
+    # Shown as the banner on every agent's public profile while this theme is live.
+    "profile_banner_image": "",
 }
 
 # Starter themes the admin can add with one click and then edit.
@@ -115,6 +117,7 @@ PRESETS = {
         "assets": {
             "background_image": "img/card_themes/diwali_bg.jpg",
             "decoration_image": "img/card_themes/diwali_diya.png",
+            "profile_banner_image": "img/card_themes/diwali_profile_banner.jpg",
         },
     },
     "holi": {
@@ -353,6 +356,9 @@ def build_card_theme(design, enabled=True):
     d["background_url"] = (
         (settings.MEDIA_URL + d["background_image"]) if d["background_image"] else ""
     )
+    d["profile_banner_url"] = (
+        (settings.MEDIA_URL + d["profile_banner_image"]) if d["profile_banner_image"] else ""
+    )
     d["panel_alpha"] = "%.2f" % (d["panel_opacity"] / 100)  # string: never locale-formatted in CSS
     # Over a background image the card colours become the see-through tint (white if unset).
     d["tint1"] = _rgb_csv(d["card_bg"]) or "255,255,255"
@@ -398,3 +404,9 @@ def image_file_path(rel):
 
 def background_file_path(theme):
     return image_file_path((theme or {}).get("background_image"))
+
+
+def active_profile_banner_url():
+    """Banner every agent profile shows while the live theme has one ('' = agents' own banners)."""
+    theme = get_active_card_theme()
+    return theme["profile_banner_url"] if theme.get("enabled") else ""

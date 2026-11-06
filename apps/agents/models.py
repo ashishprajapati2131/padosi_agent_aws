@@ -1146,6 +1146,16 @@ class AgentProfile(models.Model):
     def banner_image_url(self):
         from apps.home.models.site_setting import SiteSetting
 
+        # A live festival theme (Admin -> Agent Card Themes) puts one banner on every profile.
+        try:
+            from apps.admin_panel.services.agent_card_themes import active_profile_banner_url
+
+            themed = active_profile_banner_url()
+        except Exception:
+            themed = ""
+        if themed:
+            return themed
+
         enabled_val = SiteSetting.get_value("profile_banner_enabled", "1")
         if str(enabled_val).lower() not in ("1", "true", "yes"):
             return None

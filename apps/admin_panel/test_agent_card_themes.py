@@ -506,3 +506,45 @@ class ShareImageDeliveryTests(_Base):
             img = Image.open(io.BytesIO(_render_agent_og_jpeg_pillow(agent, theme=active_share_theme()))).convert('RGB')
             r, g, b = img.getpixel((196, 380))  # avatar's blue shirt, inside the photo frame
             self.assertGreater(b, r + 40)
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'])
+class ProfileBannerForAllAgentsTests(_Base):
+    def setUp(self):
+        super().setUp()
+        authenticate_client(self.client)
+        self.media = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.media, ignore_errors=True)
+        self.agent = _make_agent(1)
+        self.agent.profile.custom_banner_path = 'banners/custom/mine.jpg'
+        self.agent.profile.save()
+
+    def test_live_theme_banner_replaces_every_agents_banner(self):
+        own = self.agent.profile.banner_image_url
+        self.assertEqual(own, '/media/banners/custom/mine.jpg')
+        svc.set_active(svc.save_theme('Diwali', {'profile_banner_image': 'agent_card_themes/diwali_banner_1.jpg'}))
+        _flag(True)
+        other = _make_agent(2)
+        for agent in (self.agent, other):
+            self.assertEqual(agent.profile.banner_image_url, '/media/agent_card_themes/diwali_banner_1.jpg')
+        _flag(False)
+        self.assertEqual(self.agent.profile.banner_image_url, own)  # agents get their own banners back
+
+    def test_preset_ships_a_profile_banner(self):
+        import os
+        with override_settings(MEDIA_ROOT=self.media):
+            d = svc.get_theme(svc.add_preset('diwali'))['design']
+            self.assertTrue(os.path.isfile(os.path.join(self.media, d['profile_banner_image'])))
+
+    def test_admin_upload_is_downsized_and_removed_with_theme(self):
+        import os
+        from PIL import Image
+        with override_settings(MEDIA_ROOT=self.media):
+            self.client.post('/admin/agent-card-themes/save/', {
+                'name': 'Holi', **{f: '1' for f in svc.SHOW_FIELDS},
+                'profile_banner_file': SimpleUploadedFile('b.png', _png(3000, 500), 'image/png')})
+            theme = svc.get_store()['themes'][0]
+            path = os.path.join(self.media, theme['design']['profile_banner_image'])
+            self.assertEqual(Image.open(path).size, (1920, 320))
+            self.client.post('/admin/agent-card-themes/delete/', {'theme_id': theme['id']})
+            self.assertFalse(os.path.exists(path))
