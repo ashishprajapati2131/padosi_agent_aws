@@ -516,6 +516,40 @@ class BroadcastViewTests(TestCase):
         self.assertContains(resp, "Diwali 2026")  # default pre-drafted message
 
 
+class LinkPreviewTests(TestCase):
+    """OpenWA >= 0.14 (Baileys) only builds the profile card when asked with linkPreview."""
+
+    CFG = {"base_url": "https://wa.example.com", "session_id": "s1", "api_key": "k"}
+
+    def _resp(self, code, body="{}"):
+        from unittest.mock import MagicMock
+
+        r = MagicMock(status_code=code, text=body)
+        r.json.return_value = {}
+        return r
+
+    def test_asks_for_preview_only_when_text_has_a_link(self):
+        from apps.wa_agent_bot.services import message_sender
+
+        with patch.object(message_sender, "_get_config", return_value=self.CFG), \
+                patch.object(message_sender.requests, "post", return_value=self._resp(201)) as post:
+            message_sender._send("9876543210", "Hi\n\nYour profile: https://padosiagent.com/gj/ram/")
+            message_sender._send("9876543210", "Hi, no link here")
+        self.assertIs(post.call_args_list[0].kwargs["json"]["linkPreview"], True)
+        self.assertNotIn("linkPreview", post.call_args_list[1].kwargs["json"])
+
+    def test_older_openwa_that_rejects_the_field_still_gets_the_message(self):
+        from apps.wa_agent_bot.services import message_sender
+
+        with patch.object(message_sender, "_get_config", return_value=self.CFG), \
+                patch.object(message_sender.requests, "post",
+                             side_effect=[self._resp(400, "property linkPreview should not exist"), self._resp(201)]) as post:
+            result = message_sender._send("9876543210", "See https://padosiagent.com/gj/ram/")
+        self.assertTrue(result["success"])
+        self.assertEqual(post.call_count, 2)
+        self.assertNotIn("linkPreview", post.call_args_list[1].kwargs["json"])
+
+
 class SavedMessageTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()

@@ -6,6 +6,7 @@
 {% block og_description %}{{ og_share_description|default:"Find trusted insurance advisors on PadosiAgent." }}{% endblock %}
 {% block og_url %}{{ og_page_absolute_url }}{% endblock %}
 {% block og_image %}{{ og_image_absolute_url }}{% endblock %}
+{% block og_image_secure %}{{ og_image_absolute_url }}{% endblock %}
 {% block og_type %}website{% endblock %}
 {% block og_image_width %}1200{% endblock %}
 {% block og_image_height %}630{% endblock %}
@@ -18,7 +19,6 @@
 {% block canonical_url %}{{ public_site_base }}/{{ agent.state_code|default:"gj" }}/{{ profile.slug }}/{% endblock %}
 
 {% block extra_head %}
-    <meta property="og:image:secure_url" content="{{ og_image_absolute_url }}">
     <meta property="og:image:type" content="image/jpeg">
     <meta property="og:image:alt" content="PadosiAgent insurance advisor profile card">
     <script type="application/ld+json">

@@ -7,6 +7,7 @@
 {% block og_description %}{{ og_share_description|default:card_share_text }}{% endblock %}
 {% block og_url %}{{ card_share_url }}{% endblock %}
 {% block og_image %}{{ og_image_absolute_url }}{% endblock %}
+{% block og_image_secure %}{{ og_image_absolute_url }}{% endblock %}
 {% block og_type %}profile{% endblock %}
 {% block og_image_width %}1200{% endblock %}
 {% block og_image_height %}630{% endblock %}
@@ -16,7 +17,6 @@
 {% block twitter_image %}{{ og_image_absolute_url }}{% endblock %}
 
 {% block extra_head %}
-    <meta property="og:image:secure_url" content="{{ og_image_absolute_url }}">
     <meta property="og:image:type" content="image/jpeg">
     <meta property="og:image:alt" content="{{ agentDisplayName }} — Insurance Advisor Digital Visiting Card">
     <meta name="theme-color" content="#0B1F3A">

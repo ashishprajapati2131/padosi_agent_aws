@@ -102,6 +102,9 @@ def _send(phone_number, text):
         'chatId': chat_id,
         'text': text,
     }
+    # OpenWA >= 0.14 on the Baileys engine sends links without the preview card unless asked.
+    if 'http://' in text or 'https://' in text:
+        payload['linkPreview'] = True
 
     try:
         response = requests.post(
@@ -110,6 +113,16 @@ def _send(phone_number, text):
             headers=_build_headers(config['api_key']),
             timeout=30,
         )
+        if response.status_code == 400 and 'linkPreview' in payload:
+            # Older OpenWA rejects the unknown field: send the plain text instead of failing.
+            logger.warning(f"[WA-Bot] linkPreview rejected ({response.text[:120]}); resending without it")
+            payload.pop('linkPreview')
+            response = requests.post(
+                url,
+                json=payload,
+                headers=_build_headers(config['api_key']),
+                timeout=30,
+            )
 
         if response.status_code in (200, 201):
             logger.info(f"[WA-Bot] Message sent to {phone_number} (len={len(text)})")

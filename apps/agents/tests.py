@@ -1,3 +1,4 @@
+import re
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
@@ -124,6 +125,11 @@ class AgentPublicProfileTests(TestCase):
         body = response.content.decode()
         self.assertIn('og-image/', body)
         self.assertIn('og:image:secure_url', body)
+        # One secure_url, and it is the agent's card: link-preview parsers take the first tag,
+        # and base.html used to print the site's default image there.
+        secure = re.findall(r'property="og:image:secure_url" content="([^"]*)"', body)
+        self.assertEqual(len(secure), 1)
+        self.assertIn('og-image/', secure[0])
         self.assertNotIn('&#8203;', body)
         self.assertNotIn('Digital Visiting Card', body.split('og:title')[0])  # not in head title meta
         self.assertIn('property="og:description"', body)
