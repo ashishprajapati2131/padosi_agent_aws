@@ -1348,6 +1348,10 @@ def agent_pending_registrations(request):
     else:
         all_entries.sort(key=lambda x: str(x.get('created_at') or ''), reverse=True)
 
+    # Agents + drafts are merged in Python, so paginate the list; stats below still cover all entries.
+    page_obj = Paginator(all_entries, 25).get_page(request.GET.get('page'))
+    page_entries = page_obj.object_list
+
     # ── Bulk-fetch latest RegistrationActivityLog event per entry ──
     _EVENT_LABELS = {
         'FORM_SUBMIT':             'Form Submitted',
@@ -1361,8 +1365,8 @@ def agent_pending_registrations(request):
     }
     draft_event_map = {}
     agent_event_map = {}
-    _draft_ids = [str(e['id']) for e in all_entries if e.get('is_draft')]
-    _agent_ids = [str(e['id']) for e in all_entries if not e.get('is_draft')]
+    _draft_ids = [str(e['id']) for e in page_entries if e.get('is_draft')]
+    _agent_ids = [str(e['id']) for e in page_entries if not e.get('is_draft')]
     try:
         from django.db import connection as _ec
         with _ec.cursor() as _cur:
@@ -1391,7 +1395,7 @@ def agent_pending_registrations(request):
     except Exception as _e:
         logger.warning(f'Event lookup failed: {_e}')
 
-    for entry in all_entries:
+    for entry in page_entries:
         _eid = str(entry.get('id', ''))
         last_ev = draft_event_map.get(_eid, '') if entry.get('is_draft') else agent_event_map.get(_eid, '')
         entry['last_event'] = last_ev
@@ -1416,7 +1420,8 @@ def agent_pending_registrations(request):
     avg_wait_hours = (total_wait_hours / total_pending) if total_pending > 0 else 0
 
     context = {
-        'agents': all_entries,
+        'agents': page_entries,
+        'page_obj': page_obj,
         'search': search,
         'plan_filter': plan_filter,
         'city_filter': city_filter,
