@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load json_tags %}
 
 {% block title %}WhatsApp Broadcast — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Communications &rsaquo; WhatsApp &amp; OpenWA &rsaquo; Broadcast{% endblock %}
@@ -22,6 +23,18 @@
         </a>
     </div>
 </div>
+
+{% if active_broadcasts %}
+<div class="small mb-3 p-2 rounded {% if sender.jobs_enabled %}bg-light{% else %}bg-warning-subtle border border-warning{% endif %}" id="senderStatus" aria-live="polite">
+    {% if sender.jobs_enabled %}
+    <i class="fa-solid fa-gears me-1"></i> Background sending is <b>ON</b> on this server: messages keep going when this page is closed (as long as the site gets visits).
+    {% else %}
+    <i class="fa-solid fa-triangle-exclamation me-1"></i> Background jobs are <b>OFF</b> on this server, so messages only go out <b>while this page is open</b>.
+    To send with the page closed, set <code>BACKGROUND_JOBS_ENABLED=True</code> (and <code>DEBUG=False</code>) in the server's <code>.env</code> and restart the app.
+    {% endif %}
+    <span class="text-muted d-block">While this page is open it also sends every 10 seconds. Last sender run: <b id="senderLast">{% if sender.last_run_ago is None %}never{% else %}{{ sender.last_run_ago }} s ago ({{ sender.last_source }}){% endif %}</b></span>
+</div>
+{% endif %}
 
 {% for b in active_broadcasts %}
 <div class="card shadow-sm border-0 rounded-4 mb-3 {% if b.status == 'blocked' %}border-start border-4 border-danger{% endif %}" data-broadcast="{{ b.pk }}" data-status="{{ b.status }}">
@@ -83,20 +96,70 @@
             <div class="card shadow-sm border-0 rounded-4 mb-3">
                 <div class="card-header bg-white fw-bold small">1. Message</div>
                 <div class="card-body">
-                    <label for="message" class="visually-hidden">Message</label>
-                    <textarea name="message" id="message" rows="9" maxlength="{{ max_len }}" class="form-control small" required
-                              placeholder="Happy Diwali from all of us at PadosiAgent…"></textarea>
+                    <label for="tplSelect" class="form-label small fw-bold mb-1">Saved messages</label>
+                    <div class="d-flex gap-2 mb-1">
+                        <select id="tplSelect" class="form-select form-select-sm">
+                            <option value="">— Pick a saved message to load —</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="tplDelete" title="Delete the selected saved message" aria-label="Delete saved message">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="small text-muted mb-3">Loading puts the text in the box below. Edit it freely; it is only saved when you click a Save button.</div>
+
+                    <label for="message" class="form-label small fw-bold mb-1">Message text</label>
+                    <div class="btn-toolbar gap-1 mb-1" role="toolbar" aria-label="Formatting">
+                        <button type="button" class="btn btn-sm btn-light border fw-bold" data-wrap="*" title="Bold: select text, then click">B</button>
+                        <button type="button" class="btn btn-sm btn-light border fst-italic" data-wrap="_" title="Italic: select text, then click">I</button>
+                        <button type="button" class="btn btn-sm btn-light border text-decoration-line-through" data-wrap="~" title="Strikethrough: select text, then click">S</button>
+                        <button type="button" class="btn btn-sm btn-light border" data-insert="{name}" title="Insert the person's name">+ Name</button>
+                        <button type="button" class="btn btn-sm btn-light border" data-insert="{link}" title="Insert the agent's profile link here">+ Profile link</button>
+                    </div>
+                    <textarea name="message" id="message" rows="10" maxlength="{{ max_len }}" class="form-control small" required
+                              placeholder="Type your message, or load a saved one above…"></textarea>
                     <div class="d-flex justify-content-between small text-muted mt-1">
-                        <span><code>{name}</code> = person's name · <code>*bold*</code> <code>_italic_</code></span>
+                        <span>Select text and press B / I / S to format it.</span>
                         <span><span id="charCount">0</span>/{{ max_len }}</span>
                     </div>
+                    <div class="d-flex gap-2 mt-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="tplUpdate" disabled>
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Save changes to “<span id="tplCurrent"></span>”
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="tplSaveNew">
+                            <i class="fa-solid fa-plus me-1"></i> Save as new message
+                        </button>
+                    </div>
+
                     <div class="form-check mt-3">
                         <input class="form-check-input" type="checkbox" name="add_link" value="1" id="addLink" checked>
                         <label class="form-check-label small" for="addLink">
-                            Add each agent's own profile link at the end
-                            <span class="text-muted d-block">Sheet numbers get a link only if they belong to an active agent.</span>
+                            Send each agent their own profile link
+                            <span class="text-muted d-block">Goes where you put <code>+ Profile link</code>, or at the end if you didn't. Sheet numbers that are not agents get no link.</span>
                         </label>
                     </div>
+
+                    <details class="small mt-3">
+                        <summary class="fw-bold">How the formatting works</summary>
+                        <table class="table table-sm small mt-2 mb-0">
+                            <tr><td>You type</td><td>Agent sees on WhatsApp</td></tr>
+                            <tr><td><code>*Happy Diwali*</code></td><td><b>Happy Diwali</b></td></tr>
+                            <tr><td><code>_from PadosiAgent_</code></td><td><i>from PadosiAgent</i></td></tr>
+                            <tr><td><code>~old price~</code></td><td><s>old price</s></td></tr>
+                            <tr><td><code>Hi {name}</code></td><td>Hi Ramesh Patel</td></tr>
+                            <tr><td><code>{link}</code></td><td>https://padosiagent.com/gj/ramesh-patel/</td></tr>
+                        </table>
+                    </details>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mb-3">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span class="fw-bold small"><i class="fa-brands fa-whatsapp text-success me-1"></i> Preview — exactly what the agent gets</span>
+                    <span class="small text-muted" id="previewFor"></span>
+                </div>
+                <div class="card-body" style="background: #e5ddd5;">
+                    <div id="previewBubble" class="small" style="background: #dcf8c6; border-radius: 8px; padding: 8px 10px; max-width: 92%; margin-left: auto; box-shadow: 0 1px 1px rgba(0,0,0,.15); white-space: normal; word-wrap: break-word; overflow-wrap: anywhere; color: #111;"></div>
+                    <div class="small text-muted mt-2" style="color: #555 !important;">Shows the first selected agent (or the first one in the list). Each agent gets their own name and link.</div>
                 </div>
             </div>
 
@@ -199,7 +262,7 @@
                         </thead>
                         <tbody id="agentRows">
                             {% for a in agents %}
-                            <tr data-plan="{{ a.plan_label }}" data-state="{{ a.state_label }}" data-city="{{ a.city_label }}">
+                            <tr data-plan="{{ a.plan_label }}" data-state="{{ a.state_label }}" data-city="{{ a.city_label }}" data-name="{{ a.fullname }}" data-link="{{ a.profile_url }}">
                                 <td><input class="form-check-input agent-cb" type="checkbox" name="agent_ids" value="{{ a.id }}" id="ag{{ a.id }}"></td>
                                 <td><label for="ag{{ a.id }}" class="mb-0">{{ a.fullname }}</label></td>
                                 <td>{{ a.mobile }}</td>
@@ -260,13 +323,104 @@
             + ($('sheet').files.length ? ' (+ sheet numbers)' : '');
     };
     const refresh = () => {
+        if (typeof preview === 'function') preview();
         $('selCount').textContent = selected();
         const v = visible();
         $('selectAll').checked = v.length > 0 && v.every(b => b.checked);
         estimate();
     };
 
-    msg.addEventListener('input', () => $('charCount').textContent = msg.value.length);
+    // ── Live WhatsApp preview (mirrors broadcast.render_text on the server) ──
+    const esc = t => t.replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+    const waFormat = t => esc(t)
+        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
+        .replace(/(^|[\s>])\*([^*\n]+)\*(?=$|[\s<.,!?])/g, '$1<b>$2</b>')
+        .replace(/(^|[\s>])_([^_\n]+)_(?=$|[\s<.,!?])/g, '$1<i>$2</i>')
+        .replace(/(^|[\s>])~([^~\n]+)~(?=$|[\s<.,!?])/g, '$1<s>$2</s>')
+        .replace(/\n/g, '<br>');
+    const compose = (text, name, link) => {
+        let t = text.trim().split('{name}').join((name || '').trim() || 'there');
+        if (t.includes('{link}')) {
+            return (link ? t.split('{link}').join(link) : t.split('\n').filter(l => !l.includes('{link}')).join('\n')).trim();
+        }
+        return link ? t + '\n\nYour profile: ' + link : t;
+    };
+    const sampleRow = () => (boxes.find(b => b.checked) || visible()[0] || boxes[0] || {closest: () => null}).closest('tr');
+    const preview = () => {
+        $('charCount').textContent = msg.value.length;
+        const row = sampleRow();
+        const name = row ? row.dataset.name : 'Ramesh Patel';
+        const link = $('addLink').checked ? (row ? row.dataset.link : 'https://padosiagent.com/gj/ramesh-patel/') : '';
+        $('previewFor').textContent = 'for ' + name;
+        $('previewBubble').innerHTML = msg.value.trim()
+            ? waFormat(compose(msg.value, name, link))
+            : '<span class="text-muted">Your message will appear here.</span>';
+    };
+    msg.addEventListener('input', preview);
+    $('addLink').addEventListener('change', preview);
+
+    // ── Formatting buttons ──
+    const insertAt = (before, after) => {
+        let a = msg.selectionStart, b = msg.selectionEnd;
+        const v = msg.value;
+        if (after) {  // WhatsApp ignores *bold * with spaces inside the marks
+            while (a < b && /\s/.test(v[a])) a++;
+            while (b > a && /\s/.test(v[b - 1])) b--;
+        }
+        msg.value = v.slice(0, a) + before + v.slice(a, b) + after + v.slice(b);
+        msg.focus();
+        msg.setSelectionRange(a + before.length, b + before.length);
+        preview();
+    };
+    document.querySelectorAll('[data-wrap]').forEach(btn => btn.addEventListener('click', () => insertAt(btn.dataset.wrap, btn.dataset.wrap)));
+    document.querySelectorAll('[data-insert]').forEach(btn => btn.addEventListener('click', () => insertAt(btn.dataset.insert, '')));
+
+    // ── Saved messages ──
+    let templates = {{ templates|safe_json }};
+    let current = '';
+    const tplSelect = $('tplSelect');
+    const renderTemplates = () => {
+        tplSelect.replaceChildren(new Option('— Pick a saved message to load —', ''),
+            ...templates.map(t => new Option(t.name, t.name)));
+        tplSelect.value = templates.some(t => t.name === current) ? current : '';
+        $('tplCurrent').textContent = current;
+        $('tplUpdate').disabled = !tplSelect.value;
+        $('tplDelete').disabled = !tplSelect.value;
+    };
+    tplSelect.addEventListener('change', () => {
+        const t = templates.find(x => x.name === tplSelect.value);
+        if (!t) { current = ''; renderTemplates(); return; }
+        if (msg.value.trim() && msg.value.trim() !== t.text.trim() && !confirm('Replace the text in the box with “' + t.name + '”?')) {
+            tplSelect.value = current; return;
+        }
+        msg.value = t.text; current = t.name; renderTemplates(); preview();
+    });
+    const saveTpl = (op, name, text) => {
+        const body = new FormData();
+        body.append('op', op); body.append('name', name); body.append('text', text || '');
+        body.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        return fetch('{% url "admin_wa_broadcast_templates" %}', {method: 'POST', body, headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(r => r.json())
+            .then(d => { if (!d.success) throw new Error(d.error || 'Could not save'); templates = d.templates; renderTemplates(); });
+    };
+    $('tplSaveNew').addEventListener('click', () => {
+        if (!msg.value.trim()) { alert('Write the message first.'); return; }
+        const name = (prompt('Name for this saved message (e.g. "New Year 2027"):', '') || '').trim();
+        if (!name) return;
+        if (templates.some(t => t.name === name) && !confirm('“' + name + '” already exists. Replace it?')) return;
+        saveTpl('save', name, msg.value).then(() => { current = name; renderTemplates(); alert('Saved as “' + name + '”.'); })
+            .catch(e => alert(e.message));
+    });
+    $('tplUpdate').addEventListener('click', () => {
+        if (!current || !msg.value.trim()) return;
+        saveTpl('save', current, msg.value).then(() => alert('Saved changes to “' + current + '”.')).catch(e => alert(e.message));
+    });
+    $('tplDelete').addEventListener('click', () => {
+        const name = tplSelect.value;
+        if (!name || !confirm('Delete the saved message “' + name + '”? The text in the box stays.')) return;
+        saveTpl('delete', name).then(() => { current = ''; renderTemplates(); }).catch(e => alert(e.message));
+    });
+    renderTemplates();
     ['rateCount', 'rateHours', 'minGap', 'sheet'].forEach(id => $(id).addEventListener('input', estimate));
     $('sheet').addEventListener('change', estimate);
     boxes.forEach(b => b.addEventListener('change', refresh));
@@ -302,11 +456,17 @@
 
     // Live progress for running broadcasts
     {% if active_broadcasts %}
-    const poll = setInterval(() => {
-        fetch('{% url "admin_wa_broadcast_progress" %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    // Each check also sends any message that is due, so the first one goes out within a few seconds.
+    const tick = () => {
+        const body = new FormData();
+        body.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        fetch('{% url "admin_wa_broadcast_progress" %}', { method: 'POST', body, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.json())
             .then(d => {
                 if (!d.success) return;
+                if (d.sender && $('senderLast')) {
+                    $('senderLast').textContent = d.sender.last_run_ago === null ? 'never' : d.sender.last_run_ago + ' s ago (' + d.sender.last_source + ')';
+                }
                 const shown = Array.from(document.querySelectorAll('[data-broadcast]'));
                 const live = new Map(d.broadcasts.map(b => [String(b.id), b]));
                 if (shown.some(el => !live.has(el.dataset.broadcast) || live.get(el.dataset.broadcast).status !== el.dataset.status)) {
@@ -322,7 +482,9 @@
                 });
             })
             .catch(() => {});
-    }, 10000);
+    };
+    setTimeout(tick, 3000);
+    const poll = setInterval(tick, 10000);
     {% endif %}
 })();
 </script>

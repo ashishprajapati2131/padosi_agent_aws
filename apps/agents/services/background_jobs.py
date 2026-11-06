@@ -231,8 +231,19 @@ def _wa_broadcast_job():
     process_broadcasts()
 
 
+def _openwa_keepalive_job():
+    """The OpenWA server is on Render's free plan, which sleeps after ~15 min without requests
+    (and drops the WhatsApp session); a status request every 5 min keeps it awake."""
+    from apps.wa_agent_bot.services.openwa_admin_service import get_openwa_session_status
+
+    status = get_openwa_session_status()
+    if not status.get("online") and status.get("status") != "not_configured":
+        logger.warning("[bgjobs] OpenWA keep-alive: server not reachable (%s)", status.get("error"))
+
+
 # (name, interval in seconds, function)
 JOBS = (
+    ("openwa-keepalive", 5 * 60, _openwa_keepalive_job),
     ("wa-broadcast", 60, _wa_broadcast_job),
     ("system-load-monitor", 60, _system_load_monitor_job),
     ("invoice-retry", 60 * 60, _invoice_job),

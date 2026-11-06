@@ -644,6 +644,7 @@ def _agents_with_place(qs):
     """Attach plan/state/city labels for the broadcast filters; one pincode query for all agents."""
     from apps.agents.services.agent_city import _city_from_pincode_row
     from apps.home.models.pincode import Pincode
+    from apps.wa_agent_bot.services.broadcast import profile_link
 
     agents = list(qs)
     pins = {a.agent_pincode for a in agents if a.agent_pincode}
@@ -655,6 +656,7 @@ def _agents_with_place(qs):
         a.plan_label = (a.plan_type or "").strip().title() or "No plan"
         a.state_label = state if state and state.lower() not in ("other", "na", "n/a", "none") else "Unknown"
         a.city_label = _city_from_pincode_row(row) or "Unknown"
+        a.profile_url = profile_link(a)
     return agents
 
 
@@ -764,6 +766,8 @@ def wa_bot_broadcast(request):
             or "",
             "max_len": MAX_BROADCAST_LEN,
             "max_rows": broadcast.MAX_SHEET_ROWS,
+            "templates": broadcast.get_templates(),
+            "sender": broadcast.sender_status(),
         },
     )
 
@@ -792,31 +796,53 @@ def wa_bot_broadcast_action(request, broadcast_id):
     return redirect("admin_wa_broadcast")
 
 
-@require_GET
+@require_POST
 def wa_bot_broadcast_progress(request):
+    """Polled every 10 s by the open Broadcast page: sends any due message, then returns progress."""
     from apps.wa_agent_bot.models import WaBroadcast
+    from apps.wa_agent_bot.services import broadcast
 
     if not _get_admin_from_session(request):
         return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
+    try:
+        broadcast.process_broadcasts(max_seconds=1, source="page")
+    except Exception:
+        logger.exception("[WA-Broadcast] sending from the page failed")
     rows = _broadcast_rows(
-        WaBroadcast.objects.filter(
-            status__in=[WaBroadcast.STATUS_RUNNING, WaBroadcast.STATUS_BLOCKED]
-        ).order_by("id")
+        WaBroadcast.objects.filter(status__in=[WaBroadcast.STATUS_RUNNING, WaBroadcast.STATUS_BLOCKED]).order_by("id")
     )
-    return JsonResponse(
-        {
-            "success": True,
-            "broadcasts": [
-                {
-                    "id": b.pk,
-                    "status": b.status,
-                    "last_error": b.last_error,
-                    "next_send_at": b.next_send_at.strftime("%d %b %H:%M:%S")
-                    if b.next_send_at
-                    else "",
-                    **b.c,
-                }
-                for b in rows
-            ],
-        }
-    )
+    return JsonResponse({
+        "success": True,
+        "sender": broadcast.sender_status(),
+        "broadcasts": [
+            {
+                "id": b.pk,
+                "status": b.status,
+                "last_error": b.last_error,
+                "next_send_at": b.next_send_at.strftime("%d %b %H:%M:%S") if b.next_send_at else "",
+                **b.c,
+            }
+            for b in rows
+        ],
+    })
+
+
+@require_POST
+def wa_bot_broadcast_templates(request):
+    """Save or delete a pre-drafted broadcast message (AJAX)."""
+    from apps.wa_agent_bot.services import broadcast
+
+    if not _get_admin_from_session(request):
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
+    op, name = request.POST.get("op"), request.POST.get("name", "")
+    try:
+        if op == "save":
+            items = broadcast.save_template(name, request.POST.get("text", ""), MAX_BROADCAST_LEN)
+        elif op == "delete":
+            items = broadcast.delete_template(name)
+        else:
+            return JsonResponse({"success": False, "error": "Unknown action"}, status=400)
+    except ValueError as e:
+        return JsonResponse({"success": False, "error": str(e)})
+    _log_admin_action(request, f"wa_broadcast_template_{op}", "WaBroadcastTemplate", 0, name[:60])
+    return JsonResponse({"success": True, "templates": items})

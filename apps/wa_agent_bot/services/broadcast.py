@@ -54,8 +54,68 @@ def profile_link(agent, base=None):
 
 
 def render_text(message, name="", link=""):
+    """
+    {name} -> the person's name; {link} -> their profile link, added at the end when the text has no {link}.
+    Without a link, a line holding {link} is left out (same rule as the WhatsApp message templates).
+    """
     text = message.strip().replace("{name}", (name or "").strip() or "there")
+    if "{link}" in text:
+        if link:
+            return text.replace("{link}", link).strip()
+        return "\n".join(line for line in text.split("\n") if "{link}" not in line).strip()
     return f"{text}\n\nYour profile: {link}" if link else text
+
+
+# ── Saved (pre-drafted) messages, kept in SiteSetting ────────────────────────
+TEMPLATES_KEY = "wa_broadcast_templates"
+MAX_TEMPLATES = 50
+DEFAULT_TEMPLATES = [
+    {
+        "name": "Diwali 2026",
+        "text": (
+            "Happy Diwali from all of us at PadosiAgent.\n\n"
+            "Our 500+ agents across 15+ cities are lighting diyas in their own neighbourhoods tonight, "
+            "the same streets they serve every day.\n\n"
+            "From our neighbourhood to yours, have a safe and bright Diwali.\n\n"
+            "#HappyDiwali #PadosiWaliDiwali #PadosiAgent #Diwali2026\n\n"
+            "Your profile: {link}"
+        ),
+    },
+]
+
+
+def get_templates():
+    from apps.home.models.site_setting import SiteSetting
+
+    saved = SiteSetting.get_value(TEMPLATES_KEY)
+    if isinstance(saved, list):
+        return [t for t in saved if isinstance(t, dict) and t.get("name") and t.get("text")]
+    return [dict(t) for t in DEFAULT_TEMPLATES]
+
+
+def save_template(name, text, max_len=4000):
+    """Add or replace a saved message by name. Raises ValueError on bad input."""
+    from apps.home.models.site_setting import SiteSetting
+
+    name, text = (name or "").strip()[:60], (text or "").strip()
+    if not name or not text:
+        raise ValueError("Give the message a name and some text.")
+    if len(text) > max_len:
+        raise ValueError(f"Message is longer than {max_len} characters.")
+    items = [t for t in get_templates() if t["name"] != name]
+    if len(items) >= MAX_TEMPLATES:
+        raise ValueError(f"You can keep up to {MAX_TEMPLATES} saved messages. Delete one first.")
+    items.append({"name": name, "text": text})
+    SiteSetting.set_value(TEMPLATES_KEY, items, group="whatsapp")
+    return items
+
+
+def delete_template(name):
+    from apps.home.models.site_setting import SiteSetting
+
+    items = [t for t in get_templates() if t["name"] != (name or "").strip()]
+    SiteSetting.set_value(TEMPLATES_KEY, items, group="whatsapp")
+    return items
 
 
 def _rows_from_upload(upload):
@@ -407,8 +467,44 @@ def _send_next(b):
         )
 
 
-def process_broadcasts(max_seconds=TICK_SECONDS, sleep=time.sleep):
-    """One background-job run: send what is due (oldest broadcast first) for up to max_seconds."""
+SEND_LOCK = "wa-broadcast:sending"
+HEARTBEAT_KEY = "wa-broadcast:last-run"
+
+
+def process_broadcasts(max_seconds=TICK_SECONDS, sleep=time.sleep, source="job"):
+    """
+    Send what is due (oldest broadcast first) for up to max_seconds.
+    Called by the 'wa-broadcast' background job and by the open Broadcast page (source="page"),
+    so messages still go out where background jobs do not run. The lock keeps the two from
+    sending the same message twice. Returns False when another run holds the lock.
+    """
+    from django.core.cache import cache
+    from apps.agents.services.background_jobs import _claim
+
+    cache.set(HEARTBEAT_KEY, {"at": datetime.now().isoformat(), "source": source}, None)
+    if not _claim(SEND_LOCK, 1, timeout=int(max_seconds) + 60):
+        return False
+    try:
+        _process(max_seconds, sleep)
+    finally:
+        cache.delete(SEND_LOCK)
+    return True
+
+
+def sender_status():
+    """For the page: are background jobs on here, and when did a sender last run?"""
+    from django.core.cache import cache
+    from apps.agents.services.background_jobs import jobs_enabled
+
+    beat = cache.get(HEARTBEAT_KEY) or {}
+    try:
+        ago = int((datetime.now() - datetime.fromisoformat(beat["at"])).total_seconds())
+    except (KeyError, TypeError, ValueError):
+        ago = None
+    return {"jobs_enabled": jobs_enabled(), "last_run_ago": ago, "last_source": beat.get("source", "")}
+
+
+def _process(max_seconds, sleep):
     WaBroadcast, _ = _models()
     deadline = time.monotonic() + max_seconds
     while time.monotonic() < deadline:

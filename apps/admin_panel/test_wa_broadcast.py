@@ -4,6 +4,7 @@ Run: python manage.py test apps.admin_panel.test_wa_broadcast
 """
 
 import io
+import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
@@ -15,6 +16,8 @@ from django.test import RequestFactory, TestCase
 from apps.admin_panel.views.wa_bot_admin import (
     wa_bot_broadcast,
     wa_bot_broadcast_action,
+    wa_bot_broadcast_progress,
+    wa_bot_broadcast_templates,
 )
 from apps.agents.models import Agent
 from apps.wa_agent_bot.models import WaBotMessageLog, WaBroadcast, WaBroadcastRecipient
@@ -117,6 +120,13 @@ class RecipientAndSendTests(TestCase):
             broadcast.render_text("Hi", "", "https://x/"),
             "Hi\n\nYour profile: https://x/",
         )
+        # {link} puts the link where the admin wants it, and only once.
+        self.assertEqual(
+            broadcast.render_text("Hi {name}\nSee {link} now", "Ram", "https://x/"),
+            "Hi Ram\nSee https://x/ now",
+        )
+        self.assertEqual(broadcast.render_text("Hi\n{link}", "", ""), "Hi")
+        self.assertEqual(broadcast.render_text("Hi\n\nYour profile: {link}\nBye", "", ""), "Hi\n\nBye")
 
     @patch("apps.wa_agent_bot.services.broadcast.send_text_message")
     def test_skips_numbers_already_sent(self, send):
@@ -311,10 +321,60 @@ class SavedBroadcastJobTests(TestCase):
         self.assertEqual(self._pending(first), 3)
         self.assertEqual(self._pending(second), 2)
 
+    @patch("apps.wa_agent_bot.services.broadcast.send_text_message", return_value={"success": True})
+    def test_second_sender_waits_for_the_lock(self, send):
+        from django.core.cache import cache
+
+        self._make()
+        cache.set(broadcast.SEND_LOCK, 1, 60)  # another process is sending
+        try:
+            self.assertFalse(broadcast.process_broadcasts(max_seconds=1, sleep=lambda s: None, source="page"))
+        finally:
+            cache.delete(broadcast.SEND_LOCK)
+        send.assert_not_called()
+        self.assertTrue(broadcast.process_broadcasts(max_seconds=1, sleep=lambda s: None, source="page"))
+        self.assertEqual(send.call_count, 1)
+        self.assertEqual(broadcast.sender_status()["last_source"], "page")
+
+    @patch("apps.wa_agent_bot.services.broadcast.send_text_message", return_value={"success": True})
+    def test_open_page_sends_the_due_message(self, send):
+        b = self._make()
+        factory = RequestFactory()
+        req = factory.post("/admin/whatsapp/broadcast/progress/")
+        req.session = {"admin_id": 1}
+        req.user = AnonymousUser()
+        with patch("apps.admin_panel.views.wa_bot_admin._get_admin_from_session", return_value=1):
+            resp = wa_bot_broadcast_progress(req)
+            get_req = factory.get("/admin/whatsapp/broadcast/progress/")
+            get_req.session, get_req.user = {"admin_id": 1}, AnonymousUser()
+            self.assertEqual(wa_bot_broadcast_progress(get_req).status_code, 405)
+        data = json.loads(resp.content)
+        self.assertTrue(data["success"])
+        self.assertEqual(send.call_count, 1)  # the first message goes out on the first check
+        self.assertEqual(data["broadcasts"][0]["sent"], 1)
+        self.assertIn("jobs_enabled", data["sender"])
+        self.assertEqual(b.recipients.filter(status="sent").count(), 1)
+
     def test_job_is_registered(self):
         from apps.agents.services.background_jobs import JOBS
 
         self.assertIn("wa-broadcast", [name for name, _, _ in JOBS])
+
+    def test_openwa_keepalive_pings_every_5_minutes(self):
+        from apps.agents.services import background_jobs
+
+        self.assertIn(
+            ("openwa-keepalive", 300), [(n, i) for n, i, _ in background_jobs.JOBS]
+        )
+        with (
+            patch(
+                "apps.wa_agent_bot.services.openwa_admin_service.get_openwa_session_status",
+                return_value={"online": False, "status": "offline", "error": "timeout"},
+            ) as status,
+            self.assertLogs("apps.agents.services.background_jobs", level="WARNING"),
+        ):
+            background_jobs._openwa_keepalive_job()
+        status.assert_called_once()
 
 
 class BroadcastViewTests(TestCase):
@@ -446,3 +506,69 @@ class BroadcastViewTests(TestCase):
         )
         b.refresh_from_db()
         self.assertEqual(b.status, WaBroadcast.STATUS_CANCELLED)
+
+    def test_page_has_each_agents_profile_link_for_preview(self):
+        resp = self._call(wa_bot_broadcast, self._req())
+        self.assertContains(
+            resp,
+            f'data-name="Ram Patel" data-link="{broadcast.profile_link(self.agent)}"',
+        )
+        self.assertContains(resp, "Diwali 2026")  # default pre-drafted message
+
+
+class SavedMessageTests(TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def _post(self, data, admin=1):
+        req = self.factory.post("/admin/whatsapp/broadcast/templates/", data)
+        req.session = {"admin_id": admin}
+        req.user = AnonymousUser()
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=admin,
+        ):
+            return wa_bot_broadcast_templates(req)
+
+    def test_default_has_the_diwali_message_with_link(self):
+        (tpl,) = broadcast.get_templates()
+        self.assertEqual(tpl["name"], "Diwali 2026")
+        self.assertIn("#PadosiWaliDiwali", tpl["text"])
+        self.assertIn("{link}", tpl["text"])
+
+    def test_save_replace_and_delete(self):
+        broadcast.save_template("New Year", "Happy new year {name}")
+        broadcast.save_template("New Year", "Edited text")
+        names = [t["name"] for t in broadcast.get_templates()]
+        self.assertEqual(names, ["Diwali 2026", "New Year"])
+        self.assertEqual(broadcast.get_templates()[1]["text"], "Edited text")
+        broadcast.delete_template("Diwali 2026")
+        self.assertEqual([t["name"] for t in broadcast.get_templates()], ["New Year"])
+        broadcast.delete_template("New Year")
+        self.assertEqual(
+            broadcast.get_templates(), []
+        )  # deleting all does not bring the default back
+
+    def test_save_validation(self):
+        for name, text in [("", "x"), ("n", ""), ("n", "x" * 4001)]:
+            with self.assertRaises(ValueError):
+                broadcast.save_template(name, text)
+
+    def test_endpoint(self):
+        resp = self._post({"op": "save", "name": "Offer", "text": "50% off"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(
+            "Offer", [t["name"] for t in json.loads(resp.content)["templates"]]
+        )
+        resp = self._post({"op": "save", "name": "", "text": "x"})
+        self.assertFalse(json.loads(resp.content)["success"])
+        resp = self._post({"op": "delete", "name": "Offer"})
+        self.assertNotIn(
+            "Offer", [t["name"] for t in json.loads(resp.content)["templates"]]
+        )
+        self.assertEqual(
+            self._post(
+                {"op": "save", "name": "x", "text": "y"}, admin=None
+            ).status_code,
+            401,
+        )
