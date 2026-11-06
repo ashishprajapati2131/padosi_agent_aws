@@ -611,3 +611,212 @@ def wa_bot_messages(request):
         'keywords': mt.get_keyword_replies(),
         'max_len': mt.MAX_TEMPLATE_LEN,
     })
+
+
+MAX_BROADCAST_LEN = 4000
+
+
+def _int_in(value, lo, hi, default):
+    try:
+        return min(hi, max(lo, int(float(value))))
+    except (TypeError, ValueError):
+        return default
+
+
+def _float_in(value, lo, hi, default):
+    try:
+        return min(hi, max(lo, float(value)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _broadcast_rows(qs):
+    from apps.wa_agent_bot.services import broadcast
+
+    rows = []
+    for b in qs:
+        b.c = broadcast.counts(b)
+        rows.append(b)
+    return rows
+
+
+def _agents_with_place(qs):
+    """Attach plan/state/city labels for the broadcast filters; one pincode query for all agents."""
+    from apps.agents.services.agent_city import _city_from_pincode_row
+    from apps.home.models.pincode import Pincode
+
+    agents = list(qs)
+    pins = {a.agent_pincode for a in agents if a.agent_pincode}
+    rows = {r.pincode: r for r in Pincode.objects.filter(pincode__in=pins)} if pins else {}
+    for a in agents:
+        row = rows.get(a.agent_pincode)
+        profile = getattr(a, "profile", None) if hasattr(a, "profile") else None
+        state = ((profile.state if profile else "") or (row.state if row else "") or "").strip().title()
+        a.plan_label = (a.plan_type or "").strip().title() or "No plan"
+        a.state_label = state if state and state.lower() not in ("other", "na", "n/a", "none") else "Unknown"
+        a.city_label = _city_from_pincode_row(row) or "Unknown"
+    return agents
+
+
+def wa_bot_broadcast(request):
+    """Save a WhatsApp broadcast to selected active agents and/or an uploaded sheet; the background job sends it."""
+    from django.core.validators import validate_email
+    from django.core.exceptions import ValidationError
+    from apps.admin_panel.models.admin_auth import Admin
+    from apps.agents.models import Agent
+    from apps.wa_agent_bot.models import WaBroadcast
+    from apps.wa_agent_bot.services import broadcast
+
+    admin_id = _get_admin_from_session(request)
+    if not admin_id:
+        return redirect("admin_login")
+
+    if request.method == "POST":
+        message = request.POST.get("message", "").strip()
+        add_link = request.POST.get("add_link") == "1"
+        ids = [int(i) for i in request.POST.getlist("agent_ids") if str(i).isdigit()]
+        upload = request.FILES.get("sheet")
+        rate_count = _int_in(request.POST.get("rate_count"), 1, 1000, 49)
+        rate_hours = _float_in(request.POST.get("rate_hours"), 0.1, 168, 4)
+        min_gap = _int_in(request.POST.get("min_gap_seconds"), 5, 3600, 60)
+        alert_email = request.POST.get("alert_email", "").strip()
+
+        if not message or len(message) > MAX_BROADCAST_LEN:
+            messages.error(
+                request, f"Write a message (up to {MAX_BROADCAST_LEN} characters)."
+            )
+            return redirect("admin_wa_broadcast")
+        if alert_email:
+            try:
+                validate_email(alert_email)
+            except ValidationError:
+                messages.error(request, "Alert email is not a valid email address.")
+                return redirect("admin_wa_broadcast")
+        sheet_rows = []
+        if upload:
+            try:
+                sheet_rows = broadcast.parse_sheet(upload)
+            except ValueError as e:
+                messages.error(request, f"Sheet: {e}")
+                return redirect("admin_wa_broadcast")
+            if not sheet_rows:
+                messages.error(
+                    request, "Sheet: no valid 10-digit mobile numbers found."
+                )
+                return redirect("admin_wa_broadcast")
+
+        agents = (
+            Agent.objects.filter(status="active", id__in=ids)
+            .select_related("profile")
+            .order_by("id")
+        )
+        recipients = broadcast.build_recipients(
+            agents=agents, sheet_rows=sheet_rows, add_link=add_link
+        )
+        if not recipients:
+            messages.error(request, "Select at least one agent or upload a sheet.")
+            return redirect("admin_wa_broadcast")
+
+        b = broadcast.create_broadcast(
+            recipients,
+            message,
+            add_link=add_link,
+            rate_count=rate_count,
+            rate_hours=rate_hours,
+            min_gap_seconds=min_gap,
+            alert_email=alert_email,
+            created_by=request.session.get("admin_name", ""),
+        )
+        _log_admin_action(
+            request,
+            "wa_broadcast_created",
+            "WaBroadcast",
+            b.pk,
+            f"{len(recipients)} recipients ({len(ids)} agents selected, {len(sheet_rows)} sheet rows), "
+            f"{rate_count} msgs / {rate_hours} h, min gap {min_gap}s: {message[:200]}",
+        )
+        messages.success(
+            request,
+            f"Broadcast #{b.pk} saved for {len(recipients)} numbers. It sends in the background: "
+            f"about one message every {round(b.gap_seconds / 60, 1)} min.",
+        )
+        return redirect("admin_wa_broadcast")
+
+    active = [WaBroadcast.STATUS_RUNNING, WaBroadcast.STATUS_BLOCKED]
+    agents = _agents_with_place(Agent.objects.filter(status="active").select_related("profile").order_by("fullname"))
+    return render(
+        request,
+        "admin/whatsapp/broadcast.html",
+        {
+            "agents": agents,
+            "filter_plans": sorted({a.plan_label for a in agents}),
+            "filter_states": sorted({a.state_label for a in agents}),
+            "filter_cities": sorted({a.city_label for a in agents}),
+            "active_broadcasts": _broadcast_rows(
+                WaBroadcast.objects.filter(status__in=active).order_by("id")
+            ),
+            "past_broadcasts": _broadcast_rows(
+                WaBroadcast.objects.exclude(status__in=active).order_by("-id")[:10]
+            ),
+            "admin_email": Admin.objects.filter(pk=admin_id)
+            .values_list("email", flat=True)
+            .first()
+            or "",
+            "max_len": MAX_BROADCAST_LEN,
+            "max_rows": broadcast.MAX_SHEET_ROWS,
+        },
+    )
+
+
+@require_POST
+def wa_bot_broadcast_action(request, broadcast_id):
+    from apps.wa_agent_bot.services import broadcast
+
+    if not _get_admin_from_session(request):
+        return redirect("admin_login")
+    action = request.POST.get("action")
+    if action == "cancel" and broadcast.cancel_broadcast(broadcast_id):
+        messages.info(
+            request,
+            f"Broadcast #{broadcast_id} stopped. Messages already sent stay sent.",
+        )
+    elif action == "resume" and broadcast.resume_now(broadcast_id):
+        messages.info(
+            request,
+            f"Broadcast #{broadcast_id} will try sending again within a minute.",
+        )
+    else:
+        messages.error(request, "That broadcast cannot be changed now.")
+        return redirect("admin_wa_broadcast")
+    _log_admin_action(request, f"wa_broadcast_{action}", "WaBroadcast", broadcast_id)
+    return redirect("admin_wa_broadcast")
+
+
+@require_GET
+def wa_bot_broadcast_progress(request):
+    from apps.wa_agent_bot.models import WaBroadcast
+
+    if not _get_admin_from_session(request):
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=401)
+    rows = _broadcast_rows(
+        WaBroadcast.objects.filter(
+            status__in=[WaBroadcast.STATUS_RUNNING, WaBroadcast.STATUS_BLOCKED]
+        ).order_by("id")
+    )
+    return JsonResponse(
+        {
+            "success": True,
+            "broadcasts": [
+                {
+                    "id": b.pk,
+                    "status": b.status,
+                    "last_error": b.last_error,
+                    "next_send_at": b.next_send_at.strftime("%d %b %H:%M:%S")
+                    if b.next_send_at
+                    else "",
+                    **b.c,
+                }
+                for b in rows
+            ],
+        }
+    )

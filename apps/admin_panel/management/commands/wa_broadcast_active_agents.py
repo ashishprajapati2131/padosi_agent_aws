@@ -1,5 +1,6 @@
 """
 WhatsApp a message to every active agent, with their own public profile link.
+The admin page Admin → WhatsApp → Broadcast does the same with agent selection and sheet upload.
 
 Dry run (default) only prints the count and a sample:
     python manage.py wa_broadcast_active_agents --message-file diwali.txt
@@ -9,23 +10,10 @@ Real send:
 Re-running is safe: numbers that already got this exact text are skipped.
 """
 
-import random
-import time
-
-from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.agents.models import Agent
-from apps.agents.services.og_urls import CANONICAL_PADOSI_ORIGIN
-from apps.wa_agent_bot.models import WaBotMessageLog
-from apps.wa_agent_bot.services.message_sender import send_text_message
-
-CATEGORY = "broadcast"
-
-
-def build_text(message, agent, base):
-    link = f"{base}/{agent.state_code}/{agent.agent_slug}/"
-    return f"{message.strip()}\n\nYour profile: {link}"
+from apps.wa_agent_bot.services import broadcast
 
 
 class Command(BaseCommand):
@@ -39,8 +27,7 @@ class Command(BaseCommand):
             "--send", action="store_true", help="Actually send (default is dry run)"
         )
         parser.add_argument(
-            "--base-url",
-            default=getattr(settings, "APP_URL", "") or CANONICAL_PADOSI_ORIGIN,
+            "--base-url", default="", help="Profile link origin (default: APP_URL)"
         )
         parser.add_argument(
             "--min-delay",
@@ -61,32 +48,26 @@ class Command(BaseCommand):
             raise CommandError(e)
         if not message.strip():
             raise CommandError("Message file is empty")
-        base = opts["base_url"].rstrip("/")
 
-        agents = list(
+        agents = (
             Agent.objects.filter(status="active")
             .select_related("profile")
             .order_by("id")
         )
-        seen, targets = set(), []
-        for a in agents:
-            digits = "".join(c for c in (a.mobile or "") if c.isdigit())[-10:]
-            if (
-                len(digits) != 10 or digits in seen
-            ):  # skip blank/invalid numbers and duplicates
-                continue
-            seen.add(digits)
-            targets.append((a, digits))
+        recipients = broadcast.build_recipients(
+            agents=agents, base=opts["base_url"] or None
+        )
         if opts["limit"]:
-            targets = targets[: opts["limit"]]
+            recipients = recipients[: opts["limit"]]
 
         self.stdout.write(
-            f"Active agents: {len(agents)} | valid unique numbers: {len(targets)}"
+            f"Active agents: {agents.count()} | valid unique numbers: {len(recipients)}"
         )
-        if targets:
-            a, d = targets[0]
+        if recipients:
+            r = recipients[0]
             self.stdout.write(
-                f"\n--- Sample for {a.fullname} ({d}) ---\n{build_text(message, a, base)}\n---"
+                f"\n--- Sample for {r['name']} ({r['phone']}) ---\n"
+                f"{broadcast.render_text(message, r['name'], r['link'])}\n---"
             )
         if not opts["send"]:
             self.stdout.write(
@@ -94,31 +75,19 @@ class Command(BaseCommand):
             )
             return
 
-        sent = failed = skipped = 0
-        for i, (agent, digits) in enumerate(targets, 1):
-            text = build_text(message, agent, base)
-            already = WaBotMessageLog.objects.filter(
-                phone_number__endswith=digits,
-                category=CATEGORY,
-                status=WaBotMessageLog.STATUS_SENT,
-                content=text[:5000],
-            ).exists()
-            if already:
-                skipped += 1
-                continue
-            result = send_text_message(digits, text, category=CATEGORY)
-            if result.get("success"):
-                sent += 1
-            else:
-                failed += 1
-                self.stderr.write(
-                    f"FAIL {agent.id} {agent.fullname} {digits}: {result.get('error')}"
-                )
+        def progress(s):
             self.stdout.write(
-                f"[{i}/{len(targets)}] sent={sent} failed={failed} skipped={skipped}"
+                f"[{s['sent'] + s['failed'] + s['skipped']}/{s['total']}] "
+                f"sent={s['sent']} failed={s['failed']} skipped={s['skipped']}"
             )
-            time.sleep(random.uniform(opts["min_delay"], opts["max_delay"]))
 
+        stats = broadcast.run_broadcast(
+            recipients, message, opts["min_delay"], opts["max_delay"], progress
+        )
+        for err in stats["errors"]:
+            self.stderr.write(f"FAIL {err}")
         self.stdout.write(
-            self.style.SUCCESS(f"Done. sent={sent} failed={failed} skipped={skipped}")
+            self.style.SUCCESS(
+                f"Done. sent={stats['sent']} failed={stats['failed']} skipped={stats['skipped']}"
+            )
         )

@@ -1,0 +1,329 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}WhatsApp Broadcast — PadosiAgent Admin{% endblock %}
+{% block breadcrumb %}Communications &rsaquo; WhatsApp &amp; OpenWA &rsaquo; Broadcast{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-1">
+            <i class="fa-solid fa-bullhorn text-success me-2"></i> WhatsApp Broadcast
+        </h5>
+        <p class="text-muted mb-0" style="font-size: 13.5px;">
+            Set it once: messages go out slowly in the background, pause by themselves if WhatsApp blocks the number, and restart when it works again.
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'admin_wa_dashboard' %}" class="btn btn-sm btn-outline-dark fw-bold">
+            <i class="fa-solid fa-gauge me-1"></i> Command Center
+        </a>
+        <a href="{% url 'admin_wa_logs_list' %}?category=broadcast" class="btn btn-sm btn-outline-secondary fw-bold">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i> Broadcast Logs
+        </a>
+    </div>
+</div>
+
+{% for b in active_broadcasts %}
+<div class="card shadow-sm border-0 rounded-4 mb-3 {% if b.status == 'blocked' %}border-start border-4 border-danger{% endif %}" data-broadcast="{{ b.pk }}" data-status="{{ b.status }}">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+            <div>
+                <span class="fw-bold">#{{ b.pk }} ·
+                    {% if b.status == 'blocked' %}<span class="text-danger"><i class="fa-solid fa-circle-pause me-1"></i>Paused — WhatsApp blocked or disconnected</span>
+                    {% elif forloop.first %}<span class="text-success"><i class="fa-solid fa-circle-play me-1"></i>Sending</span>
+                    {% else %}<span class="text-muted">Queued (starts after #{{ active_broadcasts.0.pk }})</span>{% endif %}
+                </span>
+                <div class="small text-muted">
+                    {{ b.created_at|date:"d M Y H:i" }}{% if b.created_by %} by {{ b.created_by }}{% endif %} ·
+                    {{ b.rate_count }} messages / {{ b.rate_hours|floatformat:"-1" }} h, at least {{ b.min_gap_seconds }} s apart
+                    (≈ 1 every {% widthratio b.gap_seconds 60 1 %} min)
+                </div>
+                <div class="small text-muted">“{{ b.message|truncatechars:110 }}”</div>
+            </div>
+            <div class="d-flex gap-2">
+                {% if b.status == 'blocked' %}
+                <form method="post" action="{% url 'admin_wa_broadcast_action' b.pk %}">
+                    {% csrf_token %}<input type="hidden" name="action" value="resume">
+                    <button class="btn btn-sm btn-outline-success fw-bold"><i class="fa-solid fa-play me-1"></i> Try now</button>
+                </form>
+                {% endif %}
+                <form method="post" action="{% url 'admin_wa_broadcast_action' b.pk %}" onsubmit="return confirm('Stop broadcast #{{ b.pk }}? Messages already sent stay sent.')">
+                    {% csrf_token %}<input type="hidden" name="action" value="cancel">
+                    <button class="btn btn-sm btn-danger fw-bold"><i class="fa-solid fa-stop me-1"></i> Stop</button>
+                </form>
+            </div>
+        </div>
+        <div class="progress mb-2" style="height: 10px;" role="progressbar" aria-label="Broadcast #{{ b.pk }} progress"
+             aria-valuenow="{{ b.c.percent }}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar {% if b.status == 'blocked' %}bg-danger{% else %}bg-success{% endif %}" data-f="bar" style="width: {{ b.c.percent }}%"></div>
+        </div>
+        <div class="small">
+            <b data-f="done">{{ b.c.done }}</b> / {{ b.c.total }} ·
+            <span class="text-success">sent <b data-f="sent">{{ b.c.sent }}</b></span> ·
+            <span class="text-danger">failed <b data-f="failed">{{ b.c.failed }}</b></span> ·
+            <span class="text-muted">skipped <b data-f="skipped">{{ b.c.skipped }}</b></span> ·
+            <span class="text-muted">left <b data-f="pending">{{ b.c.pending }}</b> (≈ <span data-f="eta">{{ b.c.eta_hours }}</span> h)</span>
+            {% if b.status == 'running' and b.next_send_at %}· next at <b data-f="next">{{ b.next_send_at|date:"d M H:i:s" }}</b>{% endif %}
+        </div>
+        {% if b.status == 'blocked' %}
+        <div class="small text-danger mt-2">
+            Paused since {{ b.blocked_at|date:"d M H:i" }}. Checking WhatsApp again at {{ b.next_check_at|date:"d M H:i" }}; it restarts by itself when sending works.
+            {% if b.alert_sent %}Alert email sent.{% endif %}
+        </div>
+        {% endif %}
+        {% if b.last_error %}<div class="small text-muted mt-1">Last error: <span data-f="error">{{ b.last_error }}</span></div>{% endif %}
+    </div>
+</div>
+{% endfor %}
+
+<form method="post" enctype="multipart/form-data" id="broadcastForm">
+    {% csrf_token %}
+    <div class="row g-3">
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0 rounded-4 mb-3">
+                <div class="card-header bg-white fw-bold small">1. Message</div>
+                <div class="card-body">
+                    <label for="message" class="visually-hidden">Message</label>
+                    <textarea name="message" id="message" rows="9" maxlength="{{ max_len }}" class="form-control small" required
+                              placeholder="Happy Diwali from all of us at PadosiAgent…"></textarea>
+                    <div class="d-flex justify-content-between small text-muted mt-1">
+                        <span><code>{name}</code> = person's name · <code>*bold*</code> <code>_italic_</code></span>
+                        <span><span id="charCount">0</span>/{{ max_len }}</span>
+                    </div>
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" name="add_link" value="1" id="addLink" checked>
+                        <label class="form-check-label small" for="addLink">
+                            Add each agent's own profile link at the end
+                            <span class="text-muted d-block">Sheet numbers get a link only if they belong to an active agent.</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mb-3">
+                <div class="card-header bg-white fw-bold small">2. Speed (keeps the number safe from a ban)</div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2 flex-wrap small">
+                        <label for="rateCount" class="visually-hidden">Messages</label>
+                        <input type="number" name="rate_count" id="rateCount" value="49" min="1" max="1000" class="form-control form-control-sm" style="width: 80px;" required>
+                        <span>messages in</span>
+                        <label for="rateHours" class="visually-hidden">Hours</label>
+                        <input type="number" name="rate_hours" id="rateHours" value="4" min="0.1" max="168" step="0.1" class="form-control form-control-sm" style="width: 80px;" required>
+                        <span>hours</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap small mt-2">
+                        <span>and at least</span>
+                        <label for="minGap" class="visually-hidden">Minimum seconds between messages</label>
+                        <input type="number" name="min_gap_seconds" id="minGap" value="60" min="5" max="3600" class="form-control form-control-sm" style="width: 80px;" required>
+                        <span>seconds between two messages</span>
+                    </div>
+                    <div class="small mt-2 p-2 rounded bg-light" id="estimate" aria-live="polite"></div>
+                    <div class="small text-muted mt-1">The slower of the two is used, with a little random variation so it doesn't look like a bot.</div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mb-3">
+                <div class="card-header bg-white fw-bold small">4. Or upload a data sheet (optional)</div>
+                <div class="card-body">
+                    <label for="sheet" class="visually-hidden">Data sheet</label>
+                    <input type="file" name="sheet" id="sheet" accept=".csv,.xlsx" class="form-control form-control-sm">
+                    <div class="small text-muted mt-2">
+                        .csv or .xlsx, up to {{ max_rows }} rows. Needs a column named <code>mobile</code> (or phone / whatsapp / number);
+                        a <code>name</code> column is optional. Numbers also selected in the list are sent once.
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0 rounded-4 mb-3">
+                <div class="card-body">
+                    <label for="alertEmail" class="form-label small fw-bold mb-1">Email me if WhatsApp blocks the number</label>
+                    <input type="email" name="alert_email" id="alertEmail" value="{{ admin_email }}" class="form-control form-control-sm" placeholder="you@example.com">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success fw-bold w-100">
+                <i class="fa-brands fa-whatsapp me-1"></i> Start broadcast
+            </button>
+            <div class="small text-muted mt-2">You can close this page; sending continues on the server. A new broadcast waits until the one before it finishes.</div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-header bg-white">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <span class="fw-bold small">3. Select active agents (<span id="selCount">0</span> of {{ agents|length }} selected)</span>
+                        <span class="small text-muted"><span id="shownCount">{{ agents|length }}</span> shown</span>
+                    </div>
+                    <div class="row g-2 mt-1">
+                        <div class="col-6 col-xxl-3">
+                            <label for="fPlan" class="visually-hidden">Plan</label>
+                            <select id="fPlan" class="form-select form-select-sm agent-filter" data-key="plan">
+                                <option value="">All plans</option>
+                                {% for v in filter_plans %}<option>{{ v }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-xxl-3">
+                            <label for="fState" class="visually-hidden">State</label>
+                            <select id="fState" class="form-select form-select-sm agent-filter" data-key="state">
+                                <option value="">All states</option>
+                                {% for v in filter_states %}<option>{{ v }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-xxl-3">
+                            <label for="fCity" class="visually-hidden">City</label>
+                            <select id="fCity" class="form-select form-select-sm agent-filter" data-key="city">
+                                <option value="">All cities</option>
+                                {% for v in filter_cities %}<option>{{ v }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-6 col-xxl-3">
+                            <label for="agentSearch" class="visually-hidden">Search agents</label>
+                            <input type="search" id="agentSearch" class="form-control form-control-sm" placeholder="Search name / mobile">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-success" id="selectShown">Select all shown</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearSel">Clear selection</button>
+                        <button type="button" class="btn btn-sm btn-link text-decoration-none" id="clearFilters">Reset filters</button>
+                    </div>
+                </div>
+                <div class="card-body p-0" style="max-height: 640px; overflow-y: auto;">
+                    <table class="table table-sm table-hover align-middle mb-0 small">
+                        <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
+                            <tr>
+                                <th style="width: 36px;">
+                                    <input class="form-check-input" type="checkbox" id="selectAll" aria-label="Select all shown agents">
+                                </th>
+                                <th>Name</th><th>Mobile</th><th>Plan</th><th>City</th><th>State</th>
+                            </tr>
+                        </thead>
+                        <tbody id="agentRows">
+                            {% for a in agents %}
+                            <tr data-plan="{{ a.plan_label }}" data-state="{{ a.state_label }}" data-city="{{ a.city_label }}">
+                                <td><input class="form-check-input agent-cb" type="checkbox" name="agent_ids" value="{{ a.id }}" id="ag{{ a.id }}"></td>
+                                <td><label for="ag{{ a.id }}" class="mb-0">{{ a.fullname }}</label></td>
+                                <td>{{ a.mobile }}</td>
+                                <td>{{ a.plan_label }}</td>
+                                <td>{{ a.city_label }}{% if a.agent_pincode %} <span class="text-muted">{{ a.agent_pincode }}</span>{% endif %}</td>
+                                <td>{{ a.state_label }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" class="text-center text-muted py-4">No active agents.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+{% if past_broadcasts %}
+<div class="card shadow-sm border-0 rounded-4 mt-4">
+    <div class="card-header bg-white fw-bold small">Past broadcasts</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0 small">
+            <thead class="table-light"><tr><th>#</th><th>Started</th><th>Message</th><th>Result</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for b in past_broadcasts %}
+                <tr>
+                    <td>{{ b.pk }}</td>
+                    <td>{{ b.created_at|date:"d M Y H:i" }}{% if b.created_by %}<div class="text-muted">{{ b.created_by }}</div>{% endif %}</td>
+                    <td>{{ b.message|truncatechars:70 }}</td>
+                    <td>sent {{ b.c.sent }} · failed {{ b.c.failed }} · skipped {{ b.c.skipped }}{% if b.c.pending %} · not sent {{ b.c.pending }}{% endif %} / {{ b.c.total }}</td>
+                    <td>{{ b.get_status_display }}{% if b.finished_at %}<div class="text-muted">{{ b.finished_at|date:"d M H:i" }}</div>{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<script>
+(function () {
+    const $ = id => document.getElementById(id);
+    const msg = $('message');
+    const boxes = Array.from(document.querySelectorAll('.agent-cb'));
+    const visible = () => boxes.filter(b => b.closest('tr').style.display !== 'none');
+    const selected = () => boxes.filter(b => b.checked).length;
+
+    const fmt = h => h < 1 ? Math.round(h * 60) + ' min' : (h < 48 ? h.toFixed(1) + ' hours' : (h / 24).toFixed(1) + ' days');
+    const estimate = () => {
+        const count = Math.max(1, +$('rateCount').value || 1);
+        const hours = Math.max(0.1, +$('rateHours').value || 0.1);
+        const gap = Math.max(+$('minGap').value || 5, hours * 3600 / count);
+        const n = selected();
+        $('estimate').textContent = '≈ 1 message every ' + (gap >= 60 ? (gap / 60).toFixed(1) + ' min' : Math.round(gap) + ' s')
+            + ' · ' + Math.round(3600 / gap) + ' per hour'
+            + (n ? ' · ' + n + ' selected agents ≈ ' + fmt(n * gap / 3600) : '')
+            + ($('sheet').files.length ? ' (+ sheet numbers)' : '');
+    };
+    const refresh = () => {
+        $('selCount').textContent = selected();
+        const v = visible();
+        $('selectAll').checked = v.length > 0 && v.every(b => b.checked);
+        estimate();
+    };
+
+    msg.addEventListener('input', () => $('charCount').textContent = msg.value.length);
+    ['rateCount', 'rateHours', 'minGap', 'sheet'].forEach(id => $(id).addEventListener('input', estimate));
+    $('sheet').addEventListener('change', estimate);
+    boxes.forEach(b => b.addEventListener('change', refresh));
+    $('selectAll').addEventListener('change', () => { visible().forEach(b => b.checked = $('selectAll').checked); refresh(); });
+    const filters = Array.from(document.querySelectorAll('.agent-filter'));
+    const applyFilters = () => {
+        const q = $('agentSearch').value.trim().toLowerCase();
+        let shown = 0;
+        boxes.forEach(b => {
+            const row = b.closest('tr');
+            const ok = filters.every(f => !f.value || row.dataset[f.dataset.key] === f.value)
+                && (!q || row.textContent.toLowerCase().includes(q));
+            row.style.display = ok ? '' : 'none';
+            shown += ok ? 1 : 0;
+        });
+        $('shownCount').textContent = shown;
+        refresh();
+    };
+    filters.forEach(f => f.addEventListener('change', applyFilters));
+    $('agentSearch').addEventListener('input', applyFilters);
+    $('selectShown').addEventListener('click', () => { visible().forEach(b => b.checked = true); refresh(); });
+    $('clearSel').addEventListener('click', () => { boxes.forEach(b => b.checked = false); refresh(); });
+    $('clearFilters').addEventListener('click', () => { filters.forEach(f => f.value = ''); $('agentSearch').value = ''; applyFilters(); });
+    refresh();
+
+    $('broadcastForm').addEventListener('submit', e => {
+        const n = selected();
+        const sheet = $('sheet').files.length > 0;
+        if (!n && !sheet) { e.preventDefault(); alert('Select at least one agent or upload a sheet.'); return; }
+        const who = [n ? n + ' selected agent(s)' : '', sheet ? 'the numbers in the uploaded sheet' : ''].filter(Boolean).join(' + ');
+        if (!confirm('Send this WhatsApp message to ' + who + '?\n\n' + $('estimate').textContent)) e.preventDefault();
+    });
+
+    // Live progress for running broadcasts
+    {% if active_broadcasts %}
+    const poll = setInterval(() => {
+        fetch('{% url "admin_wa_broadcast_progress" %}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(d => {
+                if (!d.success) return;
+                const shown = Array.from(document.querySelectorAll('[data-broadcast]'));
+                const live = new Map(d.broadcasts.map(b => [String(b.id), b]));
+                if (shown.some(el => !live.has(el.dataset.broadcast) || live.get(el.dataset.broadcast).status !== el.dataset.status)) {
+                    clearInterval(poll); window.location.reload(); return;  // finished, paused or resumed
+                }
+                shown.forEach(el => {
+                    const b = live.get(el.dataset.broadcast);
+                    const set = (f, v) => { const n = el.querySelector('[data-f="' + f + '"]'); if (n) n.textContent = v; };
+                    ['done', 'sent', 'failed', 'skipped', 'pending'].forEach(f => set(f, b[f]));
+                    set('eta', b.eta_hours); set('next', b.next_send_at); set('error', b.last_error);
+                    const bar = el.querySelector('[data-f="bar"]');
+                    if (bar) bar.style.width = b.percent + '%';
+                });
+            })
+            .catch(() => {});
+    }, 10000);
+    {% endif %}
+})();
+</script>
+{% endblock %}

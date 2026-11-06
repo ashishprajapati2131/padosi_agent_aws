@@ -155,6 +155,7 @@ class WaBotMessageLog(models.Model):
         ('admin_test', 'Admin test message'),
         ('rate_limit', 'Rate-limit warning'),
         ('simulator', 'Simulator'),
+        ('broadcast', 'Broadcast'),
     ]
 
     # Null for messages sent to numbers that never chatted with the bot (e.g. lead alerts).
@@ -188,3 +189,75 @@ class WaBotMessageLog(models.Model):
 
     def __str__(self):
         return f"[{self.direction}/{self.status}] {self.phone_number} @ {self.created_at}"
+
+
+class WaBroadcast(models.Model):
+    """One admin broadcast, sent slowly by the 'wa-broadcast' background job (apps/wa_agent_bot/services/broadcast.py)."""
+
+    STATUS_RUNNING = "running"
+    STATUS_BLOCKED = "blocked"  # WhatsApp disconnected/banned or sends keep failing; re-checked automatically
+    STATUS_DONE = "done"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_CHOICES = [
+        (STATUS_RUNNING, "Running"),
+        (STATUS_BLOCKED, "Paused - WhatsApp blocked/disconnected"),
+        (STATUS_DONE, "Finished"),
+        (STATUS_CANCELLED, "Stopped"),
+    ]
+
+    message = models.TextField()
+    add_link = models.BooleanField(default=True)
+    rate_count = models.PositiveIntegerField(default=49, help_text="Messages per rate_hours")
+    rate_hours = models.FloatField(default=4)
+    min_gap_seconds = models.PositiveIntegerField(default=60, help_text="Minimum delay between two messages")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_RUNNING, db_index=True)
+    next_send_at = models.DateTimeField(null=True, blank=True)
+    blocked_at = models.DateTimeField(null=True, blank=True)
+    next_check_at = models.DateTimeField(null=True, blank=True)
+    fail_streak = models.PositiveIntegerField(default=0)
+    alert_sent = models.BooleanField(default=False)
+    alert_email = models.EmailField(blank=True, default="")
+    last_error = models.CharField(max_length=500, blank=True, default="")
+    created_by = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "wa_broadcasts"
+        ordering = ["-id"]
+
+    def __str__(self):
+        return f"Broadcast #{self.pk} ({self.status})"
+
+    @property
+    def gap_seconds(self):
+        """Seconds between two messages: the per-message delay or the hourly rate, whichever is slower."""
+        per_rate = (self.rate_hours * 3600 / self.rate_count) if self.rate_count else 0
+        return max(self.min_gap_seconds, per_rate)
+
+
+class WaBroadcastRecipient(models.Model):
+    STATUS_PENDING = "pending"
+    STATUS_SENT = "sent"
+    STATUS_FAILED = "failed"
+    STATUS_SKIPPED = "skipped"  # already got this exact text
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_SENT, "Sent"),
+        (STATUS_FAILED, "Failed"),
+        (STATUS_SKIPPED, "Skipped"),
+    ]
+
+    broadcast = models.ForeignKey(WaBroadcast, on_delete=models.CASCADE, related_name="recipients")
+    phone = models.CharField(max_length=15)
+    name = models.CharField(max_length=255, blank=True, default="")
+    link = models.CharField(max_length=500, blank=True, default="")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    error = models.CharField(max_length=500, blank=True, default="")
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "wa_broadcast_recipients"
+        ordering = ["id"]
+        constraints = [models.UniqueConstraint(fields=["broadcast", "phone"], name="uniq_wa_broadcast_phone")]
+        indexes = [models.Index(fields=["broadcast", "status"], name="wa_bcast_status_idx")]

@@ -224,8 +224,16 @@ def _daily_backup_job():
         logger.exception("[bgjobs] daily database backup failed")
 
 
+def _wa_broadcast_job():
+    """Send due WhatsApp broadcast messages; runs ~50 s so it never overlaps the next 60 s claim."""
+    from apps.wa_agent_bot.services.broadcast import process_broadcasts
+
+    process_broadcasts()
+
+
 # (name, interval in seconds, function)
 JOBS = (
+    ("wa-broadcast", 60, _wa_broadcast_job),
     ("system-load-monitor", 60, _system_load_monitor_job),
     ("invoice-retry", 60 * 60, _invoice_job),
     ("paldi-expirations", 30 * 60, _paldi_expiry_job),
