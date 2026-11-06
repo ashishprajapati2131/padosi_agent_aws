@@ -553,6 +553,33 @@ class LinkPreviewTests(TestCase):
         self.assertNotIn("linkPreview", post.call_args_list[1].kwargs["json"])
 
 
+class RepeatBroadcastTests(TestCase):
+    """Each new broadcast reaches everyone; only a resend inside the same broadcast is skipped."""
+
+    RECIPS = [{"phone": "9876543210", "name": "Ram", "link": "", "image": ""}]
+
+    def _log(self, text, when):
+        log = WaBotMessageLog.objects.create(phone_number="919876543210", direction=WaBotMessageLog.DIRECTION_OUT,
+                                             category="broadcast", status=WaBotMessageLog.STATUS_SENT, content=text)
+        WaBotMessageLog.objects.filter(pk=log.pk).update(created_at=when)
+
+    @patch("apps.wa_agent_bot.services.broadcast.send_text_message", return_value={"success": True})
+    def test_new_broadcast_resends_same_text_to_same_person(self, send):
+        self._log("Happy Diwali Ram", datetime.now() - timedelta(hours=1))  # an earlier broadcast
+        b = broadcast.create_broadcast(self.RECIPS, "Happy Diwali {name}")
+        broadcast.process_broadcasts(max_seconds=1, sleep=lambda s: None)
+        send.assert_called_once()
+        self.assertEqual(b.recipients.get().status, "sent")
+
+    @patch("apps.wa_agent_bot.services.broadcast.send_text_message")
+    def test_resend_inside_the_same_broadcast_is_skipped(self, send):
+        b = broadcast.create_broadcast(self.RECIPS, "Happy Diwali {name}")
+        self._log("Happy Diwali Ram", datetime.now())  # sent, then the worker died before saving
+        broadcast.process_broadcasts(max_seconds=1, sleep=lambda s: None)
+        send.assert_not_called()
+        self.assertEqual(b.recipients.get().status, "skipped")
+
+
 class CardPhotoTests(TestCase):
     """Broadcasts send the agent's profile card as a photo, so it shows whatever OpenWA does with link previews."""
 

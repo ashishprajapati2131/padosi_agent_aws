@@ -235,13 +235,18 @@ def build_recipients(agents=(), sheet_rows=(), add_link=True, base=None):
     return out
 
 
-def already_sent(phone, text):
-    return WaBotMessageLog.objects.filter(
+def already_sent(phone, text, since=None):
+    """Did this number get exactly this text? since= limits it to one broadcast's lifetime, so a new
+    broadcast reaches everyone again but a restart mid-broadcast never sends twice."""
+    qs = WaBotMessageLog.objects.filter(
         phone_number__endswith=phone,
         category=CATEGORY,
         status=WaBotMessageLog.STATUS_SENT,
         content=text[:5000],
-    ).exists()
+    )
+    if since is not None:
+        qs = qs.filter(created_at__gte=since)
+    return qs.exists()
 
 
 def new_stats(total):
@@ -453,7 +458,7 @@ def _send_next(b):
         return
 
     text = render_text(b.message, r.name, r.link)
-    if already_sent(r.phone, text):
+    if already_sent(r.phone, text, since=b.created_at):
         r.status = WaBroadcastRecipient.STATUS_SKIPPED
         r.save(update_fields=["status"])
         return
