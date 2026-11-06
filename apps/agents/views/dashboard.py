@@ -3936,8 +3936,9 @@ def agent_og_image(request, agent_id=None, slug=None):
             return response
 
     try:
-        encoded_image = render_agent_og_jpeg(agent)
-        cache.set(cache_key, encoded_image, 86400 * 7)
+        from apps.agents.services.og_image import render_and_cache
+
+        encoded_image = render_and_cache(agent)
         response = HttpResponse(encoded_image, content_type="image/jpeg")
         response["Cache-Control"] = "public, max-age=604800"
         response["Access-Control-Allow-Origin"] = "*"

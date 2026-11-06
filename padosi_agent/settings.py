@@ -267,6 +267,7 @@ else:
 # such as site settings leak into the local dev site.
 if len(sys.argv) > 1 and sys.argv[1] == "test":
     CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    OG_IMAGE_PREWARM = False
 
 
 # Password validation

@@ -454,3 +454,41 @@ class AdminChangesReachTheSiteTests(_Base):
         html = _render_cards(self.agents)
         self.assertIn('rgba(255,0,0,0.88)', html)
         self.assertIn('rgba(0,0,255,0.88)', html)
+
+
+class DecorationNeverCoversContentTests(_Base):
+    def setUp(self):
+        super().setUp()
+        self.agents = [_make_agent(1)]
+        _flag(True)
+
+    def _css(self, pos):
+        svc.set_active(svc.save_theme(pos, {'decoration_image': 'agent_card_themes/diya_1.png', 'decoration_position': pos}))
+        SiteSetting.flush_cache()
+        return _render_cards(self.agents)
+
+    def test_top_right_reserves_room_next_to_name_and_badges(self):
+        html = self._css('top-right')
+        self.assertIn('.rac-name-row{padding-right:64px !important}', html)
+        self.assertIn('.rac-d-right{padding-top:64px !important}', html)
+
+    def test_bottom_right_moves_to_top_on_phones(self):
+        html = self._css('bottom-right')
+        self.assertIn('.rac-d-right{padding-bottom:64px !important}', html)
+        self.assertIn('@media (max-width:991.98px)', html)
+        self.assertIn('::after{top:0 !important;bottom:auto !important}', html)
+
+
+@override_settings(ALLOWED_HOSTS=['testserver'])
+class ShareImageDeliveryTests(_Base):
+    """WhatsApp previews: the share image must be cacheable at Cloudflare and small."""
+
+    def test_share_image_sets_no_cookie_but_html_does(self):
+        agent = _make_agent(1)
+        resp = self.client.get(f'/og-image/{agent.id}/preview.jpg')
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn('Set-Cookie', resp.headers)  # a cookie makes Cloudflare bypass its cache
+        self.assertNotIn('Cookie', resp.get('Vary', ''))
+        self.assertLess(len(resp.content), 200 * 1024)
+        html = self.client.get('/about/')
+        self.assertIn('padosi_csrf_token', html.cookies)

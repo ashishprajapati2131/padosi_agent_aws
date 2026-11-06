@@ -23,6 +23,7 @@ from apps.agents.services.og_image import (
     _fit_text,
     _hex_rgb,
     _load_card_sources,
+    _load_photo,
     _shrink_font,
     _text_size,
     _wrap_lines,
@@ -251,6 +252,38 @@ def _slanted_text(canvas, xy_center, parts, font):
     return tw
 
 
+def _cover_crop_top(img, w, h):
+    """Cover-fit like _cover_crop, but keep the upper part of tall photos (faces sit near the top)."""
+    scale = max(w / img.size[0], h / img.size[1])
+    nw, nh = max(1, round(img.size[0] * scale)), max(1, round(img.size[1] * scale))
+    img = img.resize((nw, nh), RESAMPLE)
+    left, top = (nw - w) // 2, int((nh - h) * 0.2)
+    return img.crop((left, top, left + w, top + h))
+
+
+def _photo_panel(canvas, photo):
+    """Agent photo in a white rounded frame, with a small PadosiAgent logo badge below it."""
+    box = (48, 104, 344, 404)  # 296 x 300
+    w, h = box[2] - box[0], box[3] - box[1]
+    shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rounded_rectangle((box[0] + 2, box[1] + 8, box[2] + 2, box[3] + 10), radius=24, fill=(0, 0, 0, 110))
+    canvas.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(10)))
+    _panel(canvas, (box[0] - 6, box[1] - 6, box[2] + 6, box[3] + 6), 26, (255, 255, 255, 255))
+    if photo.mode in ("RGBA", "LA", "P"):
+        photo = photo.convert("RGBA")
+        flat = Image.new("RGB", photo.size, (255, 255, 255))
+        flat.paste(photo, mask=photo.split()[-1])
+        photo = flat
+    canvas.paste(_cover_crop_top(photo.convert("RGB"), w, h), box[:2], _rounded_mask((w, h), 20))
+    logo = _load_rgba(os.path.join(settings.BASE_DIR, "static", "img", "logo.png"))
+    if logo:
+        lw = 170
+        logo = logo.resize((lw, int(logo.size[1] * lw / logo.size[0])), RESAMPLE)
+        pill = (196 - lw // 2 - 16, box[3] - 18, 196 + lw // 2 + 16, box[3] - 18 + logo.size[1] + 14)
+        _panel(canvas, pill, (pill[3] - pill[1]) // 2, (255, 255, 255, 250), outline=(233, 185, 73, 255), width=2)
+        canvas.alpha_composite(logo, (196 - lw // 2, pill[1] + 7))
+
+
 def _load_rgba(path):
     try:
         return Image.open(path).convert("RGBA") if path else None
@@ -287,30 +320,34 @@ def render_festive_card(agent, theme, profile=None, perf=None):
     canvas.paste(art.crop(CARD), CARD[:2], _rounded_mask((cw, ch), 22))
     draw = ImageDraw.Draw(canvas)
 
-    # Brand panel (left)
-    _panel(canvas, (40, 140, 352, 322), 18, (255, 255, 255, 236))
-    logo = _load_rgba(os.path.join(settings.BASE_DIR, "static", "img", "logo.png"))
-    if logo:
-        lw = 262
-        logo = logo.resize((lw, int(logo.size[1] * lw / logo.size[0])), RESAMPLE)
-        canvas.alpha_composite(logo, (196 - lw // 2, 150))
-    draw = ImageDraw.Draw(canvas)
-    draw.text(
-        (196, 247),
-        "India's 1st Hyperlocal Platform for Insurance",
-        font=_font(True, 13),
-        fill=NAVY,
-        anchor="mm",
-    )
-    draw.line((62, 263, 196, 263), fill=(37, 99, 235), width=2)
-    draw.line((196, 263, 330, 263), fill=(22, 163, 74), width=2)
-    for i, (l1, l2, icon, color) in enumerate(VALUES):
-        cx = 79 + i * 78
-        _icon(draw, icon, cx, 282, 20, color)
-        draw.text((cx, 301), l1, font=_font(True, 9), fill=NAVY, anchor="mm")
-        draw.text((cx, 312), l2, font=_font(True, 9), fill=NAVY, anchor="mm")
-        if i:
-            draw.line((cx - 39, 274, cx - 39, 314), fill=(203, 213, 225), width=1)
+    # Left: the agent's photo with the PadosiAgent logo under it; the brand panel if no photo
+    photo = _load_photo(agent, profile)
+    if photo is not None:
+        _photo_panel(canvas, photo)
+    else:
+        _panel(canvas, (40, 140, 352, 322), 18, (255, 255, 255, 236))
+        logo = _load_rgba(os.path.join(settings.BASE_DIR, "static", "img", "logo.png"))
+        if logo:
+            lw = 262
+            logo = logo.resize((lw, int(logo.size[1] * lw / logo.size[0])), RESAMPLE)
+            canvas.alpha_composite(logo, (196 - lw // 2, 150))
+        draw = ImageDraw.Draw(canvas)
+        draw.text(
+            (196, 247),
+            "India's 1st Hyperlocal Platform for Insurance",
+            font=_font(True, 13),
+            fill=NAVY,
+            anchor="mm",
+        )
+        draw.line((62, 263, 196, 263), fill=(37, 99, 235), width=2)
+        draw.line((196, 263, 330, 263), fill=(22, 163, 74), width=2)
+        for i, (l1, l2, icon, color) in enumerate(VALUES):
+            cx = 79 + i * 78
+            _icon(draw, icon, cx, 282, 20, color)
+            draw.text((cx, 301), l1, font=_font(True, 9), fill=NAVY, anchor="mm")
+            draw.text((cx, 312), l2, font=_font(True, 9), fill=NAVY, anchor="mm")
+            if i:
+                draw.line((cx - 39, 274, cx - 39, 314), fill=(203, 213, 225), width=1)
 
     # Info panel (right)
     _panel(
@@ -550,7 +587,9 @@ def render_festive_card(agent, theme, profile=None, perf=None):
         )
 
     buf = io.BytesIO()
-    canvas.convert("RGB").save(buf, format="JPEG", quality=92)
+    from apps.agents.services.og_image import JPEG_QUALITY
+
+    canvas.convert("RGB").save(buf, format="JPEG", quality=JPEG_QUALITY, optimize=True)
     return buf.getvalue()
 
 

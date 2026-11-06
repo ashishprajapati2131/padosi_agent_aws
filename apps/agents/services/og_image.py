@@ -583,7 +583,7 @@ def _render_agent_og_jpeg_pillow(agent, profile=None, perf=None, theme=None):
         draw.text((right - lw, 561), label, font=fonts['footer_bold'], fill=(30, 58, 138))
 
     buf = io.BytesIO()
-    canvas.save(buf, format='JPEG', quality=95)
+    canvas.save(buf, format='JPEG', quality=JPEG_QUALITY, optimize=True)
     return buf.getvalue()
 
 
@@ -776,4 +776,43 @@ def _draw_star(draw, cx, cy, r, fill):
     draw.polygon(pts, fill=fill)
 
 
-__all__ = ['render_agent_og_jpeg']
+# ~30% smaller than quality 95 with no visible change at 1200x630; small previews load faster in WhatsApp.
+JPEG_QUALITY = 85
+
+
+def render_and_cache(agent):
+    """Render the agent's share image and store it where agent_og_image serves it from."""
+    from django.core.cache import cache
+    from apps.agents.models import og_image_cache_key
+    data = render_agent_og_jpeg(agent)
+    cache.set(og_image_cache_key(agent.id), data, 86400 * 7)
+    return data
+
+
+def prewarm(agent):
+    """Render the share image in the background if it is not cached yet, so it is ready
+    by the time WhatsApp/Facebook fetch it right after reading the page's og:image."""
+    if not getattr(settings, 'OG_IMAGE_PREWARM', True) or agent is None:
+        return
+    import threading
+    from django.core.cache import cache
+    from django.db import close_old_connections
+    from apps.agents.models import og_image_cache_key
+    try:
+        if cache.has_key(og_image_cache_key(agent.id)) or not cache.add(f'og_prewarm_{agent.id}', 1, 120):
+            return  # cached already, or another request is rendering it
+    except Exception:
+        return
+
+    def run():
+        try:
+            render_and_cache(agent)
+        except Exception:
+            logger.warning("Share image prewarm failed for agent %s", agent.id, exc_info=True)
+        finally:
+            close_old_connections()
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+__all__ = ['render_agent_og_jpeg', 'render_and_cache', 'prewarm']

@@ -39,7 +39,9 @@ class AutoCsrfCookieMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        if request.method == 'GET' and response.status_code == 200:
+        # HTML only: a Set-Cookie on images/JSON (e.g. the WhatsApp share image) stops Cloudflare caching them.
+        if (request.method == 'GET' and response.status_code == 200
+                and 'text/html' in (response.get('Content-Type') or '')):
             token = get_token(request)
             if token and 'padosi_csrf_token' not in request.COOKIES:
                 response.set_cookie(

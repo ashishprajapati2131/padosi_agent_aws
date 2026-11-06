@@ -66,4 +66,6 @@ def agent_og_image_absolute_url(request, agent_id: int) -> str:
     path = reverse('agents:agent_og_image', kwargs={'agent_id': agent_id})
     agent = Agent.objects.filter(pk=agent_id).first()
     version = OG_IMAGE_CACHE_VERSION + (f'-{card_version(agent)}' if agent else '')
+    from apps.agents.services.og_image import prewarm
+    prewarm(agent)
     return build_og_absolute_url(request, path) + f'?v={version}'
