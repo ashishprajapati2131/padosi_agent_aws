@@ -256,7 +256,17 @@ The sidebar entry, permission checkbox, middleware enforcement, default redirect
   - Fixed while checking: the pending-registrations CSV computed "waiting hours" against `UTC_TIMESTAMP()` (5h30m short), and a non-numeric plan sort order showed a generic error.
 - **Tests added for previously untested modules** (`test_module_flows.py`, real URLs + session): plans (create, rename keeps slug, bad input), coming soon (create/toggle/delete, required title), referrals (bad tiers rejected), notifications (no-device save, zero-delivery warning), broadcasts (row recorded, right agents queued, real sent count, missing fields).
 - **Deliberately not done:** moving the ~13k lines of inline JS/CSS to static files, the 24 complex modals, and generating sidebar labels/icons from the registry. The inline scripts use `{% url %}`/`{{ }}`, which do not work in static files, so moving them blind would break pages. Do these only with a browser check on a running server.
-- **Still open:** inline JS/CSS to static files, complex modals and sidebar labels/icons (all need a browser); Redis (needs the host).
+- **Inline JS/CSS moved (2026-11-07):** 77 tag-free blocks (all 48 `<style>`, 29 `<script>`, ~5,500 lines) from 56 templates are now in `static/admin_panel/inline/` and load from the same position via `{% static %}`.
+  - Every template rebuilt from its static files is byte-identical to the original.
+  - All templates compile, and every static reference resolves.
+  - 1,223 tests pass.
+  - **Browser check:** a local preview server (SQLite) loaded 88 admin pages with an error/404 capture hook that was proven against a control page. There were no JS errors and no missing static files; the only hit was a pre-existing empty `<img src="">` preview on Profile Banners.
+  - 52 `<script>` blocks (~7,900 lines) that contain Django tags (`{% url %}`, `{{ }}`) stay inline. Moving them means rewriting each script to read values from data attributes, which needs every flow re-tested in a browser.
+- **Decided against (look must stay the same):**
+  - **The remaining 26 modals:** each has its own header design (`bg-danger` headers, inline styles, h6 titles, extra header markup, or forms wrapping the header). A shared shell would change their look, or become a pass-through with no benefit.
+  - **Sidebar labels/icons from the registry:** per-link active rules and badge markup differ. Visibility already comes from the registry, so moving labels and icons adds risk for no user-visible gain.
+  - **Revisit both only if a deliberate visual redesign is wanted.**
+- **Still open:** the 52 tag-bearing inline scripts (optional); Redis (needs the host).
 
 **Phase 2 — Safety net:** ✅ **Done 2026-11-07.** 311 tests pass.
 - `test_rbac_snapshot.py` + `rbac_snapshot.json`: for all 328 named `/admin` and `/padosi-admin` routes, including championship and event-referral, it records who `AdminPermissionMiddleware` lets through: 4 public (login/logout), 95 super-only, and 229 open to staff holding specific permission keys. **Any** change in access fails the test until the snapshot is regenerated on purpose (`UPDATE_RBAC_SNAPSHOT=1`, see CLAUDE.md §16). It also asserts that no route is unreachable or open to every staff member, and that the key super-only routes stay super-only.
