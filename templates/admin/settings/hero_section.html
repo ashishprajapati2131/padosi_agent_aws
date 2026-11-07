@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static json_tags %}
 
 {% block title %}Hero Section Editor — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Settings › Hero Section Editor{% endblock %}
@@ -311,8 +311,8 @@
     'use strict';
 
     // JSON constants from python view
-    var ICONS = {{ iconOptions_json|safe }};
-    var TILE_CLASSES = {{ tileClasses_json|safe }};
+    var ICONS = {{ iconOptions_json|safe_json }};
+    var TILE_CLASSES = {{ tileClasses_json|safe_json }};
 
     /* ── Helpers ─────────────────────────────────────────────────────────── */
     function iconSelect(name, selected) {

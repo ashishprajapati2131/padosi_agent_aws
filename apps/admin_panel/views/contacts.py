@@ -13,6 +13,7 @@ from apps.admin_panel.models.admin_auth import Admin
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from django.shortcuts import redirect
+from apps.admin_panel.services import contacts_service
 
 logger = logging.getLogger(__name__)
 
@@ -168,8 +169,7 @@ def contacts_update_status(request):
         return JsonResponse({'success': False, 'message': 'Invalid data.'}, status=400)
 
     sub = get_object_or_404(ContactSubmission, id=sub_id)
-    sub.status = status
-    sub.save(update_fields=['status', 'updated_at'])
+    contacts_service.set_status(sub, status)
 
     return JsonResponse({'success': True})
 
@@ -184,7 +184,7 @@ def contacts_delete(request):
         return JsonResponse({'success': False, 'message': 'ID required.'}, status=400)
 
     sub = get_object_or_404(ContactSubmission, id=sub_id)
-    sub.delete()
+    contacts_service.delete_submission(sub)
 
     return JsonResponse({'success': True, 'message': 'Submission deleted.'})
 
@@ -213,7 +213,7 @@ def contacts_assign(request):
     sub = get_object_or_404(ContactSubmission, id=sub_id)
 
     if raw_admin == '':
-        sub.assigned_admin_id = None
+        target_id = None
         assignee_name = ''
     else:
         try:
@@ -223,10 +223,9 @@ def contacts_assign(request):
         target = Admin.objects.filter(id=target_id).first()
         if not target:
             return JsonResponse({'success': False, 'message': 'Admin not found.'}, status=404)
-        sub.assigned_admin_id = target_id
         assignee_name = target.name
 
-    sub.save(update_fields=['assigned_admin_id', 'updated_at'])
+    contacts_service.assign(sub, target_id)
     AdminActivityLog.log(
         f'Assigned ticket {sub.reference_id or sub.id} to {assignee_name or "nobody"}',
         'ContactSubmission', sub.id, request=request,
@@ -246,8 +245,7 @@ def contacts_set_priority(request):
         return JsonResponse({'success': False, 'message': 'Invalid data.'}, status=400)
 
     sub = get_object_or_404(ContactSubmission, id=sub_id)
-    sub.priority = priority
-    sub.save(update_fields=['priority', 'updated_at'])
+    contacts_service.set_priority(sub, priority)
     return JsonResponse({'success': True})
 
 
@@ -268,42 +266,9 @@ def contacts_reply(request):
 
     sub = get_object_or_404(ContactSubmission, id=sub_id)
 
-    emailed = False
-    # Only customer-facing replies can be emailed (never internal notes).
-    if want_email and not is_internal and sub.email:
-        try:
-            from apps.agents.services.brevo import email_service
-            html = (
-                f"<p>Hi {sub.name},</p>"
-                f"<p>{message.replace(chr(10), '<br>')}</p>"
-                f"<p>Regarding your query <b>{sub.reference_id or ('#' + str(sub.id))}</b>: "
-                f"{sub.subject}</p>"
-                f"<p>— PadosiAgent Support</p>"
-            )
-            emailed = bool(email_service.send_generic(
-                sub.email, sub.name, f"Re: {sub.subject}", html
-            ))
-        except Exception as exc:
-            # Never let an email failure break saving the reply.
-            logger.error("Contact reply email failed for ticket %s: %s", sub.id, exc)
-            emailed = False
-
-    ContactReply.objects.create(
-        submission=sub,
-        admin_id=admin.id,
-        admin_name=admin.name,
-        message=message,
-        is_internal_note=is_internal,
-        emailed=emailed,
+    emailed = contacts_service.add_reply(
+        sub, admin.id, admin.name, message, is_internal, want_email,
     )
-
-    # A customer-facing reply moves an open ticket to 'replied'.
-    update_fields = ['last_reply_at', 'updated_at']
-    sub.last_reply_at = datetime.datetime.now()
-    if not is_internal and sub.status not in ('closed',):
-        sub.status = 'replied'
-        update_fields.append('status')
-    sub.save(update_fields=update_fields)
 
     AdminActivityLog.log(
         f'{"Internal note" if is_internal else "Replied"} on ticket {sub.reference_id or sub.id}'

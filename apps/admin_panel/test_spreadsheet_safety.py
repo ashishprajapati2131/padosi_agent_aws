@@ -29,7 +29,7 @@ class ExportUsesSafeWriterTests(TestCase):
     def test_csv_response_neutralises_rows(self):
         from apps.admin_panel.views.export import _csv_response
         resp = _csv_response('x.csv', ['Name'], [['=IMPORTXML("http://evil")']])
-        body = resp.content.decode('utf-8-sig')
+        body = b''.join(resp.streaming_content).decode('utf-8-sig')
         self.assertIn("'=IMPORTXML", body)
 
     def test_sheet_payload_neutralises_agent_text(self):

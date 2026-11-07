@@ -59,10 +59,12 @@ def admin_badge_counts(request):
         'is_super_admin':          False,
         'admin_permissions':       set(),
         'logged_in_admin':         None,
+        'nav_open':                frozenset(),
     }
 
     try:
-        counts['cloudflare_configured'] = cloudflare.is_configured()
+        # Two SiteSetting reads per admin render; it only changes when Cloudflare settings are saved.
+        counts['cloudflare_configured'] = cache.get_or_set('cloudflare_configured_v1', cloudflare.is_configured, 120)
         counts['cloudflare_dash_url'] = cloudflare.get_purge_url()
     except Exception:
         pass
@@ -254,7 +256,7 @@ def admin_badge_counts(request):
                 'total_pincodes_count', 'insurance_pending_count',
                 'payment_pending_count', 'active_feature_flags_count', 'notif_count'
             ]
-            cache.set(badge_cache_key, {k: counts[k] for k in badge_keys}, timeout=30)
+            cache.set(badge_cache_key, {k: counts[k] for k in badge_keys}, timeout=120)  # 16 COUNTs; was 30s
         except Exception:
             pass
 
@@ -262,7 +264,20 @@ def admin_badge_counts(request):
     try:
         from apps.admin_panel.models.admin_auth import Admin
         token = request.COOKIES.get("session_token")
-        if token:
+        live_admin = getattr(request, "admin_user", None)
+        if live_admin is not None:
+            # Set by AdminPermissionMiddleware from a fresh Admin row on every request: permission
+            # changes show at once (the 30 s cache below kept revoked items in the sidebar).
+            is_super = live_admin.role == "super"
+            counts['logged_in_admin'] = live_admin
+            counts['is_super_admin'] = is_super
+            counts['admin_permissions'] = (
+                set(live_admin.permissions) if (not is_super and isinstance(live_admin.permissions, list)) else set()
+            )
+            # Sidebar links follow registry.ROUTE_PERMISSIONS, the same map the RBAC middleware enforces.
+            from apps.admin_panel.registry import open_route_names
+            counts['nav_open'] = open_route_names(counts['admin_permissions'], is_super)
+        elif token:
             admin_cache_key = f'admin_session_{token}'
             cached_admin_info = cache.get(admin_cache_key)
             if cached_admin_info and isinstance(cached_admin_info, dict):
@@ -294,4 +309,7 @@ def admin_badge_counts(request):
     except Exception:
         pass
 
+    if not counts['nav_open'] and (counts['is_super_admin'] or counts['admin_permissions']):
+        from apps.admin_panel.registry import open_route_names
+        counts['nav_open'] = open_route_names(counts['admin_permissions'], counts['is_super_admin'])
     return counts

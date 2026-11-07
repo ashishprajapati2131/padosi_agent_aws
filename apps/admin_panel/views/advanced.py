@@ -1,13 +1,20 @@
 import json
 from datetime import timedelta
 from django.shortcuts import render, redirect
-from django.db import connection
 from django.utils import timezone
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.models import Agent
 from apps.admin_panel.models import AdminActivityLog
+from apps.admin_panel.selectors.advanced import (
+    fetch_admin_id_name_rows,
+    fetch_admin_name_row,
+    fetch_daily_leads_last_30_days,
+    fetch_overall_lead_and_view_counts,
+    fetch_top_agent_lead_rows,
+    fetch_top_agent_profile_view_rows,
+)
 def analytics(request):
     admin = _get_admin_from_session(request)
     if not admin:
@@ -23,34 +30,23 @@ def analytics(request):
         start_date = timezone.now() - timedelta(days=timeframe_days)
 
         # 1. Top Agents by Leads
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT a.id, COUNT(l.id) as leads_count 
-                FROM agents a 
-                JOIN agent_leads l ON a.id = l.agent_id 
-                WHERE l.created_at >= %s 
-                GROUP BY a.id 
-                HAVING leads_count > 0 
-                ORDER BY leads_count DESC 
-                LIMIT 10
-            """, [start_date])
-            top_leads_data = cursor.fetchall()
+        top_leads_data = fetch_top_agent_lead_rows(start_date)
+        
+        top_leads = []
+        if top_leads_data:
+            agent_ids = [row[0] for row in top_leads_data]
+            agents_qs = Agent.objects.filter(id__in=agent_ids)
+            agent_dict = {a.id: a for a in agents_qs}
             
-            top_leads = []
-            if top_leads_data:
-                agent_ids = [row[0] for row in top_leads_data]
-                agents_qs = Agent.objects.filter(id__in=agent_ids)
-                agent_dict = {a.id: a for a in agents_qs}
-                
-                from apps.admin_panel.models import AgentProfile, AgentSubscription
-                profiles = {p.agent_id: p for p in AgentProfile.objects.filter(agent_id__in=agent_ids)}
-                
-                for row in top_leads_data:
-                    agent = agent_dict.get(row[0])
-                    if agent:
-                        agent.leads_count = row[1]
-                        agent.profile = profiles.get(agent.id)
-                        top_leads.append(agent)
+            from apps.admin_panel.models import AgentProfile, AgentSubscription
+            profiles = {p.agent_id: p for p in AgentProfile.objects.filter(agent_id__in=agent_ids)}
+            
+            for row in top_leads_data:
+                agent = agent_dict.get(row[0])
+                if agent:
+                    agent.leads_count = row[1]
+                    agent.profile = profiles.get(agent.id)
+                    top_leads.append(agent)
 
 
         # Latest subscription per agent in one query instead of one per agent.
@@ -85,36 +81,24 @@ def analytics(request):
             agent.formatted_types = ', '.join([t.capitalize() for t in user_types if t]) or 'Agent'
 
         # 2. Top Agents by Profile Views
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT a.id, COUNT(v.id) as profile_views_count,
-                       (SELECT COALESCE(AVG(rating), 0) FROM agent_reviews WHERE agent_id = a.id AND is_approved = 1) as avg_rating
-                FROM agents a 
-                JOIN agent_profile_views v ON a.id = v.agent_id 
-                WHERE v.created_at >= %s 
-                GROUP BY a.id 
-                HAVING profile_views_count > 0 
-                ORDER BY profile_views_count DESC 
-                LIMIT 10
-            """, [start_date])
-            top_views_data = cursor.fetchall()
+        top_views_data = fetch_top_agent_profile_view_rows(start_date)
 
-            top_views = []
-            if top_views_data:
-                agent_ids = [row[0] for row in top_views_data]
-                agents_qs = Agent.objects.filter(id__in=agent_ids)
-                agent_dict = {a.id: a for a in agents_qs}
-                
-                from apps.admin_panel.models import AgentProfile
-                profiles = {p.agent_id: p for p in AgentProfile.objects.filter(agent_id__in=agent_ids)}
-                
-                for row in top_views_data:
-                    agent = agent_dict.get(row[0])
-                    if agent:
-                        agent.profile_views_count = row[1]
-                        agent.avg_rating = row[2]
-                        agent.profile = profiles.get(agent.id)
-                        top_views.append(agent)
+        top_views = []
+        if top_views_data:
+            agent_ids = [row[0] for row in top_views_data]
+            agents_qs = Agent.objects.filter(id__in=agent_ids)
+            agent_dict = {a.id: a for a in agents_qs}
+            
+            from apps.admin_panel.models import AgentProfile
+            profiles = {p.agent_id: p for p in AgentProfile.objects.filter(agent_id__in=agent_ids)}
+            
+            for row in top_views_data:
+                agent = agent_dict.get(row[0])
+                if agent:
+                    agent.profile_views_count = row[1]
+                    agent.avg_rating = row[2]
+                    agent.profile = profiles.get(agent.id)
+                    top_views.append(agent)
 
 
         for agent in top_views:
@@ -131,31 +115,11 @@ def analytics(request):
             agent.precalculated_stars = star_list
 
         # 3. Overall stats
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM agent_leads WHERE created_at >= %s", [start_date])
-            overall_leads = cursor.fetchone()[0]
-
-            cursor.execute("SELECT COUNT(*) FROM agent_profile_views WHERE created_at >= %s", [start_date])
-            overall_views = cursor.fetchone()[0]
+        overall_leads, overall_views = fetch_overall_lead_and_view_counts(start_date)
         conversion_rate = round((overall_leads / overall_views) * 100, 2) if overall_views > 0 else 0.00
 
         # 4. Daily leads breakdown (last 30 days)
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT
-                    DATE_FORMAT(created_at, '%d %b') as label,
-                    DATE(created_at) as date,
-                    SUM(CASE WHEN interaction_type = 'whatsapp' THEN 1 ELSE 0 END) as whatsapp,
-                    SUM(CASE WHEN interaction_type = 'call' THEN 1 ELSE 0 END) as `call`
-                FROM agent_leads
-                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                GROUP BY DATE(created_at), label
-                ORDER BY DATE(created_at) ASC
-            """)
-            rows = cursor.fetchall()
-            daily_leads = [
-                {'label': r[0], 'whatsapp': int(r[2] or 0), 'call': int(r[3] or 0)} for r in rows
-            ]
+        daily_leads = fetch_daily_leads_last_30_days()
 
     except Exception:
         import traceback
@@ -199,11 +163,8 @@ def activity_logs(request):
     admin_ids = {log.admin_id for log in page_obj if log.admin_id}
     admins = {}
     if admin_ids:
-        placeholders = ', '.join(['%s'] * len(admin_ids))
-        with connection.cursor() as cursor:
-            cursor.execute(f"SELECT id, name FROM admins WHERE id IN ({placeholders})", list(admin_ids))
-            for row in cursor.fetchall():
-                admins[row[0]] = type('AdminObj', (), {'id': row[0], 'name': row[1]})
+        for row in fetch_admin_id_name_rows(admin_ids):
+            admins[row[0]] = type('AdminObj', (), {'id': row[0], 'name': row[1]})
     
     # Calculate statistics based on the paginated page collection (matching Laravel's local collection counts)
     today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -220,11 +181,9 @@ def activity_logs(request):
         if admin_obj:
             last_active_admin_name = admin_obj.name
         else:
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT name FROM admins WHERE id = %s", [last_log.admin_id])
-                row = cursor.fetchone()
-                if row:
-                    last_active_admin_name = row[0]
+            row = fetch_admin_name_row(last_log.admin_id)
+            if row:
+                last_active_admin_name = row[0]
 
     for log in page_obj:
         log.admin_obj = admins.get(log.admin_id)

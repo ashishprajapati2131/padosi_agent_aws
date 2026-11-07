@@ -141,7 +141,7 @@ def allow_forgot_password_request(ip, email):
 
 
 def _clear_admin_session_on(response, request):
-    from apps.admin_panel.views.dashboard import clear_admin_session
+    from apps.admin_panel.auth import clear_admin_session
     return clear_admin_session(request, response)
 
 
@@ -487,7 +487,7 @@ def agent_logout(request):
     return _clear_admin_session_on(response, request)
 
 def _resolve_logout_role(request):
-    from apps.admin_panel.views.dashboard import _get_admin_from_session
+    from apps.admin_panel.auth import _get_admin_from_session
     if _get_admin_from_session(request):
         return 'admin'
 

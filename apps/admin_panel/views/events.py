@@ -1,57 +1,16 @@
 from django.shortcuts import render, redirect
-from django.db import connection
 from django.http import HttpResponse
 from apps.admin_panel.services.spreadsheet_safety import safe_csv_writer
 from datetime import datetime
 from .dashboard import _get_admin_from_session
+from ..selectors.events import fetch_event_list, fetch_event, fetch_event_registrants
 
 def event_list(request):
     admin = _get_admin_from_session(request)
     if not admin:
         return redirect('admin_login')
 
-    events = []
-    
-    query = """
-    SELECT
-        e.id,
-        e.name,
-        e.description,
-        e.event_date,
-        COUNT(a.id) as total_count,
-        SUM(
-            CASE
-                WHEN a.registration_step = 1
-                THEN 1
-                ELSE 0
-            END
-        ) as step1_count,
-        SUM(
-            CASE
-                WHEN a.registration_step = 2
-                THEN 1
-                ELSE 0
-            END
-        ) as step2_count,
-        SUM(
-            CASE
-                WHEN a.registration_step = 3
-                THEN 1
-                ELSE 0
-            END
-        ) as step3_count
-    FROM events e
-    LEFT JOIN agents a
-        ON e.id = a.event_id
-    GROUP BY e.id
-    ORDER BY e.event_date DESC
-    """
-    
-    with connection.cursor() as cursor:
-        cursor.execute(query)
-        columns = [col[0] for col in cursor.description]
-        for row in cursor.fetchall():
-            events.append(dict(zip(columns, row)))
+    events = fetch_event_list()
 
     context = {
         'admin': admin,
@@ -74,84 +33,28 @@ def event_show(request, event_id):
     step2_drop = 0
     fully_completed = 0
 
-    with connection.cursor() as cursor:
-        # 1. Fetch Event Header
-        cursor.execute("SELECT * FROM events WHERE id = %s LIMIT 1", [event_id])
-        event_columns = [col[0] for col in cursor.description]
-        event_row = cursor.fetchone()
-        if not event_row:
-            return redirect('admin_events_index')
-        event = dict(zip(event_columns, event_row))
+    event = fetch_event(event_id)
+    if event is None:
+        return redirect('admin_events_index')
 
-        # 2. Fetch Registrants
-        registrants_query = """
-        SELECT
-            a.id,
-            a.fullname,
-            a.email,
-            a.mobile,
-            a.agent_pincode AS pincode,
-            a.referred_by_code AS promocode,
-            a.registration_step AS current_step,
-            a.created_at,
-            a.status,
+    for reg in fetch_event_registrants(event_id):
+        # Format insurance segments
+        if reg['insurance_segments']:
+            reg['insurance_segments'] = reg['insurance_segments'].split(',')
+        else:
+            reg['insurance_segments'] = []
 
-            s.selected_plan,
-            s.payment_status,
-            s.razorpay_order_id,
-            s.razorpay_payment_id,
+        registrants.append(reg)
 
-            GROUP_CONCAT(
-                DISTINCT iseg.segment_type
-            ) AS insurance_segments
-
-        FROM agents a
-
-        LEFT JOIN agent_subscriptions s
-            ON a.id = s.agent_id
-            AND s.id = (
-                SELECT MAX(id)
-                FROM agent_subscriptions
-                WHERE agent_id = a.id
-            )
-
-        LEFT JOIN agent_insurance_segments iseg
-            ON a.id = iseg.agent_id
-
-        WHERE a.event_id = %s
-
-        GROUP BY
-            a.id,
-            s.selected_plan,
-            s.payment_status,
-            s.razorpay_order_id,
-            s.razorpay_payment_id
-
-        ORDER BY a.created_at DESC
-        """
-        cursor.execute(registrants_query, [event_id])
-        reg_columns = [col[0] for col in cursor.description]
-        
-        for row in cursor.fetchall():
-            reg = dict(zip(reg_columns, row))
-            
-            # Format insurance segments
-            if reg['insurance_segments']:
-                reg['insurance_segments'] = reg['insurance_segments'].split(',')
-            else:
-                reg['insurance_segments'] = []
-                
-            registrants.append(reg)
-            
-            # Update KPI counters
-            total_entries += 1
-            step = reg['current_step']
-            if step == 1:
-                step1_drop += 1
-            elif step == 2:
-                step2_drop += 1
-            elif step == 3:
-                fully_completed += 1
+        # Update KPI counters
+        total_entries += 1
+        step = reg['current_step']
+        if step == 1:
+            step1_drop += 1
+        elif step == 2:
+            step2_drop += 1
+        elif step == 3:
+            fully_completed += 1
 
     context = {
         'admin': admin,
@@ -181,65 +84,12 @@ def event_export(request, event_id):
     if not admin:
         return redirect('admin_login')
 
-    with connection.cursor() as cursor:
-        # Fetch event
-        cursor.execute("SELECT * FROM events WHERE id = %s LIMIT 1", [event_id])
-        event_row = cursor.fetchone()
-        if not event_row:
-            return redirect('admin_events_index')
-            
-        event_columns = [col[0] for col in cursor.description]
-        event = dict(zip(event_columns, event_row))
+    event = fetch_event(event_id)
+    if event is None:
+        return redirect('admin_events_index')
 
-        # Fetch registrants (exact same query as show)
-        registrants_query = """
-        SELECT
-            a.id,
-            a.fullname,
-            a.email,
-            a.mobile,
-            a.agent_pincode AS pincode,
-            a.referred_by_code AS promocode,
-            a.registration_step AS current_step,
-            a.created_at,
-            a.status,
-
-            s.selected_plan,
-            s.payment_status,
-            s.razorpay_order_id,
-            s.razorpay_payment_id,
-
-            GROUP_CONCAT(
-                DISTINCT iseg.segment_type
-            ) AS insurance_segments
-
-        FROM agents a
-
-        LEFT JOIN agent_subscriptions s
-            ON a.id = s.agent_id
-            AND s.id = (
-                SELECT MAX(id)
-                FROM agent_subscriptions
-                WHERE agent_id = a.id
-            )
-
-        LEFT JOIN agent_insurance_segments iseg
-            ON a.id = iseg.agent_id
-
-        WHERE a.event_id = %s
-
-        GROUP BY
-            a.id,
-            s.selected_plan,
-            s.payment_status,
-            s.razorpay_order_id,
-            s.razorpay_payment_id
-
-        ORDER BY a.created_at DESC
-        """
-        cursor.execute(registrants_query, [event_id])
-        reg_columns = [col[0] for col in cursor.description]
-        registrants = [dict(zip(reg_columns, row)) for row in cursor.fetchall()]
+    # Fetch registrants (exact same query as show)
+    registrants = fetch_event_registrants(event_id)
 
     # Generate CSV response
     event_name_clean = str(event['name']).lower().replace(' ', '_')

@@ -4,15 +4,26 @@ import logging
 import threading
 import queue
 import requests
+from urllib.parse import urlparse
 from datetime import datetime
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
+_SOCIAL_HOSTS = ("linkedin.com", "facebook.com", "instagram.com", "youtube.com", "google.com")
+
+
+def _is_social_host(url):
+    host = (urlparse(url).hostname or "").lower()
+    return any(host == h or host.endswith("." + h) for h in _SOCIAL_HOSTS)
+
+
 def validate_url(url):
     """Validates discovered social profile URL."""
     try:
-        if not url.startswith("https://"):
+        # Real hostname check: a substring like "linkedin.com/in/" anywhere in a search-result
+        # URL let the server fetch arbitrary hosts (SSRF).
+        if not url.startswith("https://") or not _is_social_host(url):
             return False
             
         low_url = url.lower()
@@ -23,9 +34,9 @@ def validate_url(url):
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
-        res = requests.head(url, headers=headers, allow_redirects=True, timeout=3)
+        res = requests.head(url, headers=headers, allow_redirects=False, timeout=3)
         if res.status_code == 405: # HEAD not allowed
-            res = requests.get(url, headers=headers, allow_redirects=True, timeout=3)
+            res = requests.get(url, headers=headers, allow_redirects=False, timeout=3)
             
         return res.status_code < 400
     except Exception:

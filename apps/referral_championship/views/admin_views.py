@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.db.models import Q
 
-from apps.admin_panel.views.dashboard import _get_admin_from_session
+from apps.admin_panel.auth import _get_admin_from_session
 from apps.referral_championship.models import (
     ChampionshipCampaign,
     ChampionshipParticipant,

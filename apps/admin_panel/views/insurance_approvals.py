@@ -1,9 +1,9 @@
 import os
+import functools
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator
 from django.contrib import messages
-from django.utils import timezone
 from django.core.cache import cache
 from django.db import transaction
 from apps.admin_panel.views.dashboard import _get_admin_from_session
@@ -12,163 +12,208 @@ from apps.admin_panel.models.agent import Agent
 from apps.admin_panel.models.users import User
 from apps.admin_panel.models.referral_code import ReferralCode
 from apps.admin_panel.models import AdminActivityLog
+from apps.admin_panel.services import insurance_approvals_service
+from apps.agents.models import PaymentStatus
 
 logger = logging.getLogger(__name__)
+
 
 def _log_admin_action(request, action, agent, details):
     """Audit-log an approval in its own savepoint: a logging failure must never
     roll back the approval itself."""
     try:
         with transaction.atomic():
-            AdminActivityLog.log(action, 'Agent', agent.pk, details=details, request=request)
+            AdminActivityLog.log(
+                action, "Agent", agent.pk, details=details, request=request
+            )
     except Exception as exc:
-        logger.warning('Admin activity log failed for %s on agent #%s: %s', action, agent.pk, exc)
+        logger.warning(
+            "Admin activity log failed for %s on agent #%s: %s", action, agent.pk, exc
+        )
 
 
 def insurance_approvals_index(request):
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
     # Query status toggle requests
-    status_filter = request.GET.get('status', 'all').strip()
+    status_filter = request.GET.get("status", "all").strip()
     query = AgentApprovalRequest.objects.all()
-    if status_filter != 'all':
+    if status_filter != "all":
         query = query.filter(status=status_filter)
-    
+
     # Order: pending first, then by -created_at
-    query = query.order_by('status', '-created_at')
+    query = query.order_by("status", "-created_at")
 
     paginator = Paginator(query, 20)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    pending_count = AgentApprovalRequest.objects.filter(status='pending').count()
+    pending_count = AgentApprovalRequest.objects.filter(status="pending").count()
 
     # Query new agent onboarding applications awaiting admin approval
-    pending_onboardings = list(Agent.objects.filter(status='pending_admin_approval').order_by('-created_at'))
+    pending_onboardings = list(
+        Agent.objects.filter(status="pending_admin_approval").order_by("-created_at")
+    )
 
     # Load associated details for onboarding agents in 3 batched queries (was ~4 per agent).
     from django.db.models.functions import Lower
     from apps.admin_panel.models.agent_subscription import AgentSubscription
+
     # By email: agents.user_id is the Django auth_user id, not users.id.
     emails = {agent.email.lower() for agent in pending_onboardings if agent.email}
     users_by_email = {}
-    for user in User.objects.annotate(email_lc=Lower('email')).filter(email_lc__in=emails).order_by('id'):
+    for user in (
+        User.objects.annotate(email_lc=Lower("email"))
+        .filter(email_lc__in=emails)
+        .order_by("id")
+    ):
         users_by_email.setdefault(user.email_lc, user)
-    user_ids = {agent.insurance_id for agent in pending_onboardings if agent.insurance_id}
-    user_ids |= {agent.onboarded_by_id for agent in pending_onboardings if agent.onboarded_by_id}
+    user_ids = {
+        agent.insurance_id for agent in pending_onboardings if agent.insurance_id
+    }
+    user_ids |= {
+        agent.onboarded_by_id for agent in pending_onboardings if agent.onboarded_by_id
+    }
     users_by_id = User.objects.in_bulk(user_ids) if user_ids else {}
     completed_subs = {}
     for sub in AgentSubscription.objects.filter(
-        agent_id__in=[agent.id for agent in pending_onboardings], payment_status='completed'
-    ).order_by('id'):
+        agent_id__in=[agent.id for agent in pending_onboardings],
+        payment_status=PaymentStatus.COMPLETED,
+    ).order_by("id"):
         completed_subs.setdefault(sub.agent_id, sub)
 
     for agent in pending_onboardings:
-        agent.associated_user = users_by_email.get((agent.email or '').lower())
-        insurance_user = users_by_id.get(agent.insurance_id) if agent.insurance_id else None
-        agent.insurance_company_user = insurance_user if insurance_user and insurance_user.role == 'insurance' else None
-        agent.onboarder = users_by_id.get(agent.onboarded_by_id) if agent.onboarded_by_id else None
+        agent.associated_user = users_by_email.get((agent.email or "").lower())
+        insurance_user = (
+            users_by_id.get(agent.insurance_id) if agent.insurance_id else None
+        )
+        agent.insurance_company_user = (
+            insurance_user
+            if insurance_user and insurance_user.role == "insurance"
+            else None
+        )
+        agent.onboarder = (
+            users_by_id.get(agent.onboarded_by_id) if agent.onboarded_by_id else None
+        )
         agent.completed_sub = completed_subs.get(agent.id)
 
-    return render(request, 'admin/insurance_approvals.html', {
-        'requests': page_obj,
-        'pendingCount': pending_count,
-        'pendingOnboardings': pending_onboardings,
-        'selected_status': status_filter
-    })
+    return render(
+        request,
+        "admin/insurance_approvals.html",
+        {
+            "requests": page_obj,
+            "pendingCount": pending_count,
+            "pendingOnboardings": pending_onboardings,
+            "selected_status": status_filter,
+        },
+    )
+
 
 def insurance_approvals_process(request, id):
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
     approval_request = get_object_or_404(AgentApprovalRequest, id=id)
 
     if not approval_request.is_pending():
-        messages.error(request, 'This request has already been processed.')
-        return redirect('admin_insurance_approvals_index')
+        messages.error(request, "This request has already been processed.")
+        return redirect("admin_insurance_approvals_index")
 
-    if request.method == 'POST':
-        decision = request.POST.get('decision')
-        admin_note = request.POST.get('admin_note', '').strip()
+    if request.method == "POST":
+        decision = request.POST.get("decision")
+        admin_note = request.POST.get("admin_note", "").strip()
 
-        if decision not in ['approved', 'rejected']:
-            messages.error(request, 'Invalid decision value.')
-            return redirect('admin_insurance_approvals_index')
+        if decision not in ["approved", "rejected"]:
+            messages.error(request, "Invalid decision value.")
+            return redirect("admin_insurance_approvals_index")
 
-        with transaction.atomic():
-            approval_request.status = decision
-            approval_request.admin_note = admin_note
-            approval_request.processed_by_id = admin_id
-            approval_request.processed_at = timezone.now()
-            approval_request.save()
+        if not insurance_approvals_service.process_status_request(
+            approval_request.pk, decision, admin_note, admin_id
+        ):
+            messages.error(request, "This request has already been processed.")
+            return redirect("admin_insurance_approvals_index")
 
-            if decision == 'approved':
-                agent = approval_request.agent
-                new_status = 'active' if approval_request.action == 'activate' else 'inactive'
-                agent.status = new_status
-                agent.save()
-                cache.delete('homepage_reviews')
-                logger.info(f"Admin approved insurance status change: agent #{agent.id} -> {new_status}")
-
-        label = 'approved' if decision == 'approved' else 'rejected'
+        label = "approved" if decision == "approved" else "rejected"
         messages.success(request, f"Request has been {label} successfully.")
-        return redirect('admin_insurance_approvals_index')
+        return redirect("admin_insurance_approvals_index")
 
-    return redirect('admin_insurance_approvals_index')
+    return redirect("admin_insurance_approvals_index")
+
 
 def insurance_approvals_approve_onboarding(request, id):
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
     agent = get_object_or_404(Agent, id=id)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             with transaction.atomic():
                 # Only a pending onboarding can be approved, once: a repeat POST
                 # (double click, back button) re-sent the invoice and welcome
                 # email, and any agent id (unpaid, suspended) could be activated.
                 agent = Agent.objects.select_for_update().get(pk=agent.pk)
-                if agent.status != 'pending_admin_approval':
-                    messages.info(request, f"Agent {agent.fullname} is not awaiting onboarding approval (status: {agent.status}).")
-                    return redirect('admin_insurance_approvals_index')
+                if agent.status != "pending_admin_approval":
+                    messages.info(
+                        request,
+                        f"Agent {agent.fullname} is not awaiting onboarding approval (status: {agent.status}).",
+                    )
+                    return redirect("admin_insurance_approvals_index")
 
                 # 1. Activate Agent status
-                agent.status = 'active'
+                agent.status = "active"
                 agent.save()
-                cache.delete('homepage_reviews')
+                cache.delete("homepage_reviews")
                 try:
-                    from apps.agents.services.registration_leads import sync_lead_for_agent
-                    sync_lead_for_agent(agent)
+                    from apps.agents.services.registration_leads import (
+                        sync_lead_for_agent,
+                    )
+
+                    # Savepoint: a DB error here must not poison the outer transaction.
+                    with transaction.atomic():
+                        sync_lead_for_agent(agent)
                 except Exception:
-                    pass
+                    logger.exception(
+                        "sync_lead_for_agent failed for agent #%s", agent.pk
+                    )
 
                 # 2. Activate User account
                 # By email: agent.user_id is the Django auth_user id, not users.id.
                 user = User.objects.filter(email__iexact=agent.email).first()
                 if user:
-                    user.status = 'active'
+                    user.status = "active"
                     user.save()
 
                 # 3. Activate associated subscription
                 from apps.admin_panel.models.agent_subscription import AgentSubscription
-                subscription = AgentSubscription.objects.filter(
-                    agent=agent, payment_status='completed',
-                ).order_by('-created_at').first()
+
+                subscription = (
+                    AgentSubscription.objects.filter(
+                        agent=agent,
+                        payment_status=PaymentStatus.COMPLETED,
+                    )
+                    .order_by("-created_at")
+                    .first()
+                )
                 if subscription:
-                    subscription.status = 'active'
+                    subscription.status = "active"
                     subscription.save()
 
-                _log_admin_action(request, 'Approved insurance onboarding', agent,
-                                  f'subscription={getattr(subscription, "pk", None)}')
+                _log_admin_action(
+                    request,
+                    "Approved insurance onboarding",
+                    agent,
+                    f"subscription={getattr(subscription, 'pk', None)}",
+                )
 
                 # 4. Generate referral code
                 try:
-                    ReferralCode.generateForAgent(agent)
+                    with transaction.atomic():  # savepoint, see above
+                        ReferralCode.generateForAgent(agent)
                 except Exception as e:
                     logger.error(f"Failed to generate referral code: {e}")
 
@@ -180,76 +225,73 @@ def insurance_approvals_approve_onboarding(request, id):
 
                 pdf_path = None
                 if subscription:
-                    invoice = invoice_service.generate_from_subscription(agent, subscription)
+                    invoice = invoice_service.generate_from_subscription(
+                        agent, subscription
+                    )
                     if invoice and invoice.pdf_path:
-                        pdf_path = os.path.join(settings.MEDIA_ROOT, 'app', 'private', invoice.pdf_path)
+                        pdf_path = os.path.join(
+                            settings.MEDIA_ROOT, "app", "private", invoice.pdf_path
+                        )
 
                 email_service.send_welcome(
                     to_email=agent.email,
                     to_name=agent.fullname,
                     temp_password=agent.email,
-                    plan_name=subscription.selected_plan if subscription else "Basic Plan",
-                    attachment_path=pdf_path
+                    plan_name=subscription.selected_plan
+                    if subscription
+                    else "Basic Plan",
+                    attachment_path=pdf_path,
                 )
             except Exception as mail_err:
-                logger.error(f"Failed to generate invoice/send welcome email during approval: {mail_err}")
+                logger.error(
+                    f"Failed to generate invoice/send welcome email during approval: {mail_err}"
+                )
 
-            messages.success(request, f"Agent {agent.fullname} onboarding approved and account activated successfully.")
+            messages.success(
+                request,
+                f"Agent {agent.fullname} onboarding approved and account activated successfully.",
+            )
         except Exception as err:
             logger.error(f"Admin onboarding approval failed: {err}")
-            messages.error(request, 'Failed to approve onboarding. Please try again.')
+            messages.error(request, "Failed to approve onboarding. Please try again.")
 
-        return redirect('admin_insurance_approvals_index')
+        return redirect("admin_insurance_approvals_index")
 
-    return redirect('admin_insurance_approvals_index')
+    return redirect("admin_insurance_approvals_index")
+
 
 def insurance_approvals_reject_onboarding(request, id):
     admin_id = _get_admin_from_session(request)
     if not admin_id:
-        return redirect('admin_login')
+        return redirect("admin_login")
 
     agent = get_object_or_404(Agent, id=id)
 
-    if request.method == 'POST':
-        admin_note = request.POST.get('admin_note', '').strip()
+    if request.method == "POST":
+        admin_note = request.POST.get("admin_note", "").strip()
         if not admin_note:
-            messages.error(request, 'Specify the reason for rejection.')
-            return redirect('admin_insurance_approvals_index')
+            messages.error(request, "Specify the reason for rejection.")
+            return redirect("admin_insurance_approvals_index")
 
         try:
-            with transaction.atomic():
-                agent = Agent.objects.select_for_update().get(pk=agent.pk)
-                if agent.status != 'pending_admin_approval':
-                    messages.info(request, f"Agent {agent.fullname} is not awaiting onboarding approval (status: {agent.status}).")
-                    return redirect('admin_insurance_approvals_index')
+            agent, rejected = insurance_approvals_service.reject_onboarding(
+                agent.pk, admin_note, functools.partial(_log_admin_action, request)
+            )
+            if not rejected:
+                messages.info(
+                    request,
+                    f"Agent {agent.fullname} is not awaiting onboarding approval (status: {agent.status}).",
+                )
+                return redirect("admin_insurance_approvals_index")
 
-                agent.status = 'rejected'
-                agent.admin_notes = f"Rejected Onboarding: {admin_note}"
-                agent.save()
-
-                # Deactivate user account
-                # By email: agent.user_id is the Django auth_user id, not users.id.
-                user = User.objects.filter(email__iexact=agent.email).first()
-                if user:
-                    user.status = 'inactive'
-                    user.save()
-
-                # Deactivate the subscription. The payment itself was received, so
-                # it stays 'completed' (marking it 'failed' hid real money from
-                # Finance); a refund, if due, is processed separately. A rejected
-                # agent cannot open the dashboard (BLOCKED_DASHBOARD_STATUSES).
-                from apps.admin_panel.models.agent_subscription import AgentSubscription
-                AgentSubscription.objects.filter(
-                    agent=agent, payment_status='completed', status='active',
-                ).update(status='inactive')
-
-                _log_admin_action(request, 'Rejected insurance onboarding', agent, admin_note[:500])
-
-            messages.success(request, f"Agent {agent.fullname} onboarding has been rejected. Process any refund separately.")
+            messages.success(
+                request,
+                f"Agent {agent.fullname} onboarding has been rejected. Process any refund separately.",
+            )
         except Exception as err:
             logger.error(f"Admin onboarding rejection failed: {err}")
-            messages.error(request, 'Failed to reject onboarding. Please try again.')
+            messages.error(request, "Failed to reject onboarding. Please try again.")
 
-        return redirect('admin_insurance_approvals_index')
+        return redirect("admin_insurance_approvals_index")
 
-    return redirect('admin_insurance_approvals_index')
+    return redirect("admin_insurance_approvals_index")

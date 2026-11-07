@@ -169,8 +169,7 @@ def _card_viewer_is_privileged(request, agent):
     if is_owner:
         return True
     try:
-        from apps.admin_panel.views.dashboard import _get_admin_from_session
-
+        from apps.admin_panel.auth import _get_admin_from_session
         return bool(_get_admin_from_session(request))
     except Exception:
         return False

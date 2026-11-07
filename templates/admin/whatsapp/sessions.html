@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static admin_tags %}
 
 {% block title %}WhatsApp Agent Bot Sessions — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Communications &rsaquo; WhatsApp &amp; OpenWA &rsaquo; Bot Sessions{% endblock %}
@@ -192,15 +192,7 @@
         <span class="small text-muted">
             Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} sessions
         </span>
-        <ul class="pagination pagination-sm m-0">
-            {% if page_obj.has_previous %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&state={{ state_filter }}">&laquo;</a></li>
-            {% endif %}
-            <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
-            {% if page_obj.has_next %}
-            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ search_query }}&state={{ state_filter }}">&raquo;</a></li>
-            {% endif %}
-        </ul>
+        {% admin_pagination page_obj %}
     </div>
     {% endif %}
 </div>

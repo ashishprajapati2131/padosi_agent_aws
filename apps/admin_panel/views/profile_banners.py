@@ -1,16 +1,14 @@
 import os
-import time
 import re
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
 from django.views.decorators.http import require_POST
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 from django.db.models import Count
 
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
+from apps.admin_panel.services import profile_banners_service
 from apps.agents.models import ProfileBannerPreset, AgentProfile
 from apps.home.models.site_setting import SiteSetting
 from apps.agents.utils.file_validation import validate_profile_photo, file_basename, has_dangerous_extra_extension
@@ -138,19 +136,7 @@ def profile_banner_upload(request):
         messages.error(request, err or "Invalid image file.")
         return redirect('admin_profile_banners_index')
 
-    # Save to storage
-    timestamp = int(time.time())
-    clean_title = re.sub(r'[^a-zA-Z0-9_-]', '_', title.lower())[:30]
-    file_path = f"banners/presets/{clean_title}_{timestamp}{safe_ext}"
-    saved_path = default_storage.save(file_path, ContentFile(file_bytes))
-
-    preset = ProfileBannerPreset.objects.create(
-        title=title,
-        category=category,
-        image_path=saved_path,
-        display_order=display_order,
-        is_active=True
-    )
+    preset = profile_banners_service.create_preset(title, category, display_order, file_bytes, safe_ext)
 
     AdminActivityLog.log(
         f"Uploaded profile banner preset: {preset.title}",
@@ -170,8 +156,7 @@ def profile_banner_toggle(request, banner_id):
         return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
 
     preset = get_object_or_404(ProfileBannerPreset, id=banner_id)
-    preset.is_active = not preset.is_active
-    preset.save(update_fields=['is_active', 'updated_at'])
+    profile_banners_service.toggle_preset(preset)
 
     status_str = "activated" if preset.is_active else "deactivated"
     AdminActivityLog.log(
@@ -201,19 +186,8 @@ def profile_banner_delete(request, banner_id):
     preset = get_object_or_404(ProfileBannerPreset, id=banner_id)
     title = preset.title
     preset_id = preset.id
-    image_path = preset.image_path
 
-    # Unlink any agents using this preset
-    AgentProfile.objects.filter(banner_preset=preset).update(banner_preset=None)
-
-    preset.delete()
-
-    # Try deleting file if in presets folder and exists
-    try:
-        if image_path and default_storage.exists(image_path):
-            default_storage.delete(image_path)
-    except Exception:
-        pass
+    profile_banners_service.delete_preset(preset)
 
     AdminActivityLog.log(
         f"Deleted profile banner preset: {title}",
@@ -238,9 +212,7 @@ def profile_banner_settings_save(request):
     banner_enabled = '1' if request.POST.get('profile_banner_enabled') in ('1', 'on', 'true') else '0'
     allow_custom = '1' if request.POST.get('profile_banner_allow_custom_upload') in ('1', 'on', 'true') else '0'
 
-    SiteSetting.set_value('profile_banner_enabled', banner_enabled, group='agents')
-    SiteSetting.set_value('profile_banner_allow_custom_upload', allow_custom, group='agents')
-    SiteSetting.flush_cache()
+    profile_banners_service.save_banner_settings(banner_enabled, allow_custom)
 
     AdminActivityLog.log(
         f"Updated profile banner feature flags: enabled={banner_enabled}, allow_custom={allow_custom}",

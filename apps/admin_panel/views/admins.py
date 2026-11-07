@@ -1,59 +1,17 @@
-from password_hashing import hash_password
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.contrib import messages
+from django.views.decorators.http import require_POST
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from apps.admin_panel.models.admin_auth import Admin
+from apps.admin_panel import registry
+from apps.admin_panel.services import admins_service
 
 def get_permissions_list():
-    return [
-        {'key': 'dashboard', 'label': 'Dashboard View'},
-        {'key': 'agents', 'label': 'Active Agents'},
-        {
-            'key': 'approvals',
-            'label': 'Pending Approvals',
-            'children': [
-                {'key': 'approvals_awaiting_verification', 'label': 'Awaiting Verification Only'},
-                {'key': 'approvals_missing_licenses', 'label': 'Missing IRDAI Licenses Only'}
-            ]
-        },
-        {'key': 'blacklisted_agents', 'label': 'Blacklisted Agents'},
-        {'key': 'pending_registrations', 'label': 'Registration Pending'},
-        {'key': 'distributors', 'label': 'Distributors'},
-        {'key': 'insurance', 'label': 'Insurance Companies'},
-        {'key': 'insurance_approvals', 'label': 'Insurance Onboarding Approvals'},
-        {'key': 'users', 'label': 'Clients / Users Registry'},
-        {'key': 'events', 'label': 'Event Management'},
-        {'key': 'subscriptions', 'label': 'Renewal Tracker'},
-        {'key': 'leads', 'label': 'Agent Leads'},
-        {'key': 'contacts', 'label': 'Contact Inbox'},
-        {'key': 'reviews', 'label': 'Review Moderation'},
-        {'key': 'notifications', 'label': 'Push Notifications'},
-        {'key': 'content', 'label': 'Content Control'},
-        {'key': 'revenue', 'label': 'Revenue Tracking'},
-        {'key': 'invoices', 'label': 'Invoices'},
-        {'key': 'promo_codes', 'label': 'Promo Codes'},
-        {'key': 'free_trial', 'label': 'Free Trial Manager'},
-        {'key': 'referrals', 'label': 'Referral System'},
-        {'key': 'finance_accounts', 'label': 'Finance Accounts'},
-        {'key': 'export', 'label': 'Export Manager'},
-        {'key': 'qr_generator', 'label': 'QR Generator'},
-        {'key': 'geocoding', 'label': 'Geocoding Manager'},
-        {'key': 'pincode', 'label': 'Pincode Database Manager'},
-        {'key': 'analytics', 'label': 'Analytics, Activity Logs & Threat Intelligence'},
-        {'key': 'error_logs', 'label': 'Error Logs'},
-        {'key': 'feature_flags', 'label': 'Feature Flags Control Center'},
-        {'key': 'site_settings', 'label': 'Site Settings, SEO & Security Rules'},
-        {'key': 'email_templates', 'label': 'Email & PDF Templates'},
-        {'key': 'server_health', 'label': 'Server Health'},
-        {'key': 'logs', 'label': 'Logs'},
-        {'key': 'api_logs', 'label': 'API Logs'},
-        {'key': 'backups', 'label': 'Backups'},
-        {'key': 'sessions', 'label': 'Session & Device Management'},
-        {'key': 'app_version', 'label': 'App Version Control'},
-        {'key': 'fastapi_services', 'label': 'FastAPI Services'}
-    ]
+    """Permission checkboxes for the admin editor (declared in apps/admin_panel/registry.py)."""
+    return registry.permission_choices()
+
 
 def admins_index(request):
     admin_id = _get_admin_from_session(request)
@@ -124,16 +82,7 @@ def admins_store(request):
             messages.error(request, 'Email already exists.')
             return redirect('admin_admins_create')
 
-        hashed_password = hash_password(password)
-        permissions = None if role == 'super' else (permissions_selected or [])
-
-        Admin.objects.create(
-            name=name,
-            email=email,
-            password=hashed_password,
-            role=role,
-            permissions=permissions
-        )
+        admins_service.create_admin(name, email, password, role, permissions_selected)
 
         messages.success(request, 'Administrator created successfully.')
         return redirect('admin_admins_index')
@@ -185,21 +134,17 @@ def admins_update(request, id):
             messages.error(request, 'Email already exists.')
             return redirect('admin_admins_edit', id=id)
 
-        admin.name = name
-        admin.email = email
-        admin.role = role
-        admin.permissions = None if role == 'super' else (permissions_selected or [])
-
-        if password:
-            admin.password = hash_password(password)
-
-        admin.save()
+        from apps.admin_panel.views.dashboard import ADMIN_SESSION_COOKIE
+        current = request.COOKIES.get(ADMIN_SESSION_COOKIE) or ''
+        # Revokes the admin's other sessions when the password changes.
+        admins_service.update_admin(admin, name, email, password, role, permissions_selected, current)
 
         messages.success(request, 'Administrator updated successfully.')
         return redirect('admin_admins_index')
 
     return redirect('admin_admins_index')
 
+@require_POST
 def admins_destroy(request, id):
     admin_id = _get_admin_from_session(request)
     if not admin_id:
@@ -209,6 +154,6 @@ def admins_destroy(request, id):
         return JsonResponse({'success': False, 'message': 'Unauthorized. You cannot delete your own administrator account.'}, status=403)
 
     admin = get_object_or_404(Admin, id=id)
-    admin.delete()
+    admins_service.delete_admin(admin)
 
     return JsonResponse({'success': True, 'message': 'Administrator deleted successfully.'})

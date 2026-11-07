@@ -32,9 +32,9 @@ RAW_SCRIPT_SUPER_ONLY_MSG = (
 
 
 def _is_super_admin(admin_id):
-    from apps.admin_panel.models.admin_auth import Admin
-    admin = Admin.objects.filter(id=admin_id).only('role').first()
-    return bool(admin and admin.role == 'super')
+    # Kept as a patchable name for callers/tests; logic lives in apps.admin_panel.auth.
+    from apps.admin_panel.auth import is_super_admin
+    return is_super_admin(admin_id)
 
 
 def raw_script_save_blocked(is_super, is_raw, content, page=None):

@@ -1,0 +1,13 @@
+{% if page.has_other_pages %}
+<ul class="pagination pagination-sm mb-0">
+    {% if prev_url %}<li class="page-item"><a class="page-link" href="{{ prev_url }}" aria-label="Previous">&laquo;</a></li>
+    {% else %}<li class="page-item disabled"><span class="page-link">&laquo;</span></li>{% endif %}
+    {% for link in links %}
+        {% if link.current %}<li class="page-item active" aria-current="page"><span class="page-link">{{ link.number }}</span></li>
+        {% elif link.url %}<li class="page-item"><a class="page-link" href="{{ link.url }}">{{ link.number }}</a></li>
+        {% else %}<li class="page-item disabled"><span class="page-link">{{ link.number }}</span></li>{% endif %}
+    {% endfor %}
+    {% if next_url %}<li class="page-item"><a class="page-link" href="{{ next_url }}" aria-label="Next">&raquo;</a></li>
+    {% else %}<li class="page-item disabled"><span class="page-link">&raquo;</span></li>{% endif %}
+</ul>
+{% endif %}

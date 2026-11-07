@@ -31,31 +31,34 @@ class WaBotAdminTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.admin = Admin.objects.create(
-            name='Test Admin',
-            email='admin@padosiagent.com',
-            password='secret_password',
-            role='super',
+            name="Test Admin",
+            email="admin@padosiagent.com",
+            password="secret_password",
+            role="super",
         )
         self.session_data = {
-            'admin_id': self.admin.pk,
-            'admin_role': 'super',
+            "admin_id": self.admin.pk,
+            "admin_role": "super",
         }
         self.agent = Agent.objects.create(
-            fullname='Kishor Patel',
-            email='kishor@example.com',
-            mobile='9825000000',
-            status='pending_approval',
+            fullname="Kishor Patel",
+            email="kishor@example.com",
+            mobile="9825000000",
+            status="pending_approval",
         )
         self.bot_session = WaBotSession.objects.create(
-            phone_number='919825000000',
+            phone_number="919825000000",
             state=WaBotSession.STATE_AWAITING_PAYMENT,
             agent=self.agent,
-            registration_data={'fullname': 'Kishor Patel', 'email': 'kishor@example.com'},
+            registration_data={
+                "fullname": "Kishor Patel",
+                "email": "kishor@example.com",
+            },
         )
         self.log = WaBotMessageLog.objects.create(
             session=self.bot_session,
             direction=WaBotMessageLog.DIRECTION_IN,
-            content='Hi, I want to register',
+            content="Hi, I want to register",
             state_at_time=WaBotSession.STATE_WELCOME,
         )
 
@@ -64,231 +67,407 @@ class WaBotAdminTests(TestCase):
         req.user = AnonymousUser()
         return req
 
-    @patch('apps.wa_agent_bot.services.openwa_admin_service.get_openwa_session_status')
-    @patch('apps.wa_agent_bot.services.openwa_admin_service.get_openwa_qr_code')
+    @patch("apps.wa_agent_bot.services.openwa_admin_service.get_openwa_session_status")
+    @patch("apps.wa_agent_bot.services.openwa_admin_service.get_openwa_qr_code")
     def test_dashboard_renders_for_admin(self, mock_qr, mock_status):
         mock_status.return_value = {
-            'online': True,
-            'latency_ms': 12,
-            'status': 'qr_ready',
-            'is_connected': False,
-            'is_qr_ready': True,
-            'phone': '919825000000',
-            'push_name': 'PadosiAgent Bot',
+            "online": True,
+            "latency_ms": 12,
+            "status": "qr_ready",
+            "is_connected": False,
+            "is_qr_ready": True,
+            "phone": "919825000000",
+            "push_name": "PadosiAgent Bot",
         }
         mock_qr.return_value = {
-            'success': True,
-            'qr_code': 'data:image/png;base64,iVBORw0KG...',
-            'status': 'qr_ready',
+            "success": True,
+            "qr_code": "data:image/png;base64,iVBORw0KG...",
+            "status": "qr_ready",
         }
 
-        req = self._auth_request(self.factory.get('/admin/whatsapp/'))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        req = self._auth_request(self.factory.get("/admin/whatsapp/"))
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_dashboard(req)
             self.assertEqual(resp.status_code, 200)
 
-    @patch('apps.wa_agent_bot.services.openwa_admin_service.get_openwa_session_status', return_value={'online': False})
-    @patch('apps.wa_agent_bot.services.openwa_admin_service.get_openwa_qr_code', return_value={'success': False})
-    def test_dashboard_renders_visitor_without_registration_data(self, _mock_qr, _mock_status):
+    @patch(
+        "apps.wa_agent_bot.services.openwa_admin_service.get_openwa_session_status",
+        return_value={"online": False},
+    )
+    @patch(
+        "apps.wa_agent_bot.services.openwa_admin_service.get_openwa_qr_code",
+        return_value={"success": False},
+    )
+    def test_dashboard_renders_visitor_without_registration_data(
+        self, _mock_qr, _mock_status
+    ):
         """A brand-new visitor (no agent, empty registration_data) must not 500 the dashboard."""
-        WaBotSession.objects.create(phone_number='919800000001', registration_data={})
-        req = self._auth_request(self.factory.get('/admin/whatsapp/'))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        WaBotSession.objects.create(phone_number="919800000001", registration_data={})
+        req = self._auth_request(self.factory.get("/admin/whatsapp/"))
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_dashboard(req)
         self.assertEqual(resp.status_code, 200)
-        self.assertIn('New Visitor', resp.content.decode('utf-8'))
+        self.assertIn("New Visitor", resp.content.decode("utf-8"))
 
-    @patch.dict('os.environ', {'WA_BOT_OPENWA_SESSION_ID': ''})
-    @patch('apps.home.models.site_setting.SiteSetting.get_value', return_value=None)
+    @patch.dict("os.environ", {"WA_BOT_OPENWA_SESSION_ID": ""})
+    @patch("apps.home.models.site_setting.SiteSetting.get_value", return_value=None)
     def test_openwa_status_reports_missing_config(self, _mock_setting):
         """With no session id configured the QR panel must say why instead of spinning forever."""
-        from apps.wa_agent_bot.services.openwa_admin_service import get_openwa_session_status
+        from apps.wa_agent_bot.services.openwa_admin_service import (
+            get_openwa_session_status,
+        )
+
         status = get_openwa_session_status()
-        self.assertEqual(status['status'], 'not_configured')
-        self.assertIn('not configured', status['error'])
+        self.assertEqual(status["status"], "not_configured")
+        self.assertIn("not configured", status["error"])
 
     def test_toggle_lead_alerts_flips_flag(self):
         from apps.admin_panel.views.wa_bot_admin import wa_bot_toggle_lead_alerts
         from apps.wa_agent_bot.services.notification_service import lead_alerts_enabled
+
         self.assertFalse(lead_alerts_enabled())
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
-            req = self._auth_request(self.factory.post('/admin/whatsapp/toggle-lead-alerts/'))
-            self.assertTrue(json.loads(wa_bot_toggle_lead_alerts(req).content)['enabled'])
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
+            req = self._auth_request(
+                self.factory.post("/admin/whatsapp/toggle-lead-alerts/")
+            )
+            self.assertTrue(
+                json.loads(wa_bot_toggle_lead_alerts(req).content)["enabled"]
+            )
             self.assertTrue(lead_alerts_enabled())
-            req = self._auth_request(self.factory.post('/admin/whatsapp/toggle-lead-alerts/'))
-            self.assertFalse(json.loads(wa_bot_toggle_lead_alerts(req).content)['enabled'])
+            req = self._auth_request(
+                self.factory.post("/admin/whatsapp/toggle-lead-alerts/")
+            )
+            self.assertFalse(
+                json.loads(wa_bot_toggle_lead_alerts(req).content)["enabled"]
+            )
             self.assertFalse(lead_alerts_enabled())
 
     def test_dashboard_redirects_unauthenticated(self):
-        req = self.factory.get('/admin/whatsapp/')
+        req = self.factory.get("/admin/whatsapp/")
         req.session = {}
         resp = wa_bot_dashboard(req)
         self.assertEqual(resp.status_code, 302)
-        self.assertIn('/admin', resp.url)
+        self.assertIn("/admin", resp.url)
 
     def test_sessions_list_renders_and_filters(self):
-        req = self._auth_request(self.factory.get('/admin/whatsapp/sessions/?q=9825000000'))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        req = self._auth_request(
+            self.factory.get("/admin/whatsapp/sessions/?q=9825000000")
+        )
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_sessions_list(req)
             self.assertEqual(resp.status_code, 200)
-            self.assertContains(resp, '919825000000')
+            self.assertContains(resp, "919825000000")
 
     def test_logs_list_renders_and_filters(self):
-        req = self._auth_request(self.factory.get('/admin/whatsapp/logs/?direction=in'))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        req = self._auth_request(self.factory.get("/admin/whatsapp/logs/?direction=in"))
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_logs_list(req)
             self.assertEqual(resp.status_code, 200)
-            self.assertContains(resp, 'Hi, I want to register')
+            self.assertContains(resp, "Hi, I want to register")
 
     def test_security_status_renders(self):
-        req = self._auth_request(self.factory.get('/admin/whatsapp/security/'))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        req = self._auth_request(self.factory.get("/admin/whatsapp/security/"))
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_security_status(req)
             self.assertEqual(resp.status_code, 200)
-            self.assertContains(resp, 'Security Hardening Matrix')
+            self.assertContains(resp, "Security Hardening Matrix")
 
     def test_toggle_bot_service(self):
-        req = self._auth_request(self.factory.post('/admin/whatsapp/toggle-bot/'))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        req = self._auth_request(self.factory.post("/admin/whatsapp/toggle-bot/"))
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_toggle_service(req)
             self.assertEqual(resp.status_code, 200)
             import json
-            data = json.loads(resp.content)
-            self.assertTrue(data['success'])
 
-    @patch('apps.admin_panel.views.wa_bot_admin.control_openwa_session')
+            data = json.loads(resp.content)
+            self.assertTrue(data["success"])
+
+    @patch("apps.admin_panel.views.wa_bot_admin.control_openwa_session")
     def test_session_action(self, mock_control):
         mock_control.return_value = (True, "Session restarted")
-        req = self._auth_request(self.factory.post('/admin/whatsapp/session-action/', {'action': 'restart'}))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        req = self._auth_request(
+            self.factory.post("/admin/whatsapp/session-action/", {"action": "restart"})
+        )
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_session_action(req)
             self.assertEqual(resp.status_code, 200)
             import json
+
             data = json.loads(resp.content)
-            self.assertTrue(data['success'])
-            mock_control.assert_called_once_with('restart')
+            self.assertTrue(data["success"])
+            mock_control.assert_called_once_with("restart")
 
     def test_reset_session(self):
-        req = self._auth_request(self.factory.post(f'/admin/whatsapp/reset-session/{self.bot_session.pk}/'))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        req = self._auth_request(
+            self.factory.post(f"/admin/whatsapp/reset-session/{self.bot_session.pk}/")
+        )
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_reset_session(req, self.bot_session.pk)
             self.assertEqual(resp.status_code, 200)
             self.bot_session.refresh_from_db()
             self.assertEqual(self.bot_session.state, WaBotSession.STATE_WELCOME)
             self.assertEqual(self.bot_session.registration_data, {})
 
-    @patch('apps.admin_panel.views.wa_bot_admin.send_admin_test_whatsapp')
+    def _resend(self):
+        req = self._auth_request(
+            self.factory.post(f"/admin/whatsapp/resend-creds/{self.bot_session.pk}/")
+        )
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
+            return json.loads(
+                wa_bot_resend_credentials(req, self.bot_session.pk).content
+            )
+
+    def test_resend_credentials_never_activates_unpaid_subscription(self):
+        sub = AgentSubscription.objects.create(
+            agent=self.agent,
+            selected_plan="Professional's Plan",
+            registration_amount=0,
+            payment_status="pending",
+            status="pending",
+        )
+        data = self._resend()
+        sub.refresh_from_db()
+        self.assertFalse(data["success"])
+        self.assertEqual(sub.payment_status, "pending")
+
+    @patch("apps.agents.services.brevo.email_service.send_welcome", return_value=True)
+    @patch(
+        "apps.wa_agent_bot.services.message_sender.send_text_message",
+        return_value={"success": True},
+    )
+    def test_resend_credentials_sends_for_paid_subscription(self, mock_wa, mock_email):
+        AgentSubscription.objects.create(
+            agent=self.agent,
+            selected_plan="Professional's Plan",
+            registration_amount=999,
+            payment_status="completed",
+            status="active",
+        )
+        self.bot_session.generated_password = "Temp1234!"
+        self.bot_session.save()
+        data = self._resend()
+        self.assertTrue(data["success"])
+        self.assertEqual(mock_wa.call_count, 1)
+        self.assertEqual(mock_email.call_count, 1)
+
+    @patch("apps.admin_panel.views.wa_bot_admin.send_admin_test_whatsapp")
     def test_send_test_message(self, mock_send):
         mock_send.return_value = (True, "Message sent successfully!")
-        req = self._auth_request(self.factory.post('/admin/whatsapp/send-test/', {
-            'phone': '919825000000',
-            'text': 'Test message from admin',
-        }))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        req = self._auth_request(
+            self.factory.post(
+                "/admin/whatsapp/send-test/",
+                {
+                    "phone": "919825000000",
+                    "text": "Test message from admin",
+                },
+            )
+        )
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_send_test_message(req)
             self.assertEqual(resp.status_code, 200)
             import json
-            data = json.loads(resp.content)
-            self.assertTrue(data['success'])
-            mock_send.assert_called_once_with('919825000000', 'Test message from admin')
 
-    @patch('apps.admin_panel.views.wa_bot_admin.get_openwa_session_status')
+            data = json.loads(resp.content)
+            self.assertTrue(data["success"])
+            mock_send.assert_called_once_with("919825000000", "Test message from admin")
+
+    @patch("apps.admin_panel.views.wa_bot_admin.get_openwa_session_status")
     def test_save_remote_config(self, mock_status):
-        mock_status.return_value = {'online': True, 'latency_ms': 25, 'status': 'connected'}
-        req = self._auth_request(self.factory.post('/admin/whatsapp/save-config/', {
-            'base_url': 'https://wa.padosiagent.com',
-            'session_id': 'remote-session-1234',
-            'api_key': 'secret-owa-key',
-        }))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        mock_status.return_value = {
+            "online": True,
+            "latency_ms": 25,
+            "status": "connected",
+        }
+        req = self._auth_request(
+            self.factory.post(
+                "/admin/whatsapp/save-config/",
+                {
+                    "base_url": "https://wa.padosiagent.com",
+                    "session_id": "remote-session-1234",
+                    "api_key": "secret-owa-key",
+                },
+            )
+        )
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_save_config(req)
             self.assertEqual(resp.status_code, 200)
             import json
+
             data = json.loads(resp.content)
-            self.assertTrue(data['success'])
-            self.assertTrue(data['online'])
+            self.assertTrue(data["success"])
+            self.assertTrue(data["online"])
 
             from apps.home.models.site_setting import SiteSetting
-            self.assertEqual(SiteSetting.get_value('wa_bot_openwa_base_url'), 'https://wa.padosiagent.com')
-            self.assertEqual(SiteSetting.get_value('wa_bot_openwa_session_id'), 'remote-session-1234')
 
-    @patch('apps.admin_panel.views.wa_bot_admin.sync_openwa_webhook')
+            self.assertEqual(
+                SiteSetting.get_value("wa_bot_openwa_base_url"),
+                "https://wa.padosiagent.com",
+            )
+            self.assertEqual(
+                SiteSetting.get_value("wa_bot_openwa_session_id"), "remote-session-1234"
+            )
+
+    @patch("apps.admin_panel.views.wa_bot_admin.sync_openwa_webhook")
     def test_sync_webhook(self, mock_sync):
         mock_sync.return_value = (True, "Webhook synced successfully")
-        req = self._auth_request(self.factory.post('/admin/whatsapp/sync-webhook/', {
-            'webhook_url': 'https://padosiagent.com/wa-bot/webhook/',
-        }))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        req = self._auth_request(
+            self.factory.post(
+                "/admin/whatsapp/sync-webhook/",
+                {
+                    "webhook_url": "https://padosiagent.com/wa-bot/webhook/",
+                },
+            )
+        )
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_sync_webhook(req)
             self.assertEqual(resp.status_code, 200)
             import json
-            data = json.loads(resp.content)
-            self.assertTrue(data['success'])
-            mock_sync.assert_called_once_with('https://padosiagent.com/wa-bot/webhook/')
 
-    @patch('apps.admin_panel.views.wa_bot_admin.list_openwa_sessions')
+            data = json.loads(resp.content)
+            self.assertTrue(data["success"])
+            mock_sync.assert_called_once_with("https://padosiagent.com/wa-bot/webhook/")
+
+    @patch("apps.admin_panel.views.wa_bot_admin.list_openwa_sessions")
     def test_list_remote_sessions(self, mock_list):
-        mock_list.return_value = (True, [{'id': 'test-session-id', 'name': 'padosi'}], None)
-        req = self._auth_request(self.factory.get('/admin/whatsapp/list-sessions/'))
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        mock_list.return_value = (
+            True,
+            [{"id": "test-session-id", "name": "padosi"}],
+            None,
+        )
+        req = self._auth_request(self.factory.get("/admin/whatsapp/list-sessions/"))
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             resp = wa_bot_list_remote_sessions(req)
             self.assertEqual(resp.status_code, 200)
             import json
+
             data = json.loads(resp.content)
-            self.assertTrue(data['success'])
-            self.assertEqual(len(data['sessions']), 1)
-            self.assertEqual(data['sessions'][0]['id'], 'test-session-id')
+            self.assertTrue(data["success"])
+            self.assertEqual(len(data["sessions"]), 1)
+            self.assertEqual(data["sessions"][0]["id"], "test-session-id")
 
 
 class WaMessageLoggingTests(TestCase):
     """Every outbound WhatsApp attempt is logged (sent or failed) and visible in the admin logs page."""
 
-    CFG = {'base_url': 'https://openwa.example', 'session_id': 's1', 'api_key': 'k'}
+    CFG = {"base_url": "https://openwa.example", "session_id": "s1", "api_key": "k"}
 
     def setUp(self):
         self.factory = RequestFactory()
-        self.admin = Admin.objects.create(name='A', email='a@padosiagent.com', password='x', role='super')
+        self.admin = Admin.objects.create(
+            name="A", email="a@padosiagent.com", password="x", role="super"
+        )
 
-    @patch('apps.wa_agent_bot.services.message_sender._get_config', return_value=CFG)
-    @patch('apps.wa_agent_bot.services.message_sender.requests.post')
+    @patch("apps.wa_agent_bot.services.message_sender._get_config", return_value=CFG)
+    @patch("apps.wa_agent_bot.services.message_sender.requests.post")
     def test_sent_and_failed_messages_are_logged(self, mock_post, _cfg):
         from apps.wa_agent_bot.services.message_sender import send_text_message
-        mock_post.return_value = MagicMock(status_code=201, text='{}', json=lambda: {})
-        send_text_message('919800000001', 'hello', category='lead_alert')
-        mock_post.return_value = MagicMock(status_code=500, text='boom', json=lambda: {'message': 'boom'})
-        send_text_message('919800000002', 'hi again', category='approval')
 
-        sent = WaBotMessageLog.objects.get(phone_number='919800000001')
-        self.assertEqual((sent.status, sent.category, sent.session), ('sent', 'lead_alert', None))
-        failed = WaBotMessageLog.objects.get(phone_number='919800000002')
-        self.assertEqual(failed.status, 'failed')
-        self.assertIn('500', failed.error)
+        mock_post.return_value = MagicMock(status_code=201, text="{}", json=lambda: {})
+        send_text_message("919800000001", "hello", category="lead_alert")
+        mock_post.return_value = MagicMock(
+            status_code=500, text="boom", json=lambda: {"message": "boom"}
+        )
+        send_text_message("919800000002", "hi again", category="approval")
 
-    @patch('apps.wa_agent_bot.services.message_sender._get_config', return_value={'base_url': '', 'session_id': '', 'api_key': ''})
+        sent = WaBotMessageLog.objects.get(phone_number="919800000001")
+        self.assertEqual(
+            (sent.status, sent.category, sent.session), ("sent", "lead_alert", None)
+        )
+        failed = WaBotMessageLog.objects.get(phone_number="919800000002")
+        self.assertEqual(failed.status, "failed")
+        self.assertIn("500", failed.error)
+
+    @patch(
+        "apps.wa_agent_bot.services.message_sender._get_config",
+        return_value={"base_url": "", "session_id": "", "api_key": ""},
+    )
     def test_unconfigured_openwa_logs_failure_without_request(self, _cfg):
         from apps.wa_agent_bot.services.message_sender import send_text_message
-        self.assertFalse(send_text_message('919800000003', 'x')['success'])
-        self.assertEqual(WaBotMessageLog.objects.get(phone_number='919800000003').status, 'failed')
+
+        self.assertFalse(send_text_message("919800000003", "x")["success"])
+        self.assertEqual(
+            WaBotMessageLog.objects.get(phone_number="919800000003").status, "failed"
+        )
 
     def test_logs_page_filters_failed(self):
-        WaBotMessageLog.objects.create(phone_number='919800000004', direction='out', status='failed', error='HTTP 500', content='a')
-        WaBotMessageLog.objects.create(phone_number='919800000005', direction='out', status='sent', content='b')
-        req = self.factory.get('/admin/whatsapp/logs/?status=failed')
-        req.session = {'admin_id': self.admin.pk}
+        WaBotMessageLog.objects.create(
+            phone_number="919800000004",
+            direction="out",
+            status="failed",
+            error="HTTP 500",
+            content="a",
+        )
+        WaBotMessageLog.objects.create(
+            phone_number="919800000005", direction="out", status="sent", content="b"
+        )
+        req = self.factory.get("/admin/whatsapp/logs/?status=failed")
+        req.session = {"admin_id": self.admin.pk}
         req.user = AnonymousUser()
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
-            html = wa_bot_logs_list(req).content.decode('utf-8')
-        self.assertIn('919800000004', html)
-        self.assertNotIn('919800000005', html)
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
+            html = wa_bot_logs_list(req).content.decode("utf-8")
+        self.assertIn("919800000004", html)
+        self.assertNotIn("919800000005", html)
 
     def test_prune_job_drops_only_old_rows(self):
         from datetime import datetime, timedelta
         from apps.agents.services.background_jobs import _wa_log_prune_job
-        old = WaBotMessageLog.objects.create(phone_number='1', direction='out', content='old')
-        WaBotMessageLog.objects.filter(pk=old.pk).update(created_at=datetime.now() - timedelta(days=120))
-        WaBotMessageLog.objects.create(phone_number='2', direction='out', content='new')
+
+        old = WaBotMessageLog.objects.create(
+            phone_number="1", direction="out", content="old"
+        )
+        WaBotMessageLog.objects.filter(pk=old.pk).update(
+            created_at=datetime.now() - timedelta(days=120)
+        )
+        WaBotMessageLog.objects.create(phone_number="2", direction="out", content="new")
         _wa_log_prune_job()
-        self.assertEqual(list(WaBotMessageLog.objects.values_list('phone_number', flat=True)), ['2'])
+        self.assertEqual(
+            list(WaBotMessageLog.objects.values_list("phone_number", flat=True)), ["2"]
+        )
 
 
 class WaMessagesPageTests(TestCase):
@@ -296,40 +475,75 @@ class WaMessagesPageTests(TestCase):
 
     def setUp(self):
         self.factory = RequestFactory()
-        self.admin = Admin.objects.create(name='A', email='a2@padosiagent.com', password='x', role='super')
+        self.admin = Admin.objects.create(
+            name="A", email="a2@padosiagent.com", password="x", role="super"
+        )
 
     def _call(self, data=None):
         from django.contrib.messages.storage.fallback import FallbackStorage
         from django.contrib.sessions.middleware import SessionMiddleware
         from apps.admin_panel.views.wa_bot_admin import wa_bot_messages
-        url = '/admin/whatsapp/messages/'
-        req = self.factory.post(url, data) if data is not None else self.factory.get(url)
+
+        url = "/admin/whatsapp/messages/"
+        req = (
+            self.factory.post(url, data) if data is not None else self.factory.get(url)
+        )
         SessionMiddleware(lambda r: None).process_request(req)
         req.user = AnonymousUser()
         req._messages = FallbackStorage(req)
-        with patch('apps.admin_panel.views.wa_bot_admin._get_admin_from_session', return_value=self.admin.pk):
+        with patch(
+            "apps.admin_panel.views.wa_bot_admin._get_admin_from_session",
+            return_value=self.admin.pk,
+        ):
             return wa_bot_messages(req)
 
     def test_page_renders_defaults(self):
         resp = self._call()
         self.assertEqual(resp.status_code, 200)
-        self.assertIn('New lead alert', resp.content.decode('utf-8'))
+        self.assertIn("New lead alert", resp.content.decode("utf-8"))
 
     def test_save_and_reset_template(self):
         from apps.wa_agent_bot.services.message_templates import render
-        self._call({'action': 'save_template', 'key': 'approval', 'text': 'Approved {agent_name}'})
-        self.assertEqual(render('approval', agent_name='Asha'), 'Approved Asha')
-        self._call({'action': 'reset_template', 'key': 'approval'})
-        self.assertIn('Congratulations', render('approval', agent_name='Asha'))
+
+        self._call(
+            {
+                "action": "save_template",
+                "key": "approval",
+                "text": "Approved {agent_name}",
+            }
+        )
+        self.assertEqual(render("approval", agent_name="Asha"), "Approved Asha")
+        self._call({"action": "reset_template", "key": "approval"})
+        self.assertIn("Congratulations", render("approval", agent_name="Asha"))
 
     def test_invalid_template_is_rejected(self):
         from apps.wa_agent_bot.services.message_templates import get_overrides
-        self._call({'action': 'save_template', 'key': 'approval', 'text': 'Hi {password}'})
-        self.assertNotIn('approval', get_overrides())
+
+        self._call(
+            {"action": "save_template", "key": "approval", "text": "Hi {password}"}
+        )
+        self.assertNotIn("approval", get_overrides())
 
     def test_save_keywords(self):
         from apps.wa_agent_bot.services.message_templates import get_keyword_replies
-        self._call({'action': 'save_keywords', 'keyword': ['price', ''], 'reply': ['999 only', ''],
-                    'match': ['exact', 'exact'], 'active': ['1', '1']})
-        self.assertEqual(get_keyword_replies(),
-                         [{'keyword': 'price', 'reply': '999 only', 'match': 'exact', 'active': True}])
+
+        self._call(
+            {
+                "action": "save_keywords",
+                "keyword": ["price", ""],
+                "reply": ["999 only", ""],
+                "match": ["exact", "exact"],
+                "active": ["1", "1"],
+            }
+        )
+        self.assertEqual(
+            get_keyword_replies(),
+            [
+                {
+                    "keyword": "price",
+                    "reply": "999 only",
+                    "match": "exact",
+                    "active": True,
+                }
+            ],
+        )

@@ -16,13 +16,17 @@ from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 
 from apps.admin_panel.models import RegistrationLead
-from apps.admin_panel.services.spreadsheet_safety import safe_cell, safe_csv_writer
+from apps.admin_panel.services.quick_registration_leads_service import (
+    abandon_stale_leads as _abandon_stale_leads,
+    delete_lead,
+    sync_active_agent_conversions as _sync_active_agent_conversions,
+)
+from apps.admin_panel.services.spreadsheet_safety import safe_cell, streaming_csv_response
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 
 logger = logging.getLogger(__name__)
 
 PAGE_SIZE = 20
-ABANDON_AFTER_DAYS = 30
 STATUSES = (
     RegistrationLead.STATUS_QUICK_REGISTERED,
     RegistrationLead.STATUS_FORM_STARTED,
@@ -79,27 +83,6 @@ def _filters(request):
         'parsed_from': date_from,
         'parsed_to': date_to,
     }
-
-
-def _sync_active_agent_conversions():
-    """Ensure any leads with matching active agents are marked converted and removed from open list."""
-    try:
-        from apps.agents.models import Agent
-        active_phones = set(
-            Agent.objects.filter(status='active').exclude(mobile='').values_list('mobile', flat=True)
-        )
-        if active_phones:
-            clean_phones = {p[-10:] for p in active_phones if len(p) >= 10}
-            RegistrationLead.objects.filter(
-                phone__in=clean_phones,
-            ).exclude(status=RegistrationLead.STATUS_CONVERTED).update(
-                status=RegistrationLead.STATUS_CONVERTED,
-                converted_at=timezone.now(),
-                form_filled=True,
-                payment_status=RegistrationLead.PAYMENT_COMPLETED,
-            )
-    except Exception as e:
-        logger.warning(f"Error syncing active agent conversions: {e}")
 
 
 def _filtered_queryset(filters):
@@ -176,18 +159,6 @@ def _require_admin(request):
     return _get_admin_from_session(request)
 
 
-def _abandon_stale_leads():
-    """Quiet leads that never finished the form are marked abandoned after 30 days."""
-    cutoff = timezone.now() - timezone.timedelta(days=ABANDON_AFTER_DAYS)
-    RegistrationLead.objects.filter(
-        status__in=(
-            RegistrationLead.STATUS_QUICK_REGISTERED,
-            RegistrationLead.STATUS_FORM_STARTED,
-        ),
-        updated_at__lt=cutoff,
-    ).update(status=RegistrationLead.STATUS_ABANDONED)
-
-
 def quick_registration_leads_list(request):
     if not _require_admin(request):
         return redirect('admin_login')
@@ -231,7 +202,7 @@ def quick_registration_lead_delete(request, lead_id):
     lead = get_object_or_404(RegistrationLead, pk=lead_id)
     name = lead.name
     phone = lead.phone
-    lead.delete()
+    delete_lead(lead)
     messages.success(request, f'Lead {name} ({phone}) deleted successfully.')
     return redirect('admin_quick_registration_leads')
 
@@ -244,13 +215,7 @@ def quick_registration_leads_export_csv(request):
     filters = _filters(request)
     rows = _export_rows(_filtered_queryset(filters))
     filename = f"quick-registration-leads-{timezone.now().date().isoformat()}.csv"
-    response = HttpResponse(content_type='text/csv; charset=UTF-8')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    response.write(b'\xef\xbb\xbf')
-    writer = safe_csv_writer(response)
-    writer.writerow(EXPORT_HEADERS)
-    writer.writerows(rows)
-    return response
+    return streaming_csv_response(filename, EXPORT_HEADERS, rows)
 
 
 def quick_registration_leads_export_xlsx(request):

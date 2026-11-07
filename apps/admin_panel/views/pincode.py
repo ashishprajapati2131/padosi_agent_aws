@@ -1,6 +1,7 @@
+import itertools
 import os
 import csv
-from apps.admin_panel.services.spreadsheet_safety import safe_csv_writer
+from apps.admin_panel.services.spreadsheet_safety import streaming_csv_response
 import json
 import time
 import re
@@ -16,11 +17,19 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
 from django.conf import settings
+from django.core.cache import cache
 
 from apps.admin_panel.views.dashboard import _get_admin_from_session
 from django.shortcuts import redirect
 from apps.home.models.pincode import Pincode
 from apps.admin_panel.models.pincode_import_log import PincodeImportLog
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+PINCODE_STATS_CACHE_KEY = "admin_pincode_stats_v1"
+
 
 def parse_xlsx(file_path):
     rows = []
@@ -143,18 +152,26 @@ def index(request):
     page_number = request.GET.get('page', 1)
     pincodes = paginator.get_page(page_number)
     
-    states = Pincode.objects.values_list('state', flat=True).distinct().order_by('state')
+    # 3 full-table DISTINCT/COUNT scans per page view; the data only changes on import/delete.
+    cached = cache.get(PINCODE_STATS_CACHE_KEY)
+    if cached is None:
+        cached = {
+            'states': list(Pincode.objects.values_list('state', flat=True).distinct().order_by('state')),
+            'stats': {
+                'total': Pincode.objects.count(),
+                'states': Pincode.objects.values('state').distinct().count(),
+                'districts': Pincode.objects.values('district').distinct().count(),
+            },
+        }
+        cache.set(PINCODE_STATS_CACHE_KEY, cached, timeout=600)
+    states = cached['states']
     
     districts_query = Pincode.objects.values_list('district', flat=True).distinct().order_by('district')
     if state:
         districts_query = districts_query.filter(state=state)
     districts = list(districts_query)
     
-    stats = {
-        'total': Pincode.objects.count(),
-        'states': Pincode.objects.values('state').distinct().count(),
-        'districts': Pincode.objects.values('district').distinct().count(),
-    }
+    stats = cached['stats']
     
     import_logs = PincodeImportLog.objects.order_by('-created_at')[:10]
     
@@ -282,7 +299,8 @@ def upload(request):
         
     except Exception as e:
         fs.delete(saved_name)
-        return JsonResponse({'success': False, 'message': f'File processing failed: {str(e)}'}, status=500)
+        logger.exception("Admin request failed in pincode")  # detail stays server-side
+        return JsonResponse({'success': False, 'message': 'File processing failed. Details are in the server log.'}, status=500)
 
 def import_data(request):
     admin_id = _get_admin_from_session(request)
@@ -335,13 +353,17 @@ def import_data(request):
             get_val = lambda row, key: str(row.get(mapped[key], '')).strip()
             row_iterable = ((i, row) for i, row in enumerate(rows, 1))
         else:
-            rows = list(stream_csv(file_path))
-            headers = [h.lower() for h in rows[0].keys()]
+            # Stream: list() held the whole CSV in memory just to read the header row.
+            row_stream = stream_csv(file_path)
+            first_row = next(row_stream, None)
+            if first_row is None:
+                raise ValueError("The file has no data rows.")
+            headers = [h.lower() for h in first_row.keys()]
             mapped = map_headers(headers)
             if not mapped:
                 raise ValueError("Could not detect required columns.")
             get_val = lambda row, key: str(row.get(mapped[key].lower(), '')).strip()
-            row_iterable = ((i, row) for i, row in enumerate(rows, 1))
+            row_iterable = enumerate(itertools.chain([first_row], row_stream), 1)
             
         for row_index, row in row_iterable:
             state = get_val(row, 'state')
@@ -412,6 +434,7 @@ def import_data(request):
                 update_fields=['office_name', 'district', 'state', 'latitude', 'longitude', 'taluk', 'updated_at']
             )
             
+        cache.delete(PINCODE_STATS_CACHE_KEY)
         log.status = 'completed'
         log.imported_rows = imported
         log.skipped_rows = skipped
@@ -431,7 +454,8 @@ def import_data(request):
     except Exception as e:
         log.status = 'failed'
         log.save()
-        return JsonResponse({'success': False, 'message': f"Import failed: {str(e)}"}, status=500)
+        logger.exception("Admin request failed in pincode")  # detail stays server-side
+        return JsonResponse({'success': False, 'message': "Import failed. Details are in the server log."}, status=500)
 
 def sample_download(request):
     admin_id = _get_admin_from_session(request)
@@ -453,24 +477,13 @@ def export_data(request):
     query = Pincode.objects.all()
     if state:
         query = query.filter(state=state)
-    rows = query.order_by('state', 'district', 'pincode')
-    
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="pincodes_export.csv"'
-    
-    writer = safe_csv_writer(response)
-    writer.writerow(['pincode', 'office_name', 'district', 'state', 'taluk', 'latitude', 'longitude'])
-    for r in rows:
-        writer.writerow([
-            r.pincode,
-            r.office_name,
-            r.district,
-            r.state,
-            r.taluk or '',
-            r.latitude,
-            r.longitude
-        ])
-    return response
+    cols = ('pincode', 'office_name', 'district', 'state', 'taluk', 'latitude', 'longitude')
+    # ~150k rows: stream in DB chunks instead of loading every model instance.
+    rows = (
+        [v if v is not None else '' for v in r]
+        for r in query.order_by('state', 'district', 'pincode').values_list(*cols).iterator(chunk_size=2000)
+    )
+    return streaming_csv_response('pincodes_export.csv', list(cols), rows)
 
 def delete_by_state(request):
     admin_id = _get_admin_from_session(request)
@@ -485,6 +498,7 @@ def delete_by_state(request):
         if not state:
             return JsonResponse({'success': False, 'message': 'State parameter is required.'}, status=422)
         deleted = Pincode.objects.filter(state=state).delete()
+        cache.delete(PINCODE_STATS_CACHE_KEY)
         try:
             from apps.admin_panel.models.admin_activity_log import AdminActivityLog
             AdminActivityLog.log(

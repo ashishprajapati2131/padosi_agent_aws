@@ -232,7 +232,7 @@ class QuickRegistrationAdminLeadsTests(TestCase):
         # Start patches for admin middleware and views
         self.admin_mock = MagicMock(id=1, role="super", permissions=None)
         self.patch_dashboard_session = patch(
-            "apps.admin_panel.views.dashboard._get_admin_from_session", return_value=1
+            "apps.admin_panel.auth._get_admin_from_session", return_value=1
         )
         self.patch_middleware_admin = patch(
             "apps.admin_panel.models.admin_auth.Admin.objects.get", return_value=self.admin_mock

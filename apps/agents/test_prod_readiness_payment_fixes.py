@@ -75,6 +75,10 @@ class CronTokenTests(SimpleTestCase):
 
         request = RequestFactory().get("/admin/system/run-jobs/", **headers)
         request.user = AnonymousUser()
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.middleware import SessionMiddleware
+        SessionMiddleware(lambda r: None).process_request(request)
+        request._messages = FallbackStorage(request)
         with (
             patch(
                 "apps.agents.services.background_jobs.retry_missing_invoices",
@@ -93,12 +97,13 @@ class CronTokenTests(SimpleTestCase):
                 self._call(HTTP_X_CRON_TOKEN=settings.SECRET_KEY[:24]).status_code, 403
             )
 
-    def test_configured_token_accepted_via_header_or_query(self):
+    def test_configured_token_accepted_via_header_only(self):
         with override_settings(CRON_TRIGGER_TOKEN="cron-tok-123"):
             self.assertEqual(
                 self._call(HTTP_X_CRON_TOKEN="cron-tok-123").status_code, 200
             )
-            self.assertEqual(
+            # Audit 2026-11-07 S11: a token in the URL leaks into access logs, so it is ignored.
+            self.assertNotEqual(
                 self._call(QUERY_STRING="token=cron-tok-123").status_code, 200
             )
             self.assertEqual(self._call(HTTP_X_CRON_TOKEN="wrong").status_code, 403)

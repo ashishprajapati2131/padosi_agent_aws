@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static %}
+{% load static admin_tags %}
 
 {% block title %}Review Moderation — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Reviews & Ratings &rsaquo; Moderation{% endblock %}
@@ -187,37 +187,7 @@
     {% if reviews.has_other_pages %}
     <div class="card-footer bg-white d-flex justify-content-center">
         <nav>
-            <ul class="pagination mb-0">
-                {% if reviews.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ reviews.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}{% if ratingFilter %}&rating={{ ratingFilter }}{% endif %}">
-                            <i class="fa-solid fa-chevron-left"></i>
-                        </a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link"><i class="fa-solid fa-chevron-left"></i></span></li>
-                {% endif %}
-
-                {% for num in reviews.paginator.page_range %}
-                    {% if reviews.number == num %}
-                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                    {% else %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if search %}&search={{ search }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}{% if ratingFilter %}&rating={{ ratingFilter }}{% endif %}">{{ num }}</a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if reviews.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ reviews.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if statusFilter %}&status={{ statusFilter }}{% endif %}{% if ratingFilter %}&rating={{ ratingFilter }}{% endif %}">
-                            <i class="fa-solid fa-chevron-right"></i>
-                        </a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link"><i class="fa-solid fa-chevron-right"></i></span></li>
-                {% endif %}
-            </ul>
+            {% admin_pagination reviews %}
         </nav>
     </div>
     {% endif %}

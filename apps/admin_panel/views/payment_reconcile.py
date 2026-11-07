@@ -6,6 +6,7 @@ from decimal import Decimal
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.core.cache import cache
 from django.db import transaction
 from django.conf import settings
 
@@ -17,6 +18,7 @@ from apps.agents.views.registration import (
     create_agent_from_draft,
 )
 from .dashboard import _get_admin_from_session
+from apps.agents.models import PaymentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -524,7 +526,7 @@ def _reconcile_subscription(order_id, receipt, email, payment, plan_type):
         agent = create_agent_from_draft(draft, plan_type=slug, plan_name=plan_name, status='pending_payment')
     sub = AgentSubscription.objects.create(
         agent=agent, selected_plan=plan_name, registration_amount=paid_rupees,
-        payment_status='pending', status='inactive', razorpay_order_id=order_id or None,
+        payment_status=PaymentStatus.PENDING, status='inactive', razorpay_order_id=order_id or None,
     )
     return agent, sub, None
 
@@ -581,74 +583,83 @@ def reconcile_execute_payment(request):
         payment_id = payment.get('id') or payment_id
         payer_email = str(payment.get('email') or '').strip().lower()
 
-        used = AgentSubscription.objects.filter(razorpay_payment_id=payment_id, payment_status='completed').first()
-        if used and (used.razorpay_order_id or '') != (order_id or ''):
-            return JsonResponse({
-                'success': False,
-                'message': f'Payment {payment_id} is already attached to another subscription '
-                           f'(#{used.pk}, agent #{used.agent_id}).',
-            })
+        # Two clicks on Execute for an order with no subscription row each created a row and both
+        # activated (double invoice / referral credit). Serialise per order.
+        # shortcut: FileBasedCache.add is not strictly atomic; move to a DB unique key on Redis/DB cache.
+        lock_key = f"reconcile_lock:{order_id or payment_id}"
+        if not cache.add(lock_key, 1, timeout=180):
+            return JsonResponse({'success': False, 'message': 'This payment is already being reconciled. Wait a moment and refresh.'})
+        try:
+            used = AgentSubscription.objects.filter(razorpay_payment_id=payment_id, payment_status=PaymentStatus.COMPLETED).first()
+            if used and (used.razorpay_order_id or '') != (order_id or ''):
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Payment {payment_id} is already attached to another subscription '
+                               f'(#{used.pk}, agent #{used.agent_id}).',
+                })
 
-        from apps.agents.views.registration import (
-            _activate_paid_subscription,
-            _expected_amount_paise,
-            _paise_amounts_match,
-        )
-        agent, subscription, error = _reconcile_subscription(order_id, receipt, email or payer_email, payment, plan_type)
-        if error:
-            return JsonResponse({'success': False, 'message': error})
+            from apps.agents.views.registration import (
+                _activate_paid_subscription,
+                _expected_amount_paise,
+                _paise_amounts_match,
+            )
+            agent, subscription, error = _reconcile_subscription(order_id, receipt, email or payer_email, payment, plan_type)
+            if error:
+                return JsonResponse({'success': False, 'message': error})
 
-        if subscription.payment_status == 'completed':
-            if (subscription.razorpay_payment_id or '') == payment_id:
+            if subscription.payment_status == PaymentStatus.COMPLETED:
+                if (subscription.razorpay_payment_id or '') == payment_id:
+                    return _already_done(agent, subscription)
+                return JsonResponse({'success': False, 'message': 'This order is already completed with a different payment.'})
+
+            paid_paise = int(payment.get('amount') or 0)
+            if not _paise_amounts_match(paid_paise, _expected_amount_paise(subscription.registration_amount)):
+                return JsonResponse({
+                    'success': False,
+                    'message': (f'Amount mismatch: Razorpay received Rs {paid_paise / 100:.2f}, '
+                                f'the order expects Rs {subscription.registration_amount}. Not activated.'),
+                })
+
+            subscription, activated = _activate_paid_subscription(
+                agent, subscription, payment, log_label='[Reconciliation]', queue_fulfilment=False,
+            )
+            agent.refresh_from_db()
+            if not activated:
                 return _already_done(agent, subscription)
-            return JsonResponse({'success': False, 'message': 'This order is already completed with a different payment.'})
 
-        paid_paise = int(payment.get('amount') or 0)
-        if not _paise_amounts_match(paid_paise, _expected_amount_paise(subscription.registration_amount)):
+            try:
+                with transaction.atomic():
+                    from apps.admin_panel.models import AdminActivityLog
+                    AdminActivityLog.log(
+                        'Reconciled Razorpay payment', 'AgentSubscription', subscription.pk,
+                        details=f'payment={payment_id} order={order_id} agent={agent.pk}', request=request,
+                    )
+            except Exception as log_err:
+                logger.warning('[Reconciliation] Activity log failed: %s', log_err)
+            logger.info('[Reconciliation] Admin #%s activated agent #%s with %s / %s',
+                        admin_id_val, agent.pk, payment_id, order_id)
+
+            # Invoice, Drive/Sheets sync and welcome email: once, after commit.
+            invoice = None
+            try:
+                invoice = fulfill_invoice_and_welcome(agent, subscription)
+            except Exception as ful_err:
+                logger.exception('[Reconciliation] Fulfilment failed for agent #%s: %s', agent.pk, ful_err)
+
+            if invoice:
+                tail = f", Invoice #{invoice.invoice_number} generated."
+            else:
+                tail = ". The invoice could not be generated; create it from Invoices."
             return JsonResponse({
-                'success': False,
-                'message': (f'Amount mismatch: Razorpay received Rs {paid_paise / 100:.2f}, '
-                            f'the order expects Rs {subscription.registration_amount}. Not activated.'),
+                'success': True,
+                'message': f"Payment reconciled! {agent.fullname} is activated (status: {agent.status})" + tail,
+                'agent_id': agent.id,
+                'agent_name': agent.fullname,
+                'invoice_number': getattr(invoice, 'invoice_number', '') if invoice else '',
+                'synced_to_sheet': bool(getattr(invoice, 'synced_to_sheet', False)) if invoice else False,
             })
-
-        subscription, activated = _activate_paid_subscription(
-            agent, subscription, payment, log_label='[Reconciliation]', queue_fulfilment=False,
-        )
-        agent.refresh_from_db()
-        if not activated:
-            return _already_done(agent, subscription)
-
-        try:
-            with transaction.atomic():
-                from apps.admin_panel.models import AdminActivityLog
-                AdminActivityLog.log(
-                    'Reconciled Razorpay payment', 'AgentSubscription', subscription.pk,
-                    details=f'payment={payment_id} order={order_id} agent={agent.pk}', request=request,
-                )
-        except Exception as log_err:
-            logger.warning('[Reconciliation] Activity log failed: %s', log_err)
-        logger.info('[Reconciliation] Admin #%s activated agent #%s with %s / %s',
-                    admin_id_val, agent.pk, payment_id, order_id)
-
-        # Invoice, Drive/Sheets sync and welcome email: once, after commit.
-        invoice = None
-        try:
-            invoice = fulfill_invoice_and_welcome(agent, subscription)
-        except Exception as ful_err:
-            logger.exception('[Reconciliation] Fulfilment failed for agent #%s: %s', agent.pk, ful_err)
-
-        if invoice:
-            tail = f", Invoice #{invoice.invoice_number} generated."
-        else:
-            tail = ". The invoice could not be generated; create it from Invoices."
-        return JsonResponse({
-            'success': True,
-            'message': f"Payment reconciled! {agent.fullname} is activated (status: {agent.status})" + tail,
-            'agent_id': agent.id,
-            'agent_name': agent.fullname,
-            'invoice_number': getattr(invoice, 'invoice_number', '') if invoice else '',
-            'synced_to_sheet': bool(getattr(invoice, 'synced_to_sheet', False)) if invoice else False,
-        })
+        finally:
+            cache.delete(lock_key)
 
     except Exception as e:
         logger.exception(f"[Reconciliation Global Error]: {e}")

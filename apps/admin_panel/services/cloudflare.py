@@ -127,5 +127,7 @@ def save_credentials(zone_id, api_token):
     """
     SiteSetting.set_value("cloudflare_zone_id", zone_id.strip(), group="security")
     SiteSetting.set_value("cloudflare_api_token", api_token.strip(), group="security")
+    from django.core.cache import cache
+    cache.delete("cloudflare_configured_v1")  # sidebar flag cached by admin_badge_counts
     return True
 

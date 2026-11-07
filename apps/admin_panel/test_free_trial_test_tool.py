@@ -27,3 +27,34 @@ class FakeConversionToolTests(TestCase):
         self.assertEqual(Agent.objects.count(), before + 1)  # only the target created above
         target.refresh_from_db()
         self.assertEqual(target.referral_reward_type, '')
+
+
+class FreeTrialIndexEmptyTests(TestCase):
+    """Audit 2026-11-07: with no trial_ends_at rows, a function-local `import settings`
+    left `settings` unbound and the page crashed with UnboundLocalError."""
+
+    def test_index_renders_with_no_trial_rows(self):
+        from contextlib import ExitStack
+
+        from apps.admin_panel.views import free_trial
+
+        request = RequestFactory().get("/admin/free-trial/")
+        SessionMiddleware(lambda r: None).process_request(request)
+        request._messages = FallbackStorage(request)
+        # The raw SQL is MySQL-specific; feed the view empty data (its own logic is what broke).
+        stubs = {
+            "_get_admin_from_session": 1,
+            "count_free_trial_history": 0,
+            "fetch_trial_stats": {},
+            "fetch_trial_promo_codes": [],
+            "fetch_trial_agents": [],
+            "fetch_monthly_stats": [],
+            "fetch_promo_usage_summary": [],
+            "fetch_trial_history": [],
+        }
+        with ExitStack() as stack:
+            for name, value in stubs.items():
+                stack.enter_context(patch.object(free_trial, name, return_value=value))
+            stack.enter_context(patch.object(free_trial, "render", side_effect=lambda req, tpl, ctx: ctx))
+            ctx = free_trial.free_trial_index(request)
+        self.assertIn("show_test_tools", ctx)

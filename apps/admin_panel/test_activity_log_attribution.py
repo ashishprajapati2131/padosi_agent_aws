@@ -15,7 +15,7 @@ class ActivityLogAttributionTests(TestCase):
         return request
 
     def test_admin_comes_from_the_session_token(self):
-        with patch('apps.admin_panel.views.dashboard._get_admin_from_session', return_value=42):
+        with patch('apps.admin_panel.auth._get_admin_from_session', return_value=42):
             row = AdminActivityLog.log('Did something', 'Agent', 7, request=self._request())
         self.assertEqual((row.admin_id, row.model_id, row.ip_address), (42, 7, '203.0.113.9'))
 

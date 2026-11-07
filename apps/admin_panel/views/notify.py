@@ -10,7 +10,8 @@ from apps.admin_panel.models import AdminActivityLog, Agent
 
 logger = logging.getLogger(__name__)
 
-from apps.admin_panel.views.broadcast import AdminBroadcast, AgentDeviceToken
+from apps.admin_panel.models import AdminBroadcast
+from apps.agents.models import AgentDeviceToken
 
 # ─── INDEX ───────────────────────────────────────────────────────────────────
 
@@ -121,10 +122,10 @@ def notify_send(request):
     # Send via FCM
     try:
         from apps.admin_panel.services.fcm import FcmService
-        FcmService().send_to_tokens(tokens, title, body, {'type': 'admin_custom'})
+        sent_single = FcmService().send_to_tokens(tokens, title, body, {'type': 'admin_custom'}) or 0
     except Exception as exc:
         logger.error(f"FCM send failed for agent #{agent.id}: {exc}")
-        messages.error(request, f"Push notification failed: {exc}")
+        messages.error(request, "Push notification failed. Details are in the server log.")
         return redirect('agent_notify')
 
     # Log activity
@@ -137,6 +138,9 @@ def notify_send(request):
     except Exception:
         pass
 
+    if not sent_single:
+        messages.warning(request, f"Notification saved for {agent.fullname}, but no push was delivered (FCM not configured or all device tokens rejected).")
+        return redirect('agent_notify')
     messages.success(request, f"Push notification sent successfully to {agent.fullname}!")
     return redirect('agent_notify')
 
@@ -158,26 +162,9 @@ def notify_broadcast(request):
         messages.error(request, 'Title, message, and a valid target are required.')
         return redirect('agent_notify')
 
-    now = timezone.now()
-
-    # Build agent ID query based on target — mirrors PHP query
-    agents_qs = Agent.objects.filter(status='active')
-
-    if target == 'professional':
-        agents_qs = agents_qs.filter(
-            subscriptions__selected_plan__icontains='professional'
-        )
-    elif target == 'starter':
-        agents_qs = agents_qs.filter(
-            subscriptions__selected_plan__icontains='starter'
-        )
-    elif target == 'expiring':
-        agents_qs = agents_qs.filter(
-            subscriptions__expires_at__gte=now,
-            subscriptions__expires_at__lte=now + timezone.timedelta(days=30),
-        )
-
-    agent_ids = list(agents_qs.distinct().values_list('id', flat=True))
+    # Same segment definition as the email broadcast page (they used to differ).
+    from apps.admin_panel.services.broadcast_service import target_agents
+    agent_ids = list(target_agents(target).values_list('id', flat=True))
 
     if not agent_ids:
         messages.error(request, 'No agents found for the selected target group.')
@@ -213,17 +200,16 @@ def notify_broadcast(request):
         )
         return redirect('agent_notify')
 
-    # Send via FCM
-    sent_count = len(tokens)
+    # Send via FCM; the count is what FCM accepted (0 if FCM is not configured).
     try:
         from apps.admin_panel.services.fcm import FcmService
-        FcmService().send_to_tokens(tokens, title, body, {
+        sent_count = FcmService().send_to_tokens(tokens, title, body, {
             'type':   'admin_broadcast',
             'target': target,
-        })
+        }) or 0
     except Exception as exc:
         logger.error(f"FCM broadcast failed (target={target}): {exc}")
-        messages.error(request, f"Broadcast push failed: {exc}")
+        messages.error(request, "Broadcast push failed. Details are in the server log.")
         return redirect('agent_notify')
 
     # Log to admin_broadcasts table (mirrors PHP DB::table('admin_broadcasts')->insert())

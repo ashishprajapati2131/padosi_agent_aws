@@ -48,7 +48,7 @@ def career_timeline_suggestions(request):
     }
     """
     # ── Auth: support both regular agent session and admin-acting-as-agent ──
-    from apps.admin_panel.views.dashboard import _get_admin_from_session
+    from apps.admin_panel.auth import _get_admin_from_session
     admin_id = _get_admin_from_session(request)
     is_admin = bool(admin_id)
 

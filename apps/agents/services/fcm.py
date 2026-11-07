@@ -18,7 +18,9 @@ class FcmService:
         """
         Sends an FCM push notification to a list of device tokens.
         If a token is dead/unregistered, deletes it from AgentDeviceToken.
+        Returns how many pushes FCM accepted (0 when FCM is not configured).
         """
+        sent = 0
         if data is None:
             data = {}
 
@@ -31,11 +33,11 @@ class FcmService:
 
         if not project_id or not service_account_path or not tokens:
             logger.warning('FCM skipped: missing project_id, service_account_json, or tokens.')
-            return
+            return 0
 
         if not os.path.isfile(service_account_path):
             logger.warning(f'FCM service account JSON not found at path: {service_account_path}')
-            return
+            return 0
 
         # Attempt to import google-auth components
         try:
@@ -43,7 +45,7 @@ class FcmService:
             import google.auth.transport.requests
         except ImportError:
             logger.warning('FCM skipped: google-auth package is not installed.')
-            return
+            return 0
 
         try:
             scopes = ['https://www.googleapis.com/auth/firebase.messaging']
@@ -58,7 +60,7 @@ class FcmService:
 
             if not access_token:
                 logger.warning('FCM: could not obtain access token from service account.')
-                return
+                return 0
 
             endpoint = f'https://fcm.googleapis.com/v1/projects/{project_id}/messages:send'
             headers = {
@@ -148,9 +150,11 @@ class FcmService:
 
                     else:
                         logger.info(f"FCM push sent successfully to token {token[:20]}...")
+                        sent += 1
 
                 except requests.RequestException as e:
                     logger.error(f"FCM send request failed for token {token[:20]}...: {e}")
 
         except Exception as e:
             logger.exception(f"FCM general exception: {e}")
+        return sent

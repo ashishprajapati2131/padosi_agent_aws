@@ -246,7 +246,12 @@ def get_all_feature_flags() -> List[Dict[str, Any]]:
     """
     Returns the comprehensive list of all feature flags (System + Custom).
     Each entry includes live state, metadata, and target redirect link.
+    Cached until any SiteSetting changes (SiteSetting.flush_cache deletes the key).
     """
+    cached = cache.get(FEATURE_FLAGS_CACHE_KEY)
+    if cached is not None:
+        return cached
+
     custom_registry = get_custom_registry()
     flags_list: List[Dict[str, Any]] = []
 
@@ -271,6 +276,7 @@ def get_all_feature_flags() -> List[Dict[str, Any]]:
         flag['is_enabled'] = _read_live_status(flag)
         flags_list.append(flag)
 
+    cache.set(FEATURE_FLAGS_CACHE_KEY, flags_list, timeout=300)
     return flags_list
 
 

@@ -25,7 +25,7 @@ def _admin_required(view):
     """Simulator is an admin-only tool: require a valid admin session."""
     @wraps(view)
     def wrapper(request, *args, **kwargs):
-        from apps.admin_panel.views.dashboard import _get_admin_from_session
+        from apps.admin_panel.auth import _get_admin_from_session
         if not _get_admin_from_session(request):
             return JsonResponse({'error': 'Admin login required'}, status=403)
         return view(request, *args, **kwargs)

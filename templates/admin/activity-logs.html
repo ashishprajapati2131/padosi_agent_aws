@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static json_tags %}
+{% load static json_tags admin_tags %}
 
 {% block title %}Admin Activity Logs — PadosiAgent Admin{% endblock %}
 {% block breadcrumb %}Advanced &rsaquo; Activity Logs{% endblock %}
@@ -277,33 +277,7 @@
     {% if logs.has_other_pages %}
     <div class="card-footer bg-white d-flex justify-content-center p-3 border-top">
         <nav>
-            <ul class="pagination mb-0">
-                {% if logs.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ logs.previous_page_number }}">&laquo;</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-                {% endif %}
-
-                {% for num in logs.paginator.page_range %}
-                    {% if logs.number == num %}
-                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                    {% elif num > logs.number|add:'-3' and num < logs.number|add:'3' %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if logs.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ logs.next_page_number }}">&raquo;</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
-                {% endif %}
-            </ul>
+            {% admin_pagination logs %}
         </nav>
     </div>
     {% endif %}

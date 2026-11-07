@@ -94,7 +94,8 @@ def clear_cache(request):
                 cache.clear()
                 messages.success(request, "Cache cleared successfully!")
         except Exception as e:
-            messages.error(request, f"Failed to clear cache: {e}")
+            logger.exception("Admin request failed in system")  # detail stays server-side
+            messages.error(request, "Failed to clear cache. Details are in the server log.")
 
     # Always redirect back
     referer = request.META.get("HTTP_REFERER")
@@ -389,7 +390,8 @@ def run_backup(request):
             call_command("backup_system")
             messages.success(request, "Database backup completed successfully.")
         except Exception as e:
-            messages.error(request, f"Backup failed: {e}")
+            logger.exception("Admin request failed in system")  # detail stays server-side
+            messages.error(request, "Backup failed. Details are in the server log.")
             logger.error(f"Backup failed: {e}")
 
     referer = request.META.get("HTTP_REFERER")
@@ -408,8 +410,13 @@ def run_maintenance_jobs(request):
     from apps.agents.services.background_jobs import retry_missing_invoices
     import hmac
 
-    is_staff = request.user.is_authenticated and request.user.is_staff
-    token = request.GET.get("token") or request.headers.get("X-Cron-Token")
+    # Admin sessions never log in a Django user, so request.user.is_staff locked everyone out.
+    from apps.admin_panel.auth import _get_admin_from_session, is_super_admin
+
+    admin_id = _get_admin_from_session(request)
+    is_staff = bool(admin_id) and is_super_admin(admin_id)
+    # Header only: a token in the query string ends up in access logs and ErrorLog.url.
+    token = request.headers.get("X-Cron-Token")
     # No CRON_TRIGGER_TOKEN → token auth disabled (never derive it from SECRET_KEY).
     expected_token = getattr(settings, "CRON_TRIGGER_TOKEN", "") or os.environ.get(
         "CRON_TRIGGER_TOKEN", ""
@@ -420,10 +427,13 @@ def run_maintenance_jobs(request):
         and hmac.compare_digest(str(token), str(expected_token))
     )
 
+    if is_staff and request.method != "POST":
+        return redirect("admin_system_health")  # state-changing: never on a GET (link/prefetch)
+
     if not is_staff and not is_token_valid:
         if token:
             return HttpResponseForbidden("Invalid cron token.")
-        messages.error(request, "Staff permission required.")
+        messages.error(request, "Super Admin permission required.")
         return redirect("admin_system_health")
 
     summary = []

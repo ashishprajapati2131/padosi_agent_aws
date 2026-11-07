@@ -318,7 +318,7 @@ def bot_health(request):
     GET /wa-bot/health/
     Restricted to authenticated admin sessions and internal/localhost monitoring.
     """
-    from apps.admin_panel.views.dashboard import _get_admin_from_session
+    from apps.admin_panel.auth import _get_admin_from_session
     from apps.admin_panel.middleware import ThreatMonitorMiddleware
 
     client_ip = ThreatMonitorMiddleware.get_client_ip(request)

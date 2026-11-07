@@ -51,7 +51,7 @@ class AdminActivityLog(models.Model):
 
             if admin_id is None:
                 try:
-                    from apps.admin_panel.views.dashboard import _get_admin_from_session
+                    from apps.admin_panel.auth import _get_admin_from_session
                     admin_id = _get_admin_from_session(request)
                 except Exception:
                     admin_id = None

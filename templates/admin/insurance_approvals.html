@@ -1,4 +1,5 @@
 {% extends 'admin/base.html' %}
+{% load admin_tags %}
 
 {% block title %}Insurance Approvals — PadosiAgent{% endblock %}
 {% block breadcrumb_title %}Insurance Approvals{% endblock %}
@@ -249,27 +250,7 @@
             {% if requests.has_other_pages %}
             <div class="card-footer bg-white">
                 <div class="card-footer bg-white border-top py-3">
-                    <ul class="pagination pagination-sm mb-0">
-                        {% if requests.has_previous %}
-                            <li class="page-item"><a class="page-link" href="?page={{ requests.previous_page_number }}&search={{ search|default:'' }}&status={{ selected_status|default:'' }}">Previous</a></li>
-                        {% else %}
-                            <li class="page-item disabled"><span class="page-link">Previous</span></li>
-                        {% endif %}
-
-                        {% for i in requests.paginator.page_range %}
-                            {% if requests.number == i %}
-                                <li class="page-item active"><span class="page-link">{{ i }}</span></li>
-                            {% elif i > requests.number|add:'-3' and i < requests.number|add:'3' %}
-                                <li class="page-item"><a class="page-link" href="?page={{ i }}&search={{ search|default:'' }}&status={{ selected_status|default:'' }}">{{ i }}</a></li>
-                            {% endif %}
-                        {% endfor %}
-
-                        {% if requests.has_next %}
-                            <li class="page-item"><a class="page-link" href="?page={{ requests.next_page_number }}&search={{ search|default:'' }}&status={{ selected_status|default:'' }}">Next</a></li>
-                        {% else %}
-                            <li class="page-item disabled"><span class="page-link">Next</span></li>
-                        {% endif %}
-                    </ul>
+                    {% admin_pagination requests %}
                 </div>
             </div>
             {% endif %}

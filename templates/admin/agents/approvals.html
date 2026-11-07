@@ -1,5 +1,5 @@
 {% extends 'admin/base.html' %}
-{% load static photo_tags %}
+{% load static photo_tags admin_tags %}
 {% block title %}Pending Approvals — PadosiAgent Admin{% endblock %}
 {% block breadcrumb_title %}Agent Management › Approvals{% endblock %}
 
@@ -382,15 +382,7 @@
 {% endif %}
 {% if page_obj.has_other_pages %}
 <nav class="mt-3 mb-3" aria-label="Approvals pagination">
-  <ul class="pagination justify-content-center">
-    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search }}&plan={{ plan_filter }}&city={{ city_filter }}&event_id={{ event_filter }}">&laquo;</a></li>{% endif %}
-    {% for num in page_obj.paginator.page_range %}
-      {% if page_obj.number == num %}<li class="page-item active"><span class="page-link">{{ num }}</span></li>
-      {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}<li class="page-item"><a class="page-link" href="?page={{ num }}&search={{ search }}&plan={{ plan_filter }}&city={{ city_filter }}&event_id={{ event_filter }}">{{ num }}</a></li>
-      {% endif %}
-    {% endfor %}
-    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search }}&plan={{ plan_filter }}&city={{ city_filter }}&event_id={{ event_filter }}">&raquo;</a></li>{% endif %}
-  </ul>
+  {% admin_pagination page_obj %}
 </nav>
 {% endif %}
 
@@ -398,7 +390,7 @@
 {% if is_super_admin or 'approvals_missing_licenses' in admin_permissions %}
 <div class="card border-0 shadow-sm mt-4" style="border-top: 3px solid #10b981;">
     <div class="card-header py-3">
-        <h6 class="m-0 fw-bold"><i class="fa-solid fa-building-shield me-2" style="color:#10b981;"></i>Missing IRDAI Licenses</h6>
+        <h6 class="m-0 fw-bold"><i class="fa-solid fa-building-shield me-2" style="color:#10b981;"></i>Missing IRDAI Licenses{% if missingIrdaiTotal %} ({{ missingIrdaiTotal }}{% if missingIrdaiTotal > missingIrdaiAgents|length %}, newest {{ missingIrdaiAgents|length }} shown{% endif %}){% endif %}</h6>
         <span style="font-size: 12px; color: var(--text-muted);">These are active agents who don't have an IRDAI license number set. You can update their license and assign badges directly from here.</span>
     </div>
     <div class="table-responsive">
