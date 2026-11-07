@@ -17,8 +17,7 @@ Full details: `ADMIN_PANEL_AUDIT_2026-11-07.md`. Do these on the production serv
 - [ ] Restart the app.
 
 ## 3. Right after deploy
-- [ ] `python manage.py ensure_admin_indexes`: review the list of MISSING indexes. (Done on the local DB 2026-11-07; production is a separate DB and still showed 8 missing.)
-- [ ] `python manage.py ensure_admin_indexes --apply`: creates only the missing ones. On large tables run it at a quiet hour.
+- [x] **Done on production 2026-11-07 21:28:** backup `db_backup_pre_indexes_20261107_212847.sql.gz`, then `ensure_admin_indexes --apply` created all 8 indexes; a re-run reports `0 missing`.
 - [ ] Optional: `python manage.py remove_stale_contenttypes`, to clear the old `admin_panel.*` content types of the moved models.
 
 ## 4. Browser check (10 minutes)
