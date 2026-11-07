@@ -77,10 +77,23 @@ def admin_badge_counts(request):
     else:
         try:
             with connection.cursor() as cursor:
-                # 1. Pending Approvals  ── agents.status = 'pending_approval'
-                cursor.execute(
-                    "SELECT COUNT(*) FROM agents WHERE status = 'pending_approval'"
-                )
+                # 1. Pending Approvals  ── agents.status = 'pending_approval' (excluding active unpaid event trial participants)
+                now_sql = "datetime('now')" if connection.vendor == 'sqlite' else "NOW()"
+                cursor.execute(f"""
+                    SELECT COUNT(*) FROM agents a
+                    LEFT JOIN agent_subscriptions s ON a.id = s.agent_id
+                        AND s.id = (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
+                    WHERE a.status = 'pending_approval'
+                      AND NOT (
+                          EXISTS (
+                              SELECT 1 FROM event_referral_participants erp
+                              WHERE erp.agent_id = a.id
+                                AND erp.grant_expires_at IS NOT NULL
+                                AND erp.grant_expires_at > {now_sql}
+                          )
+                          AND (s.razorpay_payment_id IS NULL AND s.razorpay_order_id IS NULL)
+                      )
+                """)
                 counts['pending_agents_count'] = cursor.fetchone()[0]
 
                 # 2. Registration Pending ── agents + unmatched draft entries

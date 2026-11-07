@@ -1042,6 +1042,24 @@ def _build_queue_query(
         query += " AND a.status = %s"
         params.append(status_filter)
 
+    # Active trial participants without a real payment must NEVER appear in pending approvals
+    is_pending_query = "pending_approval" in (
+        status_filter if isinstance(status_filter, list) else [status_filter]
+    )
+    if is_pending_query:
+        now_expr = "datetime('now')" if connection.vendor == "sqlite" else "NOW()"
+        query += f"""
+            AND NOT (
+                EXISTS (
+                    SELECT 1 FROM event_referral_participants erp
+                    WHERE erp.agent_id = a.id
+                      AND erp.grant_expires_at IS NOT NULL
+                      AND erp.grant_expires_at > {now_expr}
+                )
+                AND (s.razorpay_payment_id IS NULL AND s.razorpay_order_id IS NULL)
+            )
+        """
+
     if only_ids is not None:
         ids = [int(i) for i in only_ids] or [0]
         query += " AND a.id IN (" + ",".join(["%s"] * len(ids)) + ")"

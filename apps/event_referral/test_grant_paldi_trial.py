@@ -106,4 +106,5 @@ class GrantPaldiTrialTests(TestCase):
             p.grant_expires_at.strftime("%Y-%m-%d %H:%M"), f"{self.until} 23:59"
         )
         self.assertEqual(p.agent.plan_type, "basic")
+        self.assertEqual(p.agent.status, "event_challenge")
         self.assertEqual(winner.grant_plan_slug, "")

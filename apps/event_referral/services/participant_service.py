@@ -373,7 +373,11 @@ def admin_grant_win(participant, *, plan_slug='basic', expires_at=None):
         if not paid_higher:
             from apps.agents.services.feature_unlock import sync_agent_plan_from_admin_slug
 
-            if agent.status != 'active':
+            if expires_at and not agent_has_completed_payment(agent):
+                # Temporary trial grant: keep unpaid agent as event_challenge, NOT pending_approval
+                if agent.status not in ('active', 'suspended', 'blacklisted', 'rejected'):
+                    agent.status = 'event_challenge'
+            elif agent.status != 'active':
                 agent.status = 'pending_approval'
             agent.registration_step = max(agent.registration_step or 1, 2)
             agent.save(update_fields=['status', 'registration_step', 'updated_at'])

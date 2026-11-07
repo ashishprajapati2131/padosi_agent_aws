@@ -200,6 +200,26 @@
     font-weight: 700;
     display: inline-block;
 }
+.btn-festive-upgrade {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    padding: 7px 22px;
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 14px rgba(217, 119, 6, 0.45);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none !important;
+}
+.btn-festive-upgrade:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(217, 119, 6, 0.6);
+    color: #ffffff !important;
+}
 .festive-grant-divider {
     width: 140px;
     height: 1px;
@@ -794,6 +814,11 @@
                             Light up your profile, collect reviews and welcome new families as their trusted Padosi.
                         </span>
                     </p>
+                    <div class="mt-3">
+                        <a href="{% url 'agents:chooseplan' %}" class="btn btn-festive-upgrade font-weight-bold">
+                            <i class="fas fa-arrow-circle-up mr-1.5"></i> Upgrade Plan
+                        </a>
+                    </div>
                     <div class="festive-grant-divider"></div>
                     <div class="festive-grant-greeting">
                         Happy Diwali, Saal Mubarak &amp; Happy Dev Diwali from Team PadosiAgent 🙏
@@ -869,10 +894,12 @@
                 </div>
             </div>
             <div class="dashboard-top-actions mt-1 mt-md-0 d-flex flex-wrap gap-2 align-items-center">
-                {% if event_referral_expired_locked and not admin_lock_preview %}
-                <a href="{% url 'agents:chooseplan' %}" class="btn btn-primary font-weight-bold shadow-sm px-4 mb-2 mb-sm-0" style="height: 42px; display: inline-flex; align-items: center;">
-                    <i class="fas fa-arrow-up mr-2"></i>Upgrade plan
-                </a>
+                {% if not admin_lock_preview %}
+                    {% if event_referral_expired_locked or event_referral_participant.grant_expires_at %}
+                    <a href="{% url 'agents:chooseplan' %}" class="btn btn-primary font-weight-bold shadow-sm px-4 mb-2 mb-sm-0" style="height: 42px; display: inline-flex; align-items: center;">
+                        <i class="fas fa-arrow-up mr-2"></i>Upgrade plan
+                    </a>
+                    {% endif %}
                 {% endif %}
                 <div class="agent-main-action-group mb-0">
                     <button type="button" class="btn btn-rank-boost-top" data-feature="rank_boost_tips" data-toggle="modal" data-target="#rankingGuideModal">

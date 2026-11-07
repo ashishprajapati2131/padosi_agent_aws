@@ -63,6 +63,10 @@ class Command(BaseCommand):
                 same_trial = (
                     p.grant_plan_slug == opts["plan"] and p.grant_expires_at == until
                 )
+                if opts["apply"] and p.grant_expires_at and not agent_has_completed_payment(p.agent):
+                    if p.agent.status == "pending_approval":
+                        p.agent.status = "event_challenge"
+                        p.agent.save(update_fields=["status", "updated_at"])
                 if opts["email_granted"] and same_trial:
                     already += 1
                     if opts["apply"]:
