@@ -3054,7 +3054,7 @@ def chooseplan(request):
             )
 
             if not event_referral_expired_needs_plan_payment(logged_in_agent):
-                return redirect("agents:agent_dashboard")
+                return redirect(reverse("agents:agent_dashboard") + "?open_upgrade=1")
         elif request.user.is_staff or request.user.is_superuser:
             return redirect("agents:agent_dashboard")
 

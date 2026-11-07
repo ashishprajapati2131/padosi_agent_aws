@@ -214,6 +214,8 @@
     display: inline-flex;
     align-items: center;
     text-decoration: none !important;
+    cursor: pointer;
+    outline: none;
 }
 .btn-festive-upgrade:hover {
     transform: translateY(-2px);
@@ -815,9 +817,9 @@
                         </span>
                     </p>
                     <div class="mt-3">
-                        <a href="{% url 'agents:chooseplan' %}" class="btn btn-festive-upgrade font-weight-bold">
+                        <button type="button" onclick="openUpgradeChoiceModal()" class="btn btn-festive-upgrade font-weight-bold">
                             <i class="fas fa-arrow-circle-up mr-1.5"></i> Upgrade Plan
-                        </a>
+                        </button>
                     </div>
                     <div class="festive-grant-divider"></div>
                     <div class="festive-grant-greeting">
@@ -896,9 +898,9 @@
             <div class="dashboard-top-actions mt-1 mt-md-0 d-flex flex-wrap gap-2 align-items-center">
                 {% if not admin_lock_preview %}
                     {% if event_referral_expired_locked or event_referral_participant.grant_expires_at %}
-                    <a href="{% url 'agents:chooseplan' %}" class="btn btn-primary font-weight-bold shadow-sm px-4 mb-2 mb-sm-0" style="height: 42px; display: inline-flex; align-items: center;">
+                    <button type="button" onclick="openUpgradeChoiceModal()" class="btn btn-primary font-weight-bold shadow-sm px-4 mb-2 mb-sm-0" style="height: 42px; display: inline-flex; align-items: center;">
                         <i class="fas fa-arrow-up mr-2"></i>Upgrade plan
-                    </a>
+                    </button>
                     {% endif %}
                 {% endif %}
                 <div class="agent-main-action-group mb-0">
@@ -2270,6 +2272,29 @@
         {% endif %}
     }
 
+    function openUpgradeChoiceModal() {
+        const modalEl = document.getElementById('upgradeChoiceModal');
+        if (modalEl) {
+            if (typeof $ !== 'undefined' && $.fn.modal) {
+                $('#upgradeChoiceModal').modal('show');
+            } else if (typeof bootstrap !== 'undefined') {
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            }
+            return;
+        }
+        openProfessionalUpgradeModal();
+    }
+
+    function closeUpgradeChoiceModal() {
+        const modalEl = document.getElementById('upgradeChoiceModal');
+        if (typeof $ !== 'undefined' && $.fn.modal) {
+            $('#upgradeChoiceModal').modal('hide');
+        } else if (modalEl && typeof bootstrap !== 'undefined') {
+            const inst = bootstrap.Modal.getInstance(modalEl);
+            if (inst) inst.hide();
+        }
+    }
+
     function openProfessionalUpgradeModal() {
         const modalEl = document.getElementById('professionalUpgradeModal');
         if (modalEl) {
@@ -2329,6 +2354,7 @@
 
     function initiateUpgradePayment(planType, planAmount, sourceBtn) {
         const btn = sourceBtn || (typeof event !== 'undefined' && event.currentTarget);
+        const origBtnHtml = btn ? btn.innerHTML : '';
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Please wait...';
@@ -2348,7 +2374,7 @@
                 alert(userPaymentMessage(data.message));
                 if (btn) {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-crown me-2"></i> Select Professional\'s Plan';
+                    btn.innerHTML = origBtnHtml || 'Select Plan';
                 }
                 return;
             }
@@ -2362,14 +2388,17 @@
                 alert('Payment is required. Razorpay checkout could not start. Dashboard stays locked until a real payment is captured.');
                 if (btn) {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-crown me-2"></i> Select Professional\'s Plan';
+                    btn.innerHTML = origBtnHtml || 'Select Plan';
                 }
                 return;
             }
 
             if (!data.order_id) {
                 alert("We're unable to process your payment right now. Please try again in a few minutes.");
-                if (btn) btn.disabled = false;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = origBtnHtml || 'Select Plan';
+                }
                 return;
             }
 
@@ -2395,7 +2424,7 @@
                 modal: { ondismiss: function() {
                     if (btn) {
                         btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-crown me-2"></i> Select Professional\'s Plan';
+                        btn.innerHTML = origBtnHtml || 'Select Plan';
                     }
                 } },
             };
@@ -2419,13 +2448,31 @@
                     .then(r => r.json())
                     .then(res => {
                         if (res.success) {
-                            document.getElementById('upgradeModalContent').innerHTML = `
-                                <div class="py-4"><div class="text-success mb-3" style="font-size:3rem;">✅</div>
-                                <h5 class="fw-bold">Upgrade Successful!</h5>
-                                <p class="text-muted">Your plan has been upgraded. Refreshing your dashboard...</p></div>`;
-                            setTimeout(() => window.location.reload(), 2000);
+                            closeUpgradeChoiceModal();
+                            closeProfessionalUpgradeModal();
+                            const content = document.getElementById('upgradeModalContent');
+                            if (content) {
+                                content.innerHTML = `
+                                    <div class="py-4"><div class="text-success mb-3" style="font-size:3rem;">✅</div>
+                                    <h5 class="fw-bold">Upgrade Successful!</h5>
+                                    <p class="text-muted">Your plan has been upgraded. Refreshing your dashboard...</p></div>`;
+                            }
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Upgrade Successful!',
+                                    text: 'Your plan has been upgraded. Refreshing your dashboard...',
+                                    showConfirmButton: false,
+                                    timer: 2000
+                                });
+                            }
+                            setTimeout(() => window.location.reload(), 1500);
                         } else {
                             alert('Payment received but verification failed. Please contact support.');
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.innerHTML = origBtnHtml || 'Select Plan';
+                            }
                         }
                     });
                 };
@@ -2446,7 +2493,7 @@
             alert('Network error. Please try again.');
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-crown me-2"></i> Select Professional\'s Plan';
+                btn.innerHTML = origBtnHtml || 'Select Plan';
             }
         });
     }
@@ -3266,6 +3313,17 @@
                 }
                 if (window.history && window.history.replaceState) {
                     params.delete('upgrade_success');
+                    var qs = params.toString();
+                    window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+                }
+            }
+            if (params.get('open_upgrade') === '1' || params.get('upgrade') === '1') {
+                if (typeof openUpgradeChoiceModal === 'function') {
+                    setTimeout(openUpgradeChoiceModal, 300);
+                }
+                if (window.history && window.history.replaceState) {
+                    params.delete('open_upgrade');
+                    params.delete('upgrade');
                     var qs = params.toString();
                     window.history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
                 }

@@ -952,7 +952,11 @@ def agent_dashboard(request):
         "prof_name": prof_name,
         "prof_desc": prof_desc,
         "prof_base": int(prof_base),
+        "prof_disc": int(prof_disc),
         "prof_full": int(prof_full),
+        "starter_base": int(starter_base),
+        "starter_disc": int(starter_disc),
+        "starter_full": int(starter_full),
         "agent_id": agent.id,
         "coming_soon_html": coming_soon_html,
         "upcoming_features": upcoming_features,
@@ -3216,8 +3220,15 @@ def agent_upgrade_plan(request):
             )
         # Same rule as the app upgrade link: only a plan above the current one.
         from plan_upgrade_handoff import upgrade_target_allowed
+        from apps.agents.services.account_auth import agent_has_completed_payment
 
-        if not upgrade_target_allowed(agent.plan_type, plan_type):
+        is_trial_or_unpaid = (
+            agent.isOnFreeTrial()
+            or agent.status in ("event_challenge", "trial")
+            or getattr(agent, "event_referral_participant", None) is not None
+            or not agent_has_completed_payment(agent)
+        )
+        if not is_trial_or_unpaid and not upgrade_target_allowed(agent.plan_type, plan_type):
             return JsonResponse(
                 {
                     "success": False,
