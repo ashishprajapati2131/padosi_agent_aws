@@ -34,7 +34,8 @@ urlpatterns = [
     path("admin/whatsapp/logs/", wa_bot_logs_list, name="admin_wa_logs_list"),
     path("admin/whatsapp/security/", wa_bot_security_status, name="admin_wa_security_status"),
     path("admin/whatsapp/toggle-bot/", wa_bot_toggle_service, name="admin_wa_toggle_service"),
-    path("admin/whatsapp/toggle-service/", wa_bot_toggle_service, name="admin_toggle_wa_bot_service"),
+    # (removed /admin/whatsapp/toggle-service/: an unused alias that also stole the name
+    #  admin_toggle_wa_bot_service from the Settings page toggle; B24)
     path("admin/whatsapp/toggle-lead-alerts/", wa_bot_toggle_lead_alerts, name="admin_wa_toggle_lead_alerts"),
     path("admin/whatsapp/view-alerts/", wa_bot_save_view_alerts, name="admin_wa_save_view_alerts"),
     path("admin/whatsapp/messages/", wa_bot_messages, name="admin_wa_messages"),

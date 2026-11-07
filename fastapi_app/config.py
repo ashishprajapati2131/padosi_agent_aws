@@ -107,7 +107,7 @@ class Settings(BaseSettings):
     LOCAL_STORAGE_PATH: str = "media"
 
     # Security Config
-    SECURITY_ALERT_EMAIL: str = "ashisprajapati2131@gmail.com"
+    SECURITY_ALERT_EMAIL: str = ""  # set in .env; unset -> MAIL_FROM_ADDRESS (no personal address in code)
     WAF_AUTO_BAN_ENABLED: bool = os.environ.get(
         "WAF_AUTO_BAN_ENABLED",
         "False" if os.environ.get("DEBUG", "False").strip().lower() in ("true", "1", "yes") else "True"

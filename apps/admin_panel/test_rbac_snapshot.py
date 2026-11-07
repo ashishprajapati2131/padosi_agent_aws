@@ -117,9 +117,8 @@ class RbacSnapshotTests(TestCase):
     def test_access_matches_snapshot(self):
         current = build_snapshot()
         if os.environ.get("UPDATE_RBAC_SNAPSHOT") == "1":
-            SNAPSHOT.write_text(
-                json.dumps(current, indent=1, sort_keys=True) + "\n", encoding="utf-8"
-            )
+            # bytes, not write_text: on Windows write_text turns LF into CRLF
+            SNAPSHOT.write_bytes((json.dumps(current, indent=1, sort_keys=True) + "\n").encode("utf-8"))
             self.skipTest(f"Snapshot rewritten: {SNAPSHOT}")
         expected = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
         changed = {

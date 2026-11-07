@@ -1829,10 +1829,6 @@
   "access": "super_only",
   "name": "admin_wa_toggle_lead_alerts"
  },
- "admin/whatsapp/toggle-service/": {
-  "access": "super_only",
-  "name": "admin_toggle_wa_bot_service"
- },
  "admin/whatsapp/view-alerts/": {
   "access": "super_only",
   "name": "admin_wa_save_view_alerts"

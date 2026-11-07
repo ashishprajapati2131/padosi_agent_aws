@@ -23,6 +23,16 @@ def terminate_account(del_req, admin_id, admin_notes, log_action):
 
     with transaction.atomic():
         if agent:
+            # Remember what reactivation must restore (it used to force 'active' + visible,
+            # skipping payment/approval for agents who were still pending).
+            profile = getattr(agent, 'profile', None)
+            summary = dict(del_req.data_retention_summary or {})
+            summary.setdefault('previous_agent_status', agent.status)
+            if profile:
+                summary.setdefault('previous_profile_visible', bool(profile.is_profile_visible))
+                summary.setdefault('previous_card_visible', bool(profile.is_card_visible))
+            del_req.data_retention_summary = summary
+
             # Hide public profile and card while keeping all records intact
             try:
                 with transaction.atomic():  # savepoint: a failure here must not break the outer transaction
@@ -68,6 +78,7 @@ def activate_account(del_req, admin_id, admin_notes, log_action):
     agent = del_req.agent or Agent.objects.filter(email__iexact=del_req.email).first()
 
     now = datetime.now()
+    summary = del_req.data_retention_summary or {}
 
     with transaction.atomic():
         if agent:
@@ -76,14 +87,14 @@ def activate_account(del_req, admin_id, admin_notes, log_action):
                 with transaction.atomic():  # savepoint: a failure here must not break the outer transaction
                     profile = getattr(agent, 'profile', None)
                     if profile:
-                        profile.is_profile_visible = True
-                        profile.is_card_visible = True
+                        profile.is_profile_visible = summary.get('previous_profile_visible', True)
+                        profile.is_card_visible = summary.get('previous_card_visible', True)
                         profile.save(update_fields=['is_profile_visible', 'is_card_visible'])
             except Exception as e:
                 logger.warning(f"Error restoring visibility for agent {agent.id}: {e}")
 
-            # Mark agent status as active
-            agent.status = 'active'
+            # Back to the status before termination ('active' for requests terminated before this was recorded)
+            agent.status = summary.get('previous_agent_status') or 'active'
             agent.save(update_fields=['status'])
 
             # Reactivate user account
@@ -95,6 +106,8 @@ def activate_account(del_req, admin_id, admin_notes, log_action):
                 agent.user.is_active = True
                 agent.user.save(update_fields=['is_active'])
 
+        # Restored: drop the snapshot so a later termination records the then-current state.
+        del_req.data_retention_summary = {k: v for k, v in summary.items() if not k.startswith('previous_')}
         # Reset deletion request status to PENDING or mark as reactivated
         del_req.status = 'PENDING'
         del_req.processed_at = now

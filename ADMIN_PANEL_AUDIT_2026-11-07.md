@@ -233,6 +233,14 @@ The sidebar entry, permission checkbox, middleware enforcement, default redirect
     - A new module's sidebar link now needs only its route in `registry.ROUTE_PERMISSIONS`; labels and icons are still written in `base.html`.
   - **Still open in step 9:** shared modal partial (23 templates), moving ~13,000 lines of inline JS/CSS to static files, merging the 3 different `showToast` helpers. These change what users see, so they need a browser check against a running server (MySQL), which was not possible here.
 
+**Quick fixes (2026-11-07, later): B8, B9, B24 done; personal email removed.**
+- B9: account deletion matches the linked agent or the exact email only; the mobile fallback is gone. Regression test confirmed failing on old code.
+- B8: terminating an account records the agent's status and profile/card visibility in `data_retention_summary`. Reactivation restores them, so a pending agent comes back pending, not `active`. Older requests fall back to `active`.
+- B24: removed the unused alias `/admin/whatsapp/toggle-service/`. It had also taken the name `admin_toggle_wa_bot_service`, so the Settings page toggle was calling the WhatsApp view instead of its own. The RBAC snapshot drops only that route.
+- `SECURITY_ALERT_EMAIL` is now read from `.env` by Django (it was never read) and defaults to empty in FastAPI. Unset → the site's sender mailbox. The hard-coded personal Gmail is gone from all Python code, including `test_email --to` (now required).
+- The RBAC snapshot writer writes LF line endings, so regenerating it no longer rewrites the whole file on Windows.
+- **Still open (need a decision or a longer change):** B10 (whether a plan change should rewrite the paid row or add a ₹0 row), S13 session-token hashing, tests for referrals/coming_soon/notify/broadcast/plans, the rest of step 9 (modal partial, inline JS/CSS, toasts; needs a browser), Redis.
+
 **Phase 2 — Safety net:** ✅ **Done 2026-11-07.** 311 tests pass.
 - `test_rbac_snapshot.py` + `rbac_snapshot.json`: for all 328 named `/admin` and `/padosi-admin` routes, including championship and event-referral, it records who `AdminPermissionMiddleware` lets through: 4 public (login/logout), 95 super-only, and 229 open to staff holding specific permission keys. **Any** change in access fails the test until the snapshot is regenerated on purpose (`UPDATE_RBAC_SNAPSHOT=1`, see CLAUDE.md §16). It also asserts that no route is unreachable or open to every staff member, and that the key super-only routes stay super-only.
 - `apps/admin_panel/conftest.py`: plain `pytest` now stops with the right command instead of 24 `ImproperlyConfigured` errors. pytest-django was not added (it would be a new dependency).

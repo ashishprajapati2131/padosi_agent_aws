@@ -312,3 +312,27 @@ class AccountDeletionMatchingTests(TestCase):  # B9 (audit 2026-11-07)
             terminate_agent_account(request)
         victim.refresh_from_db()
         self.assertEqual(victim.status, "active")
+
+
+class AccountReactivationRestoresStatusTests(TestCase):  # B8 (audit 2026-11-07)
+    def _post(self, view, req):
+        request = RequestFactory().post("/admin/account-deletion/x/", data=json.dumps({"request_id": req.pk}),
+                                        content_type="application/json")
+        SessionMiddleware(lambda r: None).process_request(request)
+        request._messages = FallbackStorage(request)
+        with patch("apps.admin_panel.views.account_deletion._get_admin_from_session", return_value=1):
+            return view(request)
+
+    def test_pending_agent_comes_back_pending(self):
+        from apps.agents.models import AccountDeletionRequest
+        from apps.admin_panel.views.account_deletion import activate_agent_account, terminate_agent_account
+        agent = Agent.objects.create(fullname="R", email="pending.b8@example.com", mobile="9000000601",
+                                     status="pending_payment")
+        req = AccountDeletionRequest.objects.create(reference_id="DEL-B8-1", identifier=agent.email, email=agent.email)
+        self._post(terminate_agent_account, req)
+        agent.refresh_from_db()
+        self.assertEqual(agent.status, "deleted")
+        req.refresh_from_db()
+        self._post(activate_agent_account, req)
+        agent.refresh_from_db()
+        self.assertEqual(agent.status, "pending_payment")
