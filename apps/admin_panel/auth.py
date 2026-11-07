@@ -3,6 +3,7 @@
 Single home for resolving the admin of a request. views.dashboard re-exports these names
 for backward compatibility; new code should import from here.
 """
+import hashlib
 import logging
 from datetime import datetime
 
@@ -25,6 +26,32 @@ def _admin_cookie_secure():
     return (not settings.DEBUG) or bool(getattr(settings, "SESSION_COOKIE_SECURE", False))
 
 
+
+HASHED_TOKEN_PREFIX = "sha256$"
+
+
+def hash_session_token(token):
+    """What user_sessions.session_token stores: SHA-256 of the cookie value, never the
+    cookie itself (anyone able to read the table could otherwise hijack admin sessions)."""
+    return HASHED_TOKEN_PREFIX + hashlib.sha256(str(token).encode("utf-8")).hexdigest()
+
+
+def session_token_candidates(token):
+    """The two values (for an IN (%s, %s) lookup) a stored session_token may hold for this
+    cookie: its hash, or the raw token for rows created before hashing (upgraded on first use).
+    A cookie that itself looks like a stored hash only gets the hash candidate, so a value
+    read from the table can never be replayed as a "legacy" cookie."""
+    if not token:
+        return []
+    hashed = hash_session_token(token)
+    legacy = token if not str(token).startswith(HASHED_TOKEN_PREFIX) else hashed
+    return [hashed, legacy]
+
+
+def session_token_matches(stored, token):
+    return bool(token) and stored in session_token_candidates(token)
+
+
 def invalidate_admin_session_token(token):
     """Delete the user_sessions / user_session_data rows for a session token."""
     if not token:
@@ -32,8 +59,8 @@ def invalidate_admin_session_token(token):
     try:
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT id FROM user_sessions WHERE session_token = %s LIMIT 1",
-                [token],
+                "SELECT id FROM user_sessions WHERE session_token IN (%s, %s) LIMIT 1",
+                session_token_candidates(token),
             )
             row = cursor.fetchone()
             if row:
@@ -102,13 +129,13 @@ def _resolve_admin_from_session(request):
             # Validate token against user_sessions and fetch last_activity
             cursor.execute(
                 """
-                SELECT id, last_activity
+                SELECT id, last_activity, session_token
                 FROM user_sessions
-                WHERE session_token = %s
+                WHERE session_token IN (%s, %s)
                   AND expires_at > %s
                 LIMIT 1
                 """,
-                [token, now_curr],
+                [*session_token_candidates(token), now_curr],
             )
             row = cursor.fetchone()
             if not row:
@@ -116,6 +143,12 @@ def _resolve_admin_from_session(request):
 
             session_id = row[0]
             last_activity = row[1]
+            if row[2] == token:
+                # Legacy plaintext row: store the hash from now on.
+                cursor.execute(
+                    "UPDATE user_sessions SET session_token = %s WHERE id = %s",
+                    [hash_session_token(token), session_id],
+                )
 
             # Throttled update of last_activity: at most once every 2 minutes
             try:

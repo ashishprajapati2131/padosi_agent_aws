@@ -299,7 +299,8 @@ def admin_badge_counts(request):
                 counts['admin_permissions'] = cached_admin_info.get('permissions', set())
             else:
                 with connection.cursor() as cursor:
-                    cursor.execute("SELECT id FROM user_sessions WHERE session_token = %s AND expires_at > NOW() LIMIT 1", [token])
+                    from apps.admin_panel.auth import session_token_candidates
+                    cursor.execute("SELECT id FROM user_sessions WHERE session_token IN (%s, %s) AND expires_at > NOW() LIMIT 1", session_token_candidates(token))
                     row = cursor.fetchone()
                     if row:
                         session_id = row[0]

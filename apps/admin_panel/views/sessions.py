@@ -14,6 +14,7 @@ from django.http import JsonResponse
 from django.db import connection
 from django.views.decorators.http import require_POST
 
+from apps.admin_panel.auth import session_token_matches
 from apps.admin_panel.models.user_session import UserSession, UserSessionData
 from apps.admin_panel.models.admin_auth import Admin
 from apps.admin_panel.models.admin_activity_log import AdminActivityLog
@@ -110,7 +111,7 @@ def sessions_index(request):
             'last_activity': s.last_activity,
             'expires_at': s.expires_at,
             'is_expired': is_expired,
-            'is_current': bool(current_token and token == current_token),
+            'is_current': session_token_matches(token, current_token),
             'token_tail': token[-8:] if token else '',
         })
 
@@ -150,7 +151,7 @@ def sessions_revoke(request):
                     or _admin_id_fallback_map([session_id]).get(session_id))
         if owner_id and is_super_admin(owner_id) and not is_super_admin(admin_id):
             return JsonResponse({'success': False, 'message': 'Only a Super Admin can revoke a Super Admin session.'}, status=403)
-        if current_token and row[1] == current_token:
+        if session_token_matches(row[1], current_token):
             is_current = True
         cursor.execute("DELETE FROM user_session_data WHERE session_id = %s", [session_id])
         cursor.execute("DELETE FROM user_sessions WHERE id = %s", [session_id])

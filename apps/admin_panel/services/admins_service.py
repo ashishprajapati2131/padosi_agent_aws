@@ -35,8 +35,10 @@ def update_admin(
         # A reset must end the old sessions (a stolen session stayed valid for 7 days).
         from apps.admin_panel.models.user_session import UserSession
 
+        from apps.admin_panel.auth import session_token_candidates
+
         UserSession.objects.filter(admin_id=admin.id).exclude(
-            session_token=current_session_token
+            session_token__in=session_token_candidates(current_session_token)
         ).delete()
 
 

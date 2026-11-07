@@ -240,7 +240,12 @@ The sidebar entry, permission checkbox, middleware enforcement, default redirect
 - `SECURITY_ALERT_EMAIL` is now read from `.env` by Django (it was never read) and defaults to empty in FastAPI. Unset → the site's sender mailbox. The hard-coded personal Gmail is gone from all Python code, including `test_email --to` (now required).
 - The RBAC snapshot writer writes LF line endings, so regenerating it no longer rewrites the whole file on Windows.
 - B10 (decided: add a new row): when the agent's current subscription is a real payment (completed, amount > 0), an admin plan change no longer renames it. A new ₹0 completed row for the new plan is created with the paid period's expiry, and the paid row becomes `inactive` (superseded). Revenue-by-plan therefore stays historical. "No plan" on a paid row only changes `agents.plan_type`. Unpaid or ₹0 rows are still edited in place, and agents with no row still get a new ₹0 row.
-- **Still open (longer changes):** S13 session-token hashing, tests for referrals/coming_soon/notify/broadcast/plans, the rest of step 9 (modal partial, inline JS/CSS, toasts; needs a browser), Redis.
+- **S13 done (session tokens hashed):** `user_sessions.session_token` now stores `sha256$<SHA-256 of the cookie>`; the browser cookie is unchanged.
+  - **No admin is logged out.** Lookups match the hash or a legacy plaintext token, and a legacy row is rewritten to the hash on first use, so after 7 days (max session life) no plaintext token remains.
+  - A value read from the table cannot be replayed as a cookie: anything starting with `sha256$` is only ever hashed, never matched as legacy. A test caught this hole in the first version.
+  - Login, logout/invalidate, the context processor fallback, the sessions page "current" flag and revoke, and password-reset revocation all use the same helpers (`auth.hash_session_token`, `session_token_candidates`, `session_token_matches`).
+  - Tests: `test_session_token_hashing.py`.
+- **Still open (longer changes):** tests for referrals/coming_soon/notify/broadcast/plans, the rest of step 9 (modal partial, inline JS/CSS, toasts; needs a browser), Redis.
 
 **Phase 2 — Safety net:** ✅ **Done 2026-11-07.** 311 tests pass.
 - `test_rbac_snapshot.py` + `rbac_snapshot.json`: for all 328 named `/admin` and `/padosi-admin` routes, including championship and event-referral, it records who `AdminPermissionMiddleware` lets through: 4 public (login/logout), 95 super-only, and 229 open to staff holding specific permission keys. **Any** change in access fails the test until the snapshot is regenerated on purpose (`UPDATE_RBAC_SNAPSHOT=1`, see CLAUDE.md §16). It also asserts that no route is unreachable or open to every staff member, and that the key super-only routes stay super-only.

@@ -43,6 +43,7 @@ from apps.admin_panel.auth import (  # noqa: E402,F401
     _get_admin_from_session,
     _resolve_admin_from_session,
     clear_admin_session,
+    hash_session_token,
     invalidate_admin_session_token,
 )
 
@@ -135,7 +136,7 @@ def _issue_admin_session(request, admin_db_id, email):
                         (%s, %s, NULL, NULL, %s, %s, %s, %s, %s, %s)
                     """,
                     [
-                        token, admin_db_id, ip_address, user_agent,
+                        hash_session_token(token), admin_db_id, ip_address, user_agent,
                         now_curr, expires_at, now_curr, now_curr,
                     ],
                 )
@@ -149,7 +150,7 @@ def _issue_admin_session(request, admin_db_id, email):
                         (%s, %s, %s, %s, %s, %s, %s)
                     """,
                     [
-                        token, ip_address, user_agent,
+                        hash_session_token(token), ip_address, user_agent,
                         now_curr, expires_at, now_curr, now_curr,
                     ],
                 )
