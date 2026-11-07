@@ -60,13 +60,22 @@ class AdminUpdatePlanTests(TestCase):
         ):
             return update_plan(request)
 
-    def test_only_the_current_subscription_changes(self):
+    def test_paid_rows_are_never_renamed(self):
+        # Audit 2026-11-07 B10: renaming the paid row moved its revenue to the new plan.
+        from datetime import datetime
+        self.current.expires_at = datetime(2027, 3, 1, 12, 0)
+        self.current.save(update_fields=["expires_at"])
         self._update("Professional's Plan")
         self.old.refresh_from_db()
         self.current.refresh_from_db()
         self.agent.refresh_from_db()
         self.assertEqual(self.old.selected_plan, "Starter's Plan")  # history kept
-        self.assertEqual(self.current.selected_plan, "Professional's Plan")
+        self.assertEqual(self.current.selected_plan, "Starter's Plan")  # paid row kept
+        self.assertEqual(self.current.status, "inactive")  # superseded by the new row
+        new = AgentSubscription.objects.filter(agent=self.agent, status="active").get()
+        self.assertEqual((new.selected_plan, float(new.registration_amount), new.payment_status),
+                         ("Professional's Plan", 0.0, "completed"))
+        self.assertEqual(new.expires_at, self.current.expires_at)
         self.assertEqual(self.agent.plan_type, "professional")
         log = AdminActivityLog.objects.latest("id")
         self.assertEqual((log.admin_id, log.model_id), (3, self.agent.pk))

@@ -219,7 +219,7 @@ def set_achievement_limit(agent_id, new_limit):
 
 
 def apply_plan_change(agent_id, new_plan, plan_type):
-    """Set the current subscription's plan and agents.plan_type; returns the old plan."""
+    """Change an agent's plan (agents.plan_type + subscription rows); returns the old plan."""
     from datetime import timedelta
     from django.db import transaction
     from apps.agents.models import Agent, AgentSubscription
@@ -236,7 +236,30 @@ def apply_plan_change(agent_id, new_plan, plan_type):
             .first()
         )
         old_plan = current.selected_plan if current else None
-        if current:
+        is_paid = bool(
+            current
+            and current.payment_status == PaymentStatus.COMPLETED
+            and (current.registration_amount or 0) > 0
+        )
+        if is_paid:
+            # A paid row is a payment record (invoice, GST, revenue-by-plan): never rename it.
+            # A new plan becomes a new Rs 0 row that keeps the paid period's expiry.
+            if new_plan and new_plan != current.selected_plan:
+                now = timezone.now()
+                comp = AgentSubscription.objects.create(
+                    agent_id=agent_id,
+                    selected_plan=new_plan,
+                    registration_amount=0,
+                    payment_status=PaymentStatus.COMPLETED,
+                    status="active",
+                    starts_at=now,
+                    expires_at=current.expires_at or now + timedelta(days=365),
+                )
+                AgentSubscription.objects.filter(agent_id=agent_id, status="active").exclude(
+                    pk=comp.pk
+                ).update(status="inactive")
+            # "No plan" on a paid row only changes agents.plan_type below.
+        elif current:
             current.selected_plan = new_plan
             current.save(update_fields=["selected_plan", "updated_at"])
         elif new_plan:
