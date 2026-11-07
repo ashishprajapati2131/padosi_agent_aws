@@ -5,10 +5,18 @@
 {% block content %}
 <div class="container-fluid py-4">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-        <h2 class="mb-0">Paldi / Event Registration</h2>
-        <span class="badge {% if campaign.is_enabled %}bg-success{% else %}bg-secondary{% endif %} fs-6 px-3 py-2">
-            {% if campaign.is_enabled %}Page LIVE{% else %}Page OFF{% endif %}
-        </span>
+        <div>
+            <h2 class="mb-0">Paldi / Event Registration</h2>
+            <div class="small text-muted mt-1">Manage Paldi festive grants, referrals, and campaign rules.</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'admin_trial_activity_logs' %}" class="btn btn-primary fw-bold shadow-sm px-3">
+                <i class="fa-solid fa-chart-line me-1.5"></i> Trial Activity Tracking &amp; Logs &raquo;
+            </a>
+            <span class="badge {% if campaign.is_enabled %}bg-success{% else %}bg-secondary{% endif %} fs-6 px-3 py-2">
+                {% if campaign.is_enabled %}Page LIVE{% else %}Page OFF{% endif %}
+            </span>
+        </div>
     </div>
 
     {% if show_test_tools and not debug_mode %}

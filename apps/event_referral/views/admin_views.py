@@ -381,3 +381,193 @@ def admin_delete_participant(request, participant_id):
         messages.warning(request, f'Removed {label} from the event. The agent has real payment or invoice '
                                   f'records, so the account was kept (manage it under Agents).')
     return redirect('admin_event_referral_dashboard')
+
+
+def admin_trial_activity_logs(request):
+    """
+    Trial Agent Activity Tracking & Audit Logs dashboard.
+    Tracks all activity of Free Trial / Paldi festive grant agents:
+    - Logins
+    - Dashboard visits
+    - Profile edits
+    - Public profile views & visiting card views
+    - Upgrade modal clicks & checkouts
+    - Plan upgrade conversions (paid)
+    """
+    if not _require_admin(request):
+        return redirect('/admin/login/')
+
+    from django.db.models import Q, Count, Max
+    from django.utils import timezone
+    from datetime import timedelta
+    import csv
+    from django.http import HttpResponse
+    from django.core.paginator import Paginator
+    from apps.event_referral.models import TrialAgentActivityLog, EventReferralParticipant
+    from apps.agents.models import Agent, AgentSubscription
+
+    # 1. Base query for activity logs
+    logs_qs = TrialAgentActivityLog.objects.select_related('agent', 'participant').order_by('-created_at')
+
+    search_query = (request.GET.get('q') or '').strip()
+    activity_type = (request.GET.get('activity_type') or '').strip()
+    date_filter = (request.GET.get('date_range') or 'all').strip()
+    selected_agent_id = (request.GET.get('agent_id') or '').strip()
+
+    if selected_agent_id and selected_agent_id.isdigit():
+        logs_qs = logs_qs.filter(agent_id=int(selected_agent_id))
+
+    if search_query:
+        logs_qs = logs_qs.filter(
+            Q(agent__fullname__icontains=search_query)
+            | Q(agent__email__icontains=search_query)
+            | Q(agent__mobile__icontains=search_query)
+            | Q(participant__referral_code__icontains=search_query)
+            | Q(title__icontains=search_query)
+            | Q(description__icontains=search_query)
+        )
+
+    if activity_type:
+        logs_qs = logs_qs.filter(activity_type=activity_type)
+
+    now = timezone.now()
+    if date_filter == 'today':
+        logs_qs = logs_qs.filter(created_at__date=now.date())
+    elif date_filter == '7d':
+        logs_qs = logs_qs.filter(created_at__gte=now - timedelta(days=7))
+    elif date_filter == '30d':
+        logs_qs = logs_qs.filter(created_at__gte=now - timedelta(days=30))
+
+    # CSV Export
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="trial_agent_activity_logs_{now.strftime("%Y%m%d_%H%M")}.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['ID', 'Timestamp', 'Agent ID', 'Agent Name', 'Mobile', 'Email', 'Activity Type', 'Title', 'Description', 'IP Address', 'User Agent'])
+        for item in logs_qs[:5000].iterator():
+            writer.writerow([
+                item.id,
+                item.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                item.agent_id,
+                getattr(item.agent, 'fullname', '') or '',
+                getattr(item.agent, 'mobile', '') or '',
+                getattr(item.agent, 'email', '') or '',
+                item.activity_type,
+                item.title,
+                item.description,
+                item.ip_address,
+                item.user_agent,
+            ])
+        return response
+
+    # 2. KPI Metrics
+    trial_participants_qs = EventReferralParticipant.objects.select_related('agent').filter(
+        Q(grant_expires_at__isnull=False) | Q(agent__status__in=['event_challenge', 'trial']) | Q(agent__plan_type='free_trial')
+    )
+    total_trial_agents = trial_participants_qs.count()
+    trial_agent_ids_all = set(trial_participants_qs.values_list('agent_id', flat=True))
+
+    logged_in_agent_ids = set(TrialAgentActivityLog.objects.filter(activity_type='login').values_list('agent_id', flat=True))
+    profile_edited_agent_ids = set(TrialAgentActivityLog.objects.filter(activity_type='profile_edit').values_list('agent_id', flat=True))
+    upgrade_initiated_agent_ids = set(TrialAgentActivityLog.objects.filter(activity_type__in=['upgrade_modal_open', 'upgrade_initiated']).values_list('agent_id', flat=True))
+    upgrade_paid_agent_ids = set(TrialAgentActivityLog.objects.filter(activity_type='upgrade_success').values_list('agent_id', flat=True))
+
+    paid_subs_agent_ids = set(AgentSubscription.objects.filter(
+        payment_status='completed'
+    ).exclude(
+        razorpay_payment_id__isnull=True, razorpay_order_id__isnull=True
+    ).values_list('agent_id', flat=True))
+
+    all_upgraded_trial_agent_ids = (upgrade_paid_agent_ids | (paid_subs_agent_ids & trial_agent_ids_all))
+
+    total_profile_views = TrialAgentActivityLog.objects.filter(activity_type__in=['profile_view', 'card_view']).count()
+
+    conversion_rate = 0.0
+    if total_trial_agents > 0:
+        conversion_rate = round((len(all_upgraded_trial_agent_ids) / total_trial_agents) * 100, 1)
+
+    kpi_stats = {
+        'total_trial_agents': total_trial_agents,
+        'total_logged_in': len(logged_in_agent_ids & trial_agent_ids_all) if trial_agent_ids_all else len(logged_in_agent_ids),
+        'total_profile_edited': len(profile_edited_agent_ids & trial_agent_ids_all) if trial_agent_ids_all else len(profile_edited_agent_ids),
+        'total_profile_views': total_profile_views,
+        'total_upgrade_clicks': len(upgrade_initiated_agent_ids & trial_agent_ids_all) if trial_agent_ids_all else len(upgrade_initiated_agent_ids),
+        'total_upgraded_paid': len(all_upgraded_trial_agent_ids),
+        'conversion_rate': conversion_rate,
+    }
+
+    # 3. Agent Roster Breakdown
+    roster_search = (request.GET.get('roster_q') or '').strip()
+    roster_qs = trial_participants_qs
+    if roster_search:
+        roster_qs = roster_qs.filter(
+            Q(agent__fullname__icontains=roster_search)
+            | Q(agent__mobile__icontains=roster_search)
+            | Q(agent__email__icontains=roster_search)
+            | Q(referral_code__icontains=roster_search)
+        )
+
+    log_counts = (
+        TrialAgentActivityLog.objects
+        .values('agent_id', 'activity_type')
+        .annotate(total=Count('id'))
+    )
+    agent_activity_counts = {}
+    for row in log_counts:
+        aid = row['agent_id']
+        atype = row['activity_type']
+        if aid not in agent_activity_counts:
+            agent_activity_counts[aid] = {'login': 0, 'profile_edit': 0, 'profile_view': 0, 'card_view': 0, 'upgrade_initiated': 0, 'upgrade_modal_open': 0, 'upgrade_success': 0}
+        agent_activity_counts[aid][atype] = row['total']
+
+    latest_logins = dict(
+        TrialAgentActivityLog.objects.filter(activity_type='login')
+        .values('agent_id')
+        .annotate(latest=Max('created_at'))
+        .values_list('agent_id', 'latest')
+    )
+
+    roster_items = []
+    for p in roster_qs[:500]:
+        agent = p.agent
+        counts = agent_activity_counts.get(agent.id, {})
+        has_paid_upgrade = agent.id in all_upgraded_trial_agent_ids
+        roster_items.append({
+            'participant': p,
+            'agent': agent,
+            'logins_count': counts.get('login', 0),
+            'last_login': latest_logins.get(agent.id),
+            'profile_edits_count': counts.get('profile_edit', 0),
+            'profile_views_count': counts.get('profile_view', 0) + counts.get('card_view', 0),
+            'upgrade_initiated_count': counts.get('upgrade_initiated', 0) + counts.get('upgrade_modal_open', 0),
+            'is_upgraded': has_paid_upgrade,
+            'plan_type': agent.plan_type,
+            'status': agent.status,
+            'grant_expires_at': p.grant_expires_at,
+        })
+
+    # 4. Pagination
+    total_logs_count = logs_qs.count()
+    paginator = Paginator(logs_qs, 50)
+    page_number = request.GET.get('page') or 1
+    page_obj = paginator.get_page(page_number)
+
+    selected_agent = None
+    if selected_agent_id and selected_agent_id.isdigit():
+        selected_agent = Agent.objects.filter(pk=int(selected_agent_id)).first()
+
+    context = {
+        'kpi': kpi_stats,
+        'page_obj': page_obj,
+        'roster_items': roster_items,
+        'search_query': search_query,
+        'activity_type': activity_type,
+        'date_filter': date_filter,
+        'selected_agent': selected_agent,
+        'selected_agent_id': selected_agent_id,
+        'roster_search': roster_search,
+        'activity_choices': TrialAgentActivityLog.ACTIVITY_CHOICES,
+        'total_logs_count': total_logs_count,
+    }
+    return render(request, 'event_referral/admin/trial_activity_logs.html', context)
+

@@ -56,6 +56,7 @@ urlpatterns = [
             RedirectView.as_view(url='/48HR/%(rest)s', query_string=True, permanent=False)),
     path('stall-leaderboard/', stall_public_leaderboard, name='stall_leaderboard'),
     path('admin/event-referral/', include('apps.event_referral.urls_admin')),
+    path('admin/trial-activity/', RedirectView.as_view(url='/admin/event-referral/activity/', query_string=True, permanent=False)),
     path('', include('apps.admin_panel.urls')),
     path('', include('apps.agents.urls')),
     path('events/', include('apps.agents.urls_events')),

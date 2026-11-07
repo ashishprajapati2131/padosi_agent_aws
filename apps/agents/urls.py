@@ -61,6 +61,7 @@ urlpatterns = [
     path('agent/update-profile/', dashboard.update_profile,     name='agent_update_profile'),
     path('agent/push-token/',   dashboard.agent_push_token,      name='agent_push_token'),
     path('agent/upgrade-plan/', dashboard.agent_upgrade_plan,    name='agent_upgrade_plan'),
+    path('agent/log-activity/', dashboard.agent_log_trial_activity, name='agent_log_trial_activity'),
     path('agent/renew/',        renewal_views.renew_plan,         name='agent_renew_plan'),
     path('agent/app-upgrade/',  auth.app_upgrade_handoff,        name='app_upgrade_handoff'),
     path('agent/delete-account/', account_deletion.account_deletion_view, name='agent_delete_account'),

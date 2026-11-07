@@ -4043,6 +4043,30 @@ def _activate_paid_subscription(
         mark_payment_completed(agent)
         if agent.status == "active":
             sync_lead_for_agent(agent)
+
+        try:
+            from apps.event_referral.models import TrialAgentActivityLog
+            pay_id = payment.get("id") if isinstance(payment, dict) else ""
+            order_id = getattr(subscription, "razorpay_order_id", "")
+            amount = getattr(subscription, "registration_amount", 0)
+            p_name = getattr(subscription, "selected_plan", "") or plan_type
+            TrialAgentActivityLog.log(
+                agent=agent,
+                activity_type=TrialAgentActivityLog.ACTIVITY_UPGRADE_SUCCESS,
+                title=f"Plan Upgraded: {p_name.title()}",
+                description=f"Paid and upgraded to {p_name.title()} (₹{amount})",
+                details={
+                    "plan_type": plan_type,
+                    "plan_name": p_name,
+                    "amount": float(amount) if amount else 0,
+                    "razorpay_payment_id": pay_id,
+                    "razorpay_order_id": order_id,
+                    "is_upgrade": is_upgrade,
+                },
+                force=True,
+            )
+        except Exception:
+            logger.exception("Trial upgrade success logging failed for agent #%s", agent.id)
     except Exception:
         logger.exception(
             "%s Quick-registration lead sync failed for agent %s",

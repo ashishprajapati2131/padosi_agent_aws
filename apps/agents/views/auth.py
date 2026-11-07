@@ -162,6 +162,20 @@ def _finish_agent_session_login(request, django_user, ip, agent=None):
 
     if agent is None:
         agent = resolve_agent_for_user(django_user) or find_agent(getattr(django_user, 'email', ''))
+
+    if agent:
+        try:
+            from apps.event_referral.models import TrialAgentActivityLog
+            TrialAgentActivityLog.log(
+                agent=agent,
+                activity_type=TrialAgentActivityLog.ACTIVITY_LOGIN,
+                title='Agent Logged In',
+                description=f'Agent logged in successfully',
+                details={'email': getattr(agent, 'email', ''), 'plan_type': getattr(agent, 'plan_type', ''), 'status': getattr(agent, 'status', '')},
+                request=request,
+            )
+        except Exception as e:
+            logger.warning("Trial login logging failed: %s", e)
     
     is_admin = getattr(django_user, 'is_staff', False) or getattr(django_user, 'is_superuser', False)
     if not is_admin:

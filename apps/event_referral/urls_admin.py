@@ -4,6 +4,7 @@ from apps.event_referral.views import admin_views
 
 urlpatterns = [
     path('', admin_views.admin_dashboard, name='admin_event_referral_dashboard'),
+    path('activity/', admin_views.admin_trial_activity_logs, name='admin_trial_activity_logs'),
     path('settings/update/', admin_views.admin_update_settings, name='admin_event_referral_settings'),
     path('toggle/', admin_views.admin_toggle_registration, name='admin_event_referral_toggle'),
     path('participants/<int:participant_id>/extend/', admin_views.admin_extend_deadline, name='admin_event_referral_extend'),

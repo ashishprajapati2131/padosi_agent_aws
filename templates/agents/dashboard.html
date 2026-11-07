@@ -2273,6 +2273,21 @@
     }
 
     function openUpgradeChoiceModal() {
+        try {
+            fetch('{% url "agents:agent_log_trial_activity" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    activity_type: 'upgrade_modal_open',
+                    title: 'Upgrade Modal Opened',
+                    description: 'Agent clicked Upgrade Plan button on dashboard'
+                })
+            }).catch(function() {});
+        } catch(e) {}
+
         const modalEl = document.getElementById('upgradeChoiceModal');
         if (modalEl) {
             if (typeof $ !== 'undefined' && $.fn.modal) {

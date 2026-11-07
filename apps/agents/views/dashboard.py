@@ -319,6 +319,24 @@ def agent_dashboard(request):
         except Exception as ev_err:
             logger.warning("Event referral dashboard context failed: %s", ev_err)
 
+    if agent and not is_admin:
+        try:
+            sess_key = f"trial_dash_view_{agent.id}"
+            now_ts = int(time.time())
+            last_ts = request.session.get(sess_key, 0)
+            if not last_ts or (now_ts - int(last_ts) > 900):
+                request.session[sess_key] = now_ts
+                from apps.event_referral.models import TrialAgentActivityLog
+                TrialAgentActivityLog.log(
+                    agent=agent,
+                    activity_type=TrialAgentActivityLog.ACTIVITY_DASHBOARD,
+                    title='Dashboard Visited',
+                    description='Agent viewed dashboard',
+                    request=request,
+                )
+        except Exception:
+            pass
+
     event_referral_whatsapp_url = ""
     if event_referral_share_url:
         event_referral_whatsapp_url = "https://api.whatsapp.com/send?text=" + quote(
@@ -1302,6 +1320,21 @@ def agent_public_profile(request, slug, state_code=None):
             ):
                 AgentProfileView.record_view(agent)
                 request.session[session_key] = current_time
+
+                try:
+                    from apps.event_referral.models import TrialAgentActivityLog
+                    referer = (request.META.get('HTTP_REFERER') or '')[:250]
+                    TrialAgentActivityLog.log(
+                        agent=agent,
+                        activity_type=TrialAgentActivityLog.ACTIVITY_PROFILE_VIEW,
+                        title='Public Profile Viewed',
+                        description='Visitor viewed public profile card/page',
+                        details={'referer': referer},
+                        request=request,
+                    )
+                except Exception:
+                    pass
+
                 from apps.wa_agent_bot.services.notification_service import (
                     notify_agent_profile_view,
                 )
@@ -2105,6 +2138,35 @@ def _log_profile_edit(request, agent, before, after, current_step, is_admin_edit
         status_before=status_before,
         status_after=status_after,
     )
+
+    try:
+        from apps.event_referral.models import TrialAgentActivityLog
+        step_name = _EDIT_LOG_STEP_LABELS.get(step, "Profile Edit")
+        changed_keys = list(changes.keys()) if isinstance(changes, dict) else []
+        summary = f"Updated: {', '.join(changed_keys[:5])}" if changed_keys else "Profile saved"
+        TrialAgentActivityLog.log(
+            agent=agent,
+            activity_type=TrialAgentActivityLog.ACTIVITY_PROFILE_EDIT,
+            title=f"Profile Edited ({step_name})",
+            description=summary,
+            details={
+                "step": step or 7,
+                "step_label": step_name,
+                "edited_by": "admin" if is_admin_edit else "agent",
+                "changed_fields": changed_keys,
+                "changes": {
+                    k: {
+                        "before": str(v.get("before", ""))[:120],
+                        "after": str(v.get("after", ""))[:120],
+                    }
+                    for k, v in list(changes.items())[:12]
+                } if isinstance(changes, dict) else {},
+            },
+            request=request,
+        )
+    except Exception as e:
+        logger.warning("Trial profile edit log failed: %s", e)
+
 
 
 def apply_profile_update(request, agent, is_admin_edit=False):
@@ -3466,6 +3528,26 @@ def agent_upgrade_plan(request):
                 agent.id,
             )
 
+        try:
+            from apps.event_referral.models import TrialAgentActivityLog
+            TrialAgentActivityLog.log(
+                agent=agent,
+                activity_type=TrialAgentActivityLog.ACTIVITY_UPGRADE_INITIATED,
+                title=f'Upgrade Initiated ({plan_name})',
+                description=f'Selected {plan_name} plan for ₹{int(total_amount)}',
+                details={
+                    'plan_type': plan_type,
+                    'plan_name': plan_name,
+                    'total_amount': total_amount,
+                    'order_id': razorpay_order_id,
+                    'promo_code': promo_code or '',
+                },
+                request=request,
+                force=True,
+            )
+        except Exception:
+            pass
+
         return JsonResponse(
             checkout_payload(
                 razorpay_order_id,
@@ -3485,6 +3567,43 @@ def agent_upgrade_plan(request):
         return JsonResponse(
             {"success": False, "message": "An unexpected error occurred."}, status=500
         )
+
+
+@require_POST
+def agent_log_trial_activity(request):
+    """
+    Lightweight endpoint for frontend event tracking (e.g. upgrade modal open, clicks).
+    """
+    from django.http import JsonResponse
+    if not request.user.is_authenticated:
+        return JsonResponse({"ok": False}, status=401)
+    agent = Agent.objects.filter(user=request.user).first()
+    if not agent:
+        return JsonResponse({"ok": False}, status=404)
+    try:
+        try:
+            data = json_loads(request.body) if request.body else request.POST
+        except Exception:
+            data = request.POST or {}
+        activity_type = data.get("activity_type") or "upgrade_modal_open"
+        title = data.get("title") or "Upgrade Modal Opened"
+        description = data.get("description") or "Agent clicked Upgrade Plan button"
+        details = data.get("details") or {}
+        from apps.event_referral.models import TrialAgentActivityLog
+        TrialAgentActivityLog.log(
+            agent=agent,
+            activity_type=activity_type,
+            title=title,
+            description=description,
+            details=details,
+            request=request,
+            force=True,
+        )
+        return JsonResponse({"ok": True})
+    except Exception as e:
+        logger.warning("agent_log_trial_activity error: %s", e)
+        return JsonResponse({"ok": False})
+
 
 
 @csrf_exempt

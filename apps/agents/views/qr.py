@@ -233,8 +233,21 @@ def agent_qr_download(request, qr_type):
     png = get_or_create_qr_png(request, agent, qr_type)
     if not png:
         raise Http404("Could not generate QR code")
+    try:
+        from apps.event_referral.models import TrialAgentActivityLog
+        TrialAgentActivityLog.log(
+            agent=agent,
+            activity_type=TrialAgentActivityLog.ACTIVITY_QR_DOWNLOAD,
+            title='QR Code Downloaded',
+            description=f'Downloaded {qr_type} QR image',
+            details={'qr_type': qr_type},
+            request=request,
+        )
+    except Exception:
+        pass
     slug = getattr(agent, "agent_slug", None) or str(agent.id)
     return _png_response(png, f"PadosiAgent-{slug}-{qr_type}.png", download=True)
+
 
 
 @require_GET
@@ -317,6 +330,26 @@ def public_agent_card(request, slug):
                 },
                 status=404,
             )
+        try:
+            import time
+            sess_key = f"trial_card_view_{agent.id}"
+            now_ts = int(time.time())
+            last_ts = request.session.get(sess_key, 0)
+            if not last_ts or (now_ts - int(last_ts) > 900):
+                request.session[sess_key] = now_ts
+                from apps.event_referral.models import TrialAgentActivityLog
+                referer = (request.META.get('HTTP_REFERER') or '')[:250]
+                TrialAgentActivityLog.log(
+                    agent=agent,
+                    activity_type=TrialAgentActivityLog.ACTIVITY_CARD_VIEW,
+                    title='Digital Visiting Card Viewed',
+                    description='Visitor viewed digital visiting card',
+                    details={'referer': referer},
+                    request=request,
+                )
+        except Exception:
+            pass
+
 
     agent_plan = _resolve_agent_plan(agent.plan_type, agent=agent)
     display_name = (
@@ -711,7 +744,19 @@ def agent_card_vcf_download(request, slug):
         f'attachment; filename="PadosiAgent-{safe_name}.vcf"'
     )
     response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    try:
+        from apps.event_referral.models import TrialAgentActivityLog
+        TrialAgentActivityLog.log(
+            agent=agent,
+            activity_type=TrialAgentActivityLog.ACTIVITY_VCF_DOWNLOAD,
+            title='Contact (VCF) Saved',
+            description='Client downloaded VCF contact to phone',
+            request=request,
+        )
+    except Exception:
+        pass
     return response
+
 
 
 def agent_card_lead_submit(request, slug):
@@ -938,6 +983,24 @@ def agent_card_lead_submit(request, slug):
             pass
 
     advisor_name = agent.fullname or "the advisor"
+    try:
+        from apps.event_referral.models import TrialAgentActivityLog
+        TrialAgentActivityLog.log(
+            agent=agent,
+            activity_type=TrialAgentActivityLog.ACTIVITY_LEAD_RECEIVED,
+            title='Lead Received from Card',
+            description=f'Client enquiry from {customer_name} ({clean_mobile})',
+            details={
+                'name': customer_name,
+                'phone': clean_mobile,
+                'insurance_type': insurance_type,
+                'service_type': service_type,
+                'lead_id': lead.id,
+            },
+            request=request,
+        )
+    except Exception:
+        pass
     return JsonResponse(
         {
             "success": True,
@@ -945,6 +1008,7 @@ def agent_card_lead_submit(request, slug):
             "lead_id": lead.id,
         }
     )
+
 
 
 @require_GET

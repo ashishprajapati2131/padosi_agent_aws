@@ -751,6 +751,10 @@
   "access": "super_only",
   "name": "admin_event_referral_dashboard"
  },
+ "admin/event-referral/activity/": {
+  "access": "super_only",
+  "name": "admin_trial_activity_logs"
+ },
  "admin/event-referral/participants/<int:participant_id>/block/": {
   "access": "super_only",
   "name": "admin_event_referral_block"

@@ -208,3 +208,137 @@ class EventReferral(models.Model):
 
     def __str__(self):
         return f'{self.snapshot_name or self.referred_agent_id} → {self.participant.referral_code}'
+
+
+class TrialAgentActivityLog(models.Model):
+    """
+    Audit and activity log for all Free Trial agents (Paldi festive trial, event challenge, standard trials).
+    Tracks logins, profile edits, public profile/card views, upgrade checkout attempts, and completed plan upgrades.
+    """
+    ACTIVITY_LOGIN = 'login'
+    ACTIVITY_DASHBOARD = 'dashboard_view'
+    ACTIVITY_PROFILE_EDIT = 'profile_edit'
+    ACTIVITY_PROFILE_VIEW = 'profile_view'
+    ACTIVITY_CARD_VIEW = 'card_view'
+    ACTIVITY_CARD_DOWNLOAD = 'card_download'
+    ACTIVITY_QR_DOWNLOAD = 'qr_download'
+    ACTIVITY_VCF_DOWNLOAD = 'vcf_download'
+    ACTIVITY_UPGRADE_MODAL_OPEN = 'upgrade_modal_open'
+    ACTIVITY_UPGRADE_INITIATED = 'upgrade_initiated'
+    ACTIVITY_UPGRADE_SUCCESS = 'upgrade_success'
+    ACTIVITY_UPGRADE_FAILED = 'upgrade_failed'
+    ACTIVITY_LEAD_RECEIVED = 'lead_received'
+    ACTIVITY_REVIEW_SUBMITTED = 'review_submitted'
+
+    ACTIVITY_CHOICES = [
+        (ACTIVITY_LOGIN, 'Agent Logged In'),
+        (ACTIVITY_DASHBOARD, 'Dashboard Visited'),
+        (ACTIVITY_PROFILE_EDIT, 'Profile Edited'),
+        (ACTIVITY_PROFILE_VIEW, 'Profile Viewed'),
+        (ACTIVITY_CARD_VIEW, 'Visiting Card Viewed'),
+        (ACTIVITY_CARD_DOWNLOAD, 'Visiting Card Downloaded'),
+        (ACTIVITY_QR_DOWNLOAD, 'QR Code Downloaded'),
+        (ACTIVITY_VCF_DOWNLOAD, 'Contact (VCF) Saved'),
+        (ACTIVITY_UPGRADE_MODAL_OPEN, 'Upgrade Modal Opened'),
+        (ACTIVITY_UPGRADE_INITIATED, 'Upgrade Checkout Initiated'),
+        (ACTIVITY_UPGRADE_SUCCESS, 'Plan Upgraded (Payment Succeeded)'),
+        (ACTIVITY_UPGRADE_FAILED, 'Upgrade Payment Failed'),
+        (ACTIVITY_LEAD_RECEIVED, 'Lead Received from Card'),
+        (ACTIVITY_REVIEW_SUBMITTED, 'Review Received'),
+    ]
+
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name='trial_activity_logs',
+        db_constraint=False,
+    )
+    participant = models.ForeignKey(
+        EventReferralParticipant,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activity_logs',
+        db_constraint=False,
+    )
+    activity_type = models.CharField(max_length=50, choices=ACTIVITY_CHOICES, db_index=True)
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default='')
+    details = models.JSONField(default=dict, blank=True)
+    ip_address = models.CharField(max_length=45, blank=True, default='')
+    user_agent = models.CharField(max_length=500, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = 'trial_agent_activity_logs'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['agent', '-created_at'], name='trial_act_agent_idx'),
+            models.Index(fields=['activity_type', '-created_at'], name='trial_act_type_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.agent_id} - {self.activity_type} ({self.created_at})'
+
+    @classmethod
+    def is_trial_agent(cls, agent):
+        if not agent:
+            return False
+        try:
+            if hasattr(agent, 'isOnFreeTrial') and agent.isOnFreeTrial():
+                return True
+            if hasattr(agent, 'isTrialExpired') and agent.isTrialExpired():
+                return True
+            if getattr(agent, 'status', None) in ('event_challenge', 'trial'):
+                return True
+            if getattr(agent, 'plan_type', None) == 'free_trial':
+                return True
+            if hasattr(agent, 'event_referral_participant'):
+                return True
+            if EventReferralParticipant.objects.filter(agent_id=agent.id).exists():
+                return True
+        except Exception:
+            pass
+        return False
+
+    @classmethod
+    def log(cls, agent, activity_type, title, description="", details=None, request=None, force=False):
+        import logging
+        _logger = logging.getLogger(__name__)
+        try:
+            if not agent:
+                return None
+            if not force and not cls.is_trial_agent(agent):
+                return None
+
+            participant = getattr(agent, 'event_referral_participant', None)
+            if participant is None:
+                try:
+                    participant = EventReferralParticipant.objects.filter(agent_id=agent.id).first()
+                except Exception:
+                    participant = None
+
+            ip = ""
+            ua = ""
+            if request is not None:
+                try:
+                    from apps.admin_panel.middleware import ThreatMonitorMiddleware
+                    ip = ThreatMonitorMiddleware.get_client_ip(request) or ""
+                except Exception:
+                    ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR', '')
+                ua = (request.META.get('HTTP_USER_AGENT', '') or '')[:500]
+
+            return cls.objects.create(
+                agent=agent,
+                participant=participant,
+                activity_type=activity_type,
+                title=(title or "")[:255],
+                description=description or "",
+                details=details or {},
+                ip_address=(ip or "")[:45],
+                user_agent=(ua or "")[:500],
+            )
+        except Exception as e:
+            _logger.warning("Failed to record trial activity log: %s", e)
+            return None
+
