@@ -38,6 +38,36 @@ class GrantPaldiTrialTests(TestCase):
         self.assertEqual(p.grant_plan_slug, "")
         send.assert_not_called()
 
+    def test_email_granted_reaches_only_agents_with_this_trial(self):
+        from apps.event_referral.services.participant_service import admin_grant_win
+
+        has_trial = self._participant(1)
+        permanent = self._participant(2)
+        call_command(
+            "grant_paldi_trial", until=self.until, apply=True, stdout=StringIO()
+        )
+        admin_grant_win(permanent, plan_slug="professional", expires_at=None)
+        newcomer = self._participant(3)  # joined after the grant: must get nothing
+        with patch(SEND, return_value=True) as send:
+            call_command(
+                "grant_paldi_trial",
+                until=self.until,
+                email_granted=True,
+                stdout=StringIO(),
+            )
+            send.assert_not_called()  # dry run
+            call_command(
+                "grant_paldi_trial",
+                until=self.until,
+                apply=True,
+                email_granted=True,
+                stdout=StringIO(),
+            )
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args[0], has_trial.agent.email)
+        newcomer.refresh_from_db()
+        self.assertEqual((newcomer.status, newcomer.grant_plan_slug), ("active", ""))
+
     def test_failed_email_does_not_stop_the_grant(self):
         p = self._participant(1)
         out = StringIO()
