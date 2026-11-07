@@ -35,8 +35,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--email-granted",
             action="store_true",
-            help="Also email agents who already hold this exact trial (same plan and end). "
-            "Sends again on every run with --apply.",
+            help="Email-only: email agents who already hold this exact trial (same plan and end) "
+            "and grant nobody new. Sends again on every run with --apply.",
         )
 
     def handle(self, *args, **opts):
@@ -49,7 +49,7 @@ class Command(BaseCommand):
         if until <= datetime.now():
             raise CommandError("--until is in the past")
 
-        granted = paid = won = emailed = already = 0
+        granted = paid = won = emailed = already = not_granted = 0
         failed = []
         qs = EventReferralParticipant.objects.select_related("agent").order_by("id")
         for p in qs.iterator():
@@ -71,6 +71,9 @@ class Command(BaseCommand):
                         else:
                             failed.append(p.agent.email or f"agent #{p.agent_id}")
                 continue
+            if opts["email_granted"]:
+                not_granted += 1  # email-only run: new participants get nothing
+                continue
             granted += 1
             if opts["apply"]:
                 admin_grant_win(p, plan_slug=opts["plan"], expires_at=until)
@@ -80,16 +83,22 @@ class Command(BaseCommand):
                 else:
                     failed.append(p.agent.email or f"agent #{p.agent_id}")
 
-        mode = "Granted" if opts["apply"] else "DRY RUN - would grant (and email)"
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"{mode} {opts['plan']} until {until:%Y-%m-%d %H:%M} to {granted} participants. "
-                f"Skipped: {paid} paid, {won} already won. Total: {granted + paid + won}."
-            )
-        )
         if opts["email_granted"]:
             self.stdout.write(
-                f"{'Emailing' if opts['apply'] else 'Would email'} {already} agents who already have this trial."
+                self.style.SUCCESS(
+                    f"{'Emailing' if opts['apply'] else 'DRY RUN - would email'} {already} agents who "
+                    f"already have this trial. No new grants ({not_granted} without the trial left as they are). "
+                    f"Skipped: {paid} paid, {won - already} won with another plan. "
+                    f"Total: {won + paid + not_granted}."
+                )
+            )
+        else:
+            mode = "Granted" if opts["apply"] else "DRY RUN - would grant (and email)"
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"{mode} {opts['plan']} until {until:%Y-%m-%d %H:%M} to {granted} participants. "
+                    f"Skipped: {paid} paid, {won} already won. Total: {granted + paid + won}."
+                )
             )
         if opts["apply"]:
             self.stdout.write(f"Emails sent: {emailed}, failed: {len(failed)}.")

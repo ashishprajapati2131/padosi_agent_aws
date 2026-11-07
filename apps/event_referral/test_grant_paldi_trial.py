@@ -47,6 +47,7 @@ class GrantPaldiTrialTests(TestCase):
             "grant_paldi_trial", until=self.until, apply=True, stdout=StringIO()
         )
         admin_grant_win(permanent, plan_slug="professional", expires_at=None)
+        newcomer = self._participant(3)  # joined after the grant: must get nothing
         with patch(SEND, return_value=True) as send:
             call_command(
                 "grant_paldi_trial",
@@ -64,6 +65,8 @@ class GrantPaldiTrialTests(TestCase):
             )
         send.assert_called_once()
         self.assertEqual(send.call_args.args[0], has_trial.agent.email)
+        newcomer.refresh_from_db()
+        self.assertEqual((newcomer.status, newcomer.grant_plan_slug), ("active", ""))
 
     def test_failed_email_does_not_stop_the_grant(self):
         p = self._participant(1)
