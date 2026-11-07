@@ -1,4 +1,5 @@
 """Read-only queries for the admin Export Center (views/export.py)."""
+from datetime import datetime
 
 from django.db import connection
 
@@ -111,7 +112,7 @@ def fetch_pending_export_rows(search, event_sql, event_params):
                 a.status, a.registration_step,
                 s.selected_plan, s.registration_amount, s.payment_status,
                 ap.address,
-                TIMESTAMPDIFF(HOUR, a.created_at, UTC_TIMESTAMP()) AS hours_waiting,
+                TIMESTAMPDIFF(HOUR, a.created_at, %s) AS hours_waiting,
                 a.created_at
             FROM agents a
             LEFT JOIN agent_profiles ap ON a.id = ap.agent_id
@@ -119,7 +120,9 @@ def fetch_pending_export_rows(search, event_sql, event_params):
                 AND s.id = (SELECT MAX(id) FROM agent_subscriptions WHERE agent_id = a.id)
             WHERE a.status IN ('incomplete', 'pending_payment', 'event_challenge')
         """
-        params = []
+        # created_at is naive IST (USE_TZ=False); UTC_TIMESTAMP() made every wait 5h30m short.
+        now_ist = datetime.now()
+        params = [now_ist]
 
         if search:
             base_sql += " AND (a.fullname LIKE %s OR a.email LIKE %s OR ap.display_name LIKE %s)"
@@ -129,7 +132,8 @@ def fetch_pending_export_rows(search, event_sql, event_params):
         base_sql += event_sql
         params.extend(event_params)
 
-        base_sql += " ORDER BY TIMESTAMPDIFF(HOUR, a.created_at, UTC_TIMESTAMP()) DESC"
+        base_sql += " ORDER BY TIMESTAMPDIFF(HOUR, a.created_at, %s) DESC"
+        params.append(now_ist)
 
         cursor.execute(base_sql, params)
         return cursor.fetchall()

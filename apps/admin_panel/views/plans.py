@@ -1,3 +1,4 @@
+from apps.admin_panel.parsing import parse_int
 import json
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
@@ -31,7 +32,7 @@ def plan_create(request):
             description = request.POST.get('description', '')
             color_theme = request.POST.get('color_theme', 'starter-theme')
             badge_text = request.POST.get('badge_text', '')
-            sort_order = int(request.POST.get('sort_order') or 0)
+            sort_order = parse_int(request.POST.get('sort_order'), 0)
             html_code = request.POST.get('html_code', '')
             actual_price = request.POST.get('actual_price', 0.0)
             discounted_price = request.POST.get('discounted_price', 0.0)
@@ -125,7 +126,7 @@ def plan_edit(request, plan_id):
             plan.description = request.POST.get('description', '')
             plan.color_theme = request.POST.get('color_theme', 'starter-theme')
             plan.badge_text = request.POST.get('badge_text', '')
-            plan.sort_order = int(request.POST.get('sort_order') or 0)
+            plan.sort_order = parse_int(request.POST.get('sort_order'), 0)
             plan.html_code = request.POST.get('html_code', '')
             plan.actual_price = request.POST.get('actual_price', 0.0)
             plan.discounted_price = request.POST.get('discounted_price', 0.0)
